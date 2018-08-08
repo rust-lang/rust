@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/feature-gate.rs:31:1
+   |
+LL | / fn main() { //[with_gate]~ ERROR compilation successful
+LL | |     let y = Foo { x: 1 };
+LL | |     match y {
+LL | |         FOO => { }
+LL | |         _ => { }
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

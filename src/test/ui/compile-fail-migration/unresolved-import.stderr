@@ -1,0 +1,44 @@
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-import.rs:13:5
+   |
+LL | use foo::bar; //~ ERROR unresolved import `foo` [E0432]
+   |     ^^^ Maybe a missing `extern crate foo;`?
+
+error[E0432]: unresolved import `bar::Baz`
+  --> $DIR/unresolved-import.rs:16:5
+   |
+LL | use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
+   |     ^^^^^^^^^^^^^ no `Baz` in `bar`. Did you mean to use `Bar`?
+
+error[E0432]: unresolved import `food::baz`
+  --> $DIR/unresolved-import.rs:19:5
+   |
+LL | use food::baz; //~ ERROR unresolved import `food::baz`
+   |     ^^^^^^^^^ no `baz` in `food`. Did you mean to use `bag`?
+
+error[E0432]: unresolved import `food::beens`
+  --> $DIR/unresolved-import.rs:22:12
+   |
+LL | use food::{beens as Foo}; //~ ERROR unresolved import `food::beens` [E0432]
+   |            ^^^^^^^^^^^^ no `beens` in `food`. Did you mean to use `beans`?
+
+error[E0432]: unresolved import `MyEnum`
+  --> $DIR/unresolved-import.rs:44:9
+   |
+LL |     use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
+   |         ^^^^^^ Did you mean `self::MyEnum`?
+
+error[E0432]: unresolved import `Enum`
+  --> $DIR/unresolved-import.rs:53:9
+   |
+LL |     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
+   |         ^^^^ Did you mean `self::Enum`?
+
+error[E0601]: `main` function not found in crate `unresolved_import`
+   |
+   = note: consider adding a `main` function to `$DIR/unresolved-import.rs`
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0432, E0601.
+For more information about an error, try `rustc --explain E0432`.

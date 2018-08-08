@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `src`
+  --> $DIR/borrowck-issue-48962.rs:26:5
+   |
+LL |     {src};
+   |      --- value moved here
+LL |     src.next = None; //~ ERROR use of moved value: `src` [E0382]
+   |     ^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `src` has type `&mut Node`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `src`
+  --> $DIR/borrowck-issue-48962.rs:32:5
+   |
+LL |     {src};
+   |      --- value moved here
+LL |     src.0 = 66; //~ ERROR use of moved value: `src` [E0382]
+   |     ^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `src` has type `&mut (i32, i32)`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

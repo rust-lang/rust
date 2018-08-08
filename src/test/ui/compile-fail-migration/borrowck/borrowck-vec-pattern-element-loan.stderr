@@ -1,0 +1,48 @@
+error[E0597]: `vec` does not live long enough
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:15:26
+   |
+LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+   |                          ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:6...
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:13:6
+   |
+LL | fn a<'a>() -> &'a [isize] {
+   |      ^^
+
+error[E0597]: `vec` does not live long enough
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:25:26
+   |
+LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+   |                          ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:6...
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:23:6
+   |
+LL | fn b<'a>() -> &'a [isize] {
+   |      ^^
+
+error[E0597]: `vec` does not live long enough
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:35:26
+   |
+LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+   |                          ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 33:6...
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:33:6
+   |
+LL | fn c<'a>() -> &'a [isize] {
+   |      ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,109 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/wf-static-method.rs:27:9
+   |
+LL |         u //~ ERROR E0312
+   |         ^
+   |
+note: ...the reference is valid for the lifetime 'a as defined on the impl at 24:6...
+  --> $DIR/wf-static-method.rs:24:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |      ^^
+note: ...but the borrowed content is only valid for the lifetime 'b as defined on the impl at 24:10
+  --> $DIR/wf-static-method.rs:24:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |          ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/wf-static-method.rs:36:18
+   |
+LL |         let me = Self::make_me(); //~ ERROR lifetime bound not satisfied
+   |                  ^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime 'b as defined on the impl at 33:10
+  --> $DIR/wf-static-method.rs:33:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |          ^^
+note: but lifetime parameter must outlive the lifetime 'a as defined on the impl at 33:6
+  --> $DIR/wf-static-method.rs:33:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |      ^^
+
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/wf-static-method.rs:43:9
+   |
+LL |         u //~ ERROR E0312
+   |         ^
+   |
+note: ...the reference is valid for the lifetime 'a as defined on the impl at 41:6...
+  --> $DIR/wf-static-method.rs:41:6
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |      ^^
+note: ...but the borrowed content is only valid for the lifetime 'b as defined on the impl at 41:10
+  --> $DIR/wf-static-method.rs:41:10
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |          ^^
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/wf-static-method.rs:51:5
+   |
+LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'b as defined on the function body at 50:13...
+  --> $DIR/wf-static-method.rs:50:13
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |             ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:51:23
+   |
+LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+   |                       ^
+note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 50:9...
+  --> $DIR/wf-static-method.rs:50:9
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |         ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:51:5
+   |
+LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/wf-static-method.rs:55:5
+   |
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'b as defined on the function body at 54:22...
+  --> $DIR/wf-static-method.rs:54:22
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                      ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:55:33
+   |
+LL |     <IndirectEvil>::static_evil(b)
+   |                                 ^
+note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 54:18...
+  --> $DIR/wf-static-method.rs:54:18
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:55:5
+   |
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0312, E0478, E0495.
+For more information about an error, try `rustc --explain E0312`.

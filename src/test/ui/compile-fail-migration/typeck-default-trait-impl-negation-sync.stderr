@@ -1,0 +1,44 @@
+error[E0277]: `MyNotSync` cannot be shared between threads safely
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:45:5
+   |
+LL |     is_sync::<MyNotSync>();
+   |     ^^^^^^^^^^^^^^^^^^^^ `MyNotSync` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `MyNotSync`
+note: required by `is_sync`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:41:1
+   |
+LL | fn is_sync<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::cell::UnsafeCell<u8>` cannot be shared between threads safely
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:48:5
+   |
+LL |     is_sync::<MyTypeWUnsafe>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<u8>` cannot be shared between threads safely
+   |
+   = help: within `MyTypeWUnsafe`, the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<u8>`
+   = note: required because it appears within the type `MyTypeWUnsafe`
+note: required by `is_sync`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:41:1
+   |
+LL | fn is_sync<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `Managed` cannot be shared between threads safely
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:51:5
+   |
+LL |     is_sync::<MyTypeManaged>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
+   |
+   = help: within `MyTypeManaged`, the trait `std::marker::Sync` is not implemented for `Managed`
+   = note: required because it appears within the type `MyTypeManaged`
+note: required by `is_sync`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:41:1
+   |
+LL | fn is_sync<T: Sync>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

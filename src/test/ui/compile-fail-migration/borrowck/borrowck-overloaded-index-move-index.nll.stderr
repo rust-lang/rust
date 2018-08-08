@@ -1,0 +1,14 @@
+error[E0382]: use of moved value: `s`
+  --> $DIR/borrowck-overloaded-index-move-index.rs:63:7
+   |
+LL |     println!("{}", f[s]);
+   |                      - value moved here
+...
+LL |     f[s] = 10;
+   |       ^ value used here after move
+   |
+   = note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,11 @@
+error: compilation successful
+  --> $DIR/maybe-bounds-where-cpass.rs:16:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     let u = vec![1, 2, 3];
+LL | |     let _s: S<[u8]> = S(&u[..]);
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-early-bound-error.rs:29:5
+   |
+LL |     g1.get()
+   |     ^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-early-bound-error.rs:29:5
+   |
+LL | fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
+   |        -- -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     g1.get()
+   |     ^^^^^^^^ argument requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

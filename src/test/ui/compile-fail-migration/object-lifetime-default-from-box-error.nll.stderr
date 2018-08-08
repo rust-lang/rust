@@ -1,0 +1,45 @@
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-from-box-error.rs:28:5
+   |
+LL |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
+   |     ^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-from-box-error.rs:41:12
+   |
+LL |     ss.r = b; //~ ERROR 41:12: 41:13: explicit lifetime required in the type of `ss` [E0621]
+   |            ^
+
+error[E0621]: explicit lifetime required in the type of `ss`
+  --> $DIR/object-lifetime-default-from-box-error.rs:24:48
+   |
+LL |   fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
+   |  _____________---------------____________________^
+   | |             |
+   | |             help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
+LL | |     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
+LL | |     // is illegal.
+LL | |
+LL | |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
+LL | | }
+   | |_^ lifetime `'static` required
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/object-lifetime-default-from-box-error.rs:28:5
+   |
+LL |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
+   |     ^^^^ cannot move out of borrowed content
+
+error[E0621]: explicit lifetime required in the type of `ss`
+  --> $DIR/object-lifetime-default-from-box-error.rs:41:5
+   |
+LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
+   |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
+...
+LL |     ss.r = b; //~ ERROR 41:12: 41:13: explicit lifetime required in the type of `ss` [E0621]
+   |     ^^^^ lifetime `'b` required
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0507, E0621.
+For more information about an error, try `rustc --explain E0507`.

@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Error: std::hash::Hash` is not satisfied
+  --> $DIR/derives-span-Hash-enum-struct-variant.rs:19:6
+   |
+LL |      x: Error //~ ERROR
+   |      ^^^^^^^^ the trait `std::hash::Hash` is not implemented for `Error`
+   |
+   = note: required by `std::hash::Hash::hash`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

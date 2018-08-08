@@ -1,0 +1,43 @@
+error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:24:1: 24:20>`
+  --> $DIR/resolve-self-in-impl.rs:24:13
+   |
+LL | impl Tr for Self {} //~ ERROR cycle detected
+   |             ^^^^
+   |
+   = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:24:1: 24:20>`, completing the cycle
+
+error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:25:1: 25:23>`
+  --> $DIR/resolve-self-in-impl.rs:25:15
+   |
+LL | impl Tr for S<Self> {} //~ ERROR cycle detected
+   |               ^^^^
+   |
+   = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:25:1: 25:23>`, completing the cycle
+
+error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:26:1: 26:13>`
+  --> $DIR/resolve-self-in-impl.rs:26:6
+   |
+LL | impl Self {} //~ ERROR cycle detected
+   |      ^^^^
+   |
+   = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:26:1: 26:13>`, completing the cycle
+
+error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:27:1: 27:16>`
+  --> $DIR/resolve-self-in-impl.rs:27:8
+   |
+LL | impl S<Self> {} //~ ERROR cycle detected
+   |        ^^^^
+   |
+   = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:27:1: 27:16>`, completing the cycle
+
+error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:28:1: 28:26>`
+  --> $DIR/resolve-self-in-impl.rs:28:1
+   |
+LL | impl Tr<Self::A> for S {} //~ ERROR cycle detected
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:28:1: 28:26>`, completing the cycle
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

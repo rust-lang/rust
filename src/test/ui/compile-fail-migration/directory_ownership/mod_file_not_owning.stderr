@@ -1,0 +1,15 @@
+error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
+  --> $DIR/mod_file_not_owning_aux1.rs:14:17
+   |
+LL |     () => { mod mod_file_not_owning_aux2; }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | }
+LL | m!();
+   | ----- in this macro invocation
+   |
+   = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
+   = help: on stable builds, rename this file to mod_file_not_owning_aux1/mod.rs
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

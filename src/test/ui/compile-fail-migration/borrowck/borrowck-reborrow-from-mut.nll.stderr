@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-reborrow-from-mut.rs:98:17
+   |
+LL | fn borrow_mut_from_imm(foo: &Foo) {
+   |                             ---- help: consider changing this to be a mutable reference: `&mut Foo`
+LL |     let _bar1 = &mut foo.bar1; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

@@ -1,0 +1,115 @@
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:27:12
+   |
+LL |         x: 1,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:30:12
+   |
+LL |         y: 2,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:36:12
+   |
+LL |         x: 3,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:39:12
+   |
+LL |         y: 4,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:45:12
+   |
+LL |         x: 5,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:52:12
+   |
+LL |         x: 7,
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/structure-constructor-type-mismatch.rs:58:15
+   |
+LL |     let pt3 = PointF::<i32> { //~ ERROR wrong number of type arguments
+   |               ^^^^^^^^^^^^^ expected no type arguments
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:59:12
+   |
+LL |         x: 9,  //~ ERROR mismatched types
+   |            ^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:60:12
+   |
+LL |         y: 10, //~ ERROR mismatched types
+   |            ^^ expected f32, found integral variable
+   |
+   = note: expected type `f32`
+              found type `{integer}`
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/structure-constructor-type-mismatch.rs:64:9
+   |
+LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
+   |         ^^^^^^^^^^^^^ expected no type arguments
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:64:9
+   |
+LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
+   |         ^^^^^^^^^^^^^^^^^^^^ expected integral variable, found f32
+   |
+   = note: expected type `Point<{integer}>`
+              found type `Point<f32>`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:69:9
+   |
+LL |         PointF { .. } => {} //~ ERROR mismatched types
+   |         ^^^^^^^^^^^^^ expected integral variable, found f32
+   |
+   = note: expected type `Point<{integer}>`
+              found type `Point<f32>`
+
+error[E0308]: mismatched types
+  --> $DIR/structure-constructor-type-mismatch.rs:77:9
+   |
+LL |         PairF::<u32> { .. } => {} //~ ERROR mismatched types
+   |         ^^^^^^^^^^^^^^^^^^^ expected integral variable, found f32
+   |
+   = note: expected type `Pair<{integer}, {integer}>`
+              found type `Pair<f32, u32>`
+
+error: aborting due to 13 previous errors
+
+Some errors occurred: E0244, E0308.
+For more information about an error, try `rustc --explain E0244`.

@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `v`
+  --> $DIR/borrowck-init-plus-equal.rs:13:9
+   |
+LL |     v = v + 1; //~ ERROR use of possibly uninitialized variable: `v`
+   |         ^ use of possibly uninitialized `v`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

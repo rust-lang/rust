@@ -1,0 +1,13 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/regions-return-stack-allocated-vec.rs:14:6
+   |
+LL |     &[x] //~ ERROR borrowed value does not live long enough
+   |      ^^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

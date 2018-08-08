@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/where_clauses_in_functions.rs:23:5
+   |
+LL |     foo(x, y)
+   |     ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/where_clauses_in_functions.rs:23:5
+   |
+LL | fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     foo(x, y)
+   |     ^^^^^^^^^ argument requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

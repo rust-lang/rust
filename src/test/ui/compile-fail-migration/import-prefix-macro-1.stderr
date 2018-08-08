@@ -1,0 +1,11 @@
+error: expected one of `::`, `;`, or `as`, found `{`
+  --> $DIR/import-prefix-macro-1.rs:21:27
+   |
+LL |     ($p: path) => (use $p {S, Z}); //~ERROR expected one of `::`, `;`, or `as`, found `{`
+   |                           ^ expected one of `::`, `;`, or `as` here
+...
+LL | import! { a::b::c }
+   | ------------------- in this macro invocation
+
+error: aborting due to previous error
+

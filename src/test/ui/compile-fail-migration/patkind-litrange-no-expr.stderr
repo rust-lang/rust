@@ -1,0 +1,18 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/patkind-litrange-no-expr.rs:30:13
+   |
+LL |     Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
+   |             ^^^^^
+
+error[E0029]: only char and numeric types are allowed in range patterns
+  --> $DIR/patkind-litrange-no-expr.rs:30:13
+   |
+LL |     Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
+   |             ^^^^^ ranges require char or numeric types
+   |
+   = note: start type: {integer}
+   = note: end type: {integer}
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0029`.

@@ -1,0 +1,11 @@
+error[E0658]: #[alloc_error_handler] is an unstable feature (see issue #51540)
+  --> $DIR/feature-gate-alloc-error-handler.rs:18:1
+   |
+LL | #[alloc_error_handler] //~ ERROR #[alloc_error_handler] is an unstable feature (see issue #51540)
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(alloc_error_handler)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

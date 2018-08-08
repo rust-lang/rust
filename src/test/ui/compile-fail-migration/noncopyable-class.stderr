@@ -1,0 +1,16 @@
+error[E0599]: no method named `clone` found for type `foo` in the current scope
+  --> $DIR/noncopyable-class.rs:44:16
+   |
+LL | struct foo {
+   | ---------- method `clone` not found for this
+...
+LL |     let _y = x.clone(); //~ ERROR no method named `clone` found
+   |                ^^^^^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `std::clone::Clone`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

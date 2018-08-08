@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/struct-base-wrong-type-2.rs:21:27
+   |
+LL |     let f = Foo { a: 2, ..b }; //~  ERROR mismatched types
+   |                           ^ expected struct `Foo`, found struct `Bar`
+   |
+   = note: expected type `Foo`
+              found type `Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/struct-base-wrong-type-2.rs:25:34
+   |
+LL |     let f__isize = Foo { a: 2, ..4 }; //~  ERROR mismatched types
+   |                                  ^ expected struct `Foo`, found integral variable
+   |
+   = note: expected type `Foo`
+              found type `{integer}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

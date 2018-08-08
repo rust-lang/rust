@@ -1,0 +1,71 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-4.rs:20:5
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-4.rs:20:11
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |           ^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-4.rs:20:9
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |         ^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-4.rs:20:9
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |         ^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-4.rs:20:5
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |     ^^^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-close-object-into-object-4.rs:19:51
+   |
+LL |   fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+   |  ______--___________________________________________^
+   | |      |
+   | |      lifetime `'a` defined here
+LL | |     box B(&*v) as Box<X> //~ ERROR cannot infer
+LL | | }
+   | |_^ return requires that `'a` must outlive `'static`
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:20:5
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |     ^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `U: 'static`...
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:20:9
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |         ^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `U: 'static`...
+
+error[E0597]: `*v` does not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:20:11
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |           ^^^ borrowed value does not live long enough
+LL | }
+   | - `*v` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0310, E0597.
+For more information about an error, try `rustc --explain E0310`.

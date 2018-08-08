@@ -1,0 +1,41 @@
+error: attempt to divide by zero
+  --> $DIR/eval-enum.rs:12:15
+   |
+LL |     DivZero = 1/0,
+   |               ^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error: this expression will panic at runtime
+  --> $DIR/eval-enum.rs:12:15
+   |
+LL |     DivZero = 1/0,
+   |               ^^^ attempt to divide by zero
+
+error[E0080]: could not evaluate enum discriminant
+  --> $DIR/eval-enum.rs:12:15
+   |
+LL |     DivZero = 1/0,
+   |               ^^^ attempt to divide by zero
+
+error: attempt to calculate the remainder with a divisor of zero
+  --> $DIR/eval-enum.rs:16:15
+   |
+LL |     RemZero = 1%0,
+   |               ^^^
+
+error: this expression will panic at runtime
+  --> $DIR/eval-enum.rs:16:15
+   |
+LL |     RemZero = 1%0,
+   |               ^^^ attempt to calculate the remainder with a divisor of zero
+
+error[E0080]: could not evaluate enum discriminant
+  --> $DIR/eval-enum.rs:16:15
+   |
+LL |     RemZero = 1%0,
+   |               ^^^ attempt to calculate the remainder with a divisor of zero
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,14 @@
+error: unreachable statement
+  --> $DIR/match-no-arms-unreachable-after.rs:18:5
+   |
+LL |     let x = 2; //~ ERROR unreachable
+   |     ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-no-arms-unreachable-after.rs:12:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

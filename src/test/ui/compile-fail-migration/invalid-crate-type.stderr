@@ -1,0 +1,10 @@
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:12:1
+   |
+LL | #![crate_type="foo"]    //~ ERROR invalid `crate_type` value
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(unknown_crate_types)] on by default
+
+error: aborting due to previous error
+

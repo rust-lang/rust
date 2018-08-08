@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/cross-borrow-trait.rs:20:22
+   |
+LL |     let _y: &Trait = x; //~ ERROR E0308
+   |                      ^
+   |                      |
+   |                      expected &dyn Trait, found struct `std::boxed::Box`
+   |                      help: consider borrowing here: `&x`
+   |
+   = note: expected type `&dyn Trait`
+              found type `std::boxed::Box<dyn Trait>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

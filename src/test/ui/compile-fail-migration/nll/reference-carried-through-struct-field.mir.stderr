@@ -1,0 +1,14 @@
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/reference-carried-through-struct-field.rs:21:5
+   |
+LL |     let wrapper = Wrap { w: &mut x };
+   |                             ------ borrow of `x` occurs here
+LL |     x += 1; //[ast]~ ERROR cannot assign to `x` because it is borrowed [E0506]
+   |     ^^^^^^ use of borrowed `x`
+LL |     //[mir]~^ ERROR cannot use `x` because it was mutably borrowed [E0503]
+LL |     *wrapper.w += 1;
+   |     --------------- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0503`.

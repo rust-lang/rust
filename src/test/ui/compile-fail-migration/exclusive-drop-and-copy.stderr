@@ -1,0 +1,15 @@
+error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
+  --> $DIR/exclusive-drop-and-copy.rs:13:10
+   |
+LL | #[derive(Copy, Clone)] //~ ERROR the trait `Copy` may not be implemented
+   |          ^^^^ Copy not allowed on types with destructors
+
+error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
+  --> $DIR/exclusive-drop-and-copy.rs:20:10
+   |
+LL | #[derive(Copy, Clone)] //~ ERROR the trait `Copy` may not be implemented
+   |          ^^^^ Copy not allowed on types with destructors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0184`.

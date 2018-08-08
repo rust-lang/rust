@@ -1,0 +1,12 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/issue-32377.rs:23:14
+   |
+LL |     unsafe { mem::transmute(x) }
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: source type: [usize; 2] (128 bits)
+   = note: target type: Bar<U> (0 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:14
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |              ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:14
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |          ----^
+   |          ||  |
+   |          ||  return requires that `'1` must outlive `'2`
+   |          |has type `&'1 isize`
+   |          lifetime `'2` appears in return type
+
+error: aborting due to previous error
+

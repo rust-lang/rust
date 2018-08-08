@@ -1,0 +1,66 @@
+error[E0597]: `factorial` does not live long enough
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:25:17
+   |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- value captured here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `factorial` dropped here while still borrowed
+   | borrow later used here, when `factorial` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0506]: cannot assign to `factorial` because it is borrowed
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:30:5
+   |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- borrow of `factorial` occurs here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 --------- borrow occurs due to use in closure
+...
+LL |     factorial = Some(Box::new(f));
+   |     ^^^^^^^^^
+   |     |
+   |     assignment to borrowed `factorial` occurs here
+   |     borrow later used here
+
+error[E0597]: `factorial` does not live long enough
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:38:17
+   |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- value captured here
+LL |         //~^ ERROR closure may outlive the current function, but it borrows `factorial`
+LL |         let g = factorial.as_ref().unwrap();
+   |                 ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `factorial` dropped here while still borrowed
+   | borrow later used here, when `factorial` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0506]: cannot assign to `factorial` because it is borrowed
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:42:5
+   |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- borrow of `factorial` occurs here
+LL |         //~^ ERROR closure may outlive the current function, but it borrows `factorial`
+LL |         let g = factorial.as_ref().unwrap();
+   |                 --------- borrow occurs due to use in closure
+...
+LL |     factorial = Some(Box::new(f));
+   |     ^^^^^^^^^
+   |     |
+   |     assignment to borrowed `factorial` occurs here
+   |     borrow later used here
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0506, E0597.
+For more information about an error, try `rustc --explain E0506`.

@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/lifetime-bound-will-change-warning.rs:44:13
+   |
+LL |     ref_obj(x) //~ ERROR mismatched types
+   |             ^ lifetime mismatch
+   |
+   = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
+              found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
+note: the lifetime 'a as defined on the function body at 42:10...
+  --> $DIR/lifetime-bound-will-change-warning.rs:42:10
+   |
+LL | fn test2<'a>(x: &'a Box<Fn()+'a>) {
+   |          ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/lifetime-bound-will-change-warning.rs:49:18
+   |
+LL |     lib::ref_obj(x) //~ ERROR mismatched types
+   |                  ^ lifetime mismatch
+   |
+   = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
+              found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
+note: the lifetime 'a as defined on the function body at 47:12...
+  --> $DIR/lifetime-bound-will-change-warning.rs:47:12
+   |
+LL | fn test2cc<'a>(x: &'a Box<Fn()+'a>) {
+   |            ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

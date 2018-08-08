@@ -1,0 +1,14 @@
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/trait-or-new-type-instead.rs:11:1
+   |
+LL | / impl<T> Option<T> {
+LL | | //~^ ERROR cannot define inherent `impl` for a type outside of the crate where the type is defined
+LL | |     pub fn foo(&self) { }
+LL | | }
+   | |_^ impl for type defined outside of crate.
+   |
+   = note: define and implement a trait or new type instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0116`.

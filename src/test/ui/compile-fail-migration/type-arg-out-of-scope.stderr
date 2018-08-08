@@ -1,0 +1,23 @@
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/type-arg-out-of-scope.rs:13:25
+   |
+LL | fn foo<T>(x: T) {
+   |        - type variable from outer function
+LL |     fn bar(f: Box<FnMut(T) -> T>) { }
+   |        ---              ^ use of type variable from outer function
+   |        |
+   |        help: try using a local type parameter instead: `bar<T>`
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/type-arg-out-of-scope.rs:13:31
+   |
+LL | fn foo<T>(x: T) {
+   |        - type variable from outer function
+LL |     fn bar(f: Box<FnMut(T) -> T>) { }
+   |        ---                    ^ use of type variable from outer function
+   |        |
+   |        help: try using a local type parameter instead: `bar<T>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-out-of-overloaded-deref.rs:14:14
+   |
+LL |     let _x = *Rc::new("hi".to_string());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              cannot move out of borrowed content
+   |              help: consider using a reference instead: `&*Rc::new("hi".to_string())`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

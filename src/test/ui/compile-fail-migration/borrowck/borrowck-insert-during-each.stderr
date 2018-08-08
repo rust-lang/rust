@@ -1,0 +1,15 @@
+error[E0500]: closure requires unique access to `f` but `*f` is already borrowed
+  --> $DIR/borrowck-insert-during-each.rs:27:9
+   |
+LL |   f.foo(
+   |   - borrow occurs here
+LL |         |a| { //~ ERROR closure requires unique access to `f`
+   |         ^^^ closure construction occurs here
+LL |             f.n.insert(*a);
+   |             - borrow occurs due to use of `f` in closure
+LL |         })
+   |          - borrow ends here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0500`.

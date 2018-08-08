@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
+  --> $DIR/match-privately-empty.rs:23:11
+   |
+LL |     match private::DATA {
+   |           ^^^^^^^^^^^^^ pattern `Some(Private { misc: true, .. })` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

@@ -1,0 +1,118 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:22:11
+   |
+LL |     let _y = Foo { f:x };
+   |                      - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:28:11
+   |
+LL |     let _y = (x, 3);
+   |               - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:45:11
+   |
+LL |         x
+   |         - value moved here
+...
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `y`
+  --> $DIR/moves-based-on-type-exprs.rs:46:11
+   |
+LL |         y
+   |         - value moved here
+...
+LL |     touch(&y); //~ ERROR use of moved value: `y`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:56:11
+   |
+LL |         true => x,
+   |                 - value moved here
+...
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `y`
+  --> $DIR/moves-based-on-type-exprs.rs:57:11
+   |
+LL |         false => y
+   |                  - value moved here
+...
+LL |     touch(&y); //~ ERROR use of moved value: `y`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:68:11
+   |
+LL |         _ if guard(x) => 10,
+   |                    - value moved here
+...
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:75:11
+   |
+LL |     let _y = [x];
+   |               - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:81:11
+   |
+LL |     let _y = vec![x];
+   |                   - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:87:11
+   |
+LL |     let _y = x.into_iter().next().unwrap();
+   |              - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-exprs.rs:93:11
+   |
+LL |     let _y = [x.into_iter().next().unwrap(); 1];
+   |               - value moved here
+LL |     touch(&x); //~ ERROR use of moved value: `x`
+   |           ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

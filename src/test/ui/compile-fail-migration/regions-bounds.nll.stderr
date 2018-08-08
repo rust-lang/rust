@@ -1,0 +1,34 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-bounds.rs:19:12
+   |
+LL |     return e; //~ ERROR mismatched types
+   |            ^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-bounds.rs:23:12
+   |
+LL |     return e; //~ ERROR mismatched types
+   |            ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-bounds.rs:19:12
+   |
+LL | fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
+   |          -- -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     return e; //~ ERROR mismatched types
+   |            ^ return requires that `'a` must outlive `'b`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-bounds.rs:23:12
+   |
+LL | fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
+   |          -- -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     return e; //~ ERROR mismatched types
+   |            ^ return requires that `'a` must outlive `'b`
+
+error: aborting due to 2 previous errors
+

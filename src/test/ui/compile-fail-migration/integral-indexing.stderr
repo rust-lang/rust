@@ -1,0 +1,75 @@
+error[E0277]: the trait bound `u8: std::slice::SliceIndex<[isize]>` is not satisfied
+  --> $DIR/integral-indexing.rs:16:5
+   |
+LL |     v[3u8];  //~ERROR : std::slice::SliceIndex<[isize]>` is not satisfied
+   |     ^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `u8`
+   = note: required because of the requirements on the impl of `std::ops::Index<u8>` for `std::vec::Vec<isize>`
+
+error[E0277]: the trait bound `i8: std::slice::SliceIndex<[isize]>` is not satisfied
+  --> $DIR/integral-indexing.rs:17:5
+   |
+LL |     v[3i8];  //~ERROR : std::slice::SliceIndex<[isize]>` is not satisfied
+   |     ^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `i8`
+   = note: required because of the requirements on the impl of `std::ops::Index<i8>` for `std::vec::Vec<isize>`
+
+error[E0277]: the trait bound `u32: std::slice::SliceIndex<[isize]>` is not satisfied
+  --> $DIR/integral-indexing.rs:18:5
+   |
+LL |     v[3u32]; //~ERROR : std::slice::SliceIndex<[isize]>` is not satisfied
+   |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `u32`
+   = note: required because of the requirements on the impl of `std::ops::Index<u32>` for `std::vec::Vec<isize>`
+
+error[E0277]: the trait bound `i32: std::slice::SliceIndex<[isize]>` is not satisfied
+  --> $DIR/integral-indexing.rs:19:5
+   |
+LL |     v[3i32]; //~ERROR : std::slice::SliceIndex<[isize]>` is not satisfied
+   |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `i32`
+   = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `std::vec::Vec<isize>`
+
+error[E0277]: the trait bound `u8: std::slice::SliceIndex<[u8]>` is not satisfied
+  --> $DIR/integral-indexing.rs:22:5
+   |
+LL |     s.as_bytes()[3u8];  //~ERROR : std::slice::SliceIndex<[u8]>` is not satisfied
+   |     ^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `u8`
+   = note: required because of the requirements on the impl of `std::ops::Index<u8>` for `[u8]`
+
+error[E0277]: the trait bound `i8: std::slice::SliceIndex<[u8]>` is not satisfied
+  --> $DIR/integral-indexing.rs:23:5
+   |
+LL |     s.as_bytes()[3i8];  //~ERROR : std::slice::SliceIndex<[u8]>` is not satisfied
+   |     ^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `i8`
+   = note: required because of the requirements on the impl of `std::ops::Index<i8>` for `[u8]`
+
+error[E0277]: the trait bound `u32: std::slice::SliceIndex<[u8]>` is not satisfied
+  --> $DIR/integral-indexing.rs:24:5
+   |
+LL |     s.as_bytes()[3u32]; //~ERROR : std::slice::SliceIndex<[u8]>` is not satisfied
+   |     ^^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `u32`
+   = note: required because of the requirements on the impl of `std::ops::Index<u32>` for `[u8]`
+
+error[E0277]: the trait bound `i32: std::slice::SliceIndex<[u8]>` is not satisfied
+  --> $DIR/integral-indexing.rs:25:5
+   |
+LL |     s.as_bytes()[3i32]; //~ERROR : std::slice::SliceIndex<[u8]>` is not satisfied
+   |     ^^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `i32`
+   = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `[u8]`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

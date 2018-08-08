@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/terr-in-field.rs:23:14
+   |
+LL |     want_foo(b); //~  ERROR mismatched types
+   |              ^ expected struct `foo`, found struct `bar`
+   |
+   = note: expected type `foo`
+              found type `bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

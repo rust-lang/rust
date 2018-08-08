@@ -1,0 +1,12 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-impl.rs:29:18
+   |
+LL |         unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+   |                  ^^^^^^^^^
+   |
+   = note: source type: &T (pointer to T)
+   = note: target type: &isize (64 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

@@ -1,0 +1,27 @@
+error[E0507]: cannot move out of captured variable in an `Fn` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:25:31
+   |
+LL |         let f = to_fn(|| drop(x)); //~ ERROR cannot move
+   |                               ^ cannot move out of captured variable in an `Fn` closure
+
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:29:35
+   |
+LL |         let f = to_fn_mut(|| drop(x)); //~ ERROR cannot move
+   |                                   ^ cannot move out of captured variable in an `FnMut` closure
+
+error[E0507]: cannot move out of captured variable in an `Fn` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:38:36
+   |
+LL |         let f = to_fn(move || drop(x)); //~ ERROR cannot move
+   |                                    ^ cannot move out of captured variable in an `Fn` closure
+
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:42:40
+   |
+LL |         let f = to_fn_mut(move || drop(x)); //~ ERROR cannot move
+   |                                        ^ cannot move out of captured variable in an `FnMut` closure
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

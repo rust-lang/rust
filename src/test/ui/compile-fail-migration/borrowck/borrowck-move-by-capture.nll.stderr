@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
+  --> $DIR/borrowck-move-by-capture.rs:19:29
+   |
+LL |         let _h = to_fn_once(move || -> isize { *bar }); //~ ERROR cannot move out of
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of captured variable in an `FnMut` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

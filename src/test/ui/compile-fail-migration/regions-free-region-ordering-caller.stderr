@@ -1,0 +1,32 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:18:12
+   |
+LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     ---------
+   |                     |
+   |                     these two types are declared with different lifetimes...
+LL |     let z: Option<&'b &'a usize> = None;//~ ERROR E0623
+   |            ^^^^^^^^^^^^^^^^^^^^^ ...but data from `a` flows into `b` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:23:12
+   |
+LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     ---------
+   |                     |
+   |                     these two types are declared with different lifetimes...
+LL |     let y: Paramd<'a> = Paramd { x: a };
+LL |     let z: Option<&'b Paramd<'a>> = None;//~ ERROR E0623
+   |            ^^^^^^^^^^^^^^^^^^^^^^ ...but data from `a` flows into `b` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:27:12
+   |
+LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     --------- these two types are declared with different lifetimes...
+LL |     let z: Option<&'a &'b usize> = None;//~ ERROR E0623
+   |            ^^^^^^^^^^^^^^^^^^^^^ ...but data from `b` flows into `a` here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

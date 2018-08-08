@@ -1,0 +1,19 @@
+error[E0208]: [-, +]
+  --> $DIR/variance-associated-types.rs:23:1
+   |
+LL | / struct Foo<'a, T : Trait<'a>> { //~ ERROR [-, +]
+LL | |     field: (T, &'a ())
+LL | | }
+   | |_^
+
+error[E0208]: [o, o]
+  --> $DIR/variance-associated-types.rs:28:1
+   |
+LL | / struct Bar<'a, T : Trait<'a>> { //~ ERROR [o, o]
+LL | |     field: <T as Trait<'a>>::Type
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0208`.

@@ -1,0 +1,63 @@
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:16:5
+   |
+LL |     x += 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:19:5
+   |
+LL |     x -= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:22:5
+   |
+LL |     x *= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:25:5
+   |
+LL |     x /= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:28:5
+   |
+LL |     x %= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:31:5
+   |
+LL |     x ^= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:34:5
+   |
+LL |     x &= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:37:5
+   |
+LL |     x |= 1; //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:40:5
+   |
+LL |     x <<= 1;    //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-in-assignop.rs:43:5
+   |
+LL |     x >>= 1;    //~ ERROR use of possibly uninitialized variable: `x`
+   |     ^^^^^^^ use of possibly uninitialized `x`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

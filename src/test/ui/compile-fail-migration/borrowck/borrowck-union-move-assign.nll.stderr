@@ -1,0 +1,35 @@
+error[E0382]: use of moved value: `u.a`
+  --> $DIR/borrowck-union-move-assign.rs:27:21
+   |
+LL |             let a = u.a;
+   |                     --- value moved here
+LL |             let a = u.a; //~ ERROR use of moved value: `u.a`
+   |                     ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.a`
+  --> $DIR/borrowck-union-move-assign.rs:33:21
+   |
+LL |             let a = u.a;
+   |                     --- value moved here
+LL |             u.a = A;
+LL |             let a = u.a; // OK
+   |                     ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.a`
+  --> $DIR/borrowck-union-move-assign.rs:39:21
+   |
+LL |             let a = u.a;
+   |                     --- value moved here
+LL |             u.b = B;
+LL |             let a = u.a; // OK
+   |                     ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

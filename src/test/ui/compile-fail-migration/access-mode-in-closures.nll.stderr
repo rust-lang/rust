@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/access-mode-in-closures.rs:19:15
+   |
+LL |         match *s { sty(v) => v } //~ ERROR cannot move out
+   |               ^^       - move occurs because v has type `std::vec::Vec<isize>`, which does not implement the `Copy` trait
+   |               |
+   |               cannot move out of borrowed content
+   |               help: consider removing this dereference operator: `s`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

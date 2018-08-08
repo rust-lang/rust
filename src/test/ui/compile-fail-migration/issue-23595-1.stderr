@@ -1,0 +1,21 @@
+error[E0191]: the value of the associated type `ChildKey` (from the trait `Hierarchy`) must be specified
+  --> $DIR/issue-23595-1.rs:18:50
+   |
+LL |     type Children = Index<Self::ChildKey, Output=Hierarchy>;
+   |                                                  ^^^^^^^^^ missing associated type `ChildKey` value
+
+error[E0191]: the value of the associated type `Children` (from the trait `Hierarchy`) must be specified
+  --> $DIR/issue-23595-1.rs:18:50
+   |
+LL |     type Children = Index<Self::ChildKey, Output=Hierarchy>;
+   |                                                  ^^^^^^^^^ missing associated type `Children` value
+
+error[E0191]: the value of the associated type `Value` (from the trait `Hierarchy`) must be specified
+  --> $DIR/issue-23595-1.rs:18:50
+   |
+LL |     type Children = Index<Self::ChildKey, Output=Hierarchy>;
+   |                                                  ^^^^^^^^^ missing associated type `Value` value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0191`.

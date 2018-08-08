@@ -1,0 +1,26 @@
+error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+   |
+LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+   |                                         ^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime  as defined on the body at 19:18...
+  --> $DIR/regions-addr-of-upvar-self.rs:19:18
+   |
+LL |         let _f = || {
+   |                  ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+   |
+LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+   |                                         ^^^^^^^^^^^^^^
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+   |
+LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+   |                                         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

@@ -1,0 +1,46 @@
+error: `extern` block uses type `U` which is not FFI-safe: enum has no representation hint
+  --> $DIR/lint-ctypes-enum.rs:30:13
+   |
+LL |    fn uf(x: U); //~ ERROR enum has no representation hint
+   |             ^
+   |
+note: lint level defined here
+  --> $DIR/lint-ctypes-enum.rs:11:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+   = help: consider adding a #[repr(...)] attribute to this enum
+note: type defined here
+  --> $DIR/lint-ctypes-enum.rs:15:1
+   |
+LL | enum U { A }
+   | ^^^^^^^^^^^^
+
+error: `extern` block uses type `B` which is not FFI-safe: enum has no representation hint
+  --> $DIR/lint-ctypes-enum.rs:31:13
+   |
+LL |    fn bf(x: B); //~ ERROR enum has no representation hint
+   |             ^
+   |
+   = help: consider adding a #[repr(...)] attribute to this enum
+note: type defined here
+  --> $DIR/lint-ctypes-enum.rs:16:1
+   |
+LL | enum B { C, D }
+   | ^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `T` which is not FFI-safe: enum has no representation hint
+  --> $DIR/lint-ctypes-enum.rs:32:13
+   |
+LL |    fn tf(x: T); //~ ERROR enum has no representation hint
+   |             ^
+   |
+   = help: consider adding a #[repr(...)] attribute to this enum
+note: type defined here
+  --> $DIR/lint-ctypes-enum.rs:17:1
+   |
+LL | enum T { E, F, G }
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

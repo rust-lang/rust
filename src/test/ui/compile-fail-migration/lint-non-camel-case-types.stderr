@@ -1,0 +1,88 @@
+error: type `ONE_TWO_THREE` should have a camel case name such as `OneTwoThree`
+  --> $DIR/lint-non-camel-case-types.rs:14:1
+   |
+LL | struct ONE_TWO_THREE;
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-non-camel-case-types.rs:11:11
+   |
+LL | #![forbid(non_camel_case_types)]
+   |           ^^^^^^^^^^^^^^^^^^^^
+
+error: type `foo` should have a camel case name such as `Foo`
+  --> $DIR/lint-non-camel-case-types.rs:17:1
+   |
+LL | / struct foo { //~ ERROR type `foo` should have a camel case name such as `Foo`
+LL | |     bar: isize,
+LL | | }
+   | |_^
+
+error: type `foo2` should have a camel case name such as `Foo2`
+  --> $DIR/lint-non-camel-case-types.rs:21:1
+   |
+LL | / enum foo2 { //~ ERROR type `foo2` should have a camel case name such as `Foo2`
+LL | |     Bar
+LL | | }
+   | |_^
+
+error: type `foo3` should have a camel case name such as `Foo3`
+  --> $DIR/lint-non-camel-case-types.rs:25:1
+   |
+LL | / struct foo3 { //~ ERROR type `foo3` should have a camel case name such as `Foo3`
+LL | |     bar: isize
+LL | | }
+   | |_^
+
+error: type `foo4` should have a camel case name such as `Foo4`
+  --> $DIR/lint-non-camel-case-types.rs:29:1
+   |
+LL | type foo4 = isize; //~ ERROR type `foo4` should have a camel case name such as `Foo4`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: variant `bar` should have a camel case name such as `Bar`
+  --> $DIR/lint-non-camel-case-types.rs:32:5
+   |
+LL |     bar //~ ERROR variant `bar` should have a camel case name such as `Bar`
+   |     ^^^
+
+error: trait `foo6` should have a camel case name such as `Foo6`
+  --> $DIR/lint-non-camel-case-types.rs:35:1
+   |
+LL | / trait foo6 { //~ ERROR trait `foo6` should have a camel case name such as `Foo6`
+LL | |     fn dummy(&self) { }
+LL | | }
+   | |_^
+
+error: type parameter `ty` should have a camel case name such as `Ty`
+  --> $DIR/lint-non-camel-case-types.rs:39:6
+   |
+LL | fn f<ty>(_: ty) {} //~ ERROR type parameter `ty` should have a camel case name such as `Ty`
+   |      ^^
+
+error: type `__` should have a camel case name such as `CamelCase`
+  --> $DIR/lint-non-camel-case-types.rs:46:1
+   |
+LL | type __ = isize; //~ ERROR type `__` should have a camel case name such as `CamelCase`
+   | ^^^^^^^^^^^^^^^^
+
+error: type `X86__64` should have a camel case name such as `X86_64`
+  --> $DIR/lint-non-camel-case-types.rs:50:1
+   |
+LL | struct X86__64; //~ ERROR type `X86__64` should have a camel case name such as `X86_64`
+   | ^^^^^^^^^^^^^^^
+
+error: type `Abc_123` should have a camel case name such as `Abc123`
+  --> $DIR/lint-non-camel-case-types.rs:52:1
+   |
+LL | struct Abc_123; //~ ERROR type `Abc_123` should have a camel case name such as `Abc123`
+   | ^^^^^^^^^^^^^^^
+
+error: type `A1_b2_c3` should have a camel case name such as `A1B2C3`
+  --> $DIR/lint-non-camel-case-types.rs:54:1
+   |
+LL | struct A1_b2_c3; //~ ERROR type `A1_b2_c3` should have a camel case name such as `A1B2C3`
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

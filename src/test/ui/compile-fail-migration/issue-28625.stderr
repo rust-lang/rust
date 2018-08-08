@@ -1,0 +1,12 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/issue-28625.rs:20:14
+   |
+LL |     unsafe { std::mem::transmute(a) } //~ ERROR transmute called with types of different sizes
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: &ArrayPeano<T> (64 bits)
+   = note: target type: &[T] (128 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

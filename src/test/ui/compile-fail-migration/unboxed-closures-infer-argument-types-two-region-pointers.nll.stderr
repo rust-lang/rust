@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:27:15
+   |
+LL |         x.set(y); //~ ERROR E0312
+   |               ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:27:9
+   |
+LL |     doit(0, &|x, y| {
+   |               -  - has type `&'1 i32`
+   |               |
+   |               has type `&std::cell::Cell<&'2 i32>`
+LL |         x.set(y); //~ ERROR E0312
+   |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
+
+error: aborting due to previous error
+

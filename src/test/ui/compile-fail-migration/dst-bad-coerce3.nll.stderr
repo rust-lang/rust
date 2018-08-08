@@ -1,0 +1,63 @@
+error[E0597]: `f1` does not live long enough
+  --> $DIR/dst-bad-coerce3.rs:26:32
+   |
+LL |     let f2: &Fat<[isize; 3]> = &f1; //~ ERROR `f1` does not live long enough
+   |                                ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `f1` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
+  --> $DIR/dst-bad-coerce3.rs:23:8
+   |
+LL | fn baz<'a>() {
+   |        ^^
+
+error[E0597]: `f1` does not live long enough
+  --> $DIR/dst-bad-coerce3.rs:31:25
+   |
+LL |     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
+   |                         ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `f1` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
+  --> $DIR/dst-bad-coerce3.rs:23:8
+   |
+LL | fn baz<'a>() {
+   |        ^^
+
+error[E0597]: `f1` does not live long enough
+  --> $DIR/dst-bad-coerce3.rs:36:30
+   |
+LL |     let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
+   |                              ^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `f1` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
+  --> $DIR/dst-bad-coerce3.rs:23:8
+   |
+LL | fn baz<'a>() {
+   |        ^^
+
+error[E0597]: `f1` does not live long enough
+  --> $DIR/dst-bad-coerce3.rs:41:23
+   |
+LL |     let f2: &(Foo,) = &f1; //~ ERROR `f1` does not live long enough
+   |                       ^^^ borrowed value does not live long enough
+LL |     let f3: &'a (Bar,) = f2;
+LL | }
+   | - `f1` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
+  --> $DIR/dst-bad-coerce3.rs:23:8
+   |
+LL | fn baz<'a>() {
+   |        ^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

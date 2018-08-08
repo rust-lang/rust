@@ -1,0 +1,21 @@
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:12:8
+   |
+LL | #[repr(align(16.0))] //~ ERROR: invalid `repr(align)` attribute: not an unsuffixed integer
+   |        ^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:15:8
+   |
+LL | #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
+   |        ^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:18:8
+   |
+LL | #[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2^29
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0589`.

@@ -1,0 +1,111 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:32:31
+   |
+LL |     s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
+   |                               ^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 30:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:30:1
+   |
+LL | / fn return_dangling_pointer_inherent(s: S2) -> &u32 {
+LL | |     let s = s;
+LL | |     s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
+LL | | }
+   | |_^
+
+error[E0597]: `four` does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:45:19
+   |
+LL |     s.bomb = Some(&four); //~ ERROR does not live long enough
+   |                   ^^^^^ borrowed value does not live long enough
+LL |     &s
+LL | }
+   | - `four` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 42:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:42:1
+   |
+LL | / fn return_dangling_pointer_coerce(s: S2) -> &u32 {
+LL | |     let four = 4;
+LL | |     let mut s = s;
+LL | |     s.bomb = Some(&four); //~ ERROR does not live long enough
+LL | |     &s
+LL | | }
+   | |_^
+
+error[E0597]: `four` does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:52:19
+   |
+LL |     s.bomb = Some(&four); //~ ERROR does not live long enough
+   |                   ^^^^^ borrowed value does not live long enough
+LL |     &*s
+LL | }
+   | - `four` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 49:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:49:1
+   |
+LL | / fn return_dangling_pointer_unary_op(s: S2) -> &u32 {
+LL | |     let four = 4;
+LL | |     let mut s = s;
+LL | |     s.bomb = Some(&four); //~ ERROR does not live long enough
+LL | |     &*s
+LL | | }
+   | |_^
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:63:15
+   |
+LL |     s << &mut 3 //~ ERROR does not live long enough
+   |               ^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 61:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:61:1
+   |
+LL | / fn return_dangling_pointer_binary_op(s: S2) -> &u32 {
+LL | |     let s = s;
+LL | |     s << &mut 3 //~ ERROR does not live long enough
+LL | | }
+   | |_^
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:68:16
+   |
+LL |     s.shl(&mut 3) //~ ERROR does not live long enough
+   |                ^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 66:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:66:1
+   |
+LL | / fn return_dangling_pointer_method(s: S2) -> &u32 {
+LL | |     let s = s;
+LL | |     s.shl(&mut 3) //~ ERROR does not live long enough
+LL | | }
+   | |_^
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/wf-misc-methods-issue-28609.rs:73:21
+   |
+LL |     S2::shl(s, &mut 3) //~ ERROR does not live long enough
+   |                     ^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 71:1...
+  --> $DIR/wf-misc-methods-issue-28609.rs:71:1
+   |
+LL | / fn return_dangling_pointer_ufcs(s: S2) -> &u32 {
+LL | |     let s = s;
+LL | |     S2::shl(s, &mut 3) //~ ERROR does not live long enough
+LL | | }
+   | |_^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,31 @@
+error[E0271]: type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:47:10
+   |
+LL | fn b() { blue_car(ModelT); } //~ ERROR type mismatch
+   |          ^^^^^^^^ expected struct `Black`, found struct `Blue`
+   |
+   = note: expected type `Black`
+              found type `Blue`
+note: required by `blue_car`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:43:1
+   |
+LL | fn blue_car<C:Car<Color=Blue>>(c: C) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:48:10
+   |
+LL | fn c() { black_car(ModelU); } //~ ERROR type mismatch
+   |          ^^^^^^^^^ expected struct `Blue`, found struct `Black`
+   |
+   = note: expected type `Blue`
+              found type `Black`
+note: required by `black_car`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:40:1
+   |
+LL | fn black_car<C:Car<Color=Black>>(c: C) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

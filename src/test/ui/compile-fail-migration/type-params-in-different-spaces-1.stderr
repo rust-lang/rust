@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/type-params-in-different-spaces-1.rs:15:17
+   |
+LL |         *self + rhs //~  ERROR mismatched types
+   |                 ^^^ expected Self, found type parameter
+   |
+   = note: expected type `Self`
+              found type `T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

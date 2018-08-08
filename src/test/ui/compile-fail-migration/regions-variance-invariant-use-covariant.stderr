@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/regions-variance-invariant-use-covariant.rs:27:33
+   |
+LL |     let _: Invariant<'static> = c; //~ ERROR mismatched types
+   |                                 ^ lifetime mismatch
+   |
+   = note: expected type `Invariant<'static>`
+              found type `Invariant<'b>`
+note: the lifetime 'b as defined on the function body at 21:9...
+  --> $DIR/regions-variance-invariant-use-covariant.rs:21:9
+   |
+LL | fn use_<'b>(c: Invariant<'b>) {
+   |         ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,10 @@
+error: path statement with no effect
+  --> $DIR/warn-path-statement.rs:15:5
+   |
+LL |     x; //~ ERROR path statement with no effect
+   |     ^^
+   |
+   = note: requested on the command line with `-D path-statements`
+
+error: aborting due to previous error
+

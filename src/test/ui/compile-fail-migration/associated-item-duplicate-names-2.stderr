@@ -1,0 +1,11 @@
+error[E0201]: duplicate definitions with name `bar`:
+  --> $DIR/associated-item-duplicate-names-2.rs:16:5
+   |
+LL |     const bar: bool = true;
+   |     ----------------------- previous definition of `bar` here
+LL |     fn bar() {} //~ ERROR duplicate definitions
+   |     ^^^^^^^^^^^ duplicate definition
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0201`.

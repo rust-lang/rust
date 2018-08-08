@@ -1,0 +1,18 @@
+error[E0597]: `*b` does not live long enough
+  --> $DIR/regions-trait-variance.rs:47:19
+   |
+LL |     let bb: &B = &*b; //~ ERROR `*b` does not live long enough
+   |                   ^^ borrowed value does not live long enough
+LL |     make_a(bb)
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 43:16...
+  --> $DIR/regions-trait-variance.rs:43:16
+   |
+LL | fn make_make_a<'a>() -> A<'a> {
+   |                ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

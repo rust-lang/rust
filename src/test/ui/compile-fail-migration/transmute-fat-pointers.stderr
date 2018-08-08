@@ -1,0 +1,39 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-fat-pointers.rs:18:14
+   |
+LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+   |              ^^^^^^^^^
+   |
+   = note: source type: &[T] (128 bits)
+   = note: target type: &U (pointer to U)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-fat-pointers.rs:22:14
+   |
+LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+   |              ^^^^^^^^^
+   |
+   = note: source type: &T (pointer to T)
+   = note: target type: &U (pointer to U)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-fat-pointers.rs:34:14
+   |
+LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+   |              ^^^^^^^^^
+   |
+   = note: source type: &T (pointer to T)
+   = note: target type: &U (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-fat-pointers.rs:38:14
+   |
+LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+   |              ^^^^^^^^^
+   |
+   = note: source type: &T (64 bits)
+   = note: target type: &U (pointer to U)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

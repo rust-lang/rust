@@ -1,0 +1,32 @@
+error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-unboxed-closures.rs:13:5
+   |
+LL |     let g = &mut f;
+   |                  - mutable borrow occurs here
+LL |     f(1, 2);    //~ ERROR cannot borrow `f` as immutable
+   |     ^ immutable borrow occurs here
+LL | }
+   | - mutable borrow ends here
+
+error[E0596]: cannot borrow immutable argument `f` as mutable
+  --> $DIR/borrowck-unboxed-closures.rs:17:5
+   |
+LL | fn b<F:FnMut(isize, isize) -> isize>(f: F) {
+   |                                      - consider changing this to `mut f`
+LL |     f(1, 2);    //~ ERROR cannot borrow immutable argument
+   |     ^ cannot borrow mutably
+
+error[E0382]: use of moved value: `f`
+  --> $DIR/borrowck-unboxed-closures.rs:22:5
+   |
+LL |     f(1, 2);
+   |     - value moved here
+LL |     f(1, 2);    //~ ERROR use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `f` has type `F`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0382, E0502, E0596.
+For more information about an error, try `rustc --explain E0382`.

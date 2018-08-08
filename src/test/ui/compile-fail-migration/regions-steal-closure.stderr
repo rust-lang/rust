@@ -1,0 +1,16 @@
+error[E0597]: `i` does not live long enough
+  --> $DIR/regions-steal-closure.rs:24:28
+   |
+LL |         box_it(Box::new(|| i += 1)) //~ ERROR `i` does not live long enough
+   |                         -- ^ borrowed value does not live long enough
+   |                         |
+   |                         capture occurs here
+LL |     };
+   |     - borrowed value only lives until here
+LL |     cl_box.cl.call_mut(());
+LL | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

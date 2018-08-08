@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/static-reference-to-fn-1.rs:27:15
+   |
+LL |         func: &foo, //~ ERROR mismatched types
+   |               ^^^^ expected fn pointer, found fn item
+   |
+   = note: expected type `&fn() -> std::option::Option<isize>`
+              found type `&fn() -> std::option::Option<isize> {foo}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

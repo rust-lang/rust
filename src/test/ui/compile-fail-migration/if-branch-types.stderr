@@ -1,0 +1,12 @@
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-branch-types.rs:12:13
+   |
+LL |     let x = if true { 10i32 } else { 10u32 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found u32
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

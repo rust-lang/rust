@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct/variant or constant, found module `extern`
+  --> $DIR/keyword-extern-as-identifier.rs:14:9
+   |
+LL |     let extern = 0; //~ ERROR expected unit struct/variant or constant, found module `extern`
+   |         ^^^^^^ not a unit struct/variant or constant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

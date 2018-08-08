@@ -1,0 +1,32 @@
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:16:9
+   |
+LL |     use alloc::HashMap;
+   |         ^^^^^ Did you mean `self::alloc`?
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:20:13
+   |
+LL |         use alloc::HashMap;
+   |             ^^^^^ Did you mean `a::alloc`?
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:24:17
+   |
+LL |             use alloc::HashMap;
+   |                 ^^^^^ Did you mean `a::alloc`?
+
+error[E0432]: unresolved import `alloc`
+  --> $DIR/resolve_self_super_hint.rs:28:21
+   |
+LL |                 use alloc::HashMap;
+   |                     ^^^^^ Did you mean `a::alloc`?
+
+error[E0601]: `main` function not found in crate `resolve_self_super_hint`
+   |
+   = note: consider adding a `main` function to `$DIR/resolve_self_super_hint.rs`
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0432, E0601.
+For more information about an error, try `rustc --explain E0432`.

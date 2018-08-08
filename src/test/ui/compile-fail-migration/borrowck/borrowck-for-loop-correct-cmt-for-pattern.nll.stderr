@@ -1,0 +1,30 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
+   |
+LL |     for &a in x.iter() {    //~ ERROR cannot move out
+   |          -    ^^^^^^^^ cannot move out of borrowed content
+   |          |
+   |          data moved here
+   |          help: to prevent move, use ref or ref mut: `ref a`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:15
+   |
+LL |     for &a in &f.a {  //~ ERROR cannot move out
+   |          -    ^^^^ cannot move out of borrowed content
+   |          |
+   |          data moved here
+   |          help: to prevent move, use ref or ref mut: `ref a`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:15
+   |
+LL |     for &a in x.iter() {    //~ ERROR cannot move out
+   |          -    ^^^^^^^^ cannot move out of borrowed content
+   |          |
+   |          data moved here
+   |          help: to prevent move, use ref or ref mut: `ref a`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,11 @@
+error[E0369]: binary operation `+` cannot be applied to type `()`
+  --> $DIR/for-loop-type-error.rs:12:13
+   |
+LL |     let x = () + (); //~ ERROR binary operation
+   |             ^^^^^^^
+   |
+   = note: an implementation of `std::ops::Add` might be missing for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

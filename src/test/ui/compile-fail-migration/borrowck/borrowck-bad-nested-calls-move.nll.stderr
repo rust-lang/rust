@@ -1,0 +1,25 @@
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrowck-bad-nested-calls-move.rs:35:9
+   |
+LL | /     add(
+LL | |         &*a,
+   | |         --- borrow of `*a` occurs here
+LL | |         a); //~ ERROR cannot move
+   | |_________^- borrow later used here
+   |           |
+   |           move out of `a` occurs here
+
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrowck-bad-nested-calls-move.rs:42:9
+   |
+LL | /     add(
+LL | |         &*a,
+   | |         --- borrow of `*a` occurs here
+LL | |         a); //~ ERROR cannot move
+   | |_________^- borrow later used here
+   |           |
+   |           move out of `a` occurs here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

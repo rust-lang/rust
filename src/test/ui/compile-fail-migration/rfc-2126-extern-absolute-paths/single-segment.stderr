@@ -1,0 +1,22 @@
+error[E0432]: unresolved import `*`
+  --> $DIR/single-segment.rs:16:5
+   |
+LL | use *; //~ ERROR unresolved import `*`
+   |     ^ cannot glob-import all possible crates
+
+error[E0432]: unresolved import `crate`
+  --> $DIR/single-segment.rs:14:5
+   |
+LL | use crate; //~ ERROR unresolved import `crate`
+   |     ^^^^^ crate root imports need to be explicitly named: `use crate as name;`
+
+error[E0423]: expected value, found module `xcrate`
+  --> $DIR/single-segment.rs:20:13
+   |
+LL |     let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
+   |             ^^^^^^^^ not a value
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0423, E0432.
+For more information about an error, try `rustc --explain E0423`.

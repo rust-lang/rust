@@ -1,0 +1,28 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:14
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |              ^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 28:10...
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:10
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |          ^^^^^
+   = note: ...so that the expression is assignable:
+           expected &isize
+              found &isize
+note: but, the lifetime must be valid for the expression at 28:5...
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:5
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |     ^^^^
+note: ...so type `fn([closure@$DIR/regions-escape-via-trait-or-not.rs:28:10: 28:15]) -> isize {with::<&isize, [closure@$DIR/regions-escape-via-trait-or-not.rs:28:10: 28:15]>}` of expression is valid during the expression
+  --> $DIR/regions-escape-via-trait-or-not.rs:28:5
+   |
+LL |     with(|o| o) //~ ERROR cannot infer
+   |     ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

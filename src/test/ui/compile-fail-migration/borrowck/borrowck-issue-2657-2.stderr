@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-issue-2657-2.rs:17:18
+   |
+LL |         let _b = *y; //~ ERROR cannot move out
+   |                  ^^
+   |                  |
+   |                  cannot move out of borrowed content
+   |                  help: consider using a reference instead: `&*y`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

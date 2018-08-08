@@ -1,0 +1,13 @@
+error[E0597]: `*v` does not live long enough
+  --> $DIR/regions-close-object-into-object-1.rs:22:11
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
+   |           ^^^ borrowed value does not live long enough
+LL | }
+   | - `*v` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

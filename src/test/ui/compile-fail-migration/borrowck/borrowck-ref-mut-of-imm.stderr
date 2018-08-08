@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow field `(x as std::prelude::v1::Some).0` of immutable binding as mutable
+  --> $DIR/borrowck-ref-mut-of-imm.rs:14:12
+   |
+LL | fn destructure(x: Option<isize>) -> isize {
+   |                - consider changing this to `mut x`
+...
+LL |       Some(ref mut v) => *v //~ ERROR cannot borrow
+   |            ^^^^^^^^^ cannot mutably borrow field of immutable binding
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

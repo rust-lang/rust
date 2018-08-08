@@ -1,0 +1,34 @@
+error[E0277]: no implementation for `{integer} >> char`
+  --> $DIR/shift-various-bad-types.rs:19:8
+   |
+LL |     22 >> p.char;
+   |        ^^ no implementation for `{integer} >> char`
+   |
+   = help: the trait `std::ops::Shr<char>` is not implemented for `{integer}`
+
+error[E0277]: no implementation for `{integer} >> &str`
+  --> $DIR/shift-various-bad-types.rs:22:8
+   |
+LL |     22 >> p.str;
+   |        ^^ no implementation for `{integer} >> &str`
+   |
+   = help: the trait `std::ops::Shr<&str>` is not implemented for `{integer}`
+
+error[E0277]: no implementation for `{integer} >> &Panolpy`
+  --> $DIR/shift-various-bad-types.rs:25:8
+   |
+LL |     22 >> p;
+   |        ^^ no implementation for `{integer} >> &Panolpy`
+   |
+   = help: the trait `std::ops::Shr<&Panolpy>` is not implemented for `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/shift-various-bad-types.rs:35:18
+   |
+LL |     let _: i32 = 22_i64 >> 1_i32;
+   |                  ^^^^^^^^^^^^^^^ expected i32, found i64
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

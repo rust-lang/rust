@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/enum.rs:19:11
+   |
+LL |     match enum_unit {
+   |           ^^^^^^^^^ pattern `_` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

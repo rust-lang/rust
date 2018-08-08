@@ -1,0 +1,30 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-different-sizes.rs:19:17
+   |
+LL |     let _: i8 = transmute(16i16);
+   |                 ^^^^^^^^^
+   |
+   = note: source type: i16 (16 bits)
+   = note: target type: i8 (8 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-different-sizes.rs:24:17
+   |
+LL |     let _: i8 = transmute(x);
+   |                 ^^^^^^^^^
+   |
+   = note: source type: &T (64 bits)
+   = note: target type: i8 (8 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-different-sizes.rs:35:5
+   |
+LL |     transmute(x)
+   |     ^^^^^^^^^
+   |
+   = note: source type: u16 (16 bits)
+   = note: target type: <T as Specializable>::Output (this type's size can vary)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

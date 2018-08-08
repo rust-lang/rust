@@ -1,0 +1,9 @@
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/static-mut-not-constant.rs:13:28
+   |
+LL | static mut a: Box<isize> = box 3;
+   |                            ^^^^^ allocation not allowed in statics
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0010`.

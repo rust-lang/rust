@@ -1,0 +1,20 @@
+error[E0491]: in type `&'a variant_struct_type::Foo<&'b i32>`, reference has a longer lifetime than the data it references
+  --> $DIR/regions-outlives-nominal-type-enum-type.rs:24:11
+   |
+LL |         F(&'a Foo<&'b i32>) //~ ERROR reference has a longer lifetime
+   |           ^^^^^^^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime 'a as defined on the enum at 23:14
+  --> $DIR/regions-outlives-nominal-type-enum-type.rs:23:14
+   |
+LL |     enum Bar<'a,'b> {
+   |              ^^
+note: but the referenced data is only valid for the lifetime 'b as defined on the enum at 23:17
+  --> $DIR/regions-outlives-nominal-type-enum-type.rs:23:17
+   |
+LL |     enum Bar<'a,'b> {
+   |                 ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0491`.

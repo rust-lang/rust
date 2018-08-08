@@ -1,0 +1,56 @@
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:19:9
+   |
+LL |         &[0x41, 0x41, 0x41, 0x41] => {} //~ ERROR unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-byte-array-patterns.rs:12:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:25:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:31:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:37:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:45:9
+   |
+LL |         &[0x41, 0x41, 0x41, 0x41] => {} //~ ERROR unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:51:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:57:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-byte-array-patterns.rs:63:9
+   |
+LL |         b"AAAA" => {}, //~ ERROR unreachable pattern
+   |         ^^^^^^^
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,31 @@
+error[E0271]: type mismatch resolving `<T as Foo>::Y == i32`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:23:5
+   |
+LL |     want_y(t); //~ ERROR type mismatch
+   |     ^^^^^^ expected associated type, found i32
+   |
+   = note: expected type `<T as Foo>::Y`
+              found type `i32`
+note: required by `want_y`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:54:1
+   |
+LL | fn want_y<T:Foo<Y=i32>>(t: &T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0271]: type mismatch resolving `<T as Foo>::X == u32`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:28:5
+   |
+LL |     want_x(t); //~ ERROR type mismatch
+   |     ^^^^^^ expected associated type, found u32
+   |
+   = note: expected type `<T as Foo>::X`
+              found type `u32`
+note: required by `want_x`
+  --> $DIR/associated-types-multiple-types-one-trait.rs:52:1
+   |
+LL | fn want_x<T:Foo<X=u32>>(t: &T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

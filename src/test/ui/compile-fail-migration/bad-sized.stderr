@@ -1,0 +1,30 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/bad-sized.rs:14:24
+   |
+LL |     let x: Vec<Trait + Sized> = Vec::new();
+   |                        ^^^^^ non-auto additional trait
+
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/bad-sized.rs:14:12
+   |
+LL |     let x: Vec<Trait + Sized> = Vec::new();
+   |            ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = note: required by `std::vec::Vec`
+
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/bad-sized.rs:14:33
+   |
+LL |     let x: Vec<Trait + Sized> = Vec::new();
+   |                                 ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = note: required by `<std::vec::Vec<T>>::new`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0225, E0277.
+For more information about an error, try `rustc --explain E0225`.

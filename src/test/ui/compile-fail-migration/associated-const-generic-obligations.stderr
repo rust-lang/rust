@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/associated-const-generic-obligations.rs:25:5
+   |
+LL |     const FROM: &'static str = "foo";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+   = help: consider adding a `where T: Foo` bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

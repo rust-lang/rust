@@ -1,0 +1,9 @@
+error[E0069]: `return;` in a function whose return type is not `()`
+  --> $DIR/ret-non-nil.rs:15:19
+   |
+LL | fn g() -> isize { return; }
+   |                   ^^^^^^ return type is not ()
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0069`.

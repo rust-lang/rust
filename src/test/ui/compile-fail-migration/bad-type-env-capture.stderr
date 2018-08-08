@@ -1,0 +1,13 @@
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/bad-type-env-capture.rs:12:15
+   |
+LL | fn foo<T>() {
+   |        - type variable from outer function
+LL |     fn bar(b: T) { } //~ ERROR can't use type parameters from outer
+   |        ---    ^ use of type variable from outer function
+   |        |
+   |        help: try using a local type parameter instead: `bar<T>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0401`.

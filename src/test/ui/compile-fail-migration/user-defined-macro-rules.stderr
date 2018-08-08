@@ -1,0 +1,13 @@
+error: user-defined macros may not be named `macro_rules`
+  --> $DIR/user-defined-macro-rules.rs:13:1
+   |
+LL | macro_rules! macro_rules { () => {} } //~ ERROR user-defined macros may not be named `macro_rules`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `user_defined_macro_rules`
+   |
+   = note: consider adding a `main` function to `$DIR/user-defined-macro-rules.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

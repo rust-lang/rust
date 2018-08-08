@@ -1,0 +1,4 @@
+error: invalid windows subsystem `wrong`, only `windows` and `console` are allowed
+
+error: aborting due to previous error
+

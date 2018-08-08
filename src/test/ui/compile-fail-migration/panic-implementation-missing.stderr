@@ -1,0 +1,4 @@
+error: `#[panic_implementation]` function required, but not found
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error: couldn't read "$DIR/not-utf8.bin": stream did not contain valid UTF-8
+  --> $DIR/not-utf8.rs:14:5
+   |
+LL |     include!("not-utf8.bin")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

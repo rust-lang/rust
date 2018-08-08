@@ -1,0 +1,25 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/method-self-arg-2.rs:23:15
+   |
+LL |     let y = &mut x;
+   |                  - mutable borrow occurs here
+LL |     Foo::bar(&x); //~ERROR cannot borrow `x`
+   |               ^ immutable borrow occurs here
+...
+LL | }
+   | - mutable borrow ends here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/method-self-arg-2.rs:27:19
+   |
+LL |     let y = &mut x;
+   |                  - first mutable borrow occurs here
+LL |     Foo::baz(&mut x); //~ERROR cannot borrow `x`
+   |                   ^ second mutable borrow occurs here
+LL | }
+   | - first borrow ends here
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.

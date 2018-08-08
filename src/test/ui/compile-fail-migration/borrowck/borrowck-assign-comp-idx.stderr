@@ -1,0 +1,26 @@
+error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-assign-comp-idx.rs:22:5
+   |
+LL |     let q: &isize = &p[0];
+   |                      - immutable borrow occurs here
+LL | 
+LL |     p[0] = 5; //~ ERROR cannot borrow
+   |     ^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-assign-comp-idx.rs:37:9
+   |
+LL |         &p,
+   |          - immutable borrow occurs here
+LL |         || p[0] = 5); //~ ERROR cannot borrow `p` as mutable
+   |         ^^ -       - immutable borrow ends here
+   |         |  |
+   |         |  borrow occurs due to use of `p` in closure
+   |         mutable borrow occurs here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

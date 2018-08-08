@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/two-phase-reservation-sharing-interference-2.rs:27:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     let mut v = vec![0, 1, 2];
+LL | |     let shared = &v;
+LL | |
+...  |
+LL | |     assert_eq!(v, [0, 1, 2, 3]);
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

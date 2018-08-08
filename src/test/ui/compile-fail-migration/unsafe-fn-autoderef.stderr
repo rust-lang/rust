@@ -1,0 +1,9 @@
+error[E0609]: no field `f` on type `*const Rec`
+  --> $DIR/unsafe-fn-autoderef.rs:29:14
+   |
+LL |     return p.f; //~ ERROR no field `f` on type `*const Rec`
+   |              ^ help: `p` is a native pointer; try dereferencing it: `(*p).f`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

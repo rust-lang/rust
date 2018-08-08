@@ -1,0 +1,33 @@
+error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+  --> $DIR/regions-free-region-ordering-incorrect.rs:27:15
+   |
+LL |       None => &self.val //~ ERROR cannot infer
+   |               ^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the method body at 24:10...
+  --> $DIR/regions-free-region-ordering-incorrect.rs:24:10
+   |
+LL |   fn get<'a>(&'a self) -> &'b T {
+   |          ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/regions-free-region-ordering-incorrect.rs:27:15
+   |
+LL |       None => &self.val //~ ERROR cannot infer
+   |               ^^^^^^^^^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the impl at 23:6...
+  --> $DIR/regions-free-region-ordering-incorrect.rs:23:6
+   |
+LL | impl<'b, T> Node<'b, T> {
+   |      ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/regions-free-region-ordering-incorrect.rs:25:5
+   |
+LL | /     match self.next {
+LL | |       Some(ref next) => next.get(),
+LL | |       None => &self.val //~ ERROR cannot infer
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

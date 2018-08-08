@@ -1,0 +1,4 @@
+error: the type `[[u8; 1518599999]; 1518600000]` is too big for the current architecture
+
+error: aborting due to previous error
+

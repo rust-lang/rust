@@ -1,0 +1,22 @@
+error[E0432]: unresolved import `extern::*`
+  --> $DIR/single-segment.rs:17:5
+   |
+LL | use extern::*; //~ ERROR unresolved import `extern::*`
+   |     ^^^^^^^^^ cannot glob-import all possible crates
+
+error[E0432]: unresolved import `extern`
+  --> $DIR/single-segment.rs:15:5
+   |
+LL | use extern; //~ ERROR unresolved import `extern`
+   |     ^^^^^^ no `extern` in the root
+
+error[E0423]: expected value, found module `extern::xcrate`
+  --> $DIR/single-segment.rs:21:13
+   |
+LL |     let s = extern::xcrate; //~ ERROR expected value, found module `extern::xcrate`
+   |             ^^^^^^^^^^^^^^ not a value
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0423, E0432.
+For more information about an error, try `rustc --explain E0423`.

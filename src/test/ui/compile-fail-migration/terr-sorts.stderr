@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/terr-sorts.rs:21:14
+   |
+LL |     want_foo(b); //~  ERROR mismatched types
+   |              ^ expected struct `foo`, found struct `std::boxed::Box`
+   |
+   = note: expected type `foo`
+              found type `std::boxed::Box<foo>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

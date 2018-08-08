@@ -1,0 +1,9 @@
+error[E0594]: cannot assign to immutable static item
+  --> $DIR/borrowck-assign-to-constants.rs:18:5
+   |
+LL |     foo = 6; //[ast]~ ERROR cannot assign to immutable static item
+   |     ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.

@@ -1,0 +1,34 @@
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/export.rs:12:26
+   |
+LL |     pub fn x(y: isize) { log(debug, y); }
+   |                          ^^^ not found in this scope
+
+error[E0425]: cannot find value `debug` in this scope
+  --> $DIR/export.rs:12:30
+   |
+LL |     pub fn x(y: isize) { log(debug, y); }
+   |                              ^^^^^ not found in this scope
+
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/export.rs:15:22
+   |
+LL |     fn z(y: isize) { log(debug, y); }
+   |                      ^^^ not found in this scope
+
+error[E0425]: cannot find value `debug` in this scope
+  --> $DIR/export.rs:15:26
+   |
+LL |     fn z(y: isize) { log(debug, y); }
+   |                          ^^^^^ not found in this scope
+
+error[E0603]: function `z` is private
+  --> $DIR/export.rs:20:13
+   |
+LL | fn main() { foo::z(10); } //~ ERROR function `z` is private
+   |             ^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0425, E0603.
+For more information about an error, try `rustc --explain E0425`.

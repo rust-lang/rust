@@ -1,0 +1,38 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-not-param.rs:25:54
+   |
+LL | fn take_direct<'a,'b>(p: direct<'a>) -> direct<'b> { p } //~ ERROR mismatched types
+   |                                                      ^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-not-param.rs:29:63
+   |
+LL | fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
+   |                                                               ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-infer-not-param.rs:25:54
+   |
+LL | fn take_direct<'a,'b>(p: direct<'a>) -> direct<'b> { p } //~ ERROR mismatched types
+   |                -- -- lifetime `'b` defined here      ^ return requires that `'a` must outlive `'b`
+   |                |
+   |                lifetime `'a` defined here
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-infer-not-param.rs:29:63
+   |
+LL | fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
+   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |                   |
+   |                   lifetime `'a` defined here
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-infer-not-param.rs:29:63
+   |
+LL | fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
+   |                   -- -- lifetime `'b` defined here            ^ return requires that `'a` must outlive `'b`
+   |                   |
+   |                   lifetime `'a` defined here
+
+error: aborting due to 3 previous errors
+

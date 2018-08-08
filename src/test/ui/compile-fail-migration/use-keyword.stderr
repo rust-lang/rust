@@ -1,0 +1,22 @@
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-keyword.rs:16:13
+   |
+LL |         use self as A;
+   |             ^^^^^^^^^
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-keyword.rs:18:13
+   |
+LL |         use super as B;
+   |             ^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-keyword.rs:21:21
+   |
+LL |         use super::{self as C};
+   |                     ^^^^^^^^^ no `super` in the root
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0429, E0432.
+For more information about an error, try `rustc --explain E0429`.

@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/fully-qualified-type-name2.rs:22:12
+   |
+LL |     return x;
+   |            ^ expected enum `y::foo`, found enum `x::foo`
+   |
+   = note: expected type `y::foo`
+              found type `x::foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

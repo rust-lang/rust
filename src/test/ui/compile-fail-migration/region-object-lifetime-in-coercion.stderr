@@ -1,0 +1,52 @@
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:18:33
+   |
+LL | fn a(v: &[u8]) -> Box<Foo + 'static> {
+   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+LL |     let x: Box<Foo + 'static> = Box::new(v);
+   |                                 ^^^^^^^^^^^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:24:5
+   |
+LL | fn b(v: &[u8]) -> Box<Foo + 'static> {
+   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:31:5
+   |
+LL | fn c(v: &[u8]) -> Box<Foo> {
+   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+...
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ lifetime `'static` required
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/region-object-lifetime-in-coercion.rs:36:14
+   |
+LL |     Box::new(v)
+   |              ^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 35:6...
+  --> $DIR/region-object-lifetime-in-coercion.rs:35:6
+   |
+LL | fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
+   |      ^^
+   = note: ...so that the expression is assignable:
+           expected &[u8]
+              found &'a [u8]
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 35:9...
+  --> $DIR/region-object-lifetime-in-coercion.rs:35:9
+   |
+LL | fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
+   |         ^^
+   = note: ...so that the expression is assignable:
+           expected std::boxed::Box<(dyn Foo + 'b)>
+              found std::boxed::Box<dyn Foo>
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0495, E0621.
+For more information about an error, try `rustc --explain E0495`.

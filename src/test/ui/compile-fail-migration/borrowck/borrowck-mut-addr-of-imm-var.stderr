@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow immutable local variable `x` as mutable
+  --> $DIR/borrowck-mut-addr-of-imm-var.rs:13:30
+   |
+LL |     let x: isize = 3;
+   |         - consider changing this to `mut x`
+LL |     let y: &mut isize = &mut x; //~ ERROR cannot borrow
+   |                              ^ cannot borrow mutably
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

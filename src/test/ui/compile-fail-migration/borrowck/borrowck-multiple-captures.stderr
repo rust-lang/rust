@@ -1,0 +1,84 @@
+error[E0504]: cannot move `x1` into closure because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:23:14
+   |
+LL |     let p1 = &x1;
+   |               -- borrow of `x1` occurs here
+...
+LL |         drop(x1); //~ ERROR cannot move `x1` into closure because it is borrowed
+   |              ^^ move into closure occurs here
+
+error[E0504]: cannot move `x2` into closure because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:24:14
+   |
+LL |     let p2 = &x2;
+   |               -- borrow of `x2` occurs here
+...
+LL |         drop(x2); //~ ERROR cannot move `x2` into closure because it is borrowed
+   |              ^^ move into closure occurs here
+
+error[E0382]: capture of moved value: `x1`
+  --> $DIR/borrowck-multiple-captures.rs:36:14
+   |
+LL |     drop(x1);
+   |          -- value moved here
+...
+LL |         drop(x1); //~ ERROR capture of moved value: `x1`
+   |              ^^ value captured here after move
+   |
+   = note: move occurs because `x1` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: capture of moved value: `x2`
+  --> $DIR/borrowck-multiple-captures.rs:37:14
+   |
+LL |     drop(x2);
+   |          -- value moved here
+...
+LL |         drop(x2); //~ ERROR capture of moved value: `x2`
+   |              ^^ value captured here after move
+   |
+   = note: move occurs because `x2` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error[E0504]: cannot move `x` into closure because it is borrowed
+  --> $DIR/borrowck-multiple-captures.rs:45:14
+   |
+LL |     let p = &x;
+   |              - borrow of `x` occurs here
+LL |     thread::spawn(move|| {
+LL |         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
+   |              ^ move into closure occurs here
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:46:14
+   |
+LL |         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
+   |              - value moved here
+LL |         drop(x); //~ ERROR use of moved value: `x`
+   |              ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: capture of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:55:14
+   |
+LL |     drop(x);
+   |          - value moved here
+LL |     thread::spawn(move|| {
+LL |         drop(x); //~ ERROR capture of moved value: `x`
+   |              ^ value captured here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-multiple-captures.rs:56:14
+   |
+LL |         drop(x); //~ ERROR capture of moved value: `x`
+   |              - value moved here
+LL |         drop(x); //~ ERROR use of moved value: `x`
+   |              ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0382, E0504.
+For more information about an error, try `rustc --explain E0382`.

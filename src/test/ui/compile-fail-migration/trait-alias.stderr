@@ -1,0 +1,44 @@
+error: type parameters on the left side of a trait alias cannot be bounded
+  --> $DIR/trait-alias.rs:15:14
+   |
+LL | trait Alias2<T: Clone = ()> = Default;
+   |              ^
+
+error: type parameters on the left side of a trait alias cannot have defaults
+  --> $DIR/trait-alias.rs:15:14
+   |
+LL | trait Alias2<T: Clone = ()> = Default;
+   |              ^
+
+error[E0573]: expected type, found trait alias `Alias1`
+  --> $DIR/trait-alias.rs:20:6
+   |
+LL | impl Alias1 { //~ERROR expected type, found trait alias
+   |      ^^^^^^ not a type
+
+error[E0404]: expected trait, found trait alias `Alias1`
+  --> $DIR/trait-alias.rs:23:6
+   |
+LL | impl Alias1 for () { //~ERROR expected trait, found trait alias
+   |      ^^^^^^ not a trait
+
+error[E0658]: trait aliases are not yet fully implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:13:1
+   |
+LL | trait Alias1<T> = Default where T: Clone; // ok
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(trait_alias)] to the crate attributes to enable
+
+error[E0658]: trait aliases are not yet fully implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:15:1
+   |
+LL | trait Alias2<T: Clone = ()> = Default;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(trait_alias)] to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0404, E0573, E0658.
+For more information about an error, try `rustc --explain E0404`.

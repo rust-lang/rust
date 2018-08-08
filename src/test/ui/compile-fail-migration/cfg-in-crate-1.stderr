@@ -1,0 +1,7 @@
+error[E0601]: `main` function not found in crate `cfg_in_crate_1`
+   |
+   = note: consider adding a `main` function to `$DIR/cfg-in-crate-1.rs`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.

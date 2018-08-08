@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-types-eq-1.rs:20:12
+   |
+LL |     let _: A = x.boo(); //~ ERROR cannot find type `A` in this scope
+   |            ^ did you mean `I`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

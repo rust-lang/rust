@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/method-self-arg-1.rs:21:14
+   |
+LL |     Foo::bar(x); //~  ERROR mismatched types
+   |              ^
+   |              |
+   |              expected &Foo, found struct `Foo`
+   |              help: consider borrowing here: `&x`
+   |
+   = note: expected type `&Foo`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/method-self-arg-1.rs:25:14
+   |
+LL |     Foo::bar(&42); //~  ERROR mismatched types
+   |              ^^^ expected struct `Foo`, found integral variable
+   |
+   = note: expected type `&Foo`
+              found type `&{integer}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

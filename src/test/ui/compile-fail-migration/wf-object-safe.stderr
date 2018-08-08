@@ -1,0 +1,11 @@
+error[E0038]: the trait `A` cannot be made into an object
+  --> $DIR/wf-object-safe.rs:19:13
+   |
+LL |     let _x: &A; //~ ERROR E0038
+   |             ^^ the trait `A` cannot be made into an object
+   |
+   = note: method `foo` references the `Self` type in its arguments or return type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

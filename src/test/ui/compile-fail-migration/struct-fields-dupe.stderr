@@ -1,0 +1,11 @@
+error[E0062]: field `foo` specified more than once
+  --> $DIR/struct-fields-dupe.rs:18:9
+   |
+LL |         foo: 0,
+   |         ------ first use of `foo`
+LL |         foo: 0 //~ ERROR field `foo` specified more than once
+   |         ^^^ used more than once
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0062`.

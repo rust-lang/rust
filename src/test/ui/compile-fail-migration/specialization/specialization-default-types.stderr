@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-types.rs:25:9
+   |
+LL |     default fn generate(self) -> Self::Output {
+   |                                  ------------ expected `<T as Example>::Output` because of return type
+LL |         Box::new(self) //~ ERROR mismatched types
+   |         ^^^^^^^^^^^^^^ expected associated type, found struct `std::boxed::Box`
+   |
+   = note: expected type `<T as Example>::Output`
+              found type `std::boxed::Box<T>`
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-types.rs:35:5
+   |
+LL | fn trouble<T>(t: T) -> Box<T> {
+   |                        ------ expected `std::boxed::Box<T>` because of return type
+LL |     Example::generate(t) //~ ERROR mismatched types
+   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found associated type
+   |
+   = note: expected type `std::boxed::Box<T>`
+              found type `<T as Example>::Output`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

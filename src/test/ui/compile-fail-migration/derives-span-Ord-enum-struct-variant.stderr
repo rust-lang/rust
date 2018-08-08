@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Error: std::cmp::Ord` is not satisfied
+  --> $DIR/derives-span-Ord-enum-struct-variant.rs:19:6
+   |
+LL |      x: Error //~ ERROR
+   |      ^^^^^^^^ the trait `std::cmp::Ord` is not implemented for `Error`
+   |
+   = note: required by `std::cmp::Ord::cmp`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

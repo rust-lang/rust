@@ -1,0 +1,14 @@
+error: unnecessary `unsafe` block
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:16:5
+   |
+LL |     unsafe { println!("foo"); } //~ ERROR unnecessary `unsafe`
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+note: lint level defined here
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:13:9
+   |
+LL | #![deny(unused_unsafe)]
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

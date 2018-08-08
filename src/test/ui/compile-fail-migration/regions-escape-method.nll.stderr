@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-escape-method.rs:25:13
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |             ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-escape-method.rs:25:13
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |         ----^
+   |         ||  |
+   |         ||  return requires that `'1` must outlive `'2`
+   |         |has type `&'1 i32`
+   |         lifetime `'2` appears in return type
+
+error: aborting due to previous error
+

@@ -1,0 +1,26 @@
+error[E0433]: failed to resolve. global paths cannot start with `super`
+  --> $DIR/use-super-global-path.rs:17:11
+   |
+LL |     use ::super::{S, Z}; //~ ERROR global paths cannot start with `super`
+   |           ^^^^^ global paths cannot start with `super`
+
+error[E0433]: failed to resolve. global paths cannot start with `super`
+  --> $DIR/use-super-global-path.rs:20:15
+   |
+LL |         use ::super::main; //~ ERROR global paths cannot start with `super`
+   |               ^^^^^ global paths cannot start with `super`
+
+error[E0425]: cannot find function `main` in this scope
+  --> $DIR/use-super-global-path.rs:21:9
+   |
+LL |         main(); //~ ERROR cannot find function `main` in this scope
+   |         ^^^^ not found in this scope
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL |     use main;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

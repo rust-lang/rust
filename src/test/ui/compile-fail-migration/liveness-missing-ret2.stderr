@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/liveness-missing-ret2.rs:11:17
+   |
+LL |   fn f() -> isize { //~ ERROR mismatched types
+   |  _________________^
+LL | |     // Make sure typestate doesn't interpret this match expression as
+LL | |     // the function result
+LL | |    match true { true => { } _ => {} };
+LL | | }
+   | |_^ expected isize, found ()
+   |
+   = note: expected type `isize`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

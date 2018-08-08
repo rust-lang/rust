@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `U1: std::marker::Copy` is not satisfied
+  --> $DIR/union-derive-clone.rs:13:10
+   |
+LL | #[derive(Clone)] //~ ERROR the trait bound `U1: std::marker::Copy` is not satisfied
+   |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
+   |
+   = note: required by `std::clone::AssertParamIsCopy`
+
+error[E0599]: no method named `clone` found for type `U4<CloneNoCopy>` in the current scope
+  --> $DIR/union-derive-clone.rs:40:15
+   |
+LL | union U4<T> {
+   | ----------- method `clone` not found for this
+...
+LL |     let w = u.clone(); //~ ERROR no method named `clone` found for type `U4<CloneNoCopy>`
+   |               ^^^^^
+   |
+   = note: the method `clone` exists but the following trait bounds were not satisfied:
+           `U4<CloneNoCopy> : std::clone::Clone`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `std::clone::Clone`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

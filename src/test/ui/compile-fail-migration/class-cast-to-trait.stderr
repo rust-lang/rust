@@ -1,0 +1,9 @@
+error[E0599]: no method named `eat` found for type `std::boxed::Box<dyn noisy>` in the current scope
+  --> $DIR/class-cast-to-trait.rs:63:8
+   |
+LL |   nyan.eat(); //~ ERROR no method named `eat` found
+   |        ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

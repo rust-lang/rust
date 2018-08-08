@@ -1,0 +1,14 @@
+error: unreachable statement
+  --> $DIR/lint-attr-non-item-node.rs:17:9
+   |
+LL |         "unreachable"; //~ ERROR unreachable statement
+   |         ^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-attr-non-item-node.rs:14:12
+   |
+LL |     #[deny(unreachable_code)]
+   |            ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

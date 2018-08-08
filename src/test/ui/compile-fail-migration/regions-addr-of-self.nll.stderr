@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-addr-of-self.rs:17:37
+   |
+LL |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
+   |                                     ^^^^^^^^^^^^^^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-addr-of-self.rs:17:37
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      - let's call the lifetime of this reference `'1`
+LL |         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
+   |                                     ^^^^^^^^^^^^^^^^^^^^^ requires that `'1` must outlive `'static`
+
+error: aborting due to previous error
+

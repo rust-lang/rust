@@ -1,0 +1,19 @@
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-loan-blocks-mut-uniq.rs:20:12
+   |
+LL |       borrow(&*v,
+   |       -      --- immutable borrow occurs here
+   |  _____|
+   | |
+LL | |            |w| { //~ ERROR cannot borrow `v` as mutable
+   | |            ^^^ mutable borrow occurs here
+LL | |             v = box 4;
+   | |             - second borrow occurs due to use of `v` in closure
+LL | |             assert_eq!(*v, 3);
+LL | |             assert_eq!(*w, 4);
+LL | |         })
+   | |__________- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.

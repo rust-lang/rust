@@ -1,0 +1,9 @@
+error[E0624]: method `foo` is private
+  --> $DIR/private-impl-method.rs:30:7
+   |
+LL |     s.foo();    //~ ERROR method `foo` is private
+   |       ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0624`.

@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `u.a`
+  --> $DIR/borrowck-union-uninitialized.rs:26:18
+   |
+LL |         let ua = u.a; //~ ERROR use of possibly uninitialized variable: `u.a`
+   |                  ^^^ use of possibly uninitialized `u.a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

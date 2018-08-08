@@ -1,0 +1,11 @@
+error[E0391]: cycle detected when processing `Foo::X`
+  --> $DIR/cycle-trait-default-type-trait.rs:14:19
+   |
+LL | trait Foo<X = Box<Foo>> {
+   |                   ^^^
+   |
+   = note: ...which again requires processing `Foo::X`, completing the cycle
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

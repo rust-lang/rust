@@ -1,0 +1,34 @@
+error: inherent impls cannot be default
+  --> $DIR/validation.rs:17:1
+   |
+LL | default impl S {} //~ ERROR inherent impls cannot be default
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: only trait implementations may be annotated with default
+
+error[E0601]: `main` function not found in crate `validation`
+   |
+   = note: consider adding a `main` function to `$DIR/validation.rs`
+
+error: impls of auto traits cannot be default
+  --> $DIR/validation.rs:19:1
+   |
+LL | default unsafe impl Send for S {} //~ ERROR impls of auto traits cannot be default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: impls of auto traits cannot be default
+  --> $DIR/validation.rs:20:1
+   |
+LL | default impl !Send for Z {} //~ ERROR impls of auto traits cannot be default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
+  --> $DIR/validation.rs:23:1
+   |
+LL | default impl !Tr for S {} //~ ERROR negative impls are only allowed for auto traits
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0192, E0601.
+For more information about an error, try `rustc --explain E0192`.

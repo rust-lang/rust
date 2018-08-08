@@ -1,0 +1,21 @@
+warning: unused import: `std::option`
+  --> $DIR/bad-lint-cap3.rs:17:5
+   |
+LL | use std::option; //~ WARN
+   |     ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/bad-lint-cap3.rs:14:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: #[warn(unused_imports)] implied by #[warn(warnings)]
+
+error: compilation successful
+  --> $DIR/bad-lint-cap3.rs:20:1
+   |
+LL | fn main() {} //~ ERROR: compilation successful
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

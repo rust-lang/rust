@@ -1,0 +1,75 @@
+error[E0442]: intrinsic argument 1 has wrong type: found `u16`, expected `i16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:42:9
+   |
+LL |         fn x86_mm_adds_epi16(x: u16x8, y: u16x8) -> u16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 2 has wrong type: found `u16`, expected `i16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:42:9
+   |
+LL |         fn x86_mm_adds_epi16(x: u16x8, y: u16x8) -> u16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic return value has wrong type: found `u16`, expected `i16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:42:9
+   |
+LL |         fn x86_mm_adds_epi16(x: u16x8, y: u16x8) -> u16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 1 has wrong type: found `i16`, expected `u16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:46:9
+   |
+LL |         fn x86_mm_adds_epu16(x: i16x8, y: i16x8) -> i16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 2 has wrong type: found `i16`, expected `u16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:46:9
+   |
+LL |         fn x86_mm_adds_epu16(x: i16x8, y: i16x8) -> i16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic return value has wrong type: found `i16`, expected `u16`
+  --> $DIR/simd-intrinsic-declaration-type.rs:46:9
+   |
+LL |         fn x86_mm_adds_epu16(x: i16x8, y: i16x8) -> i16x8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 1 has wrong type: found vector with length 16, expected length 8
+  --> $DIR/simd-intrinsic-declaration-type.rs:54:5
+   |
+LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 2 has wrong type: found vector with length 4, expected length 8
+  --> $DIR/simd-intrinsic-declaration-type.rs:54:5
+   |
+LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic return value has wrong type: found vector with length 2, expected length 8
+  --> $DIR/simd-intrinsic-declaration-type.rs:54:5
+   |
+LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 1 has wrong type: found `i32`, expected `f32`
+  --> $DIR/simd-intrinsic-declaration-type.rs:61:5
+   |
+LL |     fn x86_mm_max_ps(x: i32x4, y: i32x4) -> i32x4;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic argument 2 has wrong type: found `i32`, expected `f32`
+  --> $DIR/simd-intrinsic-declaration-type.rs:61:5
+   |
+LL |     fn x86_mm_max_ps(x: i32x4, y: i32x4) -> i32x4;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0442]: intrinsic return value has wrong type: found `i32`, expected `f32`
+  --> $DIR/simd-intrinsic-declaration-type.rs:61:5
+   |
+LL |     fn x86_mm_max_ps(x: i32x4, y: i32x4) -> i32x4;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0442`.

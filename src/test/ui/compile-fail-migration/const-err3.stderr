@@ -1,0 +1,32 @@
+error: this expression will panic at runtime
+  --> $DIR/const-err3.rs:19:13
+   |
+LL |     let b = 200u8 + 200u8 + 200u8;
+   |             ^^^^^^^^^^^^^ attempt to add with overflow
+   |
+note: lint level defined here
+  --> $DIR/const-err3.rs:12:9
+   |
+LL | #![deny(const_err)]
+   |         ^^^^^^^^^
+
+error: this expression will panic at runtime
+  --> $DIR/const-err3.rs:21:13
+   |
+LL |     let c = 200u8 * 4;
+   |             ^^^^^^^^^ attempt to multiply with overflow
+
+error: this expression will panic at runtime
+  --> $DIR/const-err3.rs:23:13
+   |
+LL |     let d = 42u8 - (42u8 + 1);
+   |             ^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/const-err3.rs:25:14
+   |
+LL |     let _e = [5u8][1];
+   |              ^^^^^^^^
+
+error: aborting due to 4 previous errors
+

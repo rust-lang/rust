@@ -1,0 +1,16 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `Self`
+  --> $DIR/use-self-type.rs:17:16
+   |
+LL |         pub(in Self::f) struct Z; //~ ERROR Use of undeclared type or module `Self`
+   |                ^^^^ Use of undeclared type or module `Self`
+
+error[E0432]: unresolved import
+  --> $DIR/use-self-type.rs:16:13
+   |
+LL |         use Self::f; //~ ERROR unresolved import
+   |             ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

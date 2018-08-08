@@ -1,0 +1,34 @@
+error[E0601]: `main` function not found in crate `repr_transparent_other_reprs`
+   |
+   = note: consider adding a `main` function to `$DIR/repr-transparent-other-reprs.rs`
+
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/repr-transparent-other-reprs.rs:15:8
+   |
+LL | #[repr(transparent, C)] //~ ERROR cannot have other repr
+   |        ^^^^^^^^^^^  ^
+
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/repr-transparent-other-reprs.rs:20:8
+   |
+LL | #[repr(transparent, packed)] //~ ERROR cannot have other repr
+   |        ^^^^^^^^^^^  ^^^^^^
+
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/repr-transparent-other-reprs.rs:23:8
+   |
+LL | #[repr(transparent, align(2))] //~ ERROR cannot have other repr
+   |        ^^^^^^^^^^^  ^^^^^^^^
+
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/repr-transparent-other-reprs.rs:26:8
+   |
+LL | #[repr(transparent)] //~ ERROR cannot have other repr
+   |        ^^^^^^^^^^^
+LL | #[repr(C)]
+   |        ^
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0601, E0692.
+For more information about an error, try `rustc --explain E0601`.

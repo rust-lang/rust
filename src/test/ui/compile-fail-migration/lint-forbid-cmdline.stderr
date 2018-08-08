@@ -1,0 +1,11 @@
+error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+  --> $DIR/lint-forbid-cmdline.rs:13:9
+   |
+LL | #[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
+   |         ^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: `forbid` lint level was set on command line
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0453`.

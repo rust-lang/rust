@@ -1,0 +1,24 @@
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-elision.rs:81:5
+   |
+LL |     ss
+   |     ^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/object-lifetime-default-elision.rs:64:53
+   |
+LL |   fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+   |  __________--_--______________________________________^
+   | |          |  |
+   | |          |  lifetime `'b` defined here
+   | |          lifetime `'a` defined here
+LL | |     // Under old rules, the fully elaborated types of input/output were:
+LL | |     //
+LL | |     // for<'a,'b,'c>fn(&'a (SomeTrait+'c)) -> &'b (SomeTrait+'a)
+...  |
+LL | |         //~| ERROR cannot infer
+LL | | }
+   | |_^ return requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

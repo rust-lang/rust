@@ -1,0 +1,20 @@
+error: unused attribute
+  --> $DIR/lint-obsolete-attr.rs:18:1
+   |
+LL | #[ab_isize="stdcall"] extern {} //~ ERROR unused attribute
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-obsolete-attr.rs:14:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/lint-obsolete-attr.rs:20:1
+   |
+LL | #[fixed_stack_segment] fn f() {} //~ ERROR unused attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

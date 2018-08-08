@@ -1,0 +1,30 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-object-into-object-2.rs:20:11
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |           ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-close-object-into-object-2.rs:19:57
+   |
+LL |   fn g<'a, T: 'static>(v: Box<A<T>+'a>) -> Box<X+'static> {
+   |  ______--_________________________________________________^
+   | |      |
+   | |      lifetime `'a` defined here
+LL | |     box B(&*v) as Box<X> //~ ERROR cannot infer
+LL | | }
+   | |_^ return requires that `'a` must outlive `'static`
+
+error[E0597]: `*v` does not live long enough
+  --> $DIR/regions-close-object-into-object-2.rs:20:11
+   |
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |           ^^^ borrowed value does not live long enough
+LL | }
+   | - `*v` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

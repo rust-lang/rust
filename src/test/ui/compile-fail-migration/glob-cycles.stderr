@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/glob-cycles.rs:29:1
+   |
+LL | pub fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

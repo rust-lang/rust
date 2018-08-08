@@ -1,0 +1,10 @@
+error: This node does not have a stability attribute
+  --> $DIR/stability-attribute-sanity-3.rs:18:1
+   |
+LL | / macro_rules! mac { //~ ERROR This node does not have a stability attribute
+LL | |     () => ()
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

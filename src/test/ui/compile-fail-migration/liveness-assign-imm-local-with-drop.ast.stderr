@@ -1,0 +1,12 @@
+error[E0384]: cannot assign twice to immutable variable `b`
+  --> $DIR/liveness-assign-imm-local-with-drop.rs:19:5
+   |
+LL |     let b = Box::new(1); //[ast]~ NOTE first assignment
+   |         - first assignment to `b`
+...
+LL |     b = Box::new(2); //[ast]~ ERROR cannot assign twice to immutable variable
+   |     ^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0384`.

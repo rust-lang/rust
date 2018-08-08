@@ -1,0 +1,11 @@
+error: compilation successful
+  --> $DIR/no-warn-on-field-replace-issue-34101.rs:53:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     inline();
+LL | |     outline();
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

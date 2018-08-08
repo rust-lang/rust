@@ -1,0 +1,93 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:36:19
+   |
+LL |     let _x = arg(&AddFlags(1)); //~ ERROR value does not live long enough
+   |                   ^^^^^^^^^^^ - temporary value dropped here while still borrowed
+   |                   |
+   |                   temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:37:14
+   |
+LL |     let _x = AddFlags(1).get(); //~ ERROR value does not live long enough
+   |              ^^^^^^^^^^^      - temporary value dropped here while still borrowed
+   |              |
+   |              temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:38:21
+   |
+LL |     let _x = &*arg(&AddFlags(1)); //~ ERROR value does not live long enough
+   |                     ^^^^^^^^^^^ - temporary value dropped here while still borrowed
+   |                     |
+   |                     temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:39:24
+   |
+LL |     let ref _x = *arg(&AddFlags(1)); //~ ERROR value does not live long enough
+   |                        ^^^^^^^^^^^ - temporary value dropped here while still borrowed
+   |                        |
+   |                        temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:40:24
+   |
+LL |     let &ref _x = arg(&AddFlags(1)); //~ ERROR value does not live long enough
+   |                        ^^^^^^^^^^^ - temporary value dropped here while still borrowed
+   |                        |
+   |                        temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:41:14
+   |
+LL |     let _x = AddFlags(1).get(); //~ ERROR value does not live long enough
+   |              ^^^^^^^^^^^      - temporary value dropped here while still borrowed
+   |              |
+   |              temporary value does not live long enough
+LL |     let Box { f: _x } = Box { f: AddFlags(1).get() }; //~ ERROR value does not live long enough
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/cleanup-rvalue-scopes-cf.rs:42:34
+   |
+LL |     let Box { f: _x } = Box { f: AddFlags(1).get() }; //~ ERROR value does not live long enough
+   |                                  ^^^^^^^^^^^        - temporary value dropped here while still borrowed
+   |                                  |
+   |                                  temporary value does not live long enough
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

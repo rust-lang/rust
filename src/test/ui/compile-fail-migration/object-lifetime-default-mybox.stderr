@@ -1,0 +1,31 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/object-lifetime-default-mybox.rs:37:5
+   |
+LL | fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
+   |                    -------------------- this parameter and the return type are declared with different lifetimes...
+LL |                 b: &'b MyBox<SomeTrait>)
+LL |                 -> &'b MyBox<SomeTrait>
+   |                    --------------------
+LL | {
+LL |     a //~ ERROR lifetime mismatch
+   |     ^ ...but data from `a` is returned here
+
+error[E0308]: mismatched types
+  --> $DIR/object-lifetime-default-mybox.rs:41:11
+   |
+LL |     load0(ss) //~ ERROR mismatched types
+   |           ^^ lifetime mismatch
+   |
+   = note: expected type `&MyBox<(dyn SomeTrait + 'static)>`
+              found type `&MyBox<(dyn SomeTrait + 'a)>`
+note: the lifetime 'a as defined on the function body at 40:10...
+  --> $DIR/object-lifetime-default-mybox.rs:40:10
+   |
+LL | fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
+   |          ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0308, E0623.
+For more information about an error, try `rustc --explain E0308`.

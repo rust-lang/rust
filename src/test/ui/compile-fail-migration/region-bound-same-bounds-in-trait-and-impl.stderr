@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/region-bound-same-bounds-in-trait-and-impl.rs:27:1
+   |
+LL | fn main() { } //~ ERROR compilation successful
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,45 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/unop-move-semantics.rs:18:5
+   |
+LL |     !x;
+   |      - value moved here
+LL | 
+LL |     x.clone();  //~ ERROR: use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/unop-move-semantics.rs:25:6
+   |
+LL |     let m = &x;
+   |              - borrow of `x` occurs here
+...
+LL |     !x;  //~ ERROR: cannot move out of `x` because it is borrowed
+   |      ^ move out of `x` occurs here
+
+error[E0505]: cannot move out of `y` because it is borrowed
+  --> $DIR/unop-move-semantics.rs:27:6
+   |
+LL |     let n = &mut y;
+   |                  - borrow of `y` occurs here
+...
+LL |     !y;  //~ ERROR: cannot move out of `y` because it is borrowed
+   |      ^ move out of `y` occurs here
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/unop-move-semantics.rs:34:6
+   |
+LL |     !*m;  //~ ERROR: cannot move out of borrowed content
+   |      ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/unop-move-semantics.rs:36:6
+   |
+LL |     !*n;  //~ ERROR: cannot move out of borrowed content
+   |      ^^ cannot move out of borrowed content
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0382, E0505, E0507.
+For more information about an error, try `rustc --explain E0382`.

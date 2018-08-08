@@ -1,0 +1,80 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/binop-move-semantics.rs:18:5
+   |
+LL |     x
+   |     - value moved here
+LL |     +
+LL |     x;  //~ ERROR: use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/binop-move-semantics.rs:24:5
+   |
+LL |     x
+   |     - value moved here
+LL |     +
+LL |     x.clone();  //~ ERROR: use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/binop-move-semantics.rs:31:5
+   |
+LL |     let m = &x;
+   |              - borrow of `x` occurs here
+...
+LL |     x  //~ ERROR: cannot move out of `x` because it is borrowed
+   |     ^ move out of `x` occurs here
+
+error[E0505]: cannot move out of `y` because it is borrowed
+  --> $DIR/binop-move-semantics.rs:33:5
+   |
+LL |     let n = &mut y;
+   |                  - borrow of `y` occurs here
+...
+LL |     y;  //~ ERROR: cannot move out of `y` because it is borrowed
+   |     ^ move out of `y` occurs here
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/binop-move-semantics.rs:40:5
+   |
+LL |     *m  //~ ERROR: cannot move out of borrowed content
+   |     ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/binop-move-semantics.rs:42:5
+   |
+LL |     *n;  //~ ERROR: cannot move out of borrowed content
+   |     ^^ cannot move out of borrowed content
+
+error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
+  --> $DIR/binop-move-semantics.rs:64:6
+   |
+LL |     &mut f
+   |          - mutable borrow occurs here
+LL |     +
+LL |     &f;  //~ ERROR: cannot borrow `f` as immutable because it is also borrowed as mutable
+   |      ^
+   |      |
+   |      immutable borrow occurs here
+   |      mutable borrow ends here
+
+error[E0502]: cannot borrow `f` as mutable because it is also borrowed as immutable
+  --> $DIR/binop-move-semantics.rs:72:10
+   |
+LL |     &f
+   |      - immutable borrow occurs here
+LL |     +
+LL |     &mut f;  //~ ERROR: cannot borrow `f` as mutable because it is also borrowed as immutable
+   |          ^
+   |          |
+   |          mutable borrow occurs here
+   |          immutable borrow ends here
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0382, E0502, E0505, E0507.
+For more information about an error, try `rustc --explain E0382`.

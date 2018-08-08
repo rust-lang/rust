@@ -1,0 +1,14 @@
+error: macro rhs must be delimited
+  --> $DIR/macro-error.rs:12:18
+   |
+LL |     ($a:expr) => a; //~ ERROR macro rhs must be delimited
+   |                  ^
+
+error: non-type macro in type position: cfg
+  --> $DIR/macro-error.rs:18:12
+   |
+LL |     let _: cfg!(foo) = (); //~ ERROR non-type macro in type position
+   |            ^^^
+
+error: aborting due to 2 previous errors
+

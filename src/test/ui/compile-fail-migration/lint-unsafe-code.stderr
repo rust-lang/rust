@@ -1,0 +1,95 @@
+error: declaration of an `unsafe` function
+  --> $DIR/lint-unsafe-code.rs:33:1
+   |
+LL | unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-unsafe-code.rs:13:9
+   |
+LL | #![deny(unsafe_code)]
+   |         ^^^^^^^^^^^
+
+error: declaration of an `unsafe` trait
+  --> $DIR/lint-unsafe-code.rs:34:1
+   |
+LL | unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` trait
+  --> $DIR/lint-unsafe-code.rs:35:1
+   |
+LL | unsafe impl Foo for Bar {} //~ ERROR: implementation of an `unsafe` trait
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: declaration of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:38:5
+   |
+LL |     unsafe fn baz(&self); //~ ERROR: declaration of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:39:5
+   |
+LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:40:5
+   |
+LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:44:5
+   |
+LL |     unsafe fn baz(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:45:5
+   |
+LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:64:5
+   |
+LL |     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:75:5
+   |
+LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:81:5
+   |
+LL |     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:85:5
+   |
+LL |     unsafe fn baz(&self) {} //~ ERROR: implementation of an `unsafe` method
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-unsafe-code.rs:96:5
+   |
+LL |     unsafe {} //~ ERROR: usage of an `unsafe` block
+   |     ^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-unsafe-code.rs:29:9
+   |
+LL |         unsafe {} //~ ERROR: usage of an `unsafe` block
+   |         ^^^^^^^^^
+...
+LL |     unsafe_in_macro!()
+   |     ------------------ in this macro invocation
+
+error: aborting due to 14 previous errors
+

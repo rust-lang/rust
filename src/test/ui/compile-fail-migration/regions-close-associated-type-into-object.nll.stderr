@@ -1,0 +1,60 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-associated-type-into-object.rs:25:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-associated-type-into-object.rs:32:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-associated-type-into-object.rs:38:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-associated-type-into-object.rs:45:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+
+error[E0310]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:25:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'static`...
+
+error[E0310]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:32:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'static`...
+
+error[E0309]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:38:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'a`...
+
+error[E0309]: the associated type `<T as Iter>::Item` may not live long enough
+  --> $DIR/regions-close-associated-type-into-object.rs:45:5
+   |
+LL |     Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'a`...
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

@@ -1,0 +1,14 @@
+error[E0597]: `line` does not live long enough
+  --> $DIR/regions-pattern-typing-issue-19552.rs:15:14
+   |
+LL |     match [&*line] { //~ ERROR `line` does not live long enough
+   |              ^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

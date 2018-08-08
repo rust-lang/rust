@@ -1,0 +1,24 @@
+warning: not reporting region error due to nll
+  --> $DIR/hr-subtype.rs:49:26
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |                            ^^^^^^^^^^^
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | |                             fn(&'y u32)) }
+   | |__________________________________________- in this macro invocation
+
+error: compilation successful
+  --> $DIR/hr-subtype.rs:110:1
+   |
+LL | / fn main() {
+LL | | //[bound_a_vs_bound_a]~^ ERROR compilation successful
+LL | | //[bound_a_vs_bound_b]~^^ ERROR compilation successful
+LL | | //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR compilation successful
+LL | | //[bound_co_a_vs_bound_co_b]~^^^^ ERROR compilation successful
+LL | | //[free_x_vs_free_x]~^^^^^ ERROR compilation successful
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

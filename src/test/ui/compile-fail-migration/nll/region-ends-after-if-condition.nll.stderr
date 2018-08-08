@@ -1,0 +1,39 @@
+error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/region-ends-after-if-condition.rs:29:9
+   |
+LL |     let value = &my_struct.field;
+   |                  --------------- immutable borrow occurs here
+LL |     if value.is_empty() {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/region-ends-after-if-condition.rs:39:9
+   |
+LL |     let value = &my_struct.field;
+   |                  --------------- immutable borrow occurs here
+LL |     if value.is_empty() {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/region-ends-after-if-condition.rs:39:9
+   |
+LL |     let value = &my_struct.field;
+   |                 ---------------- immutable borrow occurs here
+LL |     if value.is_empty() {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+...
+LL |     drop(value);
+   |          ----- borrow later used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

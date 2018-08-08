@@ -1,0 +1,64 @@
+error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:15:19
+   |
+LL |     let _ = match x {   //~ ERROR non-exhaustive
+   |                   ^ pattern `Err(_)` not covered
+
+error[E0004]: non-exhaustive patterns: type &Void is non-empty
+  --> $DIR/uninhabited-matches-feature-gated.rs:20:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/uninhabited-matches-feature-gated.rs:20:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+
+error[E0004]: non-exhaustive patterns: type (Void,) is non-empty
+  --> $DIR/uninhabited-matches-feature-gated.rs:23:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/uninhabited-matches-feature-gated.rs:23:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+
+error[E0004]: non-exhaustive patterns: type [Void; 1] is non-empty
+  --> $DIR/uninhabited-matches-feature-gated.rs:26:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/uninhabited-matches-feature-gated.rs:26:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+
+error[E0004]: non-exhaustive patterns: `&[_]` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:29:19
+   |
+LL |     let _ = match x {   //~ ERROR non-exhaustive
+   |                   ^ pattern `&[_]` not covered
+
+error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:37:19
+   |
+LL |     let _ = match x {   //~ ERROR non-exhaustive
+   |                   ^ pattern `Err(_)` not covered
+
+error[E0005]: refutable pattern in local binding: `Err(_)` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:42:9
+   |
+LL |     let Ok(x) = x;
+   |         ^^^^^ pattern `Err(_)` not covered
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0004, E0005.
+For more information about an error, try `rustc --explain E0004`.

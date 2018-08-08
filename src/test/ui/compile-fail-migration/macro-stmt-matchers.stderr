@@ -1,0 +1,11 @@
+error: compilation successful
+  --> $DIR/macro-stmt-matchers.rs:14:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     macro_rules! m { ($s:stmt;) => { $s } }
+LL | |     m!(vec![].push(0););
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

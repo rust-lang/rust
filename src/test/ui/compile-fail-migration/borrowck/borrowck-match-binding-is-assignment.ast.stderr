@@ -1,0 +1,43 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:27:13
+   |
+LL |         x => {
+   |         - first assignment to `x`
+LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:34:13
+   |
+LL |         E::Foo(x) => {
+   |                - first assignment to `x`
+LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:41:13
+   |
+LL |         S { bar: x } => {
+   |                  - first assignment to `x`
+LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:48:13
+   |
+LL |         (x,) => {
+   |          - first assignment to `x`
+LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:55:13
+   |
+LL |         [x,_,_] => {
+   |          - first assignment to `x`
+LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0384`.

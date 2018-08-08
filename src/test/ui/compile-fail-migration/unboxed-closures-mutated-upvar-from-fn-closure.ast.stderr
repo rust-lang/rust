@@ -1,0 +1,20 @@
+error[E0387]: cannot assign to data in a captured outer variable in an `Fn` closure
+  --> $DIR/unboxed-closures-mutated-upvar-from-fn-closure.rs:24:9
+   |
+LL |         counter += 1;
+   |         ^^^^^^^^^^^^
+   |
+help: consider changing this closure to take self by mutable reference
+  --> $DIR/unboxed-closures-mutated-upvar-from-fn-closure.rs:23:10
+   |
+LL |       call(|| {
+   |  __________^
+LL | |         counter += 1;
+LL | |         //[ast]~^ ERROR cannot assign to data in a captured outer variable in an `Fn` closure
+LL | |         //[mir]~^^ ERROR cannot assign to `counter`
+LL | |     });
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0387`.

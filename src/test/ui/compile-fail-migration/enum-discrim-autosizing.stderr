@@ -1,0 +1,16 @@
+error[E0601]: `main` function not found in crate `enum_discrim_autosizing`
+   |
+   = note: consider adding a `main` function to `$DIR/enum-discrim-autosizing.rs`
+
+error[E0081]: discriminant value `0` already exists
+  --> $DIR/enum-discrim-autosizing.rs:18:12
+   |
+LL |     Au64 = 0,
+   |            - first use of `0`
+LL |     Bu64 = 0x8000_0000_0000_0000 //~ERROR already exists
+   |            ^^^^^^^^^^^^^^^^^^^^^ enum already has `0`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0081, E0601.
+For more information about an error, try `rustc --explain E0081`.

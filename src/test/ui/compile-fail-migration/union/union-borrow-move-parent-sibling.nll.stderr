@@ -1,0 +1,33 @@
+error[E0382]: use of moved value: `u.y`
+  --> $DIR/union-borrow-move-parent-sibling.rs:29:13
+   |
+LL |     let a = u.x.0;
+   |             ----- value moved here
+LL |     let a = u.y; //~ ERROR use of moved value: `u.y`
+   |             ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.y`
+  --> $DIR/union-borrow-move-parent-sibling.rs:41:13
+   |
+LL |     let a = (u.x.0).0;
+   |             --------- value moved here
+LL |     let a = u.y; //~ ERROR use of moved value: `u.y`
+   |             ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.x`
+  --> $DIR/union-borrow-move-parent-sibling.rs:53:13
+   |
+LL |     let a = *u.y;
+   |             ---- value moved here
+LL |     let a = u.x; //~ ERROR use of moved value: `u.x`
+   |             ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

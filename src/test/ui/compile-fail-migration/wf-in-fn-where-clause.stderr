@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
+  --> $DIR/wf-in-fn-where-clause.rs:19:1
+   |
+LL | / fn bar<T,U>() //~ ERROR E0277
+LL | |     where T: MustBeCopy<U>
+LL | | {
+LL | | }
+   | |_^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+   = help: consider adding a `where U: std::marker::Copy` bound
+note: required by `MustBeCopy`
+  --> $DIR/wf-in-fn-where-clause.rs:16:1
+   |
+LL | trait MustBeCopy<T:Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

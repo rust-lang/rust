@@ -1,0 +1,8 @@
+error: trailing attribute after lifetime parameters
+  --> $DIR/attrs-with-no-formal-in-generics-3.rs:18:38
+   |
+LL |     where Q: for <#[rustc_1] 'a, 'b, #[oops]> Fn(RefIntPair<'a,'b>) -> &'b u32
+   |                                      ^^^^^^^
+
+error: aborting due to previous error
+

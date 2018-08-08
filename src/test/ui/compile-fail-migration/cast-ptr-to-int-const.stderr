@@ -1,0 +1,19 @@
+error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
+  --> $DIR/cast-ptr-to-int-const.rs:14:20
+   |
+LL |     const X: u32 = main as u32; //~ ERROR casting pointers to integers in constants is unstable
+   |                    ^^^^^^^^^^^
+   |
+   = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
+
+error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
+  --> $DIR/cast-ptr-to-int-const.rs:16:20
+   |
+LL |     const Z: u32 = &Y as *const u32 as u32; //~ ERROR is unstable
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

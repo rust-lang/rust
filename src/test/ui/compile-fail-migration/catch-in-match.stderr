@@ -1,0 +1,8 @@
+error: expected expression, found reserved keyword `do`
+  --> $DIR/catch-in-match.rs:14:11
+   |
+LL |     match do catch { false } { _ => {} } //~ ERROR expected expression, found reserved keyword `do`
+   |           ^^ expected expression
+
+error: aborting due to previous error
+

@@ -1,0 +1,21 @@
+error[E0603]: module `bar` is private
+  --> $DIR/privacy-in-paths.rs:34:9
+   |
+LL |         ::foo::bar::baz::f(); //~ERROR module `bar` is private
+   |         ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `bar` is private
+  --> $DIR/privacy-in-paths.rs:35:9
+   |
+LL |         ::foo::bar::S::f(); //~ERROR module `bar` is private
+   |         ^^^^^^^^^^^^^^^^
+
+error[E0603]: trait `T` is private
+  --> $DIR/privacy-in-paths.rs:36:9
+   |
+LL |         <() as ::foo::T>::Assoc::f(); //~ERROR trait `T` is private
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

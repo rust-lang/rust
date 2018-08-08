@@ -1,0 +1,11 @@
+error: <inline asm>:1:2: error: invalid instruction mnemonic 'nowayisthisavalidinstruction'
+        nowayisthisavalidinstruction
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  --> $DIR/asm-src-loc-codegen-units.rs:20:9
+   |
+LL |         asm!("nowayisthisavalidinstruction"); //~ ERROR instruction
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,195 @@
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:20:1
+   |
+LL | #[fake_attr] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:21:1
+   |
+LL | #[fake_attr(100)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:21:1
+   |
+LL | #[fake_attr(100)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:23:1
+   |
+LL | #[fake_attr(1, 2, 3)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:23:1
+   |
+LL | #[fake_attr(1, 2, 3)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:25:1
+   |
+LL | #[fake_attr("hello")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:25:1
+   |
+LL | #[fake_attr("hello")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:27:1
+   |
+LL | #[fake_attr(name = "hello")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:28:1
+   |
+LL | #[fake_attr(1, "hi", key = 12, true, false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:28:1
+   |
+LL | #[fake_attr(1, "hi", key = 12, true, false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:30:1
+   |
+LL | #[fake_attr(key = "hello", val = 10)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:30:1
+   |
+LL | #[fake_attr(key = "hello", val = 10)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:32:1
+   |
+LL | #[fake_attr(key("hello"), val(10))] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:32:1
+   |
+LL | #[fake_attr(key("hello"), val(10))] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:34:1
+   |
+LL | #[fake_attr(enabled = true, disabled = false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:34:1
+   |
+LL | #[fake_attr(enabled = true, disabled = false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:36:1
+   |
+LL | #[fake_attr(true)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:36:1
+   |
+LL | #[fake_attr(true)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:38:1
+   |
+LL | #[fake_attr(pi = 3.14159)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:38:1
+   |
+LL | #[fake_attr(pi = 3.14159)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:40:1
+   |
+LL | #[fake_attr(b"hi")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:40:1
+   |
+LL | #[fake_attr(b"hi")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_doc` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/gated-attr-literals.rs:42:1
+   |
+LL | #[fake_doc(r"doc")] //~ ERROR attribute `fake_doc` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: non-string literals in attributes, or string literals in top-level positions, are experimental (see issue #34981)
+  --> $DIR/gated-attr-literals.rs:42:1
+   |
+LL | #[fake_doc(r"doc")] //~ ERROR attribute `fake_doc` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(attr_literals)] to the crate attributes to enable
+
+error: aborting due to 24 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

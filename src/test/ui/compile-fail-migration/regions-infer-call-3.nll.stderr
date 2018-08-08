@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-call-3.rs:18:24
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |                        ^^^^^^^^^^^^
+
+error: borrowed data escapes outside of closure
+  --> $DIR/regions-infer-call-3.rs:18:24
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |                   -    ^^^^^^^^^^^^ `y` escapes the closure body here
+   |                   |
+   |                   `y` is a reference that is only valid in the closure body
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `std::boxed::Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
+  --> $DIR/map-types.rs:27:37
+   |
+LL |     let y: Box<Map<usize, isize>> = Box::new(x);
+   |                                     ^^^^^^^^^^^ the trait `Map<usize, isize>` is not implemented for `std::boxed::Box<dyn Map<isize, isize>>`
+   |
+   = note: required for the cast to the object type `dyn Map<usize, isize>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

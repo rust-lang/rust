@@ -1,0 +1,11 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/associated-const-in-trait.rs:19:6
+   |
+LL | impl Trait {
+   |      ^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot contain associated consts like `N`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

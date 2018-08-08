@@ -1,0 +1,14 @@
+error[E0466]: bad macro import
+  --> $DIR/macro-use-bad-args-1.rs:14:13
+   |
+LL | #[macro_use(foo(bar))]  //~ ERROR bad macro import
+   |             ^^^^^^^^
+
+error[E0601]: `main` function not found in crate `macro_use_bad_args_1`
+   |
+   = note: consider adding a `main` function to `$DIR/macro-use-bad-args-1.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0466, E0601.
+For more information about an error, try `rustc --explain E0466`.

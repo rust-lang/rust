@@ -1,0 +1,14 @@
+error: equality constraints are not yet supported in where clauses (#20041)
+  --> $DIR/where-equality-constraints.rs:11:14
+   |
+LL | fn f() where u8 = u16 {}
+   |              ^^^^^^^^
+
+error: equality constraints are not yet supported in where clauses (#20041)
+  --> $DIR/where-equality-constraints.rs:13:14
+   |
+LL | fn g() where for<'a> &'static (u8,) == u16, {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

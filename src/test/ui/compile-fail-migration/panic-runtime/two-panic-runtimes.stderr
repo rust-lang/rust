@@ -1,0 +1,4 @@
+error: cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
+
+error: aborting due to previous error
+

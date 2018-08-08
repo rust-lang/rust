@@ -1,0 +1,46 @@
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable.rs:43:25
+   |
+LL |     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of unstable
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable.rs:45:27
+   |
+LL |     pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of unstable
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable.rs:49:22
+   |
+LL |     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unstable
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable.rs:51:10
+   |
+LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable.rs:22:9
+   |
+LL |         internal_unstable::unstable(); //~ ERROR use of unstable
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
+   |     ------------------------------------ in this macro invocation
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

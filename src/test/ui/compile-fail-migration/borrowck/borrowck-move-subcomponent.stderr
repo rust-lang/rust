@@ -1,0 +1,11 @@
+error[E0505]: cannot move out of `a.x` because it is borrowed
+  --> $DIR/borrowck-move-subcomponent.rs:25:14
+   |
+LL |   let pb = &a;
+   |             - borrow of `a` occurs here
+LL |   let S { x: ax } = a;  //~ ERROR cannot move out
+   |              ^^ move out of `a.x` occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0505`.

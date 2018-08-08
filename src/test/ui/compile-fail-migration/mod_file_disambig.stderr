@@ -1,0 +1,11 @@
+error[E0584]: file for module `mod_file_disambig_aux` found at both mod_file_disambig_aux.rs and mod_file_disambig_aux/mod.rs
+  --> $DIR/mod_file_disambig.rs:13:5
+   |
+LL | mod mod_file_disambig_aux; //~ ERROR file for module `mod_file_disambig_aux` found at both
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0584`.

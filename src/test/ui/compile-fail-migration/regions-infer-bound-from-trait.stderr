@@ -1,0 +1,31 @@
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-infer-bound-from-trait.rs:43:5
+   |
+LL | fn bar1<'a,A>(x: Inv<'a>, a: A) {
+   |            - help: consider adding an explicit lifetime bound `A: 'a`...
+LL |     check_bound(x, a) //~ ERROR parameter type `A` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+note: ...so that the type `A` will meet its required lifetime bounds
+  --> $DIR/regions-infer-bound-from-trait.rs:43:5
+   |
+LL |     check_bound(x, a) //~ ERROR parameter type `A` may not live long enough
+   |     ^^^^^^^^^^^
+
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-infer-bound-from-trait.rs:47:5
+   |
+LL | fn bar2<'a,'b,A:Is<'b>>(x: Inv<'a>, y: Inv<'b>, a: A) {
+   |               -- help: consider adding an explicit lifetime bound `A: 'a`...
+LL |     check_bound(x, a) //~ ERROR parameter type `A` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+note: ...so that the type `A` will meet its required lifetime bounds
+  --> $DIR/regions-infer-bound-from-trait.rs:47:5
+   |
+LL |     check_bound(x, a) //~ ERROR parameter type `A` may not live long enough
+   |     ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

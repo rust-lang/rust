@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/pptypedef.rs:14:37
+   |
+LL |     let_in(3u32, |i| { assert!(i == 3i32); });
+   |                                     ^^^^ expected u32, found i32
+
+error[E0308]: mismatched types
+  --> $DIR/pptypedef.rs:18:37
+   |
+LL |     let_in(3i32, |i| { assert!(i == 3u32); });
+   |                                     ^^^^ expected i32, found u32
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

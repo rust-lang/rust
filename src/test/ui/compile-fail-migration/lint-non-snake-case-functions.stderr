@@ -1,0 +1,62 @@
+error: method `Foo_Method` should have a snake case name such as `foo_method`
+  --> $DIR/lint-non-snake-case-functions.rs:17:5
+   |
+LL |     fn Foo_Method() {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-non-snake-case-functions.rs:11:9
+   |
+LL | #![deny(non_snake_case)]
+   |         ^^^^^^^^^^^^^^
+
+error: method `foo__method` should have a snake case name such as `foo_method`
+  --> $DIR/lint-non-snake-case-functions.rs:21:5
+   |
+LL |     fn foo__method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: method `xyZ` should have a snake case name such as `xy_z`
+  --> $DIR/lint-non-snake-case-functions.rs:24:5
+   |
+LL |     pub fn xyZ(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: method `render_HTML` should have a snake case name such as `render_html`
+  --> $DIR/lint-non-snake-case-functions.rs:27:5
+   |
+LL |     fn render_HTML() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: trait method `ABC` should have a snake case name such as `abc`
+  --> $DIR/lint-non-snake-case-functions.rs:32:5
+   |
+LL |     fn ABC();
+   |     ^^^^^^^^^
+
+error: trait method `a_b_C` should have a snake case name such as `a_b_c`
+  --> $DIR/lint-non-snake-case-functions.rs:35:5
+   |
+LL |     fn a_b_C(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: trait method `something__else` should have a snake case name such as `something_else`
+  --> $DIR/lint-non-snake-case-functions.rs:38:5
+   |
+LL |     fn something__else(&mut self);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: function `Cookie` should have a snake case name such as `cookie`
+  --> $DIR/lint-non-snake-case-functions.rs:48:1
+   |
+LL | fn Cookie() {}
+   | ^^^^^^^^^^^^^^
+
+error: function `bi_S_Cuit` should have a snake case name such as `bi_s_cuit`
+  --> $DIR/lint-non-snake-case-functions.rs:51:1
+   |
+LL | pub fn bi_S_Cuit() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

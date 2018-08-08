@@ -1,0 +1,9 @@
+error[E0069]: `return;` in a function whose return type is not `()`
+  --> $DIR/return-unit-from-diverging.rs:15:5
+   |
+LL |     return; //~ ERROR in a function whose return type is not
+   |     ^^^^^^ return type is not ()
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0069`.

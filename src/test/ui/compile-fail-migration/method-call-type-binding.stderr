@@ -1,0 +1,9 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/method-call-type-binding.rs:12:15
+   |
+LL |     0.clone::<T = u8>(); //~ ERROR associated type bindings are not allowed here
+   |               ^^^^^^ associated type not allowed here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0229`.

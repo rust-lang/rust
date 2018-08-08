@@ -1,0 +1,19 @@
+error[E0658]: use of unstable library feature 'unstable_test_feature' (see issue #1)
+  --> $DIR/stability-attribute-issue.rs:20:5
+   |
+LL |     unstable();
+   |     ^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature': message (see issue #2)
+  --> $DIR/stability-attribute-issue.rs:22:5
+   |
+LL |     unstable_msg();
+   |     ^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,30 @@
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:22:9
+   |
+LL |         S {f:_s} => {}
+   |         ^^^^^--^
+   |         |    |
+   |         |    hint: to prevent move, use `ref _s` or `ref mut _s`
+   |         cannot move out of here
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:28:9
+   |
+LL |     let S {f:_s} = S {f:"foo".to_string()};
+   |         ^^^^^--^
+   |         |    |
+   |         |    hint: to prevent move, use `ref _s` or `ref mut _s`
+   |         cannot move out of here
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:33:19
+   |
+LL | fn move_in_fn_arg(S {f:_s}: S) {
+   |                   ^^^^^--^
+   |                   |    |
+   |                   |    hint: to prevent move, use `ref _s` or `ref mut _s`
+   |                   cannot move out of here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0509`.

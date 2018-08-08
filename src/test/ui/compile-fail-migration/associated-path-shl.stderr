@@ -1,0 +1,43 @@
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:14:14
+   |
+LL |     let _: <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |              ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:15:15
+   |
+LL |     let _ = <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |               ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:16:11
+   |
+LL |     let <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |           ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:17:17
+   |
+LL |     let 0 ..= <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |                 ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:19:7
+   |
+LL |     <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |       ^ not found in this scope
+
+error[E0029]: only char and numeric types are allowed in range patterns
+  --> $DIR/associated-path-shl.rs:17:15
+   |
+LL |     let 0 ..= <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+   |               ^^^^^^^^^^^ ranges require char or numeric types
+   |
+   = note: start type: {integer}
+   = note: end type: [type error]
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0029, E0412.
+For more information about an error, try `rustc --explain E0029`.

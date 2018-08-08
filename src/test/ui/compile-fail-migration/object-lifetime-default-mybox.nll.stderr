@@ -1,0 +1,33 @@
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-mybox.rs:37:5
+   |
+LL |     a //~ ERROR lifetime mismatch
+   |     ^
+
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-mybox.rs:41:11
+   |
+LL |     load0(ss) //~ ERROR mismatched types
+   |           ^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/object-lifetime-default-mybox.rs:37:5
+   |
+LL | fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
+   |          -- -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+...
+LL |     a //~ ERROR lifetime mismatch
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+
+error: borrowed data escapes outside of function
+  --> $DIR/object-lifetime-default-mybox.rs:41:5
+   |
+LL | fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
+   |              -- `ss` is a reference that is only valid in the function body
+LL |     load0(ss) //~ ERROR mismatched types
+   |     ^^^^^^^^^ `ss` escapes the function body here
+
+error: aborting due to 2 previous errors
+

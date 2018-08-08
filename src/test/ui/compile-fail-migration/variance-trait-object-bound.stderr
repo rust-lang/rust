@@ -1,0 +1,11 @@
+error[E0208]: [-]
+  --> $DIR/variance-trait-object-bound.rs:24:1
+   |
+LL | / struct TOption<'a> { //~ ERROR [-]
+LL | |     v: Option<Box<T + 'a>>,
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0208`.

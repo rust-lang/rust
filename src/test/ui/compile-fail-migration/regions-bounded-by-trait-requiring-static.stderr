@@ -1,0 +1,51 @@
+error[E0477]: the type `&'a isize` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:32:5
+   |
+LL |     assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0477]: the type `&'a str` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:36:5
+   |
+LL |     assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0477]: the type `&'a [isize]` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:40:5
+   |
+LL |     assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0477]: the type `std::boxed::Box<&'a isize>` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:54:5
+   |
+LL |     assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0477]: the type `*const &'a isize` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:65:5
+   |
+LL |     assert_send::<*const &'a isize>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0477]: the type `*mut &'a isize` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:69:5
+   |
+LL |     assert_send::<*mut &'a isize>(); //~ ERROR does not fulfill the required lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0477`.

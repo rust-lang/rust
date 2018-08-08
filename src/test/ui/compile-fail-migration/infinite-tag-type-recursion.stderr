@@ -1,0 +1,13 @@
+error[E0072]: recursive type `mlist` has infinite size
+  --> $DIR/infinite-tag-type-recursion.rs:11:1
+   |
+LL | enum mlist { cons(isize, mlist), nil, }
+   | ^^^^^^^^^^               ----- recursive without indirection
+   | |
+   | recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `mlist` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

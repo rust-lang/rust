@@ -1,0 +1,12 @@
+error[E0505]: cannot move out of `*a` because it is borrowed
+  --> $DIR/borrowck-move-from-subpath-of-borrowed-path.rs:20:9
+   |
+LL |     let b = &a;
+   |              - borrow of `a` occurs here
+LL | 
+LL |     let z = *a; //~ ERROR: cannot move out of `*a` because it is borrowed
+   |         ^ move out of `*a` occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0505`.

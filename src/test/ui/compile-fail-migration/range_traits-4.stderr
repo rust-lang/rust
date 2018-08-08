@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/range_traits-4.rs:19:1
+   |
+LL | fn main() {} //~ ERROR success
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/object-lifetime-default-from-rptr-box-error.rs:25:12
+   |
+LL |     ss.t = t; //~ ERROR mismatched types
+   |            ^
+
+error: borrowed data escapes outside of function
+  --> $DIR/object-lifetime-default-from-rptr-box-error.rs:25:5
+   |
+LL | fn c<'a>(t: &'a Box<Test+'a>, mut ss: SomeStruct<'a>) {
+   |          - `t` is a reference that is only valid in the function body
+LL |     ss.t = t; //~ ERROR mismatched types
+   |     ^^^^^^^^ `t` escapes the function body here
+
+error: aborting due to previous error
+

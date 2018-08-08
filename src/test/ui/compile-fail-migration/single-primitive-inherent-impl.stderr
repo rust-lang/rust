@@ -1,0 +1,19 @@
+error[E0390]: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+  --> $DIR/single-primitive-inherent-impl.rs:21:1
+   |
+LL | / impl str {
+LL | | //~^ error: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+LL | | }
+   | |_^
+   |
+help: consider using a trait to implement these methods
+  --> $DIR/single-primitive-inherent-impl.rs:21:1
+   |
+LL | / impl str {
+LL | | //~^ error: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0390`.

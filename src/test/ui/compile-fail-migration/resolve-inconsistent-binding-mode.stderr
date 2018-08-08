@@ -1,0 +1,53 @@
+error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
+  --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
+   |
+LL |       opts::a(ref i) | opts::b(i) => {}
+   |                   -            ^ bound in different ways
+   |                   |
+   |                   first binding
+
+error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
+  --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
+   |
+LL |       opts::a(ref i) | opts::b(i) => {}
+   |                   -            ^ bound in different ways
+   |                   |
+   |                   first binding
+
+error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
+  --> $DIR/resolve-inconsistent-binding-mode.rs:35:40
+   |
+LL |       opts::a(ref mut i) | opts::b(ref i) => {}
+   |                       - first binding  ^ bound in different ways
+
+error[E0308]: mismatched types
+  --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
+   |
+LL |       opts::a(ref i) | opts::b(i) => {}
+   |                                ^ expected &isize, found isize
+   |
+   = note: expected type `&isize`
+              found type `isize`
+
+error[E0308]: mismatched types
+  --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
+   |
+LL |       opts::a(ref i) | opts::b(i) => {}
+   |                                ^ expected &isize, found isize
+   |
+   = note: expected type `&isize`
+              found type `isize`
+
+error[E0308]: mismatched types
+  --> $DIR/resolve-inconsistent-binding-mode.rs:35:36
+   |
+LL |       opts::a(ref mut i) | opts::b(ref i) => {}
+   |                                    ^^^^^ types differ in mutability
+   |
+   = note: expected type `&mut isize`
+              found type `&isize`
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0308, E0409.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,12 @@
+error[E0204]: the trait `Copy` may not be implemented for this type
+  --> $DIR/union-copy.rs:24:6
+   |
+LL |     a: String
+   |     --------- this field does not implement `Copy`
+...
+LL | impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for this type
+   |      ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0204`.

@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
+  --> $DIR/wf-struct-field.rs:22:5
+   |
+LL |     data: IsCopy<A> //~ ERROR E0277
+   |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
+   |
+   = help: consider adding a `where A: std::marker::Copy` bound
+note: required by `IsCopy`
+  --> $DIR/wf-struct-field.rs:17:1
+   |
+LL | struct IsCopy<T:Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

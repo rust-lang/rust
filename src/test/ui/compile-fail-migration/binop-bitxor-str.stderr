@@ -1,0 +1,11 @@
+error[E0369]: binary operation `^` cannot be applied to type `std::string::String`
+  --> $DIR/binop-bitxor-str.rs:13:21
+   |
+LL | fn main() { let x = "a".to_string() ^ "b".to_string(); }
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an implementation of `std::ops::BitXor` might be missing for `std::string::String`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

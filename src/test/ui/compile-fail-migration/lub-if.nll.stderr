@@ -1,0 +1,30 @@
+warning: not reporting region error due to nll
+  --> $DIR/lub-if.rs:38:9
+   |
+LL |         s  //~ ERROR E0312
+   |         ^
+
+warning: not reporting region error due to nll
+  --> $DIR/lub-if.rs:45:9
+   |
+LL |         s  //~ ERROR E0312
+   |         ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/lub-if.rs:34:8
+   |
+LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+LL |     if maybestr.is_none() {
+   |        ^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/lub-if.rs:43:8
+   |
+LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+LL |     if maybestr.is_some() {
+   |        ^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

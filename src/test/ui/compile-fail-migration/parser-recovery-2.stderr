@@ -1,0 +1,33 @@
+error: incorrect close delimiter: `)`
+  --> $DIR/parser-recovery-2.rs:18:5
+   |
+LL |     ) //~ ERROR incorrect close delimiter: `)`
+   |     ^
+   |
+note: unclosed delimiter
+  --> $DIR/parser-recovery-2.rs:16:14
+   |
+LL |     fn bar() {
+   |              ^
+
+error: unexpected token: `;`
+  --> $DIR/parser-recovery-2.rs:22:15
+   |
+LL |     let x = y.;  //~ ERROR unexpected token
+   |               ^
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/parser-recovery-2.rs:17:17
+   |
+LL |         let x = foo(); //~ ERROR cannot find function `foo` in this scope
+   |                 ^^^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/parser-recovery-2.rs:22:13
+   |
+LL |     let x = y.;  //~ ERROR unexpected token
+   |             ^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
