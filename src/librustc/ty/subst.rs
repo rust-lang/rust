@@ -11,6 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
+use infer::canonical::Canonical;
 use ty::{self, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -178,6 +179,8 @@ impl<'tcx> Decodable for Kind<'tcx> {
 
 /// A substitution mapping generic parameters to new values.
 pub type Substs<'tcx> = List<Kind<'tcx>>;
+
+pub type CanonicalSubsts<'gcx> = Canonical<'gcx, &'gcx Substs<'gcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a Substs that maps each generic parameter to itself.
