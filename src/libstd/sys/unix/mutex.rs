@@ -27,8 +27,8 @@ impl Mutex {
     pub const fn new() -> Mutex {
         // Might be moved to a different address, so it is better to avoid
         // initialization of potentially opaque OS data before it landed.
-        // Be very careful using this newly constructed `Mutex`, it should
-        // be initialized by calling `init()` first!
+        // Be very careful using this newly constructed `Mutex`, reentrant
+        // locking is undefined behavior until `init` is called!
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
