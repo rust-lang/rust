@@ -42,22 +42,16 @@ use std::fmt;
 use transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
-pub const MUT_INTERIOR_BITS: u8 = 1 << 0;
-pub const NEEDS_DROP_BITS: u8 = 1 << 1;
-pub const NOT_CONST_BITS: u8 = 1 << 2;
+pub enum QualifBits {
+    MutInterior,
+    NeedsDrop,
+    NotConst,
+}
 
 fn qualif_bits((mut_interior, needs_drop, not_const): (bool, bool, bool)) -> u8 {
-    let mut bits = 0;
-    if mut_interior {
-        bits |= MUT_INTERIOR_BITS;
-    }
-    if needs_drop {
-        bits |= NEEDS_DROP_BITS;
-    }
-    if not_const {
-        bits |= NOT_CONST_BITS;
-    }
-    bits
+    (mut_interior as u8) << (QualifBits::MutInterior as u32) |
+    (needs_drop as u8) << (QualifBits::NeedsDrop as u32) |
+    (not_const as u8) << (QualifBits::NotConst as u32)
 }
 
 /// What kind of item we are in.
@@ -297,9 +291,15 @@ impl<'a, 'tcx> ConstChecker<'a, 'tcx, 'tcx> {
     /// out empty, and its value after the closure returns will
     /// be combined with the value before the call to `nest`.
     fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
+        let original_mut_interior = self.mut_interior_checker.mut_interior;
+        let original_needs_drop = self.drop_checker.needs_drop;
         let original = self.not_const;
+        self.mut_interior_checker.mut_interior = false;
+        self.drop_checker.needs_drop = false;
         self.not_const = false;
         f(self);
+        self.mut_interior_checker.mut_interior |= original_mut_interior;
+        self.drop_checker.needs_drop |= original_needs_drop;
         self.not_const |= original;
     }
 
@@ -486,7 +486,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MutInteriorChecker<'a, 'tcx, 'tcx> {
                    _: Location) {
         let kind = self.mir.local_kind(local);
         match kind {
-            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {}
             LocalKind::Var |
             LocalKind::Arg |
             LocalKind::Temp => {
@@ -539,7 +538,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutInteriorChecker<'a, 'tcx, 'tcx> {
                         self.add_type(ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
-                        self.mut_interior |= (bits & MUT_INTERIOR_BITS) != 0;
+                        self.mut_interior |= (bits >> QualifBits::MutInterior as u32) & 1 != 0;
 
                         // Just in case the type is more specific than
                         // the definition, e.g. impl associated const
@@ -647,7 +646,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DropChecker<'a, 'tcx, 'tcx> {
                    _: Location) {
         let kind = self.mir.local_kind(local);
         match kind {
-            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {}
             LocalKind::Var |
             LocalKind::Arg |
             LocalKind::Temp => {
@@ -706,7 +704,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DropChecker<'a, 'tcx, 'tcx> {
                         self.add_type(ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
-                        self.needs_drop |= (bits & NEEDS_DROP_BITS) != 0;
+                        self.needs_drop |= (bits >> QualifBits::NeedsDrop as u32) & 1 != 0;
 
                         // Just in case the type is more specific than
                         // the definition, e.g. impl associated const
@@ -985,7 +983,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstChecker<'a, 'tcx, 'tcx> {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_none() {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
-                        self.not_const |= (bits & NOT_CONST_BITS) != 0;
+                        self.not_const |= (bits >> QualifBits::NotConst as u32) & 1 != 0;
                     }
                 }
             }
@@ -1500,12 +1498,12 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (qualif_bits((false, false, true)), Lrc::new(IdxSetBuf::new_empty(0)));
+        return (qualif_bits((false, false, true)) as u8, Lrc::new(IdxSetBuf::new_empty(0)));
     }
 
     let mut checker = ConstChecker::new(tcx, def_id, mir, Mode::Const);
     let (qualif, promoted_temps) = checker.qualify_const();
-    (qualif_bits(qualif), promoted_temps)
+    (qualif_bits(qualif) as u8, promoted_temps)
 }
 
 pub struct QualifyAndPromoteConstants;
