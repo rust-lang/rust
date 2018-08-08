@@ -16,3 +16,6 @@ parking_lot = "0.6.0"
 
 [dev-dependencies]
 testutils = { path = "./tests/testutils" }
+
+[profile.release]
+debug = true

@@ -1,14 +1,14 @@
 use {
     parser_impl::Sink,
-    yellow::{GreenNode, GreenNodeBuilder, SyntaxError, SyntaxNode, SyntaxRoot},
+    yellow::{GreenNode, SyntaxError, SyntaxNode, SyntaxRoot},
     SyntaxKind, TextRange, TextUnit,
 };
 
 pub(crate) struct GreenBuilder<'a> {
     text: &'a str,
-    stack: Vec<GreenNodeBuilder>,
+    parents: Vec<(SyntaxKind, usize)>,
+    children: Vec<GreenNode>,
     pos: TextUnit,
-    root: Option<GreenNode>,
     errors: Vec<SyntaxError>,
 }
 
@@ -18,9 +18,9 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
     fn new(text: &'a str) -> Self {
         GreenBuilder {
             text,
-            stack: Vec::new(),
+            parents: Vec::new(),
+            children: Vec::new(),
             pos: 0.into(),
-            root: None,
             errors: Vec::new(),
         }
     }
@@ -29,23 +29,24 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
         let range = TextRange::offset_len(self.pos, len);
         self.pos += len;
         let text = &self.text[range];
-        let leaf = GreenNodeBuilder::new_leaf(kind, text);
-        let parent = self.stack.last_mut().unwrap();
-        parent.push_child(leaf)
+        self.children.push(
+            GreenNode::new_leaf(kind, text)
+        );
     }
 
     fn start_internal(&mut self, kind: SyntaxKind) {
-        self.stack.push(GreenNodeBuilder::new_internal(kind))
+        let len = self.children.len();
+        self.parents.push((kind, len));
     }
 
     fn finish_internal(&mut self) {
-        let builder = self.stack.pop().unwrap();
-        let node = builder.build();
-        if let Some(parent) = self.stack.last_mut() {
-            parent.push_child(node);
-        } else {
-            self.root = Some(node);
-        }
+        let (kind, first_child) = self.parents.pop().unwrap();
+        let children = self.children
+            .drain(first_child..)
+            .collect();
+        self.children.push(
+            GreenNode::new_branch(kind, children)
+        );
     }
 
     fn error(&mut self, message: String) {
@@ -55,8 +56,10 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
         })
     }
 
-    fn finish(self) -> SyntaxNode {
-        let root = SyntaxRoot::new(self.root.unwrap(), self.errors);
+    fn finish(mut self) -> SyntaxNode {
+        assert_eq!(self.children.len(), 1);
+        let root = self.children.pop().unwrap();
+        let root = SyntaxRoot::new(root, self.errors);
         SyntaxNode::new_owned(root)
     }
 }

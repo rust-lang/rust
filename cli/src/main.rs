@@ -47,6 +47,7 @@ fn main() -> Result<()> {
                 println!("{}", file.syntax_tree());
             }
             eprintln!("parsing: {:?}", elapsed);
+            ::std::mem::forget(file);
         }
         ("symbols", _) => {
             let file = file()?;

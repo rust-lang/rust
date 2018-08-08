@@ -12,6 +12,14 @@ pub(crate) enum GreenNode {
 }
 
 impl GreenNode {
+    pub(crate) fn new_leaf(kind: SyntaxKind, text: &str) -> GreenNode {
+        GreenNode::Leaf(GreenLeaf::new(kind, text))
+    }
+
+    pub(crate) fn new_branch(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenNode {
+        GreenNode::Branch(Arc::new(GreenBranch::new(kind, children)))
+    }
+
     pub fn kind(&self) -> SyntaxKind {
         match self {
             GreenNode::Leaf(l) => l.kind(),
@@ -43,33 +51,6 @@ impl GreenNode {
                 GreenNode::Branch(b) => b.children().iter().for_each(|child| go(child, buff)),
             }
         }
-    }
-}
-
-pub(crate) struct GreenNodeBuilder {
-    kind: SyntaxKind,
-    children: Vec<GreenNode>,
-}
-
-impl GreenNodeBuilder {
-    pub(crate) fn new_leaf(kind: SyntaxKind, text: &str) -> GreenNode {
-        GreenNode::Leaf(GreenLeaf::new(kind, text))
-    }
-
-    pub(crate) fn new_internal(kind: SyntaxKind) -> GreenNodeBuilder {
-        GreenNodeBuilder {
-            kind,
-            children: Vec::new(),
-        }
-    }
-
-    pub(crate) fn push_child(&mut self, node: GreenNode) {
-        self.children.push(node)
-    }
-
-    pub(crate) fn build(self) -> GreenNode {
-        let branch = GreenBranch::new(self.kind, self.children);
-        GreenNode::Branch(Arc::new(branch))
     }
 }
 
