@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use {
+    SyntaxKind, TextUnit,
     smol_str::SmolStr,
-    SyntaxKind::{self, *},
-    TextUnit,
 };
 
 #[derive(Clone, Debug)]
@@ -91,59 +90,23 @@ impl GreenBranch {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum GreenLeaf {
-    Whitespace {
-        newlines: u8,
-        spaces: u8,
-    },
-    Token {
-        kind: SyntaxKind,
-        text: Option<SmolStr>,
-    },
+pub(crate) struct GreenLeaf {
+    kind: SyntaxKind,
+    text: SmolStr,
 }
 
 impl GreenLeaf {
     fn new(kind: SyntaxKind, text: &str) -> Self {
-        if kind == WHITESPACE {
-            let newlines = text.bytes().take_while(|&b| b == b'\n').count();
-            let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
-            if newlines + spaces == text.len() && newlines <= N_NEWLINES && spaces <= N_SPACES {
-                return GreenLeaf::Whitespace {
-                    newlines: newlines as u8,
-                    spaces: spaces as u8,
-                };
-            }
-        }
-        let text = match SyntaxKind::static_text(kind) {
-            Some(t) => {
-                debug_assert_eq!(t, text);
-                None
-            }
-            None => Some(SmolStr::new(text)),
-        };
-        GreenLeaf::Token { kind, text }
+        let text = SmolStr::new(text);
+        GreenLeaf { kind, text }
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {
-        match self {
-            GreenLeaf::Whitespace { .. } => WHITESPACE,
-            GreenLeaf::Token { kind, .. } => *kind,
-        }
+        self.kind
     }
 
     pub(crate) fn text(&self) -> &str {
-        match self {
-            &GreenLeaf::Whitespace { newlines, spaces } => {
-                let newlines = newlines as usize;
-                let spaces = spaces as usize;
-                assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
-                &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
-            }
-            GreenLeaf::Token { kind, text } => match text {
-                None => kind.static_text().unwrap(),
-                Some(t) => t.as_str(),
-            },
-        }
+        self.text.as_str()
     }
 
     pub(crate) fn text_len(&self) -> TextUnit {
@@ -151,7 +114,13 @@ impl GreenLeaf {
     }
 }
 
-const N_NEWLINES: usize = 16;
-const N_SPACES: usize = 64;
-const WS: &str =
-    "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                ";
+
+#[test]
+fn test_sizes() {
+    use std::mem::size_of;
+
+    println!("GreenNode = {}", size_of::<GreenNode>());
+    println!("GreenLeaf = {}", size_of::<GreenLeaf>());
+    println!("SyntaxKind = {}", size_of::<SyntaxKind>());
+    println!("SmolStr = {}", size_of::<SmolStr>());
+}

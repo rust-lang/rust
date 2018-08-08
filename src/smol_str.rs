@@ -1,6 +1,7 @@
 use std::{sync::Arc};
 
 const INLINE_CAP: usize = 22;
+const WS_TAG: u8 = (INLINE_CAP + 1) as u8;
 
 #[derive(Clone, Debug)]
 pub(crate) enum SmolStr {
@@ -17,18 +18,34 @@ impl SmolStr {
         if len <= INLINE_CAP {
             let mut buf = [0; INLINE_CAP];
             buf[..len].copy_from_slice(text.as_bytes());
-            SmolStr::Inline { len: len as u8, buf }
-        } else {
-            SmolStr::Heap(
-                text.to_string().into_boxed_str().into()
-            )
+            return SmolStr::Inline { len: len as u8, buf };
         }
+
+        let newlines = text.bytes().take_while(|&b| b == b'\n').count();
+        let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
+        if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
+            let mut buf = [0; INLINE_CAP];
+            buf[0] = newlines as u8;
+            buf[1] = spaces as u8;
+            return SmolStr::Inline { len: WS_TAG, buf };
+        }
+
+        SmolStr::Heap(
+            text.to_string().into_boxed_str().into()
+        )
     }
 
     pub fn as_str(&self) -> &str {
         match self {
             SmolStr::Heap(data) => &*data,
             SmolStr::Inline { len, buf } => {
+                if *len == WS_TAG {
+                    let newlines = buf[0] as usize;
+                    let spaces = buf[1] as usize;
+                    assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
+                    return &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
+                }
+
                 let len = *len as usize;
                 let buf = &buf[..len];
                 unsafe { ::std::str::from_utf8_unchecked(buf) }
@@ -36,6 +53,12 @@ impl SmolStr {
         }
     }
 }
+
+const N_NEWLINES: usize = 32;
+const N_SPACES: usize = 128;
+const WS: &str =
+    "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                                                ";
+
 
 #[cfg(test)]
 mod tests {
