@@ -330,7 +330,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 
             let nil_ty = fx.tcx.mk_nil();
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
-            let ret = return_place.unwrap();
+            let ret = return_place.expect("return place");
             match intrinsic {
                 "abort" => {
                     fx.bcx.ins().trap(TrapCode::User(!0 - 1));

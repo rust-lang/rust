@@ -354,6 +354,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let res = match un_op {
                         UnOp::Not => fx.bcx.ins().bnot(val),
                         UnOp::Neg => match ty.sty {
+                            TypeVariants::TyInt(_) => {
+                                let zero = fx.bcx.ins().iconst(types::I64, 0);
+                                fx.bcx.ins().isub(zero, val)
+                            },
                             TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
                             _ => unimplemented!("un op Neg for {:?}", ty),
                         },

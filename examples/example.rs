@@ -137,3 +137,8 @@ unsafe fn transmute(c: char) -> u32 {
 unsafe fn call_uninit() -> u8 {
     intrinsics::uninit()
 }
+
+// TODO: enable when fat pointers are supported
+/*unsafe fn deref_str_ptr(s: *const str) -> &'static str {
+    &*s
+}*/
