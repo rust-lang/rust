@@ -2140,6 +2140,7 @@ version = "0.0.0"
 dependencies = [
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
  "syntax 0.0.0",
