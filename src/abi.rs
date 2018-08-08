@@ -329,6 +329,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let intrinsic = &intrinsic[..];
 
             let nil_ty = fx.tcx.mk_nil();
+            let u64_layout = fx.layout_of(fx.tcx.types.u64);
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
             let ret = return_place.expect("return place");
             match intrinsic {
@@ -371,7 +372,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 "type_id" => {
                     assert_eq!(args.len(), 0);
                     let type_id = fx.tcx.type_id_hash(substs.type_at(0));
-                    let type_id = CValue::const_val(fx, usize_layout.ty, type_id as i64);
+                    let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
                     ret.write_cvalue(fx, type_id);
                 }
                 "min_align_of" => {
@@ -518,10 +519,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
                     ret.write_cvalue(fx, res);
                 }
-                _ => fx
-                    .tcx
-                    .sess
-                    .fatal(&format!("unsupported intrinsic {}", intrinsic)),
+                _ => unimpl!("unsupported intrinsic {}", intrinsic),
             }
             if let Some((_, dest)) = *destination {
                 let ret_ebb = fx.get_ebb(dest);

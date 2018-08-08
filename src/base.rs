@@ -47,13 +47,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     sig,
                 );
 
-                let comments = match trans_fn(cx, &mut f, inst) {
-                    Ok(comments) => comments,
-                    Err(err) => {
-                        tcx.sess.err(&err);
-                        return;
-                    }
-                };
+                let comments = trans_fn(cx, &mut f, inst);
 
                 let mut writer = crate::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
@@ -104,7 +98,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(
     cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
     f: &mut Function,
     instance: Instance<'tcx>,
-) -> Result<HashMap<Inst, String>, String> {
+) -> HashMap<Inst, String> {
     let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -145,7 +139,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(
 
         fx.bcx.ins().nop();
         for stmt in &bb_data.statements {
-            trans_stmt(fx, ebb, stmt)?;
+            trans_stmt(fx, ebb, stmt);
         }
 
         let mut terminator_head = "\n".to_string();
@@ -234,14 +228,14 @@ pub fn trans_fn<'a, 'tcx: 'a>(
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
 
-    Ok(fx.comments.clone())
+    fx.comments.clone()
 }
 
 fn trans_stmt<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     cur_ebb: Ebb,
     stmt: &Statement<'tcx>,
-) -> Result<(), String> {
+) {
     fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
@@ -255,7 +249,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
             let place = trans_place(fx, place);
             let layout = place.layout();
             if layout.for_variant(&*fx, *variant_index).abi == layout::Abi::Uninhabited {
-                return Ok(());
+                return;
             }
             match layout.variants {
                 layout::Variants::Single { index } => {
@@ -402,14 +396,14 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        _ => return Err(format!("rval misc {:?} {:?}", operand, to_ty)),
+                        _ => unimpl!("rval misc {:?} {:?}", operand, to_ty),
                     }
                 }
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => {
                     unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty)
                 }
                 Rvalue::Cast(CastKind::Unsize, operand, ty) => {
-                    return Err(format!("rval unsize {:?} {:?}", operand, ty))
+                    unimpl!("rval unsize {:?} {:?}", operand, ty);
                 }
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place).to_cvalue(fx);
@@ -424,7 +418,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         to.write_cvalue(fx, operand);
                     }
                 }
-                Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
+                Rvalue::Len(lval) => unimpl!("rval len {:?}", lval),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                     assert!(
@@ -436,7 +430,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(_, _) => return Err(format!("shouldn't exist at trans {:?}", rval)),
+                Rvalue::Aggregate(_, _) => unimpl!("shouldn't exist at trans {:?}", rval),
             }
         }
         StatementKind::StorageLive(_)
@@ -448,8 +442,6 @@ fn trans_stmt<'a, 'tcx: 'a>(
         | StatementKind::UserAssertTy(_, _) => {}
         StatementKind::InlineAsm { .. } => fx.tcx.sess.fatal("Inline assembly is not supported"),
     }
-
-    Ok(())
 }
 
 pub fn trans_get_discriminant<'a, 'tcx: 'a>(
@@ -823,15 +815,21 @@ pub fn trans_place<'a, 'tcx: 'a>(
         Place::Local(local) => fx.get_local_place(*local),
         Place::Promoted(promoted) => crate::constant::trans_promoted(fx, promoted.0),
         Place::Static(static_) => {
-            unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty)
+            unimpl!("static place {:?} ty {:?}", static_.def_id, static_.ty);
         }
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
             match projection.elem {
-                ProjectionElem::Deref => CPlace::Addr(
-                    base.to_cvalue(fx).load_value(fx),
-                    fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx)),
-                ),
+                ProjectionElem::Deref => {
+                    let layout = fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx));
+                    if layout.is_unsized() {
+                        unimpl!("Unsized places are not yet implemented");
+                    }
+                    CPlace::Addr(
+                        base.to_cvalue(fx).load_value(fx),
+                        layout,
+                    )
+                },
                 ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
                 ProjectionElem::Index(local) => {
                     let index = fx.get_local_place(local).to_cvalue(fx).load_value(fx);

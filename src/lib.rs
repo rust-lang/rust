@@ -40,6 +40,14 @@ use syntax::symbol::Symbol;
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
 
+struct NonFatal(pub String);
+
+macro_rules! unimpl {
+    ($($tt:tt)*) => {
+        panic!(::NonFatal(format!($($tt)*)));
+    };
+}
+
 mod abi;
 mod base;
 mod common;
@@ -240,7 +248,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
             for mono_item in
                 collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
             {
-                base::trans_mono_item(&mut cx, &mut context, mono_item)
+                let cx = &mut cx;
+                let context = &mut context;
+                let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
+                    base::trans_mono_item(cx, context, mono_item);
+                }));
+                if let Err(err) = res {
+                    match err.downcast::<NonFatal>() {
+                        Ok(non_fatal) => tcx.sess.err(&non_fatal.0),
+                        Err(err) => ::std::panic::resume_unwind(err),
+                    }
+                }
             }
         }
 
