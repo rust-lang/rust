@@ -31,7 +31,7 @@ use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
-use mir::{self, Mir, interpret};
+use mir::{self, Mir, interpret, PlaceElem};
 use mir::interpret::Allocation;
 use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
@@ -140,6 +140,7 @@ pub struct CtxtInterners<'tcx> {
     canonical_var_infos: InternedSet<'tcx, Slice<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, Slice<ExistentialPredicate<'tcx>>>,
+    place_elems: InternedSet<'tcx, Slice<PlaceElem<'tcx>>>,
     predicates: InternedSet<'tcx, Slice<Predicate<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
     clauses: InternedSet<'tcx, Slice<Clause<'tcx>>>,
@@ -156,6 +157,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             region: Default::default(),
             existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
+            place_elems: Default::default(),
             predicates: Default::default(),
             const_: Default::default(),
             clauses: Default::default(),
@@ -1720,6 +1722,27 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<PlaceElem<'a>> {
+    type Lifted = &'tcx Slice<PlaceElem<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+        -> Option<&'tcx Slice<PlaceElem<'tcx>>> {
+        if self.is_empty() {
+            return Some(Slice::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe {
+                mem::transmute(*self)
+            });
+        }
+
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
     type Lifted = &'tcx Slice<CanonicalVarInfo>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -2160,6 +2183,13 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<[PlaceElem<'lcx>]>
+    for Interned<'tcx, Slice<PlaceElem<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [PlaceElem<'lcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx: 'lcx, 'lcx> Borrow<[Predicate<'lcx>]>
     for Interned<'tcx, Slice<Predicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Predicate<'lcx>] {
@@ -2284,6 +2314,7 @@ macro_rules! slice_interners {
 slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate),
     predicates: _intern_predicates(Predicate),
+    place_elems: _intern_place_elems(PlaceElem),
     type_list: _intern_type_list(Ty),
     substs: _intern_substs(Kind),
     clauses: _intern_clauses(Clause),
@@ -2573,6 +2604,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn intern_place_elems(self, place_elems: &[PlaceElem<'tcx>])
+        -> &'tcx Slice<PlaceElem<'tcx>> {
+            if place_elems.is_empty() {
+                Slice::empty()
+            } else {
+                self._intern_place_elems(place_elems)
+            }
+        }
+
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx Slice<Ty<'tcx>> {
         if ts.len() == 0 {
             Slice::empty()
@@ -2633,6 +2673,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      &'tcx Slice<ExistentialPredicate<'tcx>>>>(self, iter: I)
                                      -> I::Output {
         iter.intern_with(|xs| self.intern_existential_predicates(xs))
+    }
+
+    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>], &'tcx Slice<PlaceElem<'tcx>>>>(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
     pub fn mk_predicates<I: InternAs<[Predicate<'tcx>],
