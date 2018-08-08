@@ -32,7 +32,7 @@ pub enum PlaceTy<'tcx> {
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy::Ty { ty: ty }
+        PlaceTy::Ty { ty }
     }
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
@@ -142,17 +142,69 @@ impl<'tcx> Place<'tcx> {
         mir: &'cx Mir<'tcx>,
         tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
     ) -> Option<Field> {
-        match self.projection() {
-            Some(ProjectionElem::Field(field, _ty)) => {
-                let base_ty = self.ty(mir, *tcx).to_ty(*tcx);
+        let base_place;
+        let mut place = self;
+        let mut by_ref = false;
 
-                if  base_ty.is_closure() || base_ty.is_generator() {
-                    Some(*field)
-                } else {
-                    None
-                }
-            },
+        base_place = place.base_place(tcx);
+
+        if let Some(ProjectionElem::Deref) = place.projection() {
+            place = &base_place;
+            by_ref = true;
+        }
+        if let Some(ProjectionElem::Field(field, _ty)) = place.projection() {
+            let base_ty = place.base_place(tcx).ty(mir, *tcx).to_ty(*tcx);
+
+            if base_ty.is_closure() || base_ty.is_generator()
+                && (!(by_ref && !mir.upvar_decls[field.index()].by_ref)) {
+                Some(*field)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    // for Place:
+    //     Base.[a, b, c]
+    //                 ^-- projection
+    // => (Base.[a, b], c])
+    //     ^^^^^^^^^^   ^-- projection
+    //     |-- base_place
+    pub fn split_projection<'cx, 'gcx>(
+        &self,
+        tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> Option<(Place<'tcx>, &PlaceElem<'tcx>)> {
+        // split place_elems
+        // Base.[a, b, c]
+        //       ^^^^  ^-- projection(projection lives in the last elem)
+        //       |-- place_elems
+        match self.elems.split_last() {
+            Some((projection, place_elems)) => Some((
+                Place {
+                    base: self.clone().base,
+                    elems: tcx.intern_place_elems(place_elems),
+                },
+                projection,
+            )),
             _ => None,
+        }
+    }
+
+    // for projection returns the base place;
+    //     Base.[a, b, c] => Base.[a, b]
+    //                 ^-- projection
+    // if no projection returns the place itself,
+    //     Base.[] => Base.[]
+    //          ^^-- no projection
+    pub fn base_place<'cx, 'gcx>(
+        &self,
+        tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> Place<'tcx> {
+        match self.split_projection(tcx) {
+            Some((place, _)) => place,
+            _ => self.clone(),
         }
     }
 }

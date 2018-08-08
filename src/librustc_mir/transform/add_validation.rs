@@ -30,54 +30,51 @@ fn place_context<'a, 'tcx, D>(
 ) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
-    use rustc::mir::Place::*;
-
-    match *place {
-        Local { .. } => (None, hir::MutMutable),
-        Promoted(_) |
-        Static(_) => (None, hir::MutImmutable),
-        Projection(ref proj) => {
-            match proj.elem {
-                ProjectionElem::Deref => {
-                    // Computing the inside the recursion makes this quadratic.
-                    // We don't expect deep paths though.
-                    let ty = proj.base.ty(local_decls, tcx).to_ty(tcx);
-                    // A Deref projection may restrict the context, this depends on the type
-                    // being deref'd.
-                    let context = match ty.sty {
-                        ty::TyRef(re, _, mutbl) => {
-                            let re = match re {
-                                &RegionKind::ReScope(ce) => Some(ce),
-                                &RegionKind::ReErased =>
-                                    bug!("AddValidation pass must be run before erasing lifetimes"),
-                                _ => None
-                            };
-                            (re, mutbl)
-                        }
-                        ty::TyRawPtr(_) =>
-                            // There is no guarantee behind even a mutable raw pointer,
-                            // no write locks are acquired there, so we also don't want to
-                            // release any.
-                            (None, hir::MutImmutable),
-                        ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
-                        _ => bug!("Deref on a non-pointer type {:?}", ty),
-                    };
-                    // "Intersect" this restriction with proj.base.
-                    if let (Some(_), hir::MutImmutable) = context {
-                        // This is already as restricted as it gets, no need to even recurse
-                        context
-                    } else {
-                        let base_context = place_context(&proj.base, local_decls, tcx);
-                        // The region of the outermost Deref is always most restrictive.
-                        let re = context.0.or(base_context.0);
-                        let mutbl = context.1.and(base_context.1);
+    use rustc::mir::PlaceBase::*;
+    match place.elems.last() {
+        Some(proj) => match proj {
+            ProjectionElem::Deref => {
+                // Computing the inside the recursion makes this quadratic.
+                // We don't expect deep paths though.
+                let ty = proj.base.ty(local_decls, tcx).to_ty(tcx);
+                // A Deref projection may restrict the context, this depends on the type
+                // being deref'd.
+                let context = match ty.sty {
+                    ty::TyRef(re, _, mutbl) => {
+                        let re = match re {
+                            &RegionKind::ReScope(ce) => Some(ce),
+                            &RegionKind::ReErased =>
+                                bug!("AddValidation pass must be run before erasing lifetimes"),
+                            _ => None
+                        };
                         (re, mutbl)
                     }
-
+                    ty::TyRawPtr(_) =>
+                    // There is no guarantee behind even a mutable raw pointer,
+                    // no write locks are acquired there, so we also don't want to
+                    // release any.
+                        (None, hir::MutImmutable),
+                    ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
+                    _ => bug!("Deref on a non-pointer type {:?}", ty),
+                };
+                // "Intersect" this restriction with proj.base.
+                if let (Some(_), hir::MutImmutable) = context {
+                    // This is already as restricted as it gets, no need to even recurse
+                    context
+                } else {
+                    let base_context = place_context(&place.base_place(&tcx), local_decls, tcx);
+                    // The region of the outermost Deref is always most restrictive.
+                    let re = context.0.or(base_context.0);
+                    let mutbl = context.1.and(base_context.1);
+                    (re, mutbl)
                 }
-                _ => place_context(&proj.base, local_decls, tcx),
             }
-        }
+            _ => place_context(&place.base_place(&tcx), local_decls, tcx),
+        },
+        _ => match place.base {
+            Local { .. } => (None, hir::MutMutable),
+            Promoted(_) | Static(_) => (None, hir::MutImmutable),
+        },
     }
 }
 
