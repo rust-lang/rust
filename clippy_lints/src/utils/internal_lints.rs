@@ -5,7 +5,7 @@ use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::utils::{match_qpath, paths, span_lint};
 use syntax::symbol::LocalInternedString;
-use syntax::ast::{Crate as AstCrate, ItemKind, Name, NodeId};
+use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::codemap::Span;
 use std::collections::{HashMap, HashSet};
 
@@ -198,7 +198,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn visit_path(&mut self, path: &'tcx Path, _: NodeId) {
+    fn visit_path(&mut self, path: &'tcx Path, _: HirId) {
         if path.segments.len() == 1 {
             self.output.insert(path.segments[0].ident.name);
         }
