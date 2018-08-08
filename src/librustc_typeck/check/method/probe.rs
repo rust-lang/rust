@@ -758,8 +758,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                         self.span, infer::FnCall, &fty);
 
                     if let Some(self_ty) = self_ty {
-                        if let Err(_) = self.at(&ObligationCause::dummy(), self.param_env)
-                            .sup(fty.inputs()[0], self_ty)
+                        if self.at(&ObligationCause::dummy(), self.param_env)
+                               .sup(fty.inputs()[0], self_ty)
+                               .is_err()
                         {
                             return false
                         }

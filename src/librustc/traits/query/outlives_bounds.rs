@@ -137,7 +137,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // variables. Process these constraints.
         let mut fulfill_cx = FulfillmentContext::new();
         fulfill_cx.register_predicate_obligations(self, result.obligations);
-        if let Err(_) = fulfill_cx.select_all_or_error(self) {
+        if fulfill_cx.select_all_or_error(self).is_err() {
             self.tcx.sess.delay_span_bug(
                 span,
                 "implied_outlives_bounds failed to solve obligations from instantiation"

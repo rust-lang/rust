@@ -39,7 +39,7 @@ pub struct WriteOutput<'b, W: Write + 'b> {
 
 impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
     fn dump(&mut self, result: &Analysis) {
-        if let Err(_) = write!(self.output, "{}", as_json(&result)) {
+        if write!(self.output, "{}", as_json(&result)).is_err() {
             error!("Error writing output");
         }
     }
