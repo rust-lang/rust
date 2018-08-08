@@ -1,3 +1,5 @@
+#![feature(tool_attributes)]
+
 /// test the multiline-trim function
 extern crate clippy_lints;
 
@@ -13,7 +15,7 @@ fn test_single_line() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_block() {
     assert_eq!("\
 if x {
@@ -38,7 +40,7 @@ if x {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_empty_line() {
     assert_eq!("\
 if x {

@@ -11,6 +11,7 @@
 #![allow(stable_features)]
 #![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
+#![feature(tool_attributes)]
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 
@@ -181,7 +182,7 @@ pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &m
     store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     let conf = match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {

@@ -1,3 +1,5 @@
+#![feature(tool_attributes)]
+
 // Tests for the various helper functions used by the needless_continue
 // lint that don't belong in utils.
 
@@ -5,7 +7,7 @@ extern crate clippy_lints;
 use clippy_lints::needless_continue::{erode_block, erode_from_back, erode_from_front};
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_erode_from_back() {
     let input = "\
 {
@@ -23,7 +25,7 @@ fn test_erode_from_back() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_erode_from_back_no_brace() {
     let input = "\
 let x = 5;
@@ -35,7 +37,7 @@ let y = something();
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_erode_from_front() {
     let input = "
         {
@@ -54,7 +56,7 @@ fn test_erode_from_front() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_erode_from_front_no_brace() {
     let input = "
             something();
@@ -70,7 +72,7 @@ fn test_erode_from_front_no_brace() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_erode_block() {
 
     let input = "
