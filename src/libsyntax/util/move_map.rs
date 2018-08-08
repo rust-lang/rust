@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use std::ptr;
-
-use util::small_vector::SmallVector;
+use OneVector;
 
 pub trait MoveMap<T>: Sized {
     fn move_map<F>(self, mut f: F) -> Self where F: FnMut(T) -> T {
@@ -78,7 +77,7 @@ impl<T> MoveMap<T> for ::ptr::P<[T]> {
     }
 }
 
-impl<T> MoveMap<T> for SmallVector<T> {
+impl<T> MoveMap<T> for OneVector<T> {
     fn move_flat_map<F, I>(mut self, mut f: F) -> Self
         where F: FnMut(T) -> I,
               I: IntoIterator<Item=T>
