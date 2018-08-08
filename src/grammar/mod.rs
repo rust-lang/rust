@@ -55,34 +55,43 @@ impl BlockLike {
 }
 
 fn visibility(p: &mut Parser) {
-    if p.at(PUB_KW) {
-        let vis = p.start();
-        p.bump();
-        if p.at(L_PAREN) {
-            match p.nth(1) {
-                // test crate_visibility
-                // pub(crate) struct S;
-                // pub(self) struct S;
-                // pub(self) struct S;
-                // pub(self) struct S;
-                CRATE_KW | SELF_KW | SUPER_KW => {
-                    p.bump();
-                    p.bump();
-                    p.expect(R_PAREN);
+    match p.current() {
+        PUB_KW => {
+            let m = p.start();
+            p.bump();
+            if p.at(L_PAREN) {
+                match p.nth(1) {
+                    // test crate_visibility
+                    // pub(crate) struct S;
+                    // pub(self) struct S;
+                    // pub(self) struct S;
+                    // pub(self) struct S;
+                    CRATE_KW | SELF_KW | SUPER_KW => {
+                        p.bump();
+                        p.bump();
+                        p.expect(R_PAREN);
+                    }
+                    IN_KW => {
+                        p.bump();
+                        p.bump();
+                        paths::use_path(p);
+                        p.expect(R_PAREN);
+                    }
+                    _ => (),
                 }
-                IN_KW => {
-                    p.bump();
-                    p.bump();
-                    paths::use_path(p);
-                    p.expect(R_PAREN);
-                }
-                _ => (),
             }
+            m.complete(p, VISIBILITY);
         }
-        vis.complete(p, VISIBILITY);
+        // test crate_keyword_vis
+        // crate fn main() { }
+        CRATE_KW => {
+            let m = p.start();
+            p.bump();
+            m.complete(p, VISIBILITY);
+        }
+        _ => (),
     }
 }
-
 fn alias(p: &mut Parser) -> bool {
     if p.at(AS_KW) {
         let alias = p.start();
