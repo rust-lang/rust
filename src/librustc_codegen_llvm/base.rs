@@ -809,8 +809,28 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         rx,
         codegen_units.len());
 
-    // Codegen an allocator shim, if any
-    let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
+    // Codegen an allocator shim, if necessary.
+    //
+    // If the crate doesn't have an `allocator_kind` set then there's definitely
+    // no shim to generate. Otherwise we also check our dependency graph for all
+    // our output crate types. If anything there looks like its a `Dynamic`
+    // linkage, then it's already got an allocator shim and we'll be using that
+    // one instead. If nothing exists then it's our job to generate the
+    // allocator!
+    let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
+        .iter()
+        .any(|(_, list)| {
+            use rustc::middle::dependency_format::Linkage;
+            list.iter().any(|linkage| {
+                match linkage {
+                    Linkage::Dynamic => true,
+                    _ => false,
+                }
+            })
+        });
+    let allocator_module = if any_dynamic_crate {
+        None
+    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
         unsafe {
             let llmod_id = "allocator";
             let modules = ModuleLlvm::new(tcx.sess, llmod_id);
