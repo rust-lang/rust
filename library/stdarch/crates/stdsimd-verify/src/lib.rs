@@ -83,8 +83,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                     required_const: &[#(#required_const),*],
                 }
             }
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     let ret = quote! { #input: &[Function] = &[#(#functions),*]; };
     // println!("{}", ret);
@@ -93,28 +92,30 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 
 fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
     match *t {
-        syn::Type::Path(ref p) => match extract_path_ident(&p.path).to_string().as_ref() {
-            "__m128" => quote! { &M128 },
-            "__m128d" => quote! { &M128D },
-            "__m128i" => quote! { &M128I },
-            "__m256" => quote! { &M256 },
-            "__m256d" => quote! { &M256D },
-            "__m256i" => quote! { &M256I },
-            "__m64" => quote! { &M64 },
-            "bool" => quote! { &BOOL },
-            "f32" => quote! { &F32 },
-            "f64" => quote! { &F64 },
-            "i16" => quote! { &I16 },
-            "i32" => quote! { &I32 },
-            "i64" => quote! { &I64 },
-            "i8" => quote! { &I8 },
-            "u16" => quote! { &U16 },
-            "u32" => quote! { &U32 },
-            "u64" => quote! { &U64 },
-            "u8" => quote! { &U8 },
-            "CpuidResult" => quote! { &CPUID },
-            s => panic!("unspported type: {}", s),
-        },
+        syn::Type::Path(ref p) => {
+            match extract_path_ident(&p.path).to_string().as_ref() {
+                "__m128" => quote! { &M128 },
+                "__m128d" => quote! { &M128D },
+                "__m128i" => quote! { &M128I },
+                "__m256" => quote! { &M256 },
+                "__m256d" => quote! { &M256D },
+                "__m256i" => quote! { &M256I },
+                "__m64" => quote! { &M64 },
+                "bool" => quote! { &BOOL },
+                "f32" => quote! { &F32 },
+                "f64" => quote! { &F64 },
+                "i16" => quote! { &I16 },
+                "i32" => quote! { &I32 },
+                "i64" => quote! { &I64 },
+                "i8" => quote! { &I8 },
+                "u16" => quote! { &U16 },
+                "u32" => quote! { &U32 },
+                "u64" => quote! { &U64 },
+                "u8" => quote! { &U8 },
+                "CpuidResult" => quote! { &CPUID },
+                s => panic!("unspported type: {}", s),
+            }
+        }
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })
         | syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
             let tokens = to_type(&elem);
@@ -183,8 +184,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 }
             }
             _ => None,
-        })
-        .filter_map(|nested| match nested {
+        }).filter_map(|nested| match nested {
             syn::NestedMeta::Meta(syn::Meta::List(i)) => {
                 if i.ident == "assert_instr" {
                     i.nested.into_iter().next()
@@ -193,12 +193,10 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 }
             }
             _ => None,
-        })
-        .filter_map(|nested| match nested {
+        }).filter_map(|nested| match nested {
             syn::NestedMeta::Meta(syn::Meta::Word(i)) => Some(i),
             _ => None,
-        })
-        .collect()
+        }).collect()
 }
 
 fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
@@ -214,13 +212,11 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
                 }
             }
             _ => None,
-        })
-        .flat_map(|list| list)
+        }).flat_map(|list| list)
         .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(m) => Some(m),
             syn::NestedMeta::Literal(_) => None,
-        })
-        .filter_map(|m| match m {
+        }).filter_map(|m| match m {
             syn::Meta::NameValue(i) => {
                 if i.ident == "enable" {
                     Some(i.lit)
@@ -229,8 +225,7 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
                 }
             }
             _ => None,
-        })
-        .next()
+        }).next()
 }
 
 fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {

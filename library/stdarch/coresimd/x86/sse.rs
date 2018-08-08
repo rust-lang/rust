@@ -1348,7 +1348,8 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 // On i586 (no SSE2) it just generates plain MOV instructions.
 #[cfg_attr(
     all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-    assert_instr(movhpd)
+    // assert_instr(movhpd)
+    assert_instr(movhps) // LLVM7 prefers single-precision instructions
 )]
 pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
     #[cfg(target_arch = "x86")]
