@@ -865,6 +865,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         is just used for rustc unit tests \
                                         and will never be stable",
                                        cfg_fn!(rustc_attrs))),
+    ("rustc_dump_user_substs", Whitelisted, Gated(Stability::Unstable,
+                                       "rustc_attrs",
+                                       "the `#[rustc_error]` attribute \
+                                        is just used for rustc unit tests \
+                                        and will never be stable",
+                                       cfg_fn!(rustc_attrs))),
     ("rustc_if_this_changed", Whitelisted, Gated(Stability::Unstable,
                                                  "rustc_attrs",
                                                  "the `#[rustc_if_this_changed]` attribute \
