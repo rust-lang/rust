@@ -11,6 +11,7 @@
 use core::num::NonZeroU32;
 use core::option::Option;
 use core::option::Option::{Some, None};
+use core::ptr::NonNull;
 use std::mem::size_of;
 
 #[test]
@@ -120,4 +121,14 @@ fn test_match_nonzero_const_pattern() {
         atom!("foo") => {}
         _ => panic!("Expected the const item as a pattern to match.")
     }
+}
+
+#[test]
+fn test_nonzero_const_fn_get() {
+    const nonzero_n: NonZeroU32 = NonZeroU32::new_unchecked(1);
+    const n: u32 = nonzero_n.get();
+
+    let mut n: u32 = n;
+    const nonnull_p: NonNull<u32> = NonNull::new_unchecked(&n);
+    const p: *mut u32 = nonnull_p.get();
 }
