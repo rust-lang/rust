@@ -10,7 +10,7 @@
 
 //! Check license of third-party deps by inspecting src/vendor
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashSet, HashMap};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -242,6 +242,8 @@ pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
         }
         *bad = true;
     }
+
+    check_crate_duplicate(&resolve, bad);
 }
 
 fn check_license(path: &Path) -> bool {
@@ -343,4 +345,31 @@ fn check_crate_whitelist<'a, 'b>(
     }
 
     unapproved
+}
+
+fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
+    const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
+        // These two crates take quite a long time to build, let's not let two
+        // versions of them accidentally sneak into our dependency graph to
+        // ensure we keep our CI times under control
+        // "cargo", // FIXME(#53005)
+        // "rustc-ap-syntax", // FIXME(#53006)
+    ];
+    let mut name_to_id = HashMap::new();
+    for node in resolve.nodes.iter() {
+        name_to_id.entry(node.id.split_whitespace().next().unwrap())
+            .or_insert(Vec::new())
+            .push(&node.id);
+    }
+
+    for name in FORBIDDEN_TO_HAVE_DUPLICATES {
+        if name_to_id[name].len() <= 1 {
+            continue
+        }
+        println!("crate `{}` is duplicated in `Cargo.lock`", name);
+        for id in name_to_id[name].iter() {
+            println!("  * {}", id);
+        }
+        *bad = true;
+    }
 }
