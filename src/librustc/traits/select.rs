@@ -226,6 +226,7 @@ pub struct SelectionCache<'tcx> {
 /// parameter environment.
 #[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
+    /// If has_nested is false, there are no *further* obligations
     BuiltinCandidate { has_nested: bool },
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(DefId),
@@ -2039,12 +2040,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         match other.candidate {
+            // Prefer BuiltinCandidate { has_nested: false } to anything else.
+            // This is a fix for #53123 and prevents winnowing from accidentally extending the
+            // lifetime of a variable.
+            BuiltinCandidate { has_nested: false } => true,
             ParamCandidate(ref cand) => match victim.candidate {
                 AutoImplCandidate(..) => {
                     bug!(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
                 }
+                // Prefer BuiltinCandidate { has_nested: false } to anything else.
+                // This is a fix for #53123 and prevents winnowing from accidentally extending the
+                // lifetime of a variable.
+                BuiltinCandidate { has_nested: false } => false,
                 ImplCandidate(..) |
                 ClosureCandidate |
                 GeneratorCandidate |
@@ -2072,6 +2081,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
                 }
+                // Prefer BuiltinCandidate { has_nested: false } to anything else.
+                // This is a fix for #53123 and prevents winnowing from accidentally extending the
+                // lifetime of a variable.
+                BuiltinCandidate { has_nested: false } => false,
                 ImplCandidate(..) |
                 ClosureCandidate |
                 GeneratorCandidate |
@@ -2115,7 +2128,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             FnPointerCandidate |
             BuiltinObjectCandidate |
             BuiltinUnsizeCandidate |
-            BuiltinCandidate { .. } => {
+            BuiltinCandidate { has_nested: true } => {
                 match victim.candidate {
                     ParamCandidate(ref cand) => {
                         // Prefer these to a global where-clause bound
