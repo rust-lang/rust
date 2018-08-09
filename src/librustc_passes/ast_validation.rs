@@ -336,24 +336,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness);
                         self.check_trait_fn_not_const(sig.header.constness);
-                        self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
-                            if mut_ident {
-                                if block.is_none() {
+                        if block.is_none() {
+                            self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                                if mut_ident {
                                     self.session.buffer_lint(
                                         lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
                                         trait_item.id, span,
                                         "patterns aren't allowed in trait methods");
+                                } else {
+                                    struct_span_err!(self.session, span, E0642,
+                                        "patterns aren't allowed in trait methods").emit();
                                 }
-                            } else {
-                                let mut err = struct_span_err!(self.session, span, E0642,
-                                    "patterns aren't allowed in trait methods");
-                                let suggestion = "give this argument a name or use an \
-                                                  underscore to ignore it instead of using a \
-                                                  tuple pattern";
-                                err.span_suggestion(span, suggestion, "_".to_owned());
-                                err.emit();
-                            }
-                        });
+                            });
+                        }
                     }
                 }
             }
