@@ -212,5 +212,16 @@ Grammar(
         "PARAM",
         "SELF_PARAM",
         "ARG_LIST",
+    ],
+    ast: [
+        (
+            kind: "FILE"
+        ),
+        (
+            kind: "FN_ITEM"
+        ),
+        (
+            kind: "NAME"
+        ),
     ]
 )

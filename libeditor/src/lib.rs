@@ -3,7 +3,7 @@ extern crate libsyntax2;
 mod extend_selection;
 
 use libsyntax2::{
-    SyntaxNodeRef,
+    SyntaxNodeRef, AstNode,
     algo::walk,
     SyntaxKind::*,
 };

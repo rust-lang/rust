@@ -23,6 +23,8 @@ const INLINE_TESTS_DIR: &str = "tests/data/parser/inline";
 const GRAMMAR: &str = "./src/grammar.ron";
 const SYNTAX_KINDS: &str = "./src/syntax_kinds/generated.rs";
 const SYNTAX_KINDS_TEMPLATE: &str = "./src/syntax_kinds/generated.rs.tera";
+const AST: &str = "./src/ast/generated.rs";
+const AST_TEMPLATE: &str = "./src/ast/generated.rs.tera";
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -47,10 +49,16 @@ fn main() -> Result<()> {
 
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
-        "gen-kinds" => update(Path::new(SYNTAX_KINDS), &get_kinds()?, verify),
-        "gen-tests" => gen_tests(verify),
+        "gen-kinds" => {
+            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE)?, verify)?;
+            update(Path::new(AST), &render_template(AST_TEMPLATE)?, verify)?;
+        },
+        "gen-tests" => {
+            gen_tests(verify)?
+        },
         _ => unreachable!(),
     }
+    Ok(())
 }
 
 fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
@@ -68,13 +76,30 @@ fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     Ok(())
 }
 
-fn get_kinds() -> Result<String> {
-    let grammar = grammar()?;
-    let template = fs::read_to_string(SYNTAX_KINDS_TEMPLATE)?;
+fn render_template(template: &str) -> Result<String> {
+    let grammar: ron::value::Value = {
+        let text = fs::read_to_string(GRAMMAR)?;
+        ron::de::from_str(&text)?
+    };
+    let template = fs::read_to_string(template)?;
     let mut tera = tera::Tera::default();
     tera.add_raw_template("grammar", &template)
         .map_err(|e| format_err!("template error: {:?}", e))?;
     tera.register_global_function("concat", Box::new(concat));
+    tera.register_filter("camel", |arg, _| {
+        Ok(arg.as_str().unwrap()
+            .split("_")
+            .flat_map(|word| {
+                word.chars()
+                    .next().unwrap()
+                    .to_uppercase()
+                    .chain(
+                        word.chars().skip(1).flat_map(|c| c.to_lowercase())
+                    )
+            })
+            .collect::<String>()
+            .into())
+    });
     let ret = tera
         .render("grammar", &grammar)
         .map_err(|e| format_err!("template error: {:?}", e))?;
@@ -92,12 +117,6 @@ fn get_kinds() -> Result<String> {
         }
         Ok(tera::Value::Array(elements))
     }
-}
-
-fn grammar() -> Result<ron::value::Value> {
-    let text = fs::read_to_string(GRAMMAR)?;
-    let ret = ron::de::from_str(&text)?;
-    Ok(ret)
 }
 
 fn gen_tests(verify: bool) -> Result<()> {

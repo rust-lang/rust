@@ -1,57 +1,41 @@
+mod generated;
+
 use std::sync::Arc;
 use {
     SyntaxNode, SyntaxRoot, TreeRoot,
     SyntaxKind::*,
 };
+pub use self::generated::*;
 
-#[derive(Debug)]
-pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
-    syntax: SyntaxNode<R>,
+pub trait AstNode<R: TreeRoot>: Sized {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self>;
+    fn syntax(&self) -> &SyntaxNode<R>;
 }
-
-#[derive(Debug)]
-pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
-    syntax: SyntaxNode<R>,
-}
-
-#[derive(Debug)]
-pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {
-    syntax: SyntaxNode<R>,
-}
-
 
 impl File<Arc<SyntaxRoot>> {
     pub fn parse(text: &str) -> Self {
-        File {
-            syntax: ::parse(text),
-        }
+        File::cast(::parse(text)).unwrap()
     }
 }
 
 impl<R: TreeRoot> File<R> {
-    pub fn functions<'a>(&'a self) -> impl Iterator<Item = Function<R>> + 'a {
-        self.syntax
+    pub fn functions<'a>(&'a self) -> impl Iterator<Item = FnItem<R>> + 'a {
+        self.syntax()
             .children()
-            .filter(|node| node.kind() == FN_ITEM)
-            .map(|node| Function { syntax: node })
+            .filter_map(FnItem::cast)
     }
 }
 
-impl<R: TreeRoot> Function<R> {
-    pub fn syntax(&self) -> SyntaxNode<R> {
-        self.syntax.clone()
-    }
-
+impl<R: TreeRoot> FnItem<R> {
     pub fn name(&self) -> Option<Name<R>> {
-        self.syntax
+        self.syntax()
             .children()
-            .filter(|node| node.kind() == NAME)
-            .map(|node| Name { syntax: node })
+            .filter_map(Name::cast)
             .next()
     }
 
     pub fn has_atom_attr(&self, atom: &str) -> bool {
-        self.syntax
+        self.syntax()
             .children()
             .filter(|node| node.kind() == ATTR)
             .any(|attr| {
@@ -81,14 +65,6 @@ impl<R: TreeRoot> Function<R> {
 
 impl<R: TreeRoot> Name<R> {
     pub fn text(&self) -> String {
-        self.syntax.text()
-    }
-}
-
-
-
-impl<R: TreeRoot> File<R> {
-    pub fn syntax(&self) -> SyntaxNode<R> {
-        self.syntax.clone()
+        self.syntax().text()
     }
 }
