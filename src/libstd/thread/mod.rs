@@ -940,6 +940,8 @@ pub struct ThreadId(u64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
+        // We never call `GUARD.init()`, so it is UB to attempt to
+        // acquire this mutex reentrantly!
         static GUARD: mutex::Mutex = mutex::Mutex::new();
         static mut COUNTER: u64 = 0;
 

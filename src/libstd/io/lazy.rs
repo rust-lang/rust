@@ -15,6 +15,7 @@ use sys_common;
 use sys_common::mutex::Mutex;
 
 pub struct Lazy<T> {
+    // We never call `lock.init()`, so it is UB to attempt to acquire this mutex reentrantly!
     lock: Mutex,
     ptr: Cell<*mut Arc<T>>,
     init: fn() -> Arc<T>,
@@ -26,7 +27,9 @@ const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T: Send + Sync + 'static> Lazy<T> {
-    pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
+    /// Safety: `init` must not call `get` on the variable that is being
+    /// initialized.
+    pub const unsafe fn new(init: fn() -> Arc<T>) -> Lazy<T> {
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),
@@ -48,6 +51,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         }
     }
 
+    // Must only be called with `lock` held
     unsafe fn init(&'static self) -> Arc<T> {
         // If we successfully register an at exit handler, then we cache the
         // `Arc` allocation in our own internal box (it will get deallocated by
@@ -60,6 +64,9 @@ impl<T: Send + Sync + 'static> Lazy<T> {
             };
             drop(Box::from_raw(ptr))
         });
+        // This could reentrantly call `init` again, which is a problem
+        // because our `lock` allows reentrancy!
+        // That's why `new` is unsafe and requires the caller to ensure no reentrancy happens.
         let ret = (self.init)();
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));
