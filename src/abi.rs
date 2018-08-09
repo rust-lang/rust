@@ -237,7 +237,11 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         let layout = fx.layout_of(ty);
 
         if let ArgKind::Normal(ebb_param) = arg_kind {
-            if !ssa_analyzed.get(&local).unwrap().contains(crate::analyze::Flags::NOT_SSA) {
+            if !ssa_analyzed
+                .get(&local)
+                .unwrap()
+                .contains(crate::analyze::Flags::NOT_SSA)
+            {
                 let var = Variable(local);
                 fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
                 fx.bcx.def_var(var, ebb_param);
@@ -280,7 +284,11 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
 
-        let place = if ssa_analyzed.get(&local).unwrap().contains(crate::analyze::Flags::NOT_SSA) {
+        let place = if ssa_analyzed
+            .get(&local)
+            .unwrap()
+            .contains(crate::analyze::Flags::NOT_SSA)
+        {
             let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,
                 size: layout.size.bytes() as u32,

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use rustc::mir::{StatementKind::*};
+use rustc::mir::StatementKind::*;
 
 bitflags! {
     pub struct Flags: u8 {
@@ -32,7 +32,10 @@ pub fn analyze<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx>) -> HashMap<Local, Flags>
         }
 
         match &bb.terminator().kind {
-            TerminatorKind::Call { destination: Some((place, _)), .. } => analyze_non_ssa_place(&mut flag_map, place),
+            TerminatorKind::Call {
+                destination: Some((place, _)),
+                ..
+            } => analyze_non_ssa_place(&mut flag_map, place),
             _ => {}
         }
     }
