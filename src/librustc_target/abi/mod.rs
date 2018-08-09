@@ -93,17 +93,17 @@ impl TargetDataLayout {
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
         for spec in target.data_layout.split('-') {
-            match &spec.split(':').collect::<Vec<_>>()[..] {
-                &["e"] => dl.endian = Endian::Little,
-                &["E"] => dl.endian = Endian::Big,
-                &["a", ref a..] => dl.aggregate_align = align(a, "a")?,
-                &["f32", ref a..] => dl.f32_align = align(a, "f32")?,
-                &["f64", ref a..] => dl.f64_align = align(a, "f64")?,
-                &[p @ "p", s, ref a..] | &[p @ "p0", s, ref a..] => {
+            match spec.split(':').collect::<Vec<_>>()[..] {
+                ["e"] => dl.endian = Endian::Little,
+                ["E"] => dl.endian = Endian::Big,
+                ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
+                ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
+                ["f64", ref a..] => dl.f64_align = align(a, "f64")?,
+                [p @ "p", s, ref a..] | [p @ "p0", s, ref a..] => {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                &[s, ref a..] if s.starts_with("i") => {
+                [s, ref a..] if s.starts_with("i") => {
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -127,7 +127,7 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                &[s, ref a..] if s.starts_with("v") => {
+                [s, ref a..] if s.starts_with("v") => {
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
@@ -429,8 +429,8 @@ pub enum Integer {
 }
 
 impl Integer {
-    pub fn size(&self) -> Size {
-        match *self {
+    pub fn size(self) -> Size {
+        match self {
             I8 => Size::from_bytes(1),
             I16 => Size::from_bytes(2),
             I32 => Size::from_bytes(4),
@@ -439,10 +439,10 @@ impl Integer {
         }
     }
 
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: C) -> Align {
         let dl = cx.data_layout();
 
-        match *self {
+        match self {
             I8 => dl.i8_align,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
@@ -522,15 +522,15 @@ impl fmt::Display for FloatTy {
 }
 
 impl FloatTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
+    pub fn ty_to_string(self) -> &'static str {
+        match self {
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
         }
     }
 
-    pub fn bit_width(&self) -> usize {
-        match *self {
+    pub fn bit_width(self) -> usize {
+        match self {
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
         }

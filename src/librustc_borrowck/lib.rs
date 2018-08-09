@@ -14,6 +14,7 @@
 
 #![allow(non_camel_case_types)]
 
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(quote)]
 
 #![recursion_limit="256"]

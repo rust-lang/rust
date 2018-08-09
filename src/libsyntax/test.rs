@@ -631,7 +631,7 @@ fn path_name_i(idents: &[Ident]) -> String {
     let mut idents_iter = idents.iter().peekable();
     while let Some(ident) = idents_iter.next() {
         path_name.push_str(&ident.as_str());
-        if let Some(_) = idents_iter.peek() {
+        if idents_iter.peek().is_some() {
             path_name.push_str("::")
         }
     }

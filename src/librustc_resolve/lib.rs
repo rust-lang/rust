@@ -13,6 +13,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 
@@ -2698,7 +2699,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             self.label_ribs.pop();
         }
         self.ribs[ValueNS].pop();
-        if let Some(_) = anonymous_module {
+        if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();
         }
         debug!("(resolving block) leaving block");
@@ -4256,7 +4257,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
-            if let Some(_) = result { break; }
+            if result.is_some() { break; }
 
             self.populate_module_if_necessary(in_module);
 

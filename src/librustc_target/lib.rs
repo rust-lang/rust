@@ -23,6 +23,7 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(slice_patterns)]
 
 #[macro_use]

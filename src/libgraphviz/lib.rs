@@ -288,6 +288,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(str_escape)]
 
 use self::LabelText::*;

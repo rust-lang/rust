@@ -145,7 +145,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
     // Extract first 8 chunks as the prefix
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
     arg.cast_to(CastTarget {
-        prefix: prefix,
+        prefix,
         prefix_chunk: Size::from_bytes(8),
         rest: Uniform { unit: Reg::i64(), total: rest_size }
     });

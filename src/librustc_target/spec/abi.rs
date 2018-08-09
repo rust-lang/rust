@@ -51,7 +51,7 @@ pub struct AbiData {
 }
 
 #[allow(non_upper_case_globals)]
-const AbiDatas: &'static [AbiData] = &[
+const AbiDatas: &[AbiData] = &[
     // Platform-specific ABIs
     AbiData {abi: Abi::Cdecl, name: "cdecl", generic: false },
     AbiData {abi: Abi::Stdcall, name: "stdcall", generic: false },
@@ -87,20 +87,20 @@ pub fn all_names() -> Vec<&'static str> {
 
 impl Abi {
     #[inline]
-    pub fn index(&self) -> usize {
-        *self as usize
+    pub fn index(self) -> usize {
+        self as usize
     }
 
     #[inline]
-    pub fn data(&self) -> &'static AbiData {
+    pub fn data(self) -> &'static AbiData {
         &AbiDatas[self.index()]
     }
 
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         self.data().name
     }
 
-    pub fn generic(&self) -> bool {
+    pub fn generic(self) -> bool {
         self.data().generic
     }
 }

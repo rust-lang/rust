@@ -12,6 +12,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![allow(unused_attributes)]
 
 #![recursion_limit="256"]
@@ -125,7 +126,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
                 // https://github.com/nrc/rls-data/issues/7
-                file_name: SpanUtils::make_path_string(&lo_loc.file.name),
+                file_name: self.span_utils.make_path_string(&lo_loc.file.name),
                 num: n.as_u32(),
                 id: GlobalCrateId {
                     name: self.tcx.crate_name(n).to_string(),

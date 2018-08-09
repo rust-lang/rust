@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(libc)]
 #![feature(macro_at_most_once_rep)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(quote)]

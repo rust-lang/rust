@@ -26,7 +26,7 @@ pub fn opts() -> TargetOptions {
     // TLS is flagged as enabled if it looks to be supported.
     let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
     let version = deployment_target.as_ref().and_then(|s| {
-        let mut i = s.splitn(2, ".");
+        let mut i = s.splitn(2, '.');
         i.next().and_then(|a| i.next().map(|b| (a, b)))
     }).and_then(|(a, b)| {
         a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
