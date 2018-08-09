@@ -16,6 +16,7 @@
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
