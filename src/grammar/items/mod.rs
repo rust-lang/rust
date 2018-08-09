@@ -107,8 +107,8 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // test unsafe_fn
         // unsafe fn foo() {}
         FN_KW => {
-            fn_item(p);
-            FN_ITEM
+            function(p);
+            FUNCTION
         }
 
         // test unsafe_trait
@@ -217,12 +217,12 @@ fn extern_block(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
-fn fn_item(p: &mut Parser) {
+fn function(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
     name(p);
-    // test fn_item_type_params
+    // test function_type_params
     // fn foo<T: Clone + Copy>(){}
     type_params::type_param_list(p);
 
@@ -231,12 +231,12 @@ fn fn_item(p: &mut Parser) {
     } else {
         p.error("expected function arguments");
     }
-    // test fn_item_ret_type
+    // test function_ret_type
     // fn foo() {}
     // fn bar() -> () {}
     fn_ret_type(p);
 
-    // test fn_item_where_clause
+    // test function_where_clause
     // fn foo<T>() where T: Copy {}
     type_params::where_clause(p);
 

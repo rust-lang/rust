@@ -110,7 +110,7 @@ Grammar(
 
         "STRUCT_ITEM",
         "ENUM_ITEM",
-        "FN_ITEM",
+        "FUNCTION",
         "EXTERN_CRATE_ITEM",
         "MOD_ITEM",
         "USE_ITEM",
@@ -218,7 +218,7 @@ Grammar(
             kind: "FILE"
         ),
         (
-            kind: "FN_ITEM"
+            kind: "FUNCTION"
         ),
         (
             kind: "NAME"

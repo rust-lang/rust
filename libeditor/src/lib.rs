@@ -120,7 +120,7 @@ struct Declaration<'f>(SyntaxNodeRef<'f>);
 impl<'f> Declaration<'f> {
     fn cast(node: SyntaxNodeRef<'f>) -> Option<Declaration<'f>> {
         match node.kind() {
-            | STRUCT_ITEM | ENUM_ITEM | FN_ITEM | TRAIT_ITEM
+            | STRUCT_ITEM | ENUM_ITEM | FUNCTION | TRAIT_ITEM
             | CONST_ITEM | STATIC_ITEM | MOD_ITEM | NAMED_FIELD
             | TYPE_ITEM => Some(Declaration(node)),
             _ => None

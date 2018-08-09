@@ -1,5 +1,5 @@
 FILE@[0; 40)
-  FN_ITEM@[0; 39)
+  FUNCTION@[0; 39)
     FN_KW@[0; 2)
     WHITESPACE@[2; 3)
     NAME@[3; 6)

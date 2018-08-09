@@ -14,7 +14,7 @@
 //! `// test name-of-the-test` comment and look like this:
 //!
 //! ```
-//! // test fn_item_with_zero_parameters
+//! // test function_with_zero_parameters
 //! // fn foo() {}
 //! ```
 //!

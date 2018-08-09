@@ -19,14 +19,14 @@ impl File<Arc<SyntaxRoot>> {
 }
 
 impl<R: TreeRoot> File<R> {
-    pub fn functions<'a>(&'a self) -> impl Iterator<Item = FnItem<R>> + 'a {
+    pub fn functions<'a>(&'a self) -> impl Iterator<Item = Function<R>> + 'a {
         self.syntax()
             .children()
-            .filter_map(FnItem::cast)
+            .filter_map(Function::cast)
     }
 }
 
-impl<R: TreeRoot> FnItem<R> {
+impl<R: TreeRoot> Function<R> {
     pub fn name(&self) -> Option<Name<R>> {
         self.syntax()
             .children()

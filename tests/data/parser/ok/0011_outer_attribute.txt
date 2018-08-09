@@ -1,5 +1,5 @@
 FILE@[0; 35)
-  FN_ITEM@[0; 34)
+  FUNCTION@[0; 34)
     ATTR@[0; 12)
       POUND@[0; 1)
       L_BRACK@[1; 2)

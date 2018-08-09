@@ -1,5 +1,5 @@
 FILE@[0; 20)
-  FN_ITEM@[0; 19)
+  FUNCTION@[0; 19)
     VISIBILITY@[0; 5)
       CRATE_KW@[0; 5)
     WHITESPACE@[5; 6)

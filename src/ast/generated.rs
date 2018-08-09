@@ -22,14 +22,14 @@ impl<R: TreeRoot> AstNode<R> for File<R> {
 
 
 #[derive(Debug)]
-pub struct FnItem<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for FnItem<R> {
+impl<R: TreeRoot> AstNode<R> for Function<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            FN_ITEM => Some(FnItem { syntax }),
+            FUNCTION => Some(Function { syntax }),
             _ => None,
         }
     }

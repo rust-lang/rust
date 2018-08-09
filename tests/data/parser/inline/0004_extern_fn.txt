@@ -1,5 +1,5 @@
 FILE@[0; 19)
-  FN_ITEM@[0; 18)
+  FUNCTION@[0; 18)
     ABI@[0; 6)
       EXTERN_KW@[0; 6)
     WHITESPACE@[6; 7)
