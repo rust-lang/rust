@@ -188,7 +188,7 @@ mod wrapping;
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr, $Feature:expr,
-     $EndFeature:expr) => {
+     $EndFeature:expr, $rot:expr, $rot_op:expr, $rot_result:expr) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -334,55 +334,52 @@ $EndFeature, "
             }
         }
 
-        /// Shifts the bits to the left by a specified amount, `n`,
-        /// wrapping the truncated bits to the end of the resulting integer.
-        ///
-        /// Please note this isn't the same operation as `<<`!
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i64` is used here.
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFi64;
-        /// let m = -0x76543210FEDCBA99i64;
-        ///
-        /// assert_eq!(n.rotate_left(32), m);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn rotate_left(self, n: u32) -> Self {
-            (self as $UnsignedT).rotate_left(n) as Self
+        doc_comment! {
+            concat!("Shifts the bits to the left by a specified amount, `n`,
+wrapping the truncated bits to the end of the resulting integer.
+
+Please note this isn't the same operation as `<<`!
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $rot_op, stringify!($SelfT), ";
+let m = ", $rot_result, ";
+
+assert_eq!(n.rotate_left(", $rot, "), m);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn rotate_left(self, n: u32) -> Self {
+                (self as $UnsignedT).rotate_left(n) as Self
+            }
         }
 
-        /// Shifts the bits to the right by a specified amount, `n`,
-        /// wrapping the truncated bits to the beginning of the resulting
-        /// integer.
-        ///
-        /// Please note this isn't the same operation as `>>`!
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i64` is used here.
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFi64;
-        /// let m = -0xFEDCBA987654322i64;
-        ///
-        /// assert_eq!(n.rotate_right(4), m);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn rotate_right(self, n: u32) -> Self {
-            (self as $UnsignedT).rotate_right(n) as Self
-        }
+        doc_comment! {
+            concat!("Shifts the bits to the right by a specified amount, `n`,
+wrapping the truncated bits to the beginning of the resulting
+integer.
 
+Please note this isn't the same operation as `>>`!
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $rot_result, stringify!($SelfT), ";
+let m = ", $rot_op, ";
+
+assert_eq!(n.rotate_right(", $rot, "), m);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn rotate_right(self, n: u32) -> Self {
+                (self as $UnsignedT).rotate_right(n) as Self
+            }
+        }
         /// Reverses the byte order of the integer.
         ///
         /// # Examples
@@ -2012,46 +2009,50 @@ $EndFeature, "
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, i8, u8, 8, -128, 127, "", "" }
+    int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa" }
 }
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "" }
+    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a" }
 }
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "" }
+    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301" }
 }
 
 #[lang = "i64"]
 impl i64 {
-    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "" }
+    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
+                "0xaa00000000006e1", "0x6e10aa" }
 }
 
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727, "", "" }
+        170141183460469231731687303715884105727, "", "", 16,
+        "0x13f40000000000000000000000004f76", "0x4f7613f4"
+    }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "" }
+    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a" }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "" }
+    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "" }
+    int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
+        12, "0xaa00000000006e1", "0x6e10aa" }
 }
 
 // Emits the correct `cttz` call, depending on the size of the type.
@@ -2069,7 +2070,8 @@ macro_rules! uint_cttz_call {
 
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr) => {
+    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr,
+        $rot:expr, $rot_op:expr, $rot_result:expr) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -2210,57 +2212,55 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
             }
         }
 
-        /// Shifts the bits to the left by a specified amount, `n`,
-        /// wrapping the truncated bits to the end of the resulting integer.
-        ///
-        /// Please note this isn't the same operation as `<<`!
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u64` is used here.
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        /// let m = 0x3456789ABCDEF012u64;
-        ///
-        /// assert_eq!(n.rotate_left(12), m);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn rotate_left(self, n: u32) -> Self {
-            // Protect against undefined behaviour for over-long bit shifts
-            let n = n % $BITS;
-            (self << n) | (self >> (($BITS - n) % $BITS))
+        doc_comment! {
+            concat!("Shifts the bits to the left by a specified amount, `n`,
+wrapping the truncated bits to the end of the resulting integer.
+
+Please note this isn't the same operation as `<<`!
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $rot_op, stringify!($SelfT), ";
+let m = ", $rot_result, ";
+
+assert_eq!(n.rotate_left(", $rot, "), m);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn rotate_left(self, n: u32) -> Self {
+                // Protect against undefined behaviour for over-long bit shifts
+                let n = n % $BITS;
+                (self << n) | (self >> (($BITS - n) % $BITS))
+            }
         }
 
-        /// Shifts the bits to the right by a specified amount, `n`,
-        /// wrapping the truncated bits to the beginning of the resulting
-        /// integer.
-        ///
-        /// Please note this isn't the same operation as `>>`!
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u64` is used here.
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        /// let m = 0xDEF0123456789ABCu64;
-        ///
-        /// assert_eq!(n.rotate_right(12), m);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn rotate_right(self, n: u32) -> Self {
-            // Protect against undefined behaviour for over-long bit shifts
-            let n = n % $BITS;
-            (self >> n) | (self << (($BITS - n) % $BITS))
+        doc_comment! {
+            concat!("Shifts the bits to the right by a specified amount, `n`,
+wrapping the truncated bits to the beginning of the resulting
+integer.
+
+Please note this isn't the same operation as `>>`!
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $rot_result, stringify!($SelfT), ";
+let m = ", $rot_op, ";
+
+assert_eq!(n.rotate_right(", $rot, "), m);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn rotate_right(self, n: u32) -> Self {
+                // Protect against undefined behaviour for over-long bit shifts
+                let n = n % $BITS;
+                (self >> n) | (self << (($BITS - n) % $BITS))
+            }
         }
 
         /// Reverses the byte order of the integer.
@@ -3621,7 +3621,7 @@ $EndFeature, "
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, u8, 8, 255, "", "" }
+    uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa" }
 
 
     /// Checks if the value is within the ASCII range.
@@ -4147,39 +4147,41 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, u16, 16, 65535, "", "" }
+    uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a" }
 }
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, u32, 32, 4294967295, "", "" }
+    uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301" }
 }
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, u64, 64, 18446744073709551615, "", "" }
+    uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa" }
 }
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "" }
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
+        "0x13f40000000000000000000000004f76", "0x4f7613f4" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16, 65536, "", "" }
+    uint_impl! { usize, u16, 16, 65536, "", "", 4, "0xa003", "0x3a" }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u32, 32, 4294967295, "", "" }
+    uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u64, 64, 18446744073709551615, "", "" }
+    uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1",
+        "0x6e10aa" }
 }
 
 /// A classification of floating point numbers.
