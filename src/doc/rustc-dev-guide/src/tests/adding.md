@@ -129,6 +129,8 @@ be compiled or run.
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that
   debugger.
+* `ignore-gdb-version` can be used to ignore the test when certain gdb
+  versions are used
 
 Some examples of `X` in `ignore-X`:
 
@@ -157,8 +159,16 @@ source.
   source is compiled, and this compilation is required to succeed.
   The `.fixed` file can also be generated automatically with the
   `--bless` option, discussed [below](#bless).
-* `min-{gdb,lldb}-version`
-* `min-llvm-version`
+* `min-gdb-version` specifies the minimum gdb version required for
+  this test; see also `ignore-gdb-version`
+* `min-lldb-version` specifies the minimum lldb version required for
+  this test
+* `min-llvm-version` specifies the minimum llvm version required for
+  this test
+* `min-system-llvm-version` specifies the minimum system llvm version
+  required for this test; the test is ignored if the system llvm is in
+  use and it doesn't meet the minimum version.  This is useful when an
+  llvm feature has been backported to rust-llvm
 * `compile-pass` for UI tests, indicates that the test is
   supposed to compile, as opposed to the default where the test is
   supposed to error out.
