@@ -351,7 +351,6 @@ dependencies = [
 name = "clippy"
 version = "0.0.212"
 dependencies = [
- "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy-mini-macro-test 0.2.0",
  "clippy_lints 0.0.212",
@@ -360,7 +359,6 @@ dependencies = [
  "lazy_static 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-workspace-hack 1.0.0",
- "rustc_version 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
