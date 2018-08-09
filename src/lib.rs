@@ -242,11 +242,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut context = Context::new();
 
         {
+            use std::io::Write;
             let mut cx = CodegenCx {
                 tcx,
                 module: &mut module,
                 constants: HashMap::new(),
             };
+
+            let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
 
             for mono_item in
                 collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
@@ -258,7 +261,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 }));
                 if let Err(err) = res {
                     match err.downcast::<NonFatal>() {
-                        Ok(non_fatal) => tcx.sess.err(&non_fatal.0),
+                        Ok(non_fatal) => {
+                            writeln!(log, "{}", &non_fatal.0);
+                            tcx.sess.err(&non_fatal.0)
+                        }
                         Err(err) => ::std::panic::resume_unwind(err),
                     }
                 }
