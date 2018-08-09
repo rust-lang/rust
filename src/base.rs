@@ -379,10 +379,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         | (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (TypeVariants::TyRawPtr(..), TypeVariants::TyUint(_)) if to_ty.sty == fx.tcx.types.usize.sty => {
+                        (TypeVariants::TyRawPtr(..), TypeVariants::TyUint(_))
+                        | (TypeVariants::TyFnPtr(..), TypeVariants::TyUint(_)) if to_ty.sty == fx.tcx.types.usize.sty => {
+                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                        }
+                        (TypeVariants::TyUint(_), TypeVariants::TyRawPtr(..)) if from_ty.sty == fx.tcx.types.usize.sty => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
                         (TypeVariants::TyChar, TypeVariants::TyUint(_))
+                        | (TypeVariants::TyUint(_), TypeVariants::TyChar)
                         | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
