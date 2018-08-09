@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xcrate.rs
+// aux-build:some_crate.rs
+// edition:2018
 
-#![feature(extern_in_paths)]
-
-use extern; //~ ERROR unresolved import `extern`
-            //~^ NOTE no `extern` in the root
-use extern::*; //~ ERROR cannot glob-import all possible crates
+mod foo {
+    pub use some_crate;
+}
 
 fn main() {
-    let s = extern::xcrate; //~ ERROR expected value, found module `extern::xcrate`
-                            //~^ NOTE not a value
+    ::some_crate::hello();
+    foo::some_crate::hello();
 }

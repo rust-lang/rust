@@ -1139,32 +1139,4 @@ impl<'a> CrateLoader<'a> {
 
         cnum
     }
-
-    pub fn process_use_extern(
-        &mut self,
-        name: Symbol,
-        span: Span,
-        id: ast::NodeId,
-        definitions: &Definitions,
-    ) -> CrateNum {
-        let cnum = self.resolve_crate(
-            &None, name, name, None, None, span, PathKind::Crate, DepKind::Explicit
-        ).0;
-
-        let def_id = definitions.opt_local_def_id(id).unwrap();
-        let path_len = definitions.def_path(def_id.index).data.len();
-
-        self.update_extern_crate(
-            cnum,
-            ExternCrate {
-                src: ExternCrateSource::Use,
-                span,
-                path_len,
-                direct: true,
-            },
-            &mut FxHashSet(),
-        );
-
-        cnum
-    }
 }

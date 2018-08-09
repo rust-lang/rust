@@ -953,9 +953,20 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum ModuleOrUniformRoot<'a> {
+    /// Regular module.
+    Module(Module<'a>),
+
+    /// The `{{root}}` (`CrateRoot` aka "global") / `extern` initial segment
+    /// in which external crates resolve, and also `crate` (only in `{{root}}`,
+    /// but *not* `extern`), in the Rust 2018 edition.
+    UniformRoot(Name),
+}
+
 #[derive(Clone, Debug)]
 enum PathResult<'a> {
-    Module(Module<'a>),
+    Module(ModuleOrUniformRoot<'a>),
     NonModule(PathResolution),
     Indeterminate,
     Failed(Span, String, bool /* is the error from the last segment? */),
@@ -1583,11 +1594,13 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let hir::Path { ref segments, span, ref mut def } = *path;
         let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path(&path, Some(namespace), true, span, CrateLint::No) {
-            PathResult::Module(module) => *def = module.def().unwrap(),
+        match self.resolve_path(None, &path, Some(namespace), true, span, CrateLint::No) {
+            PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
+                *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
             PathResult::NonModule(..) => match self.resolve_path(
+                None,
                 &path,
                 None,
                 true,
@@ -1599,6 +1612,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 }
                 _ => {}
             },
+            PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
                 error_callback(self, span, ResolutionError::FailedToResolve(&msg));
@@ -1881,7 +1895,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             };
 
             let item = self.resolve_ident_in_module_unadjusted(
-                module, ident, ns, false, record_used, path_span,
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                record_used,
+                path_span,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -1906,7 +1925,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let orig_current_module = self.current_module;
             self.current_module = module; // Lexical resolutions can never be a privacy error.
             let result = self.resolve_ident_in_module_unadjusted(
-                module, ident, ns, false, record_used, path_span,
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                record_used,
+                path_span,
             );
             self.current_module = orig_current_module;
 
@@ -1954,8 +1978,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 return Some(LexicalScopeBinding::Item(binding));
             }
             if let Some(prelude) = self.prelude {
-                if let Ok(binding) = self.resolve_ident_in_module_unadjusted(prelude, ident, ns,
-                                                                        false, false, path_span) {
+                if let Ok(binding) = self.resolve_ident_in_module_unadjusted(
+                    ModuleOrUniformRoot::Module(prelude),
+                    ident,
+                    ns,
+                    false,
+                    false,
+                    path_span,
+                ) {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
@@ -2013,7 +2043,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn resolve_ident_in_module(&mut self,
-                               module: Module<'a>,
+                               module: ModuleOrUniformRoot<'a>,
                                mut ident: Ident,
                                ns: Namespace,
                                record_used: bool,
@@ -2021,8 +2051,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                -> Result<&'a NameBinding<'a>, Determinacy> {
         ident.span = ident.span.modern();
         let orig_current_module = self.current_module;
-        if let Some(def) = ident.span.adjust(module.expansion) {
-            self.current_module = self.macro_def_scope(def);
+        if let ModuleOrUniformRoot::Module(module) = module {
+            if let Some(def) = ident.span.adjust(module.expansion) {
+                self.current_module = self.macro_def_scope(def);
+            }
         }
         let result = self.resolve_ident_in_module_unadjusted(
             module, ident, ns, false, record_used, span,
@@ -2410,13 +2442,16 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if def != Def::Err {
                 new_id = Some(def.def_id());
                 let span = trait_ref.path.span;
-                if let PathResult::Module(module) = self.resolve_path(
-                    &path,
-                    None,
-                    false,
-                    span,
-                    CrateLint::SimplePath(trait_ref.ref_id),
-                ) {
+                if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+                    self.resolve_path(
+                        None,
+                        &path,
+                        None,
+                        false,
+                        span,
+                        CrateLint::SimplePath(trait_ref.ref_id),
+                    )
+                {
                     new_val = Some((module, trait_ref.clone()));
                 }
             }
@@ -2533,7 +2568,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if self.resolve_ident_in_module(module, ident, ns, false, span).is_err() {
+            if self.resolve_ident_in_module(
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                span,
+            ).is_err() {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
                 resolve_error(self, span, err(ident.name, &path_names_to_string(path)));
             }
@@ -2908,9 +2949,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     (String::new(), "the crate root".to_string())
                 } else {
                     let mod_path = &path[..path.len() - 1];
-                    let mod_prefix = match this.resolve_path(mod_path, Some(TypeNS),
+                    let mod_prefix = match this.resolve_path(None, mod_path, Some(TypeNS),
                                                              false, span, CrateLint::No) {
-                        PathResult::Module(module) => module.def(),
+                        PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
+                            module.def(),
                         _ => None,
                     }.map_or(String::new(), |def| format!("{} ", def.kind_name()));
                     (mod_prefix, format!("`{}`", names_to_string(mod_path)))
@@ -3319,6 +3361,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         let result = match self.resolve_path(
+            None,
             &path,
             Some(ns),
             true,
@@ -3326,7 +3369,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             crate_lint,
         ) {
             PathResult::NonModule(path_res) => path_res,
-            PathResult::Module(module) if !module.is_normal() => {
+            PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PathResolution::new(module.def().unwrap())
             }
             // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
@@ -3341,18 +3384,21 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            PathResult::Module(..) | PathResult::Failed(..)
+            PathResult::Module(ModuleOrUniformRoot::Module(_)) |
+            PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types
                            .contains_key(&path[0].name) => {
                 let prim = self.primitive_type_table.primitive_types[&path[0].name];
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
-            PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
+            PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
+                PathResolution::new(module.def().unwrap()),
             PathResult::Failed(span, msg, false) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 err_path_resolution()
             }
+            PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Failed(..) => return None,
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
@@ -3362,6 +3408,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
            path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path(
+                    None,
                     &[*path.last().unwrap()],
                     Some(ns),
                     false,
@@ -3369,7 +3416,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     CrateLint::No,
                 ) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
-                    PathResult::Module(module) => module.def().unwrap(),
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
+                        module.def().unwrap(),
                     _ => return Some(result),
                 }
             };
@@ -3384,13 +3432,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn resolve_path(
         &mut self,
+        base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Ident],
         opt_ns: Option<Namespace>, // `None` indicates a module path
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
-        let mut module = None;
+        let mut module = base_module;
         let mut allow_super = true;
         let mut second_binding = None;
 
@@ -3412,49 +3461,48 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             if i == 0 && ns == TypeNS && name == keywords::SelfValue.name() {
                 let mut ctxt = ident.span.ctxt().modern();
-                module = Some(self.resolve_self(&mut ctxt, self.current_module));
+                module = Some(ModuleOrUniformRoot::Module(
+                    self.resolve_self(&mut ctxt, self.current_module)));
                 continue
             } else if allow_super && ns == TypeNS && name == keywords::Super.name() {
                 let mut ctxt = ident.span.ctxt().modern();
-                let self_module = match i {
-                    0 => self.resolve_self(&mut ctxt, self.current_module),
-                    _ => module.unwrap(),
+                let self_module_parent = match i {
+                    0 => self.resolve_self(&mut ctxt, self.current_module).parent,
+                    _ => match module {
+                        Some(ModuleOrUniformRoot::Module(module)) => module.parent,
+                        _ => None,
+                    },
                 };
-                if let Some(parent) = self_module.parent {
-                    module = Some(self.resolve_self(&mut ctxt, parent));
+                if let Some(parent) = self_module_parent {
+                    module = Some(ModuleOrUniformRoot::Module(
+                        self.resolve_self(&mut ctxt, parent)));
                     continue
                 } else {
                     let msg = "There are too many initial `super`s.".to_string();
                     return PathResult::Failed(ident.span, msg, false);
                 }
-            } else if i == 0 && ns == TypeNS && name == keywords::Extern.name() {
-                continue;
             }
             allow_super = false;
 
             if ns == TypeNS {
+                if i == 0 {
+                    if name == keywords::Extern.name() ||
+                       name == keywords::CrateRoot.name() &&
+                       self.session.features_untracked().extern_absolute_paths &&
+                       self.session.rust_2018() {
+                        module = Some(ModuleOrUniformRoot::UniformRoot(name));
+                        continue;
+                    }
+                }
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
                    (i == 0 && name == keywords::Crate.name()) ||
                    (i == 0 && name == keywords::DollarCrate.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
                               path[0].name == keywords::CrateRoot.name()) {
                     // `::a::b`, `crate::a::b`, `::crate::a::b` or `$crate::a::b`
-                    module = Some(self.resolve_crate_root(ident));
+                    module = Some(ModuleOrUniformRoot::Module(
+                        self.resolve_crate_root(ident)));
                     continue
-                } else if i == 1 && !ident.is_path_segment_keyword() {
-                    let prev_name = path[0].name;
-                    if prev_name == keywords::Extern.name() ||
-                       prev_name == keywords::CrateRoot.name() &&
-                       self.session.features_untracked().extern_absolute_paths &&
-                       self.session.rust_2018() {
-                        // `::extern_crate::a::b`
-                        let crate_id = self.crate_loader.process_path_extern(name, ident.span);
-                        let crate_root =
-                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                        self.populate_module_if_necessary(crate_root);
-                        module = Some(crate_root);
-                        continue
-                    }
                 }
             }
 
@@ -3513,7 +3561,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let def = binding.def();
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
-                        module = Some(next_module);
+                        module = Some(ModuleOrUniformRoot::Module(next_module));
                     } else if def == Def::ToolMod && i + 1 != path.len() {
                         let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
                         return PathResult::NonModule(PathResolution::new(def));
@@ -3537,14 +3585,18 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
                 Err(Determined) => {
-                    if let Some(module) = module {
+                    if let Some(ModuleOrUniformRoot::Module(module)) = module {
                         if opt_ns.is_some() && !module.is_normal() {
                             return PathResult::NonModule(PathResolution::with_unresolved_segments(
                                 module.def().unwrap(), path.len() - i
                             ));
                         }
                     }
-                    let msg = if module.and_then(ModuleData::def) == self.graph_root.def() {
+                    let module_def = match module {
+                        Some(ModuleOrUniformRoot::Module(module)) => module.def(),
+                        _ => None,
+                    };
+                    let msg = if module_def == self.graph_root.def() {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
                             self.lookup_import_candidates(name, TypeNS, is_mod);
@@ -3568,7 +3620,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         self.lint_if_path_starts_with_module(crate_lint, path, path_span, second_binding);
 
-        PathResult::Module(module.unwrap_or(self.graph_root))
+        PathResult::Module(module.unwrap_or_else(|| {
+            span_bug!(path_span, "resolve_path: empty(?) path {:?} has no module", path);
+        }))
+
     }
 
     fn lint_if_path_starts_with_module(
@@ -3578,6 +3633,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         second_binding: Option<&NameBinding>,
     ) {
+        // In the 2018 edition this lint is a hard error, so nothing to do
+        if self.session.rust_2018() {
+            return
+        }
+
+        // In the 2015 edition there's no use in emitting lints unless the
+        // crate's already enabled the feature that we're going to suggest
+        if !self.session.features_untracked().crate_in_paths {
+            return
+        }
+
         let (diag_id, diag_span) = match crate_lint {
             CrateLint::No => return,
             CrateLint::SimplePath(id) => (id, path_span),
@@ -3620,24 +3686,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
 
-        self.lint_path_starts_with_module(diag_id, diag_span);
-    }
-
-    fn lint_path_starts_with_module(&self, id: NodeId, span: Span) {
-        // In the 2018 edition this lint is a hard error, so nothing to do
-        if self.session.rust_2018() {
-            return
-        }
-        // In the 2015 edition there's no use in emitting lints unless the
-        // crate's already enabled the feature that we're going to suggest
-        if !self.session.features_untracked().crate_in_paths {
-            return
-        }
         let diag = lint::builtin::BuiltinLintDiagnostics
-            ::AbsPathWithModule(span);
+            ::AbsPathWithModule(diag_span);
         self.session.buffer_lint_with_diagnostic(
             lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-            id, span,
+            diag_id, diag_span,
             "absolute paths must start with `self`, `super`, \
             `crate`, or an external crate name in the 2018 edition",
             diag);
@@ -3782,8 +3835,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if let Ok(binding) =
-                    self.resolve_ident_in_module(module, ident, ns, false, module.span) {
+            if let Ok(binding) = self.resolve_ident_in_module(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    ns,
+                    false,
+                    module.span,
+                ) {
                 let def = binding.def();
                 if filter_fn(def) {
                     return Some(if self.has_self.contains(&def.def_id()) {
@@ -3855,9 +3913,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) = self.resolve_path(mod_path, Some(TypeNS),
+            if let PathResult::Module(module) = self.resolve_path(None, mod_path, Some(TypeNS),
                                                                   false, span, CrateLint::No) {
-                add_module_candidates(module, &mut names);
+                if let ModuleOrUniformRoot::Module(module) = module {
+                    add_module_candidates(module, &mut names);
+                }
             }
         }
 
@@ -4096,7 +4156,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if self.resolve_ident_in_module(module, ident, ns, false, module.span).is_ok() {
+            if self.resolve_ident_in_module(
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                module.span,
+            ).is_ok() {
                 let def_id = module.def_id().unwrap();
                 found_traits.push(TraitCandidate { def_id: def_id, import_id: None });
             }
@@ -4144,8 +4210,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if ident.span.glob_adjust(module.expansion, binding.span.ctxt().modern()).is_none() {
                 continue
             }
-            if self.resolve_ident_in_module_unadjusted(module, ident, ns, false, false, module.span)
-                   .is_ok() {
+            if self.resolve_ident_in_module_unadjusted(
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                false,
+                module.span,
+            ).is_ok() {
                 let import_id = match binding.kind {
                     NameBindingKind::Import { directive, .. } => {
                         self.maybe_unused_trait_imports.insert(directive.id);

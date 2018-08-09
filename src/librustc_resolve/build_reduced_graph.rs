@@ -17,7 +17,7 @@ use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
-use {PerNS, Resolver, ResolverArenas};
+use {ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -175,7 +175,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
                         };
-                        source.name = crate_name;
+                        // HACK(eddyb) unclear how good this is, but keeping `$crate`
+                        // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
+                        // while the current crate doesn't have a valid `crate_name`.
+                        if crate_name != keywords::Invalid.name() {
+                            source.name = crate_name;
+                        }
                         if rename.is_none() {
                             ident.name = crate_name;
                         }
@@ -185,6 +190,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                    will become a hard error in a future release")
                             .emit();
                     }
+                }
+
+                if ident.name == keywords::Crate.name() {
+                    self.session.span_err(ident.span,
+                        "crate root imports need to be explicitly named: \
+                         `use crate as name;`");
                 }
 
                 let subclass = SingleImport {
@@ -299,7 +310,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id: item.id,
                     id: item.id,
                     parent,
-                    imported_module: Cell::new(Some(module)),
+                    imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
                     root_span: item.span,
                     span: item.span,
@@ -701,7 +712,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             root_id: item.id,
             id: item.id,
             parent: graph_root,
-            imported_module: Cell::new(Some(module)),
+            imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             root_span: span,
             span,
@@ -721,7 +732,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
-                let result = self.resolve_ident_in_module(module, ident, MacroNS, false, span);
+                let result = self.resolve_ident_in_module(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    MacroNS,
+                    false,
+                    span,
+                );
                 if let Ok(binding) = result {
                     let directive = macro_use_directive(span);
                     self.potentially_unused_imports.push(directive);

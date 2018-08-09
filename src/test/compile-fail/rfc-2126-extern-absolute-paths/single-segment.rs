@@ -11,10 +11,8 @@
 // aux-build:xcrate.rs
 // edition:2018
 
-use crate; //~ ERROR unresolved import `crate`
-           //~^ NOTE crate root imports need to be explicitly named: `use crate as name;`
-use *; //~ ERROR unresolved import `*`
-       //~^ NOTE cannot glob-import all possible crates
+use crate; //~ ERROR crate root imports need to be explicitly named: `use crate as name;`
+use *; //~ ERROR cannot glob-import all possible crates
 
 fn main() {
     let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
