@@ -507,6 +507,9 @@ declare_features! (
 
     // Support for arbitrary delimited token streams in non-macro attributes.
     (active, unrestricted_attribute_tokens, "1.30.0", Some(44690), None),
+
+    // Allows `use x::y;` to resolve through `self::x`, not just `::x`.
+    (active, uniform_paths, "1.30.0", Some(53130), None),
 );
 
 declare_features! (
