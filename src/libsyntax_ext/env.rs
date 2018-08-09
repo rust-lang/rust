@@ -81,7 +81,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
         }
     };
 
-    if let Some(_) = exprs.next() {
+    if exprs.next().is_some() {
         cx.span_err(sp, "env! takes 1 or 2 arguments");
         return DummyResult::expr(sp);
     }
