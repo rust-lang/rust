@@ -169,6 +169,10 @@ const MIPS_WHITELIST: &[(&str, Option<&str>)] = &[
     ("msa", Some("mips_target_feature")),
 ];
 
+const WASM_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("simd128", Some("wasm_target_feature")),
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primtives may be documented.
 ///
@@ -181,6 +185,7 @@ pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<&'static
         .chain(HEXAGON_WHITELIST.iter().cloned())
         .chain(POWERPC_WHITELIST.iter().cloned())
         .chain(MIPS_WHITELIST.iter().cloned())
+        .chain(WASM_WHITELIST.iter().cloned())
 }
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
@@ -228,6 +233,7 @@ pub fn target_feature_whitelist(sess: &Session)
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
+        "wasm32" => WASM_WHITELIST,
         _ => &[],
     }
 }
