@@ -26,6 +26,18 @@ pub struct Symbol {
     pub range: TextRange,
 }
 
+#[derive(Debug)]
+pub struct Runnable {
+    pub range: TextRange,
+    pub kind: RunnableKind,
+}
+
+#[derive(Debug)]
+pub enum RunnableKind {
+    Test { name: String },
+    Bin,
+}
+
 impl File {
     pub fn new(text: &str) -> File {
         File {
@@ -77,6 +89,28 @@ impl File {
     pub fn extend_selection(&self, range: TextRange) -> Option<TextRange> {
         let syntax = self.inner.syntax();
         extend_selection::extend_selection(syntax.as_ref(), range)
+    }
+
+    pub fn runnables(&self) -> Vec<Runnable> {
+        self.inner
+            .functions()
+            .filter_map(|f| {
+                let name = f.name()?.text();
+                let kind = if name == "main" {
+                    RunnableKind::Bin
+                } else if f.has_atom_attr("test") {
+                    RunnableKind::Test {
+                        name: name.to_string()
+                    }
+                } else {
+                    return None;
+                };
+                Some(Runnable {
+                    range: f.syntax().range(),
+                    kind,
+                })
+            })
+            .collect()
     }
 }
 

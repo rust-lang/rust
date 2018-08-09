@@ -37,11 +37,33 @@ fn main() {}
     );
 }
 
+#[test]
+fn test_runnables() {
+    let file = file(r#"
+fn main() {}
+
+#[test]
+fn test_foo() {}
+
+#[test]
+#[ignore]
+fn test_foo() {}
+"#);
+    let runnables = file.runnables();
+    dbg_eq(
+        &runnables,
+        r#"[Runnable { range: [1; 13), kind: Bin },
+            Runnable { range: [15; 39), kind: Test { name: "test_foo" } },
+            Runnable { range: [41; 75), kind: Test { name: "test_foo" } }]"#,
+    )
+}
+
 fn file(text: &str) -> File {
     File::new(text)
 }
 
 fn dbg_eq(actual: &impl fmt::Debug, expected: &str) {
+    let actual = format!("{:?}", actual);
     let expected = expected.lines().map(|l| l.trim()).join(" ");
     assert_eq!(actual, expected);
 }
