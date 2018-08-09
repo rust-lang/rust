@@ -261,6 +261,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
         "misaligned_transmute",
         "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
     );
+    store.register_removed(
+        "assign_ops",
+        "using compound assignment operators (e.g. `+=`) is harmless",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -406,7 +410,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_lint_group("clippy_restriction", vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
-        assign_ops::ASSIGN_OPS,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         indexing_slicing::INDEXING_SLICING,
         inherent_impl::MULTIPLE_INHERENT_IMPL,

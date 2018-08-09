@@ -82,3 +82,13 @@ declare_deprecated_lint! {
     pub MISALIGNED_TRANSMUTE,
     "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr"
 }
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This lint is too subjective, not having a good reason for being in clippy.
+/// Additionally, compound assignment operators may be overloaded separately from their non-assigning
+/// counterparts, so this lint may suggest a change in behavior or the code may not compile.
+declare_deprecated_lint! {
+    pub ASSIGN_OPS,
+    "using compound assignment operators (e.g. `+=`) is harmless"
+}
