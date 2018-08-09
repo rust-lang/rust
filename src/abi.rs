@@ -379,6 +379,14 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 "assume" => {
                     assert_eq!(args.len(), 1);
                 }
+                "arith_offset" => {
+                    assert_eq!(args.len(), 2);
+                    let base = args[0].load_value(fx);
+                    let offset = args[1].load_value(fx);
+                    let res = fx.bcx.ins().iadd(base, offset);
+                    let res = CValue::ByVal(res, ret.layout());
+                    ret.write_cvalue(fx, res);
+                }
                 "likely" | "unlikely" => {
                     assert_eq!(args.len(), 1);
                     ret.write_cvalue(fx, args[0]);
