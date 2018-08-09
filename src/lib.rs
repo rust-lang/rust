@@ -45,7 +45,7 @@ pub use {
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     text_unit::{TextRange, TextUnit},
-    yellow::{SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot},
+    yellow::{SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot, SyntaxError},
 };
 
 

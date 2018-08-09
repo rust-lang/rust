@@ -2,7 +2,7 @@ mod generated;
 
 use std::sync::Arc;
 use {
-    SyntaxNode, SyntaxRoot, TreeRoot,
+    SyntaxNode, SyntaxRoot, TreeRoot, SyntaxError,
     SyntaxKind::*,
 };
 pub use self::generated::*;
@@ -19,6 +19,10 @@ impl File<Arc<SyntaxRoot>> {
 }
 
 impl<R: TreeRoot> File<R> {
+    pub fn errors(&self) -> Vec<SyntaxError> {
+        self.syntax().root.errors.clone()
+    }
+
     pub fn functions<'a>(&'a self) -> impl Iterator<Item = Function<R>> + 'a {
         self.syntax()
             .children()

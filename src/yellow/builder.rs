@@ -51,7 +51,7 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
 
     fn error(&mut self, message: String) {
         self.errors.push(SyntaxError {
-            message,
+            msg: message,
             offset: self.pos,
         })
     }

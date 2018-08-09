@@ -20,6 +20,12 @@ pub struct HighlightedRange {
 }
 
 #[derive(Debug)]
+pub struct Diagnostic {
+    pub range: TextRange,
+    pub msg: String,
+}
+
+#[derive(Debug)]
 pub struct Symbol {
     // pub parent: ???,
     pub name: String,
@@ -66,6 +72,25 @@ impl File {
                 tag,
             })
         }
+        res
+    }
+
+    pub fn diagnostics(&self) -> Vec<Diagnostic> {
+        let syntax = self.inner.syntax();
+        let mut res = Vec::new();
+
+        for node in walk::preorder(syntax.as_ref()) {
+            if node.kind() == ERROR {
+                res.push(Diagnostic {
+                    range: node.range(),
+                    msg: "Syntax Error".to_string(),
+                });
+            }
+        }
+        res.extend(self.inner.errors().into_iter().map(|err| Diagnostic {
+            range: TextRange::offset_len(err.offset, 1.into()),
+            msg: err.msg,
+        }));
         res
     }
 

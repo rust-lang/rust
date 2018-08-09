@@ -46,9 +46,9 @@ impl SyntaxRoot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub(crate) struct SyntaxError {
-    pub(crate) message: String,
-    pub(crate) offset: TextUnit,
+pub struct SyntaxError {
+    pub msg: String,
+    pub offset: TextUnit,
 }
 
 impl SyntaxNode<Arc<SyntaxRoot>> {

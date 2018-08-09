@@ -29,7 +29,7 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
                     let off = node.range().end();
                     while err_pos < errors.len() && errors[err_pos].offset <= off {
                         indent!();
-                        writeln!(buf, "err: `{}`", errors[err_pos].message).unwrap();
+                        writeln!(buf, "err: `{}`", errors[err_pos].msg).unwrap();
                         err_pos += 1;
                     }
                 }
@@ -41,7 +41,7 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
 
     assert_eq!(level, 0);
     for err in errors[err_pos..].iter() {
-        writeln!(buf, "err: `{}`", err.message).unwrap();
+        writeln!(buf, "err: `{}`", err.msg).unwrap();
     }
 
     return buf;
