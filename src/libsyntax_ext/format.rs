@@ -14,8 +14,7 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::ext::base;
-use syntax::ext::base::*;
+use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::parse::token;
@@ -24,6 +23,7 @@ use syntax::symbol::Symbol;
 use syntax::tokenstream;
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
@@ -143,8 +143,10 @@ fn parse_args(ecx: &mut ExtCtxt,
         ecx.span_err(sp, "requires at least a format string argument");
         return None;
     }
+
     let fmtstr = panictry!(p.parse_expr());
     let mut named = false;
+
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
             ecx.span_err(p.span, "expected token: `,`");
@@ -264,11 +266,11 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn describe_num_args(&self) -> String {
+    fn describe_num_args(&self) -> Cow<str> {
         match self.args.len() {
-            0 => "no arguments were given".to_string(),
-            1 => "there is 1 argument".to_string(),
-            x => format!("there are {} arguments", x),
+            0 => "no arguments were given".into(),
+            1 => "there is 1 argument".into(),
+            x => format!("there are {} arguments", x).into(),
         }
     }
 
