@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test: "<\[closure@.+`" -> "$$CLOSURE`"
+
 #![allow(unused)]
 
 #![recursion_limit = "20"]
