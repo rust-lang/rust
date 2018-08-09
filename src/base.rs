@@ -379,6 +379,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         | (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
+                        (TypeVariants::TyRawPtr(..), TypeVariants::TyUint(_)) if to_ty.sty == fx.tcx.types.usize.sty => {
+                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                        }
                         (TypeVariants::TyChar, TypeVariants::TyUint(_))
                         | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
@@ -392,7 +395,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                             let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        _ => unimpl!("rval misc {:?} {:?}", operand, to_ty),
+                        _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
                     }
                 }
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => {

@@ -154,3 +154,7 @@ fn repeat_array() -> [u8; 3] {
 unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
     intrinsics::ctlz_nonzero(a)
 }
+
+fn ptr_as_usize(ptr: *const u8) -> usize {
+    ptr as usize
+}
