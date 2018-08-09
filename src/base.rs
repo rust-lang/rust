@@ -169,9 +169,9 @@ pub fn trans_fn<'a, 'tcx: 'a>(
                 let cond = trans_operand(fx, cond).load_value(fx);
                 let target = fx.get_ebb(*target);
                 if *expected {
-                    fx.bcx.ins().brz(cond, target, &[]);
-                } else {
                     fx.bcx.ins().brnz(cond, target, &[]);
+                } else {
+                    fx.bcx.ins().brz(cond, target, &[]);
                 };
                 fx.bcx.ins().trap(TrapCode::User(!0));
             }
