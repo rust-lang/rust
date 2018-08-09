@@ -1079,6 +1079,9 @@ impl<'a> Linker for WasmLd<'a> {
         // For now we just never have an entry symbol
         self.cmd.arg("--no-entry");
 
+        // Make the default table accessible
+        self.cmd.arg("--export-table");
+
         let mut cmd = Command::new("");
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
