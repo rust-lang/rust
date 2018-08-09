@@ -10,6 +10,7 @@ mod operator;
 mod step;
 mod terminator;
 mod traits;
+mod value;
 
 pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup,
@@ -35,6 +36,8 @@ pub use self::const_eval::{
 pub use self::machine::Machine;
 
 pub use self::memory::{write_target_uint, write_target_int, read_target_uint};
+
+use self::value::LocalValue;
 
 use rustc::ty::layout::TyLayout;
 

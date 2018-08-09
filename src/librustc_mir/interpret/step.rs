@@ -2,10 +2,12 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir;
+use rustc::{mir, ty};
+use rustc::ty::layout::LayoutOf;
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
+use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::EvalResult;
-use super::{EvalContext, Machine};
+use super::{EvalContext, Machine, PlaceExtra, ValTy};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn inc_step_counter_and_detect_loops(&mut self) -> EvalResult<'tcx, ()> {
@@ -124,6 +126,198 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
 
         self.stack[frame_idx].stmt += 1;
+        Ok(())
+    }
+
+    /// Evaluate an assignment statement.
+    ///
+    /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
+    /// type writes its results directly into the memory specified by the place.
+    fn eval_rvalue_into_place(
+        &mut self,
+        rvalue: &mir::Rvalue<'tcx>,
+        place: &mir::Place<'tcx>,
+    ) -> EvalResult<'tcx> {
+        let dest = self.eval_place(place)?;
+        let dest_ty = self.place_ty(place);
+        let dest_layout = self.layout_of(dest_ty)?;
+
+        use rustc::mir::Rvalue::*;
+        match *rvalue {
+            Use(ref operand) => {
+                let value = self.eval_operand(operand)?.value;
+                let valty = ValTy {
+                    value,
+                    ty: dest_ty,
+                };
+                self.write_value(valty, dest)?;
+            }
+
+            BinaryOp(bin_op, ref left, ref right) => {
+                let left = self.eval_operand(left)?;
+                let right = self.eval_operand(right)?;
+                self.intrinsic_overflowing(
+                    bin_op,
+                    left,
+                    right,
+                    dest,
+                    dest_ty,
+                )?;
+            }
+
+            CheckedBinaryOp(bin_op, ref left, ref right) => {
+                let left = self.eval_operand(left)?;
+                let right = self.eval_operand(right)?;
+                self.intrinsic_with_overflow(
+                    bin_op,
+                    left,
+                    right,
+                    dest,
+                    dest_ty,
+                )?;
+            }
+
+            UnaryOp(un_op, ref operand) => {
+                let val = self.eval_operand_to_scalar(operand)?;
+                let val = self.unary_op(un_op, val, dest_layout)?;
+                self.write_scalar(
+                    dest,
+                    val,
+                    dest_ty,
+                )?;
+            }
+
+            Aggregate(ref kind, ref operands) => {
+                let (dest, active_field_index) = match **kind {
+                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                        self.write_discriminant_value(dest_ty, dest, variant_index)?;
+                        if adt_def.is_enum() {
+                            (self.place_downcast(dest, variant_index)?, active_field_index)
+                        } else {
+                            (dest, active_field_index)
+                        }
+                    }
+                    _ => (dest, None)
+                };
+
+                let layout = self.layout_of(dest_ty)?;
+                for (i, operand) in operands.iter().enumerate() {
+                    let value = self.eval_operand(operand)?;
+                    // Ignore zero-sized fields.
+                    if !self.layout_of(value.ty)?.is_zst() {
+                        let field_index = active_field_index.unwrap_or(i);
+                        let (field_dest, _) = self.place_field(dest, mir::Field::new(field_index), layout)?;
+                        self.write_value(value, field_dest)?;
+                    }
+                }
+            }
+
+            Repeat(ref operand, _) => {
+                let (elem_ty, length) = match dest_ty.sty {
+                    ty::TyArray(elem_ty, n) => (elem_ty, n.unwrap_usize(self.tcx.tcx)),
+                    _ => {
+                        bug!(
+                            "tried to assign array-repeat to non-array type {:?}",
+                            dest_ty
+                        )
+                    }
+                };
+                let elem_size = self.layout_of(elem_ty)?.size;
+                let value = self.eval_operand(operand)?.value;
+
+                let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
+
+                if length > 0 {
+                    let dest = dest.unwrap_or_err()?;
+                    //write the first value
+                    self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
+
+                    if length > 1 {
+                        let rest = dest.ptr_offset(elem_size * 1 as u64, &self)?;
+                        self.memory.copy_repeatedly(dest, dest_align, rest, dest_align, elem_size, length - 1, false)?;
+                    }
+                }
+            }
+
+            Len(ref place) => {
+                // FIXME(CTFE): don't allow computing the length of arrays in const eval
+                let src = self.eval_place(place)?;
+                let ty = self.place_ty(place);
+                let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
+                let size = self.memory.pointer_size().bytes() as u8;
+                self.write_scalar(
+                    dest,
+                    Scalar::Bits {
+                        bits: len as u128,
+                        size,
+                    },
+                    dest_ty,
+                )?;
+            }
+
+            Ref(_, _, ref place) => {
+                let src = self.eval_place(place)?;
+                // We ignore the alignment of the place here -- special handling for packed structs ends
+                // at the `&` operator.
+                let (ptr, _align, extra) = self.force_allocation(src)?.to_ptr_align_extra();
+
+                let val = match extra {
+                    PlaceExtra::None => Value::Scalar(ptr),
+                    PlaceExtra::Length(len) => ptr.to_value_with_len(len, self.tcx.tcx),
+                    PlaceExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
+                    PlaceExtra::DowncastVariant(..) => {
+                        bug!("attempted to take a reference to an enum downcast place")
+                    }
+                };
+                let valty = ValTy {
+                    value: val,
+                    ty: dest_ty,
+                };
+                self.write_value(valty, dest)?;
+            }
+
+            NullaryOp(mir::NullOp::Box, ty) => {
+                let ty = self.monomorphize(ty, self.substs());
+                M::box_alloc(self, ty, dest)?;
+            }
+
+            NullaryOp(mir::NullOp::SizeOf, ty) => {
+                let ty = self.monomorphize(ty, self.substs());
+                let layout = self.layout_of(ty)?;
+                assert!(!layout.is_unsized(),
+                        "SizeOf nullary MIR operator called for unsized type");
+                let size = self.memory.pointer_size().bytes() as u8;
+                self.write_scalar(
+                    dest,
+                    Scalar::Bits {
+                        bits: layout.size.bytes() as u128,
+                        size,
+                    },
+                    dest_ty,
+                )?;
+            }
+
+            Cast(kind, ref operand, cast_ty) => {
+                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
+                let src = self.eval_operand(operand)?;
+                self.cast(src, kind, dest_ty, dest)?;
+            }
+
+            Discriminant(ref place) => {
+                let ty = self.place_ty(place);
+                let layout = self.layout_of(ty)?;
+                let place = self.eval_place(place)?;
+                let discr_val = self.read_discriminant_value(place, layout)?;
+                let size = self.layout_of(dest_ty).unwrap().size.bytes() as u8;
+                self.write_scalar(dest, Scalar::Bits {
+                    bits: discr_val,
+                    size,
+                }, dest_ty)?;
+            }
+        }
+
+        self.dump_local(dest);
+
         Ok(())
     }
 
