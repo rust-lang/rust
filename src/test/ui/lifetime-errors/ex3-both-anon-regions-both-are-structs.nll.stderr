@@ -8,9 +8,9 @@ error: unsatisfied lifetime constraints
   --> $DIR/ex3-both-anon-regions-both-are-structs.rs:15:5
    |
 LL | fn foo(mut x: Vec<Ref>, y: Ref) {
-   |                   ---      --- lifetime `'1` appears in this type
-   |                   |
-   |                   lifetime `'2` appears in this type
+   |        -----            - has type `Ref<'1>`
+   |        |
+   |        has type `std::vec::Vec<Ref<'2>>`
 LL |     x.push(y); //~ ERROR lifetime mismatch
    |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
