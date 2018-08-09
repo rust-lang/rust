@@ -409,6 +409,7 @@ name = "rustc_codegen_cranelift"
 version = "0.1.0"
 dependencies = [
  "ar 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "cranelift 0.18.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-faerie 0.18.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.18.1 (git+https://github.com/CraneStation/cranelift.git)",

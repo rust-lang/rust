@@ -12,6 +12,8 @@ extern crate rustc_target;
 extern crate rustc_data_structures;
 
 extern crate ar;
+#[macro_use]
+extern crate bitflags;
 extern crate faerie;
 //extern crate goblin;
 extern crate cranelift;
@@ -49,6 +51,7 @@ macro_rules! unimpl {
 }
 
 mod abi;
+mod analyze;
 mod base;
 mod common;
 mod constant;

@@ -186,17 +186,15 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
 }
 
 pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb: Ebb) {
+    let ssa_analyzed = crate::analyze::analyze(fx);
+    fx.tcx.sess.warn(&format!("ssa {:?}", ssa_analyzed));
+
     match fx.self_sig().abi {
         Abi::Rust | Abi::RustCall => {}
         _ => unimplemented!("declared function with non \"rust\" or \"rust-call\" abi"),
     }
 
     let ret_param = fx.bcx.append_ebb_param(start_ebb, types::I64);
-    let _ = fx.bcx.create_stack_slot(StackSlotData {
-        kind: StackSlotKind::ExplicitSlot,
-        size: 0,
-        offset: None,
-    }); // Dummy stack slot for debugging
 
     enum ArgKind {
         Normal(Value),
@@ -237,6 +235,17 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
+
+        if let ArgKind::Normal(ebb_param) = arg_kind {
+            if !ssa_analyzed.get(&local).unwrap().contains(crate::analyze::Flags::NOT_SSA) {
+                let var = Variable(local);
+                fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
+                fx.bcx.def_var(var, ebb_param);
+                fx.local_map.insert(local, CPlace::Var(var, layout));
+                continue;
+            }
+        }
+
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             size: layout.size.bytes() as u32,
@@ -270,12 +279,20 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
     for local in fx.mir.vars_and_temps_iter() {
         let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
-            offset: None,
-        });
-        let place = CPlace::from_stack_slot(fx, stack_slot, ty);
+
+        let place = if ssa_analyzed.get(&local).unwrap().contains(crate::analyze::Flags::NOT_SSA) {
+            let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                kind: StackSlotKind::ExplicitSlot,
+                size: layout.size.bytes() as u32,
+                offset: None,
+            });
+            CPlace::from_stack_slot(fx, stack_slot, ty)
+        } else {
+            let var = Variable(local);
+            fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
+            CPlace::Var(var, layout)
+        };
+
         fx.local_map.insert(local, place);
     }
 }

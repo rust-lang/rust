@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub type CurrentBackend = ::cranelift_simplejit::SimpleJITBackend;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Variable(Local);
+pub struct Variable(pub Local);
 
 impl EntityRef for Variable {
     fn new(u: usize) -> Self {
