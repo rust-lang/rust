@@ -429,6 +429,17 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                             let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
+                        (TypeVariants::TyBool, TypeVariants::TyUint(_))
+                        | (TypeVariants::TyBool, TypeVariants::TyInt(_)) => {
+                            let to_ty = fx.cton_type(to_ty).unwrap();
+                            let from = operand.load_value(fx);
+                            let res = if to_ty != types::I8 {
+                                fx.bcx.ins().uextend(to_ty, from)
+                            } else {
+                                from
+                            };
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
                         _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
                     }
                 }
