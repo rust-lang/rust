@@ -157,7 +157,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     // Make a GeneratorState rvalue
     fn make_state(&self, idx: usize, val: Operand<'tcx>) -> Rvalue<'tcx> {
-        let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None);
+        let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
         Rvalue::Aggregate(box adt, vec![val])
     }
 

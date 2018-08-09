@@ -479,10 +479,11 @@ for mir::AggregateKind<'gcx> {
             mir::AggregateKind::Array(t) => {
                 t.hash_stable(hcx, hasher);
             }
-            mir::AggregateKind::Adt(adt_def, idx, substs, active_field) => {
+            mir::AggregateKind::Adt(adt_def, idx, substs, user_substs, active_field) => {
                 adt_def.hash_stable(hcx, hasher);
                 idx.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
+                user_substs.hash_stable(hcx, hasher);
                 active_field.hash_stable(hcx, hasher);
             }
             mir::AggregateKind::Closure(def_id, ref substs) => {

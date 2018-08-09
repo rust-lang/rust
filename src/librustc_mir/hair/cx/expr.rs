@@ -256,6 +256,16 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 };
                 if let Some((adt_def, index)) = adt_data {
                     let substs = cx.tables().node_substs(fun.hir_id);
+
+                    let user_ty = cx.tables().user_substs(fun.hir_id)
+                        .map(|user_substs| {
+                            user_substs.unchecked_map(|user_substs| {
+                                // Here, we just pair an `AdtDef` with the
+                                // `user_substs`, so no new types etc are introduced.
+                                cx.tcx().mk_adt(adt_def, user_substs)
+                            })
+                        });
+
                     let field_refs = args.iter()
                         .enumerate()
                         .map(|(idx, e)| {
@@ -265,12 +275,12 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             }
                         })
                         .collect();
-                    // FIXME(#47184) -- user given type annot on ADTs
                     ExprKind::Adt {
                         adt_def,
                         substs,
                         variant_index: index,
                         fields: field_refs,
+                        user_ty,
                         base: None,
                     }
                 } else {
@@ -424,11 +434,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::Adt(adt, substs) => {
                     match adt.adt_kind() {
                         AdtKind::Struct | AdtKind::Union => {
-                            // FIXME(#47184) -- user given type annot on ADTs
                             ExprKind::Adt {
                                 adt_def: adt,
                                 variant_index: 0,
                                 substs,
+                                user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt),
                                 fields: field_refs(cx, fields),
                                 base: base.as_ref().map(|base| {
                                     FruInfo {
@@ -450,11 +460,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     assert!(base.is_none());
 
                                     let index = adt.variant_index_with_id(variant_id);
-                                    // FIXME(#47184) -- user given type annot on ADTs
                                     ExprKind::Adt {
                                         adt_def: adt,
                                         variant_index: index,
                                         substs,
+                                        user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt),
                                         fields: field_refs(cx, fields),
                                         base: None,
                                     }
@@ -694,8 +704,7 @@ fn user_annotated_ty_for_def(
     hir_id: hir::HirId,
     def: &Def,
 ) -> Option<CanonicalTy<'tcx>> {
-    let user_substs = cx.tables().user_substs(hir_id)?;
-    Some(match def {
+    match def {
         // A reference to something callable -- e.g., a fn, method, or
         // a tuple-struct or tuple-variant. This has the type of a
         // `Fn` but with the user-given substitutions.
@@ -703,11 +712,11 @@ fn user_annotated_ty_for_def(
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) =>
-            user_substs.unchecked_map(|user_substs| {
+            Some(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
                 // Here, we just pair a `DefId` with the
                 // `user_substs`, so no new types etc are introduced.
                 cx.tcx().mk_fn_def(def.def_id(), user_substs)
-            }),
+            })),
 
         Def::Const(_def_id) |
         Def::AssociatedConst(_def_id) =>
@@ -720,18 +729,26 @@ fn user_annotated_ty_for_def(
         Def::StructCtor(_def_id, CtorKind::Const) |
         Def::VariantCtor(_def_id, CtorKind::Const) =>
             match &cx.tables().node_id_to_type(hir_id).sty {
-                ty::TyAdt(adt_def, _) =>
-                    user_substs.unchecked_map(|user_substs| {
-                        // Here, we just pair an `AdtDef` with the
-                        // `user_substs`, so no new types etc are introduced.
-                        cx.tcx().mk_adt(adt_def, user_substs)
-                    }),
+                ty::Adt(adt_def, _) => user_annotated_ty_for_adt(cx, hir_id, adt_def),
                 sty => bug!("unexpected sty: {:?}", sty),
             },
 
         _ =>
             bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
-    })
+    }
+}
+
+fn user_annotated_ty_for_adt(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    hir_id: hir::HirId,
+    adt_def: &'tcx AdtDef,
+) -> Option<CanonicalTy<'tcx>> {
+    let user_substs = cx.tables().user_substs(hir_id)?;
+    Some(user_substs.unchecked_map(|user_substs| {
+        // Here, we just pair an `AdtDef` with the
+        // `user_substs`, so no new types etc are introduced.
+        cx.tcx().mk_adt(adt_def, user_substs)
+    }))
 }
 
 fn method_callee<'a, 'gcx, 'tcx>(
@@ -835,7 +852,6 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Def::StructCtor(def_id, CtorKind::Const) |
         Def::VariantCtor(def_id, CtorKind::Const) => {
-            // FIXME(#47184) -- user given type annot on ADTs
             match cx.tables().node_id_to_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
@@ -844,6 +860,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         adt_def,
                         variant_index: adt_def.variant_index_with_id(def_id),
                         substs,
+                        user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt_def),
                         fields: vec![],
                         base: None,
                     }

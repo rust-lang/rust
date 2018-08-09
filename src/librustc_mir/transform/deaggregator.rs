@@ -48,7 +48,7 @@ impl MirPass for Deaggregator {
 
                 let mut set_discriminant = None;
                 let active_field_index = match *kind {
-                    AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                    AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
                         if adt_def.is_enum() {
                             set_discriminant = Some(Statement {
                                 kind: StatementKind::SetDiscriminant {

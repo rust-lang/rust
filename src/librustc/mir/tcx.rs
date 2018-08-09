@@ -216,7 +216,7 @@ impl<'tcx> Rvalue<'tcx> {
                     AggregateKind::Tuple => {
                         tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
                     }
-                    AggregateKind::Adt(def, _, substs, _) => {
+                    AggregateKind::Adt(def, _, substs, _, _) => {
                         tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {

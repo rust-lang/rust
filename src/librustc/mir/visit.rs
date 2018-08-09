@@ -589,6 +589,7 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Adt(_adt_def,
                                                _variant_index,
                                                ref $($mutability)* substs,
+                                               _user_substs,
                                                _active_field_index) => {
                                 self.visit_substs(substs, location);
                             }

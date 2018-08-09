@@ -2009,7 +2009,7 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<usize>),
+    Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<CanonicalTy<'tcx>>, Option<usize>),
 
     Closure(DefId, ClosureSubsts<'tcx>),
     Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
@@ -2135,7 +2135,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         _ => fmt_tuple(fmt, places),
                     },
 
-                    AggregateKind::Adt(adt_def, variant, substs, _) => {
+                    AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
                         ppaux::parameterized(fmt, substs, variant_def.did, &[])?;
@@ -2813,8 +2813,14 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 let kind = box match **kind {
                     AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
                     AggregateKind::Tuple => AggregateKind::Tuple,
-                    AggregateKind::Adt(def, v, substs, n) => {
-                        AggregateKind::Adt(def, v, substs.fold_with(folder), n)
+                    AggregateKind::Adt(def, v, substs, user_ty, n) => {
+                        AggregateKind::Adt(
+                            def,
+                            v,
+                            substs.fold_with(folder),
+                            user_ty.fold_with(folder),
+                            n,
+                        )
                     }
                     AggregateKind::Closure(id, substs) => {
                         AggregateKind::Closure(id, substs.fold_with(folder))
@@ -2846,7 +2852,8 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 (match **kind {
                     AggregateKind::Array(ty) => ty.visit_with(visitor),
                     AggregateKind::Tuple => false,
-                    AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),
+                    AggregateKind::Adt(_, _, substs, user_ty, _) =>
+                        substs.visit_with(visitor) || user_ty.visit_with(visitor),
                     AggregateKind::Closure(_, substs) => substs.visit_with(visitor),
                     AggregateKind::Generator(_, substs, _) => substs.visit_with(visitor),
                 }) || fields.visit_with(visitor)

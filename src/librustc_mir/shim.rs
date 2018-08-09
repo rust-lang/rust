@@ -850,7 +850,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
             kind: StatementKind::Assign(
                 Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
-                    box AggregateKind::Adt(adt_def, variant_no, substs, None),
+                    box AggregateKind::Adt(adt_def, variant_no, substs, None, None),
                     (1..sig.inputs().len()+1).map(|i| {
                         Operand::Move(Place::Local(Local::new(i)))
                     }).collect()

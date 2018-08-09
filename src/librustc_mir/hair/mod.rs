@@ -261,6 +261,11 @@ pub enum ExprKind<'tcx> {
         adt_def: &'tcx AdtDef,
         variant_index: usize,
         substs: &'tcx Substs<'tcx>,
+
+        /// Optional user-given substs: for something like `let x =
+        /// Bar::<T> { ... }`.
+        user_ty: Option<CanonicalTy<'tcx>>,
+
         fields: Vec<FieldExprRef<'tcx>>,
         base: Option<FruInfo<'tcx>>
     },

@@ -2113,16 +2113,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_user_substs(&self, node_id: hir::HirId, substs: CanonicalSubsts<'tcx>) {
+    /// Given the substs that we just converted from the HIR, try to
+    /// canonicalize them and store them as user-given substitutions
+    /// (i.e., substitutions that must be respected by the NLL check).
+    ///
+    /// This should be invoked **before any unifications have
+    /// occurred**, so that annotations like `Vec<_>` are preserved
+    /// properly.
+    pub fn write_user_substs_from_substs(&self, hir_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+        if !substs.is_noop() {
+            let user_substs = self.infcx.canonicalize_response(&substs);
+            debug!("instantiate_value_path: user_substs = {:?}", user_substs);
+            self.write_user_substs(hir_id, user_substs);
+        }
+    }
+
+    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalSubsts<'tcx>) {
         debug!(
             "write_user_substs({:?}, {:?}) in fcx {}",
-            node_id,
+            hir_id,
             substs,
             self.tag(),
         );
 
         if !substs.is_identity() {
-            self.tables.borrow_mut().user_substs_mut().insert(node_id, substs);
+            self.tables.borrow_mut().user_substs_mut().insert(hir_id, substs);
         } else {
             debug!("write_user_substs: skipping identity substs");
         }
@@ -3596,6 +3611,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some((variant, did, substs)) = variant {
+            debug!("check_struct_path: did={:?} substs={:?}", did, substs);
+            let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+            self.write_user_substs_from_substs(hir_id, substs);
+
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
             let cause = traits::ObligationCause::new(path_span, self.body_id,
@@ -5138,11 +5157,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         self.write_substs(hir_id, substs);
 
-        if !substs.is_noop() {
-            let user_substs = self.infcx.canonicalize_response(&substs);
-            debug!("instantiate_value_path: user_substs = {:?}", user_substs);
-            self.write_user_substs(hir_id, user_substs);
-        }
+        self.write_user_substs_from_substs(hir_id, substs);
 
         ty_substituted
     }
