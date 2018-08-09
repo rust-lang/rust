@@ -32,7 +32,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             UintTy::U16 => types::I16,
             UintTy::U32 => types::I32,
             UintTy::U64 => types::I64,
-            UintTy::U128 => unimplemented!("u128"),
+            UintTy::U128 => unimpl!("u128"),
             UintTy::Usize => types::I64,
         },
         TypeVariants::TyInt(size) => match size {
@@ -40,7 +40,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             IntTy::I16 => types::I16,
             IntTy::I32 => types::I32,
             IntTy::I64 => types::I64,
-            IntTy::I128 => unimplemented!("i128"),
+            IntTy::I128 => unimpl!("i128"),
             IntTy::Isize => types::I64,
         },
         TypeVariants::TyChar => types::I32,

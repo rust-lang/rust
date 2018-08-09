@@ -17,7 +17,7 @@ RUSTC="rustc -Zcodegen-backend=$(pwd)/../target/debug/librustc_codegen_cranelift
 $RUSTC mini_core.rs --crate-name mini_core &&
 $RUSTC example.rs &&
 $RUSTC mini_core_hello_world.rs &&
-$RUSTC ../target/libcore/src/libcore/lib.rs 2>&1 | (head -n 10; tail -n 100) ||
+$RUSTC ../target/libcore/src/libcore/lib.rs 2>&1 | (head -n 10; echo "===="; tail -n 1000) ||
 (rm *.rlib; exit 1)
 
 rm *.rlib

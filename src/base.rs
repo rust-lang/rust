@@ -483,7 +483,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
         | StatementKind::Validate(_, _)
         | StatementKind::EndRegion(_)
         | StatementKind::UserAssertTy(_, _) => {}
-        StatementKind::InlineAsm { .. } => fx.tcx.sess.fatal("Inline assembly is not supported"),
+
+        StatementKind::InlineAsm { .. } => unimpl!("Inline assembly is not supported"),
     }
 }
 
@@ -527,8 +528,8 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
             ..
         } => {
             let niche_llty = fx.cton_type(discr_ty).unwrap();
+            let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
             if niche_variants.start() == niche_variants.end() {
-                let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
                 let b = fx
                     .bcx
                     .ins()
@@ -557,7 +558,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 let if_false = fx
                     .bcx
                     .ins()
-                    .iconst(niche_llty, dataful_variant as u64 as i64);
+                    .iconst(dest_cton_ty, dataful_variant as u64 as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             }
@@ -826,6 +827,14 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     rhs: CValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
+    match lhs.layout().ty.sty {
+        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _}) => {
+            if !ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
+                unimpl!("Unsized values are not yet implemented");
+            }
+        },
+        _ => bug!("trans_ptr_binop on non ptr"),
+    }
     binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "ptr";
         Add (_) bug;
