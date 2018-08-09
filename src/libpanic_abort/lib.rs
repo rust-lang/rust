@@ -24,6 +24,7 @@
 
 #![feature(core_intrinsics)]
 #![feature(libc)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
