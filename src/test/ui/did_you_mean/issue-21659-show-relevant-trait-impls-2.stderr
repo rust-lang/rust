@@ -5,9 +5,9 @@ LL |     f1.foo(1usize);
    |        ^^^ the trait `Foo<usize>` is not implemented for `Bar`
    |
    = help: the following implementations were found:
-             <Bar as Foo<i8>>
              <Bar as Foo<i16>>
              <Bar as Foo<i32>>
+             <Bar as Foo<i8>>
              <Bar as Foo<u8>>
            and 2 others
 

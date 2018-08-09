@@ -435,13 +435,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_similar_impl_candidates(&self,
-                                      impl_candidates: Vec<ty::TraitRef<'tcx>>,
+                                      mut impl_candidates: Vec<ty::TraitRef<'tcx>>,
                                       err: &mut DiagnosticBuilder)
     {
         if impl_candidates.is_empty() {
             return;
         }
 
+        let len = impl_candidates.len();
         let end = if impl_candidates.len() <= 5 {
             impl_candidates.len()
         } else {
@@ -459,10 +460,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
+        // Sort impl candidates so that ordering is consistent for UI tests.
+        let normalized_impl_candidates = &mut impl_candidates[0..end]
+            .iter()
+            .map(normalize)
+            .collect::<Vec<String>>();
+        normalized_impl_candidates.sort();
+
         err.help(&format!("the following implementations were found:{}{}",
-                          &impl_candidates[0..end].iter().map(normalize).collect::<String>(),
-                          if impl_candidates.len() > 5 {
-                              format!("\nand {} others", impl_candidates.len() - 4)
+                          normalized_impl_candidates.join(""),
+                          if len > 5 {
+                              format!("\nand {} others", len - 4)
                           } else {
                               "".to_owned()
                           }
