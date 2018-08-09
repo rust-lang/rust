@@ -64,6 +64,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(rustc_diagnostic_macros)]
 
 #[macro_use] extern crate syntax;

@@ -26,6 +26,7 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
 
