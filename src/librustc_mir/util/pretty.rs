@@ -432,6 +432,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
                     self.push(&format!("+ movability: {:?}", movability));
                 }
 
+                AggregateKind::Adt(_, _, _, Some(user_ty), _) => {
+                    self.push("adt");
+                    self.push(&format!("+ user_ty: {:?}", user_ty));
+                }
+
                 _ => {}
             },
 
