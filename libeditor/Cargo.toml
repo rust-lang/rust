@@ -6,3 +6,4 @@ publish = false
 
 [dependencies]
 libsyntax2 = { path = "../" }
+itertools = "0.7.8"

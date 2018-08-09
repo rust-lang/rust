@@ -13,6 +13,7 @@ pub struct File {
     inner: libsyntax2::File
 }
 
+#[derive(Debug)]
 pub struct HighlightedRange {
     pub range: TextRange,
     pub tag: &'static str,
@@ -100,24 +101,5 @@ impl<'f> Declaration<'f> {
 
     fn range(&self) -> TextRange {
         self.0.range()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extend_selection() {
-        let text = r#"fn foo() {
-    1 + 1
-}
-"#;
-        let file = File::new(text);
-        let range = TextRange::offset_len(18.into(), 0.into());
-        let range = file.extend_selection(range).unwrap();
-        assert_eq!(range, TextRange::from_to(17.into(), 18.into()));
-        let range = file.extend_selection(range).unwrap();
-        assert_eq!(range, TextRange::from_to(15.into(), 20.into()));
     }
 }
