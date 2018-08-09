@@ -1084,6 +1084,7 @@ unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
+    #[inline]
     fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
 }
 
@@ -1235,14 +1236,17 @@ impl<T,E> ops::Try for Result<T, E> {
     type Ok = T;
     type Error = E;
 
+    #[inline]
     fn into_result(self) -> Self {
         self
     }
 
+    #[inline]
     fn from_ok(v: T) -> Self {
         Ok(v)
     }
 
+    #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
     }
