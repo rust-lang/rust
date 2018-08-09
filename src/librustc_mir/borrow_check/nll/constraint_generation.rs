@@ -16,7 +16,7 @@ use borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
+use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, PlaceBase, Rvalue};
 use rustc::mir::{Local, Statement, Terminator};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
@@ -138,8 +138,8 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
         if let Some(all_facts) = self.all_facts {
-            if let Place::Local(temp) = place {
-                if let Some(borrow_indices) = self.borrow_set.local_map.get(temp) {
+            if let PlaceBase::Local(temp) = place.base {
+                if let Some(borrow_indices) = self.borrow_set.local_map.get(&temp) {
                     for &borrow_index in borrow_indices {
                         let location_index = self.location_table.mid_index(location);
                         all_facts.killed.push((borrow_index, location_index));

@@ -12,7 +12,7 @@ use borrow_check::WriteKind;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::VarBindingForm;
 use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
-use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
+use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place, PlaceBase};
 use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty;
 use rustc_data_structures::indexed_vec::Idx;
@@ -392,8 +392,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use();
 
-        let proper_span = match *root_place {
-            Place::Local(local) => self.mir.local_decls[local].source_info.span,
+        let proper_span = match root_place.base {
+            PlaceBase::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 
@@ -531,7 +531,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         assigned_span: Span,
         err_place: &Place<'tcx>,
     ) {
-        let (from_arg, local_decl) = if let Place::Local(local) = *err_place {
+        let (from_arg, local_decl) = if let PlaceBase::Local(local) = err_place.base {
             if let LocalKind::Arg = self.mir.local_kind(local) {
                 (true, Some(&self.mir.local_decls[local]))
             } else {
@@ -633,130 +633,130 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         mut autoderef: bool,
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
-        match *place {
-            Place::Promoted(_) => {
-                buf.push_str("promoted");
-            }
-            Place::Local(local) => {
-                self.append_local_to_string(local, buf)?;
-            }
-            Place::Static(ref static_) => {
-                buf.push_str(&self.tcx.item_name(static_.def_id).to_string());
-            }
-            Place::Projection(ref proj) => {
-                match proj.elem {
-                    ProjectionElem::Deref => {
-                        let upvar_field_projection =
-                            place.is_upvar_field_projection(self.mir, &self.tcx);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
-                            if self.mir.upvar_decls[var_index].by_ref {
-                                buf.push_str(&name);
-                            } else {
-                                buf.push_str(&format!("*{}", &name));
-                            }
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            match projection {
+                ProjectionElem::Deref => {
+                    let upvar_field_projection =
+                        place.is_upvar_field_projection(self.mir, &self.tcx);
+                    if let Some(field) = upvar_field_projection {
+                        let var_index = field.index();
+                        let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                        if self.mir.upvar_decls[var_index].by_ref {
+                            buf.push_str(&name);
                         } else {
-                            if autoderef {
-                                self.append_place_to_string(
-                                    &proj.base,
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            } else if let Place::Local(local) = proj.base {
-                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                                    self.mir.local_decls[local].is_user_variable
+                            buf.push_str(&format!("*{}", &name));
+                        }
+                    } else {
+                        if autoderef {
+                            self.append_place_to_string(
+                                &base_place,
+                                buf,
+                                autoderef,
+                                &including_downcast,
+                            )?;
+                        } else if let PlaceBase::Local(local) = base_place.base {
+                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
+                            self.mir.local_decls[local].is_user_variable
                                 {
                                     self.append_place_to_string(
-                                        &proj.base,
+                                        &base_place,
                                         buf,
                                         autoderef,
                                         &including_downcast,
                                     )?;
                                 } else {
-                                    buf.push_str(&"*");
-                                    self.append_place_to_string(
-                                        &proj.base,
-                                        buf,
-                                        autoderef,
-                                        &including_downcast,
-                                    )?;
-                                }
-                            } else {
                                 buf.push_str(&"*");
                                 self.append_place_to_string(
-                                    &proj.base,
+                                    &base_place,
                                     buf,
                                     autoderef,
                                     &including_downcast,
                                 )?;
                             }
-                        }
-                    }
-                    ProjectionElem::Downcast(..) => {
-                        self.append_place_to_string(
-                            &proj.base,
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        if including_downcast.0 {
-                            return Err(());
-                        }
-                    }
-                    ProjectionElem::Field(field, _ty) => {
-                        autoderef = true;
-
-                        let upvar_field_projection =
-                            place.is_upvar_field_projection(self.mir, &self.tcx);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
-                            buf.push_str(&name);
                         } else {
-                            let field_name = self.describe_field(&proj.base, field);
+                            buf.push_str(&"*");
                             self.append_place_to_string(
-                                &proj.base,
+                                &base_place,
                                 buf,
                                 autoderef,
                                 &including_downcast,
                             )?;
-                            buf.push_str(&format!(".{}", field_name));
                         }
                     }
-                    ProjectionElem::Index(index) => {
-                        autoderef = true;
+                }
+                ProjectionElem::Downcast(..) => {
+                    self.append_place_to_string(
+                        &base_place,
+                        buf,
+                        autoderef,
+                        &including_downcast,
+                    )?;
+                    if including_downcast.0 {
+                        return Err(());
+                    }
+                }
+                ProjectionElem::Field(field, _ty) => {
+                    autoderef = true;
 
+                    let upvar_field_projection =
+                        place.is_upvar_field_projection(self.mir, &self.tcx);
+                    if let Some(field) = upvar_field_projection {
+                        let var_index = field.index();
+                        let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                        buf.push_str(&name);
+                    } else {
+                        let field_name = self.describe_field(&base_place, *field);
                         self.append_place_to_string(
-                            &proj.base,
+                            &base_place,
                             buf,
                             autoderef,
                             &including_downcast,
                         )?;
-                        buf.push_str("[");
-                        if let Err(_) = self.append_local_to_string(index, buf) {
-                            buf.push_str("..");
-                        }
-                        buf.push_str("]");
+                        buf.push_str(&format!(".{}", field_name));
                     }
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
-                        autoderef = true;
-                        // Since it isn't possible to borrow an element on a particular index and
-                        // then use another while the borrow is held, don't output indices details
-                        // to avoid confusing the end-user
-                        self.append_place_to_string(
-                            &proj.base,
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        buf.push_str(&"[..]");
+                }
+                ProjectionElem::Index(index) => {
+                    autoderef = true;
+
+                    self.append_place_to_string(
+                        &base_place,
+                        buf,
+                        autoderef,
+                        &including_downcast,
+                    )?;
+                    buf.push_str("[");
+                    if let Err(_) = self.append_local_to_string(*index, buf) {
+                        buf.push_str("..");
                     }
-                };
+                    buf.push_str("]");
+                }
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    autoderef = true;
+                    // Since it isn't possible to borrow an element on a particular index and
+                    // then use another while the borrow is held, don't output indices details
+                    // to avoid confusing the end-user
+                    self.append_place_to_string(
+                        &base_place,
+                        buf,
+                        autoderef,
+                        &including_downcast,
+                    )?;
+                    buf.push_str(&"[..]");
+                }
+            }
+        } else {
+            match place.base {
+                PlaceBase::Promoted(_) => {
+                    buf.push_str("promoted");
+                }
+                PlaceBase::Local(local) => {
+                    self.append_local_to_string(local, buf)?;
+                }
+                PlaceBase::Static(ref static_) => {
+                    buf.push_str(&self.tcx.item_name(static_.def_id).to_string());
+                }
             }
         }
-
         Ok(())
     }
 
@@ -774,19 +774,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     // End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place, field: Field) -> String {
-        match *base {
-            Place::Local(local) => {
-                let local = &self.mir.local_decls[local];
-                self.describe_field_from_ty(&local.ty, field)
-            }
-            Place::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
-            Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Deref => self.describe_field(&proj.base, field),
+    fn describe_field(&self, place: &Place<'tcx>, field: Field) -> String {
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            match projection {
+
+                ProjectionElem::Deref => self.describe_field(&base_place, field),
                 ProjectionElem::Downcast(def, variant_index) => format!(
                     "{}",
-                    def.variants[variant_index].fields[field.index()].ident
+                    def.variants[*variant_index].fields[field.index()].ident
                 ),
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field)
@@ -794,9 +789,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(&proj.base, field).to_string()
+                    self.describe_field(&base_place, field).to_string()
                 }
-            },
+            }
+        } else {
+            match place.base {
+                 PlaceBase::Local(local) => {
+                     let local = &self.mir.local_decls[local];
+                     self.describe_field_from_ty(&local.ty, field)
+                 }
+                 PlaceBase::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
+                 PlaceBase::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
+            }
         }
     }
 
@@ -843,17 +847,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     // Retrieve type of a place for the current MIR representation
     fn retrieve_type_for_place(&self, place: &Place<'tcx>) -> Option<ty::Ty> {
-        match place {
-            Place::Local(local) => {
-                let local = &self.mir.local_decls[*local];
-                Some(local.ty)
-            }
-            Place::Promoted(ref prom) => Some(prom.1),
-            Place::Static(ref st) => Some(st.ty),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(_, ty) => Some(ty),
+        let place = place.clone();
+        if let Some(projection) = place.projection() {
+            match projection {
+                ProjectionElem::Field(_, ty) => Some(*ty),
                 _ => None,
-            },
+            }
+        } else {
+            match place.base {
+                PlaceBase::Local(local) => {
+                    let local = &self.mir.local_decls[local];
+                    Some(local.ty)
+                }
+                PlaceBase::Promoted(ref prom) => Some(prom.1),
+                PlaceBase::Static(ref st) => Some(st.ty),
+            }
         }
     }
 }
@@ -990,7 +998,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place::Local(local), _),
+                kind: StatementKind::Assign(
+                    Place {
+                        base: PlaceBase::Local(local),
+                        elems: _,
+                    },
+                    _,
+                ),
                 ..
             }) => local,
             _ => return OtherUse(use_span),
@@ -1018,15 +1032,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         self.tcx
                             .with_freevars(node_id, |freevars| {
                                 for (v, place) in freevars.iter().zip(places) {
-                                    match *place {
-                                        Operand::Copy(Place::Local(l))
-                                        | Operand::Move(Place::Local(l))
-                                            if local == l =>
+                                    match place {
+                                        Operand::Copy(place)
+                                        | Operand::Move(place)
+                                            if PlaceBase::Local(local) == place.base =>
                                         {
                                             debug!(
                                                 "find_closure_borrow_span: found captured local \
                                                  {:?}",
-                                                l
+                                                local
                                             );
                                             return Some(v.span);
                                         }

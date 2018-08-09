@@ -10,7 +10,7 @@
 
 use rustc::hir;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Mir};
-use rustc::mir::{Mutability, Place, Projection, ProjectionElem, Static};
+use rustc::mir::{Mutability, Place, PlaceBase, ProjectionElem, Static};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
@@ -41,118 +41,102 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let reason;
         let access_place_desc = self.describe_place(access_place);
 
-        match the_place_err {
-            Place::Local(local) => {
-                item_msg = format!("`{}`", access_place_desc.unwrap());
-                if let Place::Local(_) = access_place {
-                    reason = ", as it is not declared as mutable".to_string();
-                } else {
-                    let name = self.mir.local_decls[*local]
-                        .name
-                        .expect("immutable unnamed local");
-                    reason = format!(", as `{}` is not declared as mutable", name);
-                }
-            }
+        if let Some((base_place, projection)) = the_place_err.split_projection(self.tcx) {
+            match projection {
+                ProjectionElem::Deref => {
+                    if base_place.base == PlaceBase::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() {
+                        item_msg = format!("`{}`", access_place_desc.unwrap());
+                        debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
+                        debug_assert!(is_closure_or_generator(
+                            the_place_err.ty(self.mir, self.tcx).to_ty(self.tcx)
+                        ));
 
-            Place::Projection(box Projection {
-                base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            }) => {
-                debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.tcx).to_ty(self.tcx)
-                ));
-
-                item_msg = format!("`{}`", access_place_desc.unwrap());
-                if self.is_upvar(access_place) {
-                    reason = ", as it is not declared as mutable".to_string();
-                } else {
-                    let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
-                    reason = format!(", as `{}` is not declared as mutable", name);
-                }
-            }
-
-            Place::Projection(box Projection {
-                base,
-                elem: ProjectionElem::Deref,
-            }) => {
-                if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
-                    debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
-                    debug_assert!(is_closure_or_generator(
-                        the_place_err.ty(self.mir, self.tcx).to_ty(self.tcx)
-                    ));
-
-                    reason = if self.is_upvar(access_place) {
-                        ", as it is a captured variable in a `Fn` closure".to_string()
-                    } else {
-                        ", as `Fn` closures cannot mutate their captured variables".to_string()
-                    }
-                } else if {
-                    if let Place::Local(local) = *base {
-                        if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
+                        reason = if self.is_upvar(access_place) {
+                            ", as it is a captured variable in a `Fn` closure".to_string()
+                        } else {
+                            ", as `Fn` closures cannot mutate their captured variables".to_string()
+                        }
+                    } else if {
+                        if let PlaceBase::Local(local) = base_place.base {
+                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
                             = self.mir.local_decls[local].is_user_variable {
                                 true
+                            } else {
+                                false
+                            }
                         } else {
                             false
                         }
+                    } {
+                        item_msg = format!("`{}`", access_place_desc.unwrap());
+                        reason = ", as it is immutable for the pattern guard".to_string();
                     } else {
-                        false
-                    }
-                } {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
-                    reason = ", as it is immutable for the pattern guard".to_string();
-                } else {
-                    let pointer_type =
-                        if base.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
-                            "`&` reference"
-                        } else {
-                            "`*const` pointer"
-                        };
-                    if let Some(desc) = access_place_desc {
-                        item_msg = format!("`{}`", desc);
-                        reason = match error_access {
-                            AccessKind::Move |
-                            AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
-                            AccessKind::MutableBorrow => {
-                                format!(", as it is behind a {}", pointer_type)
+                        let pointer_type =
+                            if base_place.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                                "`&` reference"
+                            } else {
+                                "`*const` pointer"
+                            };
+                        if let Some(desc) = access_place_desc {
+                            item_msg = format!("`{}`", desc);
+                            reason = match error_access {
+                                AccessKind::Move |
+                                AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
+                                AccessKind::MutableBorrow => {
+                                    format!(", as it is behind a {}", pointer_type)
+                                }
                             }
+                        } else {
+                            item_msg = format!("data in a {}", pointer_type);
+                            reason = "".to_string();
                         }
+                    }
+                },
+                ProjectionElem::Field(upvar_index, _) => {
+                    debug_assert!(is_closure_or_generator(
+                        base_place.ty(self.mir, self.tcx).to_ty(self.tcx)
+                    ));
+
+                    item_msg = format!("`{}`", access_place_desc.unwrap());
+                    if self.is_upvar(access_place) {
+                        reason = ", as it is not declared as mutable".to_string();
                     } else {
-                        item_msg = format!("data in a {}", pointer_type);
-                        reason = "".to_string();
+                        let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
+                        reason = format!(", as `{}` is not declared as mutable", name);
                     }
                 }
-            }
-
-            Place::Promoted(_) => unreachable!(),
-
-            Place::Static(box Static { def_id, ty: _ }) => {
-                if let Place::Static(_) = access_place {
-                    item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
-                    reason = "".to_string();
-                } else {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
-                    let static_name = &self.tcx.item_name(*def_id);
-                    reason = format!(", as `{}` is an immutable static item", static_name);
+                ProjectionElem::Subslice { .. }
+                | ProjectionElem::Downcast(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Index(_) => {
+                    bug!("Unexpected immutable place.")
                 }
             }
-
-            Place::Projection(box Projection {
-                base: _,
-                elem: ProjectionElem::Index(_),
-            })
-            | Place::Projection(box Projection {
-                base: _,
-                elem: ProjectionElem::ConstantIndex { .. },
-            })
-            | Place::Projection(box Projection {
-                base: _,
-                elem: ProjectionElem::Subslice { .. },
-            })
-            | Place::Projection(box Projection {
-                base: _,
-                elem: ProjectionElem::Downcast(..),
-            }) => bug!("Unexpected immutable place."),
+        } else {
+            match the_place_err.base {
+                PlaceBase::Local(local) => {
+                    item_msg = format!("`{}`", access_place_desc.unwrap());
+                    if let PlaceBase::Local(_) = access_place.base {
+                        reason = ", as it is not declared as mutable".to_string();
+                    } else {
+                        let name = self.mir.local_decls[local]
+                            .name
+                            .expect("immutable unnamed local");
+                        reason = format!(", as `{}` is not declared as mutable", name);
+                    }
+                }
+                PlaceBase::Static(box Static { def_id, ty: _ }) => {
+                    if let PlaceBase::Static(_) = access_place.base {
+                        item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
+                        reason = "".to_string();
+                    } else {
+                        item_msg = format!("`{}`", access_place_desc.unwrap());
+                        let static_name = &self.tcx.item_name(def_id);
+                        reason = format!(", as `{}` is an immutable static item", static_name);
+                    }
+                }
+                PlaceBase::Promoted(_) => unreachable!(),
+            }
         }
 
         // `act` and `acted_on` are strings that let us abstract over
@@ -199,15 +183,139 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        match the_place_err {
-            // We want to suggest users use `let mut` for local (user
-            // variable) mutations...
-            Place::Local(local) if self.mir.local_decls[*local].can_be_made_mutable() => {
-                // ... but it doesn't make sense to suggest it on
-                // variables that are `ref x`, `ref mut x`, `&self`,
+        if let Some((base_place, projection)) = the_place_err.split_projection(self.tcx) {
+            match projection {
+                ProjectionElem::Deref => {
+                    if let PlaceBase::Local(local) = base_place.base {
+                        match self.mir.local_decls[local].is_user_variable {
+                            Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => {
+                                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                                err.note(
+                                    "variables bound in patterns are immutable until the end of the pattern guard",
+                                );
+                            },
+                            Some(_) => {
+                                // We want to point out when a `&` can be readily replaced
+                                // with an `&mut`.
+                                //
+                                // FIXME: can this case be generalized to work for an
+                                // arbitrary base for the projection?
+                                let local_decl = &self.mir.local_decls[local];
+                                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
+                                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
+                                        Some(suggest_ampmut_self(self.tcx, local_decl))
+                                    }
+
+                                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                                                                                   binding_mode: ty::BindingMode::BindByValue(_),
+                                                                                   opt_ty_info,
+                                                                                   ..
+                                                                               })) => Some(suggest_ampmut(
+                                        self.tcx,
+                                        self.mir,
+                                        local,
+                                        local_decl,
+                                        *opt_ty_info,
+                                    )),
+
+                                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                                                                                   binding_mode: ty::BindingMode::BindByReference(_),
+                                                                                   ..
+                                                                               })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+
+                                    //
+                                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
+
+                                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
+                                };
+
+                                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
+                                    ("&", "reference")
+                                } else {
+                                    ("*const", "pointer")
+                                };
+
+                                if let Some((err_help_span, suggested_code)) = suggestion {
+                                    err.span_suggestion(
+                                        err_help_span,
+                                        &format!("consider changing this to be a mutable {}", pointer_desc),
+                                        suggested_code,
+                                    );
+                                }
+
+                                if let Some(name) = local_decl.name {
+                                    err.span_label(
+                                        span,
+                                        format!(
+                                            "`{NAME}` is a `{SIGIL}` {DESC}, \
+                             so the data it refers to cannot be {ACTED_ON}",
+                                            NAME = name,
+                                            SIGIL = pointer_sigil,
+                                            DESC = pointer_desc,
+                                            ACTED_ON = acted_on
+                                        ),
+                                    );
+                                } else {
+                                    err.span_label(
+                                        span,
+                                        format!(
+                                            "cannot {ACT} through `{SIGIL}` {DESC}",
+                                            ACT = act,
+                                            SIGIL = pointer_sigil,
+                                            DESC = pointer_desc
+                                        ),
+                                    );
+                                }
+                            }
+                            _ => {},
+                        }
+                        if local == Local::new(1) && !self.mir.upvar_decls.is_empty() {
+                            err.span_label(span, format!("cannot {ACT}", ACT = act));
+                            err.span_help(
+                                self.mir.span,
+                                "consider changing this to accept closures that implement `FnMut`"
+                            );
+                        }
+                    }
+                },
+                ProjectionElem::Field(upvar_index, _) => {
+                    // Suggest adding mut for upvars
+                    debug_assert!(is_closure_or_generator(
+                        base_place.ty(self.mir, self.tcx).to_ty(self.tcx)
+                    ));
+
+                    err.span_label(span, format!("cannot {ACT}", ACT = act));
+
+                    let upvar_hir_id = self.mir.upvar_decls[upvar_index.index()]
+                        .var_hir_id
+                        .assert_crate_local();
+                    let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
+                    if let Some(hir::map::NodeBinding(pat)) = self.tcx.hir.find(upvar_node_id) {
+                        if let hir::PatKind::Binding(
+                            hir::BindingAnnotation::Unannotated,
+                            _,
+                            upvar_ident,
+                            _,
+                        ) = pat.node
+                            {
+                                err.span_suggestion(
+                                    upvar_ident.span,
+                                    "consider changing this to be mutable",
+                                    format!("mut {}", upvar_ident.name),
+                                );
+                            }
+                    }
+                }
+                _ => {},
+            }
+        } else if let PlaceBase::Local(local) = the_place_err.base {
+            if self.mir.local_decls[local].can_be_made_mutable() {
+                // We want to suggest users use `let mut` for local (user
+                // variable) mutations, but it doesn't make sense to suggest
+                // it on variables that are `ref x`, `ref mut x`, `&self`,
                 // or `&mut self` (such variables are simply not
                 // mutable).
-                let local_decl = &self.mir.local_decls[*local];
+                let local_decl = &self.mir.local_decls[local];
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -216,195 +324,47 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     "consider changing this to be mutable",
                     format!("mut {}", local_decl.name.unwrap()),
                 );
-            }
-
-            // Also suggest adding mut for upvars
-            Place::Projection(box Projection {
-                base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            }) => {
-                debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.tcx).to_ty(self.tcx)
-                ));
-
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-
-                let upvar_hir_id = self.mir.upvar_decls[upvar_index.index()]
-                    .var_hir_id
-                    .assert_crate_local();
-                let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
-                if let Some(hir::map::NodeBinding(pat)) = self.tcx.hir.find(upvar_node_id) {
-                    if let hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated,
-                        _,
-                        upvar_ident,
-                        _,
-                    ) = pat.node
-                    {
-                        err.span_suggestion(
-                            upvar_ident.span,
-                            "consider changing this to be mutable",
-                            format!("mut {}", upvar_ident.name),
-                        );
+            } else {
+                // complete hack to approximate old AST-borrowck
+                // diagnostic: if the span starts with a mutable borrow of
+                // a local variable, then just suggest the user remove it.
+                if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                    if snippet.starts_with("&mut ") {
+                        err.span_label(span, format!("cannot {ACT}", ACT = act));
+                        err.span_label(span, "try removing `&mut` here");
                     }
                 }
             }
-
-            // complete hack to approximate old AST-borrowck
-            // diagnostic: if the span starts with a mutable borrow of
-            // a local variable, then just suggest the user remove it.
-            Place::Local(_)
-                if {
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                        snippet.starts_with("&mut ")
-                    } else {
-                        false
-                    }
-                } =>
-            {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
-            }
-
-            Place::Projection(box Projection {
-                base: Place::Local(local),
-                elem: ProjectionElem::Deref,
-            }) if {
-                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                    self.mir.local_decls[*local].is_user_variable
-                {
-                    true
-                } else {
-                    false
-                }
-            } =>
-            {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.note(
-                    "variables bound in patterns are immutable until the end of the pattern guard",
-                );
-            }
-
-            // We want to point out when a `&` can be readily replaced
-            // with an `&mut`.
-            //
-            // FIXME: can this case be generalized to work for an
-            // arbitrary base for the projection?
-            Place::Projection(box Projection {
-                base: Place::Local(local),
-                elem: ProjectionElem::Deref,
-            }) if self.mir.local_decls[*local].is_user_variable.is_some() =>
-            {
-                let local_decl = &self.mir.local_decls[*local];
-                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
-                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
-                        Some(suggest_ampmut_self(self.tcx, local_decl))
-                    }
-
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByValue(_),
-                        opt_ty_info,
-                        ..
-                    })) => Some(suggest_ampmut(
-                        self.tcx,
-                        self.mir,
-                        *local,
-                        local_decl,
-                        *opt_ty_info,
-                    )),
-
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByReference(_),
-                        ..
-                    })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
-
-                    //
-                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
-
-                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
-                };
-
-                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
-                    ("&", "reference")
-                } else {
-                    ("*const", "pointer")
-                };
-
-                if let Some((err_help_span, suggested_code)) = suggestion {
-                    err.span_suggestion(
-                        err_help_span,
-                        &format!("consider changing this to be a mutable {}", pointer_desc),
-                        suggested_code,
-                    );
-                }
-
-                if let Some(name) = local_decl.name {
-                    err.span_label(
-                        span,
-                        format!(
-                            "`{NAME}` is a `{SIGIL}` {DESC}, \
-                             so the data it refers to cannot be {ACTED_ON}",
-                            NAME = name,
-                            SIGIL = pointer_sigil,
-                            DESC = pointer_desc,
-                            ACTED_ON = acted_on
-                        ),
-                    );
-                } else {
-                    err.span_label(
-                        span,
-                        format!(
-                            "cannot {ACT} through `{SIGIL}` {DESC}",
-                            ACT = act,
-                            SIGIL = pointer_sigil,
-                            DESC = pointer_desc
-                        ),
-                    );
-                }
-            }
-
-            Place::Projection(box Projection {
-                base,
-                elem: ProjectionElem::Deref,
-            }) if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() =>
-            {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_help(
-                    self.mir.span,
-                    "consider changing this to accept closures that implement `FnMut`"
-                );
-            }
-
-            _ => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-            }
+        } else {
+            err.span_label(span, format!("cannot {ACT}", ACT = act));
         }
-
         err.buffer(&mut self.errors_buffer);
     }
 
     // Does this place refer to what the user sees as an upvar
     fn is_upvar(&self, place: &Place<'tcx>) -> bool {
-        match *place {
-            Place::Projection(box Projection {
-                ref base,
-                elem: ProjectionElem::Field(_, _),
-            }) => {
-                let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                is_closure_or_generator(base_ty)
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            match projection {
+                ProjectionElem::Field(_, _) => {
+                    let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    is_closure_or_generator(base_ty)
+                }
+                ProjectionElem::Deref => {
+                    if let Some((base_place, projection)) = base_place.split_projection(self.tcx) {
+                        if let ProjectionElem::Field(upvar_index, _) = projection {
+                            let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                            is_closure_or_generator(base_ty) && self.mir.upvar_decls[upvar_index.index()].by_ref
+                        } else {
+                            unreachable!{}
+                        }
+                    } else {
+                        unreachable!{}
+                    }
+                }
+                _ => unreachable!{},
             }
-            Place::Projection(box Projection {
-                base:
-                    Place::Projection(box Projection {
-                        ref base,
-                        elem: ProjectionElem::Field(upvar_index, _),
-                    }),
-                elem: ProjectionElem::Deref,
-            }) => {
-                let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                is_closure_or_generator(base_ty) && self.mir.upvar_decls[upvar_index.index()].by_ref
-            }
-            _ => false,
+        } else {
+            false
         }
     }
 }

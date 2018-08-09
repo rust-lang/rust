@@ -1826,6 +1826,13 @@ impl<'a, 'tcx> Place<'tcx> {
             elems: tcx.intern_place_elems(&[elem]),
         }
     }
+
+    pub fn local(local: Local) -> Self {
+       Place {
+           base: PlaceBase::Local(local),
+           elems: Slice::empty(),
+       }
+    }
 }
 
 impl<'tcx> Debug for PlaceBase<'tcx> {

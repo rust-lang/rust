@@ -368,48 +368,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
-        let place_ty = match *place {
-            Place::Local(index) => PlaceTy::Ty {
-                ty: self.mir.local_decls[index].ty,
-            },
-            Place::Promoted(box (_index, sty)) => {
-                let sty = self.sanitize_type(place, sty);
-                // FIXME -- promoted MIR return types reference
-                // various "free regions" (e.g., scopes and things)
-                // that they ought not to do. We have to figure out
-                // how best to handle that -- probably we want treat
-                // promoted MIR much like closures, renumbering all
-                // their free regions and propagating constraints
-                // upwards. We have the same acyclic guarantees, so
-                // that should be possible. But for now, ignore them.
-                //
-                // let promoted_mir = &self.mir.promoted[index];
-                // promoted_mir.return_ty()
-                PlaceTy::Ty { ty: sty }
-            }
-            Place::Static(box Static { def_id, ty: sty }) => {
-                let sty = self.sanitize_type(place, sty);
-                let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(ty, location);
-                if let Err(terr) = self.cx.eq_types(ty, sty, location.boring()) {
-                    span_mirbug!(
-                        self,
-                        place,
-                        "bad static type ({:?}: {:?}): {:?}",
-                        ty,
-                        sty,
-                        terr
-                    );
-                }
-                PlaceTy::Ty { ty: sty }
-            }
-            Place::Projection(ref proj) => {
+
+        let place_ty = if let Some((base_place, projection)) = place.split_projection(self.tcx()) {
                 let base_context = if context.is_mutating_use() {
                     PlaceContext::Projection(Mutability::Mut)
                 } else {
                     PlaceContext::Projection(Mutability::Not)
                 };
-                let base_ty = self.sanitize_place(&proj.base, location, base_context);
+                let base_ty = self.sanitize_place(&base_place, location, base_context);
                 if let PlaceTy::Ty { ty } = base_ty {
                     if ty.references_error() {
                         assert!(self.errors_reported);
@@ -418,7 +384,43 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         };
                     }
                 }
-                self.sanitize_projection(base_ty, &proj.elem, place, location)
+                self.sanitize_projection(base_ty, &projection, place, location)
+        } else {
+            match place.base {
+                PlaceBase::Local(index) => PlaceTy::Ty {
+                ty: self.mir.local_decls[index].ty,
+            },
+                PlaceBase::Promoted(box (_index, sty)) => {
+                    let sty = self.sanitize_type(place, sty);
+                    // FIXME -- promoted MIR return types reference
+                    // various "free regions" (e.g., scopes and things)
+                    // that they ought not to do. We have to figure out
+                    // how best to handle that -- probably we want treat
+                    // promoted MIR much like closures, renumbering all
+                    // their free regions and propagating constraints
+                    // upwards. We have the same acyclic guarantees, so
+                    // that should be possible. But for now, ignore them.
+                    //
+                    // let promoted_mir = &self.mir.promoted[index];
+                    // promoted_mir.return_ty()
+                    PlaceTy::Ty { ty: sty }
+                }
+                PlaceBase::Static(box Static { def_id, ty: sty }) => {
+                    let sty = self.sanitize_type(place, sty);
+                    let ty = self.tcx().type_of(def_id);
+                    let ty = self.cx.normalize(ty, location);
+                    if let Err(terr) = self.cx.eq_types(ty, sty, location.boring()) {
+                        span_mirbug!(
+                        self,
+                        place,
+                        "bad static type ({:?}: {:?}): {:?}",
+                        ty,
+                        sty,
+                        terr
+                    );
+                    }
+                    PlaceTy::Ty { ty: sty }
+                }
             }
         };
         if let PlaceContext::Copy = context {
@@ -460,7 +462,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::Local(i).ty(self.mir, tcx).to_ty(tcx);
+                let index_ty = Place::local(i).ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
                     PlaceTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),
@@ -870,8 +872,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
-                let is_temp = if let Place::Local(l) = place {
-                    !mir.local_decls[*l].is_user_variable.is_some()
+                let is_temp = if let PlaceBase::Local(l) = place.base {
+                    !mir.local_decls[l].is_user_variable.is_some()
                 } else {
                     false
                 };
@@ -1597,13 +1599,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        while let Place::Projection(box PlaceProjection { base, elem }) = borrowed_place {
+        while let Some((base_place, projection)) = borrowed_place.split_projection(self.infcx.tcx) {
             debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
 
-            match *elem {
+            match projection {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                    let base_ty = base_place.ty(self.mir, tcx).to_ty(tcx);
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
@@ -1675,7 +1677,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
             // The "propagate" case. We need to check that our base is valid
             // for the borrow's lifetime.
-            borrowed_place = base;
+            borrowed_place = &base_place;
         }
     }
 

@@ -13,7 +13,7 @@ use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
-use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
+use rustc::mir::{self, Location, Mir, PlaceBase, Rvalue, StatementKind, TerminatorKind};
 use rustc::ty::RegionVid;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
@@ -266,7 +266,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             match statement.kind {
                 StatementKind::Assign(ref place, ref rvalue) => {
                     debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
-                    if *place == Place::Local(mir::RETURN_PLACE) {
+                    if place.base == PlaceBase::Local(mir::RETURN_PLACE) {
                         ConstraintCategory::Return
                     } else {
                         match rvalue {

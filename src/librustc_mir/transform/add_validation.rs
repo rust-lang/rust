@@ -62,14 +62,14 @@ fn place_context<'a, 'tcx, D>(
                     // This is already as restricted as it gets, no need to even recurse
                     context
                 } else {
-                    let base_context = place_context(&place.base_place(&tcx), local_decls, tcx);
+                    let base_context = place_context(&place.base_place(tcx), local_decls, tcx);
                     // The region of the outermost Deref is always most restrictive.
                     let re = context.0.or(base_context.0);
                     let mutbl = context.1.and(base_context.1);
                     (re, mutbl)
                 }
             }
-            _ => place_context(&place.base_place(&tcx), local_decls, tcx),
+            _ => place_context(&place.base_place(tcx), local_decls, tcx),
         },
         _ => match place.base {
             Local { .. } => (None, hir::MutMutable),
@@ -236,7 +236,7 @@ impl MirPass for AddValidation {
             };
             // Gather all arguments, skip return value.
             let operands = local_decls.iter_enumerated().skip(1).take(arg_count)
-                    .map(|(local, _)| place_to_operand(Place::Local(local))).collect();
+                    .map(|(local, _)| place_to_operand(Place::local(local))).collect();
             emit_acquire(&mut basic_blocks[START_BLOCK], source_info, operands);
         }
 

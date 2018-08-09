@@ -12,7 +12,7 @@ use borrow_check::place_ext::PlaceExt;
 use dataflow::indexes::BorrowIndex;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{self, Location, Mir, Place};
+use rustc::mir::{self, Location, Mir, Place, PlaceBase};
 use rustc::ty::{Region, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             self.insert_as_pending_if_two_phase(location, &assigned_place, region, kind, idx);
 
             insert(&mut self.region_map, &region, idx);
-            if let Some(local) = borrowed_place.root_local() {
+            if let Some(local) = borrowed_place.root_local(self.tcx) {
                 insert(&mut self.local_map, &local, idx);
             }
         }
@@ -202,7 +202,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
         self.super_place(place, context, location);
 
         // We found a use of some temporary TEMP...
-        if let Place::Local(temp) = place {
+        if let Place {
+            base: PlaceBase::Local(temp),
+            elems: _,
+        } = place {
             // ... check whether we (earlier) saw a 2-phase borrow like
             //
             //     TMP = &mut place
@@ -254,7 +257,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                         }
                     };
                 }
-
                 None => {}
             }
         }
@@ -321,7 +323,7 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place::Local(temp) = assigned_place {
+        let temp = if let mir::PlaceBase::Local(temp) = assigned_place.base {
             temp
         } else {
             span_bug!(

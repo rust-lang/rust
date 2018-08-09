@@ -92,7 +92,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place::Local(local),
+                    Place {
+                        base: PlaceBase::Local(local),
+                        elems: _,
+                    },
                     Rvalue::Use(Operand::Move(move_from)),
                 )) = self.mir.basic_blocks()[location.block]
                     .statements
@@ -238,12 +241,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             ty::TyClosure(def_id, closure_substs)
                                 if !self.mir.upvar_decls.is_empty()
                                     && {
-                                        match place {
-                                            Place::Projection(ref proj) => {
-                                                proj.base == Place::Local(Local::new(1))
-                                            }
-                                            Place::Promoted(_) |
-                                            Place::Local(_) | Place::Static(_) => unreachable!(),
+                                        if let Some((base_place, _)) = place.split_projection(self.tcx) {
+                                            PlaceBase::Local(Local::new(1)) == base_place.base
+                                        } else {
+                                            false
                                         }
                                     } =>
                             {
@@ -300,23 +301,20 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // Ok to suggest a borrow, since the target can't be moved from
                 // anyway.
                 if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                    match move_from {
-                        Place::Projection(ref proj)
-                            if self.suitable_to_remove_deref(proj, &snippet) =>
-                        {
+                    if let Some((base_place, proj)) = move_from.split_projection(self.tcx) {
+                        if self.suitable_to_remove_deref(&base_place, proj, &snippet) {
                             err.span_suggestion(
                                 span,
                                 "consider removing this dereference operator",
                                 (&snippet[1..]).to_owned(),
                             );
                         }
-                        _ => {
-                            err.span_suggestion(
-                                span,
-                                "consider using a reference instead",
-                                format!("&{}", snippet),
-                            );
-                        }
+                    } else {
+                        err.span_suggestion(
+                            span,
+                            "consider using a reference instead",
+                            format!("&{}", snippet),
+                        );
                     }
 
                     binds_to.sort();
@@ -377,25 +375,35 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn suitable_to_remove_deref(&self, proj: &PlaceProjection<'tcx>, snippet: &str) -> bool {
+    fn suitable_to_remove_deref(
+        &self,
+        place: &Place<'tcx>,
+        proj: &PlaceElem<'tcx>,
+        snippet: &str,
+    ) -> bool {
         let is_shared_ref = |ty: ty::Ty| match ty.sty {
             ty::TypeVariants::TyRef(.., hir::Mutability::MutImmutable) => true,
             _ => false,
         };
 
-        proj.elem == ProjectionElem::Deref && snippet.starts_with('*') && match proj.base {
-            Place::Local(local) => {
-                let local_decl = &self.mir.local_decls[local];
-                // If this is a temporary, then this could be from an
-                // overloaded * operator.
-                local_decl.is_user_variable.is_some() && is_shared_ref(local_decl.ty)
+        *proj == ProjectionElem::Deref && snippet.starts_with('*')
+            && if let Some(projection) = place.projection() {
+            if let ProjectionElem::Field(_, ty) = projection {
+                is_shared_ref(ty)
+            } else {
+                false
             }
-            Place::Promoted(_) => true,
-            Place::Static(ref st) => is_shared_ref(st.ty),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(_, ty) => is_shared_ref(ty),
-                _ => false,
-            },
+        } else {
+            match place.base {
+                PlaceBase::Local(local) => {
+                    let local_decl = &self.mir.local_decls[local];
+                    // If this is a temporary, then this could be from an
+                    // overloaded * operator.
+                    local_decl.is_user_variable.is_some() && is_shared_ref(local_decl.ty)
+                }
+                PlaceBase::Promoted(_) => true,
+                PlaceBase::Static(ref st) => is_shared_ref(st.ty),
+            }
         }
     }
 }

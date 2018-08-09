@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place};
+use rustc::mir::{Local, Location, PlaceBase};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -55,7 +55,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                     "assignment of {:?} to {:?}, adding {:?} to used mutable set",
                     path.place, local, path.place
                 );
-                if let Place::Local(user_local) = path.place {
+                if let PlaceBase::Local(user_local) = path.place.base {
                     self.mbcx.used_mut.insert(user_local);
                 }
             }

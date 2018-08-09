@@ -13,7 +13,7 @@ use borrow_check::places_conflict;
 use borrow_check::Context;
 use borrow_check::ShallowOrDeep;
 use dataflow::indexes::BorrowIndex;
-use rustc::mir::{BasicBlock, Location, Mir, Place};
+use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase};
 use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
@@ -138,24 +138,27 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield statements on movable generators
-pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
-    match place {
-        Place::Promoted(_) |
-        Place::Static(..) => false,
-        Place::Local(..) => true,
-        Place::Projection(box proj) => {
-            match proj.elem {
-                // Reborrow of already borrowed data is ignored
-                // Any errors will be caught on the initial borrow
-                ProjectionElem::Deref => false,
+pub(super) fn borrow_of_local_data<'a, 'tcx, 'gcx: 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    place: &Place<'tcx>
+) -> bool {
+    if let Some((base_place, projection)) = place.split_projection(tcx) {
+        match projection {// Reborrow of already borrowed data is ignored
+            // Any errors will be caught on the initial borrow
+            ProjectionElem::Deref => false,
 
-                // For interior references and downcasts, find out if the base is local
-                ProjectionElem::Field(..)
-                    | ProjectionElem::Index(..)
-                    | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Downcast(..) => borrow_of_local_data(&proj.base),
-            }
+            // For interior references and downcasts, find out if the base is local
+            ProjectionElem::Field(..)
+            | ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..) => borrow_of_local_data(tcx, &base_place),
+        }
+    } else {
+        match place.base {
+            PlaceBase::Promoted(_)
+            | PlaceBase::Static(..) => false,
+            PlaceBase::Local(..) => true,
         }
     }
 }

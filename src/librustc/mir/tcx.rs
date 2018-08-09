@@ -146,14 +146,14 @@ impl<'tcx> Place<'tcx> {
         let mut place = self;
         let mut by_ref = false;
 
-        base_place = place.base_place(tcx);
+        base_place = place.base_place(*tcx);
 
         if let Some(ProjectionElem::Deref) = place.projection() {
             place = &base_place;
             by_ref = true;
         }
         if let Some(ProjectionElem::Field(field, _ty)) = place.projection() {
-            let base_ty = place.base_place(tcx).ty(mir, *tcx).to_ty(*tcx);
+            let base_ty = place.base_place(*tcx).ty(mir, *tcx).to_ty(*tcx);
 
             if base_ty.is_closure() || base_ty.is_generator()
                 && (!(by_ref && !mir.upvar_decls[field.index()].by_ref)) {
@@ -174,7 +174,7 @@ impl<'tcx> Place<'tcx> {
     //     |-- base_place
     pub fn split_projection<'cx, 'gcx>(
         &self,
-        tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     ) -> Option<(Place<'tcx>, &PlaceElem<'tcx>)> {
         // split place_elems
         // Base.[a, b, c]
@@ -200,7 +200,7 @@ impl<'tcx> Place<'tcx> {
     //          ^^-- no projection
     pub fn base_place<'cx, 'gcx>(
         &self,
-        tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     ) -> Place<'tcx> {
         match self.split_projection(tcx) {
             Some((place, _)) => place,

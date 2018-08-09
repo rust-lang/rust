@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::BorrowData;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::mir::{Location, Place, TerminatorKind};
+use rustc::mir::{Location, Place, PlaceBase, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 
 mod find_use;
@@ -64,7 +64,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
             Some(Cause::LiveVar(local, location)) => {
                 let span = mir.source_info(location).span;
-                let spans = self.move_spans(&Place::Local(local), location)
+                let spans = self.move_spans(&Place::local(local), location)
                     .or_else(|| self.borrow_spans(span, location));
                 let message = if self.is_borrow_location_in_loop(context.loc) {
                     if spans.for_closure() {
@@ -90,10 +90,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
 
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Place::Local(borrowed_local) = place {
+                        if let PlaceBase::Local(borrowed_local) = place.base {
                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
                             let borrowed_local_scope =
-                                mir.local_decls[*borrowed_local].visibility_scope;
+                                mir.local_decls[borrowed_local].visibility_scope;
 
                             if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
                                 err.note(

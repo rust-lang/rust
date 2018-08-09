@@ -23,7 +23,7 @@ use dataflow::move_paths::indexes::BorrowIndex;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue, Local};
+use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase, Rvalue, Local};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::mir::{Field, Operand, BorrowKind};
@@ -153,7 +153,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     ContextKind::StorageDead.new(location),
-                    &Place::Local(local),
+                    &Place::local(local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
@@ -251,7 +251,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 let borrow_set = self.borrow_set.clone();
                 let resume = self.location_table.start_index(resume.start_location());
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(self.infcx.tcx, &borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((resume, i));
                     }
                 }
@@ -261,7 +261,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 let borrow_set = self.borrow_set.clone();
                 let start = self.location_table.start_index(location);
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(self.infcx.tcx, &borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((start, i));
                     }
                 }
@@ -300,7 +300,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             (index, field): (usize, ty::Ty<'gcx>),
         | {
             let field_ty = gcx.normalize_erasing_regions(ig.param_env, field);
-            let place = drop_place.clone().field(Field::new(index), field_ty);
+            let place = drop_place.clone().field(self.infcx.tcx, Field::new(index), field_ty);
 
             ig.visit_terminator_drop(loc, term, &place, field_ty);
         };
@@ -326,13 +326,13 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             // Closures and generators also have disjoint fields, but they are only
             // directly accessed in the body of the closure/generator.
             ty::TyGenerator(def, substs, ..)
-                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+                if drop_place.base == PlaceBase::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.infcx.tcx).enumerate()
                     .for_each(|field| drop_field(self, field));
             }
             ty::TyClosure(def, substs)
-                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+                if drop_place.base == PlaceBase::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
                 => {
                     substs.upvar_tys(def, self.infcx.tcx).enumerate()
                         .for_each(|field| drop_field(self, field));

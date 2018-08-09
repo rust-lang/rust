@@ -105,7 +105,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         if let Some((base_place, projection)) = place.split_projection(self.tcx()) {
             self.try_read_place(&base_place);
-            self.tr_read_place_projection(&base_place, projection);
+            self.tr_read_place_projection(&base_place, projection)
         } else {
             match place.base {
                 // Might allow this in the future, right now there's no way to do this from Rust code anyway
@@ -163,7 +163,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn try_read_place_projection(
         &self,
         base_place: &mir::Place<'tcx>,
-        proj: &mir::PlaceProjection<'tcx>,
+        proj: &mir::PlaceElem<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::ProjectionElem::*;
         let base = match self.try_read_place(base_place)? {
