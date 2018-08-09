@@ -20,6 +20,7 @@
 
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(option_replace)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

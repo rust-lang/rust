@@ -21,6 +21,7 @@
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
