@@ -528,7 +528,7 @@ impl_stable_hash_for!(enum mir::NullOp {
     SizeOf
 });
 
-impl_stable_hash_for!(struct mir::Constant<'tcx> { span, ty, literal });
+impl_stable_hash_for!(struct mir::Constant<'tcx> { span, ty, user_ty, literal });
 
 impl_stable_hash_for!(struct mir::Location { block, statement_index });
 

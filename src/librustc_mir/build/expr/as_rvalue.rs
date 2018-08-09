@@ -239,6 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         operands.push(Operand::Constant(box Constant {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
+                            user_ty: None,
                             literal: ty::Const::from_bits(
                                 this.hir.tcx(),
                                 0,

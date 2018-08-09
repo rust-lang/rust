@@ -32,6 +32,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         place
     }
 
+    /// Convenience function for creating a literal operand, one
+    /// without any user type annotation.
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
@@ -40,6 +42,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let constant = box Constant {
             span,
             ty,
+            user_ty: None,
             literal,
         };
         Operand::Constant(constant)
@@ -69,6 +72,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Constant {
                 span: source_info.span,
                 ty: self.hir.usize_ty(),
+                user_ty: None,
                 literal: self.hir.usize_literal(value),
             });
         temp

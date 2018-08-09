@@ -1888,12 +1888,15 @@ pub enum Operand<'tcx> {
     /// This implies that the type of the place must be `Copy`; this is true
     /// by construction during build, but also checked by the MIR type checker.
     Copy(Place<'tcx>),
+
     /// Move: The value (including old borrows of it) will not be used again.
     ///
     /// Safe for values of all types (modulo future developments towards `?Move`).
     /// Correct usage patterns are enforced by the borrow checker for safe code.
     /// `Copy` may be converted to `Move` to enable "last-use" optimizations.
     Move(Place<'tcx>),
+
+    /// Synthesizes a constant value.
     Constant(Box<Constant<'tcx>>),
 }
 
@@ -1909,6 +1912,9 @@ impl<'tcx> Debug for Operand<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
+    /// Convenience helper to make a constant that refers to the fn
+    /// with given def-id and substs. Since this is used to synthesize
+    /// MIR, assumes `user_ty` is None.
     pub fn function_handle<'a>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -1919,6 +1925,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             ty,
+            user_ty: None,
             literal: ty::Const::zero_sized(tcx, ty),
         })
     }
@@ -2207,6 +2214,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
+
+    /// Optional user-given type: for something like
+    /// `collect::<Vec<_>>`, this would be present and would
+    /// indicate that `Vec<_>` was explicitly specified.
+    ///
+    /// Needed for NLL to impose user-given type constraints.
+    pub user_ty: Option<CanonicalTy<'tcx>>,
+
     pub literal: &'tcx ty::Const<'tcx>,
 }
 
@@ -2902,6 +2917,7 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
         Constant {
             span: self.span.clone(),
             ty: self.ty.fold_with(folder),
+            user_ty: self.user_ty.fold_with(folder),
             literal: self.literal.fold_with(folder),
         }
     }

@@ -18,7 +18,7 @@ use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
+use rustc::ty::{AdtDef, CanonicalTy, UpvarSubsts, Region, Ty, Const};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -272,6 +272,13 @@ pub enum ExprKind<'tcx> {
     },
     Literal {
         literal: &'tcx Const<'tcx>,
+
+        /// Optional user-given type: for something like
+        /// `collect::<Vec<_>>`, this would be present and would
+        /// indicate that `Vec<_>` was explicitly specified.
+        ///
+        /// Needed for NLL to impose user-given type constraints.
+        user_ty: Option<CanonicalTy<'tcx>>,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,

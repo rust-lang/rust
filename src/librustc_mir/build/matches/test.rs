@@ -344,7 +344,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         func: Operand::Constant(box Constant {
                             span: test.span,
                             ty: mty,
-                            literal: method
+                            user_ty: None, // FIXME
+                            literal: method,
                         }),
                         args: vec![val, expect],
                         destination: Some((eq_result.clone(), eq_block)),

@@ -177,6 +177,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         let val = Operand::Constant(box Constant {
             span: source_info.span,
             ty: self.tcx.types.u32,
+            user_ty: None,
             literal: ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
@@ -710,6 +711,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cond: Operand::Constant(box Constant {
             span: mir.span,
             ty: tcx.types.bool,
+            user_ty: None,
             literal: ty::Const::from_bool(tcx, false),
         }),
         expected: true,

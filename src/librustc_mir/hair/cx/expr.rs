@@ -317,6 +317,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
             literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
+            user_ty: None,
         },
 
         hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
@@ -406,6 +407,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 if let hir::ExprKind::Lit(ref lit) = arg.node {
                     ExprKind::Literal {
                         literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
+                        user_ty: None,
                     }
                 } else {
                     ExprKind::Unary {
@@ -631,7 +633,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         temp_lifetime,
                         ty,
                         span: expr.span,
-                        kind: ExprKind::Literal { literal },
+                        kind: ExprKind::Literal { literal, user_ty: None },
                     }.to_ref();
                     let offset = mk_const(ty::Const::from_bits(
                         cx.tcx,
@@ -703,6 +705,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: ty::Const::zero_sized(cx.tcx(), ty),
+            user_ty: None, // TODO
         },
     }
 }
@@ -758,6 +761,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 cx.tcx,
                 cx.tables().node_id_to_type(expr.hir_id),
             ),
+            user_ty: None, // TODO
         },
 
         Def::Const(def_id) |
@@ -768,6 +772,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 substs,
                 cx.tables().node_id_to_type(expr.hir_id),
             ),
+            user_ty: None, // TODO?
         },
 
         Def::StructCtor(def_id, CtorKind::Const) |

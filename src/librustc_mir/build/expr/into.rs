@@ -128,6 +128,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Constant {
                         span: expr_span,
                         ty: this.hir.bool_ty(),
+                        user_ty: None,
                         literal: this.hir.true_literal(),
                     });
 
@@ -136,6 +137,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Constant {
                         span: expr_span,
                         ty: this.hir.bool_ty(),
+                        user_ty: None,
                         literal: this.hir.false_literal(),
                     });
 
