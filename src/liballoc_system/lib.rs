@@ -14,8 +14,10 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "32838")]
+
 #![feature(allocator_api)]
 #![feature(core_intrinsics)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
