@@ -1141,6 +1141,7 @@ unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Clone for Iter<'a, A> {
+    #[inline]
     fn clone(&self) -> Iter<'a, A> {
         Iter { inner: self.inner.clone() }
     }
@@ -1307,14 +1308,17 @@ impl<T> ops::Try for Option<T> {
     type Ok = T;
     type Error = NoneError;
 
+    #[inline]
     fn into_result(self) -> Result<T, NoneError> {
         self.ok_or(NoneError)
     }
 
+    #[inline]
     fn from_ok(v: T) -> Self {
         Some(v)
     }
 
+    #[inline]
     fn from_error(_: NoneError) -> Self {
         None
     }
