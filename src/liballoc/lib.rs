@@ -76,6 +76,7 @@
 
 #![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
+#![cfg_attr(not(stage0), feature(nll))]
 #![cfg_attr(test, feature(test))]
 
 #![feature(allocator_api)]
