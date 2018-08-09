@@ -13,3 +13,5 @@
 #![unstable(feature = "pin", issue = "49150")]
 
 pub use core::pin::*;
+
+pub use alloc_crate::pin::*;

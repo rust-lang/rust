@@ -11,7 +11,7 @@
 #![feature(arbitrary_self_types, futures_api, pin)]
 #![allow(unused)]
 
-use std::boxed::PinBox;
+use std::pin::PinBox;
 use std::future::Future;
 use std::pin::PinMut;
 use std::rc::Rc;
