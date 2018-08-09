@@ -90,7 +90,7 @@ impl ArgAttributes {
     }
 
     pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
-        self.regular = self.regular | attr;
+        self.regular |= attr;
         self
     }
 
@@ -229,7 +229,7 @@ impl CastTarget {
 
     pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
         self.prefix.iter()
-            .filter_map(|x| x.map(|kind| Reg { kind: kind, size: self.prefix_chunk }.align(cx)))
+            .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
             .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
                 |acc, align| acc.max(align))
     }

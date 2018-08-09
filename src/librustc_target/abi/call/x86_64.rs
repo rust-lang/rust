@@ -199,10 +199,8 @@ pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
                         _ => {}
                     }
                 }
-                if arg.layout.is_aggregate() {
-                    if int_regs < needed_int || sse_regs < needed_sse {
-                        cls_or_mem = Err(Memory);
-                    }
+                if arg.layout.is_aggregate() && (int_regs < needed_int || sse_regs < needed_sse) {
+                    cls_or_mem = Err(Memory);
                 }
             }
         }

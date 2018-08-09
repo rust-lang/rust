@@ -25,13 +25,13 @@ pub enum Arch {
 }
 
 impl Arch {
-    pub fn to_string(&self) -> &'static str {
+    pub fn to_string(self) -> &'static str {
         match self {
-            &Armv7 => "armv7",
-            &Armv7s => "armv7s",
-            &Arm64 => "arm64",
-            &I386 => "i386",
-            &X86_64 => "x86_64"
+            Armv7 => "armv7",
+            Armv7s => "armv7s",
+            Arm64 => "arm64",
+            I386 => "i386",
+            X86_64 => "x86_64"
         }
     }
 }
