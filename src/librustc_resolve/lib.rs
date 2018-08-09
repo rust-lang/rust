@@ -1964,9 +1964,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                 "access to extern crates through prelude is experimental").emit();
                 }
 
-                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
-                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(crate_root);
+                let crate_root = self.load_extern_prelude_crate_if_needed(ident);
 
                 let binding = (crate_root, ty::Visibility::Public,
                                ident.span, Mark::root()).to_name_binding(self.arenas);
@@ -1992,6 +1990,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         None
+    }
+
+    fn load_extern_prelude_crate_if_needed(&mut self, ident: Ident) -> Module<'a> {
+                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                self.populate_module_if_necessary(&crate_root);
+                crate_root
     }
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
