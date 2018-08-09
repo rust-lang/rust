@@ -13,7 +13,7 @@
 
 use std::boxed::PinBox;
 use std::future::Future;
-use std::mem::PinMut;
+use std::pin::PinMut;
 use std::rc::Rc;
 use std::sync::{
     Arc,

@@ -466,6 +466,7 @@ pub mod num;
 pub mod os;
 pub mod panic;
 pub mod path;
+pub mod pin;
 pub mod process;
 pub mod sync;
 pub mod time;
