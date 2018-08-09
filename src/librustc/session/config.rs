@@ -831,7 +831,7 @@ macro_rules! options {
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
         pub const parse_cross_lang_lto: Option<&'static str> =
-            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `no-link`, \
+            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
     }
 
@@ -2005,13 +2005,6 @@ pub fn build_session_options_and_crate_config(
         (&None, &Some(ref path)) => Some(path),
         (&None, &None) => None,
     }.map(|m| PathBuf::from(m));
-
-    if cg.lto != Lto::No && incremental.is_some() {
-        early_error(
-            error_format,
-            "can't perform LTO when compiling incrementally",
-        );
-    }
 
     if debugging_opts.profile && incremental.is_some() {
         early_error(

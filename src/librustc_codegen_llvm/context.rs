@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use attributes;
 use common;
 use llvm;
 use rustc::dep_graph::DepGraphSafe;
@@ -381,6 +382,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 declare::declare_cfn(self, name, fty)
             }
         };
+        attributes::apply_target_cpu_attr(self, llfn);
         self.eh_personality.set(Some(llfn));
         llfn
     }
@@ -412,6 +414,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 
         let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
         attributes::unwind(llfn, true);
+        attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));
         llfn
     }

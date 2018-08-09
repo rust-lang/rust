@@ -195,6 +195,10 @@ pub(crate) fn run(cgcx: &CodegenContext,
         }
         Lto::Thin |
         Lto::ThinLocal => {
+            if cgcx.opts.debugging_opts.cross_lang_lto.enabled() {
+                unreachable!("We should never reach this case if the LTO step \
+                              is deferred to the linker");
+            }
             thin_lto(&diag_handler, modules, upstream_modules, &arr, timeline)
         }
         Lto::No => unreachable!(),
