@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test: "-lstd-[\d\w]{16}" -> "-lstd-XXXXXXXXXXXXXXXX"
+// normalize-stderr-test: "builtins-[\d\w]{16}.rlib" -> "builtins-XXXXXXXXXXXXXXXX.rlib"
+
 // error-pattern:aFdEfSeVEE
 // compile-flags: -Z linker-flavor=ld
 
