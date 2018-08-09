@@ -30,6 +30,21 @@ unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
 
+#[lang = "sync"]
+pub unsafe trait Sync {}
+
+unsafe impl Sync for bool {}
+unsafe impl Sync for u8 {}
+unsafe impl Sync for u16 {}
+unsafe impl Sync for u32 {}
+unsafe impl Sync for u64 {}
+unsafe impl Sync for usize {}
+unsafe impl Sync for i8 {}
+unsafe impl Sync for i16 {}
+unsafe impl Sync for i32 {}
+unsafe impl Sync for isize {}
+unsafe impl Sync for char {}
+
 #[lang = "freeze"]
 trait Freeze {}
 

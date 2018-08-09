@@ -463,7 +463,17 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(_, _) => unimpl!("shouldn't exist at trans {:?}", rval),
+                Rvalue::Aggregate(kind, operands) => match **kind {
+                    AggregateKind::Array(_ty) => {
+                        for (i, operand) in operands.into_iter().enumerate() {
+                            let operand = trans_operand(fx, operand);
+                            let index = fx.bcx.ins().iconst(types::I64, i as i64);
+                            let to = lval.place_index(fx, index);
+                            to.write_cvalue(fx, operand);
+                        }
+                    }
+                    _ => unimpl!("shouldn't exist at trans {:?}", rval),
+                },
             }
         }
         StatementKind::StorageLive(_)
