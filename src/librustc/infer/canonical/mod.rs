@@ -200,14 +200,14 @@ impl<'gcx, V> Canonical<'gcx, V> {
     ///
     /// An example of a **correct** use of this:
     ///
-    /// ```rust,ignore
+    /// ```rust,ignore (not real code)
     /// let a: Canonical<'_, T> = ...;
     /// let b: Canonical<'_, (T,)> = a.unchecked_map(|v| (v, ));
     /// ```
     ///
     /// An example of an **incorrect** use of this:
     ///
-    /// ```rust,ignore
+    /// ```rust,ignore (not real code)
     /// let a: Canonical<'tcx, T> = ...;
     /// let ty: Ty<'tcx> = ...;
     /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
