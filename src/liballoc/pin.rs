@@ -9,6 +9,10 @@
 // except according to those terms.
 
 //! Types which pin data to its location in memory
+//!
+//! see the [standard library module] for more information
+//!
+//! [standard library module]: ../../std/pin/index.html
 
 #![unstable(feature = "pin", issue = "49150")]
 
