@@ -59,10 +59,6 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
 
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
-//
-// WARNING: Mapping a `&IdxSetBuf<T>` to `&IdxSet<T>` (at least today)
-// requires a transmute relying on representation guarantees that may
-// not hold in the future.
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.
@@ -134,11 +130,11 @@ impl<T: Idx> IdxSetBuf<T> {
 
 impl<T: Idx> IdxSet<T> {
     unsafe fn from_slice(s: &[Word]) -> &Self {
-        mem::transmute(s) // (see above WARNING)
+        &*(s as *const [Word] as *const Self)
     }
 
     unsafe fn from_slice_mut(s: &mut [Word]) -> &mut Self {
-        mem::transmute(s) // (see above WARNING)
+        &mut *(s as *mut [Word] as *mut Self)
     }
 }
 
