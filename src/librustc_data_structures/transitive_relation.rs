@@ -77,7 +77,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             ..
         } = self;
 
-        map.entry(a.clone())
+        *map.entry(a.clone())
            .or_insert_with(|| {
                elements.push(a);
 
@@ -86,7 +86,6 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
 
                Index(elements.len() - 1)
            })
-           .clone()
     }
 
     /// Applies the (partial) function to each edge and returns a new
@@ -98,14 +97,12 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     {
         let mut result = TransitiveRelation::new();
         for edge in &self.edges {
-            let r = f(&self.elements[edge.source.0]).and_then(|source| {
+            f(&self.elements[edge.source.0]).and_then(|source| {
                 f(&self.elements[edge.target.0]).and_then(|target| {
-                    Some(result.add(source, target))
+                    result.add(source, target);
+                    Some(())
                 })
-            });
-            if r.is_none() {
-                return None;
-            }
+            })?;
         }
         Some(result)
     }
@@ -372,7 +369,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         let mut changed = true;
         while changed {
             changed = false;
-            for edge in self.edges.iter() {
+            for edge in &self.edges {
                 // add an edge from S -> T
                 changed |= matrix.add(edge.source.0, edge.target.0);
 

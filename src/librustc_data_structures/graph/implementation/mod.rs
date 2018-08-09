@@ -90,7 +90,7 @@ pub const INCOMING: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
     /// Returns unique id (unique with respect to the graph holding associated node).
-    pub fn node_id(&self) -> usize {
+    pub fn node_id(self) -> usize {
         self.0
     }
 }
@@ -187,7 +187,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.nodes[source.0].first_edge[OUTGOING.repr] = idx;
         self.nodes[target.0].first_edge[INCOMING.repr] = idx;
 
-        return idx;
+        idx
     }
 
     pub fn edge(&self, idx: EdgeIndex) -> &Edge<E> {
@@ -261,8 +261,8 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
 
-    pub fn nodes_in_postorder<'a>(
-        &'a self,
+    pub fn nodes_in_postorder(
+        &self,
         direction: Direction,
         entry_node: NodeIndex,
     ) -> Vec<NodeIndex> {

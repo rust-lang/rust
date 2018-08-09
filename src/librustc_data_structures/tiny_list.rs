@@ -107,7 +107,8 @@ impl<T: PartialEq> Element<T> {
         };
 
         self.next = new_next;
-        return true
+
+        true
     }
 
     fn len(&self) -> usize {

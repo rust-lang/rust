@@ -65,6 +65,7 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
 ///
 /// In other words, `T` is the type used to index into the bitslice
 /// this type uses to represent the set of object it holds.
+#[repr(transparent)]
 pub struct IdxSet<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: [Word],
