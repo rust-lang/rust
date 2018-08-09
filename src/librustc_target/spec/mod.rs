@@ -747,7 +747,7 @@ impl Target {
     /// Maximum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
-        self.options.max_atomic_width.unwrap_or(self.target_pointer_width.parse().unwrap())
+        self.options.max_atomic_width.unwrap_or_else(|| self.target_pointer_width.parse().unwrap())
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
@@ -777,7 +777,7 @@ impl Target {
         let get_opt_field = |name: &str, default: &str| {
             obj.find(name).and_then(|s| s.as_string())
                .map(|s| s.to_string())
-               .unwrap_or(default.to_string())
+               .unwrap_or_else(|| default.to_string())
         };
 
         let mut base = Target {
@@ -1007,7 +1007,6 @@ impl Target {
     /// filesystem access and JSON decoding.
     pub fn search(target_triple: &TargetTriple) -> Result<Target, String> {
         use std::env;
-        use std::ffi::OsString;
         use std::fs;
         use serialize::json;
 
@@ -1018,8 +1017,8 @@ impl Target {
             Target::from_json(obj)
         }
 
-        match target_triple {
-            &TargetTriple::TargetTriple(ref target_triple) => {
+        match *target_triple {
+            TargetTriple::TargetTriple(ref target_triple) => {
                 // check if triple is in list of supported targets
                 if let Ok(t) = load_specific(target_triple) {
                     return Ok(t)
@@ -1032,8 +1031,7 @@ impl Target {
                     PathBuf::from(target)
                 };
 
-                let target_path = env::var_os("RUST_TARGET_PATH")
-                                    .unwrap_or(OsString::new());
+                let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or_default();
 
                 // FIXME 16351: add a sane default search path?
 
@@ -1045,7 +1043,7 @@ impl Target {
                 }
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
-            &TargetTriple::TargetPath(ref target_path) => {
+            TargetTriple::TargetPath(ref target_path) => {
                 if target_path.is_file() {
                     return load_file(&target_path);
                 }
@@ -1190,7 +1188,7 @@ impl ToJson for Target {
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
-                .map(Abi::name).map(|name| name.to_json())
+                .map(|&name| Abi::name(name).to_json())
                 .collect::<Vec<_>>().to_json());
         }
 
@@ -1229,9 +1227,9 @@ impl TargetTriple {
     ///
     /// If this target is a path, the file name (without extension) is returned.
     pub fn triple(&self) -> &str {
-        match self {
-            &TargetTriple::TargetTriple(ref triple) => triple,
-            &TargetTriple::TargetPath(ref path) => {
+        match *self {
+            TargetTriple::TargetTriple(ref triple) => triple,
+            TargetTriple::TargetPath(ref path) => {
                 path.file_stem().expect("target path must not be empty").to_str()
                     .expect("target path must be valid unicode")
             }
@@ -1247,7 +1245,7 @@ impl TargetTriple {
         use std::collections::hash_map::DefaultHasher;
 
         let triple = self.triple();
-        if let &TargetTriple::TargetPath(ref path) = self {
+        if let TargetTriple::TargetPath(ref path) = *self {
             let mut hasher = DefaultHasher::new();
             path.hash(&mut hasher);
             let hash = hasher.finish();
