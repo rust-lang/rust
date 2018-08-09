@@ -71,7 +71,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub SHADOW_UNRELATED,
-    restriction,
+    pedantic,
     "rebinding a name without even using the original value"
 }
 
