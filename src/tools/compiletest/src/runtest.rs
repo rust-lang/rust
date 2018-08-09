@@ -2918,6 +2918,15 @@ impl<'test> TestCx<'test> {
         };
         normalized = normalized.replace(&src_dir_str, "$SRC_DIR");
 
+        // Paths into the build directory
+        let test_build_dir = &self.config.build_base;
+        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
+
+        // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
+        normalized = normalized.replace(test_build_dir.to_str().unwrap(), "$TEST_BUILD_DIR");
+        // eg. /home/user/rust/build
+        normalized = normalized.replace(&parent_build_dir.to_str().unwrap(), "$BUILD_DIR");
+
         if json {
             // escaped newlines in json strings should be readable
             // in the stderr files. There's no point int being correct,

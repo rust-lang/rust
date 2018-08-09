@@ -5,9 +5,9 @@ LL | extern crate crateresolve1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: candidates:
-           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1.nll/auxiliary/libcrateresolve1-3.so
-           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1.nll/auxiliary/libcrateresolve1-1.so
-           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1.nll/auxiliary/libcrateresolve1-2.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-1.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-2.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-3.so
 
 error[E0463]: can't find crate for `crateresolve1`
   --> $DIR/crateresolve1.rs:16:1
