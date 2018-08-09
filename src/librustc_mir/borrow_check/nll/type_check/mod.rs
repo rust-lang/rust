@@ -919,7 +919,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(user_ty) = self.rvalue_user_ty(rv) {
-                    if let Err(terr) = self.eq_canonical_type_and_type(user_ty, rv_ty, location.boring()) {
+                    if let Err(terr) = self.eq_canonical_type_and_type(
+                        user_ty,
+                        rv_ty,
+                        location.boring(),
+                    ) {
                         span_mirbug!(
                             self,
                             stmt,
