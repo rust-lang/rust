@@ -346,7 +346,7 @@ pub type CanonicalSubsts<'gcx> = Canonical<'gcx, &'gcx Substs<'gcx>>;
 impl<'gcx> CanonicalSubsts<'gcx> {
     /// True if this represents a substitution like
     ///
-    /// ```ignore
+    /// ```text
     /// [?0, ?1, ?2]
     /// ```
     ///
