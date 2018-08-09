@@ -2208,6 +2208,25 @@
     };
 
     autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
+
+    if (window.location.hash && window.location.hash.length > 0) {
+        var hash = getPageId();
+        if (hash !== null) {
+            var elem = document.getElementById(hash);
+            if (elem && elem.offsetParent === null) {
+                console.log(elem, elem.parentNode);
+                if (elem.parentNode && elem.parentNode.previousSibling) {
+                    var collapses = elem.parentNode
+                                        .previousSibling
+                                        .getElementsByClassName("collapse-toggle");
+                    if (collapses.length > 0) {
+                        // The element is not visible, we need to make it appear!
+                        collapseDocs(collapses[0], "show");
+                    }
+                }
+            }
+        }
+    }
 }());
 
 // Sets the focus on the search bar at the top of the page
