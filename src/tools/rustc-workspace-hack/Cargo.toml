@@ -41,4 +41,7 @@ features = [
   "timezoneapi",
   "lmcons",
   "wincon",
+  "consoleapi",
+  "errhandlingapi",
+  "processenv",
 ]
