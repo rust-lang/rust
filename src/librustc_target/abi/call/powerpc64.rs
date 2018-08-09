@@ -14,11 +14,12 @@
 
 use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
 use abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
     ELFv1, // original ABI used for powerpc64 (big-endian)
-    ELFv2, // newer ABI used for powerpc64le
+    ELFv2, // newer ABI used for powerpc64le and musl (both endians)
 }
 use self::ABI::*;
 
@@ -131,11 +132,15 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
 {
-    let abi = match cx.data_layout().endian {
-        Endian::Big => ELFv1,
-        Endian::Little => ELFv2,
+    let abi = if cx.target_spec().target_env == "musl" {
+        ELFv2
+    } else {
+        match cx.data_layout().endian {
+            Endian::Big => ELFv1,
+            Endian::Little => ELFv2
+        }
     };
 
     if !fty.ret.is_ignore() {
