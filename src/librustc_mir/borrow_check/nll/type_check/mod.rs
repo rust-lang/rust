@@ -15,7 +15,7 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
+use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
@@ -256,6 +256,22 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.super_constant(constant, location);
         self.sanitize_constant(constant, location);
         self.sanitize_type(constant, constant.ty);
+
+        if let Some(user_ty) = constant.user_ty {
+            if let Err(terr) =
+                self.cx
+                    .eq_canonical_type_and_type(user_ty, constant.ty, location.boring())
+            {
+                span_mirbug!(
+                    self,
+                    constant,
+                    "bad constant user type {:?} vs {:?}: {:?}",
+                    user_ty,
+                    constant.ty,
+                    terr,
+                );
+            }
+        }
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -343,8 +359,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         debug!("sanitize_constant: expected_ty={:?}", constant.literal.ty);
 
-        if let Err(terr) = self
-            .cx
+        if let Err(terr) = self.cx
             .eq_types(constant.literal.ty, constant.ty, location.boring())
         {
             span_mirbug!(
