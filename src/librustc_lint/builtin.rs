@@ -1928,14 +1928,12 @@ impl Async2018 {
         );
 
         // Don't suggest about raw identifiers if the feature isn't active
-        if cx.sess.features_untracked().raw_identifiers {
-            lint.span_suggestion_with_applicability(
-                span,
-                "you can use a raw identifier to stay compatible",
-                "r#async".to_string(),
-                Applicability::MachineApplicable,
-            );
-        }
+        lint.span_suggestion_with_applicability(
+            span,
+            "you can use a raw identifier to stay compatible",
+            "r#async".to_string(),
+            Applicability::MachineApplicable,
+        );
         lint.emit()
     }
 }
