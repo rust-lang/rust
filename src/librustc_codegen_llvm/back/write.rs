@@ -1503,17 +1503,14 @@ fn start_executing_work(tcx: TyCtxt,
 
     let assembler_cmd = if modules_config.no_integrated_as {
         // HACK: currently we use linker (gcc) as our assembler
-        if let Ok((linker, flavor)) = link::linker_and_flavor(sess) {
-            let (name, mut cmd) = get_linker(sess, &linker, flavor);
-            cmd.args(&sess.target.target.options.asm_args);
-            Some(Arc::new(AssemblerCommand {
-                name,
-                cmd,
-            }))
-        } else {
-            sess.abort_if_errors();
-            None
-        }
+        let (linker, flavor) = link::linker_and_flavor(sess);
+
+        let (name, mut cmd) = get_linker(sess, &linker, flavor);
+        cmd.args(&sess.target.target.options.asm_args);
+        Some(Arc::new(AssemblerCommand {
+            name,
+            cmd,
+        }))
     } else {
         None
     };
