@@ -1,16 +1,16 @@
 error[E0464]: multiple matching crates for `crateresolve1`
-  --> $DIR/crateresolve1.rs:16:1
+  --> $DIR/crateresolve1.rs:18:1
    |
 LL | extern crate crateresolve1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: candidates:
-           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-1.so
-           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-2.so
-           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-3.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-N.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-N.so
+           crate `crateresolve1`: $TEST_BUILD_DIR/crateresolve1.nll/auxiliary/libcrateresolve1-N.so
 
 error[E0463]: can't find crate for `crateresolve1`
-  --> $DIR/crateresolve1.rs:16:1
+  --> $DIR/crateresolve1.rs:18:1
    |
 LL | extern crate crateresolve1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate

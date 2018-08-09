@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test: "crateresolve1\-\d.so" -> "crateresolve1-N.so"
+
 // aux-build:crateresolve1-1.rs
 // aux-build:crateresolve1-2.rs
 // aux-build:crateresolve1-3.rs
