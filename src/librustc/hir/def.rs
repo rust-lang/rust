@@ -68,7 +68,7 @@ pub enum Def {
     Const(DefId),
     Static(DefId, bool /* is_mutbl */),
     StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
-    VariantCtor(DefId, CtorKind),
+    VariantCtor(DefId, CtorKind), // DefId refers to the enum variant
     Method(DefId),
     AssociatedConst(DefId),
 

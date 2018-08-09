@@ -265,6 +265,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             }
                         })
                         .collect();
+                    // FIXME(#47184) -- user given type annot on ADTs
                     ExprKind::Adt {
                         adt_def,
                         substs,
@@ -423,6 +424,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::Adt(adt, substs) => {
                     match adt.adt_kind() {
                         AdtKind::Struct | AdtKind::Union => {
+                            // FIXME(#47184) -- user given type annot on ADTs
                             ExprKind::Adt {
                                 adt_def: adt,
                                 variant_index: 0,
@@ -448,6 +450,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     assert!(base.is_none());
 
                                     let index = adt.variant_index_with_id(variant_id);
+                                    // FIXME(#47184) -- user given type annot on ADTs
                                     ExprKind::Adt {
                                         adt_def: adt,
                                         variant_index: index,
@@ -686,18 +689,70 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                 expr: &hir::Expr,
-                                 custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>)
-                                 -> Expr<'tcx> {
+fn user_annotated_ty_for_def(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    hir_id: hir::HirId,
+    def: &Def,
+) -> Option<CanonicalTy<'tcx>> {
+    let user_substs = cx.tables().user_substs(hir_id)?;
+    Some(match def {
+        // A reference to something callable -- e.g., a fn, method, or
+        // a tuple-struct or tuple-variant. This has the type of a
+        // `Fn` but with the user-given substitutions.
+        Def::Fn(_) |
+        Def::Method(_) |
+        Def::StructCtor(_, CtorKind::Fn) |
+        Def::VariantCtor(_, CtorKind::Fn) =>
+            user_substs.unchecked_map(|user_substs| {
+                // Here, we just pair a `DefId` with the
+                // `user_substs`, so no new types etc are introduced.
+                cx.tcx().mk_fn_def(def.def_id(), user_substs)
+            }),
+
+        Def::Const(_def_id) |
+        Def::AssociatedConst(_def_id) =>
+            bug!("unimplemented"),
+
+        // A unit struct/variant which is used as a value (e.g.,
+        // `None`). This has the type of the enum/struct that defines
+        // this variant -- but with the substitutions given by the
+        // user.
+        Def::StructCtor(_def_id, CtorKind::Const) |
+        Def::VariantCtor(_def_id, CtorKind::Const) =>
+            match &cx.tables().node_id_to_type(hir_id).sty {
+                ty::TyAdt(adt_def, _) =>
+                    user_substs.unchecked_map(|user_substs| {
+                        // Here, we just pair an `AdtDef` with the
+                        // `user_substs`, so no new types etc are introduced.
+                        cx.tcx().mk_adt(adt_def, user_substs)
+                    }),
+                sty => bug!("unexpected sty: {:?}", sty),
+            },
+
+        _ =>
+            bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
+    })
+}
+
+fn method_callee<'a, 'gcx, 'tcx>(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    expr: &hir::Expr,
+    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-    let (def_id, substs) = custom_callee.unwrap_or_else(|| {
-        if let Some(def) = cx.tables().type_dependent_defs().get(expr.hir_id) {
-            (def.def_id(), cx.tables().node_substs(expr.hir_id))
-        } else {
-            span_bug!(expr.span, "no type-dependent def for method callee")
+    let (def_id, substs, user_ty) = match overloaded_callee {
+        Some((def_id, substs)) => (def_id, substs, None),
+        None => {
+            let type_dependent_defs = cx.tables().type_dependent_defs();
+            let def = type_dependent_defs
+                .get(expr.hir_id)
+                .unwrap_or_else(|| {
+                    span_bug!(expr.span, "no type-dependent def for method callee")
+                });
+            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, def);
+            (def.def_id(), cx.tables().node_substs(expr.hir_id), user_ty)
         }
-    });
+    };
     let ty = cx.tcx().mk_fn_def(def_id, substs);
     Expr {
         temp_lifetime,
@@ -705,7 +760,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: ty::Const::zero_sized(cx.tcx(), ty),
-            user_ty: None, // TODO
+            user_ty,
         },
     }
 }
@@ -756,12 +811,15 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::Fn(_) |
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
-        Def::VariantCtor(_, CtorKind::Fn) => ExprKind::Literal {
-            literal: ty::Const::zero_sized(
-                cx.tcx,
-                cx.tables().node_id_to_type(expr.hir_id),
-            ),
-            user_ty: None, // TODO
+        Def::VariantCtor(_, CtorKind::Fn) => {
+            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, &def);
+            ExprKind::Literal {
+                literal: ty::Const::zero_sized(
+                    cx.tcx,
+                    cx.tables().node_id_to_type(expr.hir_id),
+                ),
+                user_ty,
+            }
         },
 
         Def::Const(def_id) |
@@ -772,11 +830,12 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 substs,
                 cx.tables().node_id_to_type(expr.hir_id),
             ),
-            user_ty: None, // TODO?
+            user_ty: None, // FIXME(#47184) -- user given type annot on constants
         },
 
         Def::StructCtor(def_id, CtorKind::Const) |
         Def::VariantCtor(def_id, CtorKind::Const) => {
+            // FIXME(#47184) -- user given type annot on ADTs
             match cx.tables().node_id_to_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
@@ -963,12 +1022,13 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                     expr: &'tcx hir::Expr,
-                                     place_ty: Ty<'tcx>,
-                                     custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
-                                     args: Vec<ExprRef<'tcx>>)
-                                     -> ExprKind<'tcx> {
+fn overloaded_place<'a, 'gcx, 'tcx>(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    expr: &'tcx hir::Expr,
+    place_ty: Ty<'tcx>,
+    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    args: Vec<ExprRef<'tcx>>,
+) -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method
     // call returns an &T and we must add the deref so that the types
     // line up (this is because `*x` and `x[y]` represent places):
@@ -993,7 +1053,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-    let fun = method_callee(cx, expr, custom_callee);
+    let fun = method_callee(cx, expr, overloaded_callee);
     let ref_expr = Expr {
         temp_lifetime,
         ty: ref_ty,
