@@ -13,6 +13,5 @@
 #![feature(custom_attributes)]
 
 #[foo::bar]
-//~^ ERROR scoped attribute `foo::bar` is experimental (see issue #44690) [E0658]
-//~^^ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
+//~^ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
 fn main() {}
