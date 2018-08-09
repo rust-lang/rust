@@ -16,6 +16,7 @@
 #![feature(extern_prelude)]
 #![feature(iterator_find_map)]
 #![feature(in_band_lifetimes)]
+#![cfg_attr(not(stage0), feature(nll))]
 
 #![recursion_limit="256"]
 
