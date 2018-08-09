@@ -13,7 +13,6 @@
 
 // no-prefer-dynamic
 // ignore-tidy-linelength
-// only-x86_64
 // compile-flags: -C no-prepopulate-passes -C panic=abort -Z cross-lang-lto -Cpasses=name-anon-globals
 
 #![crate_type = "staticlib"]
@@ -27,4 +26,4 @@ pub extern fn exported() {
 // CHECK-LABEL: define {{.*}} @_ZN23target_cpu_on_functions12not_exported{{.*}}() {{.*}} #0
 fn not_exported() {}
 
-// CHECK: attributes #0 = {{.*}} "target-cpu"="x86-64"
+// CHECK: attributes #0 = {{.*}} "target-cpu"="{{.*}}"
