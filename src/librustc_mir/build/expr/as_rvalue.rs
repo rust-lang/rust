@@ -285,8 +285,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
                 };
 
-                let adt =
-                    box AggregateKind::Adt(adt_def, variant_index, substs, user_ty, active_field_index);
+                let adt = box AggregateKind::Adt(
+                    adt_def,
+                    variant_index,
+                    substs,
+                    user_ty,
+                    active_field_index,
+                );
                 block.and(Rvalue::Aggregate(adt, fields))
             }
             ExprKind::Assign { .. } |
