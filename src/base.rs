@@ -395,6 +395,31 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                             let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
+                        (TypeVariants::TyFloat(from_flt), TypeVariants::TyFloat(to_flt)) => {
+                            let from = operand.load_value(fx);
+                            let res = match (from_flt, to_flt) {
+                                (FloatTy::F32, FloatTy::F64) => {
+                                    fx.bcx.ins().fpromote(types::F64, from)
+                                }
+                                (FloatTy::F64, FloatTy::F32) => {
+                                    fx.bcx.ins().fdemote(types::F32, from)
+                                }
+                                _ => from,
+                            };
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
+                        (TypeVariants::TyInt(_), TypeVariants::TyFloat(_)) => {
+                            let from = operand.load_value(fx);
+                            let f_type = fx.cton_type(to_ty).unwrap();
+                            let res = fx.bcx.ins().fcvt_from_sint(f_type, from);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
+                        (TypeVariants::TyUint(_), TypeVariants::TyFloat(_)) => {
+                            let from = operand.load_value(fx);
+                            let f_type = fx.cton_type(to_ty).unwrap();
+                            let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
                         _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
                     }
                 }

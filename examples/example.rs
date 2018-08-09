@@ -158,3 +158,11 @@ unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
 fn ptr_as_usize(ptr: *const u8) -> usize {
     ptr as usize
 }
+
+fn float_cast(a: f32, b: f64) -> (f64, f32) {
+    (a as f64, b as f32)
+}
+
+fn int_to_float(a: u8, b: i32) -> (f64, f32) {
+    (a as f64, b as f32)
+}
