@@ -21,18 +21,18 @@ mod caps;
 mod req;
 mod dispatch;
 mod handlers;
-
-use std::path::PathBuf;
+mod util;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
-use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, TextDocumentIdentifier};
+use url::Url;
 use libanalysis::{WorldState, World};
 
 use ::{
     io::{Io, RawMsg, RawRequest},
     handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics},
+    util::{FilePath, FnBox}
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -198,21 +198,9 @@ fn main_loop(
                 dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, Some(params.text_document.text));
-                    let world = world.snapshot();
-                    let sender = sender.clone();
-                    let uri = params.text_document.uri;
-                    pool.execute(move || {
-                        match publish_diagnostics(world, uri) {
-                            Err(e) => {
-                                error!("failed to compute diagnostics: {:?}", e)
-                            }
-                            Ok(params) => {
-                                sender.send(Box::new(|io: &mut Io| {
-                                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
-                                }))
-                            }
-                        }
-                    });
+                    update_diagnostics_on_threadpool(
+                        pool, world.snapshot(), sender.clone(), params.text_document.uri,
+                    );
                     Ok(())
                 })?;
                 dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
@@ -221,21 +209,9 @@ fn main_loop(
                         .ok_or_else(|| format_err!("empty changes"))?
                         .text;
                     world.change_overlay(path, Some(text));
-                    let world = world.snapshot();
-                    let sender = sender.clone();
-                    let uri = params.text_document.uri;
-                    pool.execute(move || {
-                        match publish_diagnostics(world, uri) {
-                            Err(e) => {
-                                error!("failed to compute diagnostics: {:?}", e)
-                            }
-                            Ok(params) => {
-                                sender.send(Box::new(|io: &mut Io| {
-                                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
-                                }))
-                            }
-                        }
-                    });
+                    update_diagnostics_on_threadpool(
+                        pool, world.snapshot(), sender.clone(), params.text_document.uri,
+                    );
                     Ok(())
                 })?;
                 dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
@@ -278,41 +254,22 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
     })
 }
 
-trait FnBox<A, R>: Send {
-    fn call_box(self: Box<Self>, a: A) -> R;
-}
-
-impl<A, R, F: FnOnce(A) -> R + Send> FnBox<A, R> for F {
-    fn call_box(self: Box<F>, a: A) -> R {
-        (*self)(a)
-    }
-}
-
-trait FilePath {
-    fn file_path(&self) -> Result<PathBuf>;
-}
-
-impl FilePath for TextDocumentItem {
-    fn file_path(&self) -> Result<PathBuf> {
-        self.uri.file_path()
-    }
-}
-
-impl FilePath for VersionedTextDocumentIdentifier {
-    fn file_path(&self) -> Result<PathBuf> {
-        self.uri.file_path()
-    }
-}
-
-impl FilePath for TextDocumentIdentifier {
-    fn file_path(&self) -> Result<PathBuf> {
-        self.uri.file_path()
-    }
-}
-
-impl FilePath for ::url::Url {
-    fn file_path(&self) -> Result<PathBuf> {
-        self.to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", self))
-    }
+fn update_diagnostics_on_threadpool(
+    pool: &ThreadPool,
+    world: World,
+    sender: Sender<Thunk>,
+    uri: Url,
+) {
+    pool.execute(move || {
+        match publish_diagnostics(world, uri) {
+            Err(e) => {
+                error!("failed to compute diagnostics: {:?}", e)
+            }
+            Ok(params) => {
+                sender.send(Box::new(|io: &mut Io| {
+                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
+                }))
+            }
+        }
+    });
 }

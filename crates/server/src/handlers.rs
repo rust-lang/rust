@@ -3,7 +3,10 @@ use languageserver_types::{Range, Position, Diagnostic, DiagnosticSeverity};
 use libanalysis::World;
 use libeditor::{self, LineIndex, LineCol, TextRange, TextUnit};
 
-use {req, Result, FilePath};
+use ::{
+    req, Result,
+    util::FilePath,
+};
 
 pub fn handle_syntax_tree(
     world: World,
