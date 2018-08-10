@@ -1993,10 +1993,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn load_extern_prelude_crate_if_needed(&mut self, ident: Ident) -> Module<'a> {
-                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
-                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(&crate_root);
-                crate_root
+        let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+        let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+        self.populate_module_if_necessary(&crate_root);
+        crate_root
     }
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
