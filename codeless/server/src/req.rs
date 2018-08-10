@@ -1,5 +1,6 @@
 use languageserver_types::TextDocumentIdentifier;
 pub use languageserver_types::request::*;
+pub use languageserver_types::{InitializeResult};
 
 pub enum SyntaxTree {}
 

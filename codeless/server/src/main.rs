@@ -20,7 +20,6 @@ mod caps;
 mod req;
 mod dispatch;
 
-use languageserver_types::InitializeResult;
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
@@ -46,7 +45,7 @@ fn main() -> Result<()> {
         Err(_) => {
             error!("server panicked");
             bail!("server panicked")
-        },
+        }
     }
 }
 
@@ -72,7 +71,7 @@ fn initialize(io: &mut Io) -> Result<()> {
         match io.recv()? {
             RawMsg::Request(req) => {
                 if let Some((_params, resp)) = dispatch::expect::<req::Initialize>(io, req)? {
-                    resp.result(io, InitializeResult {
+                    resp.result(io, req::InitializeResult {
                         capabilities: caps::SERVER_CAPABILITIES
                     })?;
                     match io.recv()? {
@@ -107,6 +106,7 @@ fn initialized(io: &mut Io) -> Result<()> {
     let res = main_loop(io, &mut world, &mut pool, sender, receiver.clone());
     info!("waiting for background jobs to finish...");
     receiver.for_each(drop);
+    pool.join();
     info!("...background jobs have finished");
     res
 }
@@ -148,19 +148,29 @@ fn main_loop(
 
         match msg {
             RawMsg::Request(req) => {
-                if let Some((params, resp)) = dispatch::expect::<req::SyntaxTree>(io, req)? {
-                    let world = world.snapshot();
-                    let sender = sender.clone();
-                    pool.execute(move || {
-                        let res: Result<String> = (|| {
-                            let path = params.text_document.uri.to_file_path()
-                                .map_err(|()| format_err!("invalid path"))?;
-                            let file = world.file_syntax(&path)?;
-                            Ok(libeditor::syntax_tree(&file))
-                        })();
+                let req = match dispatch::parse_as::<req::SyntaxTree>(req)? {
+                    Ok((params, resp)) => {
+                        let world = world.snapshot();
+                        let sender = sender.clone();
+                        pool.execute(move || {
+                            let res: Result<String> = (|| {
+                                let path = params.text_document.uri.to_file_path()
+                                    .map_err(|()| format_err!("invalid path"))?;
+                                let file = world.file_syntax(&path)?;
+                                Ok(libeditor::syntax_tree(&file))
+                            })();
 
-                        sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
-                    });
+                            sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
+                        });
+                        continue;
+                    }
+                    Err(req) => req,
+                };
+
+                if let Some(((), resp)) = dispatch::expect::<req::Shutdown>(io, req)? {
+                    info!("shutdown request");
+                    resp.result(io, ())?;
+                    return Ok(());
                 }
             }
             msg => {
