@@ -1852,6 +1852,41 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }
     }
+
+    /// Fast path helper for testing if a type is `Sized`.
+    ///
+    /// Returning true means the type is known to be sized. Returning
+    /// `false` means nothing -- could be sized, might not be.
+    pub fn is_trivially_sized(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> bool {
+        match self.sty {
+            ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
+            ty::TyChar | ty::TyRef(..) | ty::TyGenerator(..) |
+            ty::TyGeneratorWitness(..) | ty::TyArray(..) | ty::TyClosure(..) |
+            ty::TyNever | ty::TyError =>
+                true,
+
+            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) | ty::TyForeign(..) =>
+                false,
+
+            ty::TyTuple(tys) =>
+                tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
+
+            ty::TyAdt(def, _substs) =>
+                def.sized_constraint(tcx).is_empty(),
+
+            ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => false,
+
+            ty::TyInfer(ty::TyVar(_)) => false,
+
+            ty::TyInfer(ty::CanonicalTy(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) =>
+                bug!("is_trivially_sized applied to unexpected type: {:?}", self),
+        }
+    }
 }
 
 /// Typed constant value.
