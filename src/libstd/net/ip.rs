@@ -484,9 +484,9 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_private(&self) -> bool {
         match self.octets() {
-            [10, _..] => true,
-            [172, b, _..] if b >= 16 && b <= 31 => true,
-            [192, 168, _..] => true,
+            [10, ..] => true,
+            [172, b, ..] if b >= 16 && b <= 31 => true,
+            [192, 168, ..] => true,
             _ => false,
         }
     }
@@ -510,7 +510,7 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         match self.octets() {
-            [169, 254, _..] => true,
+            [169, 254, ..] => true,
             _ => false,
         }
     }
