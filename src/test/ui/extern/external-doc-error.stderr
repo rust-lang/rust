@@ -1,5 +1,5 @@
 error: couldn't read $DIR/not-a-file.md: No such file or directory (os error 2)
-  --> $DIR/external-doc-error.rs:13:1
+  --> $DIR/external-doc-error.rs:16:1
    |
 LL | #[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

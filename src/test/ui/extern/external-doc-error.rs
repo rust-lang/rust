@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test: "The system cannot find the file specified\." -> "No such file or directory"
+// ignore-tidy-linelength
+
 #![feature(external_doc)]
 
 #[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
