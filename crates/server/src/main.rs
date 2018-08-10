@@ -11,6 +11,7 @@ extern crate crossbeam_channel;
 extern crate threadpool;
 #[macro_use]
 extern crate log;
+extern crate url;
 extern crate flexi_logger;
 extern crate libeditor;
 extern crate libanalysis;
@@ -31,7 +32,7 @@ use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, Te
 
 use ::{
     io::{Io, RawMsg},
-    handlers::{handle_syntax_tree, handle_extend_selection},
+    handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics},
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -209,6 +210,21 @@ fn main_loop(
                 dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, Some(params.text_document.text));
+                    let world = world.snapshot();
+                    let sender = sender.clone();
+                    let uri = params.text_document.uri;
+                    pool.execute(move || {
+                        match publish_diagnostics(world, uri) {
+                            Err(e) => {
+                                error!("failed to compute diagnostics: {:?}", e)
+                            }
+                            Ok(params) => {
+                                sender.send(Box::new(|io: &mut Io| {
+                                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
+                                }))
+                            }
+                        }
+                    });
                     Ok(())
                 })?;
                 dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
@@ -217,11 +233,30 @@ fn main_loop(
                         .ok_or_else(|| format_err!("empty changes"))?
                         .text;
                     world.change_overlay(path, Some(text));
+                    let world = world.snapshot();
+                    let sender = sender.clone();
+                    let uri = params.text_document.uri;
+                    pool.execute(move || {
+                        match publish_diagnostics(world, uri) {
+                            Err(e) => {
+                                error!("failed to compute diagnostics: {:?}", e)
+                            }
+                            Ok(params) => {
+                                sender.send(Box::new(|io: &mut Io| {
+                                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
+                                }))
+                            }
+                        }
+                    });
                     Ok(())
                 })?;
                 dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, None);
+                    dispatch::send_notification::<req::PublishDiagnostics>(io, req::PublishDiagnosticsParams {
+                        uri: params.text_document.uri,
+                        diagnostics: Vec::new(),
+                    })?;
                     Ok(())
                 })?;
 
@@ -252,21 +287,25 @@ trait FilePath {
 
 impl FilePath for TextDocumentItem {
     fn file_path(&self) -> Result<PathBuf> {
-        self.uri.to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", self.uri))
+        self.uri.file_path()
     }
 }
 
 impl FilePath for VersionedTextDocumentIdentifier {
     fn file_path(&self) -> Result<PathBuf> {
-        self.uri.to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", self.uri))
+        self.uri.file_path()
     }
 }
 
 impl FilePath for TextDocumentIdentifier {
     fn file_path(&self) -> Result<PathBuf> {
-        self.uri.to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", self.uri))
+        self.uri.file_path()
+    }
+}
+
+impl FilePath for ::url::Url {
+    fn file_path(&self) -> Result<PathBuf> {
+        self.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", self))
     }
 }

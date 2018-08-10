@@ -1,6 +1,8 @@
-use languageserver_types::{Range, Position};
+use url::Url;
+use languageserver_types::{Range, Position, Diagnostic, DiagnosticSeverity};
 use libanalysis::World;
 use libeditor::{self, LineIndex, LineCol, TextRange, TextUnit};
+
 use {req, Result, FilePath};
 
 pub fn handle_syntax_tree(
@@ -27,6 +29,23 @@ pub fn handle_extend_selection(
         })
         .collect();
     Ok(req::ExtendSelectionResult { selections })
+}
+
+pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnosticsParams> {
+    let path = uri.file_path()?;
+    let file = world.file_syntax(&path)?;
+    let line_index = world.file_line_index(&path)?;
+    let diagnostics = libeditor::diagnostics(&file)
+        .into_iter()
+        .map(|d| Diagnostic {
+            range: to_vs_range(&line_index, d.range),
+            severity: Some(DiagnosticSeverity::Error),
+            code: None,
+            source: Some("libsyntax2".to_string()),
+            message: d.msg,
+            related_information: None,
+        }).collect();
+    Ok(req::PublishDiagnosticsParams { uri, diagnostics })
 }
 
 

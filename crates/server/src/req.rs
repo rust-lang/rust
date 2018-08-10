@@ -2,7 +2,7 @@ use languageserver_types::{TextDocumentIdentifier, Range};
 
 pub use languageserver_types::{
     request::*, notification::*,
-    InitializeResult,
+    InitializeResult, PublishDiagnosticsParams
 };
 
 pub enum SyntaxTree {}

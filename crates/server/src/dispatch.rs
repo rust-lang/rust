@@ -136,6 +136,18 @@ pub fn handle_notification<N, F>(not: &mut Option<RawNotification>, f: F) -> Res
     }
 }
 
+pub fn send_notification<N>(io: &mut Io, params: N::Params) -> Result<()>
+    where
+        N: Notification,
+        N::Params: Serialize
+{
+    io.send(RawMsg::Notification(RawNotification {
+        method: N::METHOD.to_string(),
+        params: serde_json::to_value(params)?,
+    }));
+    Ok(())
+}
+
 
 pub fn unknown_method(io: &mut Io, raw: RawRequest) -> Result<()> {
     error(io, raw.id, ErrorCode::MethodNotFound, "unknown method")
