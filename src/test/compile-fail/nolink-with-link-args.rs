@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// normalize-stderr-test: "crateresolve1\-\d.so" -> "crateresolve1-N.so"
+// error-pattern:aFdEfSeVEE
+// compile-flags: -Z linker-flavor=ld
 
-// aux-build:crateresolve1-1.rs
-// aux-build:crateresolve1-2.rs
-// aux-build:crateresolve1-3.rs
-// error-pattern:multiple matching crates for `crateresolve1`
+/* We're testing that link_args are indeed passed when nolink is specified.
+So we try to compile with junk link_args and make sure they are visible in
+the compiler output. */
 
-extern crate crateresolve1;
+#![feature(link_args)]
 
-fn main() {
-}
+#[link_args = "aFdEfSeVEEE"]
+extern {}
+
+fn main() { }
