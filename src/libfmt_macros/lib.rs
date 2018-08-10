@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
 
         // fill character
         if let Some(&(_, c)) = self.cur.peek() {
-            match self.cur.clone().skip(1).next() {
+            match self.cur.clone().nth(1) {
                 Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
                     spec.fill = Some(c);
                     self.cur.next();
@@ -504,13 +504,11 @@ impl<'a> Parser<'a> {
             if word.is_empty() {
                 self.cur = tmp;
                 CountImplied
+            } else if self.consume('$') {
+                CountIsName(word)
             } else {
-                if self.consume('$') {
-                    CountIsName(word)
-                } else {
-                    self.cur = tmp;
-                    CountImplied
-                }
+                self.cur = tmp;
+                CountImplied
             }
         }
     }

@@ -438,7 +438,7 @@ fn escape_char(writer: &mut dyn fmt::Write, v: char) -> EncodeResult {
 }
 
 fn spaces(wr: &mut dyn fmt::Write, mut n: usize) -> EncodeResult {
-    const BUF: &'static str = "                ";
+    const BUF: &str = "                ";
 
     while n >= BUF.len() {
         wr.write_str(BUF)?;
@@ -799,21 +799,21 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             escape_str(self.writer, name)
         } else {
             if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-            write!(self.writer, "{{\n")?;
+            writeln!(self.writer, "{{")?;
             self.curr_indent += self.indent;
             spaces(self.writer, self.curr_indent)?;
             write!(self.writer, "\"variant\": ")?;
             escape_str(self.writer, name)?;
-            write!(self.writer, ",\n")?;
+            writeln!(self.writer, ",")?;
             spaces(self.writer, self.curr_indent)?;
-            write!(self.writer, "\"fields\": [\n")?;
+            writeln!(self.writer, "\"fields\": [")?;
             self.curr_indent += self.indent;
             f(self)?;
             self.curr_indent -= self.indent;
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
             spaces(self.writer, self.curr_indent)?;
             self.curr_indent -= self.indent;
-            write!(self.writer, "]\n")?;
+            writeln!(self.writer, "]")?;
             spaces(self.writer, self.curr_indent)?;
             write!(self.writer, "}}")?;
             Ok(())
@@ -825,7 +825,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx != 0 {
-            write!(self.writer, ",\n")?;
+            writeln!(self.writer, ",")?;
         }
         spaces(self.writer, self.curr_indent)?;
         f(self)
@@ -864,7 +864,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             self.curr_indent += self.indent;
             f(self)?;
             self.curr_indent -= self.indent;
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
             spaces(self.writer, self.curr_indent)?;
             write!(self.writer, "}}")?;
         }
@@ -876,9 +876,9 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
         } else {
-            write!(self.writer, ",\n")?;
+            writeln!(self.writer, ",")?;
         }
         spaces(self.writer, self.curr_indent)?;
         escape_str(self.writer, name)?;
@@ -940,7 +940,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             self.curr_indent += self.indent;
             f(self)?;
             self.curr_indent -= self.indent;
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
             spaces(self.writer, self.curr_indent)?;
             write!(self.writer, "]")?;
         }
@@ -952,9 +952,9 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
         } else {
-            write!(self.writer, ",\n")?;
+            writeln!(self.writer, ",")?;
         }
         spaces(self.writer, self.curr_indent)?;
         f(self)
@@ -971,7 +971,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             self.curr_indent += self.indent;
             f(self)?;
             self.curr_indent -= self.indent;
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
             spaces(self.writer, self.curr_indent)?;
             write!(self.writer, "}}")?;
         }
@@ -983,9 +983,9 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            write!(self.writer, "\n")?;
+            writeln!(self.writer)?;
         } else {
-            write!(self.writer, ",\n")?;
+            writeln!(self.writer, ",")?;
         }
         spaces(self.writer, self.curr_indent)?;
         self.is_emitting_map_key = true;
@@ -1387,10 +1387,10 @@ impl Stack {
 
     // Used by Parser to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
-        if self.is_empty() { return false; }
-        return match *self.stack.last().unwrap() {
-            InternalIndex(_) => true,
-            _ => false,
+        if let Some(InternalIndex(_)) = self.stack.last() {
+            true
+        } else {
+            false
         }
     }
 
@@ -1530,19 +1530,17 @@ impl<T: Iterator<Item=char>> Parser<T> {
             }
 
             F64Value(res)
-        } else {
-            if neg {
-                let res = (res as i64).wrapping_neg();
+        } else if neg {
+            let res = (res as i64).wrapping_neg();
 
-                // Make sure we didn't underflow.
-                if res > 0 {
-                    Error(SyntaxError(InvalidNumber, self.line, self.col))
-                } else {
-                    I64Value(res)
-                }
+            // Make sure we didn't underflow.
+            if res > 0 {
+                Error(SyntaxError(InvalidNumber, self.line, self.col))
             } else {
-                U64Value(res)
+                I64Value(res)
             }
+        } else {
+            U64Value(res)
         }
     }
 
