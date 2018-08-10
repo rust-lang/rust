@@ -865,7 +865,7 @@ where
 
     krate = time(sess, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
-        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name)
+        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name, sess.edition())
     });
 
     let mut addl_plugins = Some(addl_plugins);

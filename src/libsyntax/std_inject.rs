@@ -11,6 +11,8 @@
 use ast;
 use attr;
 use std::cell::Cell;
+use std::iter;
+use edition::Edition;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
@@ -43,7 +45,13 @@ thread_local! {
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
-pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>) -> ast::Crate {
+pub fn maybe_inject_crates_ref(
+    mut krate: ast::Crate,
+    alt_std_name: Option<&str>,
+    edition: Edition,
+) -> ast::Crate {
+    let rust_2018 = edition >= Edition::Edition2018;
+
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[&str] = if attr::contains_name(&krate.attrs, "no_core") {
         return krate;
@@ -58,14 +66,27 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
     };
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
-    for name in names.iter().rev() {
+    let alt_std_name = alt_std_name.map(Symbol::intern);
+    for orig_name in names.iter().rev() {
+        let orig_name = Symbol::intern(orig_name);
+        let mut rename = orig_name;
+        // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
+        // so they don't accidentally interfere with the new import paths.
+        if rust_2018 {
+            rename = orig_name.gensymed();
+        }
+        let orig_name = if rename != orig_name {
+            Some(orig_name)
+        } else {
+            None
+        };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(DUMMY_SP,
                                             attr::mk_attr_id(),
                                             attr::mk_word_item(ast::Ident::from_str("macro_use")))],
             vis: dummy_spanned(ast::VisibilityKind::Inherited),
-            node: ast::ItemKind::ExternCrate(alt_std_name.map(Symbol::intern)),
-            ident: ast::Ident::from_str(name),
+            node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
+            ident: ast::Ident::with_empty_ctxt(rename),
             id: ast::DUMMY_NODE_ID,
             span: DUMMY_SP,
             tokens: None,
@@ -91,9 +112,11 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
-                segments: [name, "prelude", "v1"].into_iter().map(|name| {
-                    ast::PathSegment::from_ident(ast::Ident::from_str(name))
-                }).collect(),
+                segments: iter::once(keywords::CrateRoot.ident())
+                    .chain(
+                        [name, "prelude", "v1"].iter().cloned()
+                            .map(ast::Ident::from_str)
+                    ).map(ast::PathSegment::from_ident).collect(),
                 span,
             },
             kind: ast::UseTreeKind::Glob,
