@@ -7,14 +7,14 @@ pub use languageserver_types::{
 };
 
 
-pub trait ClientRequest: Send + 'static {
+pub trait ClientRequest: 'static {
     type Params: DeserializeOwned + Send + 'static;
     type Result: Serialize + Send + 'static;
     const METHOD: &'static str;
 }
 
 impl<T> ClientRequest for T
-    where T: Request + Send + 'static,
+    where T: Request + 'static,
           T::Params: DeserializeOwned + Send + 'static,
           T::Result: Serialize + Send + 'static,
 {

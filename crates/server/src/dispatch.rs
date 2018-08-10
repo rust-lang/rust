@@ -16,7 +16,7 @@ use ::{
 pub struct Responder<R: ClientRequest> {
     id: u64,
     bomb: DropBomb,
-    ph: PhantomData<R>,
+    ph: PhantomData<fn(R)>,
 }
 
 impl<R: ClientRequest> Responder<R>
