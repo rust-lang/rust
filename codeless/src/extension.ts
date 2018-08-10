@@ -43,10 +43,8 @@ export function deactivate(): Thenable<void> {
 function startServer() {
     let run: Executable = {
         command: "cargo",
-        args: ["run"],
-        options: {
-            cwd: "./server"
-        }
+        args: ["run", "--package", "m"],
+        options: { cwd: "." }
     }
     let serverOptions: ServerOptions = {
         run,

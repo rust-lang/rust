@@ -1,7 +1,5 @@
-use std::ptr;
-
 use parking_lot::RwLock;
-use {yellow::GreenNode, TextUnit};
+use {yellow::{GreenNode, RedPtr}, TextUnit};
 
 #[derive(Debug)]
 pub(crate) struct RedNode {
@@ -12,7 +10,7 @@ pub(crate) struct RedNode {
 
 #[derive(Debug)]
 struct ParentData {
-    parent: ptr::NonNull<RedNode>,
+    parent: RedPtr,
     start_offset: TextUnit,
     index_in_parent: usize,
 }
@@ -24,7 +22,7 @@ impl RedNode {
 
     fn new_child(
         green: GreenNode,
-        parent: ptr::NonNull<RedNode>,
+        parent: RedPtr,
         start_offset: TextUnit,
         index_in_parent: usize,
     ) -> RedNode {
@@ -64,12 +62,12 @@ impl RedNode {
         self.green.children().len()
     }
 
-    pub(crate) fn get_child(&self, idx: usize) -> Option<ptr::NonNull<RedNode>> {
+    pub(crate) fn get_child(&self, idx: usize) -> Option<RedPtr> {
         if idx >= self.n_children() {
             return None;
         }
         match &self.children.read()[idx] {
-            Some(child) => return Some(child.into()),
+            Some(child) => return Some(RedPtr::new(child)),
             None => (),
         };
         let green_children = self.green.children();
@@ -79,15 +77,15 @@ impl RedNode {
             .map(|x| x.text_len())
             .sum::<TextUnit>();
         let child =
-            RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
+            RedNode::new_child(green_children[idx].clone(), RedPtr::new(self), start_offset, idx);
         let mut children = self.children.write();
         if children[idx].is_none() {
             children[idx] = Some(child)
         }
-        Some(children[idx].as_ref().unwrap().into())
+        Some(RedPtr::new(children[idx].as_ref().unwrap()))
     }
 
-    pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {
+    pub(crate) fn parent(&self) -> Option<RedPtr> {
         Some(self.parent.as_ref()?.parent)
     }
     pub(crate) fn index_in_parent(&self) -> Option<usize> {

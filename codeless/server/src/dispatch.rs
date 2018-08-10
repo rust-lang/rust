@@ -24,8 +24,8 @@ impl<R: Request> Responder<R>
         R::Params: DeserializeOwned,
         R::Result: Serialize,
 {
-    pub fn respond_with(self, io: &mut Io, f: impl FnOnce() -> Result<R::Result>) -> Result<()> {
-        match f() {
+    pub fn response(self, io: &mut Io, resp: Result<R::Result>) -> Result<()> {
+        match resp {
             Ok(res) => self.result(io, res)?,
             Err(e) => {
                 self.error(io)?;

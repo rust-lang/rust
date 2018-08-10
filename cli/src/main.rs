@@ -10,7 +10,7 @@ use std::{
 };
 use clap::{App, Arg, SubCommand};
 use tools::collect_tests;
-use libeditor::File;
+use libeditor::{ast, syntax_tree, symbols};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -44,14 +44,14 @@ fn main() -> Result<()> {
             let file = file()?;
             let elapsed = start.elapsed();
             if !matches.is_present("no-dump") {
-                println!("{}", file.syntax_tree());
+                println!("{}", syntax_tree(&file));
             }
             eprintln!("parsing: {:?}", elapsed);
             ::std::mem::forget(file);
         }
         ("symbols", _) => {
             let file = file()?;
-            for s in file.symbols() {
+            for s in symbols(&file) {
                 println!("{:?}", s);
             }
         }
@@ -68,9 +68,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<File> {
+fn file() -> Result<ast::File> {
     let text = read_stdin()?;
-    Ok(File::new(&text))
+    Ok(ast::File::parse(&text))
 }
 
 fn read_stdin() -> Result<String> {
@@ -89,7 +89,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = File::new(&test.text);
-    let tree = file.syntax_tree();
+    let file = ast::File::parse(&test.text);
+    let tree = syntax_tree(&file);
     Ok((test.text, tree))
 }

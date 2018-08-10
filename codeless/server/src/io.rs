@@ -49,14 +49,19 @@ impl MsgReceiver {
         match self.chan.recv() {
             Some(msg) => Ok(msg),
             None => {
-                self.thread
-                    .take()
-                    .ok_or_else(|| format_err!("MsgReceiver thread panicked"))?
-                    .join()
-                    .map_err(|_| format_err!("MsgReceiver thread panicked"))??;
-                bail!("client disconnected")
+                self.cleanup()?;
+                unreachable!()
             }
         }
+    }
+
+    fn cleanup(&mut self) -> Result<()> {
+        self.thread
+            .take()
+            .ok_or_else(|| format_err!("MsgReceiver thread panicked"))?
+            .join()
+            .map_err(|_| format_err!("MsgReceiver thread panicked"))??;
+        bail!("client disconnected")
     }
 
     fn stop(self) -> Result<()> {
@@ -68,7 +73,7 @@ impl MsgReceiver {
 
 struct MsgSender {
     chan: Sender<RawMsg>,
-    thread: Option<thread::JoinHandle<Result<()>>>,
+    thread: thread::JoinHandle<Result<()>>,
 }
 
 impl MsgSender {
@@ -76,25 +81,11 @@ impl MsgSender {
         self.chan.send(msg)
     }
 
-    fn stop(mut self) -> Result<()> {
-        if let Some(thread) = self.thread.take() {
-            thread.join()
-                .map_err(|_| format_err!("MsgSender thread panicked"))??
-        }
+    fn stop(self) -> Result<()> {
+        drop(self.chan);
+        self.thread.join()
+            .map_err(|_| format_err!("MsgSender thread panicked"))??;
         Ok(())
-    }
-}
-
-impl Drop for MsgSender {
-    fn drop(&mut self) {
-        if let Some(thread) = self.thread.take() {
-            let res = thread.join();
-            if thread::panicking() {
-                drop(res)
-            } else {
-                res.unwrap().unwrap()
-            }
-        }
     }
 }
 
@@ -109,7 +100,7 @@ impl Io {
             let (tx, rx) = bounded(16);
             MsgSender {
                 chan: tx,
-                thread: Some(thread::spawn(move || {
+                thread: thread::spawn(move || {
                     let stdout = stdout();
                     let mut stdout = stdout.lock();
                     for msg in rx {
@@ -126,7 +117,7 @@ impl Io {
                         write_msg_text(&mut stdout, &text)?;
                     }
                     Ok(())
-                })),
+                }),
             }
         };
         let receiver = {
@@ -153,6 +144,14 @@ impl Io {
 
     pub fn recv(&mut self) -> Result<RawMsg> {
         self.receiver.recv()
+    }
+
+    pub fn receiver(&mut self) -> &mut Receiver<RawMsg> {
+        &mut self.receiver.chan
+    }
+
+    pub fn cleanup_receiver(&mut self) -> Result<()> {
+        self.receiver.cleanup()
     }
 
     pub fn stop(self) -> Result<()> {
@@ -190,10 +189,12 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
     buf.resize(size, 0);
     inp.read_exact(&mut buf)?;
     let buf = String::from_utf8(buf)?;
+    debug!("< {}", buf);
     Ok(Some(buf))
 }
 
 fn write_msg_text(out: &mut impl Write, msg: &str) -> Result<()> {
+    debug!("> {}", msg);
     write!(out, "Content-Length: {}\r\n\r\n", msg.len())?;
     out.write_all(msg.as_bytes())?;
     out.flush()?;

@@ -1,24 +1,22 @@
-use std::{fmt, ops::Deref, ptr, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use {
-    yellow::{GreenNode, RedNode},
+    yellow::{RedNode, TreeRoot, SyntaxRoot, RedPtr},
     SyntaxKind::{self, *},
     TextRange, TextUnit,
 };
 
-pub trait TreeRoot: Deref<Target = SyntaxRoot> + Clone {}
-
-impl TreeRoot for Arc<SyntaxRoot> {}
-
-impl<'a> TreeRoot for &'a SyntaxRoot {}
 
 #[derive(Clone, Copy)]
 pub struct SyntaxNode<R: TreeRoot = Arc<SyntaxRoot>> {
     pub(crate) root: R,
     // Guaranteed to not dangle, because `root` holds a
     // strong reference to red's ancestor
-    red: ptr::NonNull<RedNode>,
+    red: RedPtr,
 }
+
+unsafe impl<R: TreeRoot> Send for SyntaxNode<R> {}
+unsafe impl<R: TreeRoot> Sync for SyntaxNode<R> {}
 
 impl<R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
     fn eq(&self, other: &SyntaxNode<R1>) -> bool {
@@ -30,21 +28,6 @@ impl<R: TreeRoot> Eq for SyntaxNode<R> {}
 
 pub type SyntaxNodeRef<'a> = SyntaxNode<&'a SyntaxRoot>;
 
-#[derive(Debug)]
-pub struct SyntaxRoot {
-    red: RedNode,
-    pub(crate) errors: Vec<SyntaxError>,
-}
-
-impl SyntaxRoot {
-    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SyntaxRoot {
-        SyntaxRoot {
-            red: RedNode::new_root(green),
-            errors,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct SyntaxError {
     pub msg: String,
@@ -54,11 +37,8 @@ pub struct SyntaxError {
 impl SyntaxNode<Arc<SyntaxRoot>> {
     pub(crate) fn new_owned(root: SyntaxRoot) -> Self {
         let root = Arc::new(root);
-        let red_weak = ptr::NonNull::from(&root.red);
-        SyntaxNode {
-            root,
-            red: red_weak,
-        }
+        let red = RedPtr::new(&root.red);
+        SyntaxNode { root, red }
     }
 }
 
@@ -66,7 +46,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
     pub fn as_ref<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
         SyntaxNode {
             root: &*self.root,
-            red: ptr::NonNull::clone(&self.red),
+            red: self.red,
         }
     }
 
@@ -120,7 +100,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
     }
 
     fn red(&self) -> &RedNode {
-        unsafe { self.red.as_ref() }
+        unsafe { self.red.get(&self.root) }
     }
 }
 

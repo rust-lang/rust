@@ -6,9 +6,8 @@ use libsyntax2::{
     SyntaxNodeRef, AstNode,
     algo::walk,
     SyntaxKind::*,
-    ast,
 };
-pub use libsyntax2::{TextRange, TextUnit};
+pub use libsyntax2::{TextRange, TextUnit, ast};
 
 #[derive(Debug)]
 pub struct HighlightedRange {

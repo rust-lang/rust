@@ -3,7 +3,7 @@ extern crate itertools;
 
 use std::fmt;
 use itertools::Itertools;
-use libeditor::{File, TextRange};
+use libeditor::{ast, highlight, runnables, extend_selection, TextRange};
 
 #[test]
 fn test_extend_selection() {
@@ -12,9 +12,9 @@ fn test_extend_selection() {
 }
 "#);
     let range = TextRange::offset_len(18.into(), 0.into());
-    let range = file.extend_selection(range).unwrap();
+    let range = extend_selection(&file, range).unwrap();
     assert_eq!(range, TextRange::from_to(17.into(), 18.into()));
-    let range = file.extend_selection(range).unwrap();
+    let range = extend_selection(&file, range).unwrap();
     assert_eq!(range, TextRange::from_to(15.into(), 20.into()));
 }
 
@@ -25,7 +25,7 @@ fn test_highlighting() {
 fn main() {}
     println!("Hello, {}!", 92);
 "#);
-    let hls = file.highlight();
+    let hls = highlight(&file);
     dbg_eq(
         &hls,
         r#"[HighlightedRange { range: [1; 11), tag: "comment" },
@@ -49,7 +49,7 @@ fn test_foo() {}
 #[ignore]
 fn test_foo() {}
 "#);
-    let runnables = file.runnables();
+    let runnables = runnables(&file);
     dbg_eq(
         &runnables,
         r#"[Runnable { range: [1; 13), kind: Bin },
@@ -58,8 +58,8 @@ fn test_foo() {}
     )
 }
 
-fn file(text: &str) -> File {
-    File::new(text)
+fn file(text: &str) -> ast::File {
+    ast::File::parse(text)
 }
 
 fn dbg_eq(actual: &impl fmt::Debug, expected: &str) {

@@ -56,12 +56,6 @@ impl GreenNode {
     }
 }
 
-#[test]
-fn assert_send_sync() {
-    fn f<T: Send + Sync>() {}
-    f::<GreenNode>();
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct GreenBranch {
     text_len: TextUnit,
