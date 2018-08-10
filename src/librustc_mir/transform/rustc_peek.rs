@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{self, Mir, Location};
+use rustc::mir::{self, Mir, Location, Place, PlaceBase};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use transform::{MirPass, MirSource};
@@ -124,8 +124,18 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_place = match args[0] {
-        mir::Operand::Copy(ref place @ mir::Place::Local(_)) |
-        mir::Operand::Move(ref place @ mir::Place::Local(_)) => Some(place),
+        mir::Operand::Copy(
+            place @ Place {
+                base: PlaceBase::Local(_),
+                elems: _,
+            }
+        ) |
+        mir::Operand::Move(
+            place @ Place {
+                base: PlaceBase::Local(_),
+                elems: _,
+            }
+        ) => Some(place),
         _ => None,
     };
 
@@ -171,10 +181,10 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
-        if place == peek_arg_place {
+        if *place == peek_arg_place {
             if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
                 // Okay, our search is over.
-                match move_data.rev_lookup.find(peeking_at_place) {
+                match move_data.rev_lookup.find(tcx, peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {
                         let bit_state = sets.on_entry.contains(&peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
@@ -198,7 +208,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(place);
+        let lhs_mpi = move_data.rev_lookup.find(tcx, place);
 
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);

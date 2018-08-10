@@ -415,23 +415,28 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place) -> bool {
-                    match *place {
-                        Place::Projection(ref p) => {
-                            match p.elem {
-                                ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => true,
-                                _ => dest_needs_borrow(&p.base)
-                            }
+                fn dest_needs_borrow<'a, 'tcx>(
+                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    place: &Place<'tcx>,
+                ) -> bool {
+                    if let Some((base_place, projection)) = place.split_projection(tcx) {
+                        match projection {
+                            ProjectionElem::Deref |
+                            ProjectionElem::Index(_) => true,
+                            _ => dest_needs_borrow(tcx, &base_place)
                         }
-                        // Static variables need a borrow because the callee
-                        // might modify the same static.
-                        Place::Static(_) => true,
-                        _ => false
+                    } else {
+                        if let PlaceBase::Static(_) = place.base {
+                            // Static variables need a borrow because the callee
+                            // might modify the same static.
+                            true
+                        } else {
+                            false
+                        }
                     }
                 }
 
-                let dest = if dest_needs_borrow(&destination.0) {
+                let dest = if dest_needs_borrow(self.tcx, &destination.0) {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.types.re_erased,
@@ -443,7 +448,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Place::Local(tmp);
+                    let tmp = Place::local(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
@@ -451,7 +456,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     };
                     caller_mir[callsite.bb]
                         .statements.push(stmt);
-                    tmp.deref()
+                    tmp.deref(self.tcx)
                 } else {
                     destination.0
                 };
@@ -537,7 +542,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             assert!(args.next().is_none());
 
-            let tuple = Place::Local(tuple);
+            let tuple = Place::local(tuple);
             let tuple_tys = if let ty::TyTuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
                 s
             } else {
@@ -551,7 +556,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple_tmp_args =
                 tuple_tys.iter().enumerate().map(|(i, ty)| {
                     // This is e.g. `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Move(tuple.clone().field(Field::new(i), ty));
+                    let tuple_field = Operand::Move(tuple.clone().field(tcx, Field::new(i), ty));
 
                     // Spill to a local to make e.g. `tmp0`.
                     self.create_temp_if_necessary(tuple_field, callsite, caller_mir)
@@ -576,10 +581,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place::Local(local)) = arg {
-            if caller_mir.local_kind(local) == LocalKind::Temp {
-                // Reuse the operand if it's a temporary already
-                return local;
+        if let Operand::Move(place) = arg {
+            if let PlaceBase::Local(local) = place.base {
+                if caller_mir.local_kind(local) == LocalKind::Temp {
+                    // Reuse the operand if it's a temporary already
+                    return local;
+                }
             }
         }
 
@@ -594,7 +601,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(arg_tmp), arg),
+            kind: StatementKind::Assign(Place::local(arg_tmp), arg),
         };
         caller_mir[callsite.bb].statements.push(stmt);
         arg_tmp
@@ -641,12 +648,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _ctxt: PlaceContext<'tcx>,
                    _location: Location) {
         if *local == RETURN_PLACE {
-            match self.destination {
-                Place::Local(l) => {
+            match self.destination.base {
+                PlaceBase::Local(l) => {
                     *local = l;
                     return;
                 },
-                ref place => bug!("Return place is {:?}, not local", place)
+                place => bug!("Return place is {:?}, not local", place)
             }
         }
         let idx = local.index() - 1;
@@ -662,12 +669,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     _ctxt: PlaceContext<'tcx>,
                     _location: Location) {
 
-        match place {
-            Place::Local(RETURN_PLACE) => {
+        match place.base {
+            PlaceBase::Local(RETURN_PLACE) => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            Place::Promoted(ref mut promoted) => {
+            PlaceBase::Promoted(ref mut promoted) => {
                 if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
                     promoted.0 = p;
                 }

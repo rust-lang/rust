@@ -246,21 +246,26 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
-        match *place {
-            Place::Local(local) => LookupResult::Exact(self.locals[local]),
-            Place::Promoted(_) |
-            Place::Static(..) => LookupResult::Parent(None),
-            Place::Projection(ref proj) => {
-                match self.find(&proj.base) {
-                    LookupResult::Exact(base_path) => {
-                        match self.projections.get(&(base_path, proj.elem.lift())) {
-                            Some(&subpath) => LookupResult::Exact(subpath),
-                            None => LookupResult::Parent(Some(base_path))
-                        }
+    pub fn find<'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        place: &Place<'tcx>
+    ) -> LookupResult {
+        if let Some((base_place, projection)) = place.split_projection(tcx) {
+            match self.find(tcx, &base_place) {
+                LookupResult::Exact(base_path) => {
+                    match self.projections.get(&(base_path, projection.lift())) {
+                        Some(subpath) => LookupResult::Exact(*subpath),
+                        None => LookupResult::Parent(Some(base_path)),
                     }
-                    inexact => inexact
                 }
+                inexact => inexact,
+            }
+        } else {
+            match place.base {
+                PlaceBase::Local(local) => LookupResult::Exact(self.locals[local]),
+                PlaceBase::Promoted(_) |
+                PlaceBase::Static(..) => LookupResult::Parent(None),
             }
         }
     }

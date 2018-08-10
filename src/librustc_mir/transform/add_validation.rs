@@ -30,13 +30,12 @@ fn place_context<'a, 'tcx, D>(
 ) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
-    use rustc::mir::PlaceBase::*;
-    match place.elems.last() {
-        Some(proj) => match proj {
+    if let Some((base_place, projection)) = place.split_projection(tcx){
+        match projection {
             ProjectionElem::Deref => {
                 // Computing the inside the recursion makes this quadratic.
                 // We don't expect deep paths though.
-                let ty = proj.base.ty(local_decls, tcx).to_ty(tcx);
+                let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
                 // A Deref projection may restrict the context, this depends on the type
                 // being deref'd.
                 let context = match ty.sty {
@@ -68,13 +67,15 @@ fn place_context<'a, 'tcx, D>(
                     let mutbl = context.1.and(base_context.1);
                     (re, mutbl)
                 }
-            }
-            _ => place_context(&place.base_place(tcx), local_decls, tcx),
-        },
-        _ => match place.base {
+            },
+            _ => place_context(&base_place, local_decls, tcx),
+        }
+    } else {
+        use rustc::mir::PlaceBase::*;
+        match place.base {
             Local { .. } => (None, hir::MutMutable),
             Promoted(_) | Static(_) => (None, hir::MutImmutable),
-        },
+        }
     }
 }
 
@@ -333,7 +334,7 @@ impl MirPass for AddValidation {
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
-                                    vec![place_to_operand(dest_place.deref())]),
+                                    vec![place_to_operand(dest_place.deref(tcx))]),
                         };
                         block_data.statements.insert(i+1, acquire_stmt);
 

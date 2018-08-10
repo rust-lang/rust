@@ -251,9 +251,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         internal: true,
                         is_user_variable: None,
                     });
-                    let ptr_temp = Place::Local(ptr_temp);
+                    let ptr_temp = Place::local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
-                    this.into(&ptr_temp.deref(), block, val)
+                    this.into(&ptr_temp.deref(this.hir.tcx()), block, val)
                 } else {
                     let args: Vec<_> =
                         args.into_iter()
@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Create a "fake" temporary variable so that we check that the
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
-                if let Place::Projection(..) = destination {
+                if let Some(_) = destination.projection() {
                     this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
                 }
 

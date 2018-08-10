@@ -374,7 +374,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             source_info,
             kind: StatementKind::StorageLive(local_id)
         });
-        let place = Place::Local(local_id);
+        let place = Place::local(local_id);
         let var_ty = self.local_decls[local_id].ty;
         let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(
-            span, region_scope, &Place::Local(local_id), var_ty,
+            span, region_scope, &Place::local(local_id), var_ty,
             DropKind::Value {
                 cached_block: CachedBlock::default(),
             },

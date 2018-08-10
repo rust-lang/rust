@@ -21,8 +21,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                    -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
                    .map(|fieldpat| {
-                       let place = place.clone().field(fieldpat.field,
-                                                         fieldpat.pattern.ty);
+                       let place = place.clone().field(
+                           self.hir.tcx(),
+                           fieldpat.field,
+                           fieldpat.pattern.ty
+                       );
                        MatchPair::new(place, &fieldpat.pattern)
                    })
                    .collect()
@@ -47,16 +50,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           min_length,
                           from_end: false,
                       };
-                      let place = place.clone().elem(elem);
+                      let place = place.clone().elem(self.hir.tcx(), elem);
                       MatchPair::new(place, subpattern)
                   })
         );
 
         if let Some(subslice_pat) = opt_slice {
-            let subslice = place.clone().elem(ProjectionElem::Subslice {
-                from: prefix.len() as u32,
-                to: suffix.len() as u32
-            });
+            let subslice = place.clone().elem(
+                self.hir.tcx(),
+                ProjectionElem::Subslice {
+                    from: prefix.len() as u32,
+                    to: suffix.len() as u32
+                }
+            );
             match_pairs.push(MatchPair::new(subslice, subslice_pat));
         }
 
@@ -70,7 +76,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           min_length,
                           from_end: true,
                       };
-                      let place = place.clone().elem(elem);
+                      let place = place.clone().elem(self.hir.tcx(), elem);
                       MatchPair::new(place, subpattern)
                   })
         );

@@ -119,7 +119,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 });
                 if irrefutable {
-                    let place = match_pair.place.downcast(adt_def, variant_index);
+                    let place = match_pair.place.downcast(self.hir.tcx(), adt_def, variant_index);
                     candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
                     Ok(())
                 } else {
@@ -144,7 +144,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Deref { ref subpattern } => {
-                let place = match_pair.place.deref();
+                let tcx = self.hir.tcx();
+                let place = match_pair.place.deref(tcx);
                 candidate.match_pairs.push(MatchPair::new(place, subpattern));
                 Ok(())
             }

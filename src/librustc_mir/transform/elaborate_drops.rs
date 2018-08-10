@@ -121,7 +121,7 @@ fn find_dead_unwinds<'a, 'tcx>(
             init_data.apply_location(tcx, mir, env, loc);
         }
 
-        let path = match env.move_data.rev_lookup.find(location) {
+        let path = match env.move_data.rev_lookup.find(tcx, location) {
             LookupResult::Exact(e) => e,
             LookupResult::Parent(..) => {
                 debug!("find_dead_unwinds: has parent; skipping");
@@ -253,9 +253,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {
-                &Projection {
-                    elem: ProjectionElem::Field(idx, _), ..
-                } => idx == field,
+                ProjectionElem::Field(idx, _) => *idx == field,
                 _ => false
             }
         })
@@ -264,11 +262,15 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
-                } => offset == index,
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
+                ProjectionElem::ConstantIndex{
+                    offset,
+                    min_length: _,
+                    from_end: false
+                } => *offset == index,
+                ProjectionElem::ConstantIndex{
+                    offset,
+                    min_length: _,
+                    from_end: true
                 } => size - offset == index,
                 _ => false
             }
@@ -278,7 +280,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {
-                &Projection { elem: ProjectionElem::Deref, .. } => true,
+                ProjectionElem::Deref => true,
                 _ => false
             }
         })
@@ -287,9 +289,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     fn downcast_subpath(&self, path: Self::Path, variant: usize) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {
-                &Projection {
-                    elem: ProjectionElem::Downcast(_, idx), ..
-                } => idx == variant,
+                ProjectionElem::Downcast(_, idx) => *idx == variant,
                 _ => false
             }
         })
@@ -341,7 +341,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Place::Local(*t))
+        self.drop_flags.get(&index).map(|t| Place::local(*t))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -375,7 +375,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 statement_index: data.statements.len()
             });
 
-            let path = self.move_data().rev_lookup.find(location);
+            let path = self.move_data().rev_lookup.find(self.tcx, location);
             debug!("collect_drop_flags: {:?}, place {:?} ({:?})",
                    bb, location, path);
 
@@ -414,7 +414,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             match terminator.kind {
                 TerminatorKind::Drop { ref location, target, unwind } => {
                     let init_data = self.initialization_data_at(loc);
-                    match self.move_data().rev_lookup.find(location) {
+                    match self.move_data().rev_lookup.find(self.tcx, location) {
                         LookupResult::Exact(path) => {
                             elaborate_drop(
                                 &mut Elaborator {
@@ -503,7 +503,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             is_cleanup: false,
         });
 
-        match self.move_data().rev_lookup.find(location) {
+        match self.move_data().rev_lookup.find(self.tcx, location) {
             LookupResult::Exact(path) => {
                 debug!("elaborate_drop_and_replace({:?}) - tracked {:?}", terminator, path);
                 let init_data = self.initialization_data_at(loc);
@@ -551,7 +551,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Place::Local(flag), val);
+            self.patch.add_assign(loc, Place::local(flag), val);
         }
     }
 
@@ -560,7 +560,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
+            self.patch.add_assign(loc, Place::local(*flag), false_.clone());
         }
     }
 
@@ -572,7 +572,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(place);
+                let path = self.move_data().rev_lookup.find(self.tcx, place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)
@@ -646,7 +646,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(place);
+                let path = self.move_data().rev_lookup.find(self.tcx, place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)

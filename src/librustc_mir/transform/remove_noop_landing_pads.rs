@@ -60,7 +60,13 @@ impl RemoveNoopLandingPads {
                     // instructions, but this should all run after borrowck).
                 }
 
-                StatementKind::Assign(Place::Local(_), Rvalue::Use(_)) => {
+                StatementKind::Assign(
+                    Place {
+                        base: PlaceBase::Local(_),
+                        elems: _,
+                    },
+                    Rvalue::Use(_)
+                ) => {
                     // Writing to a local (e.g. a drop flag) does not
                     // turn a landing pad to a non-nop
                 }

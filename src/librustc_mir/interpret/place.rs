@@ -103,9 +103,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::PlaceBase::*;
 
-        if let Some((base_place, projection)) = place.split_projection(self.tcx()) {
+        if let Some((base_place, projection)) = place.split_projection(self.tcx.tcx) {
             self.try_read_place(&base_place);
-            self.tr_read_place_projection(&base_place, projection)
+            self.try_read_place_projection(&base_place, projection)
         } else {
             match place.base {
                 // Might allow this in the future, right now there's no way to do this from Rust code anyway
@@ -173,7 +173,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let base_ty = self.place_ty(base_place);
         let base_layout = self.layout_of(base_ty)?;
         match proj {
-            Field(field, _) => Ok(Some(self.read_field(base, None, field, base_layout)?.0)),
+            Field(field, _) => Ok(Some(self.read_field(base, None, *field, base_layout)?.0)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |
@@ -212,10 +212,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, Place> {
         use rustc::mir::PlaceBase::*;
 
-        let place = if let Some((base_place, projection)) = mir_place.split_projection(self.tcx()) {
+        let place = if let Some((base_place, projection)) = mir_place.split_projection(self.tcx.tcx) {
             let ty = self.place_ty(&base_place);
             let place = self.eval_place(&base_place)?;
-            self.eval_place_projection(place, ty, projection)
+            self.eval_place_projection(place, ty, projection)?
         } else {
             match mir_place.base {
                 Local(mir::RETURN_PLACE) => self.frame().return_place,
@@ -395,11 +395,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match place_elem {
             Field(field, _) => {
                 let layout = self.layout_of(base_ty)?;
-                Ok(self.place_field(base, field, layout)?.0)
+                Ok(self.place_field(base, *field, layout)?.0)
             }
 
             Downcast(_, variant) => {
-                self.place_downcast(base, variant)
+                self.place_downcast(base, *variant)
             }
 
             Deref => {
@@ -418,7 +418,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             Index(local) => {
-                let value = self.frame().locals[local].access()?;
+                let value = self.frame().locals[*local].access()?;
                 let ty = self.tcx.types.usize;
                 let n = self
                     .value_to_scalar(ValTy { value, ty })?
@@ -437,12 +437,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
-                assert!(n >= min_length as u64);
+                assert!(n >= *min_length as u64);
 
-                let index = if from_end {
-                    n - u64::from(offset)
+                let index = if *from_end {
+                    n - u64::from(*offset)
                 } else {
-                    u64::from(offset)
+                    u64::from(*offset)
                 };
 
                 let ptr = base_ptr.ptr_offset(elem_size * index, &self)?;
@@ -456,13 +456,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
-                assert!(u64::from(from) <= n - u64::from(to));
-                let ptr = base_ptr.ptr_offset(elem_size * u64::from(from), &self)?;
+                assert!(u64::from(*from) <= n - u64::from(*to));
+                let ptr = base_ptr.ptr_offset(elem_size * u64::from(*from), &self)?;
                 // sublicing arrays produces arrays
                 let extra = if self.type_is_sized(base_ty) {
                     PlaceExtra::None
                 } else {
-                    PlaceExtra::Length(n - u64::from(to) - u64::from(from))
+                    PlaceExtra::Length(n - u64::from(*to) - u64::from(*from))
                 };
                 Ok(Place::Ptr { ptr, align, extra })
             }

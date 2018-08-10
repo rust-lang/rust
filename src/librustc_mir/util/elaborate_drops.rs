@@ -210,7 +210,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.elaborator.param_env(),
                 f.ty(self.tcx(), substs),
             );
-            (base_place.clone().field(field, field_ty), subpath)
+            (base_place.clone().field(self.tcx(), field, field_ty), subpath)
         }).collect()
     }
 
@@ -329,7 +329,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
         let fields = tys.iter().enumerate().map(|(i, &ty)| {
-            (self.place.clone().field(Field::new(i), ty),
+            (self.place.clone().field(self.tcx(), Field::new(i), ty),
              self.elaborator.field_subpath(self.path, Field::new(i)))
         }).collect();
 
@@ -342,7 +342,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
-        let interior = self.place.clone().deref();
+        let interior = self.place.clone().deref(self.tcx());
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#43234)
@@ -421,8 +421,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.path, variant_index);
             if let Some(variant_path) = subpath {
                 let base_place = self.place.clone().elem(
+                    self.tcx(),
                     ProjectionElem::Downcast(adt, variant_index)
-                        );
+                );
                 let fields = self.move_paths_for_fields(
                     &base_place,
                     variant_path,
@@ -495,7 +496,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         // discriminant after it is free-ed, because that
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
-        let discr = Place::Local(self.new_temp(discr_ty));
+        let discr = Place::local(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place.clone());
         let switch_block = BasicBlockData {
             statements: vec![self.assign(&discr, discr_rv)],
@@ -529,11 +530,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             mutbl: hir::Mutability::MutMutable
         });
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
+        let unit_temp = Place::local(self.new_temp(tcx.mk_nil()));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
-                &Place::Local(ref_place),
+                &Place::local(ref_place),
                 Rvalue::Ref(tcx.types.re_erased,
                             BorrowKind::Mut { allow_two_phase_borrow: false },
                             self.place.clone())
@@ -542,7 +543,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
-                    args: vec![Operand::Move(Place::Local(ref_place))],
+                    args: vec![Operand::Move(Place::local(ref_place))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
                 },
@@ -586,25 +587,25 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty: ety,
             mutbl: hir::Mutability::MutMutable
         });
-        let ptr = &Place::Local(self.new_temp(ref_ty));
-        let can_go = &Place::Local(self.new_temp(tcx.types.bool));
+        let ptr = &Place::local(self.new_temp(ref_ty));
+        let can_go = &Place::local(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Use(copy(&Place::Local(cur))),
-             Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Local(cur)), one))
+            (Rvalue::Use(copy(&Place::local(cur))),
+             Rvalue::BinaryOp(BinOp::Offset, copy(&Place::local(cur)), one))
         } else {
             (Rvalue::Ref(
                  tcx.types.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
-                 self.place.clone().index(cur)),
-             Rvalue::BinaryOp(BinOp::Add, copy(&Place::Local(cur)), one))
+                 self.place.clone().index(self.tcx(), cur)),
+             Rvalue::BinaryOp(BinOp::Add, copy(&Place::local(cur)), one))
         };
 
         let drop_block = BasicBlockData {
             statements: vec![
                 self.assign(ptr, ptr_next),
-                self.assign(&Place::Local(cur), cur_next)
+                self.assign(&Place::local(cur), cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -618,7 +619,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = BasicBlockData {
             statements: vec![
                 self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     copy(&Place::Local(cur)),
+                                                     copy(&Place::local(cur)),
                                                      copy(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -630,7 +631,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
         self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            location: ptr.clone().deref(),
+            location: ptr.clone().deref(self.tcx()),
             target: loop_block,
             unwind: unwind.into_option()
         });
@@ -652,11 +653,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     "move out check doesn't implemented for array bigger then u32");
             let size = size as u32;
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size).map(|i| {
-                (self.place.clone().elem(ProjectionElem::ConstantIndex{
-                    offset: i,
-                    min_length: size,
-                    from_end: false
-                }),
+                (self.place.clone().elem(
+                    self.tcx(),
+                    ProjectionElem::ConstantIndex{
+                        offset: i,
+                        min_length: size,
+                        from_end: false
+                    }
+                ),
                  self.elaborator.array_subpath(self.path, i, size))
             }).collect();
 
@@ -668,8 +672,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
-        let size = &Place::Local(self.new_temp(tcx.types.usize));
-        let size_is_zero = &Place::Local(self.new_temp(tcx.types.bool));
+        let size = &Place::local(self.new_temp(tcx.types.usize));
+        let size_is_zero = &Place::local(self.new_temp(tcx.types.bool));
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
@@ -704,9 +708,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         };
 
         let cur = self.new_temp(iter_ty);
-        let length = Place::Local(self.new_temp(tcx.types.usize));
+        let length = Place::local(self.new_temp(tcx.types.usize));
         let length_or_end = if ptr_based {
-            Place::Local(self.new_temp(iter_ty))
+            Place::local(self.new_temp(iter_ty))
         } else {
             length.clone()
         };
@@ -729,13 +733,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             unwind,
             ptr_based);
 
-        let cur = Place::Local(cur);
+        let cur = Place::local(cur);
         let zero = self.constant_usize(0);
         let mut drop_block_stmts = vec![];
         drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.place.clone())));
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
-            let tmp = Place::Local(self.new_temp(tmp_ty));
+            let tmp = Place::local(self.new_temp(tmp_ty));
             // tmp = &P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
@@ -884,12 +888,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         unwind: Unwind
     ) -> BasicBlock {
         let tcx = self.tcx();
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
+        let unit_temp = Place::local(self.new_temp(tcx.mk_nil()));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
         let args = adt.variants[0].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);
-            Operand::Move(self.place.clone().field(field, field_ty))
+            Operand::Move(self.place.clone().field(self.tcx(), field, field_ty))
         }).collect();
 
         let call = TerminatorKind::Call {

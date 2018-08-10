@@ -48,12 +48,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Field { lhs, name } => {
                 let place = unpack!(block = this.as_place(block, lhs));
-                let place = place.field(name, expr.ty);
+                let place = place.field(this.hir.tcx(), name, expr.ty);
                 block.and(place)
             }
             ExprKind::Deref { arg } => {
                 let place = unpack!(block = this.as_place(block, arg));
-                let place = place.deref();
+                let place = place.deref(this.hir.tcx());
                 block.and(place)
             }
             ExprKind::Index { lhs, index } => {
@@ -72,34 +72,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           Operand::Copy(Place::Local(idx)),
+                                                           Operand::Copy(Place::local(idx)),
                                                            Operand::Copy(len.clone())));
 
                 let msg = BoundsCheck {
                     len: Operand::Move(len),
-                    index: Operand::Copy(Place::Local(idx))
+                    index: Operand::Copy(Place::local(idx))
                 };
                 let success = this.assert(block, Operand::Move(lt), true,
                                           msg, expr_span);
-                success.and(slice.index(idx))
+                success.and(slice.index(this.hir.tcx(), idx))
             }
             ExprKind::SelfRef => {
-                block.and(Place::Local(Local::new(1)))
+                block.and(Place::local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
                 let place = if this.is_bound_var_in_guard(id) &&
                     this.hir.tcx().all_pat_vars_are_implicit_refs_within_guards()
                 {
                     let index = this.var_local_id(id, RefWithinGuard);
-                    Place::Local(index).deref()
+                    Place::local(index).deref(this.hir.tcx())
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
-                    Place::Local(index)
+                    Place::local(index)
                 };
                 block.and(place)
             }
             ExprKind::StaticRef { id } => {
-                block.and(Place::Static(Box::new(Static { def_id: id, ty: expr.ty })))
+                block.and(Place::static_(Static { def_id: id, ty: expr.ty }))
             }
 
             ExprKind::Array { .. } |
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     _ => true,
                 });
                 let temp = unpack!(block = this.as_temp(block, expr.temp_lifetime, expr));
-                block.and(Place::Local(temp))
+                block.and(Place::local(temp))
             }
         }
     }

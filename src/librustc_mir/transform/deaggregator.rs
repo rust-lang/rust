@@ -57,7 +57,7 @@ impl MirPass for Deaggregator {
                                 },
                                 source_info,
                             });
-                            lhs = lhs.downcast(adt_def, variant_index);
+                            lhs = lhs.downcast(tcx, adt_def, variant_index);
                         }
                         active_field_index
                     }
@@ -69,16 +69,17 @@ impl MirPass for Deaggregator {
                         // FIXME(eddyb) `offset` should be u64.
                         let offset = i as u32;
                         assert_eq!(offset as usize, i);
-                        lhs.clone().elem(ProjectionElem::ConstantIndex {
+                        lhs.clone().constant_index(
+                            tcx,
                             offset,
                             // FIXME(eddyb) `min_length` doesn't appear to be used.
-                            min_length: offset + 1,
-                            from_end: false
-                        })
+                            offset + 1,
+                            false
+                        )
                     } else {
                         let ty = op.ty(local_decls, tcx);
                         let field = Field::new(active_field_index.unwrap_or(i));
-                        lhs.clone().field(field, ty)
+                        lhs.clone().field(tcx, field, ty)
                     };
                     Statement {
                         source_info,

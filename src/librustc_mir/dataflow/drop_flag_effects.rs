@@ -16,20 +16,20 @@ use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
 use super::move_paths::{MoveData, LookupResult, InitKind};
 
-pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
+pub fn move_path_children_matching<'tcx, F>(move_data: &'tcx MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&mir::PlaceProjection<'tcx>) -> bool
+    where F: FnMut(&mir::PlaceElem<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
-        match move_data.move_paths[child_index].place {
-            mir::Place::Projection(ref proj) => {
-                if cond(proj) {
-                    return Some(child_index)
+        match move_data.move_paths[child_index].place.projection() {
+            Some(projection) => {
+                if cond(&projection) {
+                    return Some(child_index);
                 }
-            }
+            },
             _ => {}
         }
         next_child = move_data.move_paths[child_index].next_sibling;
@@ -165,7 +165,7 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
 }
 
 pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     mut callback: F)
@@ -173,8 +173,8 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
 {
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
-        let place = mir::Place::Local(arg);
-        let lookup_result = move_data.rev_lookup.find(&place);
+        let place = mir::Place::local(arg);
+        let lookup_result = move_data.rev_lookup.find(tcx, &place);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
                               |mpi| callback(mpi, DropFlagState::Present));
@@ -214,7 +214,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
 }
 
 pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
     loc: Location,

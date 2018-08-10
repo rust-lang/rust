@@ -103,17 +103,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_drop_storage_and_value(
-                        expr_span, scope, &Place::Local(result), value.ty,
+                        expr_span, scope, &Place::local(result), value.ty,
                     );
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg.push_assign(block, source_info, &Place::Local(result), box_);
+                this.cfg.push_assign(block, source_info, &Place::local(result), box_);
 
                 // initialize the box contents:
-                unpack!(block = this.into(&Place::Local(result).deref(), block, value));
-                block.and(Rvalue::Use(Operand::Move(Place::Local(result))))
+                unpack!(block = this.into(&Place::local(result).deref(this.hir.tcx()), block, value));
+                block.and(Rvalue::Use(Operand::Move(Place::local(result))))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);
@@ -277,7 +277,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(base.clone().field(n, ty))
+                            None => this.consume_by_copy_or_move(base.clone().field(
+                                this.hir.tcx(),
+                                n,
+                                ty,
+                            ))
                         })
                         .collect()
                 } else {
@@ -350,8 +354,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
-            let val = result_value.clone().field(val_fld, ty);
-            let of = result_value.field(of_fld, bool_ty);
+            let val = result_value.clone().field(self.hir.tcx(), val_fld, ty);
+            let of = result_value.field(self.hir.tcx(), of_fld, bool_ty);
 
             let err = EvalErrorKind::Overflow(op);
 
@@ -423,6 +427,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
 
+        let tcx = this.hir.tcx();
         let source_info = this.source_info(upvar_span);
         let temp = this.local_decls.push(LocalDecl::new_temp(upvar_ty, upvar_span));
 
@@ -433,56 +438,73 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
-        let mutability = match arg_place {
-            Place::Local(local) => this.local_decls[local].mutability,
-            Place::Projection(box Projection {
-                base: Place::Local(local),
-                elem: ProjectionElem::Deref,
-            }) => {
-                debug_assert!(
-                    if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
-                        = this.local_decls[local].is_user_variable {
-                        true
+        let mutability = if let Some((base_place, projection)) = arg_place.split_projection(tcx) {
+            match projection {
+                ProjectionElem::Deref => {
+                    if let PlaceBase::Local(local) = base_place.base {
+                        debug_assert!(
+                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
+                            = this.local_decls[local].is_user_variable {
+                                true
+                            } else {
+                                false
+                            },
+                            "Unexpected capture place",
+                        );
+                        this.local_decls[local].mutability
+                    } else if let Some((base_place, projection)) = base_place.split_projection(tcx) {
+                       if let ProjectionElem::Field(upvar_index, _) = projection {
+                            // Not projected from the implicit `self` in a closure.
+                            debug_assert!(
+                                if let Some((base_place, projection)) = base_place.split_projection(tcx) {
+                                    PlaceBase::Local(Local::new(1)) == base_place.base
+                                } else {
+                                    match base_place.base {
+                                        PlaceBase::Local(local) => local == Local::new(1),
+                                        _ => false,
+                                    }
+                                },
+                                "Unexpected capture place"
+                            );
+                            // Not in a closure
+                            debug_assert!(
+                                this.upvar_decls.len() > upvar_index.index(),
+                                "Unexpected capture place"
+                            );
+                            this.upvar_decls[upvar_index.index()].mutability
+                        }
                     } else {
-                        false
-                    },
-                    "Unexpected capture place",
-                );
+                        bug!("Unexpected capture place");
+                    }
+                },
+                ProjectionElem::Field(upvar_index, _) => {
+                    // Not projected from the implicit `self` in a closure.
+                    debug_assert!(
+                        if let Some((base_place, projection)) = base_place.split_projection(tcx) {
+                            PlaceBase::Local(Local::new(1)) == base_place.base
+                        } else {
+                            match base_place.base {
+                                PlaceBase::Local(local) => local == Local::new(1),
+                                _ => false,
+                            }
+                        },
+                        "Unexpected capture place"
+                    );
+                    // Not in a closure
+                    debug_assert!(
+                        this.upvar_decls.len() > upvar_index.index(),
+                        "Unexpected capture place"
+                    );
+                    this.upvar_decls[upvar_index.index()].mutability
+                }
+            }
+        } else {
+            if let PlaceBase::Local(local) = arg_place.base {
                 this.local_decls[local].mutability
+            } else {
+                bug!("Unexpected capture place");
             }
-            Place::Projection(box Projection {
-                ref base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            })
-            | Place::Projection(box Projection {
-                base: Place::Projection(box Projection {
-                    ref base,
-                    elem: ProjectionElem::Field(upvar_index, _),
-                }),
-                elem: ProjectionElem::Deref,
-            }) => {
-                // Not projected from the implicit `self` in a closure.
-                debug_assert!(
-                    match *base {
-                        Place::Local(local) => local == Local::new(1),
-                        Place::Projection(box Projection {
-                            ref base,
-                            elem: ProjectionElem::Deref,
-                        }) => *base == Place::Local(Local::new(1)),
-                        _ => false,
-                    },
-                    "Unexpected capture place"
-                );
-                // Not in a closure
-                debug_assert!(
-                    this.upvar_decls.len() > upvar_index.index(),
-                    "Unexpected capture place"
-                );
-                this.upvar_decls[upvar_index.index()].mutability
-            }
-            _ => bug!("Unexpected capture place"),
         };
-
         let borrow_kind = match mutability {
             Mutability::Not => BorrowKind::Unique,
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
@@ -491,7 +513,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::Local(temp),
+            &Place::local(temp),
             Rvalue::Ref(region, borrow_kind, arg_place),
         );
 
@@ -500,11 +522,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(
-                upvar_span, temp_lifetime, &Place::Local(temp), upvar_ty,
+                upvar_span, temp_lifetime, &Place::local(temp), upvar_ty,
             );
         }
 
-        block.and(Operand::Move(Place::Local(temp)))
+        block.and(Operand::Move(Place::local(temp)))
     }
 
     // Helper to get a `-1` value of the appropriate type

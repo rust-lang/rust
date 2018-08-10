@@ -13,7 +13,7 @@
 
 
 use rustc::hir::def::Def;
-use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
@@ -279,49 +279,52 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     }
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
-        match *place {
-            Place::Local(loc) => self.places[loc].clone(),
-            Place::Projection(ref proj) => match proj.elem {
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            match projection {
                 ProjectionElem::Field(field, _) => {
-                    trace!("field proj on {:?}", proj.base);
-                    let (base, layout, span) = self.eval_place(&proj.base, source_info)?;
+                    trace!("field proj on {:?}", base_place);
+                    let (base, layout, span) = self.eval_place(&base_place, source_info)?;
                     let valty = self.use_ecx(source_info, |this| {
-                        this.ecx.read_field(base, None, field, layout)
+                        this.ecx.read_field(base, None, *field, layout)
                     })?;
                     Some((valty.0, valty.1, span))
                 },
                 _ => None,
-            },
-            Place::Promoted(ref promoted) => {
-                let generics = self.tcx.generics_of(self.source.def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-                let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
-                let instance = Instance::new(self.source.def_id, substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(promoted.0),
-                };
-                // cannot use `const_eval` here, because that would require having the MIR
-                // for the current function available, but we're producing said MIR right now
-                let (value, _, ty) = self.use_ecx(source_info, |this| {
-                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
-                })?;
-                let val = (value, ty, source_info.span);
-                trace!("evaluated promoted {:?} to {:?}", promoted, val);
-                Some(val)
-            },
-            _ => None,
+            }
+        } else {
+            match place.base {
+                PlaceBase::Local(local) => self.places[local].clone(),
+                PlaceBase::Promoted(promoted) => {
+                    let generics = self.tcx.generics_of(self.source.def_id);
+                    if generics.requires_monomorphization(self.tcx) {
+                        // FIXME: can't handle code with generics
+                        return None;
+                    }
+                    let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
+                    let instance = Instance::new(self.source.def_id, substs);
+                    let cid = GlobalId {
+                        instance,
+                        promoted: Some(promoted.0),
+                    };
+                    // cannot use `const_eval` here, because that would require having the MIR
+                    // for the current function available, but we're producing said MIR right now
+                    let (value, _, ty) = self.use_ecx(source_info, |this| {
+                        eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
+                    })?;
+                    let val = (value, ty, source_info.span);
+                    trace!("evaluated promoted {:?} to {:?}", promoted, val);
+                    Some(val)
+                },
+                _ => None,
+            }
         }
     }
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, source_info),
-            | Operand::Move(ref place)
-            | Operand::Copy(ref place) => self.eval_place(place, source_info),
+            Operand::Constant(c) => self.eval_constant(&c, source_info),
+            | Operand::Move(place)
+            | Operand::Copy(place) => self.eval_place(&place, source_info),
         }
     }
 
@@ -551,7 +554,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place::Local(local) = *place {
+                    if let PlaceBase::Local(local) = place.base {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
@@ -580,12 +583,12 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
-                        Operand::Move(ref place) | Operand::Copy(ref place) => {
+                        Operand::Move(place) | Operand::Copy(place) => {
                             let mut place = place;
-                            while let Place::Projection(ref proj) = *place {
-                                place = &proj.base;
+                            while let Some((base_place, _)) = place.split_projection(self.tcx) {
+                                place = &base_place;
                             }
-                            if let Place::Local(local) = *place {
+                            if let PlaceBase::Local(local) = place.base {
                                 self.places[local] = None;
                             }
                         },

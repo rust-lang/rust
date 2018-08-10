@@ -1807,13 +1807,37 @@ impl<'a, 'tcx> Place<'tcx> {
     pub fn downcast(
         self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        adt_def: &'tcx AdtDef, variant_index: usize,
+        adt_def: &'tcx AdtDef,
+        variant_index: usize,
     ) -> Self {
         self.elem(tcx, ProjectionElem::Downcast(adt_def, variant_index))
     }
 
     pub fn index(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, index: Local) -> Self {
         self.elem(tcx, ProjectionElem::Index(index))
+    }
+
+    pub fn constant_index(
+        self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        offset: u32,
+        min_length: u32,
+        from_end: bool,
+    ) -> Self {
+       self.elem(tcx, ProjectionElem::ConstantIndex {
+           offset, min_length, from_end,
+       })
+    }
+
+    pub fn subslice(
+        self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        from: u32,
+        to: u32,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Subslice {
+            from, to,
+        })
     }
 
     pub fn elem(
@@ -1832,6 +1856,23 @@ impl<'a, 'tcx> Place<'tcx> {
            base: PlaceBase::Local(local),
            elems: Slice::empty(),
        }
+    }
+
+    pub fn static_(static_: Static<'tcx>) -> Self {
+        Place {
+            base: PlaceBase::Static(box static_),
+            elems: Slice::empty(),
+        }
+    }
+
+    pub fn promoted(
+        promoted: Promoted,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Place {
+            base: PlaceBase::Promoted(box (promoted, ty)),
+            elems: Slice::empty(),
+        }
     }
 }
 

@@ -182,7 +182,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            kind: StatementKind::Assign(Place::Local(dest), rvalue)
+            kind: StatementKind::Assign(Place::local(dest), rvalue)
         });
     }
 
@@ -271,7 +271,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             func,
                             args,
                             cleanup: None,
-                            destination: Some((Place::Local(new_temp), new_target))
+                            destination: Some((Place::local(new_temp), new_target))
                         },
                         ..terminator
                     };
@@ -294,7 +294,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] =
                     LocalDecl::new_return_place(ty, span);
-                Place::Promoted(box (promoted_id, ty))
+                Place::promoted(promoted_id, ty)
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -304,15 +304,17 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(_, Rvalue::Ref(_, _, ref mut place)) => {
                             // Find the underlying local for this (necessarilly interior) borrow.
                             // HACK(eddyb) using a recursive function because of mutable borrows.
-                            fn interior_base<'a, 'tcx>(place: &'a mut Place<'tcx>)
-                                                       -> &'a mut Place<'tcx> {
-                                if let Place::Projection(ref mut proj) = *place {
-                                    assert_ne!(proj.elem, ProjectionElem::Deref);
-                                    return interior_base(&mut proj.base);
+                            fn interior_base<'a, 'tcx>(
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                place: &'a mut Place<'tcx>
+                            ) -> &'a mut Place<'tcx> {
+                                if let Some((base_place, projection)) = place.split_projection(tcx) {
+                                    assert_ne!(*projection, ProjectionElem::Deref);
+                                    return interior_base(tcx, &mut base_place);
                                 }
                                 place
                             }
-                            let place = interior_base(place);
+                            let place = interior_base(self.tcx, place);
 
                             let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
                             let span = statement.source_info.span;
@@ -372,10 +374,12 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         match candidate {
             Candidate::Ref(Location { block, statement_index }) => {
                 match mir[block].statements[statement_index].kind {
-                    StatementKind::Assign(Place::Local(local), _) => {
-                        if temps[local] == TempState::PromotedOut {
-                            // Already promoted.
-                            continue;
+                    StatementKind::Assign(place, _) => {
+                        if let PlaceBase::Local(local) = place.base {
+                            if temps[local] == TempState::PromotedOut {
+                                // Already promoted.
+                                continue;
+                            }
                         }
                     }
                     _ => {}
@@ -417,7 +421,12 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Place::Local(index), _) |
+                StatementKind::Assign(
+                    Place {
+                        base: PlaceBase::Local(index),
+                        elems: _,
+                    },
+                    _, ) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)
@@ -427,7 +436,14 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         });
         let terminator = block.terminator_mut();
         match terminator.kind {
-            TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
+            TerminatorKind::Drop {
+                location: Place {
+                    base: PlaceBase::Local(index),
+                    elems: _,
+                },
+                target,
+                ..
+            } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
                         target,

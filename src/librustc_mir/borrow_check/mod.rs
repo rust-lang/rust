@@ -1792,7 +1792,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // to a direct owner of `place` (which means there is nothing
         // that borrowck tracks for its analysis).
 
-        match self.move_data.rev_lookup.find(place) {
+        match self.move_data.rev_lookup.find(self.tcx, place) {
             LookupResult::Parent(_) => None,
             LookupResult::Exact(mpi) => Some(mpi),
         }

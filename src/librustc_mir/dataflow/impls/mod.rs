@@ -374,7 +374,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
+                              self.move_data().rev_lookup.find(self.tcx, dest_place),
                               |mpi| { in_out.add(&mpi); });
     }
 }
@@ -429,7 +429,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 0 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
+                              self.move_data().rev_lookup.find(self.tcx, dest_place),
                               |mpi| { in_out.remove(&mpi); });
     }
 }
@@ -483,7 +483,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
+                              self.move_data().rev_lookup.find(self.tcx, dest_place),
                               |mpi| { in_out.add(&mpi); });
     }
 }
@@ -557,7 +557,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         on_lookup_result_bits(self.tcx,
                               self.mir,
                               move_data,
-                              move_data.rev_lookup.find(dest_place),
+                              move_data.rev_lookup.find(self.tcx, dest_place),
                               |mpi| for moi in &path_map[mpi] {
                                   assert!(moi.index() < bits_per_block);
                                   in_out.remove(&moi);
@@ -615,7 +615,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
                 // storagedeads after everything ends, so if we don't regard the
                 // storagelive as killing storage, we would have a multiple assignment
                 // to immutable data error.
-                if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Place::Local(local)) {
+                if let LookupResult::Exact(mpi) = rev_lookup.find(self.tcx, &mir::Place::local(local)) {
                     debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                            stmt, location, &init_path_map[mpi]);
                     sets.kill_all(&init_path_map[mpi]);

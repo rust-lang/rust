@@ -234,7 +234,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         // Only handle promotable temps in non-const functions.
         if self.mode == Mode::Fn {
-            if let Place::Local(index) = *dest {
+            if let PlaceBase::Local(index) = dest.base {
                 if self.mir.local_kind(index) == LocalKind::Temp
                 && self.temp_promotion_state[index].is_promotable() {
                     debug!("store to promotable temp {:?} ({:?})", index, qualif);
@@ -244,36 +244,43 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        match *dest {
-            Place::Local(index) if (self.mir.local_kind(index) == LocalKind::Var ||
-                                   self.mir.local_kind(index) == LocalKind::Arg) &&
-                                   self.tcx.sess.features_untracked().const_let => {
-                debug!("store to var {:?}", index);
-                self.local_qualif[index] = Some(self.qualif);
-            }
-            Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
-                                   self.mir.local_kind(index) == LocalKind::ReturnPointer => {
-                debug!("store to {:?} (temp or return pointer)", index);
-                store(&mut self.local_qualif[index])
-            }
+        if let Some((base_place, projection)) =  dest.split_projection(self.tcx){
+           if let ProjectionElem::Deref = projection {
+               if let PlaceBase::Local(index) = dest.base {
+                   if self.mir.local_kind(index) == LocalKind::Temp
+                       && self.mir.local_decls[index].ty.is_box()
+                       && self.local_qualif[index].map_or(false, |qualif| {
+                       qualif.contains(Qualif::NOT_CONST)
+                   }) {
+                       // Part of `box expr`, we should've errored
+                       // already for the Box allocation Rvalue.
+                   }
+               } else {
+                   // This must be an explicit assignment.
 
-            Place::Projection(box Projection {
-                base: Place::Local(index),
-                elem: ProjectionElem::Deref
-            }) if self.mir.local_kind(index) == LocalKind::Temp
-               && self.mir.local_decls[index].ty.is_box()
-               && self.local_qualif[index].map_or(false, |qualif| {
-                    qualif.contains(Qualif::NOT_CONST)
-               }) => {
-                // Part of `box expr`, we should've errored
-                // already for the Box allocation Rvalue.
-            }
-
-            // This must be an explicit assignment.
-            _ => {
-                // Catch more errors in the destination.
-                self.visit_place(dest, PlaceContext::Store, location);
-                self.statement_like();
+                   // Catch more errors in the destination.
+                   self.visit_place(dest, PlaceContext::Store, location);
+                   self.statement_like();
+               }
+           }
+        } else {
+            match dest.base {
+                PlaceBase::Local(index) if (self.mir.local_kind(index) == LocalKind::Var ||
+                    self.mir.local_kind(index) == LocalKind::Arg) &&
+                    self.tcx.sess.features_untracked().const_let => {
+                    debug!("store to var {:?}", index);
+                    self.local_qualif[index] = Some(self.qualif);
+                }
+                PlaceBase::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
+                    self.mir.local_kind(index) == LocalKind::ReturnPointer => {
+                    debug!("store to {:?} (temp or return pointer)", index);
+                    store(&mut self.local_qualif[index])
+                }
+                _ => {
+                    // Catch more errors in the destination.
+                    self.visit_place(dest, PlaceContext::Store, location);
+                    self.statement_like();
+                },
             }
         }
     }
@@ -346,7 +353,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         for index in mir.vars_iter() {
                             if !self.const_fn_arg_vars.contains(index) {
                                 debug!("unassigned variable {:?}", index);
-                                self.assign(&Place::Local(index), Location {
+                                self.assign(&Place::local(index), Location {
                                     block: bb,
                                     statement_index: usize::MAX,
                                 });
@@ -388,7 +395,16 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, Rvalue::Ref(_, _, Place::Local(index))) => {
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Ref(
+                                _, _,
+                                Place {
+                                    base: PlaceBase::Local(index),
+                                    elems: _,
+                                }
+                            )
+                        ) => {
                             promoted_temps.add(&index);
                         }
                         _ => {}
@@ -447,105 +463,106 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        match *place {
-            Place::Local(ref local) => self.visit_local(local, context, location),
-            Place::Promoted(_) => bug!("promoting already promoted MIR"),
-            Place::Static(ref global) => {
-                if self.tcx
-                       .get_attrs(global.def_id)
-                       .iter()
-                       .any(|attr| attr.check_name("thread_local")) {
-                    if self.mode != Mode::Fn {
-                        span_err!(self.tcx.sess, self.span, E0625,
-                                  "thread-local statics cannot be \
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            self.nest(|this| {
+                this.super_place(place, context, location);
+                match projection {
+                    ProjectionElem::Deref => {
+                        if let Mode::Fn = this.mode {
+                            this.add(Qualif::NOT_CONST);
+                        } else {
+                            let base_ty = base_place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            if let ty::TyRawPtr(_) = base_ty.sty {
+                                if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                    emit_feature_err(
+                                        &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                        this.span, GateIssue::Language,
+                                        &format!(
+                                            "dereferencing raw pointers in {}s is unstable",
+                                            this.mode,
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    ProjectionElem::Field(..) |
+                    ProjectionElem::Index(_) => {
+                        let base_ty =base_place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                        if let Some(def) = base_ty.ty_adt_def() {
+                            if def.is_union() {
+                                match this.mode {
+                                    Mode::Fn => this.not_const(),
+                                    Mode::ConstFn => {
+                                        if !this.tcx.sess.features_untracked().const_fn_union {
+                                            emit_feature_err(
+                                                &this.tcx.sess.parse_sess, "const_fn_union",
+                                                this.span, GateIssue::Language,
+                                                "unions in const fn are unstable",
+                                            );
+                                        }
+                                    },
+
+                                    | Mode::Static
+                                    | Mode::StaticMut
+                                    | Mode::Const
+                                    => {},
+                                }
+                            }
+                        }
+
+                        let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                        this.qualif.restrict(ty, this.tcx, this.param_env);
+                    }
+
+                    ProjectionElem::ConstantIndex {..} |
+                    ProjectionElem::Subslice {..} |
+                    ProjectionElem::Downcast(..) => {
+                        this.not_const()
+                    }
+                }
+            });
+        } else {
+            match place.base {
+                PlaceBase::Local(ref local) => self.visit_local(local, context, location),
+                PlaceBase::Promoted(_) => bug!("promoting already promoted MIR"),
+                PlaceBase::Static(ref global) => {
+                    if self.tcx
+                        .get_attrs(global.def_id)
+                        .iter()
+                        .any(|attr| attr.check_name("thread_local")) {
+                        if self.mode != Mode::Fn {
+                            span_err!(self.tcx.sess, self.span, E0625,
+                                        "thread-local statics cannot be \
                                    accessed at compile-time");
+                        }
+                        self.add(Qualif::NOT_CONST);
+                        return;
+                    }
+
+                    // Only allow statics (not consts) to refer to other statics.
+                    if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                        return;
                     }
                     self.add(Qualif::NOT_CONST);
-                    return;
-                }
 
-                // Only allow statics (not consts) to refer to other statics.
-                if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                    return;
-                }
-                self.add(Qualif::NOT_CONST);
-
-                if self.mode != Mode::Fn {
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                   "{}s cannot refer to statics, use \
+                    if self.mode != Mode::Fn {
+                        let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
+                                                           "{}s cannot refer to statics, use \
                                                     a constant instead", self.mode);
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "Static and const variables can refer to other const variables. But a \
+                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                            err.note(
+                                "Static and const variables can refer to other const variables. But a \
                              const variable cannot refer to a static variable."
-                        );
-                        err.help(
-                            "To fix this, the value can be extracted as a const and then used."
-                        );
+                            );
+                            err.help(
+                                "To fix this, the value can be extracted as a const and then used."
+                            );
+                        }
+                        err.emit()
                     }
-                    err.emit()
                 }
-            }
-            Place::Projection(ref proj) => {
-                self.nest(|this| {
-                    this.super_place(place, context, location);
-                    match proj.elem {
-                        ProjectionElem::Deref => {
-                            if let Mode::Fn = this.mode {
-                                this.add(Qualif::NOT_CONST);
-                            } else {
-                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                                if let ty::TyRawPtr(_) = base_ty.sty {
-                                    if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
-                                        emit_feature_err(
-                                            &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
-                                            this.span, GateIssue::Language,
-                                            &format!(
-                                                "dereferencing raw pointers in {}s is unstable",
-                                                this.mode,
-                                            ),
-                                        );
-                                    }
-                                }
-                            }
-                        }
-
-                        ProjectionElem::Field(..) |
-                        ProjectionElem::Index(_) => {
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            if let Some(def) = base_ty.ty_adt_def() {
-                                if def.is_union() {
-                                    match this.mode {
-                                        Mode::Fn => this.not_const(),
-                                        Mode::ConstFn => {
-                                            if !this.tcx.sess.features_untracked().const_fn_union {
-                                                emit_feature_err(
-                                                    &this.tcx.sess.parse_sess, "const_fn_union",
-                                                    this.span, GateIssue::Language,
-                                                    "unions in const fn are unstable",
-                                                );
-                                            }
-                                        },
-
-                                        | Mode::Static
-                                        | Mode::StaticMut
-                                        | Mode::Const
-                                        => {},
-                                    }
-                                }
-                            }
-
-                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.qualif.restrict(ty, this.tcx, this.param_env);
-                        }
-
-                        ProjectionElem::ConstantIndex {..} |
-                        ProjectionElem::Subslice {..} |
-                        ProjectionElem::Downcast(..) => {
-                            this.not_const()
-                        }
-                    }
-                });
             }
         }
     }
@@ -557,10 +574,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Operand::Copy(_) |
             Operand::Move(_) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Operand::Move(Place::Local(local)) = *operand {
-                    self.local_qualif[local] = self.local_qualif[local].map(|q|
-                        q - Qualif::NEEDS_DROP
-                    );
+                if let Operand::Move(place) = *operand {
+                    if let PlaceBase::Local(local) = place.base {
+                        self.local_qualif[local] = self.local_qualif[local].map(|q|
+                            q - Qualif::NEEDS_DROP
+                        );
+                    }
                 }
             }
             Operand::Constant(ref constant) => {
@@ -586,11 +605,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         // Recurse through operands and places.
-        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+        if let Rvalue::Ref(region, kind, place) = *rvalue {
             let mut is_reborrow = false;
-            if let Place::Projection(ref proj) = *place {
-                if let ProjectionElem::Deref = proj.elem {
-                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+            if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+                if let ProjectionElem::Deref = projection {
+                    let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::TyRef(..) = base_ty.sty {
                         is_reborrow = true;
                     }
@@ -598,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             if is_reborrow {
-                self.super_place(place, PlaceContext::Borrow {
+                self.super_place(&place, PlaceContext::Borrow {
                     region,
                     kind
                 }, location);
@@ -623,7 +642,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) => {}
 
-            Rvalue::Ref(_, kind, ref place) => {
+            Rvalue::Ref(_, kind, place) => {
                 let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
 
                 // Default to forbidding the borrow and/or its promotion,
@@ -697,13 +716,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let candidate = Candidate::Ref(location);
                     // We can only promote interior borrows of promotable temps.
                     let mut place = place;
-                    while let Place::Projection(ref proj) = *place {
-                        if proj.elem == ProjectionElem::Deref {
+                    while let Some((base_place, projection)) = place.split_projection(self.tcx) {
+                        if *projection == ProjectionElem::Deref {
                             break;
                         }
-                        place = &proj.base;
+                        place = base_place;
                     }
-                    if let Place::Local(local) = *place {
+                    if let PlaceBase::Local(local) = place.base {
                         if self.mir.local_kind(local) == LocalKind::Temp {
                             if let Some(qualif) = self.local_qualif[local] {
                                 // `forbidden_mut` is false, so we can safely ignore
@@ -961,7 +980,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             if self.mode != Mode::Fn {
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Place::Local(local) = *place {
+                let needs_drop = if let PlaceBase::Local(local) = place.base {
                     if self.local_qualif[local].map_or(true, |q| q.contains(Qualif::NEEDS_DROP)) {
                         Some(self.mir.local_decls[local].source_info.span)
                     } else {
@@ -997,15 +1016,29 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
+        if let (Mode::ConstFn, PlaceBase::Local(index)) = (self.mode, dest.base) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
                !self.tcx.sess.features_untracked().const_let {
 
                 // Direct use of an argument is permitted.
                 match *rvalue {
-                    Rvalue::Use(Operand::Copy(Place::Local(local))) |
-                    Rvalue::Use(Operand::Move(Place::Local(local))) => {
+                    Rvalue::Use(
+                        Operand::Copy(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                elems: _,
+                            }
+                        )
+                    ) |
+                    Rvalue::Use(
+                        Operand::Move(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                elems: _,
+                            }
+                        )
+                    ) => {
                         if self.mir.local_kind(local) == LocalKind::Arg {
                             return;
                         }
@@ -1176,7 +1209,14 @@ impl MirPass for QualifyAndPromoteConstants {
                 });
                 let terminator = block.terminator_mut();
                 match terminator.kind {
-                    TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
+                    TerminatorKind::Drop {
+                        location:
+                        Place {
+                            base: PlaceBase::Local(index),
+                            elems: _,
+                        },
+                        target, ..
+                    } => {
                         if promoted_temps.contains(&index) {
                             terminator.kind = TerminatorKind::Goto {
                                 target,

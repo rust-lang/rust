@@ -669,13 +669,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(adt_def, variant_index);
-        let downcast_place = match_pair.place.clone().elem(elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.clone().elem(self.hir.tcx(), elem); // `(x as Variant)`
         let consequent_match_pairs =
             subpatterns.iter()
                        .map(|subpattern| {
                            // e.g., `(x as Variant).0`
-                           let place = downcast_place.clone().field(subpattern.field,
-                                                                      subpattern.pattern.ty);
+                           let place = downcast_place.clone().field(
+                               self.hir.tcx(),
+                               subpattern.field,
+                               subpattern.pattern.ty
+                           );
                            // e.g., `(x as Variant).0 @ P1`
                            MatchPair::new(place, &subpattern.pattern)
                        });

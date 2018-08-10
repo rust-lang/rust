@@ -97,9 +97,11 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     }
 }
 
-struct DerefArgVisitor;
+struct DerefArgVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>
+}
 
-impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
+impl<'a, 'tcx> MutVisitor<'tcx> for DerefArgVisitor<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -111,11 +113,8 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if *place == Place::Local(self_arg()) {
-            *place = Place::Projection(Box::new(Projection {
-                base: place.clone(),
-                elem: ProjectionElem::Deref,
-            }));
+        if place.base == PlaceBase::Local(self_arg()) {
+            *place = place.clone().deref(self.tcx);
         } else {
             self.super_place(place, context, location);
         }
@@ -163,17 +162,13 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let base = Place::Local(self_arg());
-        let field = Projection {
-            base: base,
-            elem: ProjectionElem::Field(Field::new(idx), ty),
-        };
-        Place::Projection(Box::new(field))
+        let base = Place::local(self_arg());
+        base.field(self.tcx, Field::new(idx), ty)
     }
 
     // Create a statement which changes the generator state
     fn set_state(&self, state_disc: u32, source_info: SourceInfo) -> Statement<'tcx> {
-        let state = self.make_field(self.state_field, self.tcx.types.u32);
+        let state = self.make_field( self.state_field, self.tcx.types.u32);
         let val = Operand::Constant(box Constant {
             span: source_info.span,
             ty: self.tcx.types.u32,
@@ -202,7 +197,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if let Place::Local(l) = *place {
+        if let PlaceBase::Local(l) = place.base {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, idx)) = self.remap.get(&l) {
                 *place = self.make_field(idx, ty);
@@ -228,7 +223,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((1,
                 None,
-                Operand::Move(Place::Local(self.new_ret_local)),
+                Operand::Move(Place::local(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((0,
                 Some(resume),
@@ -242,7 +237,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
+                kind: StatementKind::Assign(Place::local(RETURN_PLACE),
                     self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
@@ -268,9 +263,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
 }
 
 fn make_generator_state_argument_indirect<'a, 'tcx>(
-                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                def_id: DefId,
-                mir: &mut Mir<'tcx>) {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    mir: &mut Mir<'tcx>
+) {
     let gen_ty = mir.local_decls.raw[1].ty;
 
     let region = ty::ReFree(ty::FreeRegion {
@@ -289,7 +285,7 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
     mir.local_decls.raw[1].ty = ref_gen_ty;
 
     // Add a deref to accesses of the generator state
-    DerefArgVisitor.visit_mir(mir);
+    DerefArgVisitor { tcx }.visit_mir(mir);
 }
 
 fn replace_result_variable<'tcx>(
@@ -333,30 +329,42 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
-struct BorrowedLocals(liveness::LiveVarSet<Local>);
+struct BorrowedLocals<'a, 'tcx>{
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    local_live: liveness::LiveVarSet<Local>,
+}
 
-fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
-    match *place {
-        Place::Local(l) => { locals.0.add(&l); },
-        Place::Promoted(_) |
-        Place::Static(..) => (),
-        Place::Projection(ref proj) => {
-            match proj.elem {
+impl<'a, 'tcx> BorrowedLocals<'a, 'tcx> {
+    fn mark_as_borrowed(
+        &mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        place: &Place<'tcx>,
+    ) {
+        if let Some((base_place, projection)) = place.split_projection(tcx) {
+            if let ProjectionElem::Deref = projection {
                 // For derefs we don't look any further.
                 // If it pointed to a Local, it would already be borrowed elsewhere
-                ProjectionElem::Deref => (),
-                _ => mark_as_borrowed(&proj.base, locals)
+                ()
+            } else {
+                self.mark_as_borrowed(self.tcx, &base_place)
+            }
+        } else {
+            match place.base {
+                PlaceBase::Local(l) => { self.local_live.add(&l); }
+                _ => (),
             }
         }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
-    fn visit_rvalue(&mut self,
-                    rvalue: &Rvalue<'tcx>,
-                    location: Location) {
-        if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            mark_as_borrowed(place, self);
+impl<'a, 'tcx> Visitor<'tcx> for BorrowedLocals<'a, 'tcx> {
+    fn visit_rvalue(
+        &mut self,
+        rvalue: &Rvalue<'tcx>,
+        location: Location,
+    ) {
+        if let Rvalue::Ref(_, _, place) = rvalue {
+            self.mark_as_borrowed(self.tcx, place);
         }
 
         self.super_rvalue(rvalue, location)
@@ -388,7 +396,7 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // borrowed (even if they are still active).
     // This is only used for immovable generators.
     let borrowed_locals = if !movable {
-        let analysis = HaveBeenBorrowedLocals::new(mir);
+        let analysis = HaveBeenBorrowedLocals::new(tcx, mir);
         let result =
             do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
                         |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
@@ -588,11 +596,11 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Place::Local(local),
+                    location: place,
                     target,
                     unwind
                 }
-            } if local == gen => (target, unwind, source_info),
+            } if PlaceBase::Local(gen) == place.base => (target, unwind, source_info),
             _ => continue,
         };
         let unwind = if let Some(unwind) = unwind {
@@ -610,7 +618,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             elaborate_drop(
                 &mut elaborator,
                 source_info,
-                &Place::Local(gen),
+                &Place::local(gen),
                 (),
                 target,
                 unwind,
@@ -785,7 +793,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::Local(self_arg()),
+        location: Place::local(self_arg()),
         target: return_block,
         unwind: None,
     };

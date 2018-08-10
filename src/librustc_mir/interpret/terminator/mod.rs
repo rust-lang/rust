@@ -287,7 +287,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // closure as closure once
                     Abi::RustCall => {
                         for (arg_local, &valty) in arg_locals.zip(args) {
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                            let dest = self.eval_place(&mir::Place::local(arg_local))?;
                             self.write_value(valty, dest)?;
                         }
                     }
@@ -302,7 +302,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         trace!("args: {:#?}", args);
                         let local = arg_locals.nth(1).unwrap();
                         for (i, &valty) in args.into_iter().enumerate() {
-                            let dest = self.eval_place(&mir::Place::Local(local).field(
+                            let dest = self.eval_place(&mir::Place::local(local).field(
+                                *self.tcx,
                                 mir::Field::new(i),
                                 valty.ty,
                             ))?;
@@ -337,7 +338,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         {
                             // write first argument
                             let first_local = arg_locals.next().unwrap();
-                            let dest = self.eval_place(&mir::Place::Local(first_local))?;
+                            let dest = self.eval_place(&mir::Place::local(first_local))?;
                             self.write_value(args[0], dest)?;
                         }
 
@@ -352,7 +353,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 for (i, arg_local) in arg_locals.enumerate() {
                                     let field = mir::Field::new(i);
                                     let (value, layout) = self.read_field(args[1].value, None, field, layout)?;
-                                    let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                                    let dest = self.eval_place(&mir::Place::local(arg_local))?;
                                     let valty = ValTy {
                                         value,
                                         ty: layout.ty,
@@ -363,7 +364,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 trace!("manual impl of rust-call ABI");
                                 // called a manual impl of a rust-call function
                                 let dest = self.eval_place(
-                                    &mir::Place::Local(arg_locals.next().unwrap()),
+                                    &mir::Place::local(arg_locals.next().unwrap()),
                                 )?;
                                 self.write_value(args[1], dest)?;
                             }
@@ -377,7 +378,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                     _ => {
                         for (arg_local, &valty) in arg_locals.zip(args) {
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                            let dest = self.eval_place(&mir::Place::local(arg_local))?;
                             self.write_value(valty, dest)?;
                         }
                     }

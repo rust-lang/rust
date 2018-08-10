@@ -580,7 +580,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> i
                 if i != 0 {
                     write!(w, ", ")?;
                 }
-                write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+                write!(w, "{:?}: {}", Place::local(arg), mir.local_decls[arg].ty)?;
             }
 
             write!(w, ") -> {}", mir.return_ty())?;

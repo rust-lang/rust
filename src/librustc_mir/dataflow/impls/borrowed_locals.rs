@@ -10,9 +10,9 @@
 
 pub use super::*;
 
-use rustc::mir::*;
-use rustc::mir::visit::Visitor;
 use dataflow::BitDenotation;
+use rustc::mir::visit::Visitor;
+use rustc::mir::*;
 
 /// This calculates if any part of a MIR local could have previously been borrowed.
 /// This means that once a local has been borrowed, its bit will be set
@@ -22,23 +22,31 @@ use dataflow::BitDenotation;
 /// immovable generators.
 #[derive(Copy, Clone)]
 pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>)
-               -> Self {
-        HaveBeenBorrowedLocals { mir: mir }
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+        HaveBeenBorrowedLocals { tcx, mir }
     }
 
     pub fn mir(&self) -> &Mir<'tcx> {
         self.mir
     }
+
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx
+    }
 }
 
 impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     type Idx = Local;
-    fn name() -> &'static str { "has_been_borrowed_locals" }
+
+    fn name() -> &'static str {
+        "has_been_borrowed_locals"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.mir.local_decls.len()
     }
@@ -47,12 +55,11 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
         // Nothing is borrowed on function entry
     }
 
-    fn statement_effect(&self,
-                        sets: &mut BlockSets<Local>,
-                        loc: Location) {
+    fn statement_effect(&self, sets: &mut BlockSets<Local>, loc: Location) {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
         BorrowedLocalsVisitor {
+            tcx: self.tcx(),
             sets,
         }.visit_statement(loc.block, stmt, loc);
 
@@ -63,19 +70,20 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
         }
     }
 
-    fn terminator_effect(&self,
-                         sets: &mut BlockSets<Local>,
-                         loc: Location) {
+    fn terminator_effect(&self, sets: &mut BlockSets<Local>, loc: Location) {
         BorrowedLocalsVisitor {
+            tcx: self.tcx(),
             sets,
         }.visit_terminator(loc.block, self.mir[loc.block].terminator(), loc);
     }
 
-    fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
+    fn propagate_call_return(
+        &self,
+        _in_out: &mut IdxSet<Local>,
+        _call_bb: mir::BasicBlock,
+        _dest_bb: mir::BasicBlock,
+        _dest_place: &mir::Place,
+    ) {
         // Nothing to do when a call returns successfully
     }
 }
@@ -94,30 +102,32 @@ impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-struct BorrowedLocalsVisitor<'b, 'c: 'b> {
-    sets: &'b mut BlockSets<'c, Local>,
+struct BorrowedLocalsVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    sets: &'a mut BlockSets<'tcx, Local>,
 }
 
-fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
-    match *place {
-        Place::Local(l) => Some(l),
-        Place::Promoted(_) |
-        Place::Static(..) => None,
-        Place::Projection(ref proj) => {
-            match proj.elem {
-                ProjectionElem::Deref => None,
-                _ => find_local(&proj.base)
+impl<'a, 'tcx: 'a> BorrowedLocalsVisitor<'a, 'tcx> {
+    fn find_local(&self, place: &Place<'tcx>) -> Option<Local> {
+        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            if let ProjectionElem::Deref = projection {
+                None
+            } else {
+                self.find_local(&base_place)
+            }
+        } else {
+            match place.base {
+                PlaceBase::Local(l) => Some(l),
+                PlaceBase::Promoted(_) | PlaceBase::Static(..) => None,
             }
         }
     }
 }
 
 impl<'tcx, 'b, 'c> Visitor<'tcx> for BorrowedLocalsVisitor<'b, 'c> {
-    fn visit_rvalue(&mut self,
-                    rvalue: &Rvalue<'tcx>,
-                    location: Location) {
-        if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if let Some(local) = find_local(place) {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        if let Rvalue::Ref(_, _, place) = *rvalue {
+            if let Some(local) = self.find_local(&place) {
                 self.sets.gen(&local);
             }
         }

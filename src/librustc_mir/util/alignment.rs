@@ -50,14 +50,12 @@ fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     where L: HasLocalDecls<'tcx>
 {
     let mut place = place;
-    while let &Place::Projection(box Projection {
-        ref base, ref elem
-    }) = place {
-        match *elem {
+    while let Some((base_place, projection)) = place.split_projection(tcx) {
+        match projection {
             // encountered a Deref, which is ABI-aligned
             ProjectionElem::Deref => break,
             ProjectionElem::Field(..) => {
-                let ty = base.ty(local_decls, tcx).to_ty(tcx);
+                let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
                 match ty.sty {
                     ty::TyAdt(def, _) if def.repr.packed() => {
                         return true
@@ -67,7 +65,7 @@ fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             _ => {}
         }
-        place = base;
+        place = &base_place;
     }
 
     false
