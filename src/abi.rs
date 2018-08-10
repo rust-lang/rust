@@ -315,10 +315,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     let fn_ty = func.layout().ty;
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
-    let return_place = destination
-        .as_ref()
-        .map(|(place, _)| trans_place(fx, place));
-
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
@@ -351,8 +347,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let intrinsic = fx.tcx.item_name(def_id).as_str();
             let intrinsic = &intrinsic[..];
 
-            let ret = match return_place {
-                Some(ret) => ret,
+            let ret = match destination {
+                Some((place, _)) => trans_place(fx, place),
                 None => {
                     println!(
                         "codegen_call(fx, {:?}, {:?}, {:?})",
@@ -384,8 +380,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         }
     }
 
-    let return_ptr = match return_place {
-        Some(place) => place.expect_addr(),
+    let return_ptr = match destination {
+        Some((place, _)) => trans_place(fx, place).expect_addr(),
         None => fx.bcx.ins().iconst(types::I64, 0),
     };
 
