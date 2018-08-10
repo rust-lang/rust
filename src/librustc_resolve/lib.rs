@@ -4304,6 +4304,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() &&
+                        self.session.rust_2018() &&
                         self.extern_prelude.contains(&ident.name);
 
                     let is_visible_to_user =
