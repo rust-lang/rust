@@ -41,10 +41,10 @@ fn main() -> Result<()> {
         .log_to_file()
         .directory("log")
         .start()?;
-    info!("starting server");
+    info!("lifecycle: server started");
     match ::std::panic::catch_unwind(|| main_inner()) {
         Ok(res) => {
-            info!("shutting down: {:?}", res);
+            info!("lifecycle: terminating process with {:?}", res);
             res
         }
         Err(_) => {
@@ -105,15 +105,31 @@ fn initialize(io: &mut Io) -> Result<()> {
 type Thunk = Box<for<'a> FnBox<&'a mut Io, Result<()>>>;
 
 fn initialized(io: &mut Io) -> Result<()> {
-    let mut world = WorldState::new();
-    let mut pool = ThreadPool::new(4);
-    let (sender, receiver) = bounded::<Thunk>(16);
-    let res = main_loop(io, &mut world, &mut pool, sender, receiver.clone());
-    info!("waiting for background jobs to finish...");
-    receiver.for_each(drop);
-    pool.join();
-    info!("...background jobs have finished");
-    res
+    {
+        let mut world = WorldState::new();
+        let mut pool = ThreadPool::new(4);
+        let (sender, receiver) = bounded::<Thunk>(16);
+        info!("lifecycle: handshake finished, server ready to serve requests");
+        let res = main_loop(io, &mut world, &mut pool, sender, receiver.clone());
+        info!("waiting for background jobs to finish...");
+        receiver.for_each(drop);
+        pool.join();
+        info!("...background jobs have finished");
+        res
+    }?;
+
+    match io.recv()? {
+        RawMsg::Notification(n) => {
+            if n.method == "exit" {
+                info!("lifecycle: shutdown complete");
+                return Ok(());
+            }
+            bail!("unexpected notification during shutdown: {:?}", n)
+        }
+        m => {
+            bail!("unexpected message during shutdown: {:?}", m)
+        }
+    }
 }
 
 fn main_loop(
@@ -172,10 +188,17 @@ fn main_loop(
                     });
                     Ok(())
                 })?;
+                let mut shutdown = false;
                 dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
                     resp.result(io, ())?;
+                    shutdown = true;
                     Ok(())
                 })?;
+                if shutdown {
+                    info!("lifecycle: initiating shutdown");
+                    drop(sender);
+                    return Ok(());
+                }
                 if let Some(req) = req {
                     error!("unknown method: {:?}", req);
                     dispatch::unknown_method(io, req)?;
