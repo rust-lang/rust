@@ -501,7 +501,11 @@ impl Pat {
             PatKind::Slice(pats, None, _) if pats.len() == 1 =>
                 pats[0].to_ty().map(TyKind::Slice)?,
             PatKind::Tuple(pats, None) => {
-                let tys = pats.iter().map(|pat| pat.to_ty()).collect::<Option<Vec<_>>>()?;
+                let mut tys = Vec::with_capacity(pats.len());
+                // FIXME(#48994) - could just be collected into an Option<Vec>
+                for pat in pats {
+                    tys.push(pat.to_ty()?);
+                }
                 TyKind::Tup(tys)
             }
             _ => return None,
