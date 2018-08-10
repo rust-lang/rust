@@ -1857,18 +1857,20 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
-        let mut vector = match iterator.next() {
-            None => return Vec::new(),
-            Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
-                unsafe {
-                    ptr::write(vector.get_unchecked_mut(0), element);
-                    vector.set_len(1);
-                }
-                vector
-            }
+        let element =
+            if let Some(x) = iterator.next() { x }
+            else { return Vec::new() };
+        let (lower, upper) = iterator.size_hint();
+        let guess = if let Some(upper) = upper {
+            lower.saturating_mul(2).min(upper)
+        } else {
+            lower
         };
+        let mut vector = Vec::with_capacity(guess.saturating_add(1));
+        unsafe {
+            ptr::write(vector.get_unchecked_mut(0), element);
+            vector.set_len(1);
+        }
         <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
