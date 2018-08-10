@@ -4241,7 +4241,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           lookup_name: Name,
                                           namespace: Namespace,
                                           start_module: &'a ModuleData<'a>,
-                                          name: Name,
+                                          crate_name: Ident,
                                           filter_fn: FilterFn)
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
@@ -4272,11 +4272,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         if self.session.rust_2018() && !in_module_is_extern {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            if name == keywords::Crate.name() {
-                                segms.insert(
-                                    0, ast::PathSegment::from_ident(keywords::Crate.ident())
-                                );
-                            }
+
+                            segms.insert(
+                                0, ast::PathSegment::from_ident(crate_name)
+                            );
                         }
 
                         segms.push(ast::PathSegment::from_ident(ident));
