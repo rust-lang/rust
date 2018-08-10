@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(raw_identifiers)]
 #![allow(dead_code, unused_variables, non_camel_case_types, non_upper_case_globals)]
 #![deny(async_idents)]
 

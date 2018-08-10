@@ -10,8 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-#![feature(raw_identifiers)]
-
 fn test_if() {
     r#if true { } //~ ERROR found `true`
 }

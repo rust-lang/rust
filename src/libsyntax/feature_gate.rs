@@ -433,9 +433,6 @@ declare_features! (
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
-    // Allows keywords to be escaped for use as identifiers
-    (active, raw_identifiers, "1.26.0", Some(48589), Some(Edition::Edition2018)),
-
     // Allows macro invocations in `extern {}` blocks
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
@@ -646,6 +643,8 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
+    // Allows keywords to be escaped for use as identifiers
+    (accepted, raw_identifiers, "1.30.0", Some(48589), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -2020,16 +2019,6 @@ pub fn check_crate(krate: &ast::Crate,
         parse_sess: sess,
         plugin_attributes,
     };
-
-    if !features.raw_identifiers {
-        for &span in sess.raw_identifier_spans.borrow().iter() {
-            if !span.allows_unstable() {
-                gate_feature!(&ctx, raw_identifiers, span,
-                    "raw identifiers are experimental and subject to change"
-                );
-            }
-        }
-    }
 
     let visitor = &mut PostExpansionVisitor { context: &ctx };
     visitor.whole_crate_feature_gates(krate);

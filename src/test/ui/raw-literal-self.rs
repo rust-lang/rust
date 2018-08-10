@@ -10,8 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-#![feature(raw_identifiers)]
-
 fn self_test(r#self: u32) {
     //~^ ERROR `r#self` is not currently supported.
 }
