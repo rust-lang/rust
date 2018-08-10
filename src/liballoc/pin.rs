@@ -134,13 +134,6 @@ impl<T: ?Sized> From<Box<T>> for PinBox<T> {
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
-    fn from(pinned: PinBox<T>) -> Box<T> {
-        pinned.inner
-    }
-}
-
-#[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> Deref for PinBox<T> {
     type Target = T;
 

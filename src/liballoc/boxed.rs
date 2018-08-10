@@ -71,6 +71,7 @@ use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll, Spawn, SpawnErrorKind, SpawnObjError};
 
 use raw_vec::RawVec;
+use pin::PinBox;
 use str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
@@ -814,5 +815,12 @@ impl<'a, F: Future<Output = ()> + Send + 'a> From<Box<F>> for FutureObj<'a, ()> 
 impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
     fn from(boxed: Box<F>) -> Self {
         LocalFutureObj::new(boxed)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
+    fn from(pinned: PinBox<T>) -> Box<T> {
+        unsafe { PinBox::unpin(pinned) }
     }
 }
