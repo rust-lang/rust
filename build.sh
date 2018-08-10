@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cargo build || exit 1
 
 cd examples/
