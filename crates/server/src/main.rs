@@ -27,11 +27,13 @@ use std::path::PathBuf;
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
-use libanalysis::WorldState;
 use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, TextDocumentIdentifier};
+use serde::{ser::Serialize, de::DeserializeOwned};
+use libanalysis::{WorldState, World};
 
 use ::{
-    io::{Io, RawMsg},
+    io::{Io, RawMsg, RawRequest},
+    req::Request,
     handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics},
 };
 
@@ -171,24 +173,12 @@ fn main_loop(
         match msg {
             RawMsg::Request(req) => {
                 let mut req = Some(req);
-                dispatch::handle_request::<req::SyntaxTree, _>(&mut req, |params, resp| {
-                    let world = world.snapshot();
-                    let sender = sender.clone();
-                    pool.execute(move || {
-                        let res = handle_syntax_tree(world, params);
-                        sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
-                    });
-                    Ok(())
-                })?;
-                dispatch::handle_request::<req::ExtendSelection, _>(&mut req, |params, resp| {
-                    let world = world.snapshot();
-                    let sender = sender.clone();
-                    pool.execute(move || {
-                        let res = handle_extend_selection(world, params);
-                        sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
-                    });
-                    Ok(())
-                })?;
+                handle_request_on_threadpool::<req::SyntaxTree>(
+                    &mut req, pool, world, &sender, handle_syntax_tree
+                )?;
+                handle_request_on_threadpool::<req::ExtendSelection>(
+                    &mut req, pool, world, &sender, handle_extend_selection
+                )?;
                 let mut shutdown = false;
                 dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
                     resp.result(io, ())?;
@@ -269,6 +259,29 @@ fn main_loop(
             }
         }
     }
+}
+
+fn handle_request_on_threadpool<R>(
+    req: &mut Option<RawRequest>,
+    pool: &ThreadPool,
+    world: &WorldState,
+    sender: &Sender<Thunk>,
+    f: fn(World, R::Params) -> Result<R::Result>,
+) -> Result<()>
+    where
+        R: Request + Send + 'static,
+        R::Params: DeserializeOwned + Send + 'static,
+        R::Result: Serialize + Send + 'static,
+{
+    dispatch::handle_request::<R, _>(req, |params, resp| {
+        let world = world.snapshot();
+        let sender = sender.clone();
+        pool.execute(move || {
+            let res = f(world, params);
+            sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
+        });
+        Ok(())
+    })
 }
 
 trait FnBox<A, R>: Send {
