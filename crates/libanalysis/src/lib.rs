@@ -24,6 +24,7 @@ pub struct WorldState {
     data: Arc<WorldData>
 }
 
+#[derive(Clone, Debug)]
 pub struct World {
     data: Arc<WorldData>,
 }
@@ -119,12 +120,13 @@ impl World {
 }
 
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct WorldData {
     mem_map: HashMap<PathBuf, Arc<String>>,
     file_map: RwLock<HashMap<PathBuf, Arc<FileData>>>,
 }
 
+#[derive(Debug)]
 struct FileData {
     text: Option<String>,
     syntax: OnceCell<ast::File>,

@@ -1,17 +1,9 @@
 'use strict';
 import * as vscode from 'vscode';
-import {
-    LanguageClient,
-    LanguageClientOptions,
-    ServerOptions,
-    TransportKind,
-    Executable,
-    TextDocumentIdentifier,
-    Range
-} from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient'
 
 
-let client: LanguageClient;
+let client: lc.LanguageClient;
 
 let uris = {
     syntaxTree: vscode.Uri.parse('libsyntax-rust://syntaxtree')
@@ -34,8 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
         let request: ExtendSelectionParams = {
             textDocument: { uri: editor.document.uri.toString() },
             selections: editor.selections.map((s) => {
-                let r: Range = { start: s.start, end: s.end }
-                return r;
+                return { start: s.start, end: s.end };
             })
         }
         let response = await client.sendRequest<ExtendSelectionResult>("m/extendSelection", request)
@@ -71,26 +62,46 @@ export function deactivate(): Thenable<void> {
 }
 
 function startServer() {
-    let run: Executable = {
+    let run: lc.Executable = {
         command: "cargo",
         args: ["run", "--package", "m"],
         options: { cwd: "." }
     }
-    let serverOptions: ServerOptions = {
+    let serverOptions: lc.ServerOptions = {
         run,
         debug: run
     };
 
-    let clientOptions: LanguageClientOptions = {
+    let clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
     };
 
-    client = new LanguageClient(
+    client = new lc.LanguageClient(
         'm',
         'm languge server',
         serverOptions,
         clientOptions,
     );
+    client.onReady().then(() => {
+        client.onNotification(
+            new lc.NotificationType("m/publishDecorations"),
+            (params: PublishDecorationsParams) => {
+                console.log("A");
+                console.log(params.uri);
+                console.log(vscode.window.activeTextEditor.document.uri.toString());
+                console.log("B");
+
+                let editor = vscode.window.visibleTextEditors.find(
+                    (editor) => editor.document.uri.toString() == params.uri
+                )
+                if (editor == null) return;
+                setHighlights(
+                    editor,
+                    params.decorations,
+                )
+            }
+        )
+    })
     client.start();
 }
 
@@ -117,17 +128,72 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
     }
 }
 
+
+const decorations = (() => {
+    const decor = (obj) => vscode.window.createTextEditorDecorationType({ color: obj })
+    return {
+        background: decor("#3F3F3F"),
+        error: vscode.window.createTextEditorDecorationType({
+            borderColor: "red",
+            borderStyle: "none none dashed none",
+        }),
+        comment: decor("#7F9F7F"),
+        string: decor("#CC9393"),
+        keyword: decor("#F0DFAF"),
+        function: decor("#93E0E3"),
+        parameter: decor("#94BFF3"),
+        builtin: decor("#DD6718"),
+        text: decor("#DCDCCC"),
+        attribute: decor("#BFEBBF"),
+        literal: decor("#DFAF8F"),
+    }
+})()
+
+function setHighlights(
+    editor: vscode.TextEditor,
+    highlihgs: Array<Decoration>
+) {
+    let byTag = {}
+    for (let tag in decorations) {
+        byTag[tag] = []
+    }
+
+    for (let d of highlihgs) {
+        if (!byTag[d.tag]) {
+            console.log(`unknown tag ${d.tag}`)
+            continue
+        }
+        byTag[d.tag].push(d.range)
+    }
+
+    for (let tag in byTag) {
+        let dec = decorations[tag]
+        let ranges = byTag[tag]
+        editor.setDecorations(dec, ranges)
+    }
+}
+
 interface SyntaxTreeParams {
-    textDocument: TextDocumentIdentifier;
+    textDocument: lc.TextDocumentIdentifier;
 }
 
 type SyntaxTreeResult = string
 
 interface ExtendSelectionParams {
-    textDocument: TextDocumentIdentifier;
-    selections: Range[];
+    textDocument: lc.TextDocumentIdentifier;
+    selections: lc.Range[];
 }
 
 interface ExtendSelectionResult {
-    selections: Range[];
+    selections: lc.Range[];
+}
+
+interface PublishDecorationsParams {
+    uri: string,
+    decorations: Decoration[],
+}
+
+interface Decoration {
+    range: lc.Range,
+    tag: string,
 }

@@ -4,7 +4,7 @@ use libanalysis::World;
 use libeditor::{self, LineIndex, LineCol, TextRange, TextUnit};
 
 use ::{
-    req, Result,
+    req::{self, Decoration}, Result,
     util::FilePath,
 };
 
@@ -51,6 +51,18 @@ pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnos
     Ok(req::PublishDiagnosticsParams { uri, diagnostics })
 }
 
+pub fn publish_decorations(world: World, uri: Url) -> Result<req::PublishDecorationsParams> {
+    let path = uri.file_path()?;
+    let file = world.file_syntax(&path)?;
+    let line_index = world.file_line_index(&path)?;
+    let decorations = libeditor::highlight(&file)
+        .into_iter()
+        .map(|h| Decoration {
+            range: to_vs_range(&line_index, h.range),
+            tag: h.tag,
+        }).collect();
+    Ok(req::PublishDecorationsParams { uri, decorations })
+}
 
 fn to_text_range(line_index: &LineIndex, range: Range) -> TextRange {
     TextRange::from_to(

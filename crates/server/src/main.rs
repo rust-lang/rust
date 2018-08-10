@@ -12,6 +12,7 @@ extern crate threadpool;
 #[macro_use]
 extern crate log;
 extern crate url;
+extern crate url_serde;
 extern crate flexi_logger;
 extern crate libeditor;
 extern crate libanalysis;
@@ -31,7 +32,7 @@ use libanalysis::{WorldState, World};
 
 use ::{
     io::{Io, RawMsg, RawRequest},
-    handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics},
+    handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics, publish_decorations},
     util::{FilePath, FnBox}
 };
 
@@ -198,7 +199,7 @@ fn main_loop(
                 dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, Some(params.text_document.text));
-                    update_diagnostics_on_threadpool(
+                    update_file_notifications_on_threadpool(
                         pool, world.snapshot(), sender.clone(), params.text_document.uri,
                     );
                     Ok(())
@@ -209,7 +210,7 @@ fn main_loop(
                         .ok_or_else(|| format_err!("empty changes"))?
                         .text;
                     world.change_overlay(path, Some(text));
-                    update_diagnostics_on_threadpool(
+                    update_file_notifications_on_threadpool(
                         pool, world.snapshot(), sender.clone(), params.text_document.uri,
                     );
                     Ok(())
@@ -254,20 +255,30 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
     })
 }
 
-fn update_diagnostics_on_threadpool(
+fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: World,
     sender: Sender<Thunk>,
     uri: Url,
 ) {
     pool.execute(move || {
-        match publish_diagnostics(world, uri) {
+        match publish_diagnostics(world.clone(), uri.clone()) {
             Err(e) => {
                 error!("failed to compute diagnostics: {:?}", e)
             }
             Ok(params) => {
                 sender.send(Box::new(|io: &mut Io| {
                     dispatch::send_notification::<req::PublishDiagnostics>(io, params)
+                }))
+            }
+        }
+        match publish_decorations(world, uri) {
+            Err(e) => {
+                error!("failed to compute decortions: {:?}", e)
+            }
+            Ok(params) => {
+                sender.send(Box::new(|io: &mut Io| {
+                    dispatch::send_notification::<req::PublishDecorations>(io, params)
                 }))
             }
         }

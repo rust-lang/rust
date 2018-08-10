@@ -1,5 +1,7 @@
 use serde::{ser::Serialize, de::DeserializeOwned};
+use url::Url;
 use languageserver_types::{TextDocumentIdentifier, Range};
+use url_serde;
 
 pub use languageserver_types::{
     request::*, notification::*,
@@ -57,4 +59,26 @@ pub struct ExtendSelectionParams {
 #[serde(rename_all = "camelCase")]
 pub struct ExtendSelectionResult {
     pub selections: Vec<Range>,
+}
+
+pub enum PublishDecorations {}
+
+impl Notification for PublishDecorations {
+    type Params = PublishDecorationsParams;
+    const METHOD: &'static str = "m/publishDecorations";
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishDecorationsParams {
+    #[serde(with = "url_serde")]
+    pub uri: Url,
+    pub decorations: Vec<Decoration>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Decoration {
+    pub range: Range,
+    pub tag: &'static str
 }

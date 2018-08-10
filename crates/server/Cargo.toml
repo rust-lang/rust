@@ -15,6 +15,7 @@ threadpool = "1.7.1"
 flexi_logger = "0.9.0"
 log = "0.4.3"
 url = "1.1.0"
+url_serde = "0.2.0"
 
 libeditor = { path = "../libeditor" }
 libanalysis = { path = "../libanalysis" }
