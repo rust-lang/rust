@@ -342,42 +342,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             .collect::<Vec<_>>()
     };
 
-    if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
-        if sig.abi == Abi::RustIntrinsic {
-            let intrinsic = fx.tcx.item_name(def_id).as_str();
-            let intrinsic = &intrinsic[..];
-
-            let ret = match destination {
-                Some((place, _)) => trans_place(fx, place),
-                None => {
-                    println!(
-                        "codegen_call(fx, {:?}, {:?}, {:?})",
-                        func, args, destination
-                    );
-                    // Insert non returning intrinsics here
-                    match intrinsic {
-                        "abort" => {
-                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
-                        }
-                        "unreachable" => {
-                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
-                        }
-                        _ => unimplemented!("unsupported instrinsic {}", intrinsic),
-                    }
-                    return;
-                }
-            };
-
-            codegen_intrinsic_call(fx, intrinsic, substs, args, ret);
-
-            if let Some((_, dest)) = *destination {
-                let ret_ebb = fx.get_ebb(dest);
-                fx.bcx.ins().jump(ret_ebb, &[]);
-            } else {
-                fx.bcx.ins().trap(TrapCode::User(!0));
-            }
-            return;
-        }
+    if codegen_intrinsic_call(fx, fn_ty, sig, &args, destination) {
+        return;
     }
 
     let return_ptr = match destination {
@@ -418,207 +384,245 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 
 fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
-    intrinsic: &str,
-    substs: &Substs<'tcx>,
-    args: Vec<CValue<'tcx>>,
-    ret: CPlace<'tcx>,
-) {
-    let nil_ty = fx.tcx.mk_nil();
-    let u64_layout = fx.layout_of(fx.tcx.types.u64);
-    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+    fn_ty: Ty<'tcx>,
+    sig: FnSig<'tcx>,
+    args: &[CValue<'tcx>],
+    destination: &Option<(Place<'tcx>, BasicBlock)>,
+) -> bool {
+    if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
+        if sig.abi == Abi::RustIntrinsic {
+            let intrinsic = fx.tcx.item_name(def_id).as_str();
+            let intrinsic = &intrinsic[..];
 
-    match intrinsic {
-        "assume" => {
-            assert_eq!(args.len(), 1);
-        }
-        "arith_offset" => {
-            assert_eq!(args.len(), 2);
-            let base = args[0].load_value(fx);
-            let offset = args[1].load_value(fx);
-            let res = fx.bcx.ins().iadd(base, offset);
-            let res = CValue::ByVal(res, ret.layout());
-            ret.write_cvalue(fx, res);
-        }
-        "likely" | "unlikely" => {
-            assert_eq!(args.len(), 1);
-            ret.write_cvalue(fx, args[0]);
-        }
-        "copy" | "copy_nonoverlapping" => {
-            let elem_ty = substs.type_at(0);
-            let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
-            let elem_size = fx.bcx.ins().iconst(types::I64, elem_size as i64);
-            assert_eq!(args.len(), 3);
-            let src = args[0];
-            let dst = args[1];
-            let count = args[2].load_value(fx);
-            let byte_amount = fx.bcx.ins().imul(count, elem_size);
-            fx.easy_call(
-                "memmove",
-                &[dst, src, CValue::ByVal(byte_amount, usize_layout)],
-                nil_ty,
-            );
-        }
-        "discriminant_value" => {
-            assert_eq!(args.len(), 1);
-            let discr = crate::base::trans_get_discriminant(fx, args[0], ret.layout());
-            ret.write_cvalue(fx, discr);
-        }
-        "size_of" => {
-            assert_eq!(args.len(), 0);
-            let size_of = fx.layout_of(substs.type_at(0)).size.bytes();
-            let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
-            ret.write_cvalue(fx, size_of);
-        }
-        "type_id" => {
-            assert_eq!(args.len(), 0);
-            let type_id = fx.tcx.type_id_hash(substs.type_at(0));
-            let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
-            ret.write_cvalue(fx, type_id);
-        }
-        "min_align_of" => {
-            assert_eq!(args.len(), 0);
-            let min_align = fx.layout_of(substs.type_at(0)).align.abi();
-            let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
-            ret.write_cvalue(fx, min_align);
-        }
-        _ if intrinsic.starts_with("unchecked_") => {
-            assert_eq!(args.len(), 2);
-            let bin_op = match intrinsic {
-                "unchecked_div" => BinOp::Div,
-                "unchecked_rem" => BinOp::Rem,
-                "unchecked_shl" => BinOp::Shl,
-                "unchecked_shr" => BinOp::Shr,
-                _ => unimplemented!("intrinsic {}", intrinsic),
+            let ret = match destination {
+                Some((place, _)) => trans_place(fx, place),
+                None => {
+                    println!(
+                        "codegen_call(fx, _, {:?}, {:?})",
+                        args, destination
+                    );
+                    // Insert non returning intrinsics here
+                    match intrinsic {
+                        "abort" => {
+                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                        }
+                        "unreachable" => {
+                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                        }
+                        _ => unimplemented!("unsupported instrinsic {}", intrinsic),
+                    }
+                    return true;
+                }
             };
-            let res = match ret.layout().ty.sty {
-                TypeVariants::TyUint(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    false,
-                ),
-                TypeVariants::TyInt(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    true,
-                ),
-                _ => panic!(),
-            };
-            ret.write_cvalue(fx, res);
-        }
-        _ if intrinsic.ends_with("_with_overflow") => {
-            assert_eq!(args.len(), 2);
-            assert_eq!(args[0].layout().ty, args[1].layout().ty);
-            let bin_op = match intrinsic {
-                "add_with_overflow" => BinOp::Add,
-                "sub_with_overflow" => BinOp::Sub,
-                "mul_with_overflow" => BinOp::Mul,
-                _ => unimplemented!("intrinsic {}", intrinsic),
-            };
-            let res = match args[0].layout().ty.sty {
-                TypeVariants::TyUint(_) => crate::base::trans_checked_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    false,
-                ),
-                TypeVariants::TyInt(_) => crate::base::trans_checked_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    true,
-                ),
-                _ => panic!(),
-            };
-            ret.write_cvalue(fx, res);
-        }
-        _ if intrinsic.starts_with("overflowing_") => {
-            assert_eq!(args.len(), 2);
-            assert_eq!(args[0].layout().ty, args[1].layout().ty);
-            let bin_op = match intrinsic {
-                "overflowing_add" => BinOp::Add,
-                "overflowing_sub" => BinOp::Sub,
-                "overflowing_mul" => BinOp::Mul,
-                _ => unimplemented!("intrinsic {}", intrinsic),
-            };
-            let res = match args[0].layout().ty.sty {
-                TypeVariants::TyUint(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    false,
-                ),
-                TypeVariants::TyInt(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    args[0],
-                    args[1],
-                    ret.layout().ty,
-                    true,
-                ),
-                _ => panic!(),
-            };
-            ret.write_cvalue(fx, res);
-        }
-        "offset" => {
-            assert_eq!(args.len(), 2);
-            let base = args[0].load_value(fx);
-            let offset = args[1].load_value(fx);
-            let res = fx.bcx.ins().iadd(base, offset);
-            ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
-        }
-        "transmute" => {
-            assert_eq!(args.len(), 1);
-            let src_ty = substs.type_at(0);
-            let dst_ty = substs.type_at(1);
-            assert_eq!(args[0].layout().ty, src_ty);
-            let addr = args[0].force_stack(fx);
-            let dst_layout = fx.layout_of(dst_ty);
-            ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
-        }
-        "uninit" => {
-            assert_eq!(args.len(), 0);
-            let ty = substs.type_at(0);
-            let layout = fx.layout_of(ty);
-            let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                kind: StackSlotKind::ExplicitSlot,
-                size: layout.size.bytes() as u32,
-                offset: None,
-            });
 
-            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
-            let uninit_val = uninit_place.to_cvalue(fx);
-            ret.write_cvalue(fx, uninit_val);
+            let nil_ty = fx.tcx.mk_nil();
+            let u64_layout = fx.layout_of(fx.tcx.types.u64);
+            let usize_layout = fx.layout_of(fx.tcx.types.usize);
+
+            match intrinsic {
+                "assume" => {
+                    assert_eq!(args.len(), 1);
+                }
+                "arith_offset" => {
+                    assert_eq!(args.len(), 2);
+                    let base = args[0].load_value(fx);
+                    let offset = args[1].load_value(fx);
+                    let res = fx.bcx.ins().iadd(base, offset);
+                    let res = CValue::ByVal(res, ret.layout());
+                    ret.write_cvalue(fx, res);
+                }
+                "likely" | "unlikely" => {
+                    assert_eq!(args.len(), 1);
+                    ret.write_cvalue(fx, args[0]);
+                }
+                "copy" | "copy_nonoverlapping" => {
+                    let elem_ty = substs.type_at(0);
+                    let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
+                    let elem_size = fx.bcx.ins().iconst(types::I64, elem_size as i64);
+                    assert_eq!(args.len(), 3);
+                    let src = args[0];
+                    let dst = args[1];
+                    let count = args[2].load_value(fx);
+                    let byte_amount = fx.bcx.ins().imul(count, elem_size);
+                    fx.easy_call(
+                        "memmove",
+                        &[dst, src, CValue::ByVal(byte_amount, usize_layout)],
+                        nil_ty,
+                    );
+                }
+                "discriminant_value" => {
+                    assert_eq!(args.len(), 1);
+                    let discr = crate::base::trans_get_discriminant(fx, args[0], ret.layout());
+                    ret.write_cvalue(fx, discr);
+                }
+                "size_of" => {
+                    assert_eq!(args.len(), 0);
+                    let size_of = fx.layout_of(substs.type_at(0)).size.bytes();
+                    let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
+                    ret.write_cvalue(fx, size_of);
+                }
+                "type_id" => {
+                    assert_eq!(args.len(), 0);
+                    let type_id = fx.tcx.type_id_hash(substs.type_at(0));
+                    let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
+                    ret.write_cvalue(fx, type_id);
+                }
+                "min_align_of" => {
+                    assert_eq!(args.len(), 0);
+                    let min_align = fx.layout_of(substs.type_at(0)).align.abi();
+                    let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
+                    ret.write_cvalue(fx, min_align);
+                }
+                _ if intrinsic.starts_with("unchecked_") => {
+                    assert_eq!(args.len(), 2);
+                    let bin_op = match intrinsic {
+                        "unchecked_div" => BinOp::Div,
+                        "unchecked_rem" => BinOp::Rem,
+                        "unchecked_shl" => BinOp::Shl,
+                        "unchecked_shr" => BinOp::Shr,
+                        _ => unimplemented!("intrinsic {}", intrinsic),
+                    };
+                    let res = match ret.layout().ty.sty {
+                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                        ),
+                        _ => panic!(),
+                    };
+                    ret.write_cvalue(fx, res);
+                }
+                _ if intrinsic.ends_with("_with_overflow") => {
+                    assert_eq!(args.len(), 2);
+                    assert_eq!(args[0].layout().ty, args[1].layout().ty);
+                    let bin_op = match intrinsic {
+                        "add_with_overflow" => BinOp::Add,
+                        "sub_with_overflow" => BinOp::Sub,
+                        "mul_with_overflow" => BinOp::Mul,
+                        _ => unimplemented!("intrinsic {}", intrinsic),
+                    };
+                    let res = match args[0].layout().ty.sty {
+                        TypeVariants::TyUint(_) => crate::base::trans_checked_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_checked_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                        ),
+                        _ => panic!(),
+                    };
+                    ret.write_cvalue(fx, res);
+                }
+                _ if intrinsic.starts_with("overflowing_") => {
+                    assert_eq!(args.len(), 2);
+                    assert_eq!(args[0].layout().ty, args[1].layout().ty);
+                    let bin_op = match intrinsic {
+                        "overflowing_add" => BinOp::Add,
+                        "overflowing_sub" => BinOp::Sub,
+                        "overflowing_mul" => BinOp::Mul,
+                        _ => unimplemented!("intrinsic {}", intrinsic),
+                    };
+                    let res = match args[0].layout().ty.sty {
+                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                        ),
+                        _ => panic!(),
+                    };
+                    ret.write_cvalue(fx, res);
+                }
+                "offset" => {
+                    assert_eq!(args.len(), 2);
+                    let base = args[0].load_value(fx);
+                    let offset = args[1].load_value(fx);
+                    let res = fx.bcx.ins().iadd(base, offset);
+                    ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
+                }
+                "transmute" => {
+                    assert_eq!(args.len(), 1);
+                    let src_ty = substs.type_at(0);
+                    let dst_ty = substs.type_at(1);
+                    assert_eq!(args[0].layout().ty, src_ty);
+                    let addr = args[0].force_stack(fx);
+                    let dst_layout = fx.layout_of(dst_ty);
+                    ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
+                }
+                "uninit" => {
+                    assert_eq!(args.len(), 0);
+                    let ty = substs.type_at(0);
+                    let layout = fx.layout_of(ty);
+                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: layout.size.bytes() as u32,
+                        offset: None,
+                    });
+
+                    let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
+                    let uninit_val = uninit_place.to_cvalue(fx);
+                    ret.write_cvalue(fx, uninit_val);
+                }
+                "ctlz" | "ctlz_nonzero" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
+                "cttz" | "cttz_nonzero" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
+                "ctpop" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
+                _ => unimpl!("unsupported intrinsic {}", intrinsic),
+            }
+
+            if let Some((_, dest)) = *destination {
+                let ret_ebb = fx.get_ebb(dest);
+                fx.bcx.ins().jump(ret_ebb, &[]);
+            } else {
+                fx.bcx.ins().trap(TrapCode::User(!0));
+            }
+            return true;
         }
-        "ctlz" | "ctlz_nonzero" => {
-            assert_eq!(args.len(), 1);
-            let arg = args[0].load_value(fx);
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
-            ret.write_cvalue(fx, res);
-        }
-        "cttz" | "cttz_nonzero" => {
-            assert_eq!(args.len(), 1);
-            let arg = args[0].load_value(fx);
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
-            ret.write_cvalue(fx, res);
-        }
-        "ctpop" => {
-            assert_eq!(args.len(), 1);
-            let arg = args[0].load_value(fx);
-            let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
-            ret.write_cvalue(fx, res);
-        }
-        _ => unimpl!("unsupported intrinsic {}", intrinsic),
     }
+
+    false
 }
