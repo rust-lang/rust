@@ -27,7 +27,7 @@ all:
 	mkdir -p $(WORK_DIR)
 	-cd $(WORK_DIR) && rm -rf $(CRATE)
 	cd $(WORK_DIR) && $(CARGO) clone $(CRATE) --vers $(CRATE_VER)
-	cd $(WORK_DIR) && cd $(CRATE) && $(CARGO) build -j 1 --target $(TARGET) -v
+	cd $(WORK_DIR) && cd $(CRATE) && $(CARGO) build --target $(TARGET) -v
 else
 
 all:
