@@ -44,7 +44,7 @@ use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
-use errors::{self, Applicability, DiagnosticBuilder};
+use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
 use parse::lexer::TokenAndSpan;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -1775,8 +1775,11 @@ impl<'a> Parser<'a> {
 
             match pat_arg {
                 Ok((pat, ty)) => {
-                    let mut err = self.diagnostic()
-                        .struct_span_err(pat.span, "patterns aren't allowed in trait methods");
+                    let mut err = self.diagnostic().struct_span_err_with_code(
+                        pat.span,
+                        "patterns aren't allowed in trait methods",
+                        DiagnosticId::Error("E0642".into()),
+                    );
                     err.span_suggestion_short_with_applicability(
                         pat.span,
                         "give this argument a name or use an underscore to ignore it",
