@@ -827,7 +827,7 @@ impl<'a> Builder<'a> {
         if let Some(ref error_format) = self.config.rustc_error_format {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
-        if cmd != "build" && cmd != "check" && want_rustdoc {
+        if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
         }
 
@@ -988,7 +988,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if cmd == "build"
+        if (cmd == "build" || cmd == "rustc")
             && mode == Mode::Std
             && self.config.extended
             && compiler.is_final_stage(self)
