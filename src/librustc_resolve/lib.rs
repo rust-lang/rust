@@ -4334,7 +4334,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         suggestions.extend(
             self.lookup_import_candidates_from_module(
-                lookup_name, namespace, self.graph_root, keywords::Crate.name(), filter_fn
+                lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn
             )
         );
 
@@ -4346,7 +4346,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                 suggestions.extend(
                     self.lookup_import_candidates_from_module(
-                        lookup_name, namespace, external_prelude_module, krate_name, filter_fn
+                        lookup_name, namespace, external_prelude_module, krate_ident, &filter_fn
                     )
                 );
             }
