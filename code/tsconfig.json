@@ -7,5 +7,6 @@
         "sourceMap": true,
         "rootDir": "."
     },
-    "include": [ "src/*.ts" ]
+    "include": [ "src" ],
+    "exclude": [ "node_modules" ]
 }

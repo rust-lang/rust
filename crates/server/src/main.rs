@@ -39,7 +39,7 @@ use ::{
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 fn main() -> Result<()> {
-    Logger::with_env_or_str("m=trace, libanalysis=trace")
+    Logger::with_env()
         .log_to_file()
         .directory("log")
         .start()?;

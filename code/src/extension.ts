@@ -63,8 +63,8 @@ export function deactivate(): Thenable<void> {
 
 function startServer() {
     let run: lc.Executable = {
-        command: "cargo",
-        args: ["run", "--package", "m"],
+        command: "m",
+        // args: ["run", "--package", "m"],
         options: { cwd: "." }
     }
     let serverOptions: lc.ServerOptions = {
@@ -86,11 +86,6 @@ function startServer() {
         client.onNotification(
             new lc.NotificationType("m/publishDecorations"),
             (params: PublishDecorationsParams) => {
-                console.log("A");
-                console.log(params.uri);
-                console.log(vscode.window.activeTextEditor.document.uri.toString());
-                console.log("B");
-
                 let editor = vscode.window.visibleTextEditors.find(
                     (editor) => editor.document.uri.toString() == params.uri
                 )

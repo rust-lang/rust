@@ -1,7 +1,0 @@
-target
-index.node
-artifacts.json
-*.vsix
-out/*
-node_modules/*
-log/*
