@@ -1,0 +1,40 @@
+error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
+ --> $DIR/fxhash.rs:6:24
+  |
+6 | use std::collections::{HashMap, HashSet};
+  |                        ^^^^^^^
+  |
+  = note: `-D default-hash-types` implied by `-D warnings`
+
+error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
+ --> $DIR/fxhash.rs:6:33
+  |
+6 | use std::collections::{HashMap, HashSet};
+  |                                 ^^^^^^^
+
+error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
+  --> $DIR/fxhash.rs:10:15
+   |
+10 |     let _map: HashMap<String, String> = HashMap::default();
+   |               ^^^^^^^
+
+error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
+  --> $DIR/fxhash.rs:10:41
+   |
+10 |     let _map: HashMap<String, String> = HashMap::default();
+   |                                         ^^^^^^^
+
+error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
+  --> $DIR/fxhash.rs:11:15
+   |
+11 |     let _set: HashSet<String> = HashSet::default();
+   |               ^^^^^^^
+
+error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
+  --> $DIR/fxhash.rs:11:33
+   |
+11 |     let _set: HashSet<String> = HashSet::default();
+   |                                 ^^^^^^^
+
+error: aborting due to 6 previous errors
+
