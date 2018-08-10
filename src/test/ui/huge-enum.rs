@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern: Option
+// normalize-stderr-test "<\[u32; \d+\]>" -> "<[u32; N]>"
 
 // FIXME: work properly with higher limits
 

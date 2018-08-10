@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern: too big for the current architecture
+// normalize-stderr-test "\[usize; \d+\]" -> "[usize; N]"
 
 #[cfg(target_pointer_width = "32")]
 fn main() {

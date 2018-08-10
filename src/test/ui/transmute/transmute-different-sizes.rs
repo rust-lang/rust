@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test "\d+ bits" -> "N bits"
+
 // Tests that `transmute` cannot be called on types of different size.
 
 #![allow(warnings)]

@@ -1,11 +1,11 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/packed-struct-transmute.rs:35:24
+  --> $DIR/packed-struct-transmute.rs:36:24
    |
 LL |         let oof: Oof = mem::transmute(foo);
    |                        ^^^^^^^^^^^^^^
    |
-   = note: source type: Foo (72 bits)
-   = note: target type: Oof (128 bits)
+   = note: source type: Foo (N bits)
+   = note: target type: Oof (N bits)
 
 error: aborting due to previous error
 

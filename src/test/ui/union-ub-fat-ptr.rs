@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test "alignment \d+" -> "alignment N"
+// normalize-stderr-test "offset \d+" -> "offset N"
+// normalize-stderr-test "allocation \d+" -> "allocation N"
+// normalize-stderr-test "size \d+" -> "size N"
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct SliceRepr {

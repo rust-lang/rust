@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// normalize-stderr-test "\d+ bits" -> "N bits"
+
 use std::mem;
 use std::marker::PhantomData;
 
