@@ -798,12 +798,6 @@ enum LocalMutationIsAllowed {
     No,
 }
 
-struct AccessErrorsReported {
-    mutability_error: bool,
-    #[allow(dead_code)]
-    conflict_error: bool,
-}
-
 #[derive(Copy, Clone)]
 enum InitializationRequiringAction {
     Update,
@@ -1072,7 +1066,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind: (ShallowOrDeep, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
-    ) -> AccessErrorsReported {
+    ) {
         let (sd, rw) = kind;
 
         if let Activation(_, borrow_index) = rw {
@@ -1082,10 +1076,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      place: {:?} borrow_index: {:?}",
                     place_span.0, borrow_index
                 );
-                return AccessErrorsReported {
-                    mutability_error: false,
-                    conflict_error: true,
-                };
+                return;
             }
         }
 
@@ -1097,10 +1088,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 "access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
                 place_span, kind
             );
-            return AccessErrorsReported {
-                mutability_error: false,
-                conflict_error: true,
-            };
+            return;
         }
 
         let mutability_error =
@@ -1121,11 +1109,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
             self.access_place_error_reported
                 .insert((place_span.0.clone(), place_span.1));
-        }
-
-        AccessErrorsReported {
-            mutability_error,
-            conflict_error,
         }
     }
 
@@ -1275,23 +1258,25 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let errors_reported = self.access_place(
+        // Special case: you can assign a immutable local variable
+        // (e.g., `x = ...`) so long as it has never been initialized
+        // before (at this point in the flow).
+        if let &Place::Local(local) = place_span.0 {
+            if let Mutability::Not = self.mir.local_decls[local].mutability {
+                // check for reassignments to immutable local variables
+                self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
+                return;
+            }
+        }
+
+        // Otherwise, use the normal access permission rules.
+        self.access_place(
             context,
             place_span,
             (kind, Write(WriteKind::Mutate)),
-            // We want immutable upvars to cause an "assignment to immutable var"
-            // error, not an "reassignment of immutable var" error, because the
-            // latter can't find a good previous assignment span.
-            //
-            // There's probably a better way to do this.
-            LocalMutationIsAllowed::ExceptUpvars,
+            LocalMutationIsAllowed::No,
             flow_state,
         );
-
-        if !errors_reported.mutability_error {
-            // check for reassignments to immutable local variables
-            self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
-        }
     }
 
     fn consume_rvalue(
