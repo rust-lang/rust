@@ -55,7 +55,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     let liveness = LivenessResults::compute(mir, &liveness_map);
 
     // For everything else, it is only live where it is actually used.
-    {
+    if !liveness_map.is_empty() {
         let mut generator = TypeLivenessGenerator {
             cx,
             mir,

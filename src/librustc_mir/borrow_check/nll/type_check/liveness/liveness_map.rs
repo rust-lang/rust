@@ -86,6 +86,11 @@ impl NllLivenessMap {
             to_local,
         }
     }
+
+    /// True if there are no local variables that need liveness computation.
+    crate fn is_empty(&self) -> bool {
+        self.to_local.is_empty()
+    }
 }
 
 /// Index given to each local variable whose type contains a region.
