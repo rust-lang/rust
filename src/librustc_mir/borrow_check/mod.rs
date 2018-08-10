@@ -1264,7 +1264,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let &Place::Local(local) = place_span.0 {
             if let Mutability::Not = self.mir.local_decls[local].mutability {
                 // check for reassignments to immutable local variables
-                self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
+                self.check_if_reassignment_to_immutable_state(
+                    context,
+                    local,
+                    place_span,
+                    flow_state,
+                );
                 return;
             }
         }
@@ -1575,27 +1580,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn check_if_reassignment_to_immutable_state(
         &mut self,
         context: Context,
-        (place, span): (&Place<'tcx>, Span),
+        local: Local,
+        place_span: (&Place<'tcx>, Span),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        debug!("check_if_reassignment_to_immutable_state({:?})", place);
-        // determine if this path has a non-mut owner (and thus needs checking).
-        let err_place = match self.is_mutable(place, LocalMutationIsAllowed::No) {
-            Ok(..) => return,
-            Err(place) => place,
-        };
-        debug!(
-            "check_if_reassignment_to_immutable_state({:?}) - is an imm local",
-            place
-        );
+        debug!("check_if_reassignment_to_immutable_state({:?})", local);
 
-        for i in flow_state.ever_inits.iter_incoming() {
-            let init = self.move_data.inits[i];
-            let init_place = &self.move_data.move_paths[init.path].place;
-            if places_conflict::places_conflict(self.tcx, self.mir, &init_place, place, Deep) {
-                self.report_illegal_reassignment(context, (place, span), init.span, err_place);
-                break;
-            }
+        // Check if any of the initializiations of `local` have happened yet:
+        let mpi = self.move_data.rev_lookup.find_local(local);
+        let init_indices = &self.move_data.init_path_map[mpi];
+        let first_init_index = init_indices.iter().find(|ii| flow_state.ever_inits.contains(ii));
+        if let Some(&init_index) = first_init_index {
+            // And, if so, report an error.
+            let init = &self.move_data.inits[init_index];
+            self.report_illegal_reassignment(context, place_span, init.span, place_span.0);
         }
     }
 
