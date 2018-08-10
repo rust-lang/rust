@@ -18,7 +18,7 @@ use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::ich::Fingerprint;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};

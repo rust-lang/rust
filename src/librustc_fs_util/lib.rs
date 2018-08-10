@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::path::{self, Path, PathBuf};
-use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::ffi::CString;
 use std::fs;
 use std::io;
 
@@ -29,10 +29,10 @@ use std::io;
 //
 // For some more information, see this comment:
 //   https://github.com/rust-lang/rust/issues/25505#issuecomment-102876737
+#[cfg(windows)]
 pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
-    if !cfg!(windows) {
-        return p.to_path_buf();
-    }
+    use std::path;
+    use std::ffi::OsString;
     let mut components = p.components();
     let prefix = match components.next() {
         Some(path::Component::Prefix(p)) => p,
@@ -54,6 +54,11 @@ pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
         }
         _ => p.to_path_buf(),
     }
+}
+
+#[cfg(not(windows))]
+pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
+    p.to_path_buf()
 }
 
 pub enum LinkOrCopy {
@@ -108,4 +113,16 @@ pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(p: P,
             }
         }
     }
+}
+
+#[cfg(unix)]
+pub fn path2cstr(p: &Path) -> CString {
+    use std::os::unix::prelude::*;
+    use std::ffi::OsStr;
+    let p: &OsStr = p.as_ref();
+    CString::new(p.as_bytes()).unwrap()
+}
+#[cfg(windows)]
+pub fn path2cstr(p: &Path) -> CString {
+    CString::new(p.to_str().unwrap()).unwrap()
 }

@@ -32,6 +32,7 @@ backtrace = "0.3.3"
 parking_lot = "0.5.5"
 byteorder = { version = "1.1", features = ["i128"]}
 chalk-engine = { version = "0.6.0", default-features=false }
+rustc_fs_util = { path = "../librustc_fs_util" }
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.

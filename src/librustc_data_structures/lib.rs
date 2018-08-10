@@ -46,6 +46,7 @@ extern crate stable_deref_trait;
 extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
+extern crate serialize;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -53,6 +54,7 @@ extern crate rustc_cratesio_shim;
 
 pub use rustc_serialize::hex::ToHex;
 
+pub mod svh;
 pub mod accumulate_vec;
 pub mod array_vec;
 pub mod base_n;
@@ -71,13 +73,14 @@ pub mod small_vec;
 pub mod snapshot_map;
 pub use ena::snapshot_vec;
 pub mod sorted_map;
-pub mod stable_hasher;
+#[macro_use] pub mod stable_hasher;
 pub mod sync;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod tuple_slice;
 pub use ena::unify;
 pub mod work_queue;
+pub mod fingerprint;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

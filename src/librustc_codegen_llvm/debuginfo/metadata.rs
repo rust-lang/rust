@@ -28,14 +28,15 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use rustc::ich::{Fingerprint, NodeIdHashingMode};
+use rustc::ich::NodeIdHashingMode;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
-use rustc::util::common::path2cstr;
+use rustc_fs_util::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;

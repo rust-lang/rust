@@ -16,10 +16,8 @@ use std::str::FromStr;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
-use ich::StableHashingContext;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
-use rustc_data_structures::stable_hasher::ToStableHashKey;
 use lint;
 use middle::cstore;
 
@@ -126,25 +124,7 @@ pub enum OutputType {
     DepInfo,
 }
 
-
-impl_stable_hash_for!(enum self::OutputType {
-    Bitcode,
-    Assembly,
-    LlvmAssembly,
-    Mir,
-    Metadata,
-    Object,
-    Exe,
-    DepInfo
-});
-
-impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for OutputType {
-    type KeyType = OutputType;
-    #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self::KeyType {
-        *self
-    }
-}
+impl_stable_hash_via_hash!(OutputType);
 
 impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
@@ -233,9 +213,7 @@ impl Default for ErrorOutputType {
 #[derive(Clone, Hash)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
-impl_stable_hash_for!(tuple_struct self::OutputTypes {
-    map
-});
+impl_stable_hash_via_hash!(OutputTypes);
 
 impl OutputTypes {
     pub fn new(entries: &[(OutputType, Option<PathBuf>)]) -> OutputTypes {
@@ -512,7 +490,7 @@ impl Input {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     pub out_filestem: String,
@@ -521,13 +499,7 @@ pub struct OutputFilenames {
     pub outputs: OutputTypes,
 }
 
-impl_stable_hash_for!(struct self::OutputFilenames {
-    out_directory,
-    out_filestem,
-    single_output_file,
-    extra,
-    outputs
-});
+impl_stable_hash_via_hash!(OutputFilenames);
 
 pub const RUST_CGU_EXT: &str = "rcgu";
 

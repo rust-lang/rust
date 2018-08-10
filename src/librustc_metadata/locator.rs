@@ -226,7 +226,7 @@ use cstore::{MetadataRef, MetadataBlob};
 use creader::Library;
 use schema::{METADATA_HEADER, rustc_version};
 
-use rustc::hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{config, Session};
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};

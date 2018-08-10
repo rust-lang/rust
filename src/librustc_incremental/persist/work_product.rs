@@ -13,7 +13,7 @@
 use persist::fs::*;
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::session::Session;
-use rustc::util::fs::link_or_copy;
+use rustc_fs_util::link_or_copy;
 use std::path::PathBuf;
 use std::fs as std_fs;
 

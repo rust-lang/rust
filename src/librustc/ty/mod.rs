@@ -18,7 +18,7 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
-use hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
 use infer::canonical::Canonical;
@@ -37,6 +37,7 @@ use ty::walk::TypeWalker;
 use util::captures::Captures;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
+use session::DataTypeKind;
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
@@ -1809,6 +1810,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AdtKind { Struct, Union, Enum }
+
+impl Into<DataTypeKind> for AdtKind {
+    fn into(self) -> DataTypeKind {
+        match self {
+            AdtKind::Struct => DataTypeKind::Struct,
+            AdtKind::Union => DataTypeKind::Union,
+            AdtKind::Enum => DataTypeKind::Enum,
+        }
+    }
+}
 
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable, Default)]

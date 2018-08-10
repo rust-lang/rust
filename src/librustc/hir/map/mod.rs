@@ -22,6 +22,7 @@ use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 use middle::cstore::CrateStore;
 
 use rustc_target::spec::abi::Abi;
+use rustc_data_structures::svh::Svh;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::ext::base::MacroKind;
@@ -29,7 +30,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use hir::*;
 use hir::print::Nested;
-use hir::svh::Svh;
 use util::nodemap::FxHashMap;
 
 use std::io;

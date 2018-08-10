@@ -37,7 +37,7 @@ use rustc_data_structures::stable_hasher::{HashStable,
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
-pub fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
+fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
     ich::IGNORED_ATTRIBUTES.iter().map(|&s| Symbol::intern(s)).collect()
 }
@@ -183,7 +183,10 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        self.sess.ignored_attr_names.contains(&name)
+        thread_local! {
+            static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
+        }
+        IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
 
     pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {

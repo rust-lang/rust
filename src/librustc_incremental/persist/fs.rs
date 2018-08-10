@@ -114,11 +114,11 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::hir::svh::Svh;
 use rustc::session::{Session, CrateDisambiguator};
-use rustc::util::fs as fs_util;
+use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_data_structures::{flock, base_n};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::svh::Svh;
 
 use std::fs as std_fs;
 use std::io;
@@ -429,11 +429,11 @@ fn copy_files(sess: &Session,
                 let source_path = entry.path();
 
                 debug!("copying into session dir: {}", source_path.display());
-                match fs_util::link_or_copy(source_path, target_file_path) {
-                    Ok(fs_util::LinkOrCopy::Link) => {
+                match link_or_copy(source_path, target_file_path) {
+                    Ok(LinkOrCopy::Link) => {
                         files_linked += 1
                     }
-                    Ok(fs_util::LinkOrCopy::Copy) => {
+                    Ok(LinkOrCopy::Copy) => {
                         files_copied += 1
                     }
                     Err(_) => return Err(())

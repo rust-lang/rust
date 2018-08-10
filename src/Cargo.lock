@@ -1887,6 +1887,7 @@ dependencies = [
  "rustc_apfloat 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_fs_util 0.0.0",
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
@@ -2186,6 +2187,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_fs_util"
+version = "0.0.0"
+
+[[package]]
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
@@ -2194,6 +2199,7 @@ dependencies = [
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_fs_util 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",

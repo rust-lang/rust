@@ -72,6 +72,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(crate_in_paths)]
+#![feature(crate_visibility_modifier)]
 
 #![recursion_limit="512"]
 
@@ -99,6 +100,7 @@ extern crate syntax_pos;
 extern crate jobserver;
 extern crate proc_macro;
 extern crate chalk_engine;
+extern crate rustc_fs_util;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -162,9 +164,9 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
-    pub mod fs;
     pub mod time_graph;
     pub mod profiling;
+    pub mod bug;
 }
 
 // A private module so that macro-expanded idents like

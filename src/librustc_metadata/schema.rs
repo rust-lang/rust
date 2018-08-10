@@ -20,6 +20,7 @@ use rustc::mir;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_data_structures::svh::Svh;
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
@@ -187,7 +188,7 @@ pub struct CrateRoot {
     pub name: Symbol,
     pub triple: TargetTriple,
     pub extra_filename: String,
-    pub hash: hir::svh::Svh,
+    pub hash: Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
     pub edition: Edition,
@@ -223,7 +224,7 @@ pub struct CrateRoot {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateDep {
     pub name: ast::Name,
-    pub hash: hir::svh::Svh,
+    pub hash: Svh,
     pub kind: DepKind,
     pub extra_filename: String,
 }

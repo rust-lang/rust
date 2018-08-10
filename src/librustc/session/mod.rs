@@ -12,16 +12,14 @@ pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
 use hir::def_id::CrateNum;
-use ich::Fingerprint;
+use rustc_data_structures::fingerprint::Fingerprint;
 
-use ich;
 use lint;
 use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{OutputType, Lto};
-use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
@@ -34,7 +32,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 use syntax::edition::Edition;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
-use syntax::symbol::Symbol;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -51,7 +48,6 @@ use std;
 use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
-use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -127,9 +123,6 @@ pub struct Session {
     pub imported_macro_spans: OneThread<RefCell<HashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
-
-    /// A cache of attributes ignored by StableHashingContext
-    pub ignored_attr_names: FxHashSet<Symbol>,
 
     /// Used by -Z profile-queries in util::common
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
@@ -1143,7 +1136,6 @@ pub fn build_session_(
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
-        ignored_attr_names: ich::compute_ignored_attr_names(),
         self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
@@ -1235,7 +1227,7 @@ impl From<Fingerprint> for CrateDisambiguator {
     }
 }
 
-impl_stable_hash_for!(tuple_struct CrateDisambiguator { fingerprint });
+impl_stable_hash_via_hash!(CrateDisambiguator);
 
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
@@ -1306,40 +1298,4 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     } else {
         Err(CompileIncomplete::Errored(ErrorReported))
     }
-}
-
-#[cold]
-#[inline(never)]
-pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
-    // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro definition
-    opt_span_bug_fmt(file, line, None::<Span>, args);
-}
-
-#[cold]
-#[inline(never)]
-pub fn span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
-    span: S,
-    args: fmt::Arguments,
-) -> ! {
-    opt_span_bug_fmt(file, line, Some(span), args);
-}
-
-fn opt_span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
-    span: Option<S>,
-    args: fmt::Arguments,
-) -> ! {
-    tls::with_opt(move |tcx| {
-        let msg = format!("{}:{}: {}", file, line, args);
-        match (tcx, span) {
-            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
-            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
-            (None, _) => panic!(msg),
-        }
-    });
-    unreachable!();
 }

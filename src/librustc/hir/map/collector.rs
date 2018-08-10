@@ -12,7 +12,7 @@ use super::*;
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use hir::def_id::{LOCAL_CRATE, CrateNum};
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use ich::Fingerprint;
 use middle::cstore::CrateStore;
 use session::CrateDisambiguator;

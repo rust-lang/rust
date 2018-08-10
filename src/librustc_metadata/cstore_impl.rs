@@ -30,6 +30,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
+use rustc_data_structures::svh::Svh;
 
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
@@ -515,7 +516,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).root.disambiguator
     }
 
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh
     {
         self.get_crate_data(cnum).root.hash
     }

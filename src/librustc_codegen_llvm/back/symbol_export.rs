@@ -15,7 +15,7 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
-use rustc::ich::Fingerprint;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
