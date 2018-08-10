@@ -4309,7 +4309,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let is_visible_to_user =
                         !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
 
-                    if !is_extern_crate_that_also_appears_in_prelude || is_visible_to_user {
+                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         if seen_modules.insert(module.def_id().unwrap()) {
