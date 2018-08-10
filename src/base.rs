@@ -839,11 +839,11 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     match lhs.layout().ty.sty {
-        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _}) => {
+        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) => {
             if !ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
                 unimpl!("Unsized values are not yet implemented");
             }
-        },
+        }
         _ => bug!("trans_ptr_binop on non ptr"),
     }
     binop_match! {
