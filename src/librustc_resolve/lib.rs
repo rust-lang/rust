@@ -4302,7 +4302,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
 
-                    if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
+                    let is_extern_crate_that_also_appears_in_prelude =
+                        name_binding.is_extern_crate() &&
+                        self.extern_prelude.contains(&ident.name);
+
+                    let is_visible_to_user =
+                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
+
+                    if !is_extern_crate_that_also_appears_in_prelude || is_visible_to_user {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         if seen_modules.insert(module.def_id().unwrap()) {
