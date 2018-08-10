@@ -93,7 +93,10 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-sanitizers \
       --enable-profiler \
       --enable-compiler-docs \
-      --set target.x86_64-unknown-linux-gnu.linker=clang
+      --set target.x86_64-unknown-linux-gnu.linker=clang \
+      --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
+      --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
+      --set llvm.thin-lto=true
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
