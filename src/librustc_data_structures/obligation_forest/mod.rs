@@ -187,7 +187,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                               -> Result<(), ()>
     {
         if self.done_cache.contains(obligation.as_predicate()) {
-            return Ok(())
+            return Ok(());
         }
 
         match self.waiting_cache.entry(obligation.as_predicate().clone()) {
@@ -269,8 +269,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                    self.nodes[index]);
 
             let result = match self.nodes[index] {
-                Node { state: ref _state, ref mut obligation, .. }
-                    if _state.get() == NodeState::Pending =>
+                Node { ref state, ref mut obligation, .. }
+                    if state.get() == NodeState::Pending =>
                 {
                     processor.process_obligation(obligation)
                 }
