@@ -279,9 +279,10 @@ impl<V: Idx> LivenessResult<V> {
 pub enum DefUse {
     Def,
     Use,
+    Drop,
 }
 
-pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Option<DefUse> {
+pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
@@ -322,13 +323,8 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Opti
         PlaceContext::Inspect |
         PlaceContext::Copy |
         PlaceContext::Move |
-        PlaceContext::Validate => {
-            if mode.include_regular_use {
-                Some(DefUse::Use)
-            } else {
-                None
-            }
-        }
+        PlaceContext::Validate =>
+            Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////
         // DROP USES
@@ -338,13 +334,8 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Opti
         // uses in drop are special because `#[may_dangle]`
         // attributes can affect whether lifetimes must be live.
 
-        PlaceContext::Drop => {
-            if mode.include_drops {
-                Some(DefUse::Use)
-            } else {
-                None
-            }
-        }
+        PlaceContext::Drop =>
+            Some(DefUse::Drop),
     }
 }
 
@@ -434,10 +425,11 @@ where
 {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
         if let Some(v_index) = self.map.from_local(local) {
-            match categorize(context, self.mode) {
+            match categorize(context) {
                 Some(DefUse::Def) => self.defs_uses.add_def(v_index),
-                Some(DefUse::Use) => self.defs_uses.add_use(v_index),
-                None => (),
+                Some(DefUse::Use) if self.mode.include_regular_use => self.defs_uses.add_use(v_index),
+                Some(DefUse::Drop) if self.mode.include_drops => self.defs_uses.add_use(v_index),
+                _ => (),
             }
         }
     }
