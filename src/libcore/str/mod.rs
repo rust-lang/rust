@@ -1567,7 +1567,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 #[unstable(feature = "str_internals", issue = "0")]
 #[inline]
 pub fn utf8_char_width(b: u8) -> usize {
-    return UTF8_CHAR_WIDTH[b as usize] as usize;
+    UTF8_CHAR_WIDTH[b as usize] as usize
 }
 
 /// Mask of the value bits of a continuation byte.

@@ -267,7 +267,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     t!(io::copy(&mut io.take(amt),
                 &mut t!(File::create(&dst))));
     t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
-    return dst
+    dst
 }
 
 fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
