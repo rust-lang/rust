@@ -9,20 +9,17 @@ use drop_bomb::DropBomb;
 
 use ::{
     Result,
-    req::{Request, Notification},
+    req::{ClientRequest, Notification},
     io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
 };
 
-pub struct Responder<R: Request> {
+pub struct Responder<R: ClientRequest> {
     id: u64,
     bomb: DropBomb,
     ph: PhantomData<R>,
 }
 
-impl<R: Request> Responder<R>
-    where
-        R::Params: DeserializeOwned,
-        R::Result: Serialize,
+impl<R: ClientRequest> Responder<R>
 {
     pub fn response(self, io: &mut Io, resp: Result<R::Result>) -> Result<()> {
         match resp {
@@ -52,11 +49,8 @@ impl<R: Request> Responder<R>
 }
 
 
-fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
-    where
-        R: Request,
-        R::Params: DeserializeOwned,
-        R::Result: Serialize,
+fn parse_request_as<R: ClientRequest>(raw: RawRequest)
+    -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
 {
     if raw.method != R::METHOD {
         return Ok(Err(raw));
@@ -73,9 +67,7 @@ fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Para
 
 pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
     where
-        R: Request,
-        R::Params: DeserializeOwned,
-        R::Result: Serialize,
+        R: ClientRequest,
         F: FnOnce(R::Params, Responder<R>) -> Result<()>
 {
     match req.take() {
@@ -90,11 +82,8 @@ pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
     }
 }
 
-pub fn expect_request<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Params, Responder<R>)>>
-    where
-        R: Request,
-        R::Params: DeserializeOwned,
-        R::Result: Serialize,
+pub fn expect_request<R: ClientRequest>(io: &mut Io, raw: RawRequest)
+    -> Result<Option<(R::Params, Responder<R>)>>
 {
     let ret = match parse_request_as::<R>(raw)? {
         Ok(x) => Some(x),

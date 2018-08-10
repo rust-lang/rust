@@ -28,12 +28,10 @@ use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
 use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, TextDocumentIdentifier};
-use serde::{ser::Serialize, de::DeserializeOwned};
 use libanalysis::{WorldState, World};
 
 use ::{
     io::{Io, RawMsg, RawRequest},
-    req::Request,
     handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics},
 };
 
@@ -261,17 +259,13 @@ fn main_loop(
     }
 }
 
-fn handle_request_on_threadpool<R>(
+fn handle_request_on_threadpool<R: req::ClientRequest>(
     req: &mut Option<RawRequest>,
     pool: &ThreadPool,
     world: &WorldState,
     sender: &Sender<Thunk>,
     f: fn(World, R::Params) -> Result<R::Result>,
 ) -> Result<()>
-    where
-        R: Request + Send + 'static,
-        R::Params: DeserializeOwned + Send + 'static,
-        R::Result: Serialize + Send + 'static,
 {
     dispatch::handle_request::<R, _>(req, |params, resp| {
         let world = world.snapshot();

@@ -1,9 +1,28 @@
+use serde::{ser::Serialize, de::DeserializeOwned};
 use languageserver_types::{TextDocumentIdentifier, Range};
 
 pub use languageserver_types::{
     request::*, notification::*,
-    InitializeResult, PublishDiagnosticsParams
+    InitializeResult, PublishDiagnosticsParams,
 };
+
+
+pub trait ClientRequest: Send + 'static {
+    type Params: DeserializeOwned + Send + 'static;
+    type Result: Serialize + Send + 'static;
+    const METHOD: &'static str;
+}
+
+impl<T> ClientRequest for T
+    where T: Request + Send + 'static,
+          T::Params: DeserializeOwned + Send + 'static,
+          T::Result: Serialize + Send + 'static,
+{
+    type Params = <T as Request>::Params;
+    type Result = <T as Request>::Result;
+    const METHOD: &'static str = <T as Request>::METHOD;
+}
+
 
 pub enum SyntaxTree {}
 
