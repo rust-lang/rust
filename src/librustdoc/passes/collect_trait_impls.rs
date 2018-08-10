@@ -88,12 +88,5 @@ pub fn collect_trait_impls(mut krate: Crate, cx: &DocContext) -> Crate {
         panic!("collect-trait-impls can't run");
     }
 
-    // pulling in the impls puts their trait info into the DocContext, but that's already been
-    // drained by now, so stuff that info into the Crate so the rendering can pick it up
-    let mut external_traits = cx.external_traits.borrow_mut();
-    for (did, trait_) in external_traits.drain() {
-        krate.external_traits.entry(did).or_insert(trait_);
-    }
-
     krate
 }

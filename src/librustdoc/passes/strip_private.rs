@@ -22,10 +22,10 @@ pub const STRIP_PRIVATE: Pass =
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(mut krate: clean::Crate, _: &DocContext) -> clean::Crate {
+pub fn strip_private(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet();
-    let access_levels = krate.access_levels.clone();
+    let access_levels = cx.access_levels.borrow().clone();
 
     // strip all private items
     {

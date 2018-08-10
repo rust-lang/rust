@@ -41,6 +41,7 @@ use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
@@ -595,6 +596,9 @@ pub fn run_core(search_paths: SearchPaths,
             }
 
             ctxt.sess().abort_if_errors();
+
+            krate.access_levels = Arc::new(ctxt.access_levels.into_inner());
+            krate.external_traits = ctxt.external_traits.into_inner();
 
             (krate, ctxt.renderinfo.into_inner(), passes)
         }), &sess)
