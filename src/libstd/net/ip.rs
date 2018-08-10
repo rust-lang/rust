@@ -483,11 +483,11 @@ impl Ipv4Addr {
     /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_private(&self) -> bool {
-        match (self.octets()[0], self.octets()[1]) {
-            (10, _) => true,
-            (172, b) if b >= 16 && b <= 31 => true,
-            (192, 168) => true,
-            _ => false
+        match self.octets() {
+            [10, _..] => true,
+            [172, b, _..] if b >= 16 && b <= 31 => true,
+            [192, 168, _..] => true,
+            _ => false,
         }
     }
 
@@ -509,7 +509,10 @@ impl Ipv4Addr {
     /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
-        self.octets()[0] == 169 && self.octets()[1] == 254
+        match self.octets() {
+            [169, 254, _..] => true,
+            _ => false,
+        }
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -612,11 +615,11 @@ impl Ipv4Addr {
     /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_documentation(&self) -> bool {
-        match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
-            (192, 0, 2, _) => true,
-            (198, 51, 100, _) => true,
-            (203, 0, 113, _) => true,
-            _ => false
+        match self.octets() {
+            [192, 0, 2, _] => true,
+            [198, 51, 100, _] => true,
+            [203, 0, 113, _] => true,
+            _ => false,
         }
     }
 
