@@ -18,6 +18,7 @@
 
 #![recursion_limit="256"]
 
+#[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate rustc_typeck;
@@ -147,6 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
+        debug!("Walked item {:?}", item);
         let inherited_item_level = match item.node {
             // Impls inherit level from their types and traits
             hir::ItemKind::Impl(..) => {
@@ -164,12 +166,17 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
+                if let hir::ItemKind::Fn(ref _decl, ref _header, ref _generics, ref _body) = item.node {
+                    debug!("Walked function");
+                }
                 if item.vis.node.is_pub() { self.prev_level } else { None }
             }
         };
 
         // Update level of the item itself
         let item_level = self.update(item.id, inherited_item_level);
+
+        debug!("believed to be: {:?}", item_level);
 
         // Update levels of nested things
         match item.node {
@@ -1737,6 +1744,8 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
 
+    debug!("access levels after embargo: {:?}", &visitor.access_levels);
+
     {
         let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
             tcx,
@@ -1765,6 +1774,8 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
+
+    debug!("final access levels: {:?}", &visitor.access_levels);
 
     Lrc::new(visitor.access_levels)
 }
