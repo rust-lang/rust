@@ -6,7 +6,8 @@ import {
     ServerOptions,
     TransportKind,
     Executable,
-    TextDocumentIdentifier
+    TextDocumentIdentifier,
+    Range
 } from 'vscode-languageclient';
 
 
@@ -18,6 +19,7 @@ let uris = {
 
 
 export function activate(context: vscode.ExtensionContext) {
+    let textDocumentContentProvider = new TextDocumentContentProvider()
     let dispose = (disposable) => {
         context.subscriptions.push(disposable);
     }
@@ -26,11 +28,39 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     registerCommand('libsyntax-rust.syntaxTree', () => openDoc(uris.syntaxTree))
+    registerCommand('libsyntax-rust.extendSelection', async () => {
+        let editor = vscode.window.activeTextEditor
+        if (editor == null || editor.document.languageId != "rust") return
+        let request: ExtendSelectionParams = {
+            textDocument: { uri: editor.document.uri.toString() },
+            selections: editor.selections.map((s) => {
+                let r: Range = { start: s.start, end: s.end }
+                return r;
+            })
+        }
+        let response = await client.sendRequest<ExtendSelectionResult>("m/extendSelection", request)
+        editor.selections = response.selections.map((range) => {
+            return new vscode.Selection(
+                new vscode.Position(range.start.line, range.start.character),
+                new vscode.Position(range.end.line, range.end.character),
+            )
+        })
+    })
+
     dispose(vscode.workspace.registerTextDocumentContentProvider(
         'libsyntax-rust',
-        new TextDocumentContentProvider()
+        textDocumentContentProvider
     ))
     startServer()
+    vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
+        let doc = event.document
+        if (doc.languageId != "rust") return
+        // We need to order this after LS updates, but there's no API for that.
+        // Hence, good old setTimeout.
+        setTimeout(() => {
+            textDocumentContentProvider.eventEmitter.fire(uris.syntaxTree)
+        }, 10)
+    }, null, context.subscriptions)
 }
 
 export function deactivate(): Thenable<void> {
@@ -76,11 +106,28 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
     public provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
         let editor = vscode.window.activeTextEditor;
         if (editor == null) return ""
-        let textDocument: TextDocumentIdentifier = { uri: editor.document.uri.toString() };
-        return client.sendRequest("m/syntaxTree", { textDocument })
+        let request: SyntaxTreeParams = {
+            textDocument: { uri: editor.document.uri.toString() }
+        };
+        return client.sendRequest<SyntaxTreeResult>("m/syntaxTree", request);
     }
 
     get onDidChange(): vscode.Event<vscode.Uri> {
         return this.eventEmitter.event
     }
+}
+
+interface SyntaxTreeParams {
+    textDocument: TextDocumentIdentifier;
+}
+
+type SyntaxTreeResult = string
+
+interface ExtendSelectionParams {
+    textDocument: TextDocumentIdentifier;
+    selections: Range[];
+}
+
+interface ExtendSelectionResult {
+    selections: Range[];
 }

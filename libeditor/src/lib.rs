@@ -1,6 +1,8 @@
 extern crate libsyntax2;
+extern crate superslice;
 
 mod extend_selection;
+mod line_index;
 
 use libsyntax2::{
     SyntaxNodeRef, AstNode,

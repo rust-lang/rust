@@ -9,8 +9,8 @@ use drop_bomb::DropBomb;
 
 use ::{
     Result,
-    req::Request,
-    io::{Io, RawMsg, RawResponse, RawRequest},
+    req::{Request, Notification},
+    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
 };
 
 pub struct Responder<R: Request> {
@@ -52,7 +52,7 @@ impl<R: Request> Responder<R>
 }
 
 
-pub fn parse_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
+pub fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
     where
         R: Request,
         R::Params: DeserializeOwned,
@@ -71,13 +71,13 @@ pub fn parse_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, 
     Ok(Ok((params, responder)))
 }
 
-pub fn expect<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Params, Responder<R>)>>
+pub fn expect_request<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Params, Responder<R>)>>
     where
         R: Request,
         R::Params: DeserializeOwned,
         R::Result: Serialize,
 {
-    let ret = match parse_as::<R>(raw)? {
+    let ret = match parse_request_as::<R>(raw)? {
         Ok(x) => Some(x),
         Err(raw) => {
             unknown_method(io, raw)?;
@@ -86,6 +86,37 @@ pub fn expect<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Params, Resp
     };
     Ok(ret)
 }
+
+pub fn parse_notification_as<N>(raw: RawNotification) -> Result<::std::result::Result<N::Params, RawNotification>>
+    where
+        N: Notification,
+        N::Params: DeserializeOwned,
+{
+    if raw.method != N::METHOD {
+        return Ok(Err(raw));
+    }
+    let params: N::Params = serde_json::from_value(raw.params)?;
+    Ok(Ok(params))
+}
+
+pub fn handle_notification<N, F>(not: &mut Option<RawNotification>, f: F) -> Result<()>
+    where
+        N: Notification,
+        N::Params: DeserializeOwned,
+        F: FnOnce(N::Params) -> Result<()>
+{
+    match not.take() {
+        None => Ok(()),
+        Some(n) => match parse_notification_as::<N>(n)? {
+            Ok(params) => f(params),
+            Err(n) => {
+                *not = Some(n);
+                Ok(())
+            },
+        }
+    }
+}
+
 
 pub fn unknown_method(io: &mut Io, raw: RawRequest) -> Result<()> {
     error(io, raw.id, ErrorCode::MethodNotFound, "unknown method")

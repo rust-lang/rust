@@ -1,6 +1,10 @@
 extern crate failure;
-extern crate libsyntax2;
 extern crate parking_lot;
+#[macro_use]
+extern crate log;
+extern crate libsyntax2;
+
+mod arena;
 
 use std::{
     fs,
@@ -66,8 +70,10 @@ impl World {
                 return Ok(file.clone());
             }
         }
-
-        let file = self.with_file_text(path, ast::File::parse)?;
+        let file = self.with_file_text(path, |text| {
+            trace!("parsing file: {}", path.display());
+            ast::File::parse(text)
+        })?;
         let mut guard = self.data.file_map.write();
         let file = guard.entry(path.to_owned())
             .or_insert(file)
@@ -86,7 +92,7 @@ impl World {
                 return Ok(f(&*text));
             }
         }
-
+        trace!("loading file from disk: {}", path.display());
         let text = fs::read_to_string(path)?;
         {
             let mut guard = self.data.fs_map.write();

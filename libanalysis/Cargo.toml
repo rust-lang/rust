@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+log = "0.4.2"
 failure = "0.1.2"
 parking_lot = "0.6.3"
 libsyntax2 = { path = "../" }

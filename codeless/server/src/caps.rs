@@ -1,7 +1,20 @@
-use languageserver_types::ServerCapabilities;
+use languageserver_types::{
+    ServerCapabilities,
+    TextDocumentSyncCapability,
+    TextDocumentSyncOptions,
+    TextDocumentSyncKind,
+};
 
 pub const SERVER_CAPABILITIES: ServerCapabilities = ServerCapabilities {
-    text_document_sync: None,
+    text_document_sync: Some(TextDocumentSyncCapability::Options(
+        TextDocumentSyncOptions {
+            open_close: Some(true),
+            change: Some(TextDocumentSyncKind::Full),
+            will_save: None,
+            will_save_wait_until: None,
+            save: None,
+        }
+    )),
     hover_provider: None,
     completion_provider: None,
     signature_help_provider: None,

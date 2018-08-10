@@ -19,20 +19,25 @@ mod io;
 mod caps;
 mod req;
 mod dispatch;
+mod handlers;
+
+use std::path::PathBuf;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
 use libanalysis::WorldState;
+use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, TextDocumentIdentifier};
 
 use ::{
     io::{Io, RawMsg},
+    handlers::handle_syntax_tree,
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 fn main() -> Result<()> {
-    Logger::with_env_or_str("m=trace")
+    Logger::with_env_or_str("m=trace, libanalysis=trace")
         .log_to_file()
         .directory("log")
         .start()?;
@@ -70,7 +75,7 @@ fn initialize(io: &mut Io) -> Result<()> {
     loop {
         match io.recv()? {
             RawMsg::Request(req) => {
-                if let Some((_params, resp)) = dispatch::expect::<req::Initialize>(io, req)? {
+                if let Some((_params, resp)) = dispatch::expect_request::<req::Initialize>(io, req)? {
                     resp.result(io, req::InitializeResult {
                         capabilities: caps::SERVER_CAPABILITIES
                     })?;
@@ -148,18 +153,12 @@ fn main_loop(
 
         match msg {
             RawMsg::Request(req) => {
-                let req = match dispatch::parse_as::<req::SyntaxTree>(req)? {
+                let req = match dispatch::parse_request_as::<req::SyntaxTree>(req)? {
                     Ok((params, resp)) => {
                         let world = world.snapshot();
                         let sender = sender.clone();
                         pool.execute(move || {
-                            let res: Result<String> = (|| {
-                                let path = params.text_document.uri.to_file_path()
-                                    .map_err(|()| format_err!("invalid path"))?;
-                                let file = world.file_syntax(&path)?;
-                                Ok(libeditor::syntax_tree(&file))
-                            })();
-
+                            let res: Result<String> = handle_syntax_tree(world, params);
                             sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
                         });
                         continue;
@@ -167,10 +166,36 @@ fn main_loop(
                     Err(req) => req,
                 };
 
-                if let Some(((), resp)) = dispatch::expect::<req::Shutdown>(io, req)? {
-                    info!("shutdown request");
+                if let Some(((), resp)) = dispatch::expect_request::<req::Shutdown>(io, req)? {
+                    info!("clean shutdown started");
                     resp.result(io, ())?;
                     return Ok(());
+                }
+            }
+            RawMsg::Notification(not) => {
+                use dispatch::handle_notification as h;
+                let mut not = Some(not);
+                h::<req::DidOpenTextDocument, _>(&mut not, |params| {
+                    let path = params.text_document.file_path()?;
+                    world.change_overlay(path, Some(params.text_document.text));
+                    Ok(())
+                })?;
+                h::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
+                    let path = params.text_document.file_path()?;
+                    let text = params.content_changes.pop()
+                        .ok_or_else(|| format_err!("empty changes"))?
+                        .text;
+                    world.change_overlay(path, Some(text));
+                    Ok(())
+                })?;
+                h::<req::DidCloseTextDocument, _>(&mut not, |params| {
+                    let path = params.text_document.file_path()?;
+                    world.change_overlay(path, None);
+                    Ok(())
+                })?;
+
+                if let Some(not) = not {
+                    error!("unhandled notification: {:?}", not)
                 }
             }
             msg => {
@@ -180,7 +205,6 @@ fn main_loop(
     }
 }
 
-
 trait FnBox<A, R>: Send {
     fn call_box(self: Box<Self>, a: A) -> R;
 }
@@ -188,5 +212,30 @@ trait FnBox<A, R>: Send {
 impl<A, R, F: FnOnce(A) -> R + Send> FnBox<A, R> for F {
     fn call_box(self: Box<F>, a: A) -> R {
         (*self)(a)
+    }
+}
+
+trait FilePath {
+    fn file_path(&self) -> Result<PathBuf>;
+}
+
+impl FilePath for TextDocumentItem {
+    fn file_path(&self) -> Result<PathBuf> {
+        self.uri.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", self.uri))
+    }
+}
+
+impl FilePath for VersionedTextDocumentIdentifier {
+    fn file_path(&self) -> Result<PathBuf> {
+        self.uri.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", self.uri))
+    }
+}
+
+impl FilePath for TextDocumentIdentifier {
+    fn file_path(&self) -> Result<PathBuf> {
+        self.uri.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", self.uri))
     }
 }

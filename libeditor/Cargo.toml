@@ -5,5 +5,6 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 publish = false
 
 [dependencies]
-libsyntax2 = { path = "../" }
 itertools = "0.7.8"
+superslice = "0.1.0"
+libsyntax2 = { path = "../" }
