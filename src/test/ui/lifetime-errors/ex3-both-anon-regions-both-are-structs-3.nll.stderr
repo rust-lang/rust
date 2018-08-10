@@ -8,10 +8,10 @@ error: unsatisfied lifetime constraints
   --> $DIR/ex3-both-anon-regions-both-are-structs-3.rs:16:5
    |
 LL | fn foo(mut x: Ref) {
-   |               ---
-   |               |
-   |               lifetime `'1` appears in this type
-   |               lifetime `'2` appears in this type
+   |        -----
+   |        |
+   |        has type `Ref<'_, '1>`
+   |        has type `Ref<'2, '_>`
 LL |     x.a = x.b; //~ ERROR lifetime mismatch
    |     ^^^^^^^^^ requires that `'1` must outlive `'2`
 
