@@ -4342,7 +4342,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let extern_prelude_names = self.extern_prelude.clone();
             for &krate_name in extern_prelude_names.iter() {
                 let krate_ident = Ident::with_empty_ctxt(krate_name);
-                let external_prelude_module =  self.load_extern_prelude_crate_if_needed(krate_ident);
+                let external_prelude_module = self.load_extern_prelude_crate_if_needed(krate_ident);
 
                 suggestions.extend(
                     self.lookup_import_candidates_from_module(
