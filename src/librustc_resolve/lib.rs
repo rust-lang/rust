@@ -4269,7 +4269,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     if filter_fn(name_binding.def()) {
                         // create the path
                         let mut segms = path_segments.clone();
-                        if self.session.rust_2018() && !in_module_is_extern {
+                        if self.session.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
 
