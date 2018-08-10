@@ -52,7 +52,7 @@ impl<R: Request> Responder<R>
 }
 
 
-pub fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
+fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
     where
         R: Request,
         R::Params: DeserializeOwned,
@@ -71,6 +71,25 @@ pub fn parse_request_as<R>(raw: RawRequest) -> Result<::std::result::Result<(R::
     Ok(Ok((params, responder)))
 }
 
+pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
+    where
+        R: Request,
+        R::Params: DeserializeOwned,
+        R::Result: Serialize,
+        F: FnOnce(R::Params, Responder<R>) -> Result<()>
+{
+    match req.take() {
+        None => Ok(()),
+        Some(r) => match parse_request_as::<R>(r)? {
+            Ok((params, responder)) => f(params, responder),
+            Err(r) => {
+                *req = Some(r);
+                Ok(())
+            },
+        }
+    }
+}
+
 pub fn expect_request<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Params, Responder<R>)>>
     where
         R: Request,
@@ -87,7 +106,7 @@ pub fn expect_request<R>(io: &mut Io, raw: RawRequest) -> Result<Option<(R::Para
     Ok(ret)
 }
 
-pub fn parse_notification_as<N>(raw: RawNotification) -> Result<::std::result::Result<N::Params, RawNotification>>
+fn parse_notification_as<N>(raw: RawNotification) -> Result<::std::result::Result<N::Params, RawNotification>>
     where
         N: Notification,
         N::Params: DeserializeOwned,

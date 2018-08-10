@@ -10,6 +10,7 @@ use libsyntax2::{
     SyntaxKind::*,
 };
 pub use libsyntax2::{TextRange, TextUnit, ast};
+pub use self::line_index::{LineIndex, LineCol};
 
 #[derive(Debug)]
 pub struct HighlightedRange {

@@ -7,4 +7,6 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 log = "0.4.2"
 failure = "0.1.2"
 parking_lot = "0.6.3"
+once_cell = "0.1.4"
 libsyntax2 = { path = "../" }
+libeditor = { path = "../libeditor" }

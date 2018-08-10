@@ -31,7 +31,7 @@ use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, Te
 
 use ::{
     io::{Io, RawMsg},
-    handlers::handle_syntax_tree,
+    handlers::{handle_syntax_tree, handle_extend_selection},
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -153,34 +153,42 @@ fn main_loop(
 
         match msg {
             RawMsg::Request(req) => {
-                let req = match dispatch::parse_request_as::<req::SyntaxTree>(req)? {
-                    Ok((params, resp)) => {
-                        let world = world.snapshot();
-                        let sender = sender.clone();
-                        pool.execute(move || {
-                            let res: Result<String> = handle_syntax_tree(world, params);
-                            sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
-                        });
-                        continue;
-                    }
-                    Err(req) => req,
-                };
-
-                if let Some(((), resp)) = dispatch::expect_request::<req::Shutdown>(io, req)? {
-                    info!("clean shutdown started");
+                let mut req = Some(req);
+                dispatch::handle_request::<req::SyntaxTree, _>(&mut req, |params, resp| {
+                    let world = world.snapshot();
+                    let sender = sender.clone();
+                    pool.execute(move || {
+                        let res = handle_syntax_tree(world, params);
+                        sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
+                    });
+                    Ok(())
+                })?;
+                dispatch::handle_request::<req::ExtendSelection, _>(&mut req, |params, resp| {
+                    let world = world.snapshot();
+                    let sender = sender.clone();
+                    pool.execute(move || {
+                        let res = handle_extend_selection(world, params);
+                        sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
+                    });
+                    Ok(())
+                })?;
+                dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
                     resp.result(io, ())?;
-                    return Ok(());
+                    Ok(())
+                })?;
+                if let Some(req) = req {
+                    error!("unknown method: {:?}", req);
+                    dispatch::unknown_method(io, req)?;
                 }
             }
             RawMsg::Notification(not) => {
-                use dispatch::handle_notification as h;
                 let mut not = Some(not);
-                h::<req::DidOpenTextDocument, _>(&mut not, |params| {
+                dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, Some(params.text_document.text));
                     Ok(())
                 })?;
-                h::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
+                dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
                     let path = params.text_document.file_path()?;
                     let text = params.content_changes.pop()
                         .ok_or_else(|| format_err!("empty changes"))?
@@ -188,7 +196,7 @@ fn main_loop(
                     world.change_overlay(path, Some(text));
                     Ok(())
                 })?;
-                h::<req::DidCloseTextDocument, _>(&mut not, |params| {
+                dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, None);
                     Ok(())

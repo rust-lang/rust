@@ -2,9 +2,11 @@ extern crate failure;
 extern crate parking_lot;
 #[macro_use]
 extern crate log;
+extern crate once_cell;
 extern crate libsyntax2;
+extern crate libeditor;
 
-mod arena;
+use once_cell::sync::OnceCell;
 
 use std::{
     fs,
@@ -14,6 +16,7 @@ use std::{
 };
 use parking_lot::RwLock;
 use libsyntax2::ast;
+use libeditor::LineIndex;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
@@ -39,7 +42,6 @@ impl WorldState {
     pub fn change_overlay(&mut self, path: PathBuf, text: Option<String>) {
         let data = self.data_mut();
         data.file_map.get_mut().remove(&path);
-        data.fs_map.get_mut().remove(&path);
         if let Some(text) = text {
             data.mem_map.insert(path, Arc::new(text));
         } else {
@@ -49,11 +51,9 @@ impl WorldState {
 
     fn data_mut(&mut self) -> &mut WorldData {
         if Arc::get_mut(&mut self.data).is_none() {
-            let fs_map = self.data.fs_map.read().clone();
             let file_map = self.data.file_map.read().clone();
             self.data = Arc::new(WorldData {
                 mem_map: self.data.mem_map.clone(),
-                fs_map: RwLock::new(fs_map),
                 file_map: RwLock::new(file_map),
             });
         }
@@ -64,43 +64,57 @@ impl WorldState {
 
 impl World {
     pub fn file_syntax(&self, path: &Path) -> Result<ast::File> {
-        {
-            let guard = self.data.file_map.read();
-            if let Some(file) = guard.get(path) {
-                return Ok(file.clone());
-            }
-        }
-        let file = self.with_file_text(path, |text| {
-            trace!("parsing file: {}", path.display());
-            ast::File::parse(text)
-        })?;
-        let mut guard = self.data.file_map.write();
-        let file = guard.entry(path.to_owned())
-            .or_insert(file)
-            .clone();
-        Ok(file)
+        let data = self.file_data(path)?;
+        let syntax = data.syntax
+            .get_or_init(|| {
+                trace!("parsing: {}", path.display());
+                ast::File::parse(self.file_text(path, &data))
+            }).clone();
+        Ok(syntax)
     }
 
-    fn with_file_text<F: FnOnce(&str) -> R, R>(&self, path: &Path, f: F) -> Result<R> {
-        if let Some(text) = self.data.mem_map.get(path) {
-            return Ok(f(&*text));
-        }
+    pub fn file_line_index(&self, path: &Path) -> Result<LineIndex> {
+        let data = self.file_data(path)?;
+        let index = data.lines
+            .get_or_init(|| {
+                trace!("calc line index: {}", path.display());
+                LineIndex::new(self.file_text(path, &data))
+            });
+        Ok(index.clone())
+    }
 
+    fn file_text<'a>(&'a self, path: &Path, file_data: &'a FileData) -> &'a str {
+        match file_data.text.as_ref() {
+            Some(text) => text.as_str(),
+            None => self.data.mem_map[path].as_str()
+        }
+    }
+
+    fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
         {
-            let guard = self.data.fs_map.read();
-            if let Some(text) = guard.get(path) {
-                return Ok(f(&*text));
+            let guard = self.data.file_map.read();
+            if let Some(data) = guard.get(path) {
+                return Ok(data.clone());
             }
         }
-        trace!("loading file from disk: {}", path.display());
-        let text = fs::read_to_string(path)?;
-        {
-            let mut guard = self.data.fs_map.write();
+
+        let text = if self.data.mem_map.contains_key(path) {
+            None
+        } else {
+            trace!("loading file from disk: {}", path.display());
+            Some(fs::read_to_string(path)?)
+        };
+        let res = {
+            let mut guard = self.data.file_map.write();
             guard.entry(path.to_owned())
-                .or_insert_with(|| Arc::new(text));
-        }
-        let guard = self.data.fs_map.read();
-        Ok(f(&guard[path]))
+                .or_insert_with(|| Arc::new(FileData {
+                    text,
+                    syntax: OnceCell::new(),
+                    lines: OnceCell::new(),
+                }))
+                .clone()
+        };
+        Ok(res)
     }
 }
 
@@ -108,6 +122,11 @@ impl World {
 #[derive(Default)]
 struct WorldData {
     mem_map: HashMap<PathBuf, Arc<String>>,
-    fs_map: RwLock<HashMap<PathBuf, Arc<String>>>,
-    file_map: RwLock<HashMap<PathBuf, ast::File>>,
+    file_map: RwLock<HashMap<PathBuf, Arc<FileData>>>,
+}
+
+struct FileData {
+    text: Option<String>,
+    syntax: OnceCell<ast::File>,
+    lines: OnceCell<LineIndex>,
 }

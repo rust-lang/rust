@@ -21,6 +21,12 @@ pub struct SyntaxTreeParams {
 
 pub enum ExtendSelection {}
 
+impl Request for ExtendSelection {
+    type Params = ExtendSelectionParams;
+    type Result = ExtendSelectionResult;
+    const METHOD: &'static str = "m/extendSelection";
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtendSelectionParams {
@@ -28,7 +34,8 @@ pub struct ExtendSelectionParams {
     pub selections: Vec<Range>,
 }
 
-
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ExtendSelectionResult {
     pub selections: Vec<Range>,
 }

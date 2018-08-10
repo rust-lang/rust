@@ -36,6 +36,13 @@
         "command": "libsyntax-rust.extendSelection",
         "title": "Rust Extend Selection"
       }
+    ],
+    "keybindings": [
+      {
+        "command": "libsyntax-rust.extendSelection",
+        "key": "ctrl+w",
+        "when": "editorTextFocus && editorLangId == rust"
+      }
     ]
   }
 }
