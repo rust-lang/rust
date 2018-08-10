@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>  {
         // otherwise the escaping regions would be captured by the binder
-        assert!(!self_ty.has_escaping_regions());
+        debug_assert!(!self_ty.has_escaping_regions());
 
         ty::TraitRef {
             def_id: self.def_id,
@@ -753,7 +753,7 @@ impl<T> Binder<T> {
     pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
-        assert!(!value.has_escaping_regions());
+        debug_assert!(!value.has_escaping_regions());
         Binder(value)
     }
 
@@ -1247,7 +1247,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
                         -> ty::ProjectionPredicate<'tcx>
     {
         // otherwise the escaping regions would be captured by the binders
-        assert!(!self_ty.has_escaping_regions());
+        debug_assert!(!self_ty.has_escaping_regions());
 
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {

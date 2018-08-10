@@ -1142,7 +1142,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 if !is_default {
                     true
                 } else if obligation.param_env.reveal == Reveal::All {
-                    assert!(!poly_trait_ref.needs_infer());
+                    debug_assert!(!poly_trait_ref.needs_infer());
                     if !poly_trait_ref.needs_subst() {
                         true
                     } else {

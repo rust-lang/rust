@@ -466,7 +466,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let univariant = |fields: &[TyLayout], repr: &ReprOptions, kind| {
             Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
         };
-        assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types());
 
         Ok(match ty.sty {
             // Basic scalars.
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>)
                    -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types());
 
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail(pointee);
                 match tail.sty {
                     ty::TyParam(_) | ty::TyProjection(_) => {
-                        assert!(tail.has_param_types() || tail.has_self_ty());
+                        debug_assert!(tail.has_param_types() || tail.has_self_ty());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
                             tail: tcx.erase_regions(&tail)
