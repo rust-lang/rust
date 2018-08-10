@@ -1,0 +1,9 @@
+[package]
+name = "libanalysis"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+failure = "0.1.2"
+parking_lot = "0.6.3"
+libsyntax2 = { path = "../" }

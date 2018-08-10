@@ -5,7 +5,7 @@ use {
 };
 {% for node in ast %}
 {% set Name = node.kind | camel  %}
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct {{ Name }}<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }

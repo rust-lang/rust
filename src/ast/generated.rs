@@ -5,7 +5,7 @@ use {
 };
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -21,7 +21,7 @@ impl<R: TreeRoot> AstNode<R> for File<R> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -37,7 +37,7 @@ impl<R: TreeRoot> AstNode<R> for Function<R> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
