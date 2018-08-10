@@ -174,7 +174,7 @@ const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
 
 const HEXAGON_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("hvx", Some(sym::hexagon_target_feature)),
-    ("hvx-double", Some(sym::hexagon_target_feature)),
+    ("hvx-length128b", Some(sym::hexagon_target_feature)),
 ];
 
 const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[

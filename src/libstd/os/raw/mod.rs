@@ -11,6 +11,7 @@
 #[doc(include = "os/raw/char.md")]
 #[cfg(any(all(target_os = "linux", any(target_arch = "aarch64",
                                        target_arch = "arm",
+                                       target_arch = "hexagon",
                                        target_arch = "powerpc",
                                        target_arch = "powerpc64",
                                        target_arch = "s390x")),
@@ -34,6 +35,7 @@
 #[doc(include = "os/raw/char.md")]
 #[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
                                            target_arch = "arm",
+                                           target_arch = "hexagon",
                                            target_arch = "powerpc",
                                            target_arch = "powerpc64",
                                            target_arch = "s390x")),
