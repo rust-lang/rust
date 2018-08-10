@@ -4331,9 +4331,29 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
-        self.lookup_import_candidates_from_module(
-            lookup_name, namespace, self.graph_root, true, filter_fn
-        )
+        let mut suggestions = vec![];
+
+        suggestions.extend(
+            self.lookup_import_candidates_from_module(
+                lookup_name, namespace, self.graph_root, keywords::Crate.name(), filter_fn
+            )
+        );
+
+        if self.session.features_untracked().extern_prelude {
+            let extern_prelude_names = self.extern_prelude.clone();
+            for &krate_name in extern_prelude_names.iter() {
+                let krate_ident = Ident::with_empty_ctxt(krate_name);
+                let external_prelude_module =  self.load_extern_prelude_crate_if_needed(krate_ident);
+
+                suggestions.extend(
+                    self.lookup_import_candidates_from_module(
+                        lookup_name, namespace, external_prelude_module, krate_name, filter_fn
+                    )
+                );
+            }
+        }
+
+        suggestions
     }
 
     fn find_module(&mut self,
