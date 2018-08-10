@@ -188,7 +188,8 @@ mod wrapping;
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr, $Feature:expr,
-     $EndFeature:expr, $rot:expr, $rot_op:expr, $rot_result:expr) => {
+     $EndFeature:expr, $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
+     $reversed:expr) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -380,55 +381,48 @@ assert_eq!(n.rotate_right(", $rot, "), m);
                 (self as $UnsignedT).rotate_right(n) as Self
             }
         }
-        /// Reverses the byte order of the integer.
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i16` is used here.
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n: i16 = 0b0000000_01010101;
-        /// assert_eq!(n, 85);
-        ///
-        /// let m = n.swap_bytes();
-        ///
-        /// assert_eq!(m, 0b01010101_00000000);
-        /// assert_eq!(m, 21760);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_int_ops")]
-        #[inline]
-        pub const fn swap_bytes(self) -> Self {
-            (self as $UnsignedT).swap_bytes() as Self
+        doc_comment! {
+            concat!("Reverses the byte order of the integer.
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $swap_op, stringify!($SelfT), ";
+
+let m = n.swap_bytes();
+
+assert_eq!(m, ", $swapped, ");
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn swap_bytes(self) -> Self {
+                (self as $UnsignedT).swap_bytes() as Self
+            }
         }
 
-        /// Reverses the bit pattern of the integer.
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i16` is used here.
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// #![feature(reverse_bits)]
-        ///
-        /// let n: i16 = 0b0000000_01010101;
-        /// assert_eq!(n, 85);
-        ///
-        /// let m = n.reverse_bits();
-        ///
-        /// assert_eq!(m as u16, 0b10101010_00000000);
-        /// assert_eq!(m, -22016);
-        /// ```
-        #[unstable(feature = "reverse_bits", issue = "48763")]
-        #[inline]
-        pub fn reverse_bits(self) -> Self {
-            (self as $UnsignedT).reverse_bits() as Self
+        doc_comment! {
+            concat!("Reverses the bit pattern of the integer.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(reverse_bits)]
+
+let n = ", $swap_op, stringify!($SelfT), ";
+let m = n.reverse_bits();
+
+assert_eq!(m, ", $reversed, ");
+```"),
+            #[unstable(feature = "reverse_bits", issue = "48763")]
+            #[inline]
+            pub fn reverse_bits(self) -> Self {
+                (self as $UnsignedT).reverse_bits() as Self
+            }
         }
 
         doc_comment! {
@@ -2009,50 +2003,57 @@ $EndFeature, "
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa" }
+    int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48" }
 }
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a" }
+    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
+        "0x2c48" }
 }
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301" }
+    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
+        "0x12345678", "0x78563412", "0x1e6a2c48" }
 }
 
 #[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
-                "0xaa00000000006e1", "0x6e10aa" }
+         "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
+         "0x6a2c48091e6a2c48" }
 }
 
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
         170141183460469231731687303715884105727, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4"
+        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48"
     }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a" }
+    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
+        "0x3412", "0x2c48" }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301" }
+    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
+        "0x12345678", "0x78563412", "0x1e6a2c48" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
-        12, "0xaa00000000006e1", "0x6e10aa" }
+        12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
+         "0x6a2c48091e6a2c48" }
 }
 
 // Emits the correct `cttz` call, depending on the size of the type.
@@ -2071,7 +2072,8 @@ macro_rules! uint_cttz_call {
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr,
-        $rot:expr, $rot_op:expr, $rot_result:expr) => {
+        $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
+        $reversed:expr ) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -2263,55 +2265,48 @@ assert_eq!(n.rotate_right(", $rot, "), m);
             }
         }
 
-        /// Reverses the byte order of the integer.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u16` is used here.
-        ///
-        /// ```
-        /// let n: u16 = 0b0000000_01010101;
-        /// assert_eq!(n, 85);
-        ///
-        /// let m = n.swap_bytes();
-        ///
-        /// assert_eq!(m, 0b01010101_00000000);
-        /// assert_eq!(m, 21760);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_int_ops")]
-        #[inline]
-        pub const fn swap_bytes(self) -> Self {
-            unsafe { intrinsics::bswap(self as $ActualT) as Self }
+        doc_comment! {
+            concat!("
+Reverses the byte order of the integer.
+
+# Examples
+
+Basic usage:
+
+```
+let n = ", $swap_op, stringify!($SelfT), ";
+let m = n.swap_bytes();
+
+assert_eq!(m, ", $swapped, ");
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn swap_bytes(self) -> Self {
+                unsafe { intrinsics::bswap(self as $ActualT) as Self }
+            }
         }
 
-        /// Reverses the bit pattern of the integer.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u16` is used here.
-        ///
-        /// ```
-        /// #![feature(reverse_bits)]
-        ///
-        /// let n: u16 = 0b0000000_01010101;
-        /// assert_eq!(n, 85);
-        ///
-        /// let m = n.reverse_bits();
-        ///
-        /// assert_eq!(m, 0b10101010_00000000);
-        /// assert_eq!(m, 43520);
-        /// ```
-        #[unstable(feature = "reverse_bits", issue = "48763")]
-        #[inline]
-        pub fn reverse_bits(self) -> Self {
-            unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
+        doc_comment! {
+            concat!("Reverses the bit pattern of the integer.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(reverse_bits)]
+
+let n = ", $swap_op, stringify!($SelfT), ";
+let m = n.reverse_bits();
+
+assert_eq!(m, ", $reversed, ");
+```"),
+            #[unstable(feature = "reverse_bits", issue = "48763")]
+            #[inline]
+            pub fn reverse_bits(self) -> Self {
+                unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
+            }
         }
 
         doc_comment! {
@@ -3621,7 +3616,7 @@ $EndFeature, "
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa" }
+    uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48" }
 
 
     /// Checks if the value is within the ASCII range.
@@ -4147,41 +4142,45 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a" }
+    uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48" }
 }
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301" }
+    uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
+        "0x78563412", "0x1e6a2c48" }
 }
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa" }
+    uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
+        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48" }
 }
 
 #[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4" }
+        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16, 65536, "", "", 4, "0xa003", "0x3a" }
+    uint_impl! { usize, u16, 16, 65536, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48" }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301" }
+    uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
+        "0x78563412", "0x1e6a2c48" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1",
-        "0x6e10aa" }
+    uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
+        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48" }
 }
 
 /// A classification of floating point numbers.
