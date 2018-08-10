@@ -2678,7 +2678,6 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
                       implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> fmt::Result {
-    write!(w, "<li><table class='table-display'><tbody><tr><td><code>")?;
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
@@ -2689,22 +2688,8 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
         } => implementor_dups[path.last_name()].1,
         _ => false,
     };
-    fmt_impl_for_trait_page(&implementor.inner_impl(), w, use_absolute)?;
-    for it in &implementor.inner_impl().items {
-        if let clean::TypedefItem(ref tydef, _) = it.inner {
-            write!(w, "<span class=\"where fmt-newline\">  ")?;
-            assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
-            write!(w, ";</span>")?;
-        }
-    }
-    write!(w, "</code><td>")?;
-    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
-        write!(w, "<div class='out-of-band'>")?;
-        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                    l, "goto source code")?;
-        write!(w, "</div>")?;
-    }
-    writeln!(w, "</td></tr></tbody></table></li>")?;
+    render_impl(w, cx, implementor, AssocItemLink::Anchor(None), RenderMode::Normal,
+                implementor.impl_item.stable_since(), true, Some(use_absolute))?;
     Ok(())
 }
 
@@ -2715,7 +2700,7 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter,
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true)?;
+                    RenderMode::Normal, containing_item.stable_since(), true, None)?;
     }
     Ok(())
 }
@@ -2964,7 +2949,8 @@ fn item_trait(
                         &implementor.inner_impl().provided_trait_methods
                     );
                     render_impl(w, cx, &implementor, assoc_link,
-                                RenderMode::Normal, implementor.impl_item.stable_since(), false)?;
+                                RenderMode::Normal, implementor.impl_item.stable_since(), false,
+                                None)?;
                 }
             }
         }
@@ -2973,7 +2959,7 @@ fn item_trait(
         for implementor in concrete {
             render_implementor(cx, implementor, w, &implementor_dups)?;
         }
-        write!(w, "</ul>")?;
+        write!(w, "</div>")?;
 
         if t.auto {
             write!(w, "{}", synthetic_impl_header)?;
@@ -2983,17 +2969,17 @@ fn item_trait(
                 );
                 render_implementor(cx, implementor, w, &implementor_dups)?;
             }
-            write!(w, "</ul>")?;
+            write!(w, "</div>")?;
         }
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
         // implementors javascript file pulled in below has somewhere to write the impls into
         write!(w, "{}", impl_header)?;
-        write!(w, "</ul>")?;
+        write!(w, "</div>")?;
 
         if t.auto {
             write!(w, "{}", synthetic_impl_header)?;
-            write!(w, "</ul>")?;
+            write!(w, "</div>")?;
         }
     }
     write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
@@ -3616,7 +3602,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         };
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
-                        containing_item.stable_since(), true)?;
+                        containing_item.stable_since(), true, None)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -3797,15 +3783,29 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
 
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_mode: RenderMode, outer_version: Option<&str>,
-               show_def_docs: bool) -> fmt::Result {
+               show_def_docs: bool, use_absolute: Option<bool>) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
             None => "impl".to_string(),
         });
-        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
-                   <tbody><tr><td><code>{}</code>",
-               id, i.inner_impl())?;
+        if let Some(use_absolute) = use_absolute {
+            write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
+                       <tbody><tr><td><code>", id)?;
+            fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute)?;
+            for it in &i.inner_impl().items {
+                if let clean::TypedefItem(ref tydef, _) = it.inner {
+                    write!(w, "<span class=\"where fmt-newline\">  ")?;
+                    assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+                    write!(w, ";</span>")?;
+                }
+            }
+            write!(w, "</code>")?;
+        } else {
+            write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
+                       <tbody><tr><td><code>{}</code>",
+                   id, i.inner_impl())?;
+        }
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
         write!(w, "</span></td><td><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
