@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
-use borrow_check::nll::constraints::graph::ConstraintGraph;
+use borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use borrow_check::nll::constraints::{
     ConstraintIndex, ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
 };
@@ -61,7 +61,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
     /// the SCC (see `constraint_sccs`) and for error reporting.
-    constraint_graph: Rc<ConstraintGraph>,
+    constraint_graph: Rc<NormalConstraintGraph>,
 
     /// The SCC computed from `constraints` and the constraint graph. Used to compute the values
     /// of each region.
