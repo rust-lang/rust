@@ -14,5 +14,5 @@ crossbeam-channel = "0.2.4"
 threadpool = "1.7.1"
 flexi_logger = "0.9.0"
 log = "0.4.3"
-libeditor = { path = "../../libeditor" }
-libanalysis = { path = "../../libanalysis" }
+libeditor = { path = "../libeditor" }
+libanalysis = { path = "../libanalysis" }

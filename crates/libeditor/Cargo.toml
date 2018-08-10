@@ -7,4 +7,4 @@ publish = false
 [dependencies]
 itertools = "0.7.8"
 superslice = "0.1.0"
-libsyntax2 = { path = "../" }
+libsyntax2 = { path = "../libsyntax2" }

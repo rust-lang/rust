@@ -18,13 +18,13 @@ use tools::{collect_tests, Test};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
-const GRAMMAR_DIR: &str = "./src/grammar";
-const INLINE_TESTS_DIR: &str = "tests/data/parser/inline";
-const GRAMMAR: &str = "./src/grammar.ron";
-const SYNTAX_KINDS: &str = "./src/syntax_kinds/generated.rs";
-const SYNTAX_KINDS_TEMPLATE: &str = "./src/syntax_kinds/generated.rs.tera";
-const AST: &str = "./src/ast/generated.rs";
-const AST_TEMPLATE: &str = "./src/ast/generated.rs.tera";
+const GRAMMAR_DIR: &str = "./crates/libsyntax2/src/grammar";
+const INLINE_TESTS_DIR: &str = "./crates/libsyntax2/tests/data/parser/inline";
+const GRAMMAR: &str = "./crates/libsyntax2/src/grammar.ron";
+const SYNTAX_KINDS: &str = "./crates/libsyntax2/src/syntax_kinds/generated.rs";
+const SYNTAX_KINDS_TEMPLATE: &str = "./crates/libsyntax2/src/syntax_kinds/generated.rs.tera";
+const AST: &str = "./crates/libsyntax2/src/ast/generated.rs";
+const AST_TEMPLATE: &str = "./crates/libsyntax2/src/ast/generated.rs.tera";
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
