@@ -13,7 +13,6 @@ use common;
 use llvm;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use debuginfo;
 use callee;
 use base;
@@ -76,9 +75,6 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
 
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<&'a Value, &'a Value>>,
-
-    /// Mapping from static definitions to their DefId's.
-    pub statics: RefCell<FxHashMap<&'a Value, DefId>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
@@ -297,7 +293,6 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
             const_cstr_cache: RefCell::new(FxHashMap()),
             const_unsized: RefCell::new(FxHashMap()),
             const_globals: RefCell::new(FxHashMap()),
-            statics: RefCell::new(FxHashMap()),
             statics_to_rauw: RefCell::new(Vec::new()),
             used_statics: RefCell::new(Vec::new()),
             lltypes: RefCell::new(FxHashMap()),

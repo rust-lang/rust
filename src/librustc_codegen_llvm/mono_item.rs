@@ -143,7 +143,6 @@ fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 
     cx.instances.borrow_mut().insert(instance, g);
-    cx.statics.borrow_mut().insert(g, def_id);
 }
 
 fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
