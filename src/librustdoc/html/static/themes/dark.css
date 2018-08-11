@@ -165,8 +165,8 @@ a {
 	color: #ddd;
 }
 
-.docblock a:not(.srclink):not(.test-arrow), .docblock-short a:not(.srclink):not(.test-arrow),
-.stability a {
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow), .docblock-short
+a:not(.srclink):not(.test-arrow), .stability a {
 	color: #D2991D;
 }
 
