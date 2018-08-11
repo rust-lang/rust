@@ -153,7 +153,7 @@ fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'
     tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
 }
 
-fn get_function_name_and_sig<'a, 'tcx>(
+pub fn get_function_name_and_sig<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     inst: Instance<'tcx>,
 ) -> (String, Signature) {

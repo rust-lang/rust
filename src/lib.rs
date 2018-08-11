@@ -298,12 +298,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                         }
                     }).unwrap();
 
-            let fn_ty = call_instance.ty(tcx);
-            let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-            let def_path_based_names =
-                ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
-            let mut name = String::new();
-            def_path_based_names.push_instance_as_string(call_instance, &mut name);
+            let (name, sig) = crate::abi::get_function_name_and_sig(tcx, call_instance);
             let called_func_id = module
                 .declare_function(&name, Linkage::Import, &sig)
                 .unwrap();
