@@ -215,10 +215,16 @@ Grammar(
     ],
     ast: [
         (
-            kind: "FILE"
+            kind: "FILE",
+            collections: [
+                ("functions", "FUNCTION")
+            ]
         ),
         (
-            kind: "FUNCTION"
+            kind: "FUNCTION",
+            options: [
+                ("name", "NAME")
+            ]
         ),
         (
             kind: "NAME"

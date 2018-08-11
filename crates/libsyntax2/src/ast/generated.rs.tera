@@ -19,4 +19,15 @@ impl<R: TreeRoot> AstNode<R> for {{ Name }}<R> {
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
+
+impl<R: TreeRoot> {{ Name }}<R> {
+{% for (method_name, kind) in node.opts %}
+{% set ChildName = kind | camel  %}
+    pub fn {{ method_name }}<'a>(&'a self) -> impl Iterator<Item = {{ ChildKind }}<R>> + 'a {
+        self.syntax()
+            .children()
+            .filter_map({{ ChildKind }}::cast)
+    }
+{% endfor %}
+}
 {% endfor %}
