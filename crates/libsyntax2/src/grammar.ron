@@ -217,13 +217,13 @@ Grammar(
         (
             kind: "FILE",
             collections: [
-                ("functions", "FUNCTION")
+                ["functions", "FUNCTION"]
             ]
         ),
         (
             kind: "FUNCTION",
             options: [
-                ("name", "NAME")
+                ["name", "NAME"]
             ]
         ),
         (

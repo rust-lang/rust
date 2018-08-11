@@ -22,22 +22,9 @@ impl<R: TreeRoot> File<R> {
     pub fn errors(&self) -> Vec<SyntaxError> {
         self.syntax().root.errors.clone()
     }
-
-    pub fn functions<'a>(&'a self) -> impl Iterator<Item = Function<R>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map(Function::cast)
-    }
 }
 
 impl<R: TreeRoot> Function<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.syntax()
             .children()

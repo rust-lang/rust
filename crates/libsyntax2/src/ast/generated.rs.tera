@@ -21,13 +21,29 @@ impl<R: TreeRoot> AstNode<R> for {{ Name }}<R> {
 }
 
 impl<R: TreeRoot> {{ Name }}<R> {
-{% for (method_name, kind) in node.opts %}
-{% set ChildName = kind | camel  %}
-    pub fn {{ method_name }}<'a>(&'a self) -> impl Iterator<Item = {{ ChildKind }}<R>> + 'a {
+{%- if node.collections -%}
+{%- for m in node.collections -%}
+{%- set method_name = m.0 -%}
+{%- set ChildName = m.1 | camel %}
+    pub fn {{ method_name }}<'a>(&'a self) -> impl Iterator<Item = {{ ChildName }}<R>> + 'a {
         self.syntax()
             .children()
-            .filter_map({{ ChildKind }}::cast)
+            .filter_map({{ ChildName }}::cast)
     }
-{% endfor %}
+{% endfor -%}
+{%- endif -%}
+
+{%- if node.options -%}
+{%- for m in node.options -%}
+{%- set method_name = m.0 -%}
+{%- set ChildName = m.1 | camel %}
+    pub fn {{ method_name }}(&self) -> Option<{{ ChildName }}<R>> {
+        self.syntax()
+            .children()
+            .filter_map({{ ChildName }}::cast)
+            .next()
+    }
+{% endfor -%}
+{%- endif -%}
 }
 {% endfor %}
