@@ -50,7 +50,13 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
                 context.func = func;
                 // TODO: cranelift doesn't yet support some of the things needed
-                if false {
+                if cx
+                    .tcx
+                    .sess
+                    .crate_types
+                    .get()
+                    .contains(&CrateType::Executable)
+                {
                     cx.module.define_function(func_id, context).unwrap();
                     cx.defined_functions.push(func_id);
                 }

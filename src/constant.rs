@@ -79,7 +79,13 @@ fn trans_const_place<'a, 'tcx: 'a>(
 ) -> CPlace<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
-    if true {
+    if !fx
+        .tcx
+        .sess
+        .crate_types
+        .get()
+        .contains(&CrateType::Executable)
+    {
         // TODO: cranelift-module api seems to be used wrong,
         // thus causing panics for some consts, so this disables it
         return CPlace::Addr(fx.bcx.ins().iconst(types::I64, 0), layout);

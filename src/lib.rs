@@ -29,10 +29,7 @@ use std::sync::{mpsc, Arc};
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
-use rustc::session::{
-    config::{CrateType, OutputFilenames},
-    CompileIncomplete,
-};
+use rustc::session::{config::OutputFilenames, CompileIncomplete};
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::{build_link_meta, out_filename};
@@ -65,7 +62,7 @@ mod prelude {
     pub use rustc::mir;
     pub use rustc::mir::interpret::AllocId;
     pub use rustc::mir::*;
-    pub use rustc::session::Session;
+    pub use rustc::session::{config::CrateType, Session};
     pub use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
@@ -278,27 +275,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx.sess.warn("Compiled everything");
 
         // TODO: this doesn't work most of the time
-        if false {
-            let call_instance =
-                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
-                    .0
-                    .into_iter()
-                    .find_map(|mono_item| {
-                        let inst = match mono_item {
-                            MonoItem::Fn(inst) => inst,
-                            _ => return None,
-                        };
+        if tcx.sess.crate_types.get().contains(&CrateType::Executable) {
+            let start_wrapper = tcx.lang_items().start_fn().expect("no start lang item");
 
-                        //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
-                        if tcx.absolute_item_path_str(inst.def_id()) == "example::option_unwrap_or"
-                        {
-                            Some(inst)
-                        } else {
-                            None
-                        }
-                    }).unwrap();
-
-            let (name, sig) = crate::abi::get_function_name_and_sig(tcx, call_instance);
+            let (name, sig) =
+                crate::abi::get_function_name_and_sig(tcx, Instance::mono(tcx, start_wrapper));
             let called_func_id = module
                 .declare_function(&name, Linkage::Import, &sig)
                 .unwrap();
@@ -311,19 +292,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.warn("Finalized everything");
 
             let finalized_function: *const u8 = module.finalize_function(called_func_id);
-            /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
-            let mut res = 0u32;
-            f(&mut res);
-            tcx.sess.warn(&format!("ret_42 returned {}", res));*/
-            /*let f: extern "C" fn(&mut bool, &u8, bool) =
--                   unsafe { ::std::mem::transmute(finalized_function) };
-            let mut res = false;
-            f(&mut res, &3, false);
-            tcx.sess.warn(&format!("option_unwrap_or returned {}", res));*/
-            let f: extern "C" fn(&mut u8, isize, *const *const u8) =
+            let f: extern "C" fn(*const u8, isize, *const *const u8) -> isize =
                 unsafe { ::std::mem::transmute(finalized_function) };
-            let mut res = 0;
-            f(&mut res, 0, 0 as *const _);
+            let res = f(0 as *const u8, 0, 0 as *const _);
             tcx.sess.warn(&format!("main returned {}", res));
 
             module.finish();
@@ -370,32 +341,28 @@ impl CodegenBackend for CraneliftCodegenBackend {
             ).unwrap();
 
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::Rlib
-            /*&& crate_type != CrateType::Dylib*/
-            {
-                sess.fatal(&format!("Unsupported crate type: {:?}", crate_type));
+            match crate_type {
+                CrateType::Executable => {
+                    sess.warn("Rustc codegen cranelift doesn't produce executables, but is a JIT for them");   
+                },
+                CrateType::Rlib /* | CrateType::Dylib */ => {
+                    let output_name = out_filename(
+                        sess,
+                        crate_type,
+                        &outputs,
+                        &ongoing_codegen.crate_name.as_str(),
+                    );
+                    let file = File::create(&output_name).unwrap();
+                    let mut builder = ar::Builder::new(file);
+                    builder
+                        .append(
+                            &ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64),
+                            ::std::io::Cursor::new(metadata.clone()),
+                        ).unwrap();
+                    //artifact.write(file).unwrap();
+                }
+                _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
             }
-            let output_name = out_filename(
-                sess,
-                crate_type,
-                &outputs,
-                &ongoing_codegen.crate_name.as_str(),
-            );
-            let file = File::create(&output_name).unwrap();
-            let mut builder = ar::Builder::new(file);
-            builder
-                .append(
-                    &ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64),
-                    ::std::io::Cursor::new(metadata.clone()),
-                ).unwrap();
-            //artifact.write(file).unwrap();
-        }
-
-        sess.abort_if_errors();
-        if !sess.opts.crate_types.contains(&CrateType::Rlib)
-            && !sess.opts.crate_types.contains(&CrateType::Dylib)
-        {
-            sess.fatal("Executables are not supported by the metadata-only backend.");
         }
         Ok(())
     }
