@@ -121,7 +121,7 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // unsafe auto trait T {}
         TRAIT_KW => {
             traits::trait_item(p);
-            TRAIT_ITEM
+            TRAIT
         }
 
         // test unsafe_impl
@@ -161,7 +161,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         MOD_KW => {
             mod_item(p);
-            MOD_ITEM
+            MODULE
         }
         STRUCT_KW => {
             structs::struct_item(p);

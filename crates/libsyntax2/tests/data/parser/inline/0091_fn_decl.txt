@@ -1,5 +1,5 @@
 FILE@[0; 22)
-  TRAIT_ITEM@[0; 21)
+  TRAIT@[0; 21)
     TRAIT_KW@[0; 5)
     WHITESPACE@[5; 6)
     NAME@[6; 7)

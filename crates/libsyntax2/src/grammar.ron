@@ -112,11 +112,11 @@ Grammar(
         "ENUM",
         "FUNCTION",
         "EXTERN_CRATE_ITEM",
-        "MOD_ITEM",
+        "MODULE",
         "USE_ITEM",
         "STATIC_ITEM",
         "CONST_ITEM",
-        "TRAIT_ITEM",
+        "TRAIT",
         "IMPL_ITEM",
         "TYPE_ITEM",
         "MACRO_CALL",
@@ -220,6 +220,16 @@ Grammar(
             ]
         ),
         "Function": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
+        "Struct": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
+        "Enum": (
             options: [
                 ["name", "Name"]
             ]

@@ -141,8 +141,8 @@ struct Declaration<'f> (SyntaxNodeRef<'f>);
 impl<'f> Declaration<'f> {
     fn cast(node: SyntaxNodeRef<'f>) -> Option<Declaration<'f>> {
         match node.kind() {
-            | STRUCT | ENUM | FUNCTION | TRAIT_ITEM
-            | CONST_ITEM | STATIC_ITEM | MOD_ITEM | NAMED_FIELD
+            | STRUCT | ENUM | FUNCTION | TRAIT
+            | CONST_ITEM | STATIC_ITEM | MODULE | NAMED_FIELD
             | TYPE_ITEM => Some(Declaration(node)),
             _ => None
         }

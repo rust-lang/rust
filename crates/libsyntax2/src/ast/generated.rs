@@ -5,6 +5,30 @@ use {
 };
 
 #[derive(Debug, Clone, Copy)]
+pub struct Enum<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for Enum<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            ENUM => Some(Enum { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> Enum<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -67,4 +91,28 @@ impl<R: TreeRoot> AstNode<R> for Name<R> {
 }
 
 impl<R: TreeRoot> Name<R> {}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Struct<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for Struct<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            STRUCT => Some(Struct { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> Struct<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
 
