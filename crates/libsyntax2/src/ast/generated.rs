@@ -4,7 +4,6 @@ use {
     SyntaxKind::*,
 };
 
-
 #[derive(Debug, Clone, Copy)]
 pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -27,7 +26,6 @@ impl<R: TreeRoot> File<R> {
             .filter_map(Function::cast)
     }
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -52,7 +50,6 @@ impl<R: TreeRoot> Function<R> {
             .next()
     }
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {

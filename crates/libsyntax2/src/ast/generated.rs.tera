@@ -3,28 +3,27 @@ use {
     SyntaxNode, SyntaxRoot, TreeRoot, AstNode,
     SyntaxKind::*,
 };
-{% for node in ast %}
-{% set Name = node.kind | camel  %}
+{% for node, methods in ast %}
 #[derive(Debug, Clone, Copy)]
-pub struct {{ Name }}<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for {{ Name }}<R> {
+impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            {{ node.kind }} => Some({{ Name }} { syntax }),
+            {{ node | upper }} => Some({{ node }} { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> {{ Name }}<R> {
-{%- if node.collections -%}
-{%- for m in node.collections -%}
+impl<R: TreeRoot> {{ node }}<R> {
+{%- if methods.collections -%}
+{%- for m in methods.collections -%}
 {%- set method_name = m.0 -%}
-{%- set ChildName = m.1 | camel %}
+{%- set ChildName = m.1 %}
     pub fn {{ method_name }}<'a>(&'a self) -> impl Iterator<Item = {{ ChildName }}<R>> + 'a {
         self.syntax()
             .children()
@@ -33,10 +32,10 @@ impl<R: TreeRoot> {{ Name }}<R> {
 {% endfor -%}
 {%- endif -%}
 
-{%- if node.options -%}
-{%- for m in node.options -%}
+{%- if methods.options -%}
+{%- for m in methods.options -%}
 {%- set method_name = m.0 -%}
-{%- set ChildName = m.1 | camel %}
+{%- set ChildName = m.1 %}
     pub fn {{ method_name }}(&self) -> Option<{{ ChildName }}<R>> {
         self.syntax()
             .children()

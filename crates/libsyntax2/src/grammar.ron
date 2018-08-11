@@ -213,21 +213,17 @@ Grammar(
         "SELF_PARAM",
         "ARG_LIST",
     ],
-    ast: [
-        (
-            kind: "FILE",
+    ast: {
+        "File": (
             collections: [
-                ["functions", "FUNCTION"]
+                ["functions", "Function"]
             ]
         ),
-        (
-            kind: "FUNCTION",
+        "Function": (
             options: [
-                ["name", "NAME"]
+                ["name", "Name"]
             ]
         ),
-        (
-            kind: "NAME"
-        ),
-    ]
+        "Name": (),
+    },
 )
