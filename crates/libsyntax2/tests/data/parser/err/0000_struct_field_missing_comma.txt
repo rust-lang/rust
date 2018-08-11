@@ -1,5 +1,5 @@
 FILE@[0; 34)
-  STRUCT_ITEM@[0; 34)
+  STRUCT@[0; 34)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)
     NAME@[7; 8)

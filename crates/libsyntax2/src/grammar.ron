@@ -108,7 +108,7 @@ Grammar(
     nodes: [
         "FILE",
 
-        "STRUCT_ITEM",
+        "STRUCT",
         "ENUM_ITEM",
         "FUNCTION",
         "EXTERN_CRATE_ITEM",

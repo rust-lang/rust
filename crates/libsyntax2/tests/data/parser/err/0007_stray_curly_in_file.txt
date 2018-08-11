@@ -3,7 +3,7 @@ FILE@[0; 31)
     R_CURLY@[0; 1)
     err: `expected an item`
   WHITESPACE@[1; 3)
-  STRUCT_ITEM@[3; 12)
+  STRUCT@[3; 12)
     STRUCT_KW@[3; 9)
     WHITESPACE@[9; 10)
     NAME@[10; 11)

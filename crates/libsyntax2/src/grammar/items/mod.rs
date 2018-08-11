@@ -171,7 +171,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
                      consider removing this semicolon"
                 );
             }
-            STRUCT_ITEM
+            STRUCT
         }
         ENUM_KW => {
             structs::enum_item(p);
