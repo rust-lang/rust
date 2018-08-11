@@ -196,9 +196,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
-        self.unresolved_invocations_macro_export.remove(&mark);
         self.current_module.unresolved_invocations.borrow_mut().extend(derives);
-        self.unresolved_invocations_macro_export.extend(derives);
         for &derive in derives {
             self.invocations.insert(derive, invocation);
         }

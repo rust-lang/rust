@@ -1,0 +1,36 @@
+error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
+  --> $DIR/local-modularized-tricky-fail-3.rs:25:9
+   |
+LL |     use exported;
+   |         ^^^^^^^^
+   |
+note: the macro is defined here
+  --> $DIR/local-modularized-tricky-fail-3.rs:17:5
+   |
+LL | /     macro_rules! exported {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |   define_exported!();
+   |   ------------------- in this macro invocation
+
+error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
+  --> $DIR/local-modularized-tricky-fail-3.rs:30:5
+   |
+LL |     ::exported!();
+   |     ^^^^^^^^^^
+   |
+note: the macro is defined here
+  --> $DIR/local-modularized-tricky-fail-3.rs:17:5
+   |
+LL | /     macro_rules! exported {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |   define_exported!();
+   |   ------------------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
