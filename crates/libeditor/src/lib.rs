@@ -5,11 +5,12 @@ mod extend_selection;
 mod line_index;
 
 use libsyntax2::{
+    ast,
     SyntaxNodeRef, AstNode,
     algo::walk,
     SyntaxKind::*,
 };
-pub use libsyntax2::{TextRange, TextUnit, ast};
+pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::line_index::{LineIndex, LineCol};
 
 #[derive(Debug)]
@@ -41,6 +42,10 @@ pub struct Runnable {
 pub enum RunnableKind {
     Test { name: String },
     Bin,
+}
+
+pub fn parse(text: &str) -> ast::File {
+    ast::File::parse(text)
 }
 
 pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {

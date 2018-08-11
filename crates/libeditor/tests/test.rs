@@ -3,7 +3,7 @@ extern crate itertools;
 
 use std::fmt;
 use itertools::Itertools;
-use libeditor::{ast, highlight, runnables, extend_selection, TextRange};
+use libeditor::{File, highlight, runnables, extend_selection, TextRange};
 
 #[test]
 fn test_extend_selection() {
@@ -58,8 +58,8 @@ fn test_foo() {}
     )
 }
 
-fn file(text: &str) -> ast::File {
-    ast::File::parse(text)
+fn file(text: &str) -> File {
+    File::parse(text)
 }
 
 fn dbg_eq(actual: &impl fmt::Debug, expected: &str) {

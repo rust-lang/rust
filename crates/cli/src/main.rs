@@ -10,7 +10,7 @@ use std::{
 };
 use clap::{App, Arg, SubCommand};
 use tools::collect_tests;
-use libeditor::{ast, syntax_tree, symbols};
+use libeditor::{File, syntax_tree, symbols};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -68,9 +68,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<ast::File> {
+fn file() -> Result<File> {
     let text = read_stdin()?;
-    Ok(ast::File::parse(&text))
+    Ok(libeditor::parse(&text))
 }
 
 fn read_stdin() -> Result<String> {
@@ -89,7 +89,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = ast::File::parse(&test.text);
+    let file = libeditor::parse(&test.text);
     let tree = syntax_tree(&file);
     Ok((test.text, tree))
 }
