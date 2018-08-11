@@ -26,15 +26,13 @@ export function activate(context: vscode.ExtensionContext) {
         let request: ExtendSelectionParams = {
             textDocument: { uri: editor.document.uri.toString() },
             selections: editor.selections.map((s) => {
-                return { start: s.start, end: s.end };
+                return client.code2ProtocolConverter.asRange(s)
             })
         }
         let response = await client.sendRequest<ExtendSelectionResult>("m/extendSelection", request)
         editor.selections = response.selections.map((range) => {
-            return new vscode.Selection(
-                new vscode.Position(range.start.line, range.start.character),
-                new vscode.Position(range.end.line, range.end.character),
-            )
+            let r = client.protocol2CodeConverter.asRange(range)
+            return new vscode.Selection(r.start, r.end)
         })
     })
 
@@ -158,7 +156,9 @@ function setHighlights(
             console.log(`unknown tag ${d.tag}`)
             continue
         }
-        byTag[d.tag].push(d.range)
+        byTag[d.tag].push(
+            client.protocol2CodeConverter.asRange(d.range)
+        )
     }
 
     for (let tag in byTag) {
