@@ -140,6 +140,11 @@ pub fn panic(_expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! 
     loop {}
 }
 
+#[lang = "eh_personality"]
+fn eh_personality() -> ! {
+    loop {}
+}
+
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
