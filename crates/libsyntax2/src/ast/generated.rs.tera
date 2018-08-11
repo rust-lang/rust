@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use {
+    ast,
     SyntaxNode, SyntaxRoot, TreeRoot, AstNode,
     SyntaxKind::*,
 };
 {% for node, methods in ast %}
+// {{ node }}
 #[derive(Debug, Clone, Copy)]
 pub struct {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -18,6 +20,12 @@ impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
+
+{% if methods.traits -%}
+{%- for t in methods.traits -%}
+impl<R: TreeRoot> ast::{{ t }}<R> for {{ node }}<R> {}
+{% endfor -%}
+{%- endif -%}
 
 impl<R: TreeRoot> {{ node }}<R> {
 {%- if methods.collections -%}

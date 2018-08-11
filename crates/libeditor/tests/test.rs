@@ -3,7 +3,7 @@ extern crate itertools;
 
 use std::fmt;
 use itertools::Itertools;
-use libeditor::{File, highlight, runnables, extend_selection, TextRange};
+use libeditor::{File, highlight, runnables, extend_selection, TextRange, file_symbols};
 
 #[test]
 fn test_extend_selection() {
@@ -55,6 +55,29 @@ fn test_foo() {}
         r#"[Runnable { range: [1; 13), kind: Bin },
             Runnable { range: [15; 39), kind: Test { name: "test_foo" } },
             Runnable { range: [41; 75), kind: Test { name: "test_foo" } }]"#,
+    )
+}
+
+#[test]
+fn symbols() {
+    let file = file(r#"
+struct Foo {
+    x: i32
+}
+
+mod m {
+    fn bar() {}
+}
+
+enum E { X, Y(i32) }
+"#);
+    let symbols = file_symbols(&file);
+    dbg_eq(
+        &symbols,
+        r#"[FileSymbol { parent: None, name: "Foo", name_range: [8; 11), node_range: [1; 26), kind: STRUCT },
+            FileSymbol { parent: None, name: "m", name_range: [32; 33), node_range: [28; 53), kind: MODULE },
+            FileSymbol { parent: Some(1), name: "bar", name_range: [43; 46), node_range: [40; 51), kind: FUNCTION },
+            FileSymbol { parent: None, name: "E", name_range: [60; 61), node_range: [55; 75), kind: ENUM }]"#,
     )
 }
 

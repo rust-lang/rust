@@ -28,6 +28,12 @@ impl<R: TreeRoot> Eq for SyntaxNode<R> {}
 
 pub type SyntaxNodeRef<'a> = SyntaxNode<&'a SyntaxRoot>;
 
+#[test]
+fn syntax_node_ref_is_copy() {
+    fn assert_copy<T: Copy>(){}
+    assert_copy::<SyntaxNodeRef>()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct SyntaxError {
     pub msg: String,

@@ -12,6 +12,15 @@ pub trait AstNode<R: TreeRoot>: Sized {
     fn syntax(&self) -> &SyntaxNode<R>;
 }
 
+pub trait NameOwner<R: TreeRoot>: AstNode<R> {
+    fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
 impl File<Arc<SyntaxRoot>> {
     pub fn parse(text: &str) -> Self {
         File::cast(::parse(text)).unwrap()

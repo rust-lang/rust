@@ -220,39 +220,25 @@ Grammar(
             ]
         ),
         "Function": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "Struct": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "Enum": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "Trait": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "Module": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "ConstItem": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "StaticItem": (
-            options: [
-                ["name", "Name"]
-            ]
+            traits: ["NameOwner"]
         ),
         "Name": (),
     },

@@ -1,4 +1,5 @@
 pub mod walk;
+pub mod visit;
 
 use {SyntaxNodeRef, TextUnit, TextRange};
 

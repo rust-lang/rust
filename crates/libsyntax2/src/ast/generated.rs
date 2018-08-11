@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use {
+    ast,
     SyntaxNode, SyntaxRoot, TreeRoot, AstNode,
     SyntaxKind::*,
 };
 
+// ConstItem
 #[derive(Debug, Clone, Copy)]
 pub struct ConstItem<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -19,15 +21,10 @@ impl<R: TreeRoot> AstNode<R> for ConstItem<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ConstItem<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for ConstItem<R> {}
+impl<R: TreeRoot> ConstItem<R> {}
 
+// Enum
 #[derive(Debug, Clone, Copy)]
 pub struct Enum<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -43,15 +40,10 @@ impl<R: TreeRoot> AstNode<R> for Enum<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> Enum<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for Enum<R> {}
+impl<R: TreeRoot> Enum<R> {}
 
+// File
 #[derive(Debug, Clone, Copy)]
 pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -75,6 +67,7 @@ impl<R: TreeRoot> File<R> {
     }
 }
 
+// Function
 #[derive(Debug, Clone, Copy)]
 pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -90,15 +83,10 @@ impl<R: TreeRoot> AstNode<R> for Function<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> Function<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for Function<R> {}
+impl<R: TreeRoot> Function<R> {}
 
+// Module
 #[derive(Debug, Clone, Copy)]
 pub struct Module<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -114,15 +102,10 @@ impl<R: TreeRoot> AstNode<R> for Module<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> Module<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for Module<R> {}
+impl<R: TreeRoot> Module<R> {}
 
+// Name
 #[derive(Debug, Clone, Copy)]
 pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -140,6 +123,7 @@ impl<R: TreeRoot> AstNode<R> for Name<R> {
 
 impl<R: TreeRoot> Name<R> {}
 
+// StaticItem
 #[derive(Debug, Clone, Copy)]
 pub struct StaticItem<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -155,15 +139,10 @@ impl<R: TreeRoot> AstNode<R> for StaticItem<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> StaticItem<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for StaticItem<R> {}
+impl<R: TreeRoot> StaticItem<R> {}
 
+// Struct
 #[derive(Debug, Clone, Copy)]
 pub struct Struct<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -179,15 +158,10 @@ impl<R: TreeRoot> AstNode<R> for Struct<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> Struct<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for Struct<R> {}
+impl<R: TreeRoot> Struct<R> {}
 
+// Trait
 #[derive(Debug, Clone, Copy)]
 pub struct Trait<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -203,12 +177,6 @@ impl<R: TreeRoot> AstNode<R> for Trait<R> {
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> Trait<R> {
-    pub fn name(&self) -> Option<Name<R>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
-    }
-}
+impl<R: TreeRoot> ast::NameOwner<R> for Trait<R> {}
+impl<R: TreeRoot> Trait<R> {}
 

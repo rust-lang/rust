@@ -1,11 +1,16 @@
 use libsyntax2::{
+    ast, AstNode,
     TextRange, SyntaxNodeRef,
     SyntaxKind::WHITESPACE,
     algo::{find_leaf_at_offset, find_covering_node, ancestors},
 };
 
+pub fn extend_selection(file: &ast::File, range: TextRange) -> Option<TextRange> {
+    let syntax = file.syntax();
+    extend(syntax.as_ref(), range)
+}
 
-pub(crate) fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);

@@ -2,16 +2,21 @@ extern crate libsyntax2;
 extern crate superslice;
 
 mod extend_selection;
+mod symbols;
 mod line_index;
 
 use libsyntax2::{
-    ast,
+    ast::{self, NameOwner},
     SyntaxNodeRef, AstNode,
     algo::walk,
     SyntaxKind::*,
 };
 pub use libsyntax2::{File, TextRange, TextUnit};
-pub use self::line_index::{LineIndex, LineCol};
+pub use self::{
+    line_index::{LineIndex, LineCol},
+    extend_selection::extend_selection,
+    symbols::{FileSymbol, file_symbols}
+};
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -106,11 +111,6 @@ pub fn symbols(file: &ast::File) -> Vec<Symbol> {
         })
         .collect();
     res // NLL :-(
-}
-
-pub fn extend_selection(file: &ast::File, range: TextRange) -> Option<TextRange> {
-    let syntax = file.syntax();
-    extend_selection::extend_selection(syntax.as_ref(), range)
 }
 
 pub fn runnables(file: &ast::File) -> Vec<Runnable> {
