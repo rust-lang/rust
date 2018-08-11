@@ -46,7 +46,6 @@ use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
@@ -628,9 +627,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 
 declare_lint! {
     pub ANONYMOUS_PARAMETERS,
-    Allow,
-    "detects anonymous parameters",
     Warn,
+    "detects anonymous parameters"
 }
 
 /// Checks for use of anonymous parameters (RFC 1685)
