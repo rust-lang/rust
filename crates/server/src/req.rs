@@ -1,11 +1,11 @@
 use serde::{ser::Serialize, de::DeserializeOwned};
-use url::Url;
-use languageserver_types::{TextDocumentIdentifier, Range};
+use languageserver_types::{TextDocumentIdentifier, Range, Url};
 use url_serde;
 
 pub use languageserver_types::{
     request::*, notification::*,
     InitializeResult, PublishDiagnosticsParams,
+    DocumentSymbolParams, DocumentSymbolResponse
 };
 
 

@@ -11,11 +11,11 @@ extern crate crossbeam_channel;
 extern crate threadpool;
 #[macro_use]
 extern crate log;
-extern crate url;
 extern crate url_serde;
 extern crate flexi_logger;
 extern crate libeditor;
 extern crate libanalysis;
+extern crate libsyntax2;
 
 mod io;
 mod caps;
@@ -27,12 +27,13 @@ mod util;
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
 use flexi_logger::Logger;
-use url::Url;
+use languageserver_types::Url;
 use libanalysis::{WorldState, World};
 
 use ::{
     io::{Io, RawMsg, RawRequest},
-    handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics, publish_decorations},
+    handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics, publish_decorations,
+               handle_document_symbol},
     util::{FilePath, FnBox}
 };
 
@@ -177,6 +178,9 @@ fn main_loop(
                 )?;
                 handle_request_on_threadpool::<req::ExtendSelection>(
                     &mut req, pool, world, &sender, handle_extend_selection
+                )?;
+                handle_request_on_threadpool::<req::DocumentSymbolRequest>(
+                    &mut req, pool, world, &sender, handle_document_symbol
                 )?;
                 let mut shutdown = false;
                 dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {

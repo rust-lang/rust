@@ -10,7 +10,7 @@ use std::{
 };
 use clap::{App, Arg, SubCommand};
 use tools::collect_tests;
-use libeditor::{File, syntax_tree, symbols};
+use libeditor::{File, syntax_tree, file_symbols};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
         }
         ("symbols", _) => {
             let file = file()?;
-            for s in symbols(&file) {
+            for s in file_symbols(&file) {
                 println!("{:?}", s);
             }
         }

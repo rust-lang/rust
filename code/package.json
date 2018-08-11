@@ -14,7 +14,7 @@
     "postinstall": "node ./node_modules/vscode/bin/install"
   },
   "dependencies": {
-    "vscode-languageclient": "^4.3.0"
+    "vscode-languageclient": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^7.0.56",

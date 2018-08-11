@@ -1,5 +1,5 @@
-use url::Url;
-use languageserver_types::{Range, Position, Diagnostic, DiagnosticSeverity};
+use languageserver_types::{Range, Position, Diagnostic, DiagnosticSeverity, Url, DocumentSymbol, SymbolKind};
+use libsyntax2::SyntaxKind;
 use libanalysis::World;
 use libeditor::{self, LineIndex, LineCol, TextRange, TextUnit};
 
@@ -32,6 +32,50 @@ pub fn handle_extend_selection(
         })
         .collect();
     Ok(req::ExtendSelectionResult { selections })
+}
+
+pub fn handle_document_symbol(
+    world: World,
+    params: req::DocumentSymbolParams,
+) -> Result<Option<req::DocumentSymbolResponse>> {
+    let path = params.text_document.file_path()?;
+    let file = world.file_syntax(&path)?;
+    let line_index = world.file_line_index(&path)?;
+
+    let mut res: Vec<DocumentSymbol> = Vec::new();
+
+    for symbol in libeditor::file_symbols(&file) {
+        let doc_symbol = DocumentSymbol {
+            name: symbol.name.clone(),
+            detail: Some(symbol.name),
+            kind: to_symbol_kind(symbol.kind),
+            deprecated: None,
+            range: to_vs_range(&line_index, symbol.node_range),
+            selection_range: to_vs_range(&line_index, symbol.name_range),
+            children: None,
+        };
+        if let Some(idx) = symbol.parent {
+            let children = &mut res[idx].children;
+            if children.is_none() {
+                *children = Some(Vec::new());
+            }
+            children.as_mut().unwrap().push(doc_symbol);
+        } else {
+            res.push(doc_symbol);
+        }
+    }
+    Ok(Some(req::DocumentSymbolResponse::Nested(res)))
+}
+
+fn to_symbol_kind(kind: SyntaxKind) -> SymbolKind {
+    match kind {
+        SyntaxKind::FUNCTION => SymbolKind::Function,
+        SyntaxKind::STRUCT => SymbolKind::Struct,
+        SyntaxKind::ENUM => SymbolKind::Enum,
+        SyntaxKind::TRAIT => SymbolKind::Interface,
+        SyntaxKind::MODULE => SymbolKind::Module,
+        _ => SymbolKind::Variable,
+    }
 }
 
 pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnosticsParams> {

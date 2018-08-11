@@ -5,7 +5,6 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
 failure = "0.1.2"
-languageserver-types = "0.48.0"
 serde_json = "1.0.24"
 serde = "1.0.71"
 serde_derive = "1.0.71"
@@ -14,8 +13,13 @@ crossbeam-channel = "0.2.4"
 threadpool = "1.7.1"
 flexi_logger = "0.9.0"
 log = "0.4.3"
-url = "1.1.0"
 url_serde = "0.2.0"
 
+libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
 libanalysis = { path = "../libanalysis" }
+
+[dependencies.languageserver-types]
+git = "https://github.com/matklad/languageserver-types"
+rev = "70e6bf548b901f01dc249c20378d26dd4996c25f"
+

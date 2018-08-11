@@ -1,5 +1,6 @@
 use std::path::PathBuf;
-use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier, TextDocumentIdentifier};
+use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier,
+                           TextDocumentIdentifier, Url};
 use ::{Result};
 
 pub trait FnBox<A, R>: Send {
@@ -34,7 +35,7 @@ impl FilePath for TextDocumentIdentifier {
     }
 }
 
-impl FilePath for ::url::Url {
+impl FilePath for Url {
     fn file_path(&self) -> Result<PathBuf> {
         self.to_file_path()
             .map_err(|()| format_err!("invalid uri: {}", self))

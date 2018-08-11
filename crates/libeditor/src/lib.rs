@@ -7,7 +7,7 @@ mod line_index;
 
 use libsyntax2::{
     ast::{self, NameOwner},
-    SyntaxNodeRef, AstNode,
+    AstNode,
     algo::walk,
     SyntaxKind::*,
 };
@@ -100,19 +100,6 @@ pub fn syntax_tree(file: &ast::File) -> String {
     ::libsyntax2::utils::dump_tree(&file.syntax())
 }
 
-pub fn symbols(file: &ast::File) -> Vec<Symbol> {
-    let syntax = file.syntax();
-    let res: Vec<Symbol> = walk::preorder(syntax.as_ref())
-        .filter_map(Declaration::cast)
-        .filter_map(|decl| {
-            let name = decl.name()?;
-            let range = decl.range();
-            Some(Symbol { name, range })
-        })
-        .collect();
-    res // NLL :-(
-}
-
 pub fn runnables(file: &ast::File) -> Vec<Runnable> {
     file
         .functions()
@@ -133,28 +120,4 @@ pub fn runnables(file: &ast::File) -> Vec<Runnable> {
             })
         })
         .collect()
-}
-
-
-struct Declaration<'f> (SyntaxNodeRef<'f>);
-
-impl<'f> Declaration<'f> {
-    fn cast(node: SyntaxNodeRef<'f>) -> Option<Declaration<'f>> {
-        match node.kind() {
-            | STRUCT | ENUM | FUNCTION | TRAIT
-            | CONST_ITEM | STATIC_ITEM | MODULE | NAMED_FIELD
-            | TYPE_ITEM => Some(Declaration(node)),
-            _ => None
-        }
-    }
-
-    fn name(&self) -> Option<String> {
-        let name = self.0.children()
-            .find(|child| child.kind() == NAME)?;
-        Some(name.text())
-    }
-
-    fn range(&self) -> TextRange {
-        self.0.range()
-    }
 }
