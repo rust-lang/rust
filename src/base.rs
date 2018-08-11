@@ -157,7 +157,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(
                 fx.bcx.ins().jump(ebb, &[]);
             }
             TerminatorKind::Return => {
-                fx.bcx.ins().return_(&[]);
+                crate::abi::codegen_return(fx);
             }
             TerminatorKind::Assert {
                 cond,

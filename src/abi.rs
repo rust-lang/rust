@@ -386,6 +386,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     }
 }
 
+pub fn codegen_return(fx: &mut FunctionCx) {
+    fx.bcx.ins().return_(&[]);
+}
+
 fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     fn_ty: Ty<'tcx>,
