@@ -188,6 +188,7 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
 }
 
 fn install_code_extension() -> Result<()> {
+    execute!(r"cargo install --path crates/server --force")?;
     execute!(
         r"
 cd code

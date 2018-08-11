@@ -219,27 +219,14 @@ Grammar(
                 ["functions", "Function"]
             ]
         ),
-        "Function": (
-            traits: ["NameOwner"]
-        ),
-        "Struct": (
-            traits: ["NameOwner"]
-        ),
-        "Enum": (
-            traits: ["NameOwner"]
-        ),
-        "Trait": (
-            traits: ["NameOwner"]
-        ),
-        "Module": (
-            traits: ["NameOwner"]
-        ),
-        "ConstItem": (
-            traits: ["NameOwner"]
-        ),
-        "StaticItem": (
-            traits: ["NameOwner"]
-        ),
+        "Function": ( traits: ["NameOwner"] ),
+        "Struct": ( traits: ["NameOwner"] ),
+        "Enum": ( traits: ["NameOwner"] ),
+        "Trait": ( traits: ["NameOwner"] ),
+        "Module": ( traits: ["NameOwner"] ),
+        "ConstItem": ( traits: ["NameOwner"] ),
+        "StaticItem": ( traits: ["NameOwner"] ),
+        "TypeItem": ( traits: ["NameOwner"] ),
         "Name": (),
     },
 )

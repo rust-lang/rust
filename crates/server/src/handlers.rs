@@ -74,6 +74,9 @@ fn to_symbol_kind(kind: SyntaxKind) -> SymbolKind {
         SyntaxKind::ENUM => SymbolKind::Enum,
         SyntaxKind::TRAIT => SymbolKind::Interface,
         SyntaxKind::MODULE => SymbolKind::Module,
+        SyntaxKind::TYPE_ITEM => SymbolKind::TypeParameter,
+        SyntaxKind::STATIC_ITEM => SymbolKind::Constant,
+        SyntaxKind::CONST_ITEM => SymbolKind::Constant,
         _ => SymbolKind::Variable,
     }
 }

@@ -63,5 +63,8 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         .visit(decl::<ast::Enum<_>>)
         .visit(decl::<ast::Trait<_>>)
         .visit(decl::<ast::Module<_>>)
+        .visit(decl::<ast::TypeItem<_>>)
+        .visit(decl::<ast::ConstItem<_>>)
+        .visit(decl::<ast::StaticItem<_>>)
         .accept(node)?
 }

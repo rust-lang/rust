@@ -180,3 +180,22 @@ impl<R: TreeRoot> AstNode<R> for Trait<R> {
 impl<R: TreeRoot> ast::NameOwner<R> for Trait<R> {}
 impl<R: TreeRoot> Trait<R> {}
 
+// TypeItem
+#[derive(Debug, Clone, Copy)]
+pub struct TypeItem<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for TypeItem<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            TYPE_ITEM => Some(TypeItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ast::NameOwner<R> for TypeItem<R> {}
+impl<R: TreeRoot> TypeItem<R> {}
+

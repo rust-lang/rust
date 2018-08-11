@@ -70,6 +70,9 @@ mod m {
 }
 
 enum E { X, Y(i32) }
+type T = ();
+static S: i32 = 92;
+const C: i32 = 92;
 "#);
     let symbols = file_symbols(&file);
     dbg_eq(
@@ -77,7 +80,10 @@ enum E { X, Y(i32) }
         r#"[FileSymbol { parent: None, name: "Foo", name_range: [8; 11), node_range: [1; 26), kind: STRUCT },
             FileSymbol { parent: None, name: "m", name_range: [32; 33), node_range: [28; 53), kind: MODULE },
             FileSymbol { parent: Some(1), name: "bar", name_range: [43; 46), node_range: [40; 51), kind: FUNCTION },
-            FileSymbol { parent: None, name: "E", name_range: [60; 61), node_range: [55; 75), kind: ENUM }]"#,
+            FileSymbol { parent: None, name: "E", name_range: [60; 61), node_range: [55; 75), kind: ENUM },
+            FileSymbol { parent: None, name: "T", name_range: [81; 82), node_range: [76; 88), kind: TYPE_ITEM },
+            FileSymbol { parent: None, name: "S", name_range: [96; 97), node_range: [89; 108), kind: STATIC_ITEM },
+            FileSymbol { parent: None, name: "C", name_range: [115; 116), node_range: [109; 127), kind: CONST_ITEM }]"#,
     )
 }
 
