@@ -157,7 +157,7 @@ notes above on running rustfmt.
 Rustfmt is designed to be very configurable. You can create a TOML file called
 `rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent
 directory and it will apply the options in that file. See `rustfmt
---config=help` for the options which are available, or if you prefer to see
+--help=config` for the options which are available, or if you prefer to see
 visual style previews, [Configurations.md](Configurations.md).
 
 By default, Rustfmt uses a style which conforms to the [Rust style guide][style
