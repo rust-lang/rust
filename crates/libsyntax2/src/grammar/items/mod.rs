@@ -175,7 +175,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         ENUM_KW => {
             structs::enum_item(p);
-            ENUM_ITEM
+            ENUM
         }
         USE_KW => {
             use_item::use_item(p);

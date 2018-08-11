@@ -109,7 +109,7 @@ Grammar(
         "FILE",
 
         "STRUCT",
-        "ENUM_ITEM",
+        "ENUM",
         "FUNCTION",
         "EXTERN_CRATE_ITEM",
         "MOD_ITEM",
