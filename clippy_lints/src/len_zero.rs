@@ -22,6 +22,12 @@ use crate::utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_su
 /// **Example:**
 /// ```rust
 /// if x.len() == 0 { .. }
+/// if y.len() != 0 { .. }
+/// ```
+/// instead use
+/// ```rust
+/// if x.len().is_empty() { .. }
+/// if !y.len().is_empty() { .. }
 /// ```
 declare_clippy_lint! {
     pub LEN_ZERO,

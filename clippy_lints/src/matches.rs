@@ -93,6 +93,15 @@ declare_clippy_lint! {
 ///     false => bar(),
 /// }
 /// ```
+/// Use if/else instead:
+/// ```rust
+/// let condition: bool = true;
+/// if condition {
+///     foo();
+/// } else {
+///     bar();
+/// }
+/// ```
 declare_clippy_lint! {
     pub MATCH_BOOL,
     style,

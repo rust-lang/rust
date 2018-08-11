@@ -21,6 +21,10 @@ use crate::utils::{span_lint_and_sugg};
 ///
 /// let foo = Foo{ bar: bar }
 /// ```
+/// the last line can be simplified to
+/// ```rust
+/// let foo = Foo{ bar }
+/// ```
 declare_clippy_lint! {
     pub REDUNDANT_FIELD_NAMES,
     style,
