@@ -134,8 +134,8 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub struct Pointer {
-    pub alloc_id: AllocId,
+pub struct Pointer<Id=AllocId> {
+    pub alloc_id: Id,
     pub offset: Size,
 }
 
@@ -543,16 +543,16 @@ impl Allocation {
 impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Relocations(SortedMap<Size, AllocId>);
+pub struct Relocations<Id=AllocId>(SortedMap<Size, Id>);
 
-impl Relocations {
-    pub fn new() -> Relocations {
+impl<Id> Relocations<Id> {
+    pub fn new() -> Self {
         Relocations(SortedMap::new())
     }
 
     // The caller must guarantee that the given relocations are already sorted
     // by address and contain no duplicates.
-    pub fn from_presorted(r: Vec<(Size, AllocId)>) -> Relocations {
+    pub fn from_presorted(r: Vec<(Size, Id)>) -> Self {
         Relocations(SortedMap::from_presorted_elements(r))
     }
 }

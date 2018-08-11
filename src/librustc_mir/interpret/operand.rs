@@ -17,9 +17,10 @@ use std::convert::TryInto;
 use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 use rustc_data_structures::indexed_vec::Idx;
-
 use rustc::mir::interpret::{
-    GlobalId, ConstValue, Scalar, EvalResult, Pointer, ScalarMaybeUndef, EvalErrorKind
+    GlobalId, AllocId,
+    ConstValue, Pointer, Scalar, ScalarMaybeUndef,
+    EvalResult, EvalErrorKind
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 
@@ -31,9 +32,9 @@ use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Value`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Value {
-    Scalar(ScalarMaybeUndef),
-    ScalarPair(ScalarMaybeUndef, ScalarMaybeUndef),
+pub enum Value<Id=AllocId> {
+    Scalar(ScalarMaybeUndef<Id>),
+    ScalarPair(ScalarMaybeUndef<Id>, ScalarMaybeUndef<Id>),
 }
 
 impl<'tcx> Value {
@@ -106,9 +107,9 @@ impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
 /// or still in memory.  The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operand {
-    Immediate(Value),
-    Indirect(MemPlace),
+pub enum Operand<Id=AllocId> {
+    Immediate(Value<Id>),
+    Indirect(MemPlace<Id>),
 }
 
 impl Operand {

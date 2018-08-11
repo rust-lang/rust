@@ -22,21 +22,21 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 use rustc::mir::interpret::{
-    GlobalId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
+    GlobalId, AllocId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
 };
 use super::{EvalContext, Machine, Value, ValTy, Operand, OpTy, MemoryKind};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct MemPlace {
+pub struct MemPlace<Id=AllocId> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
     /// However, it may never be undef.
-    pub ptr: Scalar,
+    pub ptr: Scalar<Id>,
     pub align: Align,
     /// Metadata for unsized places.  Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g. `extern type`).
-    pub extra: Option<Scalar>,
+    pub extra: Option<Scalar<Id>>,
 }
 
 impl_stable_hash_for!(struct ::interpret::MemPlace {
@@ -46,9 +46,9 @@ impl_stable_hash_for!(struct ::interpret::MemPlace {
 });
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Place {
+pub enum Place<Id=AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
-    Ptr(MemPlace),
+    Ptr(MemPlace<Id>),
 
     /// To support alloc-free locals, we are able to write directly to a local.
     /// (Without that optimization, we'd just always be a `MemPlace`.)

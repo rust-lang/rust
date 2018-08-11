@@ -26,7 +26,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc::mir::interpret::{
-    GlobalId, Scalar, FrameInfo,
+    GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
     ScalarMaybeUndef,
     truncate, sign_extend,
@@ -98,7 +98,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    pub locals: IndexVec<mir::Local, LocalValue>,
+    pub locals: IndexVec<mir::Local, LocalValue<AllocId>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -178,13 +178,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
 
 // State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum LocalValue {
+pub enum LocalValue<Id=AllocId> {
     Dead,
     // Mostly for convenience, we re-use the `Operand` type here.
     // This is an optimization over just always having a pointer here;
     // we can thus avoid doing an allocation when the local just stores
     // immediate values *and* never has its address taken.
-    Live(Operand),
+    Live(Operand<Id>),
 }
 
 impl<'tcx> LocalValue {

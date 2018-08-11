@@ -326,7 +326,7 @@ impl From<Pointer> for Scalar {
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum Scalar {
+pub enum Scalar<Id=AllocId> {
     /// The raw bytes of a simple value.
     Bits {
         /// The first `size` bytes are the value.
@@ -338,12 +338,12 @@ pub enum Scalar {
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `Pointer` here.
-    Ptr(Pointer),
+    Ptr(Pointer<Id>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef {
-    Scalar(Scalar),
+pub enum ScalarMaybeUndef<Id=AllocId> {
+    Scalar(Scalar<Id>),
     Undef,
 }
 
