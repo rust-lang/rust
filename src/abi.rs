@@ -5,13 +5,53 @@ use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
 
+#[derive(Debug)]
+enum PassMode {
+    NoPass,
+    ByVal(Type),
+    ByRef,
+}
+
+impl PassMode {
+    fn get_param_ty(self, _fx: &FunctionCx) -> Type {
+        match self {
+            PassMode::NoPass => unimplemented!("pass mode nopass"),
+            PassMode::ByVal(cton_type) => cton_type,
+            PassMode::ByRef => types::I64,
+        }
+    }
+}
+
+fn get_pass_mode<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    abi: Abi,
+    ty: Ty<'tcx>,
+    is_return: bool,
+) -> PassMode {
+    if ty.sty == tcx.mk_nil().sty {
+        if is_return {
+        //if false {
+            PassMode::NoPass
+        } else {
+            PassMode::ByRef
+        }
+    } else if let Some(ret_ty) = crate::common::cton_type_from_ty(tcx, ty) {
+        PassMode::ByVal(ret_ty)
+    } else {
+        if abi == Abi::C {
+            unimplemented!("Non scalars are not yet supported for \"C\" abi");
+        }
+        PassMode::ByRef
+    }
+}
+
 pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn_ty: Ty<'tcx>,
 ) -> Signature {
     let sig = ty_fn_sig(tcx, fn_ty);
     assert!(!sig.variadic, "Variadic function are not yet supported");
-    let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
+    let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
@@ -34,21 +74,35 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
+
+    let inputs = inputs
+        .into_iter()
+        .filter_map(|ty| match get_pass_mode(tcx, sig.abi, ty, false) {
+            PassMode::ByVal(cton_ty) => Some(cton_ty),
+            PassMode::NoPass => unimplemented!("pass mode nopass"),
+            PassMode::ByRef => Some(types::I64),
+        });
+
+    let (params, returns) = match get_pass_mode(tcx, sig.abi, output, true) {
+        PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
+        PassMode::ByVal(ret_ty) => (
+            inputs.map(AbiParam::new).collect(),
+            vec![AbiParam::new(ret_ty)],
+        ),
+        PassMode::ByRef => {
+            (
+                Some(types::I64).into_iter() // First param is place to put return val
+                    .chain(inputs)
+                    .map(AbiParam::new)
+                    .collect(),
+                vec![],
+            )
+        }
+    };
+
     Signature {
-        params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| {
-                let cton_ty = cton_type_from_ty(tcx, ty);
-                if let Some(cton_ty) = cton_ty {
-                    cton_ty
-                } else {
-                    if sig.abi == Abi::C {
-                        unimplemented!("Non scalars are not yet supported for \"C\" abi");
-                    }
-                    types::I64
-                }
-            }))
-            .map(AbiParam::new).collect(),
-        returns: vec![],
+        params,
+        returns,
         call_conv,
         argument_bytes: None,
     }
@@ -194,7 +248,19 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         _ => unimplemented!("declared function with non \"rust\" or \"rust-call\" abi"),
     }
 
-    let ret_param = fx.bcx.append_ebb_param(start_ebb, types::I64);
+    let ret_layout = fx.layout_of(fx.return_type());
+    let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
+    let ret_param = match output_pass_mode {
+        PassMode::NoPass => {
+            None
+        }
+        PassMode::ByVal(ret_ty) => {
+            None
+        }
+        PassMode::ByRef => {
+            Some(fx.bcx.append_ebb_param(start_ebb, types::I64))
+        }
+    };
 
     enum ArgKind {
         Normal(Value),
@@ -218,20 +284,34 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 
             let mut ebb_params = Vec::new();
             for arg_ty in tupled_arg_tys.iter() {
-                let cton_type = fx.cton_type(arg_ty).unwrap_or(types::I64);
+                let cton_type = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
                 ebb_params.push(fx.bcx.append_ebb_param(start_ebb, cton_type));
             }
 
             (local, ArgKind::Spread(ebb_params), arg_ty)
         } else {
-            let cton_type = fx.cton_type(arg_ty).unwrap_or(types::I64);
+            let cton_type = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
             (local, ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, cton_type)), arg_ty)
         }
     }).collect::<Vec<(Local, ArgKind, Ty)>>();
 
-    let ret_layout = fx.layout_of(fx.return_type());
-    fx.local_map
-        .insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
+    match output_pass_mode {
+        PassMode::NoPass => {
+            let null = fx.bcx.ins().iconst(types::I64, 0);
+            //unimplemented!("pass mode nopass");
+            fx.local_map.insert(RETURN_PLACE, CPlace::Addr(null, fx.layout_of(fx.return_type())));
+        }
+        PassMode::ByVal(ret_ty) => {
+            let var = Variable(RETURN_PLACE);
+            fx.bcx.declare_var(var, ret_ty);
+            fx.local_map
+                .insert(RETURN_PLACE, CPlace::Var(var, ret_layout));
+        }
+        PassMode::ByRef => {
+            fx.local_map
+                .insert(RETURN_PLACE, CPlace::Addr(ret_param.unwrap(), ret_layout));
+        }
+    }
 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
@@ -244,7 +324,14 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
             {
                 let var = Variable(local);
                 fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
-                fx.bcx.def_var(var, ebb_param);
+                match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
+                    PassMode::NoPass => unimplemented!("pass mode nopass"),
+                    PassMode::ByVal(_) => fx.bcx.def_var(var, ebb_param),
+                    PassMode::ByRef => {
+                        let val = CValue::ByRef(ebb_param, fx.layout_of(ty)).load_value(fx);
+                        fx.bcx.def_var(var, val);
+                    }
+                }
                 fx.local_map.insert(local, CPlace::Var(var, layout));
                 continue;
             }
@@ -260,19 +347,19 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 
         match arg_kind {
             ArgKind::Normal(ebb_param) => {
-                if fx.cton_type(ty).is_some() {
-                    place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()));
-                } else {
-                    place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout()));
+                match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
+                    PassMode::NoPass => unimplemented!("pass mode nopass"),
+                    PassMode::ByVal(_) => place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout())),
+                    PassMode::ByRef => place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout())),
                 }
             }
             ArgKind::Spread(ebb_params) => {
                 for (i, ebb_param) in ebb_params.into_iter().enumerate() {
                     let sub_place = place.place_field(fx, mir::Field::new(i));
-                    if fx.cton_type(sub_place.layout().ty).is_some() {
-                        sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout()));
-                    } else {
-                        sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout()));
+                    match get_pass_mode(fx.tcx, fx.self_sig().abi, sub_place.layout().ty, false) {
+                        PassMode::NoPass => unimplemented!("pass mode nopass"),
+                        PassMode::ByVal(_) => sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout())),
+                        PassMode::ByRef => sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout())),
                     }
                 }
             }
@@ -350,33 +437,48 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         return;
     }
 
-    let return_ptr = match destination {
-        Some((place, _)) => place.expect_addr(),
-        None => fx.bcx.ins().iconst(types::I64, 0),
+    let ret_layout = fx.layout_of(sig.output());
+
+    let output_pass_mode = get_pass_mode(fx.tcx, sig.abi, sig.output(), true);
+    println!("{:?}", output_pass_mode);
+    let return_ptr = match output_pass_mode {
+        PassMode::NoPass => None,
+        PassMode::ByRef => match destination {
+            Some((place, _)) => Some(place.expect_addr()),
+            None => Some(fx.bcx.ins().iconst(types::I64, 0)),
+        },
+        PassMode::ByVal(_) => None,
     };
 
-    let call_args = Some(return_ptr)
+    let call_args: Vec<Value> = return_ptr
         .into_iter()
-        .chain(args.into_iter().map(|arg| {
-            if fx.cton_type(arg.layout().ty).is_some() {
-                arg.load_value(fx)
-            } else {
-                arg.force_stack(fx)
-            }
-        })).collect::<Vec<_>>();
+        .chain(
+            args.into_iter()
+                .map(|arg| match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
+                    PassMode::NoPass => unimplemented!("pass mode nopass"),
+                    PassMode::ByVal(_) => arg.load_value(fx),
+                    PassMode::ByRef => arg.force_stack(fx),
+                }),
+        ).collect::<Vec<_>>();
 
-    match func {
-        CValue::Func(func, _) => {
-            fx.bcx.ins().call(func, &call_args);
-        }
+    let inst = match func {
+        CValue::Func(func, _) => fx.bcx.ins().call(func, &call_args),
         func => {
-            let func_ty = func.layout().ty;
             let func = func.load_value(fx);
-            let sig = fx
-                .bcx
-                .import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
-            fx.bcx.ins().call_indirect(sig, func, &call_args);
+            let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
+            fx.bcx.ins().call_indirect(sig, func, &call_args)
         }
+    };
+
+    match output_pass_mode {
+        PassMode::NoPass => {}
+        PassMode::ByVal(_) => {
+            if let Some((ret_place, _)) = destination {
+                let results = fx.bcx.inst_results(inst);
+                ret_place.write_cvalue(fx, CValue::ByVal(results[0], ret_layout));
+            }
+        }
+        PassMode::ByRef => {}
     }
     if let Some((_, dest)) = destination {
         let ret_ebb = fx.get_ebb(dest);
@@ -387,7 +489,16 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 }
 
 pub fn codegen_return(fx: &mut FunctionCx) {
-    fx.bcx.ins().return_(&[]);
+    match get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true) {
+        PassMode::NoPass | PassMode::ByRef => {
+            fx.bcx.ins().return_(&[]);
+        },
+        PassMode::ByVal(_) => {
+            let place = fx.get_local_place(RETURN_PLACE);
+            let ret_val = place.to_cvalue(fx).load_value(fx);
+            fx.bcx.ins().return_(&[ret_val]);
+        }
+    }
 }
 
 fn codegen_intrinsic_call<'a, 'tcx: 'a>(
