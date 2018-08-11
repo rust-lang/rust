@@ -342,12 +342,16 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             .collect::<Vec<_>>()
     };
 
+    let destination = destination.as_ref().map(|(place, bb)| {
+        (trans_place(fx, place), *bb)
+    });
+
     if codegen_intrinsic_call(fx, fn_ty, sig, &args, destination) {
         return;
     }
 
     let return_ptr = match destination {
-        Some((place, _)) => trans_place(fx, place).expect_addr(),
+        Some((place, _)) => place.expect_addr(),
         None => fx.bcx.ins().iconst(types::I64, 0),
     };
 
@@ -374,7 +378,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             fx.bcx.ins().call_indirect(sig, func, &call_args);
         }
     }
-    if let Some((_, dest)) = *destination {
+    if let Some((_, dest)) = destination {
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
@@ -387,7 +391,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fn_ty: Ty<'tcx>,
     sig: FnSig<'tcx>,
     args: &[CValue<'tcx>],
-    destination: &Option<(Place<'tcx>, BasicBlock)>,
+    destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) -> bool {
     if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
         if sig.abi == Abi::RustIntrinsic {
@@ -395,7 +399,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let intrinsic = &intrinsic[..];
 
             let ret = match destination {
-                Some((place, _)) => trans_place(fx, place),
+                Some((place, _)) => place,
                 None => {
                     println!(
                         "codegen_call(fx, _, {:?}, {:?})",
@@ -614,7 +618,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ => unimpl!("unsupported intrinsic {}", intrinsic),
             }
 
-            if let Some((_, dest)) = *destination {
+            if let Some((_, dest)) = destination {
                 let ret_ebb = fx.get_ebb(dest);
                 fx.bcx.ins().jump(ret_ebb, &[]);
             } else {
