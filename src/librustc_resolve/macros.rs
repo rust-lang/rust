@@ -669,7 +669,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::BuiltinAttrs => {
-                    if is_builtin_attr_name(ident.name) {
+                    // FIXME: Only built-in attributes are not considered as candidates for
+                    // non-attributes to fight off regressions on stable channel (#53205).
+                    // We need to come up with some more principled approach instead.
+                    if is_attr && is_builtin_attr_name(ident.name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, ident.span, Mark::root())
                                        .to_name_binding(self.arenas);

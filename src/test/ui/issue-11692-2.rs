@@ -10,5 +10,5 @@
 
 fn main() {
     concat!(test!());
-    //~^ ERROR expected a macro, found built-in attribute
+    //~^ ERROR cannot find macro `test!` in this scope
 }

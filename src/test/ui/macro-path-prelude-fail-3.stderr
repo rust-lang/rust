@@ -1,14 +1,14 @@
-error: expected a macro, found built-in attribute
+error: cannot find derive macro `inline` in this scope
   --> $DIR/macro-path-prelude-fail-3.rs:13:10
    |
-LL | #[derive(inline)] //~ ERROR expected a macro, found built-in attribute
+LL | #[derive(inline)] //~ ERROR cannot find derive macro `inline` in this scope
    |          ^^^^^^
 
-error: expected a macro, found built-in attribute
+error: cannot find macro `inline!` in this scope
   --> $DIR/macro-path-prelude-fail-3.rs:17:5
    |
-LL |     inline!(); //~ ERROR expected a macro, found built-in attribute
-   |     ^^^^^^
+LL |     inline!(); //~ ERROR cannot find macro `inline!` in this scope
+   |     ^^^^^^ help: you could try the macro: `line`
 
 error: aborting due to 2 previous errors
 

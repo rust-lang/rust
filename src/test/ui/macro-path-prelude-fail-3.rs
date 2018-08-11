@@ -10,9 +10,9 @@
 
 #![feature(use_extern_macros)]
 
-#[derive(inline)] //~ ERROR expected a macro, found built-in attribute
+#[derive(inline)] //~ ERROR cannot find derive macro `inline` in this scope
 struct S;
 
 fn main() {
-    inline!(); //~ ERROR expected a macro, found built-in attribute
+    inline!(); //~ ERROR cannot find macro `inline!` in this scope
 }
