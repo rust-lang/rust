@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[doc = $not_there] //~ error: unexpected token: `$`
+#[doc = $not_there] //~ ERROR arbitrary tokens in non-macro attributes are unstable
 fn main() { }

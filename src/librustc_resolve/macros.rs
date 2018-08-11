@@ -28,6 +28,7 @@ use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, feature_err, emit_feature_err, is_builtin_attr_name, GateIssue};
+use syntax::feature_gate::EXPLAIN_DERIVE_UNDERSCORE;
 use syntax::fold::{self, Folder};
 use syntax::parse::parser::PathStyle;
 use syntax::parse::token::{self, Token};
@@ -338,19 +339,37 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             match attr_kind {
                 NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper |
                 NonMacroAttrKind::Custom if is_attr_invoc => {
+                    let features = self.session.features_untracked();
                     if attr_kind == NonMacroAttrKind::Tool &&
-                       !self.session.features_untracked().tool_attributes {
+                       !features.tool_attributes {
                         feature_err(&self.session.parse_sess, "tool_attributes",
                                     invoc.span(), GateIssue::Language,
                                     "tool attributes are unstable").emit();
                     }
-                    if attr_kind == NonMacroAttrKind::Custom &&
-                       !self.session.features_untracked().custom_attribute {
-                        let msg = format!("The attribute `{}` is currently unknown to the compiler \
-                                           and may have meaning added to it in the future", path);
-                        feature_err(&self.session.parse_sess, "custom_attribute", invoc.span(),
-                                    GateIssue::Language, &msg).emit();
+                    if attr_kind == NonMacroAttrKind::Custom {
+                        assert!(path.segments.len() == 1);
+                        let name = path.segments[0].ident.name.as_str();
+                        if name.starts_with("rustc_") {
+                            if !features.rustc_attrs {
+                                let msg = "unless otherwise specified, attributes with the prefix \
+                                        `rustc_` are reserved for internal compiler diagnostics";
+                                feature_err(&self.session.parse_sess, "rustc_attrs", invoc.span(),
+                                            GateIssue::Language, &msg).emit();
+                            }
+                        } else if name.starts_with("derive_") {
+                            if !features.custom_derive {
+                                feature_err(&self.session.parse_sess, "custom_derive", invoc.span(),
+                                            GateIssue::Language, EXPLAIN_DERIVE_UNDERSCORE).emit();
+                            }
+                        } else if !features.custom_attribute {
+                            let msg = format!("The attribute `{}` is currently unknown to the \
+                                               compiler and may have meaning added to it in the \
+                                               future", path);
+                            feature_err(&self.session.parse_sess, "custom_attribute", invoc.span(),
+                                        GateIssue::Language, &msg).emit();
+                        }
                     }
+
                     return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr {
                         mark_used: attr_kind == NonMacroAttrKind::Tool,
                     })));
