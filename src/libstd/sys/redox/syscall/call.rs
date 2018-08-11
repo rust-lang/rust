@@ -105,7 +105,7 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> Result<usize> {
 }
 
 /// Replace the current process with a new executable
-pub fn fexec<T: AsRef<[u8]>>(fd: usize, args: &[[usize; 2]], vars: &[[usize; 2]]) -> Result<usize> {
+pub fn fexec(fd: usize, args: &[[usize; 2]], vars: &[[usize; 2]]) -> Result<usize> {
     unsafe { syscall5(SYS_FEXEC, fd, args.as_ptr() as usize, args.len(),
                       vars.as_ptr() as usize, vars.len()) }
 }
