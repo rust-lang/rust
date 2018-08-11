@@ -2689,7 +2689,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
         _ => false,
     };
     render_impl(w, cx, implementor, AssocItemLink::Anchor(None), RenderMode::Normal,
-                implementor.impl_item.stable_since(), true, Some(use_absolute))?;
+                implementor.impl_item.stable_since(), false, Some(use_absolute))?;
     Ok(())
 }
 
@@ -2892,14 +2892,14 @@ fn item_trait(
         <h2 id='implementors' class='small-section-header'>\
           Implementors<a href='#implementors' class='anchor'></a>\
         </h2>\
-        <ul class='item-list' id='implementors-list'>\
+        <div class='item-list' id='implementors-list'>\
     ";
 
     let synthetic_impl_header = "\
         <h2 id='synthetic-implementors' class='small-section-header'>\
           Auto implementors<a href='#synthetic-implementors' class='anchor'></a>\
         </h2>\
-        <ul class='item-list' id='synthetic-implementors-list'>\
+        <div class='item-list' id='synthetic-implementors-list'>\
     ";
 
     let mut synthetic_types = Vec::new();
@@ -3793,11 +3793,14 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
                        <tbody><tr><td><code>", id)?;
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute)?;
-            for it in &i.inner_impl().items {
-                if let clean::TypedefItem(ref tydef, _) = it.inner {
-                    write!(w, "<span class=\"where fmt-newline\">  ")?;
-                    assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
-                    write!(w, ";</span>")?;
+            if show_def_docs {
+                for it in &i.inner_impl().items {
+                    if let clean::TypedefItem(ref tydef, _) = it.inner {
+                        write!(w, "<span class=\"where fmt-newline\">  ")?;
+                        assoc_type(w, it, &vec![], Some(&tydef.type_),
+                                   AssocItemLink::Anchor(None))?;
+                        write!(w, ";</span>")?;
+                    }
                 }
             }
             write!(w, "</code>")?;
@@ -3929,10 +3932,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     let traits = &cache().traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
 
-    if !show_def_docs {
-        write!(w, "<span class='docblock autohide'>")?;
-    }
-
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
         doc_impl_item(w, cx, trait_item, link, render_mode,
@@ -3967,10 +3966,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                              render_mode, outer_version, show_def_docs)?;
     }
     write!(w, "</div>")?;
-
-    if !show_def_docs {
-        write!(w, "</span>")?;
-    }
 
     Ok(())
 }
