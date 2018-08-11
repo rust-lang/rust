@@ -113,16 +113,24 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
     }
 
-    fn build_reduced_graph_for_use_tree(&mut self,
-                                        root_use_tree: &ast::UseTree,
-                                        root_id: NodeId,
-                                        use_tree: &ast::UseTree,
-                                        id: NodeId,
-                                        vis: ty::Visibility,
-                                        prefix: &ast::Path,
-                                        nested: bool,
-                                        item: &Item,
-                                        expansion: Mark) {
+    fn build_reduced_graph_for_use_tree(
+        &mut self,
+        root_use_tree: &ast::UseTree,
+        root_id: NodeId,
+        use_tree: &ast::UseTree,
+        id: NodeId,
+        vis: ty::Visibility,
+        prefix: &ast::Path,
+        mut uniform_paths_canary_emitted: bool,
+        nested: bool,
+        item: &Item,
+        expansion: Mark,
+    ) {
+        debug!("build_reduced_graph_for_use_tree(prefix={:?}, \
+                uniform_paths_canary_emitted={}, \
+                use_tree={:?}, nested={})",
+               prefix, uniform_paths_canary_emitted, use_tree, nested);
+
         let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
         let path = &use_tree.prefix;
 
@@ -130,6 +138,71 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             .chain(path.segments.iter())
             .map(|seg| seg.ident)
             .collect();
+
+        debug!("build_reduced_graph_for_use_tree: module_path={:?}", module_path);
+
+        // `#[feature(uniform_paths)]` allows an unqualified import path,
+        // e.g. `use x::...;` to resolve not just globally (`use ::x::...;`)
+        // but also relatively (`use self::x::...;`). To catch ambiguities
+        // that might arise from both of these being available and resolution
+        // silently picking one of them, an artificial `use self::x as _;`
+        // import is injected as a "canary", and an error is emitted if it
+        // successfully resolves while an `x` external crate exists.
+        //
+        // Additionally, the canary might be able to catch limitations of the
+        // current implementation, where `::x` may be chosen due to `self::x`
+        // not existing, but `self::x` could appear later, from macro expansion.
+        //
+        // NB. The canary currently only errors if the `x::...` path *could*
+        // resolve as a relative path through the extern crate, i.e. `x` is
+        // in `extern_prelude`, *even though* `::x` might still forcefully
+        // load a non-`extern_prelude` crate.
+        // While always producing an ambiguity errors if `self::x` exists and
+        // a crate *could* be loaded, would be more conservative, imports for
+        // local modules named `test` (or less commonly, `syntax` or `log`),
+        // would need to be qualified (e.g. `self::test`), which is considered
+        // ergonomically unacceptable.
+        let emit_uniform_paths_canary =
+            !uniform_paths_canary_emitted &&
+            module_path.get(0).map_or(false, |ident| {
+                !ident.is_path_segment_keyword()
+            });
+        if emit_uniform_paths_canary {
+            // Relative paths should only get here if the feature-gate is on.
+            assert!(self.session.rust_2018() &&
+                    self.session.features_untracked().uniform_paths);
+
+            let source = module_path[0];
+            let subclass = SingleImport {
+                target: Ident {
+                    name: keywords::Underscore.name().gensymed(),
+                    span: source.span,
+                },
+                source,
+                result: PerNS {
+                    type_ns: Cell::new(Err(Undetermined)),
+                    value_ns: Cell::new(Err(Undetermined)),
+                    macro_ns: Cell::new(Err(Undetermined)),
+                },
+                type_ns_only: false,
+            };
+            self.add_import_directive(
+                vec![Ident {
+                    name: keywords::SelfValue.name(),
+                    span: source.span,
+                }],
+                subclass,
+                source.span,
+                id,
+                root_use_tree.span,
+                root_id,
+                ty::Visibility::Invisible,
+                expansion,
+                true, // is_uniform_paths_canary
+            );
+
+            uniform_paths_canary_emitted = true;
+        }
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -223,6 +296,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id,
                     vis,
                     expansion,
+                    false, // is_uniform_paths_canary
                 );
             }
             ast::UseTreeKind::Glob => {
@@ -239,6 +313,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id,
                     vis,
                     expansion,
+                    false, // is_uniform_paths_canary
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -273,7 +348,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        root_use_tree, root_id, tree, id, vis, &prefix, true, item, expansion
+                        root_use_tree,
+                        root_id,
+                        tree,
+                        id,
+                        vis,
+                        &prefix,
+                        uniform_paths_canary_emitted,
+                        true,
+                        item,
+                        expansion,
                     );
                 }
             }
@@ -305,7 +389,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 };
 
                 self.build_reduced_graph_for_use_tree(
-                    use_tree, item.id, use_tree, item.id, vis, &prefix, false, item, expansion,
+                    use_tree,
+                    item.id,
+                    use_tree,
+                    item.id,
+                    vis,
+                    &prefix,
+                    false, // uniform_paths_canary_emitted
+                    false,
+                    item,
+                    expansion,
                 );
             }
 
@@ -333,6 +426,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     vis: Cell::new(vis),
                     expansion,
                     used: Cell::new(used),
+                    is_uniform_paths_canary: false,
                 });
                 self.potentially_unused_imports.push(directive);
                 let imported_binding = self.import(binding, directive);
@@ -735,6 +829,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
             expansion,
             used: Cell::new(false),
+            is_uniform_paths_canary: false,
         });
 
         if let Some(span) = legacy_imports.import_all {

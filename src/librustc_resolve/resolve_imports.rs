@@ -91,6 +91,13 @@ pub struct ImportDirective<'a> {
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
     pub used: Cell<bool>,
+
+    /// Whether this import is a "canary" for the `uniform_paths` feature,
+    /// i.e. `use x::...;` results in an `use self::x as _;` canary.
+    /// This flag affects diagnostics: an error is reported if and only if
+    /// the import resolves successfully and an external crate with the same
+    /// name (`x` above) also exists; any resolution failures are ignored.
+    pub is_uniform_paths_canary: bool,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -177,6 +184,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     // But when a crate does exist, it will get chosen even when
                     // macro expansion could result in a success from the lookup
                     // in the `self` module, later on.
+                    //
+                    // NB. This is currently alleviated by the "ambiguity canaries"
+                    // (see `is_uniform_paths_canary`) that get introduced for the
+                    // maybe-relative imports handled here: if the false negative
+                    // case were to arise, it would *also* cause an ambiguity error.
                     if binding.is_ok() {
                         return binding;
                     }
@@ -369,7 +381,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                                 root_span: Span,
                                 root_id: NodeId,
                                 vis: ty::Visibility,
-                                expansion: Mark) {
+                                expansion: Mark,
+                                is_uniform_paths_canary: bool) {
         let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
@@ -383,7 +396,10 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             vis: Cell::new(vis),
             expansion,
             used: Cell::new(false),
+            is_uniform_paths_canary,
         });
+
+        debug!("add_import_directive({:?})", directive);
 
         self.indeterminate_imports.push(directive);
         match directive.subclass {
@@ -602,7 +618,47 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut seen_spans = FxHashSet();
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
-            if let Some((span, err)) = self.finalize_import(import) {
+            let error = self.finalize_import(import);
+
+            // For a `#![feature(uniform_paths)]` `use self::x as _` canary,
+            // failure is ignored, while success may cause an ambiguity error.
+            if import.is_uniform_paths_canary {
+                let (name, result) = match import.subclass {
+                    SingleImport { source, ref result, .. } => {
+                        let type_ns = result[TypeNS].get().ok();
+                        let value_ns = result[ValueNS].get().ok();
+                        (source.name, type_ns.or(value_ns))
+                    }
+                    _ => bug!(),
+                };
+
+                if error.is_some() {
+                    continue;
+                }
+
+                let extern_crate_exists = self.extern_prelude.contains(&name);
+
+                // A successful `self::x` is ambiguous with an `x` external crate.
+                if !extern_crate_exists {
+                    continue;
+                }
+
+                errors = true;
+
+                let msg = format!("import from `{}` is ambiguous", name);
+                let mut err = self.session.struct_span_err(import.span, &msg);
+                err.span_label(import.span,
+                    format!("could refer to external crate `::{}`", name));
+                if let Some(result) = result {
+                    err.span_label(result.span,
+                        format!("could also refer to `self::{}`", name));
+                        err.span_label(result.span,
+                            format!("could also refer to `self::{}`", name));
+                }
+                err.help(&format!("write `::{0}` or `self::{0}` explicitly instead", name));
+                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                err.emit();
+            } else if let Some((span, err)) = error {
                 errors = true;
 
                 if let SingleImport { source, ref result, .. } = import.subclass {
@@ -632,9 +688,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // Report unresolved imports only if no hard error was already reported
         // to avoid generating multiple errors on the same import.
         if !errors {
-            if let Some(import) = self.indeterminate_imports.iter().next() {
+            for import in &self.indeterminate_imports {
+                if import.is_uniform_paths_canary {
+                    continue;
+                }
+
                 let error = ResolutionError::UnresolvedImport(None);
                 resolve_error(self.resolver, import.span, error);
+                break;
             }
         }
     }
