@@ -11,7 +11,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
         MonoItem::Fn(inst) => match inst {
             Instance {
                 def: InstanceDef::Item(def_id),
-                substs,
+                substs: _,
             } => {
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
@@ -20,13 +20,6 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     inst,
                     String::from_utf8_lossy(&mir.into_inner())
                 ));
-
-                let fn_ty = inst.ty(tcx);
-                let fn_ty = tcx.subst_and_normalize_erasing_regions(
-                    substs,
-                    ty::ParamEnv::reveal_all(),
-                    &fn_ty,
-                );
 
                 let (func_id, mut func) = cx.predefine_function(inst);
 

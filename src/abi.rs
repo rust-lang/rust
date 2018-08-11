@@ -160,11 +160,7 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
     let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-    let def_path_based_names =
-        ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
-    let mut name = String::new();
-    def_path_based_names.push_instance_as_string(inst, &mut name);
-    (name, sig)
+    (tcx.symbol_name(inst).as_str().to_string(), sig)
 }
 
 impl<'a, 'tcx: 'a> CodegenCx<'a, 'tcx, CurrentBackend> {
