@@ -9,15 +9,17 @@
 // except according to those terms.
 
 use env::{split_paths};
-use ffi::OsStr;
+use ffi::{CStr, OsStr};
 use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
 use iter;
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 use path::{Path, PathBuf};
+use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
+use sys::os::{ENV_LOCK, environ};
 use sys::pipe::{self, AnonPipe};
 use sys::{cvt, syscall};
 use sys_common::process::{CommandEnv, DefaultEnvKey};
@@ -297,12 +299,6 @@ impl Command {
             t!(callback());
         }
 
-        let args: Vec<[usize; 2]> = iter::once(
-            [self.program.as_ptr() as usize, self.program.len()]
-        ).chain(
-            self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()])
-        ).collect();
-
         self.env.apply();
 
         let program = if self.program.contains(':') || self.program.contains('/') {
@@ -321,14 +317,33 @@ impl Command {
             None
         };
 
-        if let Some(program) = program {
-            if let Err(err) = syscall::execve(program.as_os_str().as_bytes(), &args) {
-                io::Error::from_raw_os_error(err.errno as i32)
-            } else {
-                panic!("return from exec without err");
-            }
+        let fd = if let Some(program) = program {
+            t!(cvt(syscall::open(program.as_os_str().as_bytes(), syscall::O_RDONLY)))
         } else {
-            io::Error::from_raw_os_error(syscall::ENOENT)
+            return io::Error::from_raw_os_error(syscall::ENOENT);
+        };
+
+        let mut args: Vec<[usize; 2]> = iter::once(
+            [self.program.as_ptr() as usize, self.program.len()]
+        ).chain(
+            self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()])
+        ).collect();
+
+        let mut vars: Vec<[usize; 2]> = Vec::new();
+        unsafe {
+            let _guard = ENV_LOCK.lock();
+            let mut environ = *environ();
+            while *environ != ptr::null() {
+                let var = CStr::from_ptr(*environ).to_bytes();
+                vars.push([var.as_ptr() as usize, var.len()]);
+                environ = environ.offset(1);
+            }
+        }
+
+        if let Err(err) = syscall::fexec(fd, &args, &vars) {
+            io::Error::from_raw_os_error(err.errno as i32)
+        } else {
+            panic!("return from exec without err");
         }
     }
 
