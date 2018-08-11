@@ -234,6 +234,26 @@ Grammar(
                 ["name", "Name"]
             ]
         ),
+        "Trait": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
+        "Module": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
+        "ConstItem": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
+        "StaticItem": (
+            options: [
+                ["name", "Name"]
+            ]
+        ),
         "Name": (),
     },
 )

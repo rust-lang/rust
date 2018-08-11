@@ -12,7 +12,7 @@ pub struct {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            {{ node | upper }} => Some({{ node }} { syntax }),
+            {{ node | SCREAM }} => Some({{ node }} { syntax }),
             _ => None,
         }
     }

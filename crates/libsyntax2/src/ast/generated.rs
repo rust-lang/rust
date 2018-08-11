@@ -5,6 +5,30 @@ use {
 };
 
 #[derive(Debug, Clone, Copy)]
+pub struct ConstItem<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ConstItem<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            CONST_ITEM => Some(ConstItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ConstItem<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Enum<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -76,6 +100,30 @@ impl<R: TreeRoot> Function<R> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct Module<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for Module<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            MODULE => Some(Module { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> Module<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -93,6 +141,30 @@ impl<R: TreeRoot> AstNode<R> for Name<R> {
 impl<R: TreeRoot> Name<R> {}
 
 #[derive(Debug, Clone, Copy)]
+pub struct StaticItem<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for StaticItem<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            STATIC_ITEM => Some(StaticItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> StaticItem<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Struct<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
@@ -108,6 +180,30 @@ impl<R: TreeRoot> AstNode<R> for Struct<R> {
 }
 
 impl<R: TreeRoot> Struct<R> {
+    pub fn name(&self) -> Option<Name<R>> {
+        self.syntax()
+            .children()
+            .filter_map(Name::cast)
+            .next()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Trait<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for Trait<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            TRAIT => Some(Trait { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> Trait<R> {
     pub fn name(&self) -> Option<Name<R>> {
         self.syntax()
             .children()

@@ -7,8 +7,10 @@ extern crate tools;
 extern crate walkdir;
 #[macro_use]
 extern crate commandspec;
+extern crate heck;
 
 use clap::{App, Arg, SubCommand};
+use heck::{CamelCase, ShoutySnakeCase};
 use std::{
     collections::HashMap,
     fs,
@@ -87,18 +89,10 @@ fn render_template(template: &str) -> Result<String> {
         .map_err(|e| format_err!("template error: {:?}", e))?;
     tera.register_global_function("concat", Box::new(concat));
     tera.register_filter("camel", |arg, _| {
-        Ok(arg.as_str().unwrap()
-            .split("_")
-            .flat_map(|word| {
-                word.chars()
-                    .next().unwrap()
-                    .to_uppercase()
-                    .chain(
-                        word.chars().skip(1).flat_map(|c| c.to_lowercase())
-                    )
-            })
-            .collect::<String>()
-            .into())
+        Ok(arg.as_str().unwrap().to_camel_case().into())
+    });
+    tera.register_filter("SCREAM", |arg, _| {
+        Ok(arg.as_str().unwrap().to_shouty_snake_case().into())
     });
     let ret = tera
         .render("grammar", &grammar)
