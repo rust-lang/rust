@@ -27,42 +27,25 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     ty::ParamEnv::reveal_all(),
                     &fn_ty,
                 );
-                let sig = cton_sig_from_fn_ty(tcx, fn_ty);
 
-                let func_id = {
-                    // WARNING: keep in sync with FunctionCx::get_function_ref
-                    let def_path_based_names =
-                        ::rustc_mir::monomorphize::item::DefPathBasedNames::new(
-                            cx.tcx, false, false,
-                        );
-                    let mut name = String::new();
-                    def_path_based_names.push_instance_as_string(inst, &mut name);
-                    cx.module
-                        .declare_function(&name, Linkage::Export, &sig)
-                        .unwrap()
-                };
+                let (func_id, mut func) = cx.predefine_function(inst);
 
-                let mut f = Function::with_name_signature(
-                    ExternalName::user(0, func_id.index() as u32),
-                    sig,
-                );
-
-                let comments = trans_fn(cx, &mut f, inst);
+                let comments = trans_fn(cx, &mut func, inst);
 
                 let mut writer = crate::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
-                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &f, None)
+                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
                     .unwrap();
                 tcx.sess.warn(&cton);
 
                 let flags = settings::Flags::new(settings::builder());
-                match ::cranelift::codegen::verify_function(&f, &flags) {
+                match ::cranelift::codegen::verify_function(&func, &flags) {
                     Ok(_) => {}
                     Err(err) => {
                         tcx.sess.err(&format!("{:?}", err));
                         let pretty_error =
                             ::cranelift::codegen::print_errors::pretty_verifier_error(
-                                &f,
+                                &func,
                                 None,
                                 Some(Box::new(writer)),
                                 &err,
@@ -72,7 +55,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     }
                 }
 
-                context.func = f;
+                context.func = func;
                 // TODO: cranelift doesn't yet support some of the things needed
                 if false {
                     cx.module.define_function(func_id, context).unwrap();

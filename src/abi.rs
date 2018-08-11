@@ -30,7 +30,7 @@ fn get_pass_mode<'a, 'tcx: 'a>(
 ) -> PassMode {
     if ty.sty == tcx.mk_nil().sty {
         if is_return {
-        //if false {
+            //if false {
             PassMode::NoPass
         } else {
             PassMode::ByRef
@@ -153,16 +153,37 @@ fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'
     tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
 }
 
+fn get_function_name_and_sig<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    inst: Instance<'tcx>,
+) -> (String, Signature) {
+    assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
+    let fn_ty = inst.ty(tcx);
+    let sig = cton_sig_from_fn_ty(tcx, fn_ty);
+    let def_path_based_names =
+        ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
+    let mut name = String::new();
+    def_path_based_names.push_instance_as_string(inst, &mut name);
+    (name, sig)
+}
+
+impl<'a, 'tcx: 'a> CodegenCx<'a, 'tcx, CurrentBackend> {
+    pub fn predefine_function(&mut self, inst: Instance<'tcx>) -> (FuncId, Function) {
+        let (name, sig) = crate::abi::get_function_name_and_sig(self.tcx, inst);
+        let func_id = self
+            .module
+            .declare_function(&name, Linkage::Export, &sig)
+            .unwrap();
+        let func =
+            Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
+        (func_id, func)
+    }
+}
+
 impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
-        let fn_ty = inst.ty(self.tcx);
-        let sig = cton_sig_from_fn_ty(self.tcx, fn_ty);
-        let def_path_based_names =
-            ::rustc_mir::monomorphize::item::DefPathBasedNames::new(self.tcx, false, false);
-        let mut name = String::new();
-        def_path_based_names.push_instance_as_string(inst, &mut name);
+        let (name, sig) = get_function_name_and_sig(self.tcx, inst);
         let func_id = self
             .module
             .declare_function(&name, Linkage::Import, &sig)
@@ -455,10 +476,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         .chain(
             args.into_iter()
                 .map(|arg| match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
-                    PassMode::NoPass => unimplemented!("pass mode nopass"),
-                    PassMode::ByVal(_) => arg.load_value(fx),
-                    PassMode::ByRef => arg.force_stack(fx),
-                }),
+                PassMode::NoPass => unimplemented!("pass mode nopass"),
+                PassMode::ByVal(_) => arg.load_value(fx),
+                PassMode::ByRef => arg.force_stack(fx),
+            }),
         ).collect::<Vec<_>>();
 
     let inst = match func {
