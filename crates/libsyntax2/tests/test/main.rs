@@ -1,11 +1,30 @@
+extern crate libsyntax2;
 extern crate difference;
 
 use std::{
     fs,
     path::{Path, PathBuf},
+    fmt::Write,
 };
 
 use difference::Changeset;
+
+#[test]
+fn lexer_tests() {
+    dir_tests(&["lexer"], |text| {
+        let tokens = libsyntax2::tokenize(text);
+        dump_tokens(&tokens, text)
+    })
+}
+
+#[test]
+fn parser_tests() {
+    dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
+        let file = libsyntax2::parse(text);
+        libsyntax2::utils::dump_tree(&file)
+    })
+}
+
 
 /// Read file and normalize newlines.
 ///
@@ -23,8 +42,8 @@ fn read_text(path: &Path) -> String {
 }
 
 pub fn dir_tests<F>(paths: &[&str], f: F)
-where
-    F: Fn(&str) -> String,
+    where
+        F: Fn(&str) -> String,
 {
     for path in collect_tests(paths) {
         let input_code = read_text(&path);
@@ -107,5 +126,18 @@ fn project_dir() -> PathBuf {
 }
 
 fn test_data_dir() -> PathBuf {
-    project_dir().join("tests/data")
+    project_dir().join("crates/libsyntax2/tests/data")
+}
+
+fn dump_tokens(tokens: &[libsyntax2::Token], text: &str) -> String {
+    let mut acc = String::new();
+    let mut offset = 0;
+    for token in tokens {
+        let len: u32 = token.len.into();
+        let len = len as usize;
+        let token_text = &text[offset..offset + len];
+        offset += len;
+        write!(acc, "{:?} {} {:?}\n", token.kind, token.len, token_text).unwrap()
+    }
+    acc
 }
