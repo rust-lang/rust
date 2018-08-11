@@ -630,7 +630,7 @@ declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
     "detects anonymous parameters",
-    Edition::Edition2018 => Warn
+    Warn,
 }
 
 /// Checks for use of anonymous parameters (RFC 1685)
