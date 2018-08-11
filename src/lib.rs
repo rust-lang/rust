@@ -271,7 +271,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     }
                 }
             }
-            
+
             std::mem::replace(&mut cx.defined_functions, Vec::new())
         };
 
@@ -279,21 +279,25 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         // TODO: this doesn't work most of the time
         if false {
-            let call_instance = collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0.into_iter().find_map(|mono_item| {
-                let inst = match mono_item {
-                    MonoItem::Fn(inst) => inst,
-                    _ => return None,
-                };
+            let call_instance =
+                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
+                    .0
+                    .into_iter()
+                    .find_map(|mono_item| {
+                        let inst = match mono_item {
+                            MonoItem::Fn(inst) => inst,
+                            _ => return None,
+                        };
 
-                //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
-                if tcx.absolute_item_path_str(inst.def_id()) == "example::option_unwrap_or" {
-                    Some(inst)
-                } else {
-                    None
-                }
-            }).unwrap();
+                        //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+                        if tcx.absolute_item_path_str(inst.def_id()) == "example::option_unwrap_or"
+                        {
+                            Some(inst)
+                        } else {
+                            None
+                        }
+                    }).unwrap();
 
-            
             let fn_ty = call_instance.ty(tcx);
             let sig = cton_sig_from_fn_ty(tcx, fn_ty);
             let def_path_based_names =

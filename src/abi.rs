@@ -272,15 +272,9 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
     let ret_layout = fx.layout_of(fx.return_type());
     let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
     let ret_param = match output_pass_mode {
-        PassMode::NoPass => {
-            None
-        }
-        PassMode::ByVal(ret_ty) => {
-            None
-        }
-        PassMode::ByRef => {
-            Some(fx.bcx.append_ebb_param(start_ebb, types::I64))
-        }
+        PassMode::NoPass => None,
+        PassMode::ByVal(ret_ty) => None,
+        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, types::I64)),
     };
 
     enum ArgKind {
@@ -320,7 +314,10 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(types::I64, 0);
             //unimplemented!("pass mode nopass");
-            fx.local_map.insert(RETURN_PLACE, CPlace::Addr(null, fx.layout_of(fx.return_type())));
+            fx.local_map.insert(
+                RETURN_PLACE,
+                CPlace::Addr(null, fx.layout_of(fx.return_type())),
+            );
         }
         PassMode::ByVal(ret_ty) => {
             let var = Variable(RETURN_PLACE);
@@ -367,20 +364,25 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         let place = CPlace::from_stack_slot(fx, stack_slot, ty);
 
         match arg_kind {
-            ArgKind::Normal(ebb_param) => {
-                match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
-                    PassMode::NoPass => unimplemented!("pass mode nopass"),
-                    PassMode::ByVal(_) => place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout())),
-                    PassMode::ByRef => place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout())),
+            ArgKind::Normal(ebb_param) => match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false)
+            {
+                PassMode::NoPass => unimplemented!("pass mode nopass"),
+                PassMode::ByVal(_) => {
+                    place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()))
                 }
-            }
+                PassMode::ByRef => place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout())),
+            },
             ArgKind::Spread(ebb_params) => {
                 for (i, ebb_param) in ebb_params.into_iter().enumerate() {
                     let sub_place = place.place_field(fx, mir::Field::new(i));
                     match get_pass_mode(fx.tcx, fx.self_sig().abi, sub_place.layout().ty, false) {
                         PassMode::NoPass => unimplemented!("pass mode nopass"),
-                        PassMode::ByVal(_) => sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout())),
-                        PassMode::ByRef => sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout())),
+                        PassMode::ByVal(_) => {
+                            sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout()))
+                        }
+                        PassMode::ByRef => {
+                            sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout()))
+                        }
                     }
                 }
             }
@@ -450,9 +452,9 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             .collect::<Vec<_>>()
     };
 
-    let destination = destination.as_ref().map(|(place, bb)| {
-        (trans_place(fx, place), *bb)
-    });
+    let destination = destination
+        .as_ref()
+        .map(|(place, bb)| (trans_place(fx, place), *bb));
 
     if codegen_intrinsic_call(fx, fn_ty, sig, &args, destination) {
         return;
@@ -473,14 +475,13 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 
     let call_args: Vec<Value> = return_ptr
         .into_iter()
-        .chain(
-            args.into_iter()
-                .map(|arg| match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
+        .chain(args.into_iter().map(|arg| {
+            match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
                 PassMode::NoPass => unimplemented!("pass mode nopass"),
                 PassMode::ByVal(_) => arg.load_value(fx),
                 PassMode::ByRef => arg.force_stack(fx),
-            }),
-        ).collect::<Vec<_>>();
+            }
+        })).collect::<Vec<_>>();
 
     let inst = match func {
         CValue::Func(func, _) => fx.bcx.ins().call(func, &call_args),
@@ -513,7 +514,7 @@ pub fn codegen_return(fx: &mut FunctionCx) {
     match get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
-        },
+        }
         PassMode::ByVal(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_value(fx);
@@ -537,10 +538,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let ret = match destination {
                 Some((place, _)) => place,
                 None => {
-                    println!(
-                        "codegen_call(fx, _, {:?}, {:?})",
-                        args, destination
-                    );
+                    println!("codegen_call(fx, _, {:?}, {:?})", args, destination);
                     // Insert non returning intrinsics here
                     match intrinsic {
                         "abort" => {
