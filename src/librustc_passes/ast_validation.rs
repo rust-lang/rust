@@ -342,10 +342,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                     self.session.buffer_lint(
                                         lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
                                         trait_item.id, span,
-                                        "patterns aren't allowed in trait methods");
+                                        "patterns aren't allowed in methods without bodies");
                                 } else {
                                     struct_span_err!(self.session, span, E0642,
-                                        "patterns aren't allowed in trait methods").emit();
+                                        "patterns aren't allowed in methods without bodies").emit();
                                 }
                             });
                         }

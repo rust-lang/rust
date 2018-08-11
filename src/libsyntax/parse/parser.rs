@@ -1754,16 +1754,7 @@ impl<'a> Parser<'a> {
         } else {
             debug!("parse_arg_general ident_to_pat");
 
-            // If we see `ident :`, then we know that the argument is not just of the
-            // form `type`, which means we won't need to recover from parsing a
-            // pattern and so we don't need to store a parser snapshot.
-            let parser_snapshot_before_pat = if
-                self.look_ahead(1, |t| t.is_ident()) &&
-                self.look_ahead(2, |t| t == &token::Colon) {
-                    None
-                } else {
-                    Some(self.clone())
-                };
+            let parser_snapshot_before_pat = self.clone();
 
             // We're going to try parsing the argument as a pattern (even though it's not
             // allowed). This way we can provide better errors to the user.
@@ -1777,7 +1768,7 @@ impl<'a> Parser<'a> {
                 Ok((pat, ty)) => {
                     let mut err = self.diagnostic().struct_span_err_with_code(
                         pat.span,
-                        "patterns aren't allowed in trait methods",
+                        "patterns aren't allowed in methods without bodies",
                         DiagnosticId::Error("E0642".into()),
                     );
                     err.span_suggestion_short_with_applicability(
@@ -1799,7 +1790,7 @@ impl<'a> Parser<'a> {
                     err.cancel();
                     // Recover from attempting to parse the argument as a pattern. This means
                     // the type is alone, with no name, e.g. `fn foo(u32)`.
-                    mem::replace(self, parser_snapshot_before_pat.unwrap());
+                    mem::replace(self, parser_snapshot_before_pat);
                     debug!("parse_arg_general ident_to_pat");
                     let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
                     let ty = self.parse_ty()?;

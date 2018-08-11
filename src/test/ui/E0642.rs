@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in trait methods
-}
+#[derive(Clone, Copy)]
+struct S;
 
-trait Bar {
-    fn bar((x, y): (i32, i32)) {} //~ ERROR patterns aren't allowed in trait methods
+trait T {
+    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in methods without bodies
+
+    fn bar((x, y): (i32, i32)) {} //~ ERROR patterns aren't allowed in methods without bodies
+
+    fn f(&ident: &S) {} // ok
+    fn g(&&ident: &&S) {} // ok
+    fn h(mut ident: S) {} // ok
 }
 
 fn main() {}
