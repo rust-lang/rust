@@ -74,23 +74,20 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
                 context.func = f;
                 // TODO: cranelift doesn't yet support some of the things needed
-                // cx.module.define_function(func_id, context).unwrap();
+                if false {
+                    cx.module.define_function(func_id, context).unwrap();
+                    cx.defined_functions.push(func_id);
+                }
 
                 context.clear();
             }
-            inst => cx
-                .tcx
-                .sess
-                .warn(&format!("Unimplemented instance {:?}", inst)),
+            inst => unimpl!("Unimplemented instance {:?}", inst),
         },
-        MonoItem::Static(def_id) => cx
-            .tcx
-            .sess
-            .err(&format!("Unimplemented static mono item {:?}", def_id)),
+        MonoItem::Static(def_id) => unimpl!("Unimplemented static mono item {:?}", def_id),
         MonoItem::GlobalAsm(node_id) => cx
             .tcx
             .sess
-            .err(&format!("Unimplemented global asm mono item {:?}", node_id)),
+            .fatal(&format!("Unimplemented global asm mono item {:?}", node_id)),
     }
 }
 

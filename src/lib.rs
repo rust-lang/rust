@@ -1,4 +1,4 @@
-#![feature(rustc_private, macro_at_most_once_rep)]
+#![feature(rustc_private, macro_at_most_once_rep, iterator_find_map)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate syntax;
@@ -100,6 +100,7 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
     pub constants: HashMap<AllocId, DataId>,
+    pub defined_functions: Vec<FuncId>,
 }
 
 struct CraneliftMetadataLoader;
@@ -241,12 +242,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
         let mut context = Context::new();
 
-        {
+        let defined_functions = {
             use std::io::Write;
             let mut cx = CodegenCx {
                 tcx,
                 module: &mut module,
                 constants: HashMap::new(),
+                defined_functions: Vec::new(),
             };
 
             let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
@@ -269,49 +271,61 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     }
                 }
             }
-        }
+            
+            std::mem::replace(&mut cx.defined_functions, Vec::new())
+        };
 
         tcx.sess.warn("Compiled everything");
 
         // TODO: this doesn't work most of the time
         if false {
-            module.finalize_all();
-            tcx.sess.warn("Finalized everything");
-
-            for mono_item in
-                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
-            {
+            let call_instance = collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0.into_iter().find_map(|mono_item| {
                 let inst = match mono_item {
                     MonoItem::Fn(inst) => inst,
-                    _ => continue,
+                    _ => return None,
                 };
 
                 //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
-                if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
-                    continue;
+                if tcx.absolute_item_path_str(inst.def_id()) == "example::option_unwrap_or" {
+                    Some(inst)
+                } else {
+                    None
                 }
+            }).unwrap();
 
-                let fn_ty = inst.ty(tcx);
-                let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-                let def_path_based_names =
-                    ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
-                let mut name = String::new();
-                def_path_based_names.push_instance_as_string(inst, &mut name);
-                let func_id = module
-                    .declare_function(&name, Linkage::Import, &sig)
-                    .unwrap();
+            
+            let fn_ty = call_instance.ty(tcx);
+            let sig = cton_sig_from_fn_ty(tcx, fn_ty);
+            let def_path_based_names =
+                ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
+            let mut name = String::new();
+            def_path_based_names.push_instance_as_string(call_instance, &mut name);
+            let called_func_id = module
+                .declare_function(&name, Linkage::Import, &sig)
+                .unwrap();
 
-                let finalized_function: *const u8 = module.finalize_function(func_id);
-                /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
-                let mut res = 0u32;
-                f(&mut res);
-                tcx.sess.warn(&format!("ret_42 returned {}", res));*/
-                let f: extern "C" fn(&mut bool, &u8, bool) =
-                    unsafe { ::std::mem::transmute(finalized_function) };
-                let mut res = false;
-                f(&mut res, &3, false);
-                tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
+            for func_id in defined_functions {
+                if func_id != called_func_id {
+                    module.finalize_function(func_id);
+                }
             }
+            tcx.sess.warn("Finalized everything");
+
+            let finalized_function: *const u8 = module.finalize_function(called_func_id);
+            /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
+            let mut res = 0u32;
+            f(&mut res);
+            tcx.sess.warn(&format!("ret_42 returned {}", res));*/
+            /*let f: extern "C" fn(&mut bool, &u8, bool) =
+-                   unsafe { ::std::mem::transmute(finalized_function) };
+            let mut res = false;
+            f(&mut res, &3, false);
+            tcx.sess.warn(&format!("option_unwrap_or returned {}", res));*/
+            let f: extern "C" fn(&mut u8, isize, *const *const u8) =
+                unsafe { ::std::mem::transmute(finalized_function) };
+            let mut res = 0;
+            f(&mut res, 0, 0 as *const _);
+            tcx.sess.warn(&format!("main returned {}", res));
 
             module.finish();
         }
