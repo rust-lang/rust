@@ -349,6 +349,34 @@ macro_rules! try {
 /// write!(&mut v, "s = {:?}", s).unwrap(); // uses io::Write::write_fmt
 /// assert_eq!(v, b"s = \"abc 123\"");
 /// ```
+
+/// /// Note : This macro can be used in no_std setups as well
+/// /// In a no_std setup you are responsible for the 
+/// /// implementation details of the components.
+
+/// ```rust
+///  extern crate core;
+///  use core::fmt::Write;
+
+///  #[derive(Debug)]
+///  struct Greetings<'a>{
+///      message : &'a str,
+///  }
+
+
+///  impl<'a> Write for Greetings<'a>{
+///      fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///           unimplemented!();
+///      }
+///  }
+
+///  fn main(){
+///      let mut m = Greetings{message: ""};
+///      write!(&mut m, "Hello World").expect("Not written");
+///  }
+/// ```
+
+
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! write {
