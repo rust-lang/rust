@@ -51,6 +51,7 @@
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(non_exhaustive)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]

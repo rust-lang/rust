@@ -26,6 +26,7 @@
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
 #![feature(macro_vis_matcher)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
 
