@@ -244,9 +244,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 }
             }
 
-            let ty = if !needs_check_adjustment {
-                cx.tables.expr_ty(dereferenced_expr)
-            } else {
+            let ty = if needs_check_adjustment {
                 let adjustments = cx.tables.expr_adjustments(dereferenced_expr);
                 if let Some(i) = adjustments.iter().position(|adj| match adj.kind {
                     Adjust::Borrow(_) | Adjust::Deref(_) => true,
@@ -261,6 +259,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                     // No borrow adjustments = the entire const is moved.
                     return;
                 }
+            } else {
+                cx.tables.expr_ty(dereferenced_expr)
             };
 
             verify_ty_bound(cx, ty, Source::Expr { expr: expr.span });
