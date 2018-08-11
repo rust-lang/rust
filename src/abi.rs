@@ -269,7 +269,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
     let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
     let ret_param = match output_pass_mode {
         PassMode::NoPass => None,
-        PassMode::ByVal(ret_ty) => None,
+        PassMode::ByVal(_) => None,
         PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, types::I64)),
     };
 

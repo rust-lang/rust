@@ -250,6 +250,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
 
+            let before = ::std::time::Instant::now();
             for mono_item in
                 collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
             {
@@ -268,6 +269,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     }
                 }
             }
+            let after = ::std::time::Instant::now();
+            println!("time: {:?}", after - before);
 
             std::mem::replace(&mut cx.defined_functions, Vec::new())
         };
