@@ -12,9 +12,9 @@
 
 #[rustc_dump_program_clauses] //~ ERROR program clause dump
 trait Foo<S, T, U> {
-    fn s(S) -> S;
-    fn t(T) -> T;
-    fn u(U) -> U;
+    fn s(_: S) -> S;
+    fn t(_: T) -> T;
+    fn u(_: U) -> U;
 }
 
 fn main() {
