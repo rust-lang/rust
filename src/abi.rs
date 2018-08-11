@@ -421,8 +421,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
-    let func = trans_operand(fx, func);
-    let fn_ty = func.layout().ty;
+    let fn_ty = fx.monomorphize(&func.ty(&fx.mir.local_decls, fx.tcx));
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
     // Unpack arguments tuple for closures
@@ -483,7 +482,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             }
         })).collect::<Vec<_>>();
 
-    let inst = match func {
+    let inst = match trans_operand(fx, func) {
         CValue::Func(func, _) => fx.bcx.ins().call(func, &call_args),
         func => {
             let func = func.load_value(fx);
@@ -538,7 +537,6 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let ret = match destination {
                 Some((place, _)) => place,
                 None => {
-                    println!("codegen_call(fx, _, {:?}, {:?})", args, destination);
                     // Insert non returning intrinsics here
                     match intrinsic {
                         "abort" => {
