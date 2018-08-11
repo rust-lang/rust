@@ -244,7 +244,10 @@ impl Utf8Error {
     ///   The length provided is that of the invalid byte sequence
     ///   that starts at the index given by `valid_up_to()`.
     ///   Decoding should resume after that sequence
-    ///   (after inserting a U+FFFD REPLACEMENT CHARACTER) in case of lossy decoding.
+    ///   (after inserting a [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD]) in case of
+    ///   lossy decoding.
+    ///
+    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     #[stable(feature = "utf8_error_error_len", since = "1.20.0")]
     pub fn error_len(&self) -> Option<usize> {
         self.error_len.map(|len| len as usize)
