@@ -381,6 +381,39 @@ impl fmt::Debug for ChildStderr {
 ///
 /// let hello = output.stdout;
 /// ```
+///
+/// `Command` can be reused to spawn multiple processes. The builder methods
+/// change the command without needing to immediately spawn the process.
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// let mut echo_hello = Command::new("sh");
+/// echo_hello.arg("-c")
+///            .arg("echo hello");
+/// let hello_1 = echo_hello.output().expect("failed to execute process");
+/// let hello_2 = echo_hello.output().expect("failed to execute process");
+/// ```
+///
+/// Similarly, you can call builder methods after spawning a process and then
+/// spawn a new process with the modified settings.
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// let mut list_dir = Command::new("ls");
+///
+/// // Execute `ls` in the current directory of the program.
+/// list_dir.status().expect("process failed to execute");
+///
+/// println!("");
+///
+/// // Change `ls` to execute in the root directory.
+/// list_dir.current_dir("/");
+///
+/// // And then execute `ls` again but in the root directory.
+/// list_dir.status().expect("process failed to execute");
+/// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
     inner: imp::Command,
