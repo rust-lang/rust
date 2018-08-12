@@ -187,17 +187,17 @@ LL |         Either::One(_t) => (),
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:111:17
    |
-LL |     let X(_t) = vs_[0];
-   |           --    ^^^^^^
+LL |     let X(_t) = vs[0];
+   |           --    ^^^^^
    |           |     |
    |           |     cannot move out of borrowed content
-   |           |     help: consider borrowing here: `&vs_[0]`
+   |           |     help: consider borrowing here: `&vs[0]`
    |           data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:111:11
    |
-LL |     let X(_t) = vs_[0];
+LL |     let X(_t) = vs[0];
    |           ^^
 
 error[E0507]: cannot move out of borrowed content

@@ -39,7 +39,7 @@ pub fn main() {
 
     let vx = vec![X(Y)];
 
-    let vs_ = &vx;
+    let vs = &vx;
     let vsm = &mut vec![X(Y)];
 
     // --------
@@ -108,10 +108,10 @@ pub fn main() {
         // FIXME: should suggest removing `ref mut` too
     }
 
-    let X(_t) = vs_[0];
+    let X(_t) = vs[0];
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vs_[0]
+    //~| SUGGESTION &vs[0]
     if let Either::One(_t) = vr[0] { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
