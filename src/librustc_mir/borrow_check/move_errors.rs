@@ -360,7 +360,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     err.span_suggestion(
                         span,
-                        "consider using a reference instead",
+                        "consider borrowing here",
                         format!("&{}", snippet),
                     );
                 }

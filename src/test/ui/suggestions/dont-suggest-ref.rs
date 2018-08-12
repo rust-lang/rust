@@ -110,26 +110,26 @@ pub fn main() {
 
     let X(_t) = vs_[0];
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vs_[0]
     if let Either::One(_t) = vr[0] { }
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vr[0]
     while let Either::One(_t) = vr[0] { }
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vr[0]
     match vr[0] {
         //~^ ERROR cannot move
-        //~| HELP consider using a reference instead
+        //~| HELP consider borrowing here
         //~| SUGGESTION &vr[0]
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match vr[0] {
         //~^ ERROR cannot move
-        //~| HELP consider using a reference instead
+        //~| HELP consider borrowing here
         //~| SUGGESTION &vr[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
@@ -138,26 +138,26 @@ pub fn main() {
 
     let X(_t) = vsm[0];
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vsm[0]
     if let Either::One(_t) = vrm[0] { }
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vrm[0]
     while let Either::One(_t) = vrm[0] { }
     //~^ ERROR cannot move
-    //~| HELP consider using a reference instead
+    //~| HELP consider borrowing here
     //~| SUGGESTION &vrm[0]
     match vrm[0] {
         //~^ ERROR cannot move
-        //~| HELP consider using a reference instead
+        //~| HELP consider borrowing here
         //~| SUGGESTION &vrm[0]
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match vrm[0] {
         //~^ ERROR cannot move
-        //~| HELP consider using a reference instead
+        //~| HELP consider borrowing here
         //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
@@ -165,7 +165,7 @@ pub fn main() {
     }
     match vrm[0] {
         //~^ ERROR cannot move
-        //~| HELP consider using a reference instead
+        //~| HELP consider borrowing here
         //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),

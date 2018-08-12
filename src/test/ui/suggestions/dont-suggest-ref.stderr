@@ -191,7 +191,7 @@ LL |     let X(_t) = vs_[0];
    |           --    ^^^^^^
    |           |     |
    |           |     cannot move out of borrowed content
-   |           |     help: consider using a reference instead: `&vs_[0]`
+   |           |     help: consider borrowing here: `&vs_[0]`
    |           data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
@@ -207,7 +207,7 @@ LL |     if let Either::One(_t) = vr[0] { }
    |                        --    ^^^^^
    |                        |     |
    |                        |     cannot move out of borrowed content
-   |                        |     help: consider using a reference instead: `&vr[0]`
+   |                        |     help: consider borrowing here: `&vr[0]`
    |                        data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -223,7 +223,7 @@ LL |     while let Either::One(_t) = vr[0] { }
    |                           --    ^^^^^
    |                           |     |
    |                           |     cannot move out of borrowed content
-   |                           |     help: consider using a reference instead: `&vr[0]`
+   |                           |     help: consider borrowing here: `&vr[0]`
    |                           data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -239,7 +239,7 @@ LL |     match vr[0] {
    |           ^^^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&vr[0]`
+   |           help: consider borrowing here: `&vr[0]`
 ...
 LL |         Either::One(_t)
    |                     -- data moved here
@@ -257,7 +257,7 @@ LL |     match vr[0] {
    |           ^^^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&vr[0]`
+   |           help: consider borrowing here: `&vr[0]`
 ...
 LL |         Either::One(_t) => (),
    |                     -- data moved here
@@ -275,7 +275,7 @@ LL |     let X(_t) = vsm[0];
    |           --    ^^^^^^
    |           |     |
    |           |     cannot move out of borrowed content
-   |           |     help: consider using a reference instead: `&vsm[0]`
+   |           |     help: consider borrowing here: `&vsm[0]`
    |           data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
@@ -291,7 +291,7 @@ LL |     if let Either::One(_t) = vrm[0] { }
    |                        --    ^^^^^^
    |                        |     |
    |                        |     cannot move out of borrowed content
-   |                        |     help: consider using a reference instead: `&vrm[0]`
+   |                        |     help: consider borrowing here: `&vrm[0]`
    |                        data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -307,7 +307,7 @@ LL |     while let Either::One(_t) = vrm[0] { }
    |                           --    ^^^^^^
    |                           |     |
    |                           |     cannot move out of borrowed content
-   |                           |     help: consider using a reference instead: `&vrm[0]`
+   |                           |     help: consider borrowing here: `&vrm[0]`
    |                           data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -323,7 +323,7 @@ LL |     match vrm[0] {
    |           ^^^^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&vrm[0]`
+   |           help: consider borrowing here: `&vrm[0]`
 ...
 LL |         Either::One(_t)
    |                     -- data moved here
@@ -341,7 +341,7 @@ LL |     match vrm[0] {
    |           ^^^^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&vrm[0]`
+   |           help: consider borrowing here: `&vrm[0]`
 ...
 LL |         Either::One(_t) => (),
    |                     -- data moved here
@@ -359,7 +359,7 @@ LL |     match vrm[0] {
    |           ^^^^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&vrm[0]`
+   |           help: consider borrowing here: `&vrm[0]`
 ...
 LL |         Either::One(_t) => (),
    |                     -- data moved here
