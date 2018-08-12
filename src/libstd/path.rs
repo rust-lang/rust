@@ -1737,9 +1737,11 @@ impl Path {
 
     /// Converts a `Path` to a [`Cow<str>`].
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [`Cow<str>`]: ../borrow/enum.Cow.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
