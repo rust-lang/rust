@@ -68,7 +68,7 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable, TypeVariants,
     };
-    pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
+    pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc, fx::FxHashMap};
     pub use rustc_mir::monomorphize::{collector, MonoItem};
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::codemap::DUMMY_SP;
@@ -186,6 +186,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         providers.target_features_whitelist = |_tcx, _cnum| Lrc::new(Default::default());
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.upstream_monomorphizations = |_tcx, _cnum| Lrc::new(FxHashMap());
+        providers.upstream_monomorphizations_for = |tcx, def_id| {
+            debug_assert!(!def_id.is_local());
+            tcx.upstream_monomorphizations(LOCAL_CRATE)
+                .get(&def_id)
+                .cloned()
+        };
     }
     fn provide_extern(&self, providers: &mut Providers) {
         providers.is_reachable_non_generic = |_tcx, _defid| true;
@@ -251,9 +258,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
 
             let before = ::std::time::Instant::now();
-            for mono_item in
-                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
-            {
+            let mono_items = collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0;
+
+            // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
+            save_incremental(tcx);
+            tcx.sess.warn("Saved incremental data");
+
+            for mono_item in mono_items {
                 let cx = &mut cx;
                 let context = &mut context;
                 let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
@@ -369,6 +380,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
         Ok(())
     }
+}
+
+fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    rustc_incremental::assert_dep_graph(tcx);
+    rustc_incremental::save_dep_graph(tcx);
+    rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
