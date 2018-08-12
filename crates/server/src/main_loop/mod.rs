@@ -1,13 +1,16 @@
 mod handlers;
 
+use std::collections::HashSet;
+
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::Url;
 use libanalysis::{World, WorldState};
+
 use {
     req, dispatch,
     Task, Result,
-    io::{Io, RawMsg, RawRequest},
+    io::{Io, RawMsg, RawRequest, RawNotification},
     util::FilePath,
     main_loop::handlers::{
         handle_syntax_tree,
@@ -27,6 +30,8 @@ pub(super) fn main_loop(
     receiver: Receiver<Task>,
 ) -> Result<()> {
     info!("server initialized, serving requests");
+    let mut next_request_id = 0;
+    let mut pending_requests: HashSet<u64> = HashSet::new();
     loop {
         enum Event {
             Msg(RawMsg),
@@ -48,6 +53,12 @@ pub(super) fn main_loop(
             }
             Event::Task(task) => {
                 match task {
+                    Task::Request(mut request) => {
+                        request.id = next_request_id;
+                        pending_requests.insert(next_request_id);
+                        next_request_id += 1;
+                        io.send(RawMsg::Request(request));
+                    }
                     Task::Respond(response) =>
                         io.send(RawMsg::Response(response)),
                     Task::Notify(n) =>
@@ -58,95 +69,122 @@ pub(super) fn main_loop(
                 continue;
             }
             Event::Msg(msg) => {
-                if !on_msg(io, world, pool, &sender, msg)? {
-                    return Ok(());
+                match msg {
+                    RawMsg::Request(req) => {
+                        if !on_request(io, world, pool, &sender, req)? {
+                            return Ok(());
+                        }
+                    }
+                    RawMsg::Notification(not) => {
+                        on_notification(io, world, pool, &sender, not)?
+                    }
+                    RawMsg::Response(resp) => {
+                        error!("unexpected response: {:?}", resp)
+                    }
                 }
             }
         };
     }
 }
 
-fn on_msg(
+fn on_request(
+    io: &mut Io,
+    world: &WorldState,
+    pool: &ThreadPool,
+    sender: &Sender<Task>,
+    req: RawRequest,
+) -> Result<bool> {
+    let mut req = Some(req);
+    handle_request_on_threadpool::<req::SyntaxTree>(
+        &mut req, pool, world, sender, handle_syntax_tree,
+    )?;
+    handle_request_on_threadpool::<req::ExtendSelection>(
+        &mut req, pool, world, sender, handle_extend_selection,
+    )?;
+    handle_request_on_threadpool::<req::DocumentSymbolRequest>(
+        &mut req, pool, world, sender, handle_document_symbol,
+    )?;
+    handle_request_on_threadpool::<req::CodeActionRequest>(
+        &mut req, pool, world, sender, handle_code_action,
+    )?;
+//    dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |(), resp| {
+//        let world = world.snapshot();
+//        let sender = sender.clone();
+//        pool.execute(move || {
+//            let task = match handle_execute_command(world, params) {
+//                Ok(req) => Task::Request(req),
+//                Err(e) => Task::Die(e),
+//            };
+//            sender.send(task)
+//        });
+//
+//        let resp = resp.into_response(Ok(()))?;
+//        io.send(RawMsg::Response(resp));
+//        shutdown = true;
+//        Ok(())
+//    })?;
+
+    let mut shutdown = false;
+    dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
+        let resp = resp.into_response(Ok(()))?;
+        io.send(RawMsg::Response(resp));
+        shutdown = true;
+        Ok(())
+    })?;
+    if shutdown {
+        info!("lifecycle: initiating shutdown");
+        return Ok(false);
+    }
+    if let Some(req) = req {
+        error!("unknown method: {:?}", req);
+        io.send(RawMsg::Response(dispatch::unknown_method(req.id)?));
+    }
+    Ok(true)
+}
+
+fn on_notification(
     io: &mut Io,
     world: &mut WorldState,
-    pool: &mut ThreadPool,
+    pool: &ThreadPool,
     sender: &Sender<Task>,
-    msg: RawMsg,
-) -> Result<bool> {
-    match msg {
-        RawMsg::Request(req) => {
-            let mut req = Some(req);
-            handle_request_on_threadpool::<req::SyntaxTree>(
-                &mut req, pool, world, sender, handle_syntax_tree,
-            )?;
-            handle_request_on_threadpool::<req::ExtendSelection>(
-                &mut req, pool, world, sender, handle_extend_selection,
-            )?;
-            handle_request_on_threadpool::<req::DocumentSymbolRequest>(
-                &mut req, pool, world, sender, handle_document_symbol,
-            )?;
-            handle_request_on_threadpool::<req::CodeActionRequest>(
-                &mut req, pool, world, sender, handle_code_action,
-            )?;
+    not: RawNotification,
+) -> Result<()> {
+    let mut not = Some(not);
+    dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
+        let path = params.text_document.file_path()?;
+        world.change_overlay(path, Some(params.text_document.text));
+        update_file_notifications_on_threadpool(
+            pool, world.snapshot(), sender.clone(), params.text_document.uri,
+        );
+        Ok(())
+    })?;
+    dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
+        let path = params.text_document.file_path()?;
+        let text = params.content_changes.pop()
+            .ok_or_else(|| format_err!("empty changes"))?
+            .text;
+        world.change_overlay(path, Some(text));
+        update_file_notifications_on_threadpool(
+            pool, world.snapshot(), sender.clone(), params.text_document.uri,
+        );
+        Ok(())
+    })?;
+    dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
+        let path = params.text_document.file_path()?;
+        world.change_overlay(path, None);
+        let not = req::PublishDiagnosticsParams {
+            uri: params.text_document.uri,
+            diagnostics: Vec::new(),
+        };
+        let not = dispatch::send_notification::<req::PublishDiagnostics>(not);
+        io.send(RawMsg::Notification(not));
+        Ok(())
+    })?;
 
-            let mut shutdown = false;
-            dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
-                let resp = resp.into_response(Ok(()))?;
-                io.send(RawMsg::Response(resp));
-                shutdown = true;
-                Ok(())
-            })?;
-            if shutdown {
-                info!("lifecycle: initiating shutdown");
-                return Ok(false);
-            }
-            if let Some(req) = req {
-                error!("unknown method: {:?}", req);
-                io.send(RawMsg::Response(dispatch::unknown_method(req.id)?));
-            }
-        }
-        RawMsg::Notification(not) => {
-            let mut not = Some(not);
-            dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
-                let path = params.text_document.file_path()?;
-                world.change_overlay(path, Some(params.text_document.text));
-                update_file_notifications_on_threadpool(
-                    pool, world.snapshot(), sender.clone(), params.text_document.uri,
-                );
-                Ok(())
-            })?;
-            dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
-                let path = params.text_document.file_path()?;
-                let text = params.content_changes.pop()
-                    .ok_or_else(|| format_err!("empty changes"))?
-                    .text;
-                world.change_overlay(path, Some(text));
-                update_file_notifications_on_threadpool(
-                    pool, world.snapshot(), sender.clone(), params.text_document.uri,
-                );
-                Ok(())
-            })?;
-            dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
-                let path = params.text_document.file_path()?;
-                world.change_overlay(path, None);
-                let not = req::PublishDiagnosticsParams {
-                    uri: params.text_document.uri,
-                    diagnostics: Vec::new(),
-                };
-                let not = dispatch::send_notification::<req::PublishDiagnostics>(not);
-                io.send(RawMsg::Notification(not));
-                Ok(())
-            })?;
-
-            if let Some(not) = not {
-                error!("unhandled notification: {:?}", not)
-            }
-        }
-        msg => {
-            eprintln!("msg = {:?}", msg);
-        }
-    };
-    Ok(true)
+    if let Some(not) = not {
+        error!("unhandled notification: {:?}", not);
+    }
+    Ok(())
 }
 
 fn handle_request_on_threadpool<R: req::ClientRequest>(

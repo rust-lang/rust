@@ -31,7 +31,7 @@ use flexi_logger::Logger;
 use libanalysis::WorldState;
 
 use ::{
-    io::{Io, RawMsg, RawResponse, RawNotification}
+    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification}
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -104,6 +104,7 @@ fn initialize(io: &mut Io) -> Result<()> {
 
 enum Task {
     Respond(RawResponse),
+    Request(RawRequest),
     Notify(RawNotification),
     Die(::failure::Error),
 }
