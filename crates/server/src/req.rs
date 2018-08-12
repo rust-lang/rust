@@ -6,7 +6,8 @@ pub use languageserver_types::{
     request::*, notification::*,
     InitializeResult, PublishDiagnosticsParams,
     DocumentSymbolParams, DocumentSymbolResponse,
-    CodeActionParams,
+    CodeActionParams, ApplyWorkspaceEditParams,
+    ExecuteCommandParams,
 };
 
 

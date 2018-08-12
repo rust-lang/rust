@@ -27,7 +27,7 @@ mod main_loop;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::bounded;
-use flexi_logger::Logger;
+use flexi_logger::{Logger, Duplicate};
 use libanalysis::WorldState;
 
 use ::{
@@ -38,6 +38,7 @@ pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 fn main() -> Result<()> {
     Logger::with_env()
+        .duplicate_to_stderr(Duplicate::All)
         .log_to_file()
         .directory("log")
         .start()?;
@@ -81,7 +82,7 @@ fn initialize(io: &mut Io) -> Result<()> {
         RawMsg::Request(req) => {
             let mut req = Some(req);
             dispatch::handle_request::<req::Initialize, _>(&mut req, |_params, resp| {
-                let res = req::InitializeResult { capabilities: caps::SERVER_CAPABILITIES };
+                let res = req::InitializeResult { capabilities: caps::server_capabilities() };
                 let resp = resp.into_response(Ok(res))?;
                 io.send(RawMsg::Response(resp));
                 Ok(())

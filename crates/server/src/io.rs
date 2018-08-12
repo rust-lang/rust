@@ -34,8 +34,13 @@ pub struct RawNotification {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RawResponse {
-    pub id: Option<u64>,
+    // JSON RPC allows this to be null if it was impossible
+    // to decode the request's id. Ignore this special case
+    // and just die horribly.
+    pub id: u64,
+    #[serde(default)]
     pub result: Value,
+    #[serde(default)]
     pub error: Value,
 }
 

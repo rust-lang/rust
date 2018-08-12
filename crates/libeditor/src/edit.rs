@@ -1,11 +1,11 @@
 use {TextRange, TextUnit};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Edit {
-    pub atoms: Vec<AtomEdit>,
+    atoms: Vec<AtomEdit>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AtomEdit {
     pub delete: TextRange,
     pub insert: String,
@@ -22,7 +22,6 @@ impl EditBuilder {
     }
 
     pub fn replace(&mut self, range: TextRange, replacement: String) {
-        let range = self.translate(range);
         self.atoms.push(AtomEdit { delete: range, insert: replacement })
     }
 
@@ -35,59 +34,47 @@ impl EditBuilder {
     }
 
     pub fn finish(self) -> Edit {
-        Edit { atoms: self.atoms }
-    }
-
-    fn translate(&self, range: TextRange) -> TextRange {
-        let mut range = range;
-        for atom in self.atoms.iter() {
-            range = atom.apply_to_range(range)
-                .expect("conflicting edits");
+        let mut atoms = self.atoms;
+        atoms.sort_by_key(|a| a.delete.start());
+        for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
+            assert!(a1.end() <= a2.start())
         }
-        range
+        Edit { atoms }
     }
 }
 
 impl Edit {
+    pub fn into_atoms(self) -> Vec<AtomEdit> {
+        self.atoms
+    }
+
     pub fn apply(&self, text: &str) -> String {
-        let mut text = text.to_owned();
+        let mut total_len = text.len();
         for atom in self.atoms.iter() {
-            text = atom.apply(&text);
+            total_len += atom.insert.len();
+            total_len -= atom.end() - atom.start();
         }
-        text
+        let mut buf = String::with_capacity(total_len);
+        let mut prev = 0;
+        for atom in self.atoms.iter() {
+            if atom.start() > prev {
+                buf.push_str(&text[prev..atom.start()]);
+            }
+            buf.push_str(&atom.insert);
+            prev = atom.end();
+        }
+        buf.push_str(&text[prev..text.len()]);
+        assert_eq!(buf.len(), total_len);
+        buf
     }
 }
 
 impl AtomEdit {
-    fn apply(&self, text: &str) -> String {
-        let prefix = &text[
-            TextRange::from_to(0.into(), self.delete.start())
-        ];
-        let suffix = &text[
-            TextRange::from_to(self.delete.end(), TextUnit::of_str(text))
-        ];
-        let mut res = String::with_capacity(prefix.len() + self.insert.len() + suffix.len());
-        res.push_str(prefix);
-        res.push_str(&self.insert);
-        res.push_str(suffix);
-        res
+    fn start(&self) -> usize {
+        u32::from(self.delete.start()) as usize
     }
 
-    fn apply_to_position(&self, pos: TextUnit) -> Option<TextUnit> {
-        if pos <= self.delete.start() {
-            return Some(pos);
-        }
-        if pos < self.delete.end() {
-            return None;
-        }
-        Some(pos - self.delete.len() + TextUnit::of_str(&self.insert))
-    }
-
-    fn apply_to_range(&self, range: TextRange) -> Option<TextRange> {
-        Some(TextRange::from_to(
-            self.apply_to_position(range.start())?,
-            self.apply_to_position(range.end())?,
-        ))
+    fn end(&self) -> usize {
+        u32::from(self.delete.end()) as usize
     }
 }
-

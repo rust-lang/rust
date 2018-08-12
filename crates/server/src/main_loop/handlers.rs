@@ -1,15 +1,18 @@
+use std::collections::HashMap;
+
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
-    Command
+    Command, TextDocumentIdentifier, WorkspaceEdit
 };
 use libanalysis::World;
 use libeditor;
-use serde_json::to_value;
+use libsyntax2::TextUnit;
+use serde_json::{to_value, from_value};
 
 use ::{
     req::{self, Decoration}, Result,
     util::FilePath,
-    conv::{Conv, ConvWith},
+    conv::{Conv, ConvWith, MapConvWith},
 };
 
 pub fn handle_syntax_tree(
@@ -29,9 +32,9 @@ pub fn handle_extend_selection(
     let file = world.file_syntax(&path)?;
     let line_index = world.file_line_index(&path)?;
     let selections = params.selections.into_iter()
-        .map(|r| r.conv_with(&line_index))
+        .map_conv_with(&line_index)
         .map(|r| libeditor::extend_selection(&file, r).unwrap_or(r))
-        .map(|r| r.conv_with(&line_index))
+        .map_conv_with(&line_index)
         .collect();
     Ok(req::ExtendSelectionResult { selections })
 }
@@ -78,18 +81,71 @@ pub fn handle_code_action(
     let line_index = world.file_line_index(&path)?;
     let offset = params.range.conv_with(&line_index).start();
     let ret = if libeditor::flip_comma(&file, offset).is_some() {
-        Some(vec![apply_code_action_cmd(ActionId::FlipComma)])
+        let cmd = apply_code_action_cmd(
+            ActionId::FlipComma,
+            params.text_document,
+            offset,
+        );
+        Some(vec![cmd])
     } else {
         None
     };
     Ok(ret)
 }
 
-fn apply_code_action_cmd(id: ActionId) -> Command {
+pub fn handle_execute_command(
+    world: World,
+    mut params: req::ExecuteCommandParams,
+) -> Result<req::ApplyWorkspaceEditParams> {
+    if params.command.as_str() != "apply_code_action" {
+        bail!("unknown cmd: {:?}", params.command);
+    }
+    if params.arguments.len() != 1 {
+        bail!("expected single arg, got {}", params.arguments.len());
+    }
+    let arg = params.arguments.pop().unwrap();
+    let arg: ActionRequest = from_value(arg)?;
+    match arg.id {
+        ActionId::FlipComma => {
+            let path = arg.text_document.file_path()?;
+            let file = world.file_syntax(&path)?;
+            let line_index = world.file_line_index(&path)?;
+            let edit = match libeditor::flip_comma(&file, arg.offset) {
+                Some(edit) => edit(),
+                None => bail!("command not applicable"),
+            };
+            let mut changes = HashMap::new();
+            changes.insert(
+                arg.text_document.uri,
+                edit.conv_with(&line_index),
+            );
+            let edit = WorkspaceEdit {
+                changes: Some(changes),
+                document_changes: None,
+            };
+
+            Ok(req::ApplyWorkspaceEditParams { edit })
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct ActionRequest {
+    id: ActionId,
+    text_document: TextDocumentIdentifier,
+    offset: TextUnit,
+}
+
+fn apply_code_action_cmd(id: ActionId, doc: TextDocumentIdentifier, offset: TextUnit) -> Command {
+    let action_request = ActionRequest {
+        id,
+        text_document: doc,
+        offset,
+    };
     Command {
         title: id.title().to_string(),
         command: "apply_code_action".to_string(),
-        arguments: Some(vec![to_value(id).unwrap()]),
+        arguments: Some(vec![to_value(action_request).unwrap()]),
     }
 }
 

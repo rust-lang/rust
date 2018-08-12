@@ -11,10 +11,11 @@ serde_derive = "1.0.71"
 drop_bomb = "0.1.0"
 crossbeam-channel = "0.2.4"
 threadpool = "1.7.1"
-flexi_logger = "0.9.0"
+flexi_logger = "0.9.1"
 log = "0.4.3"
 url_serde = "0.2.0"
 languageserver-types = "0.49.0"
+text_unit = { version = "0.1.2", features = ["serde"] }
 
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }

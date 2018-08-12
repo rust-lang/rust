@@ -19,7 +19,7 @@ pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
     symbols::{FileSymbol, file_symbols},
-    edit::{EditBuilder, Edit},
+    edit::{EditBuilder, Edit, AtomEdit},
     code_actions::{flip_comma},
 };
 

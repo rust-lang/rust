@@ -25,7 +25,7 @@ impl<R: ClientRequest> Responder<R> {
         let res = match result {
             Ok(result) => {
                 RawResponse {
-                    id: Some(self.id),
+                    id: self.id,
                     result: serde_json::to_value(result)?,
                     error: serde_json::Value::Null,
                 }
@@ -125,7 +125,7 @@ fn error_response(id: u64, code: ErrorCode, message: &'static str) -> Result<Raw
         message: &'static str,
     }
     let resp = RawResponse {
-        id: Some(id),
+        id,
         result: serde_json::Value::Null,
         error: serde_json::to_value(Error {
             code: code as i32,

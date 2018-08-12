@@ -6,6 +6,7 @@ use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::Url;
 use libanalysis::{World, WorldState};
+use serde_json::to_value;
 
 use {
     req, dispatch,
@@ -19,6 +20,7 @@ use {
         publish_decorations,
         handle_document_symbol,
         handle_code_action,
+        handle_execute_command,
     },
 };
 
@@ -79,7 +81,9 @@ pub(super) fn main_loop(
                         on_notification(io, world, pool, &sender, not)?
                     }
                     RawMsg::Response(resp) => {
-                        error!("unexpected response: {:?}", resp)
+                        if !pending_requests.remove(&resp.id) {
+                            error!("unexpected response: {:?}", resp)
+                        }
                     }
                 }
             }
@@ -107,22 +111,30 @@ fn on_request(
     handle_request_on_threadpool::<req::CodeActionRequest>(
         &mut req, pool, world, sender, handle_code_action,
     )?;
-//    dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |(), resp| {
-//        let world = world.snapshot();
-//        let sender = sender.clone();
-//        pool.execute(move || {
-//            let task = match handle_execute_command(world, params) {
-//                Ok(req) => Task::Request(req),
-//                Err(e) => Task::Die(e),
-//            };
-//            sender.send(task)
-//        });
-//
-//        let resp = resp.into_response(Ok(()))?;
-//        io.send(RawMsg::Response(resp));
-//        shutdown = true;
-//        Ok(())
-//    })?;
+    dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
+        io.send(RawMsg::Response(resp.into_response(Ok(None))?));
+
+        let world = world.snapshot();
+        let sender = sender.clone();
+        pool.execute(move || {
+            let task = match handle_execute_command(world, params) {
+                Ok(req) => match to_value(req) {
+                    Err(e) => Task::Die(e.into()),
+                    Ok(params) => {
+                        let request = RawRequest {
+                            id: 0,
+                            method: <req::ApplyWorkspaceEdit as req::ClientRequest>::METHOD.to_string(),
+                            params,
+                        };
+                        Task::Request(request)
+                    }
+                },
+                Err(e) => Task::Die(e),
+            };
+            sender.send(task)
+        });
+        Ok(())
+    })?;
 
     let mut shutdown = false;
     dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
