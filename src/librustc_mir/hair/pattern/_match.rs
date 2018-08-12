@@ -351,15 +351,38 @@ impl<'tcx> Witness<'tcx> {
         ty: Ty<'tcx>)
         -> Self
     {
-        let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
-        self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
-            Pattern {
-                ty,
-                span: DUMMY_SP,
-                kind: box PatternKind::Wild,
+        // If we've been trying to exhaustively match over the domain of values for a type,
+        // then we can construct witnesses directly corresponding to the missing ranges of values,
+        // giving far more precise diagnostics.
+        // `ConstantValue` and `ConstantRange` only occur in practice when doing exhaustive value
+        // matching (exhaustive_integer_patterns).
+        match ctor {
+            ConstantValue(value) => {
+                Witness(vec![Pattern {
+                    ty,
+                    span: DUMMY_SP,
+                    kind: box PatternKind::Constant { value },
+                }])
             }
-        }));
-        self.apply_constructor(cx, ctor, ty)
+            ConstantRange(lo, hi, end) => {
+                Witness(vec![Pattern {
+                    ty,
+                    span: DUMMY_SP,
+                    kind: box PatternKind::Range { lo, hi, end: *end },
+                }])
+            }
+            _ => {
+                let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
+                self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
+                    Pattern {
+                        ty,
+                        span: DUMMY_SP,
+                        kind: box PatternKind::Wild,
+                    }
+                }));
+                self.apply_constructor(cx, ctor, ty)
+            }
+        }
     }
 
 
@@ -976,7 +999,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // `used_ctors` is empty.
                     let new_witnesses = if is_non_exhaustive || used_ctors.is_empty() {
                         // All constructors are unused. Add wild patterns
-                        // rather than each individual constructor
+                        // rather than each individual constructor.
                         pats.into_iter().map(|mut witness| {
                             witness.0.push(Pattern {
                                 ty: pcx.ty,
@@ -986,46 +1009,15 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             witness
                         }).collect()
                     } else {
-                        if consider_value_constructors {
-                            // If we've been trying to exhaustively match
-                            // over the domain of values for a type,
-                            // then we can provide better diagnostics
-                            // regarding which values were missing.
-                            missing_ctors.into_iter().map(|ctor| {
-                                match ctor {
-                                    // A constant range of length 1 is simply
-                                    // a constant value.
-                                    ConstantValue(value) => {
-                                        Witness(vec![Pattern {
-                                            ty: pcx.ty,
-                                            span: DUMMY_SP,
-                                            kind: box PatternKind::Constant { value },
-                                        }])
-                                    }
-                                    // We always report missing intervals
-                                    // in terms of inclusive ranges.
-                                    ConstantRange(lo, hi, end) => {
-                                        Witness(vec![Pattern {
-                                            ty: pcx.ty,
-                                            span: DUMMY_SP,
-                                            kind: box PatternKind::Range { lo, hi, end },
-                                        }])
-                                    },
-                                    _ => bug!("`ranges_subtract_pattern` should only produce \
-                                               `ConstantRange`s"),
-                                }
-                            }).collect()
-                        } else {
-                            pats.into_iter().flat_map(|witness| {
-                                missing_ctors.iter().map(move |ctor| {
-                                    // Extends the witness with a "wild" version of this
-                                    // constructor, that matches everything that can be built with
-                                    // it. For example, if `ctor` is a `Constructor::Variant` for
-                                    // `Option::Some`, this pushes the witness for `Some(_)`.
-                                    witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                                })
-                            }).collect()
-                        }
+                        pats.into_iter().flat_map(|witness| {
+                            missing_ctors.iter().map(move |ctor| {
+                                // Extends the witness with a "wild" version of this
+                                // constructor, that matches everything that can be built with
+                                // it. For example, if `ctor` is a `Constructor::Variant` for
+                                // `Option::Some`, this pushes the witness for `Some(_)`.
+                                witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
+                            })
+                        }).collect()
                     };
                     UsefulWithWitness(new_witnesses)
                 }
