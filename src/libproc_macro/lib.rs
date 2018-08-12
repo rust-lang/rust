@@ -179,6 +179,20 @@ impl iter::FromIterator<TokenStream> for TokenStream {
     }
 }
 
+#[stable(feature = "token_stream_extend", since = "1.30.0")]
+impl Extend<TokenTree> for TokenStream {
+    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
+        self.extend(trees.into_iter().map(TokenStream::from));
+    }
+}
+
+#[stable(feature = "token_stream_extend", since = "1.30.0")]
+impl Extend<TokenStream> for TokenStream {
+    fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
+        self.0.extend(streams.into_iter().map(|stream| stream.0));
+    }
+}
+
 /// Public implementation details for the `TokenStream` type, such as iterators.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub mod token_stream {
