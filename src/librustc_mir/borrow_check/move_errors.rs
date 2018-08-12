@@ -354,7 +354,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     // `*IndexMut::index_mut(&mut a, b)`.
                     err.span_suggestion(
                         span,
-                        "consider removing this dereference operator",
+                        "consider removing the `*`",
                         snippet[1..].to_owned(),
                     );
                 } else {
@@ -400,16 +400,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 if pat_snippet.starts_with('&') {
                     let pat_snippet = pat_snippet[1..].trim_left();
                     let suggestion;
+                    let to_remove;
                     if pat_snippet.starts_with("mut")
                         && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
                     {
                         suggestion = pat_snippet["mut".len()..].trim_left();
+                        to_remove = "&mut";
                     } else {
                         suggestion = pat_snippet;
+                        to_remove = "&";
                     }
                     err.span_suggestion(
                         pat_span,
-                        "consider removing this borrow operator",
+                        &format!("consider removing the `{}`", to_remove),
                         suggestion.to_owned(),
                     );
                 }
