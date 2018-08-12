@@ -303,7 +303,38 @@ struct PatternContext<'tcx> {
     max_slice_length: u64,
 }
 
-/// A stack of patterns in reverse order of construction
+/// A witness of non-exhaustiveness for error reporting, represented
+/// as a list of patterns (in reverse order of construction) with
+/// wildcards inside to represent elements that can take any inhabitant
+/// of the type as a value.
+///
+/// A witness against a list of patterns should have the same types
+/// and length as the pattern matched against. Because Rust `match`
+/// is always against a single pattern, at the end the witness will
+/// have length 1, but in the middle of the algorithm, it can contain
+/// multiple patterns.
+///
+/// For example, if we are constructing a witness for the match against
+/// ```
+/// struct Pair(Option<(u32, u32)>, bool);
+///
+/// match (p: Pair) {
+///    Pair(None, _) => {}
+///    Pair(_, false) => {}
+/// }
+/// ```
+///
+/// We'll perform the following steps:
+/// 1. Start with an empty witness
+///     `Witness(vec![])`
+/// 2. Push a witness `Some(_)` against the `None`
+///     `Witness(vec![Some(_)])`
+/// 3. Push a witness `true` against the `false`
+///     `Witness(vec![Some(_), true])`
+/// 4. Apply the `Pair` constructor to the witnesses
+///     `Witness(vec![Pair(Some(_), true)])`
+///
+/// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Clone, Debug)]
 pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
 
@@ -987,6 +1018,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         } else {
                             pats.into_iter().flat_map(|witness| {
                                 missing_ctors.iter().map(move |ctor| {
+                                    // Extends the witness with a "wild" version of this
+                                    // constructor, that matches everything that can be built with
+                                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                                    // `Option::Some`, this pushes the witness for `Some(_)`.
                                     witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
                                 })
                             }).collect()

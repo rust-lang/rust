@@ -488,7 +488,7 @@ declare_features! (
     (active, label_break_value, "1.28.0", Some(48594), None),
 
     // Integer match exhaustiveness checking
-    (active, exhaustive_integer_patterns, "1.28.0", Some(50907), None),
+    (active, exhaustive_integer_patterns, "1.30.0", Some(50907), None),
 
     // #[panic_implementation]
     (active, panic_implementation, "1.28.0", Some(44489), None),
