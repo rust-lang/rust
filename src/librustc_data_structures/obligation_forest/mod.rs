@@ -573,7 +573,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
 
         let mut kill_list = vec![];
-        for (predicate, index) in self.waiting_cache.iter_mut() {
+        for (predicate, index) in &mut self.waiting_cache {
             let new_index = node_rewrites[index.get()];
             if new_index >= nodes_len {
                 kill_list.push(predicate.clone());

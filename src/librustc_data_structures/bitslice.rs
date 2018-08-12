@@ -75,7 +75,7 @@ fn bit_lookup(bit: usize) -> BitLookup {
     let word = bit / word_bits;
     let bit_in_word = bit % word_bits;
     let bit_mask = 1 << bit_in_word;
-    BitLookup { word: word, bit_in_word: bit_in_word, bit_mask: bit_mask }
+    BitLookup { word, bit_in_word, bit_mask }
 }
 
 pub fn bits_to_string(words: &[Word], bits: usize) -> String {
@@ -105,7 +105,8 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
         sep = '|';
     }
     result.push(']');
-    return result
+
+    result
 }
 
 #[inline]

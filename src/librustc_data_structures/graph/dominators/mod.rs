@@ -107,7 +107,8 @@ fn intersect<Node: Idx>(
             node2 = immediate_dominators[node2].unwrap();
         }
     }
-    return node1;
+
+    node1
 }
 
 #[derive(Clone, Debug)]
