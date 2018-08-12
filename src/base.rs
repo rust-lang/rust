@@ -65,7 +65,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
             }
             Instance {
                 def: InstanceDef::DropGlue(_, _),
-                substs: _
+                substs: _,
             } => unimpl!("Unimplemented drop glue instance"),
             inst => unimpl!("Unimplemented instance {:?}", inst),
         },

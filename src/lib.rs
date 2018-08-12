@@ -346,7 +346,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         for &crate_type in sess.opts.crate_types.iter() {
             match crate_type {
                 CrateType::Executable => {
-                    sess.warn("Rustc codegen cranelift doesn't produce executables, but is a JIT for them");   
+                    sess.warn("Rustc codegen cranelift doesn't produce executables, but is a JIT for them");
                 },
                 CrateType::Rlib /* | CrateType::Dylib */ => {
                     let output_name = out_filename(
