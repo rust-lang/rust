@@ -12,4 +12,4 @@ drop_bomb = "0.1.4"
 parking_lot = "0.6.0"
 
 [dev-dependencies]
-difference = "2.0.0"
+assert_eq_text = { path = "../assert_eq_text" }

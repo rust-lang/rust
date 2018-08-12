@@ -74,7 +74,6 @@ impl<'f> Iterator for LeafAtOffset<'f> {
     }
 }
 
-
 pub fn find_covering_node(root: SyntaxNodeRef, range: TextRange) -> SyntaxNodeRef {
     assert!(is_subrange(root.range(), range));
     let (left, right) = match (
@@ -88,6 +87,26 @@ pub fn find_covering_node(root: SyntaxNodeRef, range: TextRange) -> SyntaxNodeRe
     common_ancestor(left, right)
 }
 
+pub fn ancestors<'a>(node: SyntaxNodeRef<'a>) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+    generate(Some(node), |&node| node.parent())
+}
+
+#[derive(Debug)]
+pub enum Direction {
+    Forward,
+    Backward,
+}
+
+pub fn siblings<'a>(
+    node: SyntaxNodeRef<'a>,
+    direction: Direction
+) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+    generate(Some(node), move |&node| match direction {
+        Direction::Forward => node.next_sibling(),
+        Direction::Backward => node.prev_sibling(),
+    })
+}
+
 fn common_ancestor<'a>(n1: SyntaxNodeRef<'a>, n2: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a> {
     for p in ancestors(n1) {
         if ancestors(n2).any(|a| a == p) {
@@ -97,28 +116,19 @@ fn common_ancestor<'a>(n1: SyntaxNodeRef<'a>, n2: SyntaxNodeRef<'a>) -> SyntaxNo
     panic!("Can't find common ancestor of {:?} and {:?}", n1, n2)
 }
 
-pub fn ancestors<'a>(node: SyntaxNodeRef<'a>) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-    Ancestors(Some(node))
-}
-
-#[derive(Debug)]
-struct Ancestors<'a>(Option<SyntaxNodeRef<'a>>);
-
-impl<'a> Iterator for Ancestors<'a> {
-    type Item = SyntaxNodeRef<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.take().map(|n| {
-            self.0 = n.parent();
-            n
-        })
-    }
-}
-
 fn contains_offset_nonstrict(range: TextRange, offset: TextUnit) -> bool {
     range.start() <= offset && offset <= range.end()
 }
 
 fn is_subrange(range: TextRange, subrange: TextRange) -> bool {
     range.start() <= subrange.start() && subrange.end() <= range.end()
+}
+
+fn generate<T>(seed: Option<T>, step: impl Fn(&T) -> Option<T>) -> impl Iterator<Item=T> {
+    ::itertools::unfold(seed, move |slot| {
+        slot.take().map(|curr| {
+            *slot = step(&curr);
+            curr
+        })
+    })
 }

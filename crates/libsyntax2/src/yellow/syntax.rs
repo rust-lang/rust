@@ -101,6 +101,17 @@ impl<R: TreeRoot> SyntaxNode<R> {
         })
     }
 
+    pub fn prev_sibling(&self) -> Option<SyntaxNode<R>> {
+        let red = self.red();
+        let parent = self.parent()?;
+        let prev_sibling_idx = red.index_in_parent()?.checked_sub(1)?;
+        let sibling_red = parent.red().get_child(prev_sibling_idx)?;
+        Some(SyntaxNode {
+            root: self.root.clone(),
+            red: sibling_red,
+        })
+    }
+
     pub fn is_leaf(&self) -> bool {
         self.first_child().is_none()
     }

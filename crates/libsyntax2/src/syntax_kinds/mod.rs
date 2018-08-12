@@ -17,7 +17,7 @@ pub(crate) struct SyntaxInfo {
 }
 
 impl SyntaxKind {
-    pub(crate) fn is_trivia(self) -> bool {
+    pub fn is_trivia(self) -> bool {
         match self {
             WHITESPACE | COMMENT | DOC_COMMENT => true,
             _ => false,

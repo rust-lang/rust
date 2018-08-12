@@ -1,13 +1,12 @@
 extern crate libsyntax2;
-extern crate difference;
+#[macro_use]
+extern crate assert_eq_text;
 
 use std::{
     fs,
     path::{Path, PathBuf},
     fmt::Write,
 };
-
-use difference::Changeset;
 
 #[test]
 fn lexer_tests() {
@@ -63,10 +62,26 @@ pub fn dir_tests<F>(paths: &[&str], f: F)
     }
 }
 
+const REWRITE: bool = false;
+
 fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
-    if expected != actual {
-        print_difference(expected, actual, path)
+    if expected == actual {
+        return;
     }
+    let dir = project_dir();
+    let path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
+    if expected.trim() == actual.trim() {
+        println!("whitespace difference, rewriting");
+        println!("file: {}\n", path.display());
+        fs::write(path, actual).unwrap();
+        return;
+    }
+    if REWRITE {
+        println!("rewriting {}", path.display());
+        fs::write(path, actual).unwrap();
+        return;
+    }
+    assert_eq_text!(expected, actual, "file: {}", path.display());
 }
 
 fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {
@@ -90,29 +105,6 @@ fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
     }
     acc.sort();
     acc
-}
-
-const REWRITE: bool = false;
-
-fn print_difference(expected: &str, actual: &str, path: &Path) {
-    let dir = project_dir();
-    let path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
-    if expected.trim() == actual.trim() {
-        println!("whitespace difference, rewriting");
-        println!("file: {}\n", path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    if REWRITE {
-        println!("rewriting {}", path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    let changeset = Changeset::new(actual, expected, "\n");
-    println!("Expected:\n{}\n\nActual:\n{}\n", expected, actual);
-    print!("{}", changeset);
-    println!("file: {}\n", path.display());
-    panic!("Comparison failed")
 }
 
 fn project_dir() -> PathBuf {

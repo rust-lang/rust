@@ -1,9 +1,12 @@
 extern crate libsyntax2;
 extern crate superslice;
+extern crate itertools;
 
 mod extend_selection;
 mod symbols;
 mod line_index;
+mod edit;
+mod code_actions;
 
 use libsyntax2::{
     ast::{self, NameOwner},
@@ -15,7 +18,9 @@ pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
-    symbols::{FileSymbol, file_symbols}
+    symbols::{FileSymbol, file_symbols},
+    edit::{EditBuilder, Edit},
+    code_actions::{flip_comma},
 };
 
 #[derive(Debug)]
