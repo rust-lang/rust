@@ -1,8 +1,10 @@
-error[E0277]: the trait bound `(): std::ops::FnMut<(_, char)>` is not satisfied
+error[E0277]: expected a `std::ops::FnMut<(_, char)>` closure, found `()`
   --> $DIR/issue-23966.rs:12:16
    |
 LL |     "".chars().fold(|_, _| (), ());
-   |                ^^^^ the trait `std::ops::FnMut<(_, char)>` is not implemented for `()`
+   |                ^^^^ expected an `FnMut<(_, char)>` closure, found `()`
+   |
+   = help: the trait `std::ops::FnMut<(_, char)>` is not implemented for `()`
 
 error: aborting due to previous error
 
