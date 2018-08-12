@@ -2318,7 +2318,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 
         let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1];
         if m <= INV_TABLE_MOD {
-            return table_inverse & (m - 1);
+            table_inverse & (m - 1)
         } else {
             // We iterate "up" using the following formula:
             //
@@ -2405,7 +2405,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     // Cannot be aligned at all.
-    return usize::max_value();
+    usize::max_value()
 }
 
 

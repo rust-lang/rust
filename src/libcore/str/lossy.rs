@@ -146,7 +146,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
             broken: &[],
         };
         self.source = &[];
-        return Some(r);
+        Some(r)
     }
 }
 
