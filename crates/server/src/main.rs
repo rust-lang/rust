@@ -23,6 +23,7 @@ mod req;
 mod dispatch;
 mod handlers;
 mod util;
+mod conv;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{bounded, Sender, Receiver};
@@ -33,7 +34,7 @@ use libanalysis::{WorldState, World};
 use ::{
     io::{Io, RawMsg, RawRequest},
     handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics, publish_decorations,
-               handle_document_symbol},
+               handle_document_symbol, handle_code_action},
     util::{FilePath, FnBox}
 };
 
@@ -182,6 +183,10 @@ fn main_loop(
                 handle_request_on_threadpool::<req::DocumentSymbolRequest>(
                     &mut req, pool, world, &sender, handle_document_symbol
                 )?;
+                handle_request_on_threadpool::<req::CodeActionRequest>(
+                    &mut req, pool, world, &sender, handle_code_action
+                )?;
+
                 let mut shutdown = false;
                 dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
                     resp.result(io, ())?;

@@ -5,7 +5,8 @@ use url_serde;
 pub use languageserver_types::{
     request::*, notification::*,
     InitializeResult, PublishDiagnosticsParams,
-    DocumentSymbolParams, DocumentSymbolResponse
+    DocumentSymbolParams, DocumentSymbolResponse,
+    CodeActionParams,
 };
 
 

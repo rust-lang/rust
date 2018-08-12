@@ -1,11 +1,15 @@
-use languageserver_types::{Range, Position, Diagnostic, DiagnosticSeverity, Url, DocumentSymbol, SymbolKind};
-use libsyntax2::SyntaxKind;
+use languageserver_types::{
+    Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
+    Command
+};
 use libanalysis::World;
-use libeditor::{self, LineIndex, LineCol, TextRange, TextUnit};
+use libeditor;
+use serde_json::to_value;
 
 use ::{
     req::{self, Decoration}, Result,
     util::FilePath,
+    conv::{Conv, ConvWith},
 };
 
 pub fn handle_syntax_tree(
@@ -25,11 +29,9 @@ pub fn handle_extend_selection(
     let file = world.file_syntax(&path)?;
     let line_index = world.file_line_index(&path)?;
     let selections = params.selections.into_iter()
-        .map(|r| {
-            let r = to_text_range(&line_index, r);
-            let r = libeditor::extend_selection(&file, r).unwrap_or(r);
-            to_vs_range(&line_index, r)
-        })
+        .map(|r| r.conv_with(&line_index))
+        .map(|r| libeditor::extend_selection(&file, r).unwrap_or(r))
+        .map(|r| r.conv_with(&line_index))
         .collect();
     Ok(req::ExtendSelectionResult { selections })
 }
@@ -48,10 +50,10 @@ pub fn handle_document_symbol(
         let doc_symbol = DocumentSymbol {
             name: symbol.name.clone(),
             detail: Some(symbol.name),
-            kind: to_symbol_kind(symbol.kind),
+            kind: symbol.kind.conv(),
             deprecated: None,
-            range: to_vs_range(&line_index, symbol.node_range),
-            selection_range: to_vs_range(&line_index, symbol.name_range),
+            range: symbol.node_range.conv_with(&line_index),
+            selection_range: symbol.name_range.conv_with(&line_index),
             children: None,
         };
         if let Some(idx) = symbol.parent {
@@ -67,17 +69,40 @@ pub fn handle_document_symbol(
     Ok(Some(req::DocumentSymbolResponse::Nested(res)))
 }
 
-fn to_symbol_kind(kind: SyntaxKind) -> SymbolKind {
-    match kind {
-        SyntaxKind::FUNCTION => SymbolKind::Function,
-        SyntaxKind::STRUCT => SymbolKind::Struct,
-        SyntaxKind::ENUM => SymbolKind::Enum,
-        SyntaxKind::TRAIT => SymbolKind::Interface,
-        SyntaxKind::MODULE => SymbolKind::Module,
-        SyntaxKind::TYPE_ITEM => SymbolKind::TypeParameter,
-        SyntaxKind::STATIC_ITEM => SymbolKind::Constant,
-        SyntaxKind::CONST_ITEM => SymbolKind::Constant,
-        _ => SymbolKind::Variable,
+pub fn handle_code_action(
+    world: World,
+    params: req::CodeActionParams,
+) -> Result<Option<Vec<Command>>> {
+    let path = params.text_document.file_path()?;
+    let file = world.file_syntax(&path)?;
+    let line_index = world.file_line_index(&path)?;
+    let offset = params.range.conv_with(&line_index).start();
+    let ret = if libeditor::flip_comma(&file, offset).is_some() {
+        Some(vec![apply_code_action_cmd(ActionId::FlipComma)])
+    } else {
+        None
+    };
+    Ok(ret)
+}
+
+fn apply_code_action_cmd(id: ActionId) -> Command {
+    Command {
+        title: id.title().to_string(),
+        command: "apply_code_action".to_string(),
+        arguments: Some(vec![to_value(id).unwrap()]),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+enum ActionId {
+    FlipComma
+}
+
+impl ActionId {
+    fn title(&self) -> &'static str {
+        match *self {
+            ActionId::FlipComma => "Flip `,`",
+        }
     }
 }
 
@@ -88,7 +113,7 @@ pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnos
     let diagnostics = libeditor::diagnostics(&file)
         .into_iter()
         .map(|d| Diagnostic {
-            range: to_vs_range(&line_index, d.range),
+            range: d.range.conv_with(&line_index),
             severity: Some(DiagnosticSeverity::Error),
             code: None,
             source: Some("libsyntax2".to_string()),
@@ -105,38 +130,8 @@ pub fn publish_decorations(world: World, uri: Url) -> Result<req::PublishDecorat
     let decorations = libeditor::highlight(&file)
         .into_iter()
         .map(|h| Decoration {
-            range: to_vs_range(&line_index, h.range),
+            range: h.range.conv_with(&line_index),
             tag: h.tag,
         }).collect();
     Ok(req::PublishDecorationsParams { uri, decorations })
-}
-
-fn to_text_range(line_index: &LineIndex, range: Range) -> TextRange {
-    TextRange::from_to(
-        to_text_unit(line_index, range.start),
-        to_text_unit(line_index, range.end),
-    )
-}
-
-fn to_text_unit(line_index: &LineIndex, position: Position) -> TextUnit {
-    // TODO: UTF-16
-    let line_col = LineCol {
-        line: position.line as u32,
-        col: (position.character as u32).into(),
-    };
-    line_index.offset(line_col)
-}
-
-
-fn to_vs_range(line_index: &LineIndex, range: TextRange) -> Range {
-    Range::new(
-        to_vs_position(line_index, range.start()),
-        to_vs_position(line_index, range.end()),
-    )
-}
-
-fn to_vs_position(line_index: &LineIndex, offset: TextUnit) -> Position {
-    let line_col = line_index.line_col(offset);
-    // TODO: UTF-16
-    Position::new(line_col.line as u64, u32::from(line_col.col) as u64)
 }

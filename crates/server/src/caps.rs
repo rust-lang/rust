@@ -25,7 +25,7 @@ pub const SERVER_CAPABILITIES: ServerCapabilities = ServerCapabilities {
     document_highlight_provider: None,
     document_symbol_provider: Some(true),
     workspace_symbol_provider: None,
-    code_action_provider: None,
+    code_action_provider: Some(true),
     code_lens_provider: None,
     document_formatting_provider: None,
     document_range_formatting_provider: None,
