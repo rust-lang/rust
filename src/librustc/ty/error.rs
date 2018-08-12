@@ -13,7 +13,7 @@ use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
 use hir;
@@ -249,6 +249,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if expected_str == found_str && expected_str == "closure" {
                     db.note("no two closures, even if identical, have the same type");
                     db.help("consider boxing your closure and/or using it as a trait object");
+                }
+                match (&values.found.sty, &values.expected.sty) { // Issue #53280
+                    (ty::TyInfer(ty::IntVar(_)), ty::TyFloat(_)) => {
+                        if let Ok(snippet) = self.sess.codemap().span_to_snippet(sp) {
+                            if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
+                                db.span_suggestion_with_applicability(
+                                    sp,
+                                    "use a float literal",
+                                    format!("{}.0", snippet),
+                                    Applicability::MachineApplicable
+                                );
+                            }
+                        }
+                    },
+                    _ => {}
                 }
             },
             OldStyleLUB(err) => {
