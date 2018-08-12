@@ -9,13 +9,14 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_codegen_utils;
+extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
 use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
-use rustc::middle::cstore::CrateStore;
+use rustc_metadata::cstore::CStore;
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 
@@ -128,7 +129,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                      trans_crate: &CodegenBackend,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cstore: &CrateStore,
+                     cstore: &CStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
