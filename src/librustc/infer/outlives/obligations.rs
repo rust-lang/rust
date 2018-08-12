@@ -151,12 +151,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         debug!("process_registered_region_obligations()");
 
         // pull out the region obligations with the given `body_id` (leaving the rest)
-        let my_region_obligations = {
+        let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
+        {
             let mut r_o = self.region_obligations.borrow_mut();
-            let my_r_o = r_o.drain_filter(|(ro_body_id, _)| *ro_body_id == body_id)
-                            .map(|(_, obligation)| obligation).collect::<Vec<_>>();
-            my_r_o
-        };
+            my_region_obligations.extend(
+                r_o.drain_filter(|(ro_body_id, _)| *ro_body_id == body_id)
+                   .map(|(_, obligation)| obligation)
+            );
+        }
 
         let outlives = &mut TypeOutlives::new(
             self,

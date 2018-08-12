@@ -312,8 +312,8 @@ impl Iterator for EscapeDefault {
                     None
                 }
             },
-            EscapeDefaultState::Done => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
+            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Unicode(ref mut i) => i.nth(n),
         }
     }
 

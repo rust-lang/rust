@@ -1175,9 +1175,9 @@ impl CStr {
     /// If the contents of the `CStr` are valid UTF-8 data, this
     /// function will return a [`Cow`]`::`[`Borrowed`]`(`[`&str`]`)`
     /// with the the corresponding [`&str`] slice. Otherwise, it will
-    /// replace any invalid UTF-8 sequences with `U+FFFD REPLACEMENT
-    /// CHARACTER` and return a [`Cow`]`::`[`Owned`]`(`[`String`]`)`
-    /// with the result.
+    /// replace any invalid UTF-8 sequences with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
+    /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a constant-time cast, but it is planned to alter its definition
@@ -1189,6 +1189,7 @@ impl CStr {
     /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
     /// [`str`]: ../primitive.str.html
     /// [`String`]: ../string/struct.String.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///

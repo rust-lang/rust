@@ -1564,7 +1564,7 @@ extern "C" {
                                 -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
-                                    Child: Option<&'a ArchiveChild>)
+                                    Child: Option<&ArchiveChild<'a>>)
                                     -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree(Member: &'a mut RustArchiveMember<'a>);
 

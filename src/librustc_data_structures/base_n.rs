@@ -17,7 +17,7 @@ pub const MAX_BASE: usize = 64;
 pub const ALPHANUMERIC_ONLY: usize = 62;
 pub const CASE_INSENSITIVE: usize = 36;
 
-const BASE_64: &'static [u8; MAX_BASE as usize] =
+const BASE_64: &[u8; MAX_BASE as usize] =
     b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@$";
 
 #[inline]
@@ -37,7 +37,8 @@ pub fn push_str(mut n: u128, base: usize, output: &mut String) {
             break;
         }
     }
-    &mut s[0..index].reverse();
+    s[0..index].reverse();
+
     output.push_str(str::from_utf8(&s[0..index]).unwrap());
 }
 

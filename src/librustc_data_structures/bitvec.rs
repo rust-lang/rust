@@ -196,7 +196,8 @@ impl<'a, C: Idx> Iterator for BitIter<'a, C> {
         self.current >>= offset;
         self.current >>= 1; // shift otherwise overflows for 0b1000_0000_…_0000
         self.idx += offset + 1;
-        return Some(C::new(self.idx - 1));
+
+        Some(C::new(self.idx - 1))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -299,7 +300,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
             let v1 = vector[write_index];
             let v2 = v1 | vector[read_index];
             vector[write_index] = v2;
-            changed = changed | (v1 != v2);
+            changed |= v1 != v2;
         }
         changed
     }

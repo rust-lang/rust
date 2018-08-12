@@ -1142,7 +1142,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 if !is_default {
                     true
                 } else if obligation.param_env.reveal == Reveal::All {
-                    assert!(!poly_trait_ref.needs_infer());
+                    debug_assert!(!poly_trait_ref.needs_infer());
                     if !poly_trait_ref.needs_subst() {
                         true
                     } else {
@@ -1668,15 +1668,15 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.rollback_to(snapshot.snapshot);
+        self.map.rollback_to(&snapshot.snapshot);
     }
 
     pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
         self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_skol());
     }
 
-    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.commit(snapshot.snapshot);
+    pub fn commit(&mut self, snapshot: &ProjectionCacheSnapshot) {
+        self.map.commit(&snapshot.snapshot);
     }
 
     /// Try to start normalize `key`; returns an error if

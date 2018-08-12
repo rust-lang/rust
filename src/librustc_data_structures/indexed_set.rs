@@ -59,16 +59,13 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
 
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
-//
-// WARNING: Mapping a `&IdxSetBuf<T>` to `&IdxSet<T>` (at least today)
-// requires a transmute relying on representation guarantees that may
-// not hold in the future.
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.
 ///
 /// In other words, `T` is the type used to index into the bitslice
 /// this type uses to represent the set of object it holds.
+#[repr(transparent)]
 pub struct IdxSet<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: [Word],
@@ -134,11 +131,11 @@ impl<T: Idx> IdxSetBuf<T> {
 
 impl<T: Idx> IdxSet<T> {
     unsafe fn from_slice(s: &[Word]) -> &Self {
-        mem::transmute(s) // (see above WARNING)
+        &*(s as *const [Word] as *const Self)
     }
 
     unsafe fn from_slice_mut(s: &mut [Word]) -> &mut Self {
-        mem::transmute(s) // (see above WARNING)
+        &mut *(s as *mut [Word] as *mut Self)
     }
 }
 
@@ -326,7 +323,7 @@ fn test_set_up_to() {
 #[test]
 fn test_new_filled() {
     for i in 0..128 {
-        let mut idx_buf = IdxSetBuf::new_filled(i);
+        let idx_buf = IdxSetBuf::new_filled(i);
         let elems: Vec<usize> = idx_buf.iter().collect();
         let expected: Vec<usize> = (0..i).collect();
         assert_eq!(elems, expected);
