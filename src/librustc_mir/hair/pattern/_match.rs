@@ -351,38 +351,15 @@ impl<'tcx> Witness<'tcx> {
         ty: Ty<'tcx>)
         -> Self
     {
-        // If we've been trying to exhaustively match over the domain of values for a type,
-        // then we can construct witnesses directly corresponding to the missing ranges of values,
-        // giving far more precise diagnostics.
-        // `ConstantValue` and `ConstantRange` only occur in practice when doing exhaustive value
-        // matching (exhaustive_integer_patterns).
-        match ctor {
-            ConstantValue(value) => {
-                Witness(vec![Pattern {
-                    ty,
-                    span: DUMMY_SP,
-                    kind: box PatternKind::Constant { value },
-                }])
+        let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
+        self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
+            Pattern {
+                ty,
+                span: DUMMY_SP,
+                kind: box PatternKind::Wild,
             }
-            ConstantRange(lo, hi, end) => {
-                Witness(vec![Pattern {
-                    ty,
-                    span: DUMMY_SP,
-                    kind: box PatternKind::Range { lo, hi, end: *end },
-                }])
-            }
-            _ => {
-                let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
-                self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
-                    Pattern {
-                        ty,
-                        span: DUMMY_SP,
-                        kind: box PatternKind::Wild,
-                    }
-                }));
-                self.apply_constructor(cx, ctor, ty)
-            }
-        }
+        }));
+        self.apply_constructor(cx, ctor, ty)
     }
 
 
@@ -409,7 +386,7 @@ impl<'tcx> Witness<'tcx> {
         let arity = constructor_arity(cx, ctor, ty);
         let pat = {
             let len = self.0.len() as u64;
-            let mut pats = self.0.drain((len-arity) as usize..).rev();
+            let mut pats = self.0.drain((len - arity) as usize..).rev();
 
             match ty.sty {
                 ty::TyAdt(..) |
@@ -452,6 +429,7 @@ impl<'tcx> Witness<'tcx> {
                 _ => {
                     match *ctor {
                         ConstantValue(value) => PatternKind::Constant { value },
+                        ConstantRange(lo, hi, end) => PatternKind::Range { lo, hi, end },
                         _ => PatternKind::Wild,
                     }
                 }
