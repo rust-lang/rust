@@ -12,7 +12,7 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
 use borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
-use borrow_check::nll::type_check::liveness::liveness_map::{NllLivenessMap, LocalWithRegion};
+use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use borrow_check::nll::region_infer::values::RegionValueElements;
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
@@ -22,9 +22,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
-use rustc::util::nodemap::FxHashMap;
 use rustc_errors::Diagnostic;
-use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::env;
 use std::io;
@@ -32,12 +30,11 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use transform::MirSource;
-use util::liveness::{LivenessResults, LiveVarSet};
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 use util as mir_util;
-use util::pretty::{self, ALIGN};
+use util::pretty;
 
 mod constraint_generation;
 pub mod explain_borrow;
@@ -111,8 +108,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let MirTypeckResults {
         constraints,
         universal_region_relations,
-        liveness,
-        liveness_map,
     } = type_check::type_check(
         infcx,
         param_env,
@@ -205,8 +200,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
         infcx,
-        &liveness,
-        &liveness_map,
         MirSource::item(def_id),
         &mir,
         &regioncx,
@@ -222,8 +215,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    liveness: &LivenessResults<LocalWithRegion>,
-    liveness_map: &NllLivenessMap,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -232,34 +223,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
     }
-
-    let regular_liveness_per_location: FxHashMap<_, _> = mir
-        .basic_blocks()
-        .indices()
-        .flat_map(|bb| {
-            let mut results = vec![];
-            liveness
-                .regular
-                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
-                    results.push((location, local_set.clone()));
-                });
-            results
-        })
-        .collect();
-
-    let drop_liveness_per_location: FxHashMap<_, _> = mir
-        .basic_blocks()
-        .indices()
-        .flat_map(|bb| {
-            let mut results = vec![];
-            liveness
-                .drop
-                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
-                    results.push((location, local_set.clone()));
-                });
-            results
-        })
-        .collect();
 
     mir_util::dump_mir(
         infcx.tcx,
@@ -283,26 +246,10 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     }
                 }
 
-                PassWhere::BeforeLocation(location) => {
-                    let s = live_variable_set(
-                        &regular_liveness_per_location[&location],
-                        &drop_liveness_per_location[&location],
-                    );
-                    writeln!(
-                        out,
-                        "{:ALIGN$} | Live variables on entry to {:?}: {}",
-                        "",
-                        location,
-                        s,
-                        ALIGN = ALIGN
-                    )?;
+                PassWhere::BeforeLocation(_) => {
                 }
 
-                // After each basic block, dump out the values
-                // that are live on exit from the basic block.
-                PassWhere::AfterTerminator(bb) => {
-                    let s = live_variable_set(&liveness.regular.outs[bb], &liveness.drop.outs[bb]);
-                    writeln!(out, "    | Live variables on exit from {:?}: {}", bb, s)?;
+                PassWhere::AfterTerminator(_) => {
                 }
 
                 PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
@@ -419,34 +366,4 @@ impl ToRegionVid for RegionVid {
     fn to_region_vid(self) -> RegionVid {
         self
     }
-}
-
-fn live_variable_set(
-    regular: &LiveVarSet<LocalWithRegion>,
-    drops: &LiveVarSet<LocalWithRegion>
-) -> String {
-    // sort and deduplicate:
-    let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
-
-    // construct a string with each local, including `(drop)` if it is
-    // only dropped, versus a regular use.
-    let mut string = String::new();
-    for local in all_locals {
-        string.push_str(&format!("{:?}", local));
-
-        if !regular.contains(&local) {
-            assert!(drops.contains(&local));
-            string.push_str(" (drop)");
-        }
-
-        string.push_str(", ");
-    }
-
-    let len = if string.is_empty() {
-        0
-    } else {
-        string.len() - 2
-    };
-
-    format!("[{}]", &string[..len])
 }

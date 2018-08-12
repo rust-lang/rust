@@ -10,7 +10,7 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::bitvec::SparseBitMatrix;
+use rustc_data_structures::bitvec::{BitArray, SparseBitMatrix};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -47,14 +47,25 @@ impl RegionValueElements {
         }
     }
 
+    /// Total number of point indices
+    crate fn num_points(&self) -> usize {
+        self.num_points
+    }
+
     /// Converts a `Location` into a `PointIndex`. O(1).
-    fn point_from_location(&self, location: Location) -> PointIndex {
+    crate fn point_from_location(&self, location: Location) -> PointIndex {
         let Location {
             block,
             statement_index,
         } = location;
         let start_index = self.statements_before_block[block];
         PointIndex::new(start_index + statement_index)
+    }
+
+    /// Converts a `Location` into a `PointIndex`. O(1).
+    crate fn entry_point(&self, block: BasicBlock) -> PointIndex {
+        let start_index = self.statements_before_block[block];
+        PointIndex::new(start_index)
     }
 
     /// Converts a `PointIndex` back to a location. O(N) where N is
@@ -91,6 +102,15 @@ impl RegionValueElements {
             block,
             statement_index: point_index - first_index,
         }
+    }
+
+    /// Returns an iterator of each basic block and the first point
+    /// index within the block; the point indices for all statements
+    /// within the block follow afterwards.
+    crate fn head_indices(&self) -> impl Iterator<Item = (BasicBlock, PointIndex)> + '_ {
+        self.statements_before_block
+            .iter_enumerated()
+            .map(move |(bb, &first_index)| (bb, PointIndex::new(first_index)))
     }
 }
 
@@ -149,6 +169,13 @@ impl<N: Idx> LivenessValues<N> {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
         let index = self.elements.point_from_location(location);
         self.points.add(row, index)
+    }
+
+    /// Adds all the elements in the given bit array into the given
+    /// region. Returns true if any of them are newly added.
+    crate fn add_elements(&mut self, row: N, locations: &BitArray<PointIndex>) -> bool {
+        debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
+        self.points.merge_into(row, locations)
     }
 
     /// Adds all the control-flow points to the values for `r`.
@@ -364,6 +391,18 @@ impl ToElementIndex for ty::UniverseIndex {
         let index = PlaceholderIndex::new(self.as_usize() - 1);
         values.placeholders.contains(row, index)
     }
+}
+
+crate fn location_set_str(
+    elements: &RegionValueElements,
+    points: impl IntoIterator<Item = PointIndex>,
+) -> String {
+    region_value_str(
+        points
+            .into_iter()
+            .map(|p| elements.to_location(p))
+            .map(RegionElement::Location),
+    )
 }
 
 fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String {

@@ -18,9 +18,7 @@ use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
-use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::LocalWithRegion;
 use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -43,7 +41,6 @@ use std::fmt;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
-use util::liveness::LivenessResults;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -143,7 +140,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         all_facts,
     );
 
-    let (liveness, liveness_map) = {
+    {
         let mut borrowck_context = BorrowCheckContext {
             universal_regions,
             location_table,
@@ -169,16 +166,14 @@ pub(crate) fn type_check<'gcx, 'tcx>(
                     &universal_region_relations,
                     &normalized_inputs_and_output,
                 );
-                liveness::generate(cx, mir, flow_inits, move_data)
+                liveness::generate(cx, mir, elements, flow_inits, move_data);
             },
-        )
-    };
+        );
+    }
 
     MirTypeckResults {
         constraints,
         universal_region_relations,
-        liveness,
-        liveness_map,
     }
 }
 
@@ -672,8 +667,6 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
     crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
-    crate liveness: LivenessResults<LocalWithRegion>,
-    crate liveness_map: NllLivenessMap,
 }
 
 /// A collection of region constraints that must be satisfied for the

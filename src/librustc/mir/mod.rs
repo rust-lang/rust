@@ -194,12 +194,12 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> ReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> ReadGuard<Vec<BasicBlock>> {
+    pub fn predecessors_for(&self, bb: BasicBlock) -> ReadGuard<'_, Vec<BasicBlock>> {
         ReadGuard::map(self.predecessors(), |p| &p[bb])
     }
 
@@ -327,6 +327,14 @@ impl<'tcx> Mir<'tcx> {
     /// Return the return type, it always return first element from `local_decls` array
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
+    }
+
+    /// Get the location of the terminator for the given block
+    pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
+        Location {
+            block: bb,
+            statement_index: self[bb].statements.len(),
+        }
     }
 }
 
