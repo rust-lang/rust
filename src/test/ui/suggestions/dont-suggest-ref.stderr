@@ -8,7 +8,7 @@ LL |     let X(_t) = *s;
    |           |     help: consider removing this dereference operator: `s`
    |           data moved here
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:47:11
    |
 LL |     let X(_t) = *s;
@@ -24,7 +24,7 @@ LL |     if let Either::One(_t) = *r { }
    |                        |     help: consider removing this dereference operator: `r`
    |                        data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:51:24
    |
 LL |     if let Either::One(_t) = *r { }
@@ -40,7 +40,7 @@ LL |     while let Either::One(_t) = *r { }
    |                           |     help: consider removing this dereference operator: `r`
    |                           data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:55:27
    |
 LL |     while let Either::One(_t) = *r { }
@@ -58,7 +58,7 @@ LL |     match *r {
 LL |         Either::One(_t)
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:63:21
    |
 LL |         Either::One(_t)
@@ -76,7 +76,7 @@ LL |     match *r {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:70:21
    |
 LL |         Either::One(_t) => (),
@@ -92,7 +92,7 @@ LL |     let X(_t) = *sm;
    |           |     help: consider removing this dereference operator: `sm`
    |           data moved here
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:75:11
    |
 LL |     let X(_t) = *sm;
@@ -108,7 +108,7 @@ LL |     if let Either::One(_t) = *rm { }
    |                        |     help: consider removing this dereference operator: `rm`
    |                        data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:79:24
    |
 LL |     if let Either::One(_t) = *rm { }
@@ -124,7 +124,7 @@ LL |     while let Either::One(_t) = *rm { }
    |                           |     help: consider removing this dereference operator: `rm`
    |                           data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:83:27
    |
 LL |     while let Either::One(_t) = *rm { }
@@ -142,7 +142,7 @@ LL |     match *rm {
 LL |         Either::One(_t)
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:91:21
    |
 LL |         Either::One(_t)
@@ -160,7 +160,7 @@ LL |     match *rm {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:98:21
    |
 LL |         Either::One(_t) => (),
@@ -178,7 +178,7 @@ LL |     match *rm {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:106:21
    |
 LL |         Either::One(_t) => (),
@@ -194,7 +194,7 @@ LL |     let X(_t) = vs_[0];
    |           |     help: consider using a reference instead: `&vs_[0]`
    |           data moved here
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:111:11
    |
 LL |     let X(_t) = vs_[0];
@@ -210,7 +210,7 @@ LL |     if let Either::One(_t) = vr[0] { }
    |                        |     help: consider using a reference instead: `&vr[0]`
    |                        data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:115:24
    |
 LL |     if let Either::One(_t) = vr[0] { }
@@ -226,7 +226,7 @@ LL |     while let Either::One(_t) = vr[0] { }
    |                           |     help: consider using a reference instead: `&vr[0]`
    |                           data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:119:27
    |
 LL |     while let Either::One(_t) = vr[0] { }
@@ -244,7 +244,7 @@ LL |     match vr[0] {
 LL |         Either::One(_t)
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:127:21
    |
 LL |         Either::One(_t)
@@ -262,7 +262,7 @@ LL |     match vr[0] {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:134:21
    |
 LL |         Either::One(_t) => (),
@@ -278,7 +278,7 @@ LL |     let X(_t) = vsm[0];
    |           |     help: consider using a reference instead: `&vsm[0]`
    |           data moved here
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:139:11
    |
 LL |     let X(_t) = vsm[0];
@@ -294,7 +294,7 @@ LL |     if let Either::One(_t) = vrm[0] { }
    |                        |     help: consider using a reference instead: `&vrm[0]`
    |                        data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:143:24
    |
 LL |     if let Either::One(_t) = vrm[0] { }
@@ -310,7 +310,7 @@ LL |     while let Either::One(_t) = vrm[0] { }
    |                           |     help: consider using a reference instead: `&vrm[0]`
    |                           data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:147:27
    |
 LL |     while let Either::One(_t) = vrm[0] { }
@@ -328,7 +328,7 @@ LL |     match vrm[0] {
 LL |         Either::One(_t)
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:155:21
    |
 LL |         Either::One(_t)
@@ -346,7 +346,7 @@ LL |     match vrm[0] {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:162:21
    |
 LL |         Either::One(_t) => (),
@@ -364,7 +364,7 @@ LL |     match vrm[0] {
 LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:170:21
    |
 LL |         Either::One(_t) => (),
@@ -379,7 +379,7 @@ LL |     let &X(_t) = s;
    |         |  data moved here
    |         help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:177:12
    |
 LL |     let &X(_t) = s;
@@ -394,7 +394,7 @@ LL |     if let &Either::One(_t) = r { }
    |            |            data moved here
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:181:25
    |
 LL |     if let &Either::One(_t) = r { }
@@ -409,7 +409,7 @@ LL |     while let &Either::One(_t) = r { }
    |               |            data moved here
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:185:28
    |
 LL |     while let &Either::One(_t) = r { }
@@ -427,7 +427,7 @@ LL |         &Either::One(_t)
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:191:22
    |
 LL |         &Either::One(_t)
@@ -445,7 +445,7 @@ LL |         &Either::One(_t) => (),
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:199:22
    |
 LL |         &Either::One(_t) => (),
@@ -463,7 +463,7 @@ LL |         &Either::One(_t) => (),
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:206:22
    |
 LL |         &Either::One(_t) => (),
@@ -478,7 +478,7 @@ LL |     let &mut X(_t) = sm;
    |         |      data moved here
    |         help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:216:16
    |
 LL |     let &mut X(_t) = sm;
@@ -493,7 +493,7 @@ LL |     if let &mut Either::One(_t) = rm { }
    |            |                data moved here
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:220:29
    |
 LL |     if let &mut Either::One(_t) = rm { }
@@ -508,7 +508,7 @@ LL |     while let &mut Either::One(_t) = rm { }
    |               |                data moved here
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:224:32
    |
 LL |     while let &mut Either::One(_t) = rm { }
@@ -526,12 +526,12 @@ LL |         &mut Either::One(_t) => (),
 LL |         &mut Either::Two(_t) => (),
    |                          -- ... and here
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:230:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:233:26
    |
 LL |         &mut Either::Two(_t) => (),
@@ -557,7 +557,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:239:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -575,7 +575,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:246:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -593,7 +593,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:253:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -608,7 +608,7 @@ LL |     let &X(_t) = &x;
    |         |  data moved here
    |         help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:265:12
    |
 LL |     let &X(_t) = &x;
@@ -623,7 +623,7 @@ LL |     if let &Either::One(_t) = &e { }
    |            |            data moved here
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:269:25
    |
 LL |     if let &Either::One(_t) = &e { }
@@ -638,7 +638,7 @@ LL |     while let &Either::One(_t) = &e { }
    |               |            data moved here
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:273:28
    |
 LL |     while let &Either::One(_t) = &e { }
@@ -656,7 +656,7 @@ LL |         &Either::One(_t)
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:279:22
    |
 LL |         &Either::One(_t)
@@ -674,7 +674,7 @@ LL |         &Either::One(_t) => (),
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:287:22
    |
 LL |         &Either::One(_t) => (),
@@ -692,7 +692,7 @@ LL |         &Either::One(_t) => (),
    |         |            data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:294:22
    |
 LL |         &Either::One(_t) => (),
@@ -707,7 +707,7 @@ LL |     let &mut X(_t) = &mut xm;
    |         |      data moved here
    |         help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:300:16
    |
 LL |     let &mut X(_t) = &mut xm;
@@ -722,7 +722,7 @@ LL |     if let &mut Either::One(_t) = &mut em { }
    |            |                data moved here
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:304:29
    |
 LL |     if let &mut Either::One(_t) = &mut em { }
@@ -737,7 +737,7 @@ LL |     while let &mut Either::One(_t) = &mut em { }
    |               |                data moved here
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:308:32
    |
 LL |     while let &mut Either::One(_t) = &mut em { }
@@ -755,7 +755,7 @@ LL |         &mut Either::One(_t)
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:314:26
    |
 LL |         &mut Either::One(_t)
@@ -773,7 +773,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:322:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -791,7 +791,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:329:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -809,7 +809,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                data moved here
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
-note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:336:26
    |
 LL |         &mut Either::One(_t) => (),
@@ -825,7 +825,7 @@ LL |     fn f1(&X(_t): &X) { }
    |           cannot move out of borrowed content
    |           help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:211:14
    |
 LL |     fn f1(&X(_t): &X) { }
@@ -841,7 +841,7 @@ LL |     fn f2(&mut X(_t): &mut X) { }
    |           cannot move out of borrowed content
    |           help: consider removing this borrow operator: `X(_t)`
    |
-note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:258:18
    |
 LL |     fn f2(&mut X(_t): &mut X) { }

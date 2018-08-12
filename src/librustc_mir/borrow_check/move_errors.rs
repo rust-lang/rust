@@ -435,7 +435,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             err.span_note(
                 binding_span,
                 &format!(
-                    "move occurs because {} has type `{}`, \
+                    "move occurs because `{}` has type `{}`, \
                         which does not implement the `Copy` trait",
                     bind_to.name.unwrap(),
                     bind_to.ty
