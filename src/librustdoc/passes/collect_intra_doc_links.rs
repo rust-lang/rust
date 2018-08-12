@@ -404,7 +404,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     let mut resolver = cx.resolver.borrow_mut();
     let mark = Mark::root();
     let res = resolver
-        .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
+        .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, &[], false);
     if let Ok(def) = res {
         if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
             return Some(def);

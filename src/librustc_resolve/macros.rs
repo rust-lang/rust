@@ -321,10 +321,18 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn resolve_invoc(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
-        let def = match invoc.kind {
-            InvocationKind::Attr { attr: None, .. } => return Ok(None),
-            _ => self.resolve_invoc_to_def(invoc, scope, force)?,
+        let (path, macro_kind, derives_in_scope) = match invoc.kind {
+            InvocationKind::Attr { attr: None, .. } =>
+                return Ok(None),
+            InvocationKind::Attr { attr: Some(ref attr), ref traits, .. } =>
+                (&attr.path, MacroKind::Attr, &traits[..]),
+            InvocationKind::Bang { ref mac, .. } =>
+                (&mac.node.path, MacroKind::Bang, &[][..]),
+            InvocationKind::Derive { ref path, .. } =>
+                (path, MacroKind::Derive, &[][..]),
         };
+        let def = self.resolve_macro_to_def(scope, path, macro_kind, derives_in_scope, force)?;
+
         if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
             self.report_proc_macro_stub(invoc.span());
             return Err(Determinacy::Determined);
@@ -396,7 +404,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        self.resolve_macro_to_def(scope, path, kind, force).and_then(|def| {
+        self.resolve_macro_to_def(scope, path, kind, &[], force).and_then(|def| {
             if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
                 self.report_proc_macro_stub(path.span);
                 return Err(Determinacy::Determined);
@@ -437,60 +445,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         self.session.span_err(span, &format!("expected a macro, found {}", def.kind_name()));
     }
 
-    fn resolve_invoc_to_def(&mut self, invoc: &Invocation, scope: Mark, force: bool)
+    fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+                            derives_in_scope: &[ast::Path], force: bool)
                             -> Result<Def, Determinacy> {
-        let (attr, traits) = match invoc.kind {
-            InvocationKind::Attr { ref attr, ref traits, .. } => (attr, traits),
-            InvocationKind::Bang { ref mac, .. } => {
-                return self.resolve_macro_to_def(scope, &mac.node.path, MacroKind::Bang, force);
-            }
-            InvocationKind::Derive { ref path, .. } => {
-                return self.resolve_macro_to_def(scope, path, MacroKind::Derive, force);
-            }
-        };
-
-        let path = attr.as_ref().unwrap().path.clone();
-        let def = self.resolve_macro_to_def(scope, &path, MacroKind::Attr, force);
-        if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = def {} else {
-            return def;
-        }
-
-        // At this point we've found that the `attr` is determinately unresolved and thus can be
-        // interpreted as a custom attribute. Normally custom attributes are feature gated, but
-        // it may be a custom attribute whitelisted by a derive macro and they do not require
-        // a feature gate.
-        //
-        // So here we look through all of the derive annotations in scope and try to resolve them.
-        // If they themselves successfully resolve *and* one of the resolved derive macros
-        // whitelists this attribute's name, then this is a registered attribute and we can convert
-        // it from a "generic custom attrite" into a "known derive helper attribute".
-        enum ConvertToDeriveHelper { Yes, No, DontKnow }
-        let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
-        let attr_name = path.segments[0].ident.name;
-        for path in traits {
-            match self.resolve_macro(scope, path, MacroKind::Derive, force) {
-                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
-                    if inert_attrs.contains(&attr_name) {
-                        convert_to_derive_helper = ConvertToDeriveHelper::Yes;
-                        break
-                    }
-                },
-                Err(Determinacy::Undetermined) =>
-                    convert_to_derive_helper = ConvertToDeriveHelper::DontKnow,
-                Err(Determinacy::Determined) => {}
-            }
-        }
-
-        match convert_to_derive_helper {
-            ConvertToDeriveHelper::Yes => Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)),
-            ConvertToDeriveHelper::No => def,
-            ConvertToDeriveHelper::DontKnow => Err(Determinacy::determined(force)),
-        }
-    }
-
-    fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                            -> Result<Def, Determinacy> {
-        let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
+        let def = self.resolve_macro_to_def_inner(scope, path, kind, derives_in_scope, force);
         if def != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.
             path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
@@ -514,9 +472,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         def
     }
 
-    pub fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
-                                  kind: MacroKind, force: bool)
-                                  -> Result<Def, Determinacy> {
+    pub fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+                                      derives_in_scope: &[ast::Path], force: bool)
+                                      -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         let invocation = self.invocations[&scope];
@@ -575,7 +533,41 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
             .push((scope, path[0], kind, result.ok()));
 
-        result
+        if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = result {} else {
+            return result;
+        }
+
+        // At this point we've found that the `attr` is determinately unresolved and thus can be
+        // interpreted as a custom attribute. Normally custom attributes are feature gated, but
+        // it may be a custom attribute whitelisted by a derive macro and they do not require
+        // a feature gate.
+        //
+        // So here we look through all of the derive annotations in scope and try to resolve them.
+        // If they themselves successfully resolve *and* one of the resolved derive macros
+        // whitelists this attribute's name, then this is a registered attribute and we can convert
+        // it from a "generic custom attrite" into a "known derive helper attribute".
+        assert!(kind == MacroKind::Attr);
+        enum ConvertToDeriveHelper { Yes, No, DontKnow }
+        let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
+        for derive in derives_in_scope {
+            match self.resolve_macro(scope, derive, MacroKind::Derive, force) {
+                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
+                    if inert_attrs.contains(&path[0].name) {
+                        convert_to_derive_helper = ConvertToDeriveHelper::Yes;
+                        break
+                    }
+                },
+                Err(Determinacy::Undetermined) =>
+                    convert_to_derive_helper = ConvertToDeriveHelper::DontKnow,
+                Err(Determinacy::Determined) => {}
+            }
+        }
+
+        match convert_to_derive_helper {
+            ConvertToDeriveHelper::Yes => Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)),
+            ConvertToDeriveHelper::No => result,
+            ConvertToDeriveHelper::DontKnow => Err(Determinacy::determined(force)),
+        }
     }
 
     // Resolve the initial segment of a non-global macro path
