@@ -75,3 +75,11 @@ fn combine_patterns() {
         _ => return,
     };
 }
+
+fn slice_patterns() {
+    match b"123" {
+        [0, ..] => {}
+        [0, foo..] => {}
+        _ => {}
+    }
+}
