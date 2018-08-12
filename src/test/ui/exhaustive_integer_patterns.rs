@@ -132,4 +132,10 @@ fn main() {
         128 ..= 255 if false => {}
         128 ..= 255 => {} // ok, because previous arm was guarded
     }
+
+    // Now things start getting a bit more interesting. Testing products!
+    match (0u8, Some(())) { //~ ERROR non-exhaustive patterns
+        (1, _) => {}
+        (_, None) => {}
+    }
 }
