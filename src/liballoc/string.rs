@@ -519,10 +519,11 @@ impl String {
     /// between the two. Not all byte slices are valid strings, however: strings
     /// are required to be valid UTF-8. During this conversion,
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
-    /// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
     /// [`u8`]: ../../std/primitive.u8.html
     /// [byteslice]: ../../std/primitive.slice.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -621,7 +622,7 @@ impl String {
     }
 
     /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
-    /// invalid data with the replacement character (U+FFFD).
+    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
     /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
@@ -629,6 +630,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: #method.from_utf8_lossy
     /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
