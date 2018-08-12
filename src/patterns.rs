@@ -144,7 +144,8 @@ impl Rewrite for Pat {
                 let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
                 let slice_pat = slice_pat
                     .as_ref()
-                    .map(|p| Some(format!("{}..", p.rewrite(context, shape)?)));
+                    .and_then(|p| p.rewrite(context, shape))
+                    .map(|rw| Some(format!("{}..", if rw == "_" { "" } else { &rw })));
                 let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
