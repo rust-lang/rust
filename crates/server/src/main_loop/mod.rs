@@ -102,7 +102,7 @@ fn on_msg(
             }
             if let Some(req) = req {
                 error!("unknown method: {:?}", req);
-                dispatch::unknown_method(io, req)?;
+                io.send(RawMsg::Response(dispatch::unknown_method(req.id)?));
             }
         }
         RawMsg::Notification(not) => {

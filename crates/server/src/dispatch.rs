@@ -10,7 +10,7 @@ use drop_bomb::DropBomb;
 use ::{
     Result,
     req::{ClientRequest, Notification},
-    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
+    io::{RawResponse, RawRequest, RawNotification},
 };
 
 pub struct Responder<R: ClientRequest> {
@@ -113,9 +113,9 @@ pub fn send_notification<N>(params: N::Params) -> RawNotification
     }
 }
 
+pub fn unknown_method(id: u64) -> Result<RawResponse> {
+    error_response(id, ErrorCode::MethodNotFound, "unknown method")
 
-pub fn unknown_method(io: &mut Io, raw: RawRequest) -> Result<()> {
-    error(io, raw.id, ErrorCode::MethodNotFound, "unknown method")
 }
 
 fn error_response(id: u64, code: ErrorCode, message: &'static str) -> Result<RawResponse> {
@@ -134,13 +134,6 @@ fn error_response(id: u64, code: ErrorCode, message: &'static str) -> Result<Raw
     };
     Ok(resp)
 }
-
-fn error(io: &mut Io, id: u64, code: ErrorCode, message: &'static str) -> Result<()> {
-    let resp = error_response(id, code, message)?;
-    io.send(RawMsg::Response(resp));
-    Ok(())
-}
-
 
 #[allow(unused)]
 enum ErrorCode {
