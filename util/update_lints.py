@@ -107,7 +107,7 @@ def replace_region(fn, region_start, region_end, callback,
             new_lines.append(line)
 
     if not found:
-        print "regex " + region_start + " not found"
+        print("regex " + region_start + " not found")
 
     # write back to file
     if write_back:
