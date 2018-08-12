@@ -73,23 +73,23 @@ impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
         self.mk_sp_and_raw(lo, hi).0
     }
+
     fn mk_sp_and_raw(&self, lo: BytePos, hi: BytePos) -> (Span, Span) {
         let raw = Span::new(lo, hi, NO_EXPANSION);
-        let real = unwrap_or!(self.override_span, raw);
+        let real = self.override_span.unwrap_or(raw);
+
         (real, raw)
     }
+
     fn mk_ident(&self, string: &str) -> Ident {
         let mut ident = Ident::from_str(string);
         if let Some(span) = self.override_span {
             ident.span = span;
         }
+
         ident
     }
 
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
-        let res = self.try_next_token();
-        self.unwrap_or_abort(res)
-    }
     fn unwrap_or_abort(&mut self, res: Result<TokenAndSpan, ()>) -> TokenAndSpan {
         match res {
             Ok(tok) => tok,
@@ -99,6 +99,25 @@ impl<'a> StringReader<'a> {
             }
         }
     }
+
+    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+        let res = self.try_next_token();
+        self.unwrap_or_abort(res)
+    }
+
+    /// Return the next token. EFFECT: advances the string_reader.
+    pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+        assert!(self.fatal_errs.is_empty());
+        let ret_val = TokenAndSpan {
+            tok: replace(&mut self.peek_tok, token::Whitespace),
+            sp: self.peek_span,
+        };
+        self.advance_token()?;
+        self.span_src_raw = self.peek_span_src_raw;
+
+        Ok(ret_val)
+    }
+
     fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
         let mut t = self.try_next_token()?;
         loop {
@@ -109,36 +128,32 @@ impl<'a> StringReader<'a> {
                 _ => break,
             }
         }
+
         self.token = t.tok.clone();
         self.span = t.sp;
+
         Ok(t)
     }
+
     pub fn real_token(&mut self) -> TokenAndSpan {
         let res = self.try_real_token();
         self.unwrap_or_abort(res)
     }
+
+    #[inline]
     fn is_eof(&self) -> bool {
         self.ch.is_none()
-    }
-    /// Return the next token. EFFECT: advances the string_reader.
-    pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
-        assert!(self.fatal_errs.is_empty());
-        let ret_val = TokenAndSpan {
-            tok: replace(&mut self.peek_tok, token::Whitespace),
-            sp: self.peek_span,
-        };
-        self.advance_token()?;
-        self.span_src_raw = self.peek_span_src_raw;
-        Ok(ret_val)
     }
 
     fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: u16) {
         let mut err = self.struct_span_fatal(pos, pos, "unterminated raw string");
         err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
+
         if hash_count > 0 {
             err.note(&format!("this raw string should be terminated with `\"{}`",
                               "#".repeat(hash_count as usize)));
         }
+
         err.emit();
         FatalError.raise();
     }
@@ -146,12 +161,15 @@ impl<'a> StringReader<'a> {
     fn fatal(&self, m: &str) -> FatalError {
         self.fatal_span(self.peek_span, m)
     }
+
     pub fn emit_fatal_errors(&mut self) {
         for err in &mut self.fatal_errs {
             err.emit();
         }
+
         self.fatal_errs.clear();
     }
+
     pub fn peek(&self) -> TokenAndSpan {
         // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
@@ -161,15 +179,18 @@ impl<'a> StringReader<'a> {
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
-                   override_span: Option<Span>) -> Self {
+    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>, override_span: Option<Span>)
+        -> Self
+    {
         let mut sr = StringReader::new_raw_internal(sess, filemap, override_span);
         sr.bump();
+
         sr
     }
 
     fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
-                        override_span: Option<Span>) -> Self {
+        override_span: Option<Span>) -> Self
+    {
         if filemap.src.is_none() {
             sess.span_diagnostic.bug(&format!("Cannot lex filemap without source: {}",
                                               filemap.name));
@@ -199,12 +220,14 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>, override_span: Option<Span>)
-               -> Self {
+        -> Self
+    {
         let mut sr = StringReader::new_raw(sess, filemap, override_span);
         if sr.advance_token().is_err() {
             sr.emit_fatal_errors();
             FatalError.raise();
         }
+
         sr
     }
 
@@ -229,9 +252,11 @@ impl<'a> StringReader<'a> {
             sr.emit_fatal_errors();
             FatalError.raise();
         }
+
         sr
     }
 
+    #[inline]
     fn ch_is(&self, c: char) -> bool {
         self.ch == Some(c)
     }
@@ -276,26 +301,23 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         Self::push_escaped_char_for_msg(&mut m, c);
+
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
-    fn struct_span_fatal(&self,
-                         from_pos: BytePos,
-                         to_pos: BytePos,
-                         m: &str)
-                         -> DiagnosticBuilder<'a> {
+    fn struct_span_fatal(&self, from_pos: BytePos, to_pos: BytePos, m: &str)
+        -> DiagnosticBuilder<'a>
+    {
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
     }
 
-    fn struct_fatal_span_char(&self,
-                              from_pos: BytePos,
-                              to_pos: BytePos,
-                              m: &str,
-                              c: char)
-                              -> DiagnosticBuilder<'a> {
+    fn struct_fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
+        -> DiagnosticBuilder<'a>
+    {
         let mut m = m.to_string();
         m.push_str(": ");
         Self::push_escaped_char_for_msg(&mut m, c);
+
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
@@ -307,15 +329,14 @@ impl<'a> StringReader<'a> {
         Self::push_escaped_char_for_msg(&mut m, c);
         self.err_span_(from_pos, to_pos, &m[..]);
     }
-    fn struct_err_span_char(&self,
-                            from_pos: BytePos,
-                            to_pos: BytePos,
-                            m: &str,
-                            c: char)
-                            -> DiagnosticBuilder<'a> {
+
+    fn struct_err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
+        -> DiagnosticBuilder<'a>
+    {
         let mut m = m.to_string();
         m.push_str(": ");
         Self::push_escaped_char_for_msg(&mut m, c);
+
         self.sess.span_diagnostic.struct_span_err(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
@@ -324,6 +345,7 @@ impl<'a> StringReader<'a> {
     fn fatal_span_verbose(&self, from_pos: BytePos, to_pos: BytePos, mut m: String) -> FatalError {
         m.push_str(": ");
         m.push_str(&self.src[self.src_index(from_pos)..self.src_index(to_pos)]);
+
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
@@ -354,6 +376,7 @@ impl<'a> StringReader<'a> {
                 };
             }
         }
+
         Ok(())
     }
 
@@ -468,6 +491,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    #[inline]
     fn nextch_is(&self, c: char) -> bool {
         self.nextch() == Some(c)
     }
@@ -484,6 +508,7 @@ impl<'a> StringReader<'a> {
         None
     }
 
+    #[inline]
     fn nextnextch_is(&self, c: char) -> bool {
         self.nextnextch() == Some(c)
     }
@@ -493,8 +518,10 @@ impl<'a> StringReader<'a> {
         if !ident_start(self.ch) {
             return None;
         }
+
         let start = self.pos;
         self.bump();
+
         while ident_continue(self.ch) {
             self.bump();
         }
@@ -709,6 +736,7 @@ impl<'a> StringReader<'a> {
     fn scan_digits(&mut self, real_radix: u32, scan_radix: u32) -> usize {
         assert!(real_radix <= scan_radix);
         let mut len = 0;
+
         loop {
             let c = self.ch;
             if c == Some('_') {
@@ -736,31 +764,29 @@ impl<'a> StringReader<'a> {
 
     /// Lex a LIT_INTEGER or a LIT_FLOAT
     fn scan_number(&mut self, c: char) -> token::Lit {
-        let num_digits;
         let mut base = 10;
         let start_bpos = self.pos;
-
         self.bump();
 
-        if c == '0' {
+        let num_digits = if c == '0' {
             match self.ch.unwrap_or('\0') {
                 'b' => {
                     self.bump();
                     base = 2;
-                    num_digits = self.scan_digits(2, 10);
+                    self.scan_digits(2, 10)
                 }
                 'o' => {
                     self.bump();
                     base = 8;
-                    num_digits = self.scan_digits(8, 10);
+                    self.scan_digits(8, 10)
                 }
                 'x' => {
                     self.bump();
                     base = 16;
-                    num_digits = self.scan_digits(16, 16);
+                    self.scan_digits(16, 16)
                 }
                 '0'..='9' | '_' | '.' | 'e' | 'E' => {
-                    num_digits = self.scan_digits(10, 10) + 1;
+                    self.scan_digits(10, 10) + 1
                 }
                 _ => {
                     // just a 0
@@ -768,15 +794,14 @@ impl<'a> StringReader<'a> {
                 }
             }
         } else if c.is_digit(10) {
-            num_digits = self.scan_digits(10, 10) + 1;
+            self.scan_digits(10, 10) + 1
         } else {
-            num_digits = 0;
-        }
+            0
+        };
 
         if num_digits == 0 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "no valid digits found for number");
+            self.err_span_(start_bpos, self.pos, "no valid digits found for number");
+
             return token::Integer(Symbol::intern("0"));
         }
 
@@ -794,6 +819,7 @@ impl<'a> StringReader<'a> {
             }
             let pos = self.pos;
             self.check_float_base(start_bpos, pos, base);
+
             token::Float(self.name_from(start_bpos))
         } else {
             // it might be a float if it has an exponent
@@ -873,7 +899,8 @@ impl<'a> StringReader<'a> {
                          first_source_char: char,
                          ascii_only: bool,
                          delim: char)
-                         -> bool {
+                         -> bool
+    {
         match first_source_char {
             '\\' => {
                 // '\X' for some X must be a character constant:
@@ -1008,6 +1035,7 @@ impl<'a> StringReader<'a> {
                            "overlong unicode escape (must have at most 6 hex digits)");
             valid = false;
         }
+
         loop {
             match self.ch {
                 Some('}') => {
@@ -1043,6 +1071,7 @@ impl<'a> StringReader<'a> {
             }
             self.bump();
         }
+
         valid
     }
 
@@ -1050,9 +1079,11 @@ impl<'a> StringReader<'a> {
     fn scan_float_exponent(&mut self) {
         if self.ch_is('e') || self.ch_is('E') {
             self.bump();
+
             if self.ch_is('-') || self.ch_is('+') {
                 self.bump();
             }
+
             if self.scan_digits(10, 10) == 0 {
                 let mut err = self.struct_span_fatal(
                     self.pos, self.next_pos,
@@ -1125,6 +1156,7 @@ impl<'a> StringReader<'a> {
                     ('b', Some('r'), Some('#')) => (false, false),
                     _ => (true, false),
                 };
+
             if is_ident_start {
                 let raw_start = self.pos;
                 if is_raw_ident {
@@ -1135,6 +1167,7 @@ impl<'a> StringReader<'a> {
 
                 let start = self.pos;
                 self.bump();
+
                 while ident_continue(self.ch) {
                     self.bump();
                 }
@@ -1142,16 +1175,19 @@ impl<'a> StringReader<'a> {
                 return Ok(self.with_str_from(start, |string| {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
                     let ident = self.mk_ident(string);
+
                     if is_raw_ident && (ident.is_path_segment_keyword() ||
                                         ident.name == keywords::Underscore.name()) {
                         self.fatal_span_(raw_start, self.pos,
                             &format!("`r#{}` is not currently supported.", ident.name)
                         ).raise();
                     }
+
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);
                         self.sess.raw_identifier_spans.borrow_mut().push(span);
                     }
+
                     token::Ident(ident, is_raw_ident)
                 }));
             }
@@ -1337,14 +1373,11 @@ impl<'a> StringReader<'a> {
                     return Ok(token::Lifetime(ident));
                 }
 
-                let valid = self.scan_char_or_byte(start,
-                                                   c2,
-                                                   // ascii_only =
-                                                   false,
-                                                   '\'');
+                let valid = self.scan_char_or_byte(start, c2, /* ascii_only */ false, '\'');
 
                 if !self.ch_is('\'') {
                     let pos = self.pos;
+
                     loop {
                         self.bump();
                         if self.ch_is('\'') {
@@ -1370,6 +1403,7 @@ impl<'a> StringReader<'a> {
                             break;
                         }
                     }
+
                     self.fatal_span_verbose(start_with_quote, pos,
                         String::from("character literal may only contain one codepoint")).raise();
                 }
@@ -1379,8 +1413,10 @@ impl<'a> StringReader<'a> {
                 } else {
                     Symbol::intern("0")
                 };
+
                 self.bump(); // advance ch past token
                 let suffix = self.scan_optional_raw_name();
+
                 Ok(token::Literal(token::Char(id), suffix))
             }
             'b' => {
@@ -1392,12 +1428,14 @@ impl<'a> StringReader<'a> {
                     _ => unreachable!(),  // Should have been a token::Ident above.
                 };
                 let suffix = self.scan_optional_raw_name();
+
                 Ok(token::Literal(lit, suffix))
             }
             '"' => {
                 let start_bpos = self.pos;
                 let mut valid = true;
                 self.bump();
+
                 while !self.ch_is('"') {
                     if self.is_eof() {
                         let last_bpos = self.pos;
@@ -1409,11 +1447,7 @@ impl<'a> StringReader<'a> {
                     let ch_start = self.pos;
                     let ch = self.ch.unwrap();
                     self.bump();
-                    valid &= self.scan_char_or_byte(ch_start,
-                                                    ch,
-                                                    // ascii_only =
-                                                    false,
-                                                    '"');
+                    valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only */ false, '"');
                 }
                 // adjust for the ASCII " at the start of the literal
                 let id = if valid {
@@ -1423,6 +1457,7 @@ impl<'a> StringReader<'a> {
                 };
                 self.bump();
                 let suffix = self.scan_optional_raw_name();
+
                 Ok(token::Literal(token::Str_(id), suffix))
             }
             'r' => {
@@ -1492,6 +1527,7 @@ impl<'a> StringReader<'a> {
                     }
                     self.bump();
                 }
+
                 self.bump();
                 let id = if valid {
                     self.name_from_to(content_start_bpos, content_end_bpos)
@@ -1499,6 +1535,7 @@ impl<'a> StringReader<'a> {
                     Symbol::intern("??")
                 };
                 let suffix = self.scan_optional_raw_name();
+
                 Ok(token::Literal(token::StrRaw(id, hash_count), suffix))
             }
             '-' => {
@@ -1555,6 +1592,7 @@ impl<'a> StringReader<'a> {
                                                           c);
                 unicode_chars::check_for_substitution(self, c, &mut err);
                 self.fatal_errs.push(err);
+
                 Err(())
             }
         }
@@ -1572,9 +1610,11 @@ impl<'a> StringReader<'a> {
             val.push(self.ch.unwrap());
             self.bump();
         }
+
         if self.ch_is('\n') {
             self.bump();
         }
+
         val
     }
 
@@ -1626,9 +1666,11 @@ impl<'a> StringReader<'a> {
             Symbol::intern("?")
         };
         self.bump(); // advance ch past token
+
         token::Byte(id)
     }
 
+    #[inline]
     fn scan_byte_escape(&mut self, delim: char, below_0x7f_only: bool) -> bool {
         self.scan_hex_digits(2, delim, below_0x7f_only)
     }
@@ -1653,12 +1695,14 @@ impl<'a> StringReader<'a> {
                                             true,
                                             '"');
         }
+
         let id = if valid {
             self.name_from(start)
         } else {
             Symbol::intern("??")
         };
         self.bump();
+
         token::ByteStr(id)
     }
 
@@ -1716,25 +1760,26 @@ impl<'a> StringReader<'a> {
             }
             self.bump();
         }
+
         self.bump();
-        token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos),
-                                 hash_count)
+
+        token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos), hash_count)
     }
 }
 
 // This tests the character for the unicode property 'PATTERN_WHITE_SPACE' which
 // is guaranteed to be forward compatible. http://unicode.org/reports/tr31/#R3
+#[inline]
 crate fn is_pattern_whitespace(c: Option<char>) -> bool {
     c.map_or(false, Pattern_White_Space)
 }
 
+#[inline]
 fn in_range(c: Option<char>, lo: char, hi: char) -> bool {
-    match c {
-        Some(c) => lo <= c && c <= hi,
-        _ => false,
-    }
+    c.map_or(false, |c| lo <= c && c <= hi)
 }
 
+#[inline]
 fn is_dec_digit(c: Option<char>) -> bool {
     in_range(c, '0', '9')
 }
