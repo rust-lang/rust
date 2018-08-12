@@ -89,7 +89,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     Type::struct_(cx, &[fill], packed)
                 }
                 Some(ref name) => {
-                    let mut llty = Type::named_struct(cx, name);
+                    let llty = Type::named_struct(cx, name);
                     llty.set_struct_body(&[fill], packed);
                     llty
                 }

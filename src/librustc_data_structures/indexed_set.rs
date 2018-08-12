@@ -323,7 +323,7 @@ fn test_set_up_to() {
 #[test]
 fn test_new_filled() {
     for i in 0..128 {
-        let mut idx_buf = IdxSetBuf::new_filled(i);
+        let idx_buf = IdxSetBuf::new_filled(i);
         let elems: Vec<usize> = idx_buf.iter().collect();
         let expected: Vec<usize> = (0..i).collect();
         assert_eq!(elems, expected);

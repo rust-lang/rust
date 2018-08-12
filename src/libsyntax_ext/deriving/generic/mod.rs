@@ -554,7 +554,7 @@ impl<'a> TraitDef<'a> {
             GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
                 // a GenericBound requires an ast id
-                let mut bounds: Vec<_> =
+                let bounds: Vec<_> =
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
