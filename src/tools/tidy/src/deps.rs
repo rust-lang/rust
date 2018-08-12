@@ -353,7 +353,7 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
         // versions of them accidentally sneak into our dependency graph to
         // ensure we keep our CI times under control
         // "cargo", // FIXME(#53005)
-        // "rustc-ap-syntax", // FIXME(#53006)
+        "rustc-ap-syntax",
     ];
     let mut name_to_id = HashMap::new();
     for node in resolve.nodes.iter() {
