@@ -2214,7 +2214,6 @@
         if (hash !== null) {
             var elem = document.getElementById(hash);
             if (elem && elem.offsetParent === null) {
-                console.log(elem, elem.parentNode);
                 if (elem.parentNode && elem.parentNode.previousSibling) {
                     var collapses = elem.parentNode
                                         .previousSibling
