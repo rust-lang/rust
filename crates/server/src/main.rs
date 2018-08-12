@@ -78,6 +78,11 @@ fn main_inner() -> Result<()> {
 fn initialize(io: &mut Io) -> Result<()> {
     loop {
         match io.recv()? {
+            RawMsg::Notification(n) =>
+                bail!("expected initialize request, got {:?}", n),
+            RawMsg::Response(res) =>
+                bail!("expected initialize request, got {:?}", res),
+
             RawMsg::Request(req) => {
                 let mut req = Some(req);
                 dispatch::handle_request::<req::Initialize, _>(&mut req, |_params, resp| {
@@ -86,33 +91,22 @@ fn initialize(io: &mut Io) -> Result<()> {
                     io.send(RawMsg::Response(resp));
                     Ok(())
                 })?;
-                match req {
-                    None => {
-                        match io.recv()? {
-                            RawMsg::Notification(n) => {
-                                if n.method != "initialized" {
-                                    bail!("expected initialized notification");
-                                }
-                            }
-                            _ => {
-                                bail!("expected initialized notification");
-                            }
-                        }
-                        return initialized(io);
-                    }
-                    Some(req) => {
-                        bail!("expected initialize request, got {:?}", req)
-                    }
+                if let Some(req) = req {
+                    bail!("expected initialize request, got {:?}", req)
                 }
-            }
-            RawMsg::Notification(n) => {
-                bail!("expected initialize request, got {:?}", n)
-            }
-            RawMsg::Response(res) => {
-                bail!("expected initialize request, got {:?}", res)
+                match io.recv()? {
+                    RawMsg::Notification(n) => {
+                        if n.method != "initialized" {
+                            bail!("expected initialized notification");
+                        }
+                    }
+                    _ => bail!("expected initialized notification"),
+                }
+                break;
             }
         }
     }
+    initialized(io)
 }
 
 enum Task {
