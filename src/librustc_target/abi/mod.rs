@@ -596,7 +596,16 @@ pub struct Scalar {
     pub value: Primitive,
 
     /// Inclusive wrap-around range of valid values, that is, if
-    /// min > max, it represents min..=u128::MAX followed by 0..=max.
+    /// start > end, it represents `start..=max_value()`,
+    /// followed by `0..=end`.
+    ///
+    /// That is, for an i8 primitive, a range of `254..=2` means following
+    /// sequence:
+    ///
+    ///    254 (-2), 255 (-1), 0, 1, 2
+    ///
+    /// This is intended specifically to mirror LLVM’s `!range` metadata,
+    /// semantics.
     // FIXME(eddyb) always use the shortest range, e.g. by finding
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.

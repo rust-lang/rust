@@ -304,7 +304,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 // then `i1 1` (i.e. E::B) is effectively `i8 -1`.
                                 signed = !scalar.is_bool() && s;
 
-                                if scalar.valid_range.end() > scalar.valid_range.start() {
+                                let er = scalar.valid_range_exclusive(bx.cx);
+                                if er.end != er.start &&
+                                   scalar.valid_range.end() > scalar.valid_range.start() {
                                     // We want `table[e as usize]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`.
