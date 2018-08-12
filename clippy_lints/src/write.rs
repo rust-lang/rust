@@ -35,6 +35,10 @@ declare_clippy_lint! {
 /// ```rust
 /// print!("Hello {}!\n", name);
 /// ```
+/// use println!() instead
+/// ```rust
+/// println!("Hello {}!", name);
+/// ```
 declare_clippy_lint! {
     pub PRINT_WITH_NEWLINE,
     style,
@@ -87,6 +91,10 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// println!("{}", "foo");
+/// ```
+/// use the literal without formatting:
+/// ```rust
+/// println!("foo");
 /// ```
 declare_clippy_lint! {
     pub PRINT_LITERAL,

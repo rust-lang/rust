@@ -80,6 +80,10 @@ declare_clippy_lint! {
 /// // with `y` a `Vec` or slice:
 /// for x in y.iter() { .. }
 /// ```
+/// can be rewritten to
+/// ```rust
+/// for x in &y { .. }
+/// ```
 declare_clippy_lint! {
     pub EXPLICIT_ITER_LOOP,
     style,
@@ -97,6 +101,10 @@ declare_clippy_lint! {
 /// ```rust
 /// // with `y` a `Vec` or slice:
 /// for x in y.into_iter() { .. }
+/// ```
+/// can be rewritten to
+/// ```rust
+/// for x in y { .. }
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_INTO_ITER_LOOP,

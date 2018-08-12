@@ -448,7 +448,7 @@ declare_clippy_lint! {
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
 /// **Example:**
-/// `_.split("x")` could be `_.split('x')
+/// `_.split("x")` could be `_.split('x')`
 declare_clippy_lint! {
     pub SINGLE_CHAR_PATTERN,
     perf,
@@ -468,7 +468,7 @@ declare_clippy_lint! {
 /// ```rust,ignore
 /// let c_str = CString::new("foo").unwrap().as_ptr();
 /// unsafe {
-/// call_some_ffi_func(c_str);
+///     call_some_ffi_func(c_str);
 /// }
 /// ```
 /// Here `c_str` point to a freed address. The correct use would be:

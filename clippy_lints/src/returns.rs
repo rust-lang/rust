@@ -19,6 +19,10 @@ use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, sp
 /// ```rust
 /// fn foo(x: usize) { return x; }
 /// ```
+/// simplify to
+/// ```rust
+/// fn foo(x: usize) { x }
+/// ```
 declare_clippy_lint! {
     pub NEEDLESS_RETURN,
     style,
@@ -35,7 +39,16 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// { let x = ..; x }
+/// fn foo() -> String {
+///    let x = String::new();
+///    x
+///}
+/// ```
+/// instead, use
+/// ```
+/// fn foo() -> String {
+///    String::new()
+///}
 /// ```
 declare_clippy_lint! {
     pub LET_AND_RETURN,

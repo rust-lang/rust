@@ -42,6 +42,10 @@ declare_clippy_lint! {
 /// ```rust
 /// let x = x + 1;
 /// ```
+/// use different variable name:
+/// ```rust
+/// let y = x + 1;
+/// ```
 declare_clippy_lint! {
     pub SHADOW_REUSE,
     restriction,
