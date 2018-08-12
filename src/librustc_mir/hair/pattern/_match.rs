@@ -814,8 +814,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // FIXME: this might lead to "unstable" behavior with macro hygiene
         // introducing uninhabited patterns for inaccessible fields. We
         // need to figure out how to model that.
-        ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
-            .unwrap_or(v[0].ty),
+        ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error()).unwrap_or(v[0].ty),
         max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0])))
     };
 
@@ -1046,7 +1045,7 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
 /// Slice patterns, however, can match slices of different lengths. For instance,
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
-/// Returns None in case of a catch-all, which can't be specialized.
+/// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
                           pat: &Pattern<'tcx>,
                           pcx: PatternContext)
@@ -1319,13 +1318,13 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         span_bug!(pat.span,
                         "unexpected const-val {:?} with ctor {:?}", value, constructor)
                     }
-                },
+                }
                 _ => {
                     match constructor_covered_by_range(
                         cx.tcx,
                         constructor, value, value, RangeEnd::Included,
                         value.ty,
-                            ) {
+                    ) {
                         Ok(true) => Some(vec![]),
                         Ok(false) => None,
                         Err(ErrorReported) => None,

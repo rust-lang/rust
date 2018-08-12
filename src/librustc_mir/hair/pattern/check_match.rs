@@ -272,7 +272,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                                                 self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pats : Matrix = vec![vec![
+            let pats: Matrix = vec![vec![
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
