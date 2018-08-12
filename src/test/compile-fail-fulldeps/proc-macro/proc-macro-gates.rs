@@ -41,12 +41,6 @@ mod _test2_inner {
 #[a = y] //~ ERROR: must only be followed by a delimiter token
 fn _test3() {}
 
-#[a = ] //~ ERROR: must only be followed by a delimiter token
-fn _test4() {}
-
-#[a () = ] //~ ERROR: must only be followed by a delimiter token
-fn _test5() {}
-
 fn attrs() {
     // Statement, item
     #[a] // OK

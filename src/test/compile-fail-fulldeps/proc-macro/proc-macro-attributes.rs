@@ -21,7 +21,7 @@ extern crate derive_b;
 #[C] //~ ERROR: The attribute `C` is currently unknown to the compiler
 #[B(D)]
 #[B(E = "foo")]
-#[B arbitrary tokens] //~ ERROR arbitrary tokens in non-macro attributes are unstable
+#[B(arbitrary tokens)] //~ ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `tokens`
 struct B;
 
 fn main() {}
