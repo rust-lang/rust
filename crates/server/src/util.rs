@@ -3,16 +3,6 @@ use languageserver_types::{TextDocumentItem, VersionedTextDocumentIdentifier,
                            TextDocumentIdentifier, Url};
 use ::{Result};
 
-pub trait FnBox<A, R>: Send {
-    fn call_box(self: Box<Self>, a: A) -> R;
-}
-
-impl<A, R, F: FnOnce(A) -> R + Send> FnBox<A, R> for F {
-    fn call_box(self: Box<F>, a: A) -> R {
-        (*self)(a)
-    }
-}
-
 pub trait FilePath {
     fn file_path(&self) -> Result<PathBuf>;
 }

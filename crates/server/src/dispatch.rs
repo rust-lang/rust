@@ -19,38 +19,27 @@ pub struct Responder<R: ClientRequest> {
     ph: PhantomData<fn(R)>,
 }
 
-impl<R: ClientRequest> Responder<R>
-{
-    pub fn response(self, io: &mut Io, resp: Result<R::Result>) -> Result<()> {
-        match resp {
-            Ok(res) => self.result(io, res)?,
-            Err(e) => {
-                self.error(io)?;
-                return Err(e);
+impl<R: ClientRequest> Responder<R> {
+    pub fn into_response(mut self, result: Result<R::Result>) -> Result<RawResponse> {
+        self.bomb.defuse();
+        let res = match result {
+            Ok(result) => {
+                RawResponse {
+                    id: Some(self.id),
+                    result: serde_json::to_value(result)?,
+                    error: serde_json::Value::Null,
+                }
             }
-        }
-        Ok(())
-    }
-
-    pub fn result(mut self, io: &mut Io, result: R::Result) -> Result<()> {
-        self.bomb.defuse();
-        io.send(RawMsg::Response(RawResponse {
-            id: Some(self.id),
-            result: serde_json::to_value(result)?,
-            error: serde_json::Value::Null,
-        }));
-        Ok(())
-    }
-
-    pub fn error(mut self, io: &mut Io) -> Result<()> {
-        self.bomb.defuse();
-        error(io, self.id, ErrorCode::InternalError, "internal error")
+            Err(_) => {
+                error_response(self.id, ErrorCode::InternalError, "internal error")?
+            }
+        };
+        Ok(res)
     }
 }
 
-
 fn parse_request_as<R: ClientRequest>(raw: RawRequest)
-    -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
+                                      -> Result<::std::result::Result<(R::Params, Responder<R>), RawRequest>>
 {
     if raw.method != R::METHOD {
         return Ok(Err(raw));
@@ -77,13 +66,13 @@ pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
             Err(r) => {
                 *req = Some(r);
                 Ok(())
-            },
+            }
         }
     }
 }
 
 pub fn expect_request<R: ClientRequest>(io: &mut Io, raw: RawRequest)
-    -> Result<Option<(R::Params, Responder<R>)>>
+                                        -> Result<Option<(R::Params, Responder<R>)>>
 {
     let ret = match parse_request_as::<R>(raw)? {
         Ok(x) => Some(x),
@@ -120,21 +109,21 @@ pub fn handle_notification<N, F>(not: &mut Option<RawNotification>, f: F) -> Res
             Err(n) => {
                 *not = Some(n);
                 Ok(())
-            },
+            }
         }
     }
 }
 
-pub fn send_notification<N>(io: &mut Io, params: N::Params) -> Result<()>
+pub fn send_notification<N>(params: N::Params) -> RawNotification
     where
         N: Notification,
         N::Params: Serialize
 {
-    io.send(RawMsg::Notification(RawNotification {
+    RawNotification {
         method: N::METHOD.to_string(),
-        params: serde_json::to_value(params)?,
-    }));
-    Ok(())
+        params: serde_json::to_value(params)
+            .unwrap(),
+    }
 }
 
 
@@ -142,20 +131,26 @@ pub fn unknown_method(io: &mut Io, raw: RawRequest) -> Result<()> {
     error(io, raw.id, ErrorCode::MethodNotFound, "unknown method")
 }
 
-fn error(io: &mut Io, id: u64, code: ErrorCode, message: &'static str) -> Result<()> {
+fn error_response(id: u64, code: ErrorCode, message: &'static str) -> Result<RawResponse> {
     #[derive(Serialize)]
     struct Error {
         code: i32,
         message: &'static str,
     }
-    io.send(RawMsg::Response(RawResponse {
+    let resp = RawResponse {
         id: Some(id),
         result: serde_json::Value::Null,
         error: serde_json::to_value(Error {
             code: code as i32,
             message,
         })?,
-    }));
+    };
+    Ok(resp)
+}
+
+fn error(io: &mut Io, id: u64, code: ErrorCode, message: &'static str) -> Result<()> {
+    let resp = error_response(id, code, message)?;
+    io.send(RawMsg::Response(resp));
     Ok(())
 }
 

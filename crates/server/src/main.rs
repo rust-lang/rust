@@ -32,10 +32,10 @@ use languageserver_types::Url;
 use libanalysis::{WorldState, World};
 
 use ::{
-    io::{Io, RawMsg, RawRequest},
+    io::{Io, RawMsg, RawRequest, RawResponse, RawNotification},
     handlers::{handle_syntax_tree, handle_extend_selection, publish_diagnostics, publish_decorations,
                handle_document_symbol, handle_code_action},
-    util::{FilePath, FnBox}
+    util::FilePath,
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -80,9 +80,9 @@ fn initialize(io: &mut Io) -> Result<()> {
         match io.recv()? {
             RawMsg::Request(req) => {
                 if let Some((_params, resp)) = dispatch::expect_request::<req::Initialize>(io, req)? {
-                    resp.result(io, req::InitializeResult {
-                        capabilities: caps::SERVER_CAPABILITIES
-                    })?;
+                    let res = req::InitializeResult { capabilities: caps::SERVER_CAPABILITIES };
+                    let resp = resp.into_response(Ok(res))?;
+                    io.send(RawMsg::Response(resp));
                     match io.recv()? {
                         RawMsg::Notification(n) => {
                             if n.method != "initialized" {
@@ -106,13 +106,18 @@ fn initialize(io: &mut Io) -> Result<()> {
     }
 }
 
-type Thunk = Box<for<'a> FnBox<&'a mut Io, Result<()>>>;
+
+enum Task {
+    Respond(RawResponse),
+    Notify(RawNotification),
+    Die(::failure::Error),
+}
 
 fn initialized(io: &mut Io) -> Result<()> {
     {
         let mut world = WorldState::new();
         let mut pool = ThreadPool::new(4);
-        let (sender, receiver) = bounded::<Thunk>(16);
+        let (sender, receiver) = bounded::<Task>(16);
         info!("lifecycle: handshake finished, server ready to serve requests");
         let res = main_loop(io, &mut world, &mut pool, sender, receiver.clone());
         info!("waiting for background jobs to finish...");
@@ -140,14 +145,14 @@ fn main_loop(
     io: &mut Io,
     world: &mut WorldState,
     pool: &mut ThreadPool,
-    sender: Sender<Thunk>,
-    receiver: Receiver<Thunk>,
+    sender: Sender<Task>,
+    receiver: Receiver<Task>,
 ) -> Result<()> {
     info!("server initialized, serving requests");
     loop {
         enum Event {
             Msg(RawMsg),
-            Thunk(Thunk),
+            Task(Task),
             ReceiverDead,
         }
 
@@ -156,7 +161,7 @@ fn main_loop(
                 Some(msg) => Event::Msg(msg),
                 None => Event::ReceiverDead,
             },
-            recv(receiver, thunk) => Event::Thunk(thunk.unwrap()),
+            recv(receiver, task) => Event::Task(task.unwrap()),
         };
 
         let msg = match event {
@@ -164,8 +169,15 @@ fn main_loop(
                 io.cleanup_receiver()?;
                 unreachable!();
             }
-            Event::Thunk(thunk) => {
-                thunk.call_box(io)?;
+            Event::Task(task) => {
+                match task {
+                    Task::Respond(response) =>
+                        io.send(RawMsg::Response(response)),
+                    Task::Notify(n) =>
+                        io.send(RawMsg::Notification(n)),
+                    Task::Die(error) =>
+                        return Err(error),
+                }
                 continue;
             }
             Event::Msg(msg) => msg,
@@ -175,21 +187,22 @@ fn main_loop(
             RawMsg::Request(req) => {
                 let mut req = Some(req);
                 handle_request_on_threadpool::<req::SyntaxTree>(
-                    &mut req, pool, world, &sender, handle_syntax_tree
+                    &mut req, pool, world, &sender, handle_syntax_tree,
                 )?;
                 handle_request_on_threadpool::<req::ExtendSelection>(
-                    &mut req, pool, world, &sender, handle_extend_selection
+                    &mut req, pool, world, &sender, handle_extend_selection,
                 )?;
                 handle_request_on_threadpool::<req::DocumentSymbolRequest>(
-                    &mut req, pool, world, &sender, handle_document_symbol
+                    &mut req, pool, world, &sender, handle_document_symbol,
                 )?;
                 handle_request_on_threadpool::<req::CodeActionRequest>(
-                    &mut req, pool, world, &sender, handle_code_action
+                    &mut req, pool, world, &sender, handle_code_action,
                 )?;
 
                 let mut shutdown = false;
                 dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
-                    resp.result(io, ())?;
+                    let resp = resp.into_response(Ok(()))?;
+                    io.send(RawMsg::Response(resp));
                     shutdown = true;
                     Ok(())
                 })?;
@@ -227,10 +240,12 @@ fn main_loop(
                 dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
                     let path = params.text_document.file_path()?;
                     world.change_overlay(path, None);
-                    dispatch::send_notification::<req::PublishDiagnostics>(io, req::PublishDiagnosticsParams {
+                    let not = req::PublishDiagnosticsParams {
                         uri: params.text_document.uri,
                         diagnostics: Vec::new(),
-                    })?;
+                    };
+                    let not = dispatch::send_notification::<req::PublishDiagnostics>(not);
+                    io.send(RawMsg::Notification(not));
                     Ok(())
                 })?;
 
@@ -249,7 +264,7 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
     req: &mut Option<RawRequest>,
     pool: &ThreadPool,
     world: &WorldState,
-    sender: &Sender<Thunk>,
+    sender: &Sender<Task>,
     f: fn(World, R::Params) -> Result<R::Result>,
 ) -> Result<()>
 {
@@ -258,7 +273,11 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
         let sender = sender.clone();
         pool.execute(move || {
             let res = f(world, params);
-            sender.send(Box::new(|io: &mut Io| resp.response(io, res)))
+            let task = match resp.into_response(res) {
+                Ok(resp) => Task::Respond(resp),
+                Err(e) => Task::Die(e),
+            };
+            sender.send(task);
         });
         Ok(())
     })
@@ -267,7 +286,7 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
 fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: World,
-    sender: Sender<Thunk>,
+    sender: Sender<Task>,
     uri: Url,
 ) {
     pool.execute(move || {
@@ -276,9 +295,8 @@ fn update_file_notifications_on_threadpool(
                 error!("failed to compute diagnostics: {:?}", e)
             }
             Ok(params) => {
-                sender.send(Box::new(|io: &mut Io| {
-                    dispatch::send_notification::<req::PublishDiagnostics>(io, params)
-                }))
+                let not = dispatch::send_notification::<req::PublishDiagnostics>(params);
+                sender.send(Task::Notify(not));
             }
         }
         match publish_decorations(world, uri) {
@@ -286,9 +304,8 @@ fn update_file_notifications_on_threadpool(
                 error!("failed to compute decortions: {:?}", e)
             }
             Ok(params) => {
-                sender.send(Box::new(|io: &mut Io| {
-                    dispatch::send_notification::<req::PublishDecorations>(io, params)
-                }))
+                let not = dispatch::send_notification::<req::PublishDecorations>(params);
+                sender.send(Task::Notify(not))
             }
         }
     });
