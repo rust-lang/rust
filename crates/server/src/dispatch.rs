@@ -71,19 +71,6 @@ pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
     }
 }
 
-pub fn expect_request<R: ClientRequest>(io: &mut Io, raw: RawRequest)
-                                        -> Result<Option<(R::Params, Responder<R>)>>
-{
-    let ret = match parse_request_as::<R>(raw)? {
-        Ok(x) => Some(x),
-        Err(raw) => {
-            unknown_method(io, raw)?;
-            None
-        }
-    };
-    Ok(ret)
-}
-
 fn parse_notification_as<N>(raw: RawNotification) -> Result<::std::result::Result<N::Params, RawNotification>>
     where
         N: Notification,

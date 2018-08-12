@@ -79,21 +79,30 @@ fn initialize(io: &mut Io) -> Result<()> {
     loop {
         match io.recv()? {
             RawMsg::Request(req) => {
-                if let Some((_params, resp)) = dispatch::expect_request::<req::Initialize>(io, req)? {
+                let mut req = Some(req);
+                dispatch::handle_request::<req::Initialize, _>(&mut req, |_params, resp| {
                     let res = req::InitializeResult { capabilities: caps::SERVER_CAPABILITIES };
                     let resp = resp.into_response(Ok(res))?;
                     io.send(RawMsg::Response(resp));
-                    match io.recv()? {
-                        RawMsg::Notification(n) => {
-                            if n.method != "initialized" {
+                    Ok(())
+                })?;
+                match req {
+                    None => {
+                        match io.recv()? {
+                            RawMsg::Notification(n) => {
+                                if n.method != "initialized" {
+                                    bail!("expected initialized notification");
+                                }
+                            }
+                            _ => {
                                 bail!("expected initialized notification");
                             }
                         }
-                        _ => {
-                            bail!("expected initialized notification");
-                        }
+                        return initialized(io);
                     }
-                    return initialized(io);
+                    Some(req) => {
+                        bail!("expected initialize request, got {:?}", req)
+                    }
                 }
             }
             RawMsg::Notification(n) => {
@@ -105,7 +114,6 @@ fn initialize(io: &mut Io) -> Result<()> {
         }
     }
 }
-
 
 enum Task {
     Respond(RawResponse),
@@ -301,7 +309,7 @@ fn update_file_notifications_on_threadpool(
         }
         match publish_decorations(world, uri) {
             Err(e) => {
-                error!("failed to compute decortions: {:?}", e)
+                error!("failed to compute decorations: {:?}", e)
             }
             Ok(params) => {
                 let not = dispatch::send_notification::<req::PublishDecorations>(params);
