@@ -69,7 +69,7 @@ pub fn main() {
         //~| SUGGESTION r
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
-        // TODO: should suggest removing `ref` too
+        // FIXME: should suggest removing `ref` too
     }
 
     let X(_t) = *sm;
@@ -97,7 +97,7 @@ pub fn main() {
         //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
-        // TODO: should suggest removing `ref` too
+        // FIXME: should suggest removing `ref` too
     }
     match *rm {
         //~^ ERROR cannot move
@@ -105,7 +105,7 @@ pub fn main() {
         //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
-        // TODO: should suggest removing `ref mut` too
+        // FIXME: should suggest removing `ref mut` too
     }
 
     let X(_t) = vs_[0];
@@ -133,7 +133,7 @@ pub fn main() {
         //~| SUGGESTION &vr[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
-        // TODO: should suggest removing `ref` too
+        // FIXME: should suggest removing `ref` too
     }
 
     let X(_t) = vsm[0];
@@ -161,7 +161,7 @@ pub fn main() {
         //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
-        // TODO: should suggest removing `ref` too
+        // FIXME: should suggest removing `ref` too
     }
     match vrm[0] {
         //~^ ERROR cannot move
@@ -169,7 +169,7 @@ pub fn main() {
         //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
-        // TODO: should suggest removing `ref mut` too
+        // FIXME: should suggest removing `ref mut` too
     }
 
     // --------
@@ -192,7 +192,7 @@ pub fn main() {
         //~^ HELP consider removing the `&`
         //~| SUGGESTION Either::One(_t)
         | &Either::Two(_t) => (),
-        // TODO: would really like a suggestion here too
+        // FIXME: would really like a suggestion here too
     }
     match r {
         //~^ ERROR cannot move
@@ -280,7 +280,7 @@ pub fn main() {
         //~^ HELP consider removing the `&`
         //~| SUGGESTION Either::One(_t)
         | &Either::Two(_t) => (),
-        // TODO: would really like a suggestion here too
+        // FIXME: would really like a suggestion here too
     }
     match &e {
         //~^ ERROR cannot move
@@ -315,7 +315,7 @@ pub fn main() {
         //~^ HELP consider removing the `&mut`
         //~| SUGGESTION Either::One(_t)
         | &mut Either::Two(_t) => (),
-        // TODO: would really like a suggestion here too
+        // FIXME: would really like a suggestion here too
     }
     match &mut em {
         //~^ ERROR cannot move
