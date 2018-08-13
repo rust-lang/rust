@@ -21,7 +21,9 @@ add_macro_expanded_things_to_macro_prelude!();
 
 mod m1 {
     fn check() {
-        inline!(); //~ ERROR `inline` is ambiguous
+        inline!(); // OK. Theoretically ambiguous, but we do not consider built-in attributes
+                   // as candidates for non-attribute macro invocations to avoid regressions
+                   // on stable channel
     }
 }
 

@@ -1385,6 +1385,8 @@ pub struct Resolver<'a, 'b: 'a> {
     use_injections: Vec<UseError<'a>>,
     /// `use` injections for proc macros wrongly imported with #[macro_use]
     proc_mac_errors: Vec<macros::ProcMacError>,
+    /// crate-local macro expanded `macro_export` referred to by a module-relative path
+    macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
     gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
@@ -1432,9 +1434,6 @@ pub struct Resolver<'a, 'b: 'a> {
 
     /// Only supposed to be used by rustdoc, otherwise should be false.
     pub ignore_extern_prelude_feature: bool,
-
-    /// Macro invocations in the whole crate that can expand into a `#[macro_export] macro_rules`.
-    unresolved_invocations_macro_export: FxHashSet<Mark>,
 }
 
 /// Nothing really interesting here, it just provides memory for the rest of the crate.
@@ -1706,6 +1705,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             proc_mac_errors: Vec::new(),
             gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
+            macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
@@ -1737,7 +1737,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             current_type_ascription: Vec::new(),
             injected_crate: None,
             ignore_extern_prelude_feature: false,
-            unresolved_invocations_macro_export: FxHashSet(),
         }
     }
 
@@ -4126,6 +4125,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                             ns: Namespace,
                                             module: Module<'a>,
                                             found_traits: &mut Vec<TraitCandidate>) {
+        assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -4370,6 +4370,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.report_with_use_injections(krate);
         self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
+
+        for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
+            let msg = "macro-expanded `macro_export` macros from the current crate \
+                       cannot be referred to by absolute paths";
+            self.session.struct_span_err(span_use, msg)
+                        .span_note(span_def, "the macro is defined here")
+                        .emit();
+        }
 
         for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }

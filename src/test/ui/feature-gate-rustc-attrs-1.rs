@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-b.rs
-// ignore-stage1
+// ignore-tidy-linelength
 
-#![allow(warnings)]
+// Test that `#[rustc_*]` attributes are gated by `rustc_attrs` feature gate.
 
-#[macro_use]
-extern crate derive_b;
-
-#[derive(B)]
-#[B]
-#[C] //~ ERROR: The attribute `C` is currently unknown to the compiler
-#[B(D)]
-#[B(E = "foo")]
-#[B arbitrary tokens] //~ ERROR arbitrary tokens in non-macro attributes are unstable
-struct B;
+#[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
+#[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
 
 fn main() {}

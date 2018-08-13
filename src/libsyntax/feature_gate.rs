@@ -90,7 +90,7 @@ macro_rules! declare_features {
                 self.macros_in_extern || self.proc_macro_path_invoc ||
                 self.proc_macro_mod || self.proc_macro_expr ||
                 self.proc_macro_non_items || self.proc_macro_gen ||
-                self.stmt_expr_attributes
+                self.stmt_expr_attributes || self.unrestricted_attribute_tokens
             }
         }
     };
@@ -504,6 +504,9 @@ declare_features! (
     // impl<I:Iterator> Iterator for &mut Iterator
     // impl Debug for Foo<'_>
     (active, impl_header_lifetime_elision, "1.30.0", Some(15872), Some(Edition::Edition2018)),
+
+    // Support for arbitrary delimited token streams in non-macro attributes.
+    (active, unrestricted_attribute_tokens, "1.30.0", Some(44690), None),
 );
 
 declare_features! (
@@ -721,8 +724,7 @@ pub fn is_builtin_attr_name(name: ast::Name) -> bool {
 }
 
 pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.path == builtin_name) ||
-    attr.name().as_str().starts_with("rustc_")
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.path == builtin_name)
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
@@ -1521,25 +1523,27 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
-        let mut allow_attr_literal = false;
-        if attr.path == "repr" {
-            if let Some(content) = attr.meta_item_list() {
-                allow_attr_literal = content.iter().any(
-                    |c| c.check_name("align") || c.check_name("packed"));
+        match attr.parse_meta(self.context.parse_sess) {
+            Ok(meta) => {
+                // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
+                let mut allow_attr_literal = false;
+                if attr.path == "repr" {
+                    if let Some(content) = meta.meta_item_list() {
+                        allow_attr_literal = content.iter().any(
+                            |c| c.check_name("align") || c.check_name("packed"));
+                    }
+                }
+
+                if !allow_attr_literal && contains_novel_literal(&meta) {
+                    gate_feature_post!(&self, attr_literals, attr.span,
+                                    "non-string literals in attributes, or string \
+                                    literals in top-level positions, are experimental");
+                }
             }
-        }
-
-        if self.context.features.use_extern_macros() && attr::is_known(attr) {
-            return
-        }
-
-        if !allow_attr_literal {
-            let meta = panictry!(attr.parse_meta(self.context.parse_sess));
-            if contains_novel_literal(&meta) {
-                gate_feature_post!(&self, attr_literals, attr.span,
-                                   "non-string literals in attributes, or string \
-                                   literals in top-level positions, are experimental");
+            Err(mut err) => {
+                err.cancel();
+                gate_feature_post!(&self, unrestricted_attribute_tokens, attr.span,
+                                    "arbitrary tokens in non-macro attributes are unstable");
             }
         }
     }

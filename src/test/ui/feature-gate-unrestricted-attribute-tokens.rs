@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// asterisk is bogus
-#[path*] //~ ERROR arbitrary tokens in non-macro attributes are unstable
-mod m {}
+#![feature(custom_attribute)]
+
+#[my_attr(a b c d)]
+//~^ ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `b`
+//~| ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `c`
+//~| ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `d`
+fn main() {}

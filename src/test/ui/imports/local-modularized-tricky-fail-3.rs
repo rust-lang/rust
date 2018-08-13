@@ -8,11 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Crate-local macro expanded `macro_export` macros cannot be accessed with module-relative paths.
+
 #![feature(use_extern_macros)]
 
-#[derive(inline)] //~ ERROR cannot find derive macro `inline` in this scope
-struct S;
+macro_rules! define_exported { () => {
+    #[macro_export]
+    macro_rules! exported {
+        () => ()
+    }
+}}
+
+define_exported!();
+
+mod m {
+    use exported;
+    //~^ ERROR macro-expanded `macro_export` macros from the current crate cannot
+}
 
 fn main() {
-    inline!(); //~ ERROR cannot find macro `inline!` in this scope
+    ::exported!();
+    //~^ ERROR macro-expanded `macro_export` macros from the current crate cannot
 }

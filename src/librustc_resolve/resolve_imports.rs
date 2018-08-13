@@ -146,6 +146,14 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             .try_borrow_mut()
             .map_err(|_| Determined)?; // This happens when there is a cycle of imports
 
+        if let Some(binding) = resolution.binding {
+            if !restricted_shadowing && binding.expansion != Mark::root() {
+                if let NameBindingKind::Def(_, true) = binding.kind {
+                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+                }
+            }
+        }
+
         if record_used {
             if let Some(binding) = resolution.binding {
                 if let Some(shadowed_glob) = resolution.shadowed_glob {
@@ -211,9 +219,15 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         // if it cannot be shadowed by some new item/import expanded from a macro.
         // This happens either if there are no unexpanded macros, or expanded names cannot
         // shadow globs (that happens in macro namespace or with restricted shadowing).
-        let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty() ||
-                                (ns == MacroNS && ptr::eq(module, self.graph_root) &&
-                                 !self.unresolved_invocations_macro_export.is_empty());
+        //
+        // Additionally, any macro in any module can plant names in the root module if it creates
+        // `macro_export` macros, so the root module effectively has unresolved invocations if any
+        // module has unresolved invocations.
+        // However, it causes resolution/expansion to stuck too often (#53144), so, to make
+        // progress, we have to ignore those potential unresolved invocations from other modules
+        // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
+        // shadowing is enabled, see `macro_expanded_macro_export_errors`).
+        let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty();
         if let Some(binding) = resolution.binding {
             if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
                 return check_usable(self, binding);

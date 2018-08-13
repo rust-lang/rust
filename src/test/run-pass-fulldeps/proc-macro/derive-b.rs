@@ -11,7 +11,7 @@
 // aux-build:derive-b.rs
 // ignore-stage1
 
-#![feature(proc_macro_path_invoc)]
+#![feature(proc_macro_path_invoc, unrestricted_attribute_tokens)]
 
 extern crate derive_b;
 
