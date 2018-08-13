@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             if j == 0 {
                 err.span_label(binding_span, format!("data moved here"));
             } else {
-                err.span_label(binding_span, format!("... and here"));
+                err.span_label(binding_span, format!("...and here"));
             }
 
             if binds_to.len() == 1 {
