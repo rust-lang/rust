@@ -78,20 +78,20 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             _ => {
                 self.handler
                     .span_err(item.span, "allocators must be statics");
-                return OneVector::one(item);
+                return smallvec![item];
             }
         }
 
         if self.in_submod > 0 {
             self.handler
                 .span_err(item.span, "`global_allocator` cannot be used in submodules");
-            return OneVector::one(item);
+            return smallvec![item];
         }
 
         if self.found {
             self.handler
                 .span_err(item.span, "cannot define more than one #[global_allocator]");
-            return OneVector::one(item);
+            return smallvec![item];
         }
         self.found = true;
 

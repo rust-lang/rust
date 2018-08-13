@@ -10,7 +10,7 @@
 
 use infer::at::At;
 use infer::InferOk;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
 use ty::subst::Kind;

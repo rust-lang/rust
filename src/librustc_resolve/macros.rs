@@ -43,6 +43,7 @@ use errors::Applicability;
 use std::cell::Cell;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::small_vec::ExpectOne;
 
 crate struct FromPrelude(bool);
 crate struct FromExpansion(bool);

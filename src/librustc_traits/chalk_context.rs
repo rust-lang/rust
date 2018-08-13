@@ -25,7 +25,7 @@ use rustc::traits::{
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;

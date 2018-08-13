@@ -25,3 +25,4 @@ syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 byteorder = { version = "1.1", features = ["i128"] }
 rustc_apfloat = { path = "../librustc_apfloat" }
+smallvec = { version = "0.6.5", features = ["union"] }

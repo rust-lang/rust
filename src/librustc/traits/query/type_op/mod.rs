@@ -11,7 +11,7 @@
 use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint,
                        QueryResult};
 use infer::{InferCtxt, InferOk};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use traits::query::Fallible;

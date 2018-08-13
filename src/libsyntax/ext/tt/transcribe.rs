@@ -70,7 +70,7 @@ pub fn transcribe(cx: &ExtCtxt,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
                   -> TokenStream {
-    let mut stack = OneVector::one(Frame::new(src));
+    let mut stack: OneVector<Frame> = smallvec![Frame::new(src)];
     let interpolations = interp.unwrap_or_else(HashMap::new); /* just a convenience */
     let mut repeats = Vec::new();
     let mut result: Vec<TokenStream> = Vec::new();

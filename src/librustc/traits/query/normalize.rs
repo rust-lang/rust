@@ -15,7 +15,7 @@
 use infer::at::At;
 use infer::{InferCtxt, InferOk};
 use mir::interpret::{ConstValue, GlobalId};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use traits::project::Normalized;
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use ty::fold::{TypeFoldable, TypeFolder};

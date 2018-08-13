@@ -316,11 +316,11 @@ impl<F> IdentMacroExpander for F
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
-        $me.make_expr().map(|e| OneVector::one(ast::Stmt {
+        $me.make_expr().map(|e| smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: e.span,
             node: ast::StmtKind::Expr(e),
-        }))
+        }])
     }
 }
 
@@ -548,11 +548,11 @@ impl MacResult for DummyResult {
     }
 
     fn make_stmts(self: Box<DummyResult>) -> Option<OneVector<ast::Stmt>> {
-        Some(OneVector::one(ast::Stmt {
+        Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
             span: self.span,
-        }))
+        }])
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {

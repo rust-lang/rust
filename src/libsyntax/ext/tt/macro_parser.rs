@@ -644,7 +644,7 @@ pub fn parse(
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
     let mut initial = initial_matcher_pos(ms, parser.span.lo());
-    let mut cur_items = OneVector::one(MatcherPosHandle::Ref(&mut initial));
+    let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
     let mut next_items = Vec::new();
 
     loop {

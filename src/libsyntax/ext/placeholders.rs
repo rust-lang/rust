@@ -46,37 +46,37 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     match kind {
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
-        AstFragmentKind::Items => AstFragment::Items(OneVector::one(P(ast::Item {
+        AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
             id, span, ident, vis, attrs,
             node: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
-        }))),
-        AstFragmentKind::TraitItems => AstFragment::TraitItems(OneVector::one(ast::TraitItem {
+        })]),
+        AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
             id, span, ident, attrs, generics,
             node: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
-        })),
-        AstFragmentKind::ImplItems => AstFragment::ImplItems(OneVector::one(ast::ImplItem {
+        }]),
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::ImplItem {
             id, span, ident, vis, attrs, generics,
             node: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
-        })),
+        }]),
         AstFragmentKind::ForeignItems =>
-            AstFragment::ForeignItems(OneVector::one(ast::ForeignItem {
+            AstFragment::ForeignItems(smallvec![ast::ForeignItem {
                 id, span, ident, vis, attrs,
                 node: ast::ForeignItemKind::Macro(mac_placeholder()),
-            })),
+            }]),
         AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
             id, span, node: ast::PatKind::Mac(mac_placeholder()),
         })),
         AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
             id, span, node: ast::TyKind::Mac(mac_placeholder()),
         })),
-        AstFragmentKind::Stmts => AstFragment::Stmts(OneVector::one({
+        AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ThinVec::new()));
             ast::Stmt { id, span, node: ast::StmtKind::Mac(mac) }
-        })),
+        }]),
     }
 }
 
@@ -118,7 +118,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         match item.node {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
-            ast::ItemKind::MacroDef(_) => return OneVector::one(item),
+            ast::ItemKind::MacroDef(_) => return smallvec![item],
             _ => {}
         }
 

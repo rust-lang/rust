@@ -7,3 +7,6 @@ version = "0.0.0"
 name = "serialize"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
+
+[dependencies]
+smallvec = { version = "0.6.5", features = ["union"] }

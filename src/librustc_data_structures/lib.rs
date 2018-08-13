@@ -48,6 +48,8 @@ extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
 extern crate serialize;
+#[cfg_attr(test, macro_use)]
+extern crate smallvec;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]

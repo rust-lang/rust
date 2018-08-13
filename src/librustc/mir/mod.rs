@@ -24,7 +24,7 @@ use rustc_apfloat::Float;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::ReadGuard;
 use rustc_serialize as serialize;

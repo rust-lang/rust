@@ -31,7 +31,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 fn expand(cx: &mut ExtCtxt, _: syntax_pos::Span, _: &[tokenstream::TokenTree])
           -> Box<MacResult+'static> {
-    MacEager::items(OneVector::many(vec![
+    MacEager::items(OneVector::from_vec(vec![
         quote_item!(cx, struct Struct1;).unwrap(),
         quote_item!(cx, struct Struct2;).unwrap()
     ]))
