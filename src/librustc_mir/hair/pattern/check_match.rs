@@ -391,7 +391,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                     printed_if_let_err = true;
                                 }
                             }
-                        },
+                        }
 
                         hir::MatchSource::WhileLetDesugar => {
                             // check which arm we're on.

@@ -1148,7 +1148,7 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
                     .collect()
             ),
             result => result
-        },
+        }
         None => NotUseful
     }
 }
@@ -1167,16 +1167,13 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
-        PatternKind::Binding { .. } | PatternKind::Wild =>
-            None,
-        PatternKind::Leaf { .. } | PatternKind::Deref { .. } =>
-            Some(vec![Single]),
-        PatternKind::Variant { adt_def, variant_index, .. } =>
-            Some(vec![Variant(adt_def.variants[variant_index].did)]),
-        PatternKind::Constant { value } =>
-            Some(vec![ConstantValue(value)]),
-        PatternKind::Range { lo, hi, end } =>
-            Some(vec![ConstantRange(lo, hi, end)]),
+        PatternKind::Binding { .. } | PatternKind::Wild => None,
+        PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
+        PatternKind::Variant { adt_def, variant_index, .. } => {
+            Some(vec![Variant(adt_def.variants[variant_index].did)])
+        }
+        PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
+        PatternKind::Range { lo, hi, end } => Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::TyArray(_, length) => Some(vec![
                 Slice(length.unwrap_usize(cx.tcx))
@@ -1390,7 +1387,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     let head: Option<Vec<&Pattern>> = match *pat.kind {
         PatternKind::Binding { .. } | PatternKind::Wild => {
             Some(wild_patterns.to_owned())
-        },
+        }
 
         PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
