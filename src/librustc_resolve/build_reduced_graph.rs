@@ -149,6 +149,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // import is injected as a "canary", and an error is emitted if it
         // successfully resolves while an `x` external crate exists.
         //
+        // For each block scope around the `use` item, one special canary
+        // import of the form `use x as _;` is also injected, having its
+        // parent set to that scope; `resolve_imports` will only resolve
+        // it within its appropriate scope; if any of them successfully
+        // resolve, an ambiguity error is emitted, since the original
+        // import can't see the item in the block scope (`self::x` only
+        // looks in the enclosing module), but a non-`use` path could.
+        //
         // Additionally, the canary might be able to catch limitations of the
         // current implementation, where `::x` may be chosen due to `self::x`
         // not existing, but `self::x` could appear later, from macro expansion.
@@ -173,33 +181,57 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.session.features_untracked().uniform_paths);
 
             let source = module_path[0];
-            let subclass = SingleImport {
-                target: Ident {
-                    name: keywords::Underscore.name().gensymed(),
-                    span: source.span,
-                },
-                source,
-                result: PerNS {
-                    type_ns: Cell::new(Err(Undetermined)),
-                    value_ns: Cell::new(Err(Undetermined)),
-                    macro_ns: Cell::new(Err(Undetermined)),
-                },
-                type_ns_only: false,
+            // Helper closure to emit a canary with the given base path.
+            let emit = |this: &mut Self, base: Option<Ident>| {
+                let subclass = SingleImport {
+                    target: Ident {
+                        name: keywords::Underscore.name().gensymed(),
+                        span: source.span,
+                    },
+                    source,
+                    result: PerNS {
+                        type_ns: Cell::new(Err(Undetermined)),
+                        value_ns: Cell::new(Err(Undetermined)),
+                        macro_ns: Cell::new(Err(Undetermined)),
+                    },
+                    type_ns_only: false,
+                };
+                this.add_import_directive(
+                    base.into_iter().collect(),
+                    subclass.clone(),
+                    source.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    ty::Visibility::Invisible,
+                    expansion,
+                    true, // is_uniform_paths_canary
+                );
             };
-            self.add_import_directive(
-                vec![Ident {
-                    name: keywords::SelfValue.name(),
-                    span: source.span,
-                }],
-                subclass,
-                source.span,
-                id,
-                root_use_tree.span,
-                root_id,
-                ty::Visibility::Invisible,
-                expansion,
-                true, // is_uniform_paths_canary
-            );
+
+            // A single simple `self::x` canary.
+            emit(self, Some(Ident {
+                name: keywords::SelfValue.name(),
+                span: source.span,
+            }));
+
+            // One special unprefixed canary per block scope around
+            // the import, to detect items unreachable by `self::x`.
+            let orig_current_module = self.current_module;
+            let mut span = source.span.modern();
+            loop {
+                match self.current_module.kind {
+                    ModuleKind::Block(..) => emit(self, None),
+                    ModuleKind::Def(..) => break,
+                }
+                match self.hygienic_lexical_parent(self.current_module, &mut span) {
+                    Some(module) => {
+                        self.current_module = module;
+                    }
+                    None => break,
+                }
+            }
+            self.current_module = orig_current_module;
 
             uniform_paths_canary_emitted = true;
         }

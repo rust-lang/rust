@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, CrateLint, Module, ModuleOrUniformRoot, PerNS};
-use Namespace::{self, TypeNS, MacroNS};
+use Namespace::{self, TypeNS, MacroNS, ValueNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
@@ -636,10 +636,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     continue;
                 }
 
+                let is_explicit_self =
+                    import.module_path.len() > 0 &&
+                    import.module_path[0].name == keywords::SelfValue.name();
                 let extern_crate_exists = self.extern_prelude.contains(&name);
 
                 // A successful `self::x` is ambiguous with an `x` external crate.
-                if !extern_crate_exists {
+                if is_explicit_self && !extern_crate_exists {
                     continue;
                 }
 
@@ -647,13 +650,18 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
                 let msg = format!("import from `{}` is ambiguous", name);
                 let mut err = self.session.struct_span_err(import.span, &msg);
-                err.span_label(import.span,
-                    format!("could refer to external crate `::{}`", name));
+                if extern_crate_exists {
+                    err.span_label(import.span,
+                        format!("could refer to external crate `::{}`", name));
+                }
                 if let Some(result) = result {
-                    err.span_label(result.span,
-                        format!("could also refer to `self::{}`", name));
+                    if is_explicit_self {
                         err.span_label(result.span,
                             format!("could also refer to `self::{}`", name));
+                    } else {
+                        err.span_label(result.span,
+                            format!("shadowed by block-scoped `{}`", name));
+                    }
                 }
                 err.help(&format!("write `::{0}` or `self::{0}` explicitly instead", name));
                 err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
@@ -717,7 +725,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(
-                Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
+                Some(if directive.is_uniform_paths_canary {
+                    ModuleOrUniformRoot::Module(directive.parent)
+                } else {
+                    ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
+                }),
                 &directive.module_path[..],
                 None,
                 false,
@@ -792,7 +804,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let ImportDirective { ref module_path, span, .. } = *directive;
 
         let module_result = self.resolve_path(
-            Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
+            Some(if directive.is_uniform_paths_canary {
+                ModuleOrUniformRoot::Module(directive.parent)
+            } else {
+                ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
+            }),
             &module_path,
             None,
             true,
