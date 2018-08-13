@@ -57,14 +57,16 @@ pub unsafe fn raise_fd_limit() {
         panic!("raise_fd_limit: error calling getrlimit: {}", err);
     }
 
-    // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard
-    // limit
-    rlim.rlim_cur = cmp::min(maxfiles as libc::rlim_t, rlim.rlim_max);
+    // Make sure we're only ever going to increase the rlimit.
+    if rlim.rlim_cur < maxfiles as libc::rlim_t {
+        // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard limit.
+        rlim.rlim_cur = cmp::min(maxfiles as libc::rlim_t, rlim.rlim_max);
 
-    // Set our newly-increased resource limit
-    if libc::setrlimit(libc::RLIMIT_NOFILE, &rlim) != 0 {
-        let err = io::Error::last_os_error();
-        panic!("raise_fd_limit: error calling setrlimit: {}", err);
+        // Set our newly-increased resource limit.
+        if libc::setrlimit(libc::RLIMIT_NOFILE, &rlim) != 0 {
+            let err = io::Error::last_os_error();
+            panic!("raise_fd_limit: error calling setrlimit: {}", err);
+        }
     }
 }
 

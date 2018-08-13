@@ -1513,7 +1513,7 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
             true
         } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
             true
-        } else {
+        } else if rlim.rlim_cur < STACK_SIZE as libc::rlim_t {
             std::rt::deinit_stack_guard();
             rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
             if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
@@ -1525,6 +1525,8 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
                 std::rt::update_stack_guard();
                 false
             }
+        } else {
+            false
         }
     };
 
