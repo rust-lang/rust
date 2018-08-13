@@ -13,6 +13,7 @@ extern crate threadpool;
 extern crate log;
 extern crate url_serde;
 extern crate flexi_logger;
+extern crate walkdir;
 extern crate libeditor;
 extern crate libanalysis;
 extern crate libsyntax2;
@@ -24,6 +25,9 @@ mod dispatch;
 mod util;
 mod conv;
 mod main_loop;
+mod vfs;
+
+use std::path::PathBuf;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::bounded;
@@ -114,13 +118,29 @@ fn initialized(io: &mut Io) -> Result<()> {
     {
         let mut world = WorldState::new();
         let mut pool = ThreadPool::new(4);
-        let (sender, receiver) = bounded::<Task>(16);
+        let (task_sender, task_receiver) = bounded::<Task>(16);
+        let (fs_events_receiver, watcher) = vfs::watch(vec![
+            PathBuf::from("./")
+        ]);
         info!("lifecycle: handshake finished, server ready to serve requests");
-        let res = main_loop::main_loop(io, &mut world, &mut pool, sender, receiver.clone());
+        let res = main_loop::main_loop(
+            io,
+            &mut world,
+            &mut pool,
+            task_sender,
+            task_receiver.clone(),
+            fs_events_receiver,
+        );
+
         info!("waiting for background jobs to finish...");
-        receiver.for_each(drop);
+        task_receiver.for_each(drop);
         pool.join();
         info!("...background jobs have finished");
+
+        info!("waiting for file watcher to finish...");
+        watcher.stop()?;
+        info!("...file watcher has finished");
+
         res
     }?;
 

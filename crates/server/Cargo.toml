@@ -15,6 +15,7 @@ flexi_logger = "0.9.1"
 log = "0.4.3"
 url_serde = "0.2.0"
 languageserver-types = "0.49.0"
+walkdir = "2.2.0"
 text_unit = { version = "0.1.2", features = ["serde"] }
 
 libsyntax2 = { path = "../libsyntax2" }

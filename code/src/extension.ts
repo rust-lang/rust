@@ -61,8 +61,9 @@ export function deactivate(): Thenable<void> {
 
 function startServer() {
     let run: lc.Executable = {
-        command: "m",
-        // args: ["run", "--package", "m"],
+        command: "cargo",
+        args: ["run", "--package", "m"],
+        // command: "m",
         options: { cwd: "." }
     }
     let serverOptions: lc.ServerOptions = {

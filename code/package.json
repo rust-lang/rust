@@ -44,6 +44,38 @@
         "key": "ctrl+w",
         "when": "editorTextFocus && editorLangId == rust"
       }
+    ],
+    "problemMatchers": [
+      {
+        "name": "rustc",
+        "fileLocation": [
+          "relative",
+          "${workspaceRoot}"
+        ],
+        "pattern": [
+          {
+            "regexp": "^(warning|warn|error)(\\[(.*)\\])?: (.*)$",
+            "severity": 1,
+            "message": 4,
+            "code": 3
+          },
+          {
+            "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
+            "file": 2,
+            "line": 3,
+            "column": 4
+          },
+          {
+            "regexp": "^.*$"
+          },
+          {
+            "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
+            "file": 2,
+            "line": 3,
+            "column": 4
+          }
+        ]
+      }
     ]
   }
 }

@@ -1,6 +1,9 @@
 mod handlers;
 
-use std::collections::HashSet;
+use std::{
+    path::PathBuf,
+    collections::{HashSet, HashMap},
+};
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
@@ -13,6 +16,7 @@ use {
     Task, Result,
     io::{Io, RawMsg, RawRequest, RawNotification},
     util::FilePath,
+    vfs::{FileEvent, FileEventKind},
     main_loop::handlers::{
         handle_syntax_tree,
         handle_extend_selection,
@@ -28,30 +32,42 @@ pub(super) fn main_loop(
     io: &mut Io,
     world: &mut WorldState,
     pool: &mut ThreadPool,
-    sender: Sender<Task>,
-    receiver: Receiver<Task>,
+    task_sender: Sender<Task>,
+    task_receiver: Receiver<Task>,
+    fs_events_receiver: Receiver<Vec<FileEvent>>,
 ) -> Result<()> {
     info!("server initialized, serving requests");
     let mut next_request_id = 0;
     let mut pending_requests: HashSet<u64> = HashSet::new();
+    let mut mem_map: HashMap<PathBuf, Option<String>> = HashMap::new();
+    let mut fs_events_receiver = Some(&fs_events_receiver);
     loop {
         enum Event {
             Msg(RawMsg),
             Task(Task),
+            Fs(Vec<FileEvent>),
             ReceiverDead,
+            FsWatcherDead,
         }
         let event = select! {
             recv(io.receiver(), msg) => match msg {
                 Some(msg) => Event::Msg(msg),
                 None => Event::ReceiverDead,
             },
-            recv(receiver, task) => Event::Task(task.unwrap()),
+            recv(task_receiver, task) => Event::Task(task.unwrap()),
+            recv(fs_events_receiver, events) => match events {
+                Some(events) => Event::Fs(events),
+                None => Event::FsWatcherDead,
+            }
         };
 
         match event {
             Event::ReceiverDead => {
                 io.cleanup_receiver()?;
                 unreachable!();
+            }
+            Event::FsWatcherDead => {
+                fs_events_receiver = None;
             }
             Event::Task(task) => {
                 match task {
@@ -70,15 +86,36 @@ pub(super) fn main_loop(
                 }
                 continue;
             }
+            Event::Fs(events) => {
+                trace!("fs change, {} events", events.len());
+                let changes = events.into_iter()
+                    .map(|event| {
+                        let text = match event.kind {
+                            FileEventKind::Add(text) => Some(text),
+                            FileEventKind::Remove => None,
+                        };
+                        (event.path, text)
+                    })
+                    .filter_map(|(path, text)| {
+                        if mem_map.contains_key(path.as_path()) {
+                            mem_map.insert(path, text);
+                            None
+                        } else {
+                            Some((path, text))
+                        }
+                    });
+
+                world.change_files(changes);
+            }
             Event::Msg(msg) => {
                 match msg {
                     RawMsg::Request(req) => {
-                        if !on_request(io, world, pool, &sender, req)? {
+                        if !on_request(io, world, pool, &task_sender, req)? {
                             return Ok(());
                         }
                     }
                     RawMsg::Notification(not) => {
-                        on_notification(io, world, pool, &sender, not)?
+                        on_notification(io, world, pool, &task_sender, not, &mut mem_map)?
                     }
                     RawMsg::Response(resp) => {
                         if !pending_requests.remove(&resp.id) {
@@ -160,11 +197,13 @@ fn on_notification(
     pool: &ThreadPool,
     sender: &Sender<Task>,
     not: RawNotification,
+    mem_map: &mut HashMap<PathBuf, Option<String>>,
 ) -> Result<()> {
     let mut not = Some(not);
     dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
         let path = params.text_document.file_path()?;
-        world.change_overlay(path, Some(params.text_document.text));
+        mem_map.insert(path.clone(), None);
+        world.change_file(path, Some(params.text_document.text));
         update_file_notifications_on_threadpool(
             pool, world.snapshot(), sender.clone(), params.text_document.uri,
         );
@@ -175,7 +214,7 @@ fn on_notification(
         let text = params.content_changes.pop()
             .ok_or_else(|| format_err!("empty changes"))?
             .text;
-        world.change_overlay(path, Some(text));
+        world.change_file(path, Some(text));
         update_file_notifications_on_threadpool(
             pool, world.snapshot(), sender.clone(), params.text_document.uri,
         );
@@ -183,7 +222,11 @@ fn on_notification(
     })?;
     dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
         let path = params.text_document.file_path()?;
-        world.change_overlay(path, None);
+        let text = match mem_map.remove(&path) {
+            Some(text) => text,
+            None => bail!("unmatched close notification"),
+        };
+        world.change_file(path, text);
         let not = req::PublishDiagnosticsParams {
             uri: params.text_document.uri,
             diagnostics: Vec::new(),
