@@ -380,11 +380,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    // FIXME: Move the loop outside this method and add_move_error_labels()
+    // so they can share it.
     fn add_move_error_suggestions(
         &self,
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
     ) {
+        let mut suggestions: Vec<(Span, String, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.mir.local_decls[*local];
             if let Some(
@@ -410,13 +413,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         suggestion = pat_snippet;
                         to_remove = "&";
                     }
-                    err.span_suggestion(
+                    suggestions.push((
                         pat_span,
-                        &format!("consider removing the `{}`", to_remove),
+                        format!("consider removing the `{}`", to_remove),
                         suggestion.to_owned(),
-                    );
+                    ));
                 }
             }
+        }
+        suggestions.sort_unstable_by_key(|&(span, _, _)| span);
+        suggestions.dedup_by_key(|&mut (span, _, _)| span);
+        for (span, msg, suggestion) in suggestions {
+            err.span_suggestion(span, &msg, suggestion);
         }
     }
 
