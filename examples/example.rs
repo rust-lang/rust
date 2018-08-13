@@ -170,3 +170,7 @@ fn int_to_float(a: u8, b: i32) -> (f64, f32) {
 fn make_array() -> [u8; 3] {
     [42, 0, 5]
 }
+
+fn some_promoted_tuple() -> &'static (&'static str, &'static str) {
+    &("abc", "some")
+}

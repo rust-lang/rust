@@ -104,17 +104,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
 ) -> CPlace<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
-    if !fx
-        .tcx
-        .sess
-        .crate_types
-        .get()
-        .contains(&CrateType::Executable)
-    {
-        // TODO: cranelift-module api seems to be used wrong,
-        // thus causing panics for some consts, so this disables it
-        return CPlace::Addr(fx.bcx.ins().iconst(types::I64, 0), layout);
-    }
+
     let alloc = fx.tcx.const_value_to_allocation(const_);
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
@@ -161,10 +151,16 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
     let mut todo = HashMap::new();
     define_global_for_alloc_id(module, cx, alloc_id, &mut todo);
 
-    while let Some((alloc_id, data_id)) = {
-        let next = todo.drain().next();
-        next
-    } {
+    loop {
+        let (alloc_id, data_id) = {
+            if let Some(alloc_id) = todo.keys().next().map(|alloc_id| *alloc_id) {
+                let data_id = todo.remove(&alloc_id).unwrap();
+                (alloc_id, data_id)
+            } else {
+                break;
+            }
+        };
+
         println!(
             "cur: {:?}:{:?} todo: {:?} done: {:?}",
             alloc_id, data_id, todo, cx.done

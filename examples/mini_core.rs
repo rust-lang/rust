@@ -59,8 +59,23 @@ pub trait Mul<RHS = Self> {
 impl Mul for u8 {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(self, rhs: Self) -> Self::Output {
         self * rhs
+    }
+}
+
+#[lang = "sub"]
+pub trait Sub<RHS = Self> {
+    type Output;
+
+    fn sub(self, rhs: RHS) -> Self::Output;
+}
+
+impl Sub for usize {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
     }
 }
 
