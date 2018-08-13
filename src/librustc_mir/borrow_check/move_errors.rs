@@ -55,8 +55,6 @@ enum GroupedMoveError<'tcx> {
         binds_to: Vec<Local>,
     },
     // Everything that isn't from pattern matching.
-    // FIXME(ashtneoi): I think this is only for moves into temporaries, as
-    // when returning a value. Clarification needed.
     OtherIllegalMove {
         original_path: Place<'tcx>,
         span: Span,
