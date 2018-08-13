@@ -1,9 +1,9 @@
 use cranelift_module::*;
 use crate::prelude::*;
-use syntax::ast::Mutability as AstMutability;
 use rustc::mir::interpret::{read_target_uint, AllocId, AllocType, ConstValue, GlobalId};
 use rustc::ty::Const;
 use rustc_mir::interpret::{CompileTimeEvaluator, Memory};
+use syntax::ast::Mutability as AstMutability;
 
 #[derive(Default)]
 pub struct ConstantCx {
