@@ -308,13 +308,13 @@ class RustStdBTreeSetPrinter(object):
 
     @staticmethod
     def display_hint():
-        return "map"
+        return "array"
 
     def to_string(self):
         (length, data_ptr) = \
             rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
         return (self.__val.type.get_unqualified_type_name() +
-                (" with %i elements" % length))
+                ("(len: %i)" % length))
 
     def children(self):
         (length, data_ptr) = \
@@ -322,7 +322,6 @@ class RustStdBTreeSetPrinter(object):
         val = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
         gdb_ptr = val.get_wrapped_value()
         for index in xrange(length):
-            yield (str(index), str(index))
             yield (str(index), gdb_ptr[index])
 
 

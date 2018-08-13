@@ -20,7 +20,7 @@
 // gdb-command: run
 
 // gdb-command: print btree_set
-// gdb-check:$1 = BTreeSet<i32> with 3 elements = {[0] = 3, [1] = 5, [2] = 7}
+// gdb-check:$1 = BTreeSet<i32>(len: 3) = {3, 5, 7}
 
 // gdb-command: print vec_deque
 // gdb-check:$2 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
