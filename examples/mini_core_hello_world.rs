@@ -27,7 +27,7 @@ fn start(_main: *const u8, i: isize, _: *const *const u8) -> isize {
     }
 
     unsafe {
-        NUM = 43;
+        NUM = 6 * 7 + 5;
         *NUM_REF as isize
     }
 }

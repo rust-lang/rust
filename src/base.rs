@@ -152,6 +152,8 @@ pub fn trans_fn<'a, 'tcx: 'a>(
                 cleanup: _,
             } => {
                 let cond = trans_operand(fx, cond).load_value(fx);
+                // TODO HACK brz/brnz for i8/i16 is not yet implemented
+                let cond = fx.bcx.ins().uextend(types::I32, cond);
                 let target = fx.get_ebb(*target);
                 if *expected {
                     fx.bcx.ins().brnz(cond, target, &[]);

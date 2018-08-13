@@ -14,7 +14,7 @@ else
    exit 1
 fi
 
-RUSTC="rustc -Zcodegen-backend=$(pwd)/../target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=. -Og"
+RUSTC="rustc -Zcodegen-backend=$(pwd)/../target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=."
 
 $RUSTC mini_core.rs --crate-name mini_core --crate-type lib &&
 $RUSTC example.rs --crate-type lib &&

@@ -65,6 +65,21 @@ impl Mul for u8 {
     }
 }
 
+#[lang = "add"]
+pub trait Add<RHS = Self> {
+    type Output;
+
+    fn add(self, rhs: RHS) -> Self::Output;
+}
+
+impl Add for u8 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 #[lang = "sub"]
 pub trait Sub<RHS = Self> {
     type Output;
