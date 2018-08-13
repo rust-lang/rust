@@ -89,14 +89,15 @@ impl World {
         Ok(index.clone())
     }
 
-    pub fn world_symbols(&self, query: &str, f: &mut FnMut(&Path, &FileSymbol) -> Search) {
+    pub fn world_symbols<'a>(&'a self, query: &str) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a
+    {
         let q = Query::new(query);
-        for (path, data) in self.data.file_map.iter() {
-            let symbols = data.symbols(path.as_path());
-            if q.process(symbols, &mut |symbol| f(path, symbol)) == Search::Break {
-                break;
-            }
-        }
+        self.data.file_map.iter()
+            .flat_map(move |(path, data)| {
+                let path: &'a Path = path.as_path();
+                let symbols = data.symbols(path);
+                q.process(symbols).map(move |s| (path, s))
+            })
     }
 
     fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
@@ -107,11 +108,15 @@ impl World {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Search {
-    Continue,
-    Break,
-}
+
+pub type SearchResult = ::std::result::Result<Continue, Break>;
+
+pub struct Continue;
+
+pub struct Break;
+
+pub const CONTINUE: SearchResult = Ok(Continue);
+pub const BREAK: SearchResult = Err(Break);
 
 
 #[derive(Default, Debug)]

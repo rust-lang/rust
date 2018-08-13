@@ -30,8 +30,12 @@ impl<R: ClientRequest> Responder<R> {
                     error: serde_json::Value::Null,
                 }
             }
-            Err(_) => {
-                error_response(self.id, ErrorCode::InternalError, "internal error")?
+            Err(e) => {
+                error_response(
+                    self.id,
+                    ErrorCode::InternalError,
+                    format!("internal error: {}", e),
+                )?
             }
         };
         Ok(res)
@@ -115,21 +119,20 @@ pub fn send_notification<N>(params: N::Params) -> RawNotification
 
 pub fn unknown_method(id: u64) -> Result<RawResponse> {
     error_response(id, ErrorCode::MethodNotFound, "unknown method")
-
 }
 
-fn error_response(id: u64, code: ErrorCode, message: &'static str) -> Result<RawResponse> {
+fn error_response(id: u64, code: ErrorCode, message: impl Into<String>) -> Result<RawResponse> {
     #[derive(Serialize)]
     struct Error {
         code: i32,
-        message: &'static str,
+        message: String,
     }
     let resp = RawResponse {
         id,
         result: serde_json::Value::Null,
         error: serde_json::to_value(Error {
             code: code as i32,
-            message,
+            message: message.into(),
         })?,
     };
     Ok(resp)

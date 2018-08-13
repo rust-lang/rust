@@ -26,7 +26,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         references_provider: None,
         document_highlight_provider: None,
         document_symbol_provider: Some(true),
-        workspace_symbol_provider: None,
+        workspace_symbol_provider: Some(true),
         code_action_provider: Some(true),
         code_lens_provider: None,
         document_formatting_provider: None,

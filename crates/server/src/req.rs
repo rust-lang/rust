@@ -8,6 +8,7 @@ pub use languageserver_types::{
     DocumentSymbolParams, DocumentSymbolResponse,
     CodeActionParams, ApplyWorkspaceEditParams,
     ExecuteCommandParams,
+    WorkspaceSymbolParams,
 };
 
 

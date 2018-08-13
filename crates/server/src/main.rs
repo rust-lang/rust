@@ -27,8 +27,6 @@ mod conv;
 mod main_loop;
 mod vfs;
 
-use std::path::PathBuf;
-
 use threadpool::ThreadPool;
 use crossbeam_channel::bounded;
 use flexi_logger::{Logger, Duplicate};
@@ -120,7 +118,7 @@ fn initialized(io: &mut Io) -> Result<()> {
         let mut pool = ThreadPool::new(4);
         let (task_sender, task_receiver) = bounded::<Task>(16);
         let (fs_events_receiver, watcher) = vfs::watch(vec![
-            PathBuf::from("./")
+            ::std::env::current_dir()?,
         ]);
         info!("lifecycle: handshake finished, server ready to serve requests");
         let res = main_loop::main_loop(

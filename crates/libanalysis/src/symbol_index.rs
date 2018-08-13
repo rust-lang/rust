@@ -5,8 +5,6 @@ use libsyntax2::{
 };
 use fst::{self, IntoStreamer};
 
-use Search;
-
 #[derive(Debug)]
 pub(crate) struct FileSymbols {
     symbols: Vec<FileSymbol>,
@@ -47,11 +45,10 @@ impl Query {
         Query { query, all_symbols }
     }
 
-    pub(crate) fn process(
+    pub(crate) fn process<'a>(
         &self,
-        file: &FileSymbols,
-        acc: &mut FnMut(&FileSymbol) -> Search,
-    ) -> Search {
+        file: &'a FileSymbols,
+    ) -> impl Iterator<Item=&'a FileSymbol> + 'a {
         fn is_type(kind: SyntaxKind) -> bool {
             match kind {
                 STRUCT | ENUM | TRAIT | TYPE_ITEM => true,
@@ -59,16 +56,15 @@ impl Query {
             }
         }
         let automaton = fst::automaton::Subsequence::new(&self.query);
-        for idx in file.map.search(automaton).into_stream().into_values() {
-            let idx = idx as usize;
-            let symbol = &file.symbols[idx];
-            if self.all_symbols || is_type(symbol.kind) {
-                if acc(&symbol) == Search::Break {
-                    return Search::Break;
-                }
-            }
-        }
-        Search::Continue
+        let all_symbols = self.all_symbols;
+        file.map.search(automaton).into_stream()
+            .into_values()
+            .into_iter()
+            .map(move |idx| {
+                let idx = idx as usize;
+                &file.symbols[idx]
+            })
+            .filter(move |s| all_symbols || is_type(s.kind))
     }
 }
 

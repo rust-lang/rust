@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
-    Command, TextDocumentIdentifier, WorkspaceEdit
+    Command, TextDocumentIdentifier, WorkspaceEdit,
+    SymbolInformation, Location,
 };
-use libanalysis::World;
+use libanalysis::{World};
 use libeditor;
 use libsyntax2::TextUnit;
 use serde_json::{to_value, from_value};
@@ -92,6 +93,30 @@ pub fn handle_code_action(
         None
     };
     Ok(ret)
+}
+
+pub fn handle_workspace_symbol(
+    world: World,
+    params: req::WorkspaceSymbolParams,
+) -> Result<Option<Vec<SymbolInformation>>> {
+    let mut acc = Vec::new();
+    for (path, symbol) in world.world_symbols(&params.query).take(128) {
+        let line_index = world.file_line_index(path)?;
+
+        let info = SymbolInformation {
+            name: symbol.name.to_string(),
+            kind: symbol.kind.conv(),
+            location: Location::new(
+                Url::from_file_path(path)
+                    .map_err(|()| format_err!("invalid url"))?,
+                symbol.node_range.conv_with(&line_index),
+            ),
+            container_name: None,
+        };
+        acc.push(info);
+    };
+
+    Ok(Some(acc))
 }
 
 pub fn handle_execute_command(
