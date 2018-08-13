@@ -44,6 +44,7 @@ unsafe impl Sync for i16 {}
 unsafe impl Sync for i32 {}
 unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
+unsafe impl<'a, T: ?Sized> Sync for &'a T {}
 
 #[lang = "freeze"]
 trait Freeze {}

@@ -1,6 +1,7 @@
 use cranelift_module::*;
 use crate::prelude::*;
-use rustc::mir::interpret::{read_target_uint, AllocId, ConstValue, GlobalId};
+use syntax::ast::Mutability as AstMutability;
+use rustc::mir::interpret::{read_target_uint, AllocId, AllocType, ConstValue, GlobalId};
 use rustc::ty::Const;
 use rustc_mir::interpret::{CompileTimeEvaluator, Memory};
 
@@ -191,12 +192,24 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 
         data_ctx.define(
             alloc.bytes.to_vec().into_boxed_slice(),
-            Writability::Readonly,
+            match alloc.runtime_mutability {
+                AstMutability::Mutable => Writability::Writable,
+                AstMutability::Immutable => Writability::Readonly,
+            },
         );
 
         for &(offset, reloc) in alloc.relocations.iter() {
-            cx.todo.insert(TodoItem::Alloc(reloc));
-            let data_id = data_id_for_alloc_id(module, reloc);
+            let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
+                AllocType::Memory(_) => {
+                    cx.todo.insert(TodoItem::Alloc(reloc));
+                    data_id_for_alloc_id(module, reloc)
+                }
+                AllocType::Function(_) => unimplemented!("function static reference"),
+                AllocType::Static(def_id) => {
+                    cx.todo.insert(TodoItem::Static(def_id));
+                    data_id_for_static(tcx, module, def_id)
+                }
+            };
 
             let reloc_offset = {
                 let endianness = memory.endianness();

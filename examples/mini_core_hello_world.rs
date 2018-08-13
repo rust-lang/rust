@@ -16,7 +16,8 @@ extern "C" {
     fn puts(s: *const u8);
 }
 
-static NUM: u8 = 6 * 7;
+static mut NUM: u8 = 6 * 7;
+static NUM_REF: &'static u8 = unsafe { &NUM };
 
 #[lang = "start"]
 fn start(_main: *const u8, i: isize, _: *const *const u8) -> isize {
@@ -25,5 +26,8 @@ fn start(_main: *const u8, i: isize, _: *const *const u8) -> isize {
         puts(ptr);
     }
 
-    NUM as isize
+    unsafe {
+        NUM = 43;
+        *NUM_REF as isize
+    }
 }
