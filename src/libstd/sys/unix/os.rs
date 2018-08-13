@@ -414,12 +414,8 @@ pub fn env() -> Env {
     unsafe {
         let _guard = ENV_LOCK.lock();
         let mut environ = *environ();
-        if environ == ptr::null() {
-            panic!("os::env() failure getting env string from OS: {}",
-                   io::Error::last_os_error());
-        }
         let mut result = Vec::new();
-        while *environ != ptr::null() {
+        while environ != ptr::null() && *environ != ptr::null() {
             if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
                 result.push(key_value);
             }

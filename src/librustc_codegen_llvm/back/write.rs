@@ -182,6 +182,8 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
     let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
 
+    let asm_comments = sess.asm_comments();
+
     Arc::new(move || {
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -195,6 +197,7 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
                 fdata_sections,
                 trap_unreachable,
                 singlethread,
+                asm_comments,
             )
         };
 

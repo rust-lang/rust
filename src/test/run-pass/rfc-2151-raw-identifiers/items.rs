@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(raw_identifiers)]
-
 #[derive(Debug, PartialEq, Eq)]
 struct IntWrapper(u32);
 

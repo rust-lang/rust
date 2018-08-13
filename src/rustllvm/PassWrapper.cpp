@@ -366,7 +366,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections,
     bool TrapUnreachable,
-    bool Singlethread) {
+    bool Singlethread,
+    bool AsmComments) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -393,6 +394,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
+  Options.MCOptions.AsmVerbose = AsmComments;
+  Options.MCOptions.PreserveAsmComments = AsmComments;
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.

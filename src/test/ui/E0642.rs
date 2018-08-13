@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+#[derive(Clone, Copy)]
+struct S;
 
-#![feature(rust_2018_preview)]
-#![feature(impl_header_lifetime_elision)]
-//~^ WARN the feature `impl_header_lifetime_elision` is included in the Rust 2018 edition
+trait T {
+    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in methods without bodies
+
+    fn bar((x, y): (i32, i32)) {} //~ ERROR patterns aren't allowed in methods without bodies
+
+    fn f(&ident: &S) {} // ok
+    fn g(&&ident: &&S) {} // ok
+    fn h(mut ident: S) {} // ok
+}
 
 fn main() {}

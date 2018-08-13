@@ -8,7 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-windows
+// ignore-wasm32-bare no libc to test ffi with
+
+// issue-53200
+
+#![feature(libc)]
+extern crate libc;
+
+use std::env;
+
+// FIXME: more platforms?
+#[cfg(target_os = "linux")]
 fn main() {
-    let r#foo = 3; //~ ERROR raw identifiers are experimental and subject to change
-    println!("{}", foo);
+    unsafe { libc::clearenv(); }
+    assert_eq!(env::vars().count(), 0);
 }
+
+#[cfg(not(target_os = "linux"))]
+fn main() {}
