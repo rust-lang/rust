@@ -284,7 +284,7 @@ pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
                 // test block_items
                 // fn a() { fn b() {} }
                 let m = p.start();
-                match items::maybe_item(p) {
+                match items::maybe_item(p, items::ItemFlavor::Mod) {
                     items::MaybeItem::Item(kind) => {
                         m.complete(p, kind);
                     }

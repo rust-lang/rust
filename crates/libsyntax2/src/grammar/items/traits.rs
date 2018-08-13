@@ -20,7 +20,7 @@ pub(super) fn trait_def(p: &mut Parser) {
     //     fn bar(&self);
     // }
     while !p.at(EOF) && !p.at(R_CURLY) {
-        item_or_macro(p, true);
+        item_or_macro(p, true, ItemFlavor::Trait);
     }
     p.expect(R_CURLY);
 }
@@ -55,7 +55,7 @@ pub(super) fn impl_item(p: &mut Parser) {
     //     fn bar(&self) {}
     // }
     while !p.at(EOF) && !p.at(R_CURLY) {
-        item_or_macro(p, true);
+        item_or_macro(p, true, ItemFlavor::Mod);
     }
     p.expect(R_CURLY);
 }

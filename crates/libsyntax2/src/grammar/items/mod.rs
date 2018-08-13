@@ -14,13 +14,17 @@ mod use_item;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
-        item_or_macro(p, stop_on_r_curly)
+        item_or_macro(p, stop_on_r_curly, ItemFlavor::Mod)
     }
 }
 
-pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
+pub(super) enum ItemFlavor {
+    Mod, Trait
+}
+
+pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
     let m = p.start();
-    match maybe_item(p) {
+    match maybe_item(p, flavor) {
         MaybeItem::Item(kind) => {
             m.complete(p, kind);
         }
@@ -60,7 +64,7 @@ pub(super) enum MaybeItem {
     Modifiers,
 }
 
-pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
+pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     attributes::outer_attributes(p);
     visibility(p);
     if let Some(kind) = items_without_modifiers(p) {
@@ -107,7 +111,7 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // test unsafe_fn
         // unsafe fn foo() {}
         FN_KW => {
-            function(p);
+            function(p, flavor);
             FN_DEF
         }
 
@@ -217,7 +221,7 @@ fn extern_block(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
-fn function(p: &mut Parser) {
+fn function(p: &mut Parser, flavor: ItemFlavor) {
     assert!(p.at(FN_KW));
     p.bump();
 
@@ -227,7 +231,12 @@ fn function(p: &mut Parser) {
     type_params::type_param_list(p);
 
     if p.at(L_PAREN) {
-        params::param_list(p);
+        match flavor {
+            ItemFlavor::Mod =>
+                params::param_list(p),
+            ItemFlavor::Trait =>
+                params::param_list_opt_patterns(p),
+        }
     } else {
         p.error("expected function arguments");
     }

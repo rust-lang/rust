@@ -1,5 +1,5 @@
 FILE@[0; 164)
-  TRAIT_DEF@[0; 164)
+  TRAIT_DEF@[0; 66)
     VISIBILITY@[0; 3)
       PUB_KW@[0; 3)
     WHITESPACE@[3; 4)
@@ -10,142 +10,81 @@ FILE@[0; 164)
     WHITESPACE@[22; 23)
     L_CURLY@[23; 24)
     WHITESPACE@[24; 29)
-    FN_DEF@[29; 164)
+    FN_DEF@[29; 64)
       FN_KW@[29; 31)
       WHITESPACE@[31; 32)
       NAME@[32; 45)
         IDENT@[32; 45) "write_message"
-      PARAM_LIST@[45; 164)
+      PARAM_LIST@[45; 63)
         L_PAREN@[45; 46)
-        PARAM@[46; 63)
-          REF_PAT@[46; 62)
+        PARAM@[46; 62)
+          REFERENCE_TYPE@[46; 62)
             AMP@[46; 47)
-            BIND_PAT@[47; 62)
-              NAME@[47; 62)
-                IDENT@[47; 62) "FrontendMessage"
-                err: `expected COLON`
-                err: `expected type`
-          ERROR@[62; 63)
-            R_PAREN@[62; 63)
-            err: `expected COMMA`
-            err: `expected pattern`
-        PARAM@[63; 66)
-          ERROR@[63; 64)
-            SEMI@[63; 64)
-            err: `expected COLON`
-          WHITESPACE@[64; 65)
-          err: `expected type`
-          ERROR@[65; 66)
-            R_CURLY@[65; 66)
-            err: `expected COMMA`
-        WHITESPACE@[66; 68)
-        err: `expected pattern`
-        PARAM@[68; 82)
-          ERROR@[68; 73)
-            TRAIT_KW@[68; 73)
-            err: `expected COLON`
-          WHITESPACE@[73; 74)
-          PATH_TYPE@[74; 82)
-            PATH@[74; 82)
-              PATH_SEGMENT@[74; 82)
-                NAME_REF@[74; 82)
-                  IDENT@[74; 82) "Runnable"
-                  err: `expected COMMA`
-        WHITESPACE@[82; 83)
-        err: `expected pattern`
-        PARAM@[83; 91)
-          ERROR@[83; 84)
-            L_CURLY@[83; 84)
-            err: `expected COLON`
-          WHITESPACE@[84; 89)
-          FN_POINTER_TYPE@[89; 91)
-            FN_KW@[89; 91)
-            err: `expected parameters`
-            err: `expected COMMA`
-        WHITESPACE@[91; 92)
-        PARAM@[92; 102)
-          TUPLE_STRUCT_PAT@[92; 101)
-            PATH@[92; 99)
-              PATH_SEGMENT@[92; 99)
-                NAME_REF@[92; 99)
-                  IDENT@[92; 99) "handler"
-            L_PAREN@[99; 100)
-            R_PAREN@[100; 101)
-            err: `expected COLON`
-            err: `expected type`
-          ERROR@[101; 102)
-            SEMI@[101; 102)
-            err: `expected COMMA`
-        WHITESPACE@[102; 103)
-        err: `expected pattern`
-        PARAM@[103; 111)
-          ERROR@[103; 104)
-            R_CURLY@[103; 104)
-            err: `expected COLON`
-          WHITESPACE@[104; 106)
-          err: `expected type`
-          ERROR@[106; 111)
-            TRAIT_KW@[106; 111)
-            err: `expected COMMA`
-        WHITESPACE@[111; 112)
-        PARAM@[112; 164)
-          STRUCT_PAT@[112; 163)
-            PATH@[112; 125)
-              PATH_SEGMENT@[112; 125)
-                NAME_REF@[112; 125)
-                  IDENT@[112; 125) "TraitWithExpr"
-            WHITESPACE@[125; 126)
-            L_CURLY@[126; 127)
-            WHITESPACE@[127; 132)
-            err: `expected a name`
-            BIND_PAT@[132; 134)
-              ERROR@[132; 134)
-                FN_KW@[132; 134)
-                err: `expected COMMA`
-            WHITESPACE@[134; 135)
-            BIND_PAT@[135; 147)
-              NAME@[135; 147)
-                IDENT@[135; 147) "fn_with_expr"
-                err: `expected COMMA`
-                err: `expected a name`
-            BIND_PAT@[147; 148)
-              ERROR@[147; 148)
-                L_PAREN@[147; 148)
-                err: `expected COMMA`
-            IDENT@[148; 149) "x"
-            COLON@[149; 150)
-            WHITESPACE@[150; 151)
-            SLICE_PAT@[151; 159)
-              L_BRACK@[151; 152)
-              BIND_PAT@[152; 155)
-                NAME@[152; 155)
-                  IDENT@[152; 155) "i32"
-                  err: `expected COMMA`
-                  err: `expected pattern`
-              ERROR@[155; 156)
-                SEMI@[155; 156)
-                err: `expected COMMA`
-              WHITESPACE@[156; 157)
-              LITERAL@[157; 158)
-                INT_NUMBER@[157; 158) "1"
-              R_BRACK@[158; 159)
-              err: `expected COMMA`
-              err: `expected a name`
-            BIND_PAT@[159; 160)
-              ERROR@[159; 160)
-                R_PAREN@[159; 160)
-                err: `expected COMMA`
-                err: `expected a name`
-            BIND_PAT@[160; 161)
-              ERROR@[160; 161)
-                SEMI@[160; 161)
-            WHITESPACE@[161; 162)
-            R_CURLY@[162; 163)
-            err: `expected COLON`
-          WHITESPACE@[163; 164)
-          err: `expected type`
-          err: `expected COMMA`
-          err: `expected R_PAREN`
-          err: `expected block`
-          err: `expected R_CURLY`
-          ERROR@[164; 164)
+            PATH_TYPE@[47; 62)
+              PATH@[47; 62)
+                PATH_SEGMENT@[47; 62)
+                  NAME_REF@[47; 62)
+                    IDENT@[47; 62) "FrontendMessage"
+        R_PAREN@[62; 63)
+      SEMI@[63; 64)
+    WHITESPACE@[64; 65)
+    R_CURLY@[65; 66)
+  WHITESPACE@[66; 68)
+  TRAIT_DEF@[68; 104)
+    TRAIT_KW@[68; 73)
+    WHITESPACE@[73; 74)
+    NAME@[74; 82)
+      IDENT@[74; 82) "Runnable"
+    WHITESPACE@[82; 83)
+    L_CURLY@[83; 84)
+    WHITESPACE@[84; 89)
+    FN_DEF@[89; 102)
+      FN_KW@[89; 91)
+      WHITESPACE@[91; 92)
+      NAME@[92; 99)
+        IDENT@[92; 99) "handler"
+      PARAM_LIST@[99; 101)
+        L_PAREN@[99; 100)
+        R_PAREN@[100; 101)
+      SEMI@[101; 102)
+    WHITESPACE@[102; 103)
+    R_CURLY@[103; 104)
+  WHITESPACE@[104; 106)
+  TRAIT_DEF@[106; 163)
+    TRAIT_KW@[106; 111)
+    WHITESPACE@[111; 112)
+    NAME@[112; 125)
+      IDENT@[112; 125) "TraitWithExpr"
+    WHITESPACE@[125; 126)
+    L_CURLY@[126; 127)
+    WHITESPACE@[127; 132)
+    FN_DEF@[132; 161)
+      FN_KW@[132; 134)
+      WHITESPACE@[134; 135)
+      NAME@[135; 147)
+        IDENT@[135; 147) "fn_with_expr"
+      PARAM_LIST@[147; 160)
+        L_PAREN@[147; 148)
+        PARAM@[148; 159)
+          BIND_PAT@[148; 149)
+            NAME@[148; 149)
+              IDENT@[148; 149) "x"
+          COLON@[149; 150)
+          WHITESPACE@[150; 151)
+          ARRAY_TYPE@[151; 159)
+            L_BRACK@[151; 152)
+            PATH_TYPE@[152; 155)
+              PATH@[152; 155)
+                PATH_SEGMENT@[152; 155)
+                  NAME_REF@[152; 155)
+                    IDENT@[152; 155) "i32"
+            SEMI@[155; 156)
+            WHITESPACE@[156; 157)
+            LITERAL@[157; 158)
+              INT_NUMBER@[157; 158) "1"
+            R_BRACK@[158; 159)
+        R_PAREN@[159; 160)
+      SEMI@[160; 161)
+    WHITESPACE@[161; 162)
+    R_CURLY@[162; 163)
+  WHITESPACE@[163; 164)
