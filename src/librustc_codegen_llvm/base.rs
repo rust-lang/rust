@@ -73,6 +73,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
@@ -533,7 +534,7 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
         None => return,
     };
     unsafe {
-        let buf = CString::new(sect.as_str().as_bytes()).unwrap();
+        let buf = SmallCStr::new(&sect.as_str());
         llvm::LLVMSetSection(llval, buf.as_ptr());
     }
 }
@@ -681,7 +682,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
-        let name = CString::new(section_name).unwrap();
+        let name = SmallCStr::new(section_name);
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 
         // Also generate a .section directive to force no
@@ -1255,8 +1256,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Create the llvm.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
             if !cx.used_statics.borrow().is_empty() {
-                let name = CString::new("llvm.used").unwrap();
-                let section = CString::new("llvm.metadata").unwrap();
+                let name = const_cstr!("llvm.used");
+                let section = const_cstr!("llvm.metadata");
                 let array = C_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
 
                 unsafe {

@@ -37,6 +37,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path2cstr;
+use rustc_data_structures::small_c_str::SmallCStr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
@@ -274,7 +275,7 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
                                               metadata_stub,
-                                              &member_descriptions[..]);
+                                              member_descriptions);
                 return MetadataCreationResult::new(metadata_stub, true);
             }
         }
@@ -349,7 +350,7 @@ fn vec_slice_metadata(
     let (pointer_size, pointer_align) = cx.size_and_align_of(data_ptr_type);
     let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx.types.usize);
 
-    let member_descriptions = [
+    let member_descriptions = vec![
         MemberDescription {
             name: "data_ptr".to_string(),
             type_metadata: data_ptr_metadata,
@@ -374,7 +375,7 @@ fn vec_slice_metadata(
                                            slice_ptr_type,
                                            &slice_type_name[..],
                                            unique_type_id,
-                                           &member_descriptions,
+                                           member_descriptions,
                                            NO_SCOPE_METADATA,
                                            file_metadata,
                                            span);
@@ -460,7 +461,7 @@ fn trait_pointer_metadata(
 
     let data_ptr_field = layout.field(cx, 0);
     let vtable_field = layout.field(cx, 1);
-    let member_descriptions = [
+    let member_descriptions = vec![
         MemberDescription {
             name: "pointer".to_string(),
             type_metadata: type_metadata(cx,
@@ -485,7 +486,7 @@ fn trait_pointer_metadata(
                             trait_object_type,
                             &trait_type_name[..],
                             unique_type_id,
-                            &member_descriptions,
+                            member_descriptions,
                             containing_scope,
                             file_metadata,
                             syntax_pos::DUMMY_SP)
@@ -746,8 +747,8 @@ fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
 
     debug!("file_metadata: file_name: {}, directory: {}", file_name, directory);
 
-    let file_name = CString::new(file_name).unwrap();
-    let directory = CString::new(directory).unwrap();
+    let file_name = SmallCStr::new(file_name);
+    let directory = SmallCStr::new(directory);
 
     let file_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
@@ -782,7 +783,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     };
 
     let (size, align) = cx.size_and_align_of(t);
-    let name = CString::new(name).unwrap();
+    let name = SmallCStr::new(name);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
@@ -813,7 +814,7 @@ fn pointer_type_metadata(
 ) -> &'ll DIType {
     let (pointer_size, pointer_align) = cx.size_and_align_of(pointer_type);
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
-    let name = CString::new(name).unwrap();
+    let name = SmallCStr::new(&name);
     unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
@@ -847,9 +848,9 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
     let producer = format!("clang LLVM (rustc version {})",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
-    let name_in_debuginfo = name_in_debuginfo.to_string_lossy().into_owned();
-    let name_in_debuginfo = CString::new(name_in_debuginfo).unwrap();
-    let work_dir = CString::new(&tcx.sess.working_dir.0.to_string_lossy()[..]).unwrap();
+    let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
+    let name_in_debuginfo = SmallCStr::new(&name_in_debuginfo);
+    let work_dir = SmallCStr::new(&tcx.sess.working_dir.0.to_string_lossy());
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
@@ -883,7 +884,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
                                                           gcov_cu_info.as_ptr(),
                                                           gcov_cu_info.len() as c_uint);
 
-            let llvm_gcov_ident = CString::new("llvm.gcov").unwrap();
+            let llvm_gcov_ident = const_cstr!("llvm.gcov");
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
                                               llvm_gcov_ident.as_ptr(),
                                               gcov_metadata);
@@ -1187,7 +1188,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                 set_members_of_composite_type(cx,
                                               variant_type_metadata,
-                                              &member_descriptions[..]);
+                                              member_descriptions);
                 vec![
                     MemberDescription {
                         name: "".to_string(),
@@ -1217,7 +1218,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                     set_members_of_composite_type(cx,
                                                   variant_type_metadata,
-                                                  &member_descriptions);
+                                                  member_descriptions);
                     MemberDescription {
                         name: "".to_string(),
                         type_metadata: variant_type_metadata,
@@ -1244,7 +1245,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                 set_members_of_composite_type(cx,
                                               variant_type_metadata,
-                                              &variant_member_descriptions[..]);
+                                              variant_member_descriptions);
 
                 // Encode the information about the null variant in the union
                 // member's name.
@@ -1416,8 +1417,7 @@ fn prepare_enum_metadata(
     let enumerators_metadata: Vec<_> = def.discriminants(cx.tcx)
         .zip(&def.variants)
         .map(|(discr, v)| {
-            let token = v.name.as_str();
-            let name = CString::new(token.as_bytes()).unwrap();
+            let name = SmallCStr::new(&v.name.as_str());
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
@@ -1442,7 +1442,7 @@ fn prepare_enum_metadata(
                     type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id).as_str();
 
-                let name = CString::new(discriminant_name.as_bytes()).unwrap();
+                let name = SmallCStr::new(&discriminant_name);
                 let discriminant_type_metadata = unsafe {
                     llvm::LLVMRustDIBuilderCreateEnumerationType(
                         DIB(cx),
@@ -1482,10 +1482,10 @@ fn prepare_enum_metadata(
 
     let (enum_type_size, enum_type_align) = layout.size_and_align();
 
-    let enum_name = CString::new(enum_name).unwrap();
-    let unique_type_id_str = CString::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
-    ).unwrap();
+    let enum_name = SmallCStr::new(&enum_name);
+    let unique_type_id_str = SmallCStr::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+    );
     let enum_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateUnionType(
         DIB(cx),
@@ -1531,7 +1531,7 @@ fn composite_type_metadata(
     composite_type: Ty<'tcx>,
     composite_type_name: &str,
     composite_type_unique_id: UniqueTypeId,
-    member_descriptions: &[MemberDescription<'ll>],
+    member_descriptions: Vec<MemberDescription<'ll>>,
     containing_scope: Option<&'ll DIScope>,
 
     // Ignore source location information as long as it
@@ -1555,7 +1555,7 @@ fn composite_type_metadata(
 
 fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
                                  composite_type_metadata: &'ll DICompositeType,
-                                 member_descriptions: &[MemberDescription<'ll>]) {
+                                 member_descriptions: Vec<MemberDescription<'ll>>) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
     // create_struct_stub. This would cause a hard to trace assertion in
@@ -1574,10 +1574,9 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
     }
 
     let member_metadata: Vec<_> = member_descriptions
-        .iter()
+        .into_iter()
         .map(|member_description| {
-            let member_name = member_description.name.as_bytes();
-            let member_name = CString::new(member_name).unwrap();
+            let member_name = CString::new(member_description.name).unwrap();
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
@@ -1613,10 +1612,10 @@ fn create_struct_stub(
 ) -> &'ll DICompositeType {
     let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
 
-    let name = CString::new(struct_type_name).unwrap();
-    let unique_type_id = CString::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
-    ).unwrap();
+    let name = SmallCStr::new(struct_type_name);
+    let unique_type_id = SmallCStr::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+    );
     let metadata_stub = unsafe {
         // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -1651,10 +1650,10 @@ fn create_union_stub(
 ) -> &'ll DICompositeType {
     let (union_size, union_align) = cx.size_and_align_of(union_type);
 
-    let name = CString::new(union_type_name).unwrap();
-    let unique_type_id = CString::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
-    ).unwrap();
+    let name = SmallCStr::new(union_type_name);
+    let unique_type_id = SmallCStr::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
+    );
     let metadata_stub = unsafe {
         // LLVMRustDIBuilderCreateUnionType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -1713,13 +1712,12 @@ pub fn create_global_var_metadata(
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = tcx.item_name(def_id).to_string();
-    let var_name = CString::new(var_name).unwrap();
+    let var_name = SmallCStr::new(&tcx.item_name(def_id).as_str());
     let linkage_name = if no_mangle {
         None
     } else {
         let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
-        Some(CString::new(linkage_name.to_string()).unwrap())
+        Some(SmallCStr::new(&linkage_name.as_str()))
     };
 
     let global_align = cx.align_of(variable_type);
@@ -1780,7 +1778,7 @@ pub fn create_vtable_metadata(
         // later on in llvm/lib/IR/Value.cpp.
         let empty_array = create_DIArray(DIB(cx), &[]);
 
-        let name = CString::new("vtable").unwrap();
+        let name = const_cstr!("vtable");
 
         // Create a new one each time.  We don't want metadata caching
         // here, because each vtable will refer to a unique containing

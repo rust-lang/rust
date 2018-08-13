@@ -9,7 +9,7 @@
 // except according to those terms.
 //! Set and unset common attributes on LLVM values.
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -75,7 +75,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
-            cstr("no-frame-pointer-elim\0"), cstr("true\0"));
+            const_cstr!("no-frame-pointer-elim"), const_cstr!("true"));
     }
 }
 
@@ -108,7 +108,7 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // This is defined in the `compiler-builtins` crate for each architecture.
     llvm::AddFunctionAttrStringValue(
         llfn, llvm::AttributePlace::Function,
-        cstr("probe-stack\0"), cstr("__rust_probestack\0"));
+        const_cstr!("probe-stack"), const_cstr!("__rust_probestack"));
 }
 
 pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
@@ -128,7 +128,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            cstr("target-cpu\0"),
+            const_cstr!("target-cpu"),
             target_cpu.as_c_str());
 }
 
@@ -202,7 +202,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
         let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
-            cstr("target-features\0"), &val);
+            const_cstr!("target-features"), &val);
     }
 
     // Note that currently the `wasm-import-module` doesn't do anything, but
@@ -213,15 +213,11 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,
-                cstr("wasm-import-module\0"),
+                const_cstr!("wasm-import-module"),
                 &module,
             );
         }
     }
-}
-
-fn cstr(s: &'static str) -> &CStr {
-    CStr::from_bytes_with_nul(s.as_bytes()).expect("null-terminated string")
 }
 
 pub fn provide(providers: &mut Providers) {

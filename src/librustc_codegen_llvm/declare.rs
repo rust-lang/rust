@@ -25,6 +25,7 @@ use llvm::AttributePlace::Function;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::session::config::Sanitizer;
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::spec::PanicStrategy;
 use abi::{Abi, FnType, FnTypeExt};
 use attributes;
@@ -33,7 +34,6 @@ use common;
 use type_::Type;
 use value::Value;
 
-use std::ffi::CString;
 
 /// Declare a global value.
 ///
@@ -41,9 +41,7 @@ use std::ffi::CString;
 /// return its Value instead.
 pub fn declare_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> &'ll Value {
     debug!("declare_global(name={:?})", name);
-    let namebuf = CString::new(name).unwrap_or_else(|_|{
-        bug!("name {:?} contains an interior null byte", name)
-    });
+    let namebuf = SmallCStr::new(name);
     unsafe {
         llvm::LLVMRustGetOrInsertGlobal(cx.llmod, namebuf.as_ptr(), ty)
     }
@@ -61,9 +59,7 @@ fn declare_raw_fn(
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
-    let namebuf = CString::new(name).unwrap_or_else(|_|{
-        bug!("name {:?} contains an interior null byte", name)
-    });
+    let namebuf = SmallCStr::new(name);
     let llfn = unsafe {
         llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty)
     };
@@ -214,9 +210,7 @@ pub fn define_internal_fn(
 /// Get declared value by name.
 pub fn get_declared_value(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     debug!("get_declared_value(name={:?})", name);
-    let namebuf = CString::new(name).unwrap_or_else(|_|{
-        bug!("name {:?} contains an interior null byte", name)
-    });
+    let namebuf = SmallCStr::new(name);
     unsafe { llvm::LLVMRustGetNamedValue(cx.llmod, namebuf.as_ptr()) }
 }
 

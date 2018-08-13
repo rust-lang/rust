@@ -18,9 +18,9 @@ use libc::{c_uint, c_char};
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
+use rustc_data_structures::small_c_str::SmallCStr;
 
 use std::borrow::Cow;
-use std::ffi::CString;
 use std::ops::Range;
 use std::ptr;
 
@@ -58,7 +58,7 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
         let bx = Builder::with_cx(cx);
         let llbb = unsafe {
-            let name = CString::new(name).unwrap();
+            let name = SmallCStr::new(name);
             llvm::LLVMAppendBasicBlockInContext(
                 cx.llcx,
                 llfn,
@@ -118,7 +118,7 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     pub fn set_value_name(&self, value: &'ll Value, name: &str) {
-        let cname = CString::new(name.as_bytes()).unwrap();
+        let cname = SmallCStr::new(name);
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
@@ -436,7 +436,7 @@ impl Builder<'a, 'll, 'tcx> {
             let alloca = if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty, noname())
             } else {
-                let name = CString::new(name).unwrap();
+                let name = SmallCStr::new(name);
                 llvm::LLVMBuildAlloca(self.llbuilder, ty,
                                       name.as_ptr())
             };
@@ -975,7 +975,7 @@ impl Builder<'a, 'll, 'tcx> {
                        parent: Option<&'ll Value>,
                        args: &[&'ll Value]) -> &'ll Value {
         self.count_insn("cleanuppad");
-        let name = CString::new("cleanuppad").unwrap();
+        let name = const_cstr!("cleanuppad");
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupPad(self.llbuilder,
                                           parent,
@@ -1001,7 +1001,7 @@ impl Builder<'a, 'll, 'tcx> {
                      parent: &'ll Value,
                      args: &[&'ll Value]) -> &'ll Value {
         self.count_insn("catchpad");
-        let name = CString::new("catchpad").unwrap();
+        let name = const_cstr!("catchpad");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
                                         args.len() as c_uint, args.as_ptr(),
@@ -1025,7 +1025,7 @@ impl Builder<'a, 'll, 'tcx> {
         num_handlers: usize,
     ) -> &'ll Value {
         self.count_insn("catchswitch");
-        let name = CString::new("catchswitch").unwrap();
+        let name = const_cstr!("catchswitch");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
                                            num_handlers as c_uint,
