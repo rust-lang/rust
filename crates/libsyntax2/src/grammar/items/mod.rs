@@ -120,7 +120,7 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // test unsafe_auto_trait
         // unsafe auto trait T {}
         TRAIT_KW => {
-            traits::trait_item(p);
+            traits::trait_def(p);
             TRAIT_DEF
         }
 
@@ -156,7 +156,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             EXTERN_CRATE_ITEM
         }
         TYPE_KW => {
-            type_item(p);
+            type_def(p);
             TYPE_DEF
         }
         MOD_KW => {
@@ -164,7 +164,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             MODULE
         }
         STRUCT_KW => {
-            structs::struct_item(p);
+            structs::struct_def(p);
             if p.at(SEMI) {
                 p.err_and_bump(
                     "expected item, found `;`\n\
@@ -174,7 +174,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             STRUCT_DEF
         }
         ENUM_KW => {
-            structs::enum_item(p);
+            structs::enum_def(p);
             ENUM_DEF
         }
         USE_KW => {
@@ -182,11 +182,11 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             USE_ITEM
         }
         CONST_KW if (la == IDENT || la == MUT_KW) => {
-            consts::const_item(p);
+            consts::const_def(p);
             CONST_DEF
         }
         STATIC_KW => {
-            consts::static_item(p);
+            consts::static_def(p);
             STATIC_DEF
         }
         // test extern_block
@@ -249,7 +249,7 @@ fn function(p: &mut Parser) {
 
 // test type_item
 // type Foo = Bar;
-fn type_item(p: &mut Parser) {
+fn type_def(p: &mut Parser) {
     assert!(p.at(TYPE_KW));
     p.bump();
 

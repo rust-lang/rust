@@ -1,10 +1,10 @@
 use super::*;
 
-pub(super) fn static_item(p: &mut Parser) {
+pub(super) fn static_def(p: &mut Parser) {
     const_or_static(p, STATIC_KW)
 }
 
-pub(super) fn const_item(p: &mut Parser) {
+pub(super) fn const_def(p: &mut Parser) {
     const_or_static(p, CONST_KW)
 }
 

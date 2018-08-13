@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn struct_item(p: &mut Parser) {
+pub(super) fn struct_def(p: &mut Parser) {
     assert!(p.at(STRUCT_KW));
     p.bump();
 
@@ -38,7 +38,7 @@ pub(super) fn struct_item(p: &mut Parser) {
     }
 }
 
-pub(super) fn enum_item(p: &mut Parser) {
+pub(super) fn enum_def(p: &mut Parser) {
     assert!(p.at(ENUM_KW));
     p.bump();
     name(p);
