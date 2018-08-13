@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use {
-    SyntaxKind, TextUnit,
-    smol_str::SmolStr,
-};
+
+use smol_str::SmolStr;
+
+use {SyntaxKind, TextUnit};
 
 #[derive(Clone, Debug)]
 pub(crate) enum GreenNode {
@@ -31,7 +31,7 @@ impl GreenNode {
 
     pub fn text_len(&self) -> TextUnit {
         match self {
-            GreenNode::Leaf { text, ..} => TextUnit::of_str(text.as_str()),
+            GreenNode::Leaf { text, .. } => TextUnit::of_str(text.as_str()),
             GreenNode::Branch(b) => b.text_len(),
         }
     }
@@ -52,6 +52,13 @@ impl GreenNode {
                 GreenNode::Leaf { text, .. } => buff.push_str(text.as_str()),
                 GreenNode::Branch(b) => b.children().iter().for_each(|child| go(child, buff)),
             }
+        }
+    }
+
+    pub fn leaf_text(&self) -> Option<SmolStr> {
+        match self {
+            GreenNode::Leaf { text, .. } => Some(text.clone()),
+            GreenNode::Branch(_) => None,
         }
     }
 }

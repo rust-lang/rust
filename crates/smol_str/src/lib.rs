@@ -1,10 +1,59 @@
-use std::{sync::Arc};
+use std::{sync::Arc, ops::Deref};
+
+#[derive(Clone, Debug)]
+pub struct SmolStr(Repr);
+
+impl SmolStr {
+    pub fn new(text: &str) -> SmolStr {
+        SmolStr(Repr::new(text))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    pub fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl Deref for SmolStr {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl PartialEq<str> for SmolStr {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<SmolStr> for str {
+    fn eq(&self, other: &SmolStr) -> bool {
+        other == self
+    }
+}
+
+impl<'a> PartialEq<&'a str> for SmolStr {
+    fn eq(&self, other: &&'a str) -> bool {
+        self == *other
+    }
+}
+
+impl<'a> PartialEq<SmolStr> for &'a str {
+    fn eq(&self, other: &SmolStr) -> bool {
+        *self == other
+    }
+}
 
 const INLINE_CAP: usize = 22;
 const WS_TAG: u8 = (INLINE_CAP + 1) as u8;
 
 #[derive(Clone, Debug)]
-pub(crate) enum SmolStr {
+enum Repr {
     Heap(Arc<str>),
     Inline {
         len: u8,
@@ -12,13 +61,13 @@ pub(crate) enum SmolStr {
     },
 }
 
-impl SmolStr {
-    pub fn new(text: &str) -> SmolStr {
+impl Repr {
+    fn new(text: &str) -> Repr {
         let len = text.len();
         if len <= INLINE_CAP {
             let mut buf = [0; INLINE_CAP];
             buf[..len].copy_from_slice(text.as_bytes());
-            return SmolStr::Inline { len: len as u8, buf };
+            return Repr::Inline { len: len as u8, buf };
         }
 
         let newlines = text.bytes().take_while(|&b| b == b'\n').count();
@@ -27,23 +76,23 @@ impl SmolStr {
             let mut buf = [0; INLINE_CAP];
             buf[0] = newlines as u8;
             buf[1] = spaces as u8;
-            return SmolStr::Inline { len: WS_TAG, buf };
+            return Repr::Inline { len: WS_TAG, buf };
         }
 
-        SmolStr::Heap(
+        Repr::Heap(
             text.to_string().into_boxed_str().into()
         )
     }
 
-    pub fn as_str(&self) -> &str {
+    fn as_str(&self) -> &str {
         match self {
-            SmolStr::Heap(data) => &*data,
-            SmolStr::Inline { len, buf } => {
+            Repr::Heap(data) => &*data,
+            Repr::Inline { len, buf } => {
                 if *len == WS_TAG {
                     let newlines = buf[0] as usize;
                     let spaces = buf[1] as usize;
                     assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
-                    return &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
+                    return &WS[N_NEWLINES - newlines..N_NEWLINES + spaces];
                 }
 
                 let len = *len as usize;

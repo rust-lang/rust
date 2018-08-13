@@ -1,6 +1,9 @@
 mod generated;
 
 use std::sync::Arc;
+
+use smol_str::SmolStr;
+
 use {
     SyntaxNode, SyntaxRoot, TreeRoot, SyntaxError,
     SyntaxKind::*,
@@ -64,7 +67,9 @@ impl<R: TreeRoot> Function<R> {
 }
 
 impl<R: TreeRoot> Name<R> {
-    pub fn text(&self) -> String {
-        self.syntax().text()
+    pub fn text(&self) -> SmolStr {
+        let ident = self.syntax().first_child()
+            .unwrap();
+        ident.leaf_text().unwrap()
     }
 }

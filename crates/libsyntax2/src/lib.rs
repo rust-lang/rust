@@ -21,10 +21,11 @@
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
 extern crate itertools;
-extern crate text_unit;
 extern crate unicode_xid;
 extern crate drop_bomb;
 extern crate parking_lot;
+extern crate smol_str;
+extern crate text_unit;
 
 pub mod algo;
 pub mod ast;
@@ -35,7 +36,6 @@ mod grammar;
 mod parser_impl;
 
 mod syntax_kinds;
-mod smol_str;
 mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;

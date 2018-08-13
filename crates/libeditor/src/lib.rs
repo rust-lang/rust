@@ -1,6 +1,7 @@
 extern crate libsyntax2;
 extern crate superslice;
 extern crate itertools;
+extern crate smol_str;
 
 mod extend_selection;
 mod symbols;

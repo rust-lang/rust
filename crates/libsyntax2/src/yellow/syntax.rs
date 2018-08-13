@@ -1,5 +1,7 @@
 use std::{fmt, sync::Arc};
 
+use smol_str::SmolStr;
+
 use {
     yellow::{RedNode, TreeRoot, SyntaxRoot, RedPtr},
     SyntaxKind::{self, *},
@@ -114,6 +116,10 @@ impl<R: TreeRoot> SyntaxNode<R> {
 
     pub fn is_leaf(&self) -> bool {
         self.first_child().is_none()
+    }
+
+    pub fn leaf_text(&self) -> Option<SmolStr> {
+        self.red().green().leaf_text()
     }
 
     fn red(&self) -> &RedNode {

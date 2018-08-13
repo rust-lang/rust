@@ -50,9 +50,10 @@ pub fn handle_document_symbol(
     let mut res: Vec<DocumentSymbol> = Vec::new();
 
     for symbol in libeditor::file_symbols(&file) {
+        let name = symbol.name.to_string();
         let doc_symbol = DocumentSymbol {
-            name: symbol.name.clone(),
-            detail: Some(symbol.name),
+            name: name.clone(),
+            detail: Some(name),
             kind: symbol.kind.conv(),
             deprecated: None,
             range: symbol.node_range.conv_with(&line_index),

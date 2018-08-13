@@ -1,3 +1,4 @@
+use smol_str::SmolStr;
 use libsyntax2::{
     SyntaxKind, SyntaxNodeRef, SyntaxRoot, AstNode,
     ast::{self, NameOwner},
@@ -11,7 +12,7 @@ use TextRange;
 #[derive(Debug)]
 pub struct FileSymbol {
     pub parent: Option<usize>,
-    pub name: String,
+    pub name: SmolStr,
     pub name_range: TextRange,
     pub node_range: TextRange,
     pub kind: SyntaxKind,
