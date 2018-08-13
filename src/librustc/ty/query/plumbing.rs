@@ -650,7 +650,7 @@ macro_rules! handle_cycle_error {
     }};
     ([fatal_cycle$(, $modifiers:ident)*][$this:expr]) => {{
         $this.sess.abort_if_errors();
-        unreachable!();
+        unsafe { ::core::hint::unreachable_unchecked() };
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])

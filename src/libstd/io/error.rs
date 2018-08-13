@@ -212,7 +212,7 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
-            ErrorKind::__Nonexhaustive => unreachable!()
+            ErrorKind::__Nonexhaustive => unsafe { ::core::hint::unreachable_unchecked() }
         }
     }
 }

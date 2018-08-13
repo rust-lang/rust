@@ -302,7 +302,7 @@ impl LintStore {
             CheckLintNameResult::NoLint => {
                 Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
             }
-            CheckLintNameResult::Tool(_) => unreachable!(),
+            CheckLintNameResult::Tool(_) => unsafe { ::core::hint::unreachable_unchecked() },
         };
 
         if let Some(mut db) = db {

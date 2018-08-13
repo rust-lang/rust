@@ -61,7 +61,7 @@ pub fn find_plugin_registrar(diagnostic: &errors::Handler,
             }
             e.emit();
             diagnostic.abort_if_errors();
-            unreachable!();
+            unsafe { ::std::hint::unreachable_unchecked() };
         }
     }
 }

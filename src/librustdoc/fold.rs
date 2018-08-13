@@ -34,7 +34,7 @@ pub trait DocFolder : Sized {
     /// don't override!
     fn fold_inner_recur(&mut self, inner: ItemEnum) -> ItemEnum {
         match inner {
-            StrippedItem(..) => unreachable!(),
+            StrippedItem(..) => unsafe { ::std::hint::unreachable_unchecked() },
             ModuleItem(i) => {
                 ModuleItem(self.fold_mod(i))
             },

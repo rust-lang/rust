@@ -65,7 +65,7 @@ fn color_to_bits(color: color::Color) -> u16 {
         color::MAGENTA => 0x1 | 0x4,
         color::CYAN => 0x1 | 0x2,
         color::WHITE => 0x1 | 0x2 | 0x4,
-        _ => unreachable!(),
+        _ => unsafe { ::std::hint::unreachable_unchecked() },
     };
 
     if color >= 8 {
@@ -85,7 +85,7 @@ fn bits_to_color(bits: u16) -> color::Color {
         0x5 => color::MAGENTA,
         0x3 => color::CYAN,
         0x7 => color::WHITE,
-        _ => unreachable!(),
+        _ => unsafe { ::std::hint::unreachable_unchecked() },
     };
 
     color | (bits & 0x8) // copy the hi-intensity bit

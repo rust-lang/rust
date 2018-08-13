@@ -465,7 +465,7 @@ impl<'a> TraitDef<'a> {
                             return;
                         }
                     }
-                    _ => unreachable!(),
+                    _ => unsafe { ::std::hint::unreachable_unchecked() },
                 };
                 // Keep the lint attributes of the previous item to control how the
                 // generated implementations are linted

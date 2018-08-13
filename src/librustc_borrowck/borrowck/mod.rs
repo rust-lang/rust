@@ -728,7 +728,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         });
         let (move_span, move_note) = match the_move.kind {
             move_data::Declared => {
-                unreachable!();
+                unsafe { ::std::hint::unreachable_unchecked() };
             }
 
             move_data::MoveExpr |

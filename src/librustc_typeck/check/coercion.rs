@@ -1268,7 +1268,7 @@ impl<'a, T> AsCoercionSite for &'a T
 
 impl AsCoercionSite for ! {
     fn as_coercion_site(&self) -> &hir::Expr {
-        unreachable!()
+        unsafe { ::std::hint::unreachable_unchecked() }
     }
 }
 

@@ -179,8 +179,10 @@ impl TokenTree {
             }),
 
             DotEq => op!('.', '='),
-            OpenDelim(..) | CloseDelim(..) => unreachable!(),
-            Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
+            OpenDelim(..) | CloseDelim(..) => unsafe { ::std::hint::unreachable_unchecked() },
+            Whitespace | Comment | Shebang(..) | Eof => unsafe {
+                ::std::hint::unreachable_unchecked()
+            },
         }
     }
 
@@ -260,7 +262,7 @@ impl TokenTree {
             '$' => Dollar,
             '?' => Question,
             '\'' => SingleQuote,
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         };
 
         let tree = TokenTree::Token(span.0, token);

@@ -459,7 +459,7 @@ macro_rules! writeln {
 ///         if 3*i < i { panic!("u32 overflow"); }
 ///         if x < 3*i { return i-1; }
 ///     }
-///     unreachable!();
+///     unreachable!()
 /// }
 /// ```
 #[macro_export]

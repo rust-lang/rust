@@ -1389,7 +1389,8 @@ impl<'a> StringReader<'a> {
                     Some('\'') => self.scan_byte(),
                     Some('"') => self.scan_byte_string(),
                     Some('r') => self.scan_raw_byte_string(),
-                    _ => unreachable!(),  // Should have been a token::Ident above.
+                    // Should have been a token::Ident above.
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 };
                 let suffix = self.scan_optional_raw_name();
                 Ok(token::Literal(lit, suffix))

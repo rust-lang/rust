@@ -164,7 +164,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                     {
                         let mut out_node = match out_tree.root.as_mut().force() {
                             Leaf(leaf) => leaf,
-                            Internal(_) => unreachable!(),
+                            Internal(_) => unsafe { ::core::hint::unreachable_unchecked() },
                         };
 
                         let mut in_edge = leaf.first_edge();
@@ -979,7 +979,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 // We need to steal.
                 let mut last_kv = match last_edge.left_kv() {
                     Ok(left) => left,
-                    Err(_) => unreachable!(),
+                    Err(_) => unsafe { ::core::hint::unreachable_unchecked() },
                 };
                 last_kv.bulk_steal_left(node::MIN_LEN - right_child_len);
                 last_edge = last_kv.right_edge();
@@ -1057,7 +1057,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                         break;
                     }
                     _ => {
-                        unreachable!();
+                        unsafe { ::core::hint::unreachable_unchecked() };
                     }
                 }
             }
@@ -2508,7 +2508,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         while cur_node.len() < node::CAPACITY / 2 {
             match handle_underfull_node(cur_node) {
                 AtRoot => break,
-                EmptyParent(_) => unreachable!(),
+                EmptyParent(_) => unsafe { ::core::hint::unreachable_unchecked() },
                 Merged(parent) => {
                     if parent.len() == 0 {
                         // We must be at the root

@@ -1425,7 +1425,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     move_edges(left, new_left_len + 1, right, 0, count);
                 },
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => { }
-                _ => { unreachable!(); }
+                _ => { ::core::hint::unreachable_unchecked(); }
             }
         }
     }
@@ -1486,7 +1486,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     right.correct_childrens_parent_links(0, new_right_len + 1);
                 },
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => { }
-                _ => { unreachable!(); }
+                _ => { ::core::hint::unreachable_unchecked(); }
             }
         }
     }
@@ -1571,7 +1571,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
                     move_edges(left, left_new_len + 1, right, 1, right_new_len);
                 },
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => { }
-                _ => { unreachable!(); }
+                _ => { ::core::hint::unreachable_unchecked(); }
             }
         }
     }

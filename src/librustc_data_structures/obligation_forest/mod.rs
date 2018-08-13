@@ -515,7 +515,9 @@ impl<O: ForestObligation> ObligationForest<O> {
                     node_rewrites[i] = nodes_len;
                     dead_nodes += 1;
                 }
-                NodeState::OnDfsStack | NodeState::Success => unreachable!()
+                NodeState::OnDfsStack | NodeState::Success => unsafe {
+                    ::core::hint::unreachable_unchecked()
+                }
             }
         }
 
@@ -534,7 +536,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                                  match node.state.get() {
                                      NodeState::Error => None,
                                      NodeState::Done => Some(node.obligation),
-                                     _ => unreachable!()
+                                     _ => unsafe { ::core::hint::unreachable_unchecked() }
                                  }
                              })
             .collect();

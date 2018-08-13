@@ -308,7 +308,7 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
-            BinOp::Offset => unreachable!()
+            BinOp::Offset => unsafe { ::core::hint::unreachable_unchecked() }
         }
     }
 }

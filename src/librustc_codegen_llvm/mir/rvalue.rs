@@ -583,7 +583,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 C_bool(bx.cx, match op {
                     mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
                     mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
-                    _ => unreachable!()
+                    _ => unsafe { ::std::hint::unreachable_unchecked() }
                 })
             } else if is_float {
                 bx.fcmp(
@@ -669,7 +669,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     mir::BinOp::Add => OverflowOp::Add,
                     mir::BinOp::Sub => OverflowOp::Sub,
                     mir::BinOp::Mul => OverflowOp::Mul,
-                    _ => unreachable!()
+                    _ => unsafe { ::std::hint::unreachable_unchecked() }
                 };
                 let intrinsic = get_overflow_intrinsic(oop, bx, input_ty);
                 let res = bx.call(intrinsic, &[lhs, rhs], None);
@@ -753,7 +753,7 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) ->
             TyUint(U64) => "llvm.uadd.with.overflow.i64",
             TyUint(U128) => "llvm.uadd.with.overflow.i128",
 
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         },
         OverflowOp::Sub => match new_sty {
             TyInt(I8) => "llvm.ssub.with.overflow.i8",
@@ -768,7 +768,7 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) ->
             TyUint(U64) => "llvm.usub.with.overflow.i64",
             TyUint(U128) => "llvm.usub.with.overflow.i128",
 
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         },
         OverflowOp::Mul => match new_sty {
             TyInt(I8) => "llvm.smul.with.overflow.i8",
@@ -783,7 +783,7 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) ->
             TyUint(U64) => "llvm.umul.with.overflow.i64",
             TyUint(U128) => "llvm.umul.with.overflow.i128",
 
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         },
     };
 

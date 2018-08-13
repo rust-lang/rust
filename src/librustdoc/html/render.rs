@@ -1437,7 +1437,7 @@ impl DocFolder for Cache {
                         }
                     }
                 } else {
-                    unreachable!()
+                    unsafe { ::std::hint::unreachable_unchecked() }
                 };
                 for did in dids {
                     self.impls.entry(did).or_insert(vec![]).push(Impl {
@@ -1910,7 +1910,7 @@ impl Context {
                 let m = match item.inner {
                     clean::StrippedItem(box clean::ModuleItem(m)) |
                     clean::ModuleItem(m) => m,
-                    _ => unreachable!()
+                    _ => unsafe { ::std::hint::unreachable_unchecked() }
                 };
 
                 // Render sidebar-items.js used throughout this module.
@@ -2117,7 +2117,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
             _ => {
                 // We don't generate pages for any other type.
-                unreachable!();
+                unsafe { ::std::hint::unreachable_unchecked() };
             }
         }
         if !self.item.is_primitive() && !self.item.is_keyword() {
@@ -2154,7 +2154,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
             _ => {
                 // We don't generate pages for any other type.
-                unreachable!();
+                unsafe { ::std::hint::unreachable_unchecked() };
             }
         }
     }
@@ -3289,7 +3289,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                             }
                         }
                     }
-                    _ => unreachable!()
+                    _ => unsafe { ::std::hint::unreachable_unchecked() }
                 }
                 write!(w, ",\n")?;
             }
@@ -3486,7 +3486,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     clean::StructFieldItem(ref ty) => {
                         write!(w, "{}{}", VisSpace(&field.visibility), *ty)?
                     }
-                    _ => unreachable!()
+                    _ => unsafe { ::std::hint::unreachable_unchecked() }
                 }
             }
             write!(w, ")")?;

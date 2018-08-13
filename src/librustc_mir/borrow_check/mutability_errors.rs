@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Place::Promoted(_) => unreachable!(),
+            Place::Promoted(_) => unsafe { ::core::hint::unreachable_unchecked() },
 
             Place::Static(box Static { def_id, ty: _ }) => {
                 if let Place::Static(_) = access_place {
@@ -319,7 +319,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
 
                     //
-                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
+                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unsafe {
+                        ::core::hint::unreachable_unchecked()
+                    },
 
                     ClearCrossCrate::Clear => bug!("saw cleared local state"),
                 };

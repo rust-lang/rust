@@ -100,7 +100,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
             for derive in derives {
                 match self.remove(NodeId::placeholder_from_mark(derive)) {
                     AstFragment::Items(derived_items) => items.extend(derived_items),
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 }
             }
             fragment = AstFragment::Items(items);

@@ -302,7 +302,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     items: vec![],
                 };
             },
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         };
         self.cx.trace_macros_diag();
         krate
@@ -414,7 +414,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         .expect_from_annotatables(::std::iter::once(item_with_markers));
                     self.collect_invocations(fragment, derives)
                 } else {
-                    unreachable!()
+                    unsafe { ::core::hint::unreachable_unchecked() }
                 }
             } else {
                 self.collect_invocations(invoc.fragment_kind.dummy(invoc.span()).unwrap(), &[])
@@ -554,7 +554,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                          -> Option<AstFragment> {
         let (attr, item) = match invoc.kind {
             InvocationKind::Attr { attr, item, .. } => (attr?, item),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         };
 
         if let NonMacroAttr { mark_used: false } = *ext {} else {
@@ -718,7 +718,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (mark, kind) = (invoc.expansion_data.mark, invoc.fragment_kind);
         let (mac, ident, span) = match invoc.kind {
             InvocationKind::Bang { mac, ident, span } => (mac, ident, span),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         };
         let path = &mac.node.path;
 
@@ -908,7 +908,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                            -> Option<AstFragment> {
         let (path, item) = match invoc.kind {
             InvocationKind::Derive { path, item } => (path, item),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         };
         if !item.derive_allowed() {
             return None;
@@ -1250,7 +1250,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         pat.and_then(|pat| match pat.node {
             PatKind::Mac(mac) => self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         })
     }
 
@@ -1333,7 +1333,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                             span: item.span,
                         }).make_items()
                     }
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 })
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
@@ -1481,7 +1481,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         match ty.node {
             ast::TyKind::Mac(mac) => self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 

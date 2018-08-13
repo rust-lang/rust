@@ -123,7 +123,7 @@ fn wait<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     let (wait_token, signal_token) = blocking::tokens();
     match mem::replace(&mut guard.blocker, f(signal_token)) {
         NoneBlocked => {}
-        _ => unreachable!(),
+        _ => unsafe { ::core::hint::unreachable_unchecked() },
     }
     drop(guard);         // unlock
     wait_token.wait();   // block
@@ -140,7 +140,7 @@ fn wait_timeout_receiver<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     let (wait_token, signal_token) = blocking::tokens();
     match mem::replace(&mut guard.blocker, BlockedReceiver(signal_token)) {
         NoneBlocked => {}
-        _ => unreachable!(),
+        _ => unsafe { ::core::hint::unreachable_unchecked() },
     }
     drop(guard);         // unlock
     *success = wait_token.wait_max_until(deadline);   // block
@@ -248,7 +248,7 @@ impl<T> Packet<T> {
             // transfer the data unless there's a receiver waiting.
             match mem::replace(&mut guard.blocker, NoneBlocked) {
                 NoneBlocked => Err(super::TrySendError::Full(t)),
-                BlockedSender(..) => unreachable!(),
+                BlockedSender(..) => unsafe { ::core::hint::unreachable_unchecked() },
                 BlockedReceiver(token) => {
                     guard.buf.enqueue(t);
                     wakeup(token, guard);
@@ -264,7 +264,7 @@ impl<T> Packet<T> {
             match mem::replace(&mut guard.blocker, NoneBlocked) {
                 BlockedReceiver(token) => wakeup(token, guard),
                 NoneBlocked => {}
-                BlockedSender(..) => unreachable!(),
+                BlockedSender(..) => unsafe { ::core::hint::unreachable_unchecked() },
             }
             Ok(())
         }
@@ -335,7 +335,7 @@ impl<T> Packet<T> {
         let pending_sender2 = if guard.cap == 0 && !waited {
             match mem::replace(&mut guard.blocker, NoneBlocked) {
                 NoneBlocked => None,
-                BlockedReceiver(..) => unreachable!(),
+                BlockedReceiver(..) => unsafe { ::core::hint::unreachable_unchecked() },
                 BlockedSender(token) => {
                     guard.canceled.take();
                     Some(token)
@@ -377,7 +377,7 @@ impl<T> Packet<T> {
         guard.disconnected = true;
         match mem::replace(&mut guard.blocker, NoneBlocked) {
             NoneBlocked => {}
-            BlockedSender(..) => unreachable!(),
+            BlockedSender(..) => unsafe { ::core::hint::unreachable_unchecked() },
             BlockedReceiver(token) => wakeup(token, guard),
         }
     }
@@ -409,7 +409,7 @@ impl<T> Packet<T> {
                 *guard.canceled.take().unwrap() = true;
                 Some(token)
             }
-            BlockedReceiver(..) => unreachable!(),
+            BlockedReceiver(..) => unsafe { ::core::hint::unreachable_unchecked() },
         };
         mem::drop(guard);
 
@@ -437,8 +437,8 @@ impl<T> Packet<T> {
         } else {
             match mem::replace(&mut guard.blocker, BlockedReceiver(token)) {
                 NoneBlocked => {}
-                BlockedSender(..) => unreachable!(),
-                BlockedReceiver(..) => unreachable!(),
+                BlockedSender(..) => unsafe { ::core::hint::unreachable_unchecked() },
+                BlockedReceiver(..) => unsafe { ::core::hint::unreachable_unchecked() },
             }
             Installed
         }

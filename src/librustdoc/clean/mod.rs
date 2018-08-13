@@ -174,14 +174,14 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
                     }
                 }
             }
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
 
         let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
         {
             let m = match module.inner {
                 ModuleItem(ref mut m) => m,
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             };
             m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| {
                 Item {
@@ -1500,7 +1500,9 @@ impl Clean<Generics> for hir::Generics {
             .map(|param| {
                 let param: GenericParamDef = param.clean(cx);
                 match param.kind {
-                    GenericParamDefKind::Lifetime => unreachable!(),
+                    GenericParamDefKind::Lifetime => unsafe {
+                        ::std::hint::unreachable_unchecked()
+                    },
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
                         cx.impl_trait_bounds.borrow_mut().insert(did, bounds.clone());
                     }
@@ -1985,7 +1987,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                                 BorrowedRef{ref mut type_, ..} => {
                                     **type_ = Generic(String::from("Self"))
                                 }
-                                _ => unreachable!(),
+                                _ => unsafe { ::std::hint::unreachable_unchecked() },
                             }
                         }
                     }

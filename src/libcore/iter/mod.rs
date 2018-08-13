@@ -323,6 +323,7 @@ use ops::{self, Try};
 use usize;
 use intrinsics;
 use mem;
+use super::hint;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -1177,7 +1178,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         match (self.a.next_back(), self.b.next_back()) {
             (Some(x), Some(y)) => Some((x, y)),
             (None, None) => None,
-            _ => unreachable!(),
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -2035,7 +2036,7 @@ impl<I: Iterator> Peekable<I> {
         match self.peeked {
             Some(Some(ref value)) => Some(value),
             Some(None) => None,
-            _ => unreachable!(),
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 }

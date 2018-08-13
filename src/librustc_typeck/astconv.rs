@@ -383,7 +383,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             Def::Err => {
                 FatalError.raise();
             }
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
     }
 
@@ -1386,7 +1386,7 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         if let Def::Trait(trait_did) = tr.trait_ref.path.def {
             trait_did
         } else {
-            unreachable!()
+            unsafe { ::std::hint::unreachable_unchecked() }
         }
     }).collect::<Vec<_>>();
 

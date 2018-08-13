@@ -163,7 +163,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                 self.collapse_goto_chain(target, changed);
                 *target
             }
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         };
         self.basic_blocks[*start].terminator = terminator;
 

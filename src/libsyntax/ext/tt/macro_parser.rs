@@ -752,7 +752,7 @@ pub fn parse(
                 item.idx += 1;
                 item.match_cur += 1;
             } else {
-                unreachable!()
+                unsafe { ::core::hint::unreachable_unchecked() }
             }
             cur_items.push(item);
         }

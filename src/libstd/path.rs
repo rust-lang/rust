@@ -408,7 +408,7 @@ enum State {
 ///         assert_eq!(Prefix::Disk(b'C'), prefix_component.kind());
 ///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
 ///     }
-///     _ => unreachable!(),
+///     _ => unsafe { ::core::hint::unreachable_unchecked() },
 /// }
 /// # }
 /// ```
@@ -953,7 +953,7 @@ impl<'a> Iterator for Components<'a> {
                 State::Body => {
                     self.front = State::Done;
                 }
-                State::Done => unreachable!(),
+                State::Done => unsafe { ::core::hint::unreachable_unchecked() },
             }
         }
         None
@@ -1000,7 +1000,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     self.back = State::Done;
                     return None;
                 }
-                State::Done => unreachable!(),
+                State::Done => unsafe { ::core::hint::unreachable_unchecked() },
             }
         }
         None

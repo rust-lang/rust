@@ -1731,7 +1731,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                         return Ok(res);
                     },
                     Some(c) => res.push(c),
-                    None => unreachable!()
+                    None => unsafe { ::std::hint::unreachable_unchecked() }
                 }
             }
         }

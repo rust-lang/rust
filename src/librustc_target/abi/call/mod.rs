@@ -377,7 +377,7 @@ impl<'a, Ty> ArgType<'a, Ty> {
             PassMode::Indirect(ref mut attrs) => {
                 attrs.set(ArgAttribute::ByVal);
             }
-            _ => unreachable!()
+            _ => unsafe { ::std::hint::unreachable_unchecked() }
         }
     }
 

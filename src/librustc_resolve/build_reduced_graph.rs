@@ -279,7 +279,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         let crate_root = self.resolve_crate_root(source);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
-                            ModuleKind::Block(..) => unreachable!(),
+                            ModuleKind::Block(..) => unsafe {
+                                ::std::hint::unreachable_unchecked()
+                            },
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
@@ -619,7 +621,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.current_module = module;
             }
 
-            ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
+            ItemKind::MacroDef(..) | ItemKind::Mac(_) => unsafe {
+                ::std::hint::unreachable_unchecked()
+            },
         }
     }
 
@@ -658,7 +662,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             ForeignItemKind::Ty => {
                 (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
-            ForeignItemKind::Macro(_) => unreachable!(),
+            ForeignItemKind::Macro(_) => unsafe { ::std::hint::unreachable_unchecked() },
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);

@@ -136,8 +136,10 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                 profq_msgs.push(msg.clone());
                 // Respond to the message, knowing that we've already handled Halt and Dump, above.
                 match (frame.parse_st.clone(), msg) {
-                    (_,ProfileQueriesMsg::Halt) => unreachable!(),
-                    (_,ProfileQueriesMsg::Dump(_)) => unreachable!(),
+                    (_,ProfileQueriesMsg::Halt) => unsafe { ::std::hint::unreachable_unchecked() },
+                    (_,ProfileQueriesMsg::Dump(_)) => unsafe {
+                        ::std::hint::unreachable_unchecked()
+                    },
 
                     // Parse State: Clear
                     (ParseState::Clear,
@@ -304,10 +306,10 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     },
 
                     (ParseState::HaveTimeBegin(_, _), _) => {
-                        unreachable!()
+                        unsafe { ::std::hint::unreachable_unchecked() }
                     },
                     (ParseState::HaveTaskBegin(_, _), _) => {
-                        unreachable!()
+                        unsafe { ::std::hint::unreachable_unchecked() }
                     },
                 }
 

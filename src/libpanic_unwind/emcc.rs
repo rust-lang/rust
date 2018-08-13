@@ -46,7 +46,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     ptr::write(exception, data);
     __cxa_throw(exception as *mut _, ptr::null_mut(), ptr::null_mut());
 
-    unreachable!()
+    unsafe { ::core::hint::unreachable_unchecked() }
 }
 
 #[lang = "eh_personality"]

@@ -717,7 +717,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
         match Self::new_uninitialized_internal(capacity, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::AllocErr) => ::core::hint::unreachable_unchecked(),
             Ok(table) => { table }
         }
     }
@@ -758,7 +758,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::new_internal(capacity, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::AllocErr) => unsafe { ::core::hint::unreachable_unchecked() },
             Ok(table) => { table }
         }
     }

@@ -399,7 +399,7 @@ fn test_iter_ref_consistency() {
         let v : &[T] = &[x, x, x];
         let v_ptrs : [*const T; 3] = match v {
             [ref v1, ref v2, ref v3] => [v1 as *const _, v2 as *const _, v3 as *const _],
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         };
         let len = v.len();
 
@@ -455,7 +455,7 @@ fn test_iter_ref_consistency() {
         let v_ptrs : [*mut T; 3] = match v {
             [ref v1, ref v2, ref v3] =>
               [v1 as *const _ as *mut _, v2 as *const _ as *mut _, v3 as *const _ as *mut _],
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         };
         let len = v.len();
 

@@ -38,7 +38,7 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
                 ty::TyStr => Def::PrimTy(hir::TyStr),
                 ty::TyBool => Def::PrimTy(hir::TyBool),
                 ty::TyChar => Def::PrimTy(hir::TyChar),
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             }
         }),
         _ => {

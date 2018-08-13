@@ -162,7 +162,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                         where_predicates: Vec::new(),
                     }
                 }
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             };
             let real_name = name.map(|name| Ident::from_str(&name));
             let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, &generics);

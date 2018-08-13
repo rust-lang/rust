@@ -421,7 +421,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Exact) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(AllocErr) => unsafe { ::core::hint::unreachable_unchecked() },
             Ok(()) => { /* yay */ }
          }
      }
@@ -501,7 +501,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Amortized) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(AllocErr) => unsafe { ::core::hint::unreachable_unchecked() },
             Ok(()) => { /* yay */ }
         }
     }

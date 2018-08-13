@@ -3786,7 +3786,9 @@ impl<'a> LoweringContext<'a> {
                     (&None, &Some(..), HalfOpen) => "RangeTo",
                     (&Some(..), &Some(..), HalfOpen) => "Range",
                     (&None, &Some(..), Closed) => "RangeToInclusive",
-                    (&Some(..), &Some(..), Closed) => unreachable!(),
+                    (&Some(..), &Some(..), Closed) => unsafe {
+                        ::core::hint::unreachable_unchecked()
+                    },
                     (_, &None, Closed) => self.diagnostic()
                         .span_fatal(e.span, "inclusive range with no end")
                         .raise(),

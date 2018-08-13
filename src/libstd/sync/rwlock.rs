@@ -224,7 +224,7 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// match lock.try_read() {
     ///     Ok(n) => assert_eq!(*n, 1),
-    ///     Err(_) => unreachable!(),
+    ///     Err(_) => unsafe { ::core::hint::unreachable_unchecked() },
     /// };
     /// ```
     #[inline]

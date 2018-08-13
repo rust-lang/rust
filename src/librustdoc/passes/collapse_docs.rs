@@ -76,7 +76,7 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
                             doc_string.push_str(frag.as_str());
                             *span = span.to(frag.span());
                         }
-                    _ => unreachable!(),
+                    _ => unsafe { ::std::hint::unreachable_unchecked() },
                 }
                 last_frag = Some(curr_frag);
             }

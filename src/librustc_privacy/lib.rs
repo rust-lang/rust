@@ -383,7 +383,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             {
                 module
             } else {
-                unreachable!()
+                unsafe { ::std::hint::unreachable_unchecked() }
             };
             for id in &module.item_ids {
                 self.update(id.id, level);

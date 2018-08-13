@@ -943,7 +943,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                             kind: StatementKind::StorageDead(index)
                         });
                     }
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 }
             }
         }

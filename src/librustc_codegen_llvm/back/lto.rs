@@ -201,7 +201,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
             }
             thin_lto(&diag_handler, modules, upstream_modules, &arr, timeline)
         }
-        Lto::No => unreachable!(),
+        Lto::No => unsafe { ::std::hint::unreachable_unchecked() },
     }
 }
 

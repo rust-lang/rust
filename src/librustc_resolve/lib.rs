@@ -1613,7 +1613,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 _ => {}
             },
             PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
-            PathResult::Indeterminate => unreachable!(),
+            PathResult::Indeterminate => unsafe { ::std::hint::unreachable_unchecked() },
             PathResult::Failed(span, msg, _) => {
                 error_callback(self, span, ResolutionError::FailedToResolve(&msg));
             }

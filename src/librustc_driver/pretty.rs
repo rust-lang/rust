@@ -965,7 +965,7 @@ pub fn print_after_parsing(sess: &Session,
             })
             .unwrap()
     } else {
-        unreachable!();
+        unsafe { ::std::hint::unreachable_unchecked() };
     };
 
     write_output(out, ofile);
@@ -1116,7 +1116,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 })
             }
 
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
         .unwrap();
 
@@ -1168,13 +1168,13 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                     match ppm {
                         PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
                         PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),
-                        _ => unreachable!(),
+                        _ => unsafe { ::std::hint::unreachable_unchecked() },
                     }?;
                 } else {
                     match ppm {
                         PpmMir => write_mir_pretty(tcx, None, &mut out),
                         PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
-                        _ => unreachable!(),
+                        _ => unsafe { ::std::hint::unreachable_unchecked() },
                     }?;
                 }
                 Ok(())
@@ -1204,7 +1204,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                     }
                 }
             }
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
     }),
                  sess)

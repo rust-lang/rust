@@ -392,7 +392,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                         }
                     }
                 }
-                _ => unreachable!()
+                _ => unsafe { ::core::hint::unreachable_unchecked() }
             }
         } else {
             span_err!(diagnostic, attr.span(), E0548, "incorrect stability attribute type");

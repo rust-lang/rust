@@ -18,7 +18,7 @@ use core::{mem, ptr};
 // Signal restorer
 extern "C" fn restorer() -> ! {
     sigreturn().unwrap();
-    unreachable!();
+    unsafe { ::core::hint::unreachable_unchecked() };
 }
 
 /// Set the end of the process's heap

@@ -104,7 +104,7 @@ impl DefIndex {
         match self.0 & 1 {
             0 => DefIndexAddressSpace::Low,
             1 => DefIndexAddressSpace::High,
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         }
     }
 

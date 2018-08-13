@@ -821,7 +821,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let impl_m = tcx.hir.impl_item(hir::ImplItemId { node_id: impl_m });
                         let input_tys = match impl_m.node {
                             hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
-                            _ => unreachable!(),
+                            _ => unsafe { ::std::hint::unreachable_unchecked() },
                         };
                         struct Visitor(Option<Span>, hir::def_id::DefId);
                         impl<'v> hir::intravisit::Visitor<'v> for Visitor {
@@ -881,7 +881,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         Some(())
                     })();
                 },
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             }
             err.emit();
             error_found = true;

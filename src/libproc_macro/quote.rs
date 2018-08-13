@@ -128,7 +128,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                         lit.set_span((@ quote_span(tt.span())));
                         lit
                     } else {
-                        unreachable!()
+                        unsafe { ::std::hint::unreachable_unchecked() }
                     }
                 }))
             })),))

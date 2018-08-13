@@ -1756,7 +1756,7 @@ impl<S: Semantics> IeeeFloat<S> {
                             1..=7 => Loss::LessThanHalf,
                             8 => Loss::ExactlyHalf,
                             9..=15 => Loss::MoreThanHalf,
-                            _ => unreachable!(),
+                            _ => unsafe { ::std::hint::unreachable_unchecked() },
                         });
                     }
                 }

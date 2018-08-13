@@ -171,7 +171,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
                 match (current, candidate) {
                     (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
-                    (_, ParamEnv(..)) => { unreachable!(); }
+                    (_, ParamEnv(..)) => { unsafe { ::core::hint::unreachable_unchecked() }; }
                     (_, _) => convert_to_ambiguous = (),
                 }
             }

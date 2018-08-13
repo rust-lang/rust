@@ -334,7 +334,7 @@ impl<T> Packet<T> {
                             mpsc::Data(t) => Ok(t),
                             mpsc::Empty => Err(Disconnected),
                             // with no senders, an inconsistency is impossible.
-                            mpsc::Inconsistent => unreachable!(),
+                            mpsc::Inconsistent => unsafe { ::core::hint::unreachable_unchecked() },
                         }
                     }
                 }
