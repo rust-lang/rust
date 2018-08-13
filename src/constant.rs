@@ -6,13 +6,14 @@ use rustc_mir::interpret::{CompileTimeEvaluator, Memory};
 
 #[derive(Default)]
 pub struct ConstantCx {
-    constants: HashMap<AllocId, DataId>,
+    todo_allocs: HashSet<AllocId>,
     done: HashSet<DataId>,
 }
 
 impl ConstantCx {
-    pub fn finalize<B: Backend>(mut self, module: &mut Module<B>) {
-        println!("constants {:?}", self.constants);
+    pub fn finalize<'a, 'tcx: 'a, B: Backend>(mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<B>) {
+        println!("todo allocs: {:?}", self.todo_allocs);
+        define_all_allocs(tcx, module, &mut self);
         println!("done {:?}", self.done);
         for data_id in self.done.drain() {
             module.finalize_data(data_id);
@@ -111,7 +112,6 @@ fn trans_const_place<'a, 'tcx: 'a>(
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
     let data_id = get_global_for_alloc_id(
-        fx.tcx,
         fx.module,
         fx.constants,
         alloc_id,
@@ -127,43 +127,41 @@ fn define_global_for_alloc_id<'a, 'tcx: 'a, B: Backend>(
     module: &mut Module<B>,
     cx: &mut ConstantCx,
     alloc_id: AllocId,
-    todo: &mut HashSet<AllocId>,
 ) -> DataId {
-    *cx.constants.entry(alloc_id).or_insert_with(|| {
-        let data_id = module
-            .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
-            .unwrap();
-        todo.insert(alloc_id);
-        data_id
-    })
+    module
+        .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
+        .unwrap()
 }
 
 fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<B>,
     cx: &mut ConstantCx,
     alloc_id: AllocId,
 ) -> DataId {
-    if let Some(data_id) = cx.constants.get(&alloc_id) {
-        return *data_id;
-    }
+    cx.todo_allocs.insert(alloc_id);
+    let data_id = define_global_for_alloc_id(module, cx, alloc_id);
+    data_id
+}
 
+fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a> (
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<B>,
+    cx: &mut ConstantCx,
+) {
     let memory = Memory::<CompileTimeEvaluator>::new(tcx.at(DUMMY_SP), ());
-
-    let mut todo = HashSet::new();
-    todo.insert(alloc_id);
 
     loop {
         let alloc_id = {
-            if let Some(alloc_id) = todo.iter().next().map(|alloc_id| *alloc_id) {
-                todo.remove(&alloc_id);
+            if let Some(alloc_id) = cx.todo_allocs.iter().next().map(|alloc_id| *alloc_id) {
+                cx.todo_allocs.remove(&alloc_id);
                 alloc_id
             } else {
                 break;
             }
         };
 
-        let data_id = define_global_for_alloc_id(module, cx, alloc_id, &mut todo);
+        let data_id = define_global_for_alloc_id(module, cx, alloc_id);
+        println!("alloc_id {} data_id {}", alloc_id, data_id);
         if cx.done.contains(&data_id) {
             continue;
         }
@@ -178,7 +176,8 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
         );
 
         for &(offset, reloc) in alloc.relocations.iter() {
-            let data_id = define_global_for_alloc_id(module, cx, reloc, &mut todo);
+            cx.todo_allocs.insert(reloc);
+            let data_id = define_global_for_alloc_id(module, cx, reloc);
 
             let reloc_offset = {
                 let endianness = memory.endianness();
@@ -188,7 +187,6 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
                 read_target_uint(endianness, bytes).unwrap()
             };
 
-            // TODO: is this a correct usage of the api
             let global_value = module.declare_data_in_data(data_id, &mut data_ctx);
             data_ctx.write_data_addr(reloc_offset as u32, global_value, 0);
         }
@@ -196,5 +194,6 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
         module.define_data(data_id, &data_ctx).unwrap();
         cx.done.insert(data_id);
     }
-    *cx.constants.get(&alloc_id).unwrap()
+
+    assert!(cx.todo_allocs.is_empty(), "{:?}", cx.todo_allocs);
 }

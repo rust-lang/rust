@@ -281,7 +281,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 }
             }
 
-            cx.constants.finalize(&mut cx.module);
+            cx.constants.finalize(tcx, &mut cx.module);
 
             let after = ::std::time::Instant::now();
             println!("time: {:?}", after - before);
