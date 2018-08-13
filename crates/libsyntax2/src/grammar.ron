@@ -218,17 +218,17 @@ Grammar(
     ast: {
         "File": (
             collections: [
-                ["functions", "Function"]
+                ["functions", "FnDef"]
             ]
         ),
-        "Function": ( traits: ["NameOwner"] ),
-        "Struct": ( traits: ["NameOwner"] ),
-        "Enum": ( traits: ["NameOwner"] ),
-        "Trait": ( traits: ["NameOwner"] ),
+        "FnDef": ( traits: ["NameOwner"] ),
+        "StructDef": ( traits: ["NameOwner"] ),
+        "EnumDef": ( traits: ["NameOwner"] ),
+        "TraitDef": ( traits: ["NameOwner"] ),
         "Module": ( traits: ["NameOwner"] ),
-        "ConstItem": ( traits: ["NameOwner"] ),
-        "StaticItem": ( traits: ["NameOwner"] ),
-        "TypeItem": ( traits: ["NameOwner"] ),
+        "ConstDef": ( traits: ["NameOwner"] ),
+        "StaticDef": ( traits: ["NameOwner"] ),
+        "TypeDef": ( traits: ["NameOwner"] ),
         "Name": (),
         "NameRef": (),
     },

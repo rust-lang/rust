@@ -59,13 +59,13 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
     }
 
     visitor()
-        .visit(decl::<ast::Function<_>>)
-        .visit(decl::<ast::Struct<_>>)
-        .visit(decl::<ast::Enum<_>>)
-        .visit(decl::<ast::Trait<_>>)
+        .visit(decl::<ast::FnDef<_>>)
+        .visit(decl::<ast::StructDef<_>>)
+        .visit(decl::<ast::EnumDef<_>>)
+        .visit(decl::<ast::TraitDef<_>>)
         .visit(decl::<ast::Module<_>>)
-        .visit(decl::<ast::TypeItem<_>>)
-        .visit(decl::<ast::ConstItem<_>>)
-        .visit(decl::<ast::StaticItem<_>>)
+        .visit(decl::<ast::TypeDef<_>>)
+        .visit(decl::<ast::ConstDef<_>>)
+        .visit(decl::<ast::StaticDef<_>>)
         .accept(node)?
 }

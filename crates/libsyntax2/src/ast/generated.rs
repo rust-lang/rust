@@ -5,43 +5,43 @@ use {
     SyntaxKind::*,
 };
 
-// ConstItem
+// ConstDef
 #[derive(Debug, Clone, Copy)]
-pub struct ConstItem<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ConstDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ConstItem<R> {
+impl<R: TreeRoot> AstNode<R> for ConstDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            CONST_DEF => Some(ConstItem { syntax }),
+            CONST_DEF => Some(ConstDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for ConstItem<R> {}
-impl<R: TreeRoot> ConstItem<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for ConstDef<R> {}
+impl<R: TreeRoot> ConstDef<R> {}
 
-// Enum
+// EnumDef
 #[derive(Debug, Clone, Copy)]
-pub struct Enum<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct EnumDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Enum<R> {
+impl<R: TreeRoot> AstNode<R> for EnumDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            ENUM_DEF => Some(Enum { syntax }),
+            ENUM_DEF => Some(EnumDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for Enum<R> {}
-impl<R: TreeRoot> Enum<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for EnumDef<R> {}
+impl<R: TreeRoot> EnumDef<R> {}
 
 // File
 #[derive(Debug, Clone, Copy)]
@@ -60,31 +60,31 @@ impl<R: TreeRoot> AstNode<R> for File<R> {
 }
 
 impl<R: TreeRoot> File<R> {
-    pub fn functions<'a>(&'a self) -> impl Iterator<Item = Function<R>> + 'a {
+    pub fn functions<'a>(&'a self) -> impl Iterator<Item = FnDef<R>> + 'a {
         self.syntax()
             .children()
-            .filter_map(Function::cast)
+            .filter_map(FnDef::cast)
     }
 }
 
-// Function
+// FnDef
 #[derive(Debug, Clone, Copy)]
-pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct FnDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Function<R> {
+impl<R: TreeRoot> AstNode<R> for FnDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            FN_DEF => Some(Function { syntax }),
+            FN_DEF => Some(FnDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for Function<R> {}
-impl<R: TreeRoot> Function<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for FnDef<R> {}
+impl<R: TreeRoot> FnDef<R> {}
 
 // Module
 #[derive(Debug, Clone, Copy)]
@@ -141,79 +141,79 @@ impl<R: TreeRoot> AstNode<R> for NameRef<R> {
 
 impl<R: TreeRoot> NameRef<R> {}
 
-// StaticItem
+// StaticDef
 #[derive(Debug, Clone, Copy)]
-pub struct StaticItem<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct StaticDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for StaticItem<R> {
+impl<R: TreeRoot> AstNode<R> for StaticDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            STATIC_DEF => Some(StaticItem { syntax }),
+            STATIC_DEF => Some(StaticDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for StaticItem<R> {}
-impl<R: TreeRoot> StaticItem<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for StaticDef<R> {}
+impl<R: TreeRoot> StaticDef<R> {}
 
-// Struct
+// StructDef
 #[derive(Debug, Clone, Copy)]
-pub struct Struct<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct StructDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Struct<R> {
+impl<R: TreeRoot> AstNode<R> for StructDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            STRUCT_DEF => Some(Struct { syntax }),
+            STRUCT_DEF => Some(StructDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for Struct<R> {}
-impl<R: TreeRoot> Struct<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for StructDef<R> {}
+impl<R: TreeRoot> StructDef<R> {}
 
-// Trait
+// TraitDef
 #[derive(Debug, Clone, Copy)]
-pub struct Trait<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TraitDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Trait<R> {
+impl<R: TreeRoot> AstNode<R> for TraitDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            TRAIT_DEF => Some(Trait { syntax }),
+            TRAIT_DEF => Some(TraitDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for Trait<R> {}
-impl<R: TreeRoot> Trait<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for TraitDef<R> {}
+impl<R: TreeRoot> TraitDef<R> {}
 
-// TypeItem
+// TypeDef
 #[derive(Debug, Clone, Copy)]
-pub struct TypeItem<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TypeDef<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
 }
 
-impl<R: TreeRoot> AstNode<R> for TypeItem<R> {
+impl<R: TreeRoot> AstNode<R> for TypeDef<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            TYPE_DEF => Some(TypeItem { syntax }),
+            TYPE_DEF => Some(TypeDef { syntax }),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for TypeItem<R> {}
-impl<R: TreeRoot> TypeItem<R> {}
+impl<R: TreeRoot> ast::NameOwner<R> for TypeDef<R> {}
+impl<R: TreeRoot> TypeDef<R> {}
 

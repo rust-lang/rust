@@ -36,7 +36,7 @@ impl<R: TreeRoot> File<R> {
     }
 }
 
-impl<R: TreeRoot> Function<R> {
+impl<R: TreeRoot> FnDef<R> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.syntax()
             .children()
