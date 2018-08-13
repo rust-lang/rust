@@ -49,6 +49,30 @@ impl<'a> PartialEq<SmolStr> for &'a str {
     }
 }
 
+impl PartialEq<String> for SmolStr {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<SmolStr> for String {
+    fn eq(&self, other: &SmolStr) -> bool {
+        other == self
+    }
+}
+
+impl<'a> PartialEq<&'a String> for SmolStr {
+    fn eq(&self, other: &&'a String) -> bool {
+        self == *other
+    }
+}
+
+impl<'a> PartialEq<SmolStr> for &'a String {
+    fn eq(&self, other: &SmolStr) -> bool {
+        *self == other
+    }
+}
+
 impl fmt::Debug for SmolStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.as_str(), f)

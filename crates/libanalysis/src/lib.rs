@@ -21,7 +21,8 @@ use std::{
 use libsyntax2::ast;
 use libeditor::{LineIndex, FileSymbol};
 
-use self::symbol_index::{FileSymbols, Query};
+use self::symbol_index::{FileSymbols};
+pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
@@ -89,14 +90,13 @@ impl World {
         Ok(index.clone())
     }
 
-    pub fn world_symbols<'a>(&'a self, query: &str) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a
+    pub fn world_symbols<'a>(&'a self, query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a
     {
-        let q = Query::new(query);
         self.data.file_map.iter()
             .flat_map(move |(path, data)| {
                 let path: &'a Path = path.as_path();
                 let symbols = data.symbols(path);
-                q.process(symbols).map(move |s| (path, s))
+                query.process(symbols).map(move |s| (path, s))
             })
     }
 

@@ -5,7 +5,7 @@ use languageserver_types::{
     Command, TextDocumentIdentifier, WorkspaceEdit,
     SymbolInformation, Location,
 };
-use libanalysis::{World};
+use libanalysis::{World, Query};
 use libeditor;
 use libsyntax2::TextUnit;
 use serde_json::{to_value, from_value};
@@ -100,7 +100,20 @@ pub fn handle_workspace_symbol(
     params: req::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let mut acc = Vec::new();
-    for (path, symbol) in world.world_symbols(&params.query).take(128) {
+
+    let query = {
+        let all_symbols = params.query.contains("#");
+        let query: String = params.query.chars()
+            .filter(|&c| c != '#')
+            .collect();
+        let mut q = Query::new(query);
+        if !all_symbols {
+            q.only_types();
+        }
+        q
+    };
+
+    for (path, symbol) in world.world_symbols(query).take(128) {
         let line_index = world.file_line_index(path)?;
 
         let info = SymbolInformation {

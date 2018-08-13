@@ -3,7 +3,7 @@ use libsyntax2::{
     ast,
     SyntaxKind::{self, *},
 };
-use fst::{self, IntoStreamer};
+use fst::{self, IntoStreamer, Streamer};
 
 #[derive(Debug)]
 pub(crate) struct FileSymbols {
@@ -30,19 +30,30 @@ impl FileSymbols {
     }
 }
 
-pub(crate) struct Query {
+pub struct Query {
     query: String,
-    all_symbols: bool,
+    lowercased: String,
+    only_types: bool,
+    exact: bool,
 }
 
 impl Query {
-    pub(crate) fn new(query: &str) -> Query {
-        let all_symbols = query.contains("#");
-        let query: String = query.chars()
-            .filter(|&c| c != '#')
-            .flat_map(char::to_lowercase)
-            .collect();
-        Query { query, all_symbols }
+    pub fn new(query: String) -> Query {
+        let lowercased = query.to_lowercase();
+        Query {
+            query,
+            lowercased,
+            only_types: false,
+            exact: false,
+        }
+    }
+
+    pub fn only_types(&mut self) {
+        self.only_types = true;
+    }
+
+    pub fn exact(&mut self) {
+        self.exact = true;
     }
 
     pub(crate) fn process<'a>(
@@ -55,16 +66,21 @@ impl Query {
                 _ => false,
             }
         }
-        let automaton = fst::automaton::Subsequence::new(&self.query);
-        let all_symbols = self.all_symbols;
-        file.map.search(automaton).into_stream()
-            .into_values()
-            .into_iter()
-            .map(move |idx| {
-                let idx = idx as usize;
-                &file.symbols[idx]
-            })
-            .filter(move |s| all_symbols || is_type(s.kind))
+        let automaton = fst::automaton::Subsequence::new(&self.lowercased);
+        let mut stream = file.map.search(automaton).into_stream();
+        let mut res = Vec::new();
+        while let Some((_, idx)) = stream.next() {
+            let idx = idx as usize;
+            let symbol = &file.symbols[idx];
+            if self.only_types && !is_type(symbol.kind) {
+                continue;
+            }
+            if self.exact && symbol.name != self.query {
+                continue;
+            }
+            res.push(symbol)
+        }
+        res.into_iter()
     }
 }
 
