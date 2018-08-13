@@ -38,13 +38,13 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(
 
     // compute the post order index (rank) for each node
     let mut post_order_rank: IndexVec<G::Node, usize> =
-        IndexVec::from_elem_n(usize::default(), graph.num_nodes());
+        (0..graph.num_nodes()).map(|_| 0).collect();
     for (index, node) in rpo.iter().rev().cloned().enumerate() {
         post_order_rank[node] = index;
     }
 
     let mut immediate_dominators: IndexVec<G::Node, Option<G::Node>> =
-        IndexVec::from_elem_n(Option::default(), graph.num_nodes());
+        (0..graph.num_nodes()).map(|_| None).collect();
     immediate_dominators[start_node] = Some(start_node);
 
     let mut changed = true;
