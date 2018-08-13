@@ -526,14 +526,12 @@ LL |         &mut Either::One(_t) => (),
 LL |         &mut Either::Two(_t) => (),
    |                          -- ... and here
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:233:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:236:26
-   |
+...
 LL |         &mut Either::Two(_t) => (),
    |                          ^^
 help: consider removing the `&mut`
@@ -825,16 +823,11 @@ LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
    |         |   data moved here
    |         help: consider removing the `&`: `(X(_t), X(_u))`
    |
-note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:347:13
    |
 LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
-   |             ^^
-note: move occurs because `_u` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:347:20
-   |
-LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
-   |                    ^^
+   |             ^^     ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:351:50
@@ -846,16 +839,11 @@ LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { 
    |            |             data moved here
    |            help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:351:26
    |
 LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |                          ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:351:43
-   |
-LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |                                           ^^
+   |                          ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:355:53
@@ -867,16 +855,11 @@ LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone())
    |               |             data moved here
    |               help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:355:29
    |
 LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |                             ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:355:46
-   |
-LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |                                              ^^
+   |                             ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:359:11
@@ -892,26 +875,14 @@ LL |         &(Either::One(_t), Either::Two(_u)) => (),
 LL |         &(Either::Two(_t), Either::One(_u)) => (),
    |                       -- ... and here  -- ... and here
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:361:23
    |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                       ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:361:40
-   |
-LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                                        ^^
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:364:23
-   |
+   |                       ^^               ^^
+...
 LL |         &(Either::Two(_t), Either::One(_u)) => (),
-   |                       ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:364:40
-   |
-LL |         &(Either::Two(_t), Either::One(_u)) => (),
-   |                                        ^^
+   |                       ^^               ^^
 help: consider removing the `&`
    |
 LL |         (Either::One(_t), Either::Two(_u)) => (),
@@ -934,16 +905,11 @@ LL |         &(Either::One(_t), Either::Two(_u))
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:371:23
    |
 LL |         &(Either::One(_t), Either::Two(_u))
-   |                       ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:371:40
-   |
-LL |         &(Either::One(_t), Either::Two(_u))
-   |                                        ^^
+   |                       ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:378:11
@@ -958,16 +924,11 @@ LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:380:23
    |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                       ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:380:40
-   |
-LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                                        ^^
+   |                       ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:386:11
@@ -982,16 +943,11 @@ LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:388:23
    |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                       ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:388:40
-   |
-LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                                        ^^
+   |                       ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:399:31
@@ -1003,16 +959,11 @@ LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
    |         |       data moved here
    |         help: consider removing the `&mut`: `(X(_t), X(_u))`
    |
-note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:399:17
    |
 LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
-   |                 ^^
-note: move occurs because `_u` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:399:24
-   |
-LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
-   |                        ^^
+   |                 ^^     ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:403:54
@@ -1024,16 +975,11 @@ LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.c
    |            |                 data moved here
    |            help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:403:30
    |
 LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |                              ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:403:47
-   |
-LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |                                               ^^
+   |                              ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:407:57
@@ -1045,16 +991,11 @@ LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), e
    |               |                 data moved here
    |               help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:407:33
    |
 LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |                                 ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:407:50
-   |
-LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |                                                  ^^
+   |                                 ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:411:11
@@ -1070,26 +1011,14 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
 LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
    |                           -- ... and here  -- ... and here
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:413:27
    |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:413:44
-   |
-LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                                            ^^
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:416:27
-   |
+   |                           ^^               ^^
+...
 LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:416:44
-   |
-LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
-   |                                            ^^
+   |                           ^^               ^^
 help: consider removing the `&mut`
    |
 LL |         (Either::One(_t), Either::Two(_u)) => (),
@@ -1112,16 +1041,11 @@ LL |         &mut (Either::One(_t), Either::Two(_u))
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:423:27
    |
 LL |         &mut (Either::One(_t), Either::Two(_u))
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:423:44
-   |
-LL |         &mut (Either::One(_t), Either::Two(_u))
-   |                                            ^^
+   |                           ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:430:11
@@ -1136,16 +1060,11 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:432:27
    |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:432:44
-   |
-LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                                            ^^
+   |                           ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:438:11
@@ -1160,16 +1079,11 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:440:27
    |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:440:44
-   |
-LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                                            ^^
+   |                           ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:446:11
@@ -1184,16 +1098,11 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
-note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:448:27
    |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                           ^^
-note: move occurs because `_u` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:448:44
-   |
-LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                                            ^^
+   |                           ^^               ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:214:11
@@ -1238,16 +1147,11 @@ LL |     fn f3(&(X(_t), X(_u)): &(X, X)) { }
    |           cannot move out of borrowed content
    |           help: consider removing the `&`: `(X(_t), X(_u))`
    |
-note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:394:15
    |
 LL |     fn f3(&(X(_t), X(_u)): &(X, X)) { }
-   |               ^^
-note: move occurs because `_u` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:394:22
-   |
-LL |     fn f3(&(X(_t), X(_u)): &(X, X)) { }
-   |                      ^^
+   |               ^^     ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/dont-suggest-ref.rs:454:11
@@ -1260,16 +1164,11 @@ LL |     fn f4(&mut (X(_t), X(_u)): &mut (X, X)) { }
    |           cannot move out of borrowed content
    |           help: consider removing the `&mut`: `(X(_t), X(_u))`
    |
-note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:454:19
    |
 LL |     fn f4(&mut (X(_t), X(_u)): &mut (X, X)) { }
-   |                   ^^
-note: move occurs because `_u` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:454:26
-   |
-LL |     fn f4(&mut (X(_t), X(_u)): &mut (X, X)) { }
-   |                          ^^
+   |                   ^^     ^^
 
 error: aborting due to 67 previous errors
 

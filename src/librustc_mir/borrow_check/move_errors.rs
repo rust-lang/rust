@@ -380,8 +380,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // FIXME: Move the loop outside this method and add_move_error_labels()
-    // so they can share it.
     fn add_move_error_suggestions(
         &self,
         err: &mut DiagnosticBuilder<'a>,
@@ -433,6 +431,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
     ) {
+        let mut noncopy_var_spans = Vec::new();
         for (j, local) in binds_to.into_iter().enumerate() {
             let bind_to = &self.mir.local_decls[*local];
             let binding_span = bind_to.source_info.span;
@@ -443,14 +442,26 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(binding_span, format!("... and here"));
             }
 
+            if binds_to.len() == 1 {
+                err.span_note(
+                    binding_span,
+                    &format!(
+                        "move occurs because `{}` has type `{}`, \
+                            which does not implement the `Copy` trait",
+                        bind_to.name.unwrap(),
+                        bind_to.ty
+                    ),
+                );
+            } else {
+                noncopy_var_spans.push(binding_span);
+            }
+        }
+
+        if binds_to.len() > 1 {
             err.span_note(
-                binding_span,
-                &format!(
-                    "move occurs because `{}` has type `{}`, \
-                        which does not implement the `Copy` trait",
-                    bind_to.name.unwrap(),
-                    bind_to.ty
-                ),
+                noncopy_var_spans,
+                "move occurs because these variables have types that \
+                    don't implement the `Copy` trait",
             );
         }
     }
