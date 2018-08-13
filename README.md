@@ -5,34 +5,15 @@ An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as part of my work for the
 undergraduate research course at the [University of Saskatchewan][usask].
 
-## Installing Rust
-
-I recommend that you install [rustup][rustup] and then use it to install the
-current Rust nightly version:
-
-```sh
-rustup update nightly
-```
-
-You should also make `nightly` the default version for your Miri directory by
-running the following command while you're in it. If you don't do this, you can
-run the later `cargo` commands by using `cargo +nightly` instead.
-
-```sh
-rustup override add nightly
-```
-
 ## Building Miri
+
+I recommend that you install [rustup][rustup] to obtain Rust.  miri comes with a
+`rust-toolchain` file so rustup will automatically pick a suitable nightly
+version.  Then all you have to do is:
 
 ```sh
 cargo build
 ```
-
-If Miri fails to build, it's likely because a change in the latest nightly
-compiler broke it. You could try an older nightly with `rustup update
-nightly-<date>` where `<date>` is a few days or weeks ago, e.g. `2016-05-20` for
-May 20th. Otherwise, you could notify me in an issue or on IRC. Or, if you know
-how to fix it, you could send a PR. :smile:
 
 ## Running tests
 
