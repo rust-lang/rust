@@ -58,6 +58,8 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 impl Mutex {
     pub const fn new() -> Mutex {
         Mutex {
+            // This works because SRWLOCK_INIT is a NULL pointer, so we are also properly
+            // initializing an SRWLOCK here.
             lock: AtomicUsize::new(0),
             held: UnsafeCell::new(false),
         }
