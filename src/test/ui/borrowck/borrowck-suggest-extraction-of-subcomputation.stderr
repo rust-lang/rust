@@ -1,0 +1,11 @@
+error[E0502]: cannot borrow `buckets` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-suggest-extraction-of-subcomputation.rs:25:70
+   |
+LL |     buckets.slice_mut()[(key as usize).wrapping_add(22).wrapping_rem(buckets.sweep())] = 22;
+   |     -------                                                          ^^^^^^^         - mutable borrow ends here
+   |     |                                                                |
+   |     mutable borrow occurs here                                       immutable borrow occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.
