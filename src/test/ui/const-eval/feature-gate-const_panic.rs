@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static S : u64 = { { panic!("foo"); 0 } };
-//~^ ERROR panicking in statics is unstable
+fn main() {}
 
-fn main() {
-    println!("{:?}", S);
-}
+const Z: () = panic!("cheese");
+//~^ ERROR panicking in constants is unstable
+
+const Y: () = unreachable!();
+//~^ ERROR panicking in constants is unstable
+
+const X: () = unimplemented!();
+//~^ ERROR panicking in constants is unstable

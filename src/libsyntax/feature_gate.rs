@@ -224,6 +224,9 @@ declare_features! (
     // Allows comparing raw pointers during const eval
     (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
 
+    // Allows panicking during const eval (produces compile-time errors)
+    (active, const_panic, "1.29.0", Some(51999), None),
+
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal

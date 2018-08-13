@@ -536,7 +536,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             DeallocateNonBasePtr |
             HeapAllocZeroBytes |
             Unreachable |
-            Panic |
             ReadFromReturnPointer |
             UnimplementedTraitSelection |
             TypeckError |
@@ -550,6 +549,12 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             GeneratorResumedAfterReturn |
             GeneratorResumedAfterPanic |
             InfiniteLoop => {}
+            Panic { ref msg, ref file, line, col } => {
+                msg.hash_stable(hcx, hasher);
+                file.hash_stable(hcx, hasher);
+                line.hash_stable(hcx, hasher);
+                col.hash_stable(hcx, hasher);
+            },
             ReferencedConstant(ref err) => err.hash_stable(hcx, hasher),
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionPointerTyMismatch(a, b) => {
