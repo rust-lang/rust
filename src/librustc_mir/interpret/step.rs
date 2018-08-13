@@ -2,12 +2,11 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::{mir, ty};
+use rustc::mir;
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{EvalResult, Scalar, Value};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc::mir::interpret::{EvalResult, Scalar};
 
-use super::{EvalContext, Machine, PlaceExtra, ValTy};
+use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn inc_step_counter_and_detect_loops(&mut self) -> EvalResult<'tcx, ()> {
@@ -86,8 +85,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 variant_index,
             } => {
                 let dest = self.eval_place(place)?;
-                let dest_ty = self.place_ty(place);
-                self.write_discriminant_value(dest_ty, dest, variant_index)?;
+                self.write_discriminant_value(variant_index, dest)?;
             }
 
             // Mark locals as alive
@@ -98,7 +96,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             // Mark locals as dead
             StorageDead(local) => {
-                let old_val = self.frame_mut().storage_dead(local);
+                let old_val = self.storage_dead(local);
                 self.deallocate_local(old_val)?;
             }
 
@@ -139,58 +137,46 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx> {
         let dest = self.eval_place(place)?;
-        let dest_ty = self.place_ty(place);
-        let dest_layout = self.layout_of(dest_ty)?;
 
         use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let value = self.eval_operand(operand)?.value;
-                let valty = ValTy {
-                    value,
-                    ty: dest_ty,
-                };
-                self.write_value(valty, dest)?;
+                let op = self.eval_operand(operand)?;
+                self.copy_op(op, dest)?;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let left = self.eval_operand(left)?;
-                let right = self.eval_operand(right)?;
-                self.intrinsic_overflowing(
+                let left = self.eval_operand_and_read_valty(left)?;
+                let right = self.eval_operand_and_read_valty(right)?;
+                self.binop_ignore_overflow(
                     bin_op,
                     left,
                     right,
                     dest,
-                    dest_ty,
                 )?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
-                let left = self.eval_operand(left)?;
-                let right = self.eval_operand(right)?;
-                self.intrinsic_with_overflow(
+                let left = self.eval_operand_and_read_valty(left)?;
+                let right = self.eval_operand_and_read_valty(right)?;
+                self.binop_with_overflow(
                     bin_op,
                     left,
                     right,
                     dest,
-                    dest_ty,
                 )?;
             }
 
             UnaryOp(un_op, ref operand) => {
-                let val = self.eval_operand_to_scalar(operand)?;
-                let val = self.unary_op(un_op, val, dest_layout)?;
-                self.write_scalar(
-                    dest,
-                    val,
-                    dest_ty,
-                )?;
+                let val = self.eval_operand_and_read_scalar(operand)?;
+                let val = self.unary_op(un_op, val.not_undef()?, dest.layout)?;
+                self.write_scalar(val, dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
-                        self.write_discriminant_value(dest_ty, dest, variant_index)?;
+                        self.write_discriminant_value(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)
                         } else {
@@ -200,41 +186,34 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     _ => (dest, None)
                 };
 
-                let layout = self.layout_of(dest_ty)?;
                 for (i, operand) in operands.iter().enumerate() {
-                    let value = self.eval_operand(operand)?;
+                    let op = self.eval_operand(operand)?;
                     // Ignore zero-sized fields.
-                    if !self.layout_of(value.ty)?.is_zst() {
+                    if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let (field_dest, _) = self.place_field(dest, mir::Field::new(field_index), layout)?;
-                        self.write_value(value, field_dest)?;
+                        let field_dest = self.place_field(dest, field_index as u64)?;
+                        self.copy_op(op, field_dest)?;
                     }
                 }
             }
 
             Repeat(ref operand, _) => {
-                let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n.unwrap_usize(self.tcx.tcx)),
-                    _ => {
-                        bug!(
-                            "tried to assign array-repeat to non-array type {:?}",
-                            dest_ty
-                        )
-                    }
-                };
-                let elem_size = self.layout_of(elem_ty)?.size;
-                let value = self.eval_operand(operand)?.value;
-
-                let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
+                let op = self.eval_operand(operand)?;
+                let dest = self.force_allocation(dest)?;
+                let length = dest.len();
 
                 if length > 0 {
-                    let dest = dest.unwrap_or_err()?;
-                    //write the first value
-                    self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
+                    // write the first
+                    let first = self.mplace_field(dest, 0)?;
+                    self.copy_op(op, first.into())?;
 
                     if length > 1 {
-                        let rest = dest.ptr_offset(elem_size * 1 as u64, &self)?;
-                        self.memory.copy_repeatedly(dest, dest_align, rest, dest_align, elem_size, length - 1, false)?;
+                        // copy the rest
+                        let (dest, dest_align) = first.to_scalar_ptr_align();
+                        let rest = dest.ptr_offset(first.layout.size, &self)?;
+                        self.memory.copy_repeatedly(
+                            dest, dest_align, rest, dest_align, first.layout.size, length - 1, true
+                        )?;
                     }
                 }
             }
@@ -242,43 +221,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Len(ref place) => {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
-                let ty = self.place_ty(place);
-                let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
+                let mplace = self.force_allocation(src)?;
+                let len = mplace.len();
                 let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
-                    dest,
                     Scalar::Bits {
                         bits: len as u128,
                         size,
                     },
-                    dest_ty,
+                    dest,
                 )?;
             }
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                // We ignore the alignment of the place here -- special handling for packed structs ends
-                // at the `&` operator.
-                let (ptr, _align, extra) = self.force_allocation(src)?.to_ptr_align_extra();
-
-                let val = match extra {
-                    PlaceExtra::None => Value::Scalar(ptr),
-                    PlaceExtra::Length(len) => ptr.to_value_with_len(len, self.tcx.tcx),
-                    PlaceExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
-                    PlaceExtra::DowncastVariant(..) => {
-                        bug!("attempted to take a reference to an enum downcast place")
-                    }
-                };
-                let valty = ValTy {
-                    value: val,
-                    ty: dest_ty,
-                };
-                self.write_value(valty, dest)?;
+                let val = self.force_allocation(src)?.to_ref(&self);
+                self.write_value(val, dest)?;
             }
 
-            NullaryOp(mir::NullOp::Box, ty) => {
-                let ty = self.monomorphize(ty, self.substs());
-                M::box_alloc(self, ty, dest)?;
+            NullaryOp(mir::NullOp::Box, _) => {
+                M::box_alloc(self, dest)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
@@ -288,35 +250,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         "SizeOf nullary MIR operator called for unsized type");
                 let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
-                    dest,
                     Scalar::Bits {
                         bits: layout.size.bytes() as u128,
                         size,
                     },
-                    dest_ty,
+                    dest,
                 )?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
+                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest.layout.ty);
                 let src = self.eval_operand(operand)?;
-                self.cast(src, kind, dest_ty, dest)?;
+                self.cast(src, kind, dest)?;
             }
 
             Discriminant(ref place) => {
-                let ty = self.place_ty(place);
-                let layout = self.layout_of(ty)?;
                 let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant_value(place, layout)?;
-                let size = self.layout_of(dest_ty).unwrap().size.bytes() as u8;
-                self.write_scalar(dest, Scalar::Bits {
+                let discr_val = self.read_discriminant_value(self.place_to_op(place)?)?;
+                let size = dest.layout.size.bytes() as u8;
+                self.write_scalar(Scalar::Bits {
                     bits: discr_val,
                     size,
-                }, dest_ty)?;
+                }, dest)?;
             }
         }
 
-        self.dump_local(dest);
+        self.dump_place(*dest);
 
         Ok(())
     }

@@ -6,24 +6,27 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::mir;
-use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout, Primitive};
+use rustc::ty::layout::{
+    self, Size, Align, HasDataLayout, LayoutOf, TyLayout, Primitive
+};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::fx::{FxHashSet, FxHasher};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
-    GlobalId, Value, Scalar, FrameInfo, AllocType,
-    EvalResult, EvalErrorKind, Pointer,
+    GlobalId, Scalar, FrameInfo, AllocType,
+    EvalResult, EvalErrorKind,
     ScalarMaybeUndef,
 };
 
 use syntax::source_map::{self, Span};
 use syntax::ast::Mutability;
 
-use super::{Place, PlaceExtra, Memory,
-            HasMemory, MemoryKind,
-            Machine, LocalValue};
+use super::{
+    Value, ValTy, Operand, MemPlace, MPlaceTy, Place,
+    Memory, Machine
+};
 
 macro_rules! validation_failure{
     ($what:expr, $where:expr, $details:expr) => {{
@@ -167,6 +170,33 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
     }
 }
 
+// State of a local variable
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum LocalValue {
+    Dead,
+    // Mostly for convenience, we re-use the `Operand` type here.
+    // This is an optimization over just always having a pointer here;
+    // we can thus avoid doing an allocation when the local just stores
+    // immediate values *and* never has its address taken.
+    Live(Operand),
+}
+
+impl<'tcx> LocalValue {
+    pub fn access(&self) -> EvalResult<'tcx, &Operand> {
+        match self {
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(ref val) => Ok(val),
+        }
+    }
+
+    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand> {
+        match self {
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(ref mut val) => Ok(val),
+        }
+    }
+}
+
 /// The virtual machine state during const-evaluation at a given point in time.
 type EvalSnapshot<'a, 'mir, 'tcx, M>
     = (M, Vec<Frame<'mir, 'tcx>>, Memory<'a, 'mir, 'tcx, M>);
@@ -246,25 +276,6 @@ pub enum StackPopCleanup {
     Goto(mir::BasicBlock),
     /// The main function and diverging functions have nowhere to return to
     None,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct TyAndPacked<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub packed: bool,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct ValTy<'tcx> {
-    pub value: Value,
-    pub ty: Ty<'tcx>,
-}
-
-impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
-    type Target = Value;
-    fn deref(&self) -> &Value {
-        &self.value
-    }
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
@@ -348,12 +359,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         r
     }
 
-    pub fn alloc_ptr(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Pointer> {
-        assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
-
-        self.memory.allocate(layout.size, layout.align, MemoryKind::Stack)
-    }
-
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
         &self.memory
     }
@@ -370,6 +375,30 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn cur_frame(&self) -> usize {
         assert!(self.stack.len() > 0);
         self.stack.len() - 1
+    }
+
+    /// Mark a storage as live, killing the previous content and returning it.
+    /// Remember to deallocate that!
+    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, LocalValue> {
+        trace!("{:?} is now live", local);
+
+        let layout = self.layout_of_local(self.cur_frame(), local)?;
+        let init = LocalValue::Live(self.uninit_operand(layout)?);
+        // StorageLive *always* kills the value that's currently stored
+        Ok(mem::replace(&mut self.frame_mut().locals[local], init))
+    }
+
+    /// Returns the old value of the local.
+    /// Remember to deallocate that!
+    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue {
+        trace!("{:?} is now dead", local);
+
+        mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
+    }
+
+    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+        let ptr = self.memory.allocate_bytes(s.as_bytes());
+        Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 
     pub(super) fn resolve(&self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, ty::Instance<'tcx>> {
@@ -420,41 +449,55 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
+    pub fn layout_of_local(
+        &self,
+        frame: usize,
+        local: mir::Local
+    ) -> EvalResult<'tcx, TyLayout<'tcx>> {
+        let local_ty = self.stack[frame].mir.local_decls[local].ty;
+        let local_ty = self.monomorphize(
+            local_ty,
+            self.stack[frame].instance.substs
+        );
+        self.layout_of(local_ty)
+    }
+
     /// Return the size and alignment of the value at the given type.
     /// Note that the value does not matter if the type is sized. For unsized types,
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
     pub fn size_and_align_of_dst(
         &self,
-        ty: Ty<'tcx>,
-        value: Value,
+        val: ValTy<'tcx>,
     ) -> EvalResult<'tcx, (Size, Align)> {
-        let layout = self.layout_of(ty)?;
-        if !layout.is_unsized() {
-            Ok(layout.size_and_align())
+        if !val.layout.is_unsized() {
+            Ok(val.layout.size_and_align())
         } else {
-            match ty.sty {
+            match val.layout.ty.sty {
                 ty::TyAdt(..) | ty::TyTuple(..) => {
                     // First get the size of all statically known fields.
                     // Don't use type_of::sizing_type_of because that expects t to be sized,
                     // and it also rounds up to alignment, which we want to avoid,
                     // as the unsized field's alignment could be smaller.
-                    assert!(!ty.is_simd());
-                    debug!("DST {} layout: {:?}", ty, layout);
+                    assert!(!val.layout.ty.is_simd());
+                    debug!("DST layout: {:?}", val.layout);
 
-                    let sized_size = layout.fields.offset(layout.fields.count() - 1);
-                    let sized_align = layout.align;
+                    let sized_size = val.layout.fields.offset(val.layout.fields.count() - 1);
+                    let sized_align = val.layout.align;
                     debug!(
                         "DST {} statically sized prefix size: {:?} align: {:?}",
-                        ty,
+                        val.layout.ty,
                         sized_size,
                         sized_align
                     );
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let field_ty = layout.field(self, layout.fields.count() - 1)?.ty;
+                    let field_layout = val.layout.field(self, val.layout.fields.count() - 1)?;
                     let (unsized_size, unsized_align) =
-                        self.size_and_align_of_dst(field_ty, value)?;
+                        self.size_and_align_of_dst(ValTy {
+                            value: val.value,
+                            layout: field_layout
+                        })?;
 
                     // FIXME (#26403, #27023): We should be adding padding
                     // to `sized_size` (to accommodate the `unsized_align`
@@ -484,18 +527,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     Ok((size.abi_align(align), align))
                 }
                 ty::TyDynamic(..) => {
-                    let (_, vtable) = self.into_ptr_vtable_pair(value)?;
+                    let (_, vtable) = val.to_scalar_dyn_trait()?;
                     // the second entry in the vtable is the dynamic size of the object.
                     self.read_size_and_align_from_vtable(vtable)
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
-                    let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                    let (_, len) = self.into_slice(value)?;
+                    let (elem_size, align) = val.layout.field(self, 0)?.size_and_align();
+                    let (_, len) = val.to_scalar_slice(self)?;
                     Ok((elem_size * len, align))
                 }
 
-                _ => bug!("size_of_val::<{:?}>", ty),
+                _ => bug!("size_of_val::<{:?}>", val.layout.ty),
             }
         }
     }
@@ -526,10 +569,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         // don't allocate at all for trivial constants
         if mir.local_decls.len() > 1 {
-            let mut locals = IndexVec::from_elem(LocalValue::Dead, &mir.local_decls);
-            for (local, decl) in locals.iter_mut().zip(mir.local_decls.iter()) {
-                *local = LocalValue::Live(self.init_value(decl.ty)?);
-            }
+            // We put some marker value into the locals that we later want to initialize.
+            // This can be anything except for LocalValue::Dead -- because *that* is the
+            // value we use for things that we know are initially dead.
+            let dummy =
+                LocalValue::Live(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
+            self.frame_mut().locals = IndexVec::from_elem(dummy, &mir.local_decls);
+            // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
@@ -540,14 +586,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             use rustc::mir::StatementKind::{StorageDead, StorageLive};
                             match stmt.kind {
                                 StorageLive(local) |
-                                StorageDead(local) => locals[local] = LocalValue::Dead,
+                                StorageDead(local) => {
+                                    // Worst case we are overwriting a dummy, no deallocation needed
+                                    self.storage_dead(local);
+                                }
                                 _ => {}
                             }
                         }
                     }
                 },
             }
-            self.frame_mut().locals = locals;
+            // Finally, properly initialize all those that still have the dummy value
+            for local in mir.local_decls.indices() {
+                if self.frame().locals[local] == dummy {
+                    self.storage_live(local)?;
+                }
+            }
         }
 
         self.memory.cur_frame = self.cur_frame();
@@ -571,10 +625,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
-                if let Place::Ptr { ptr, .. } = frame.return_place {
+                if let Place::Ptr(MemPlace { ptr, .. }) = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
-                        ptr.unwrap_or_err()?.to_ptr()?.alloc_id,
+                        ptr.to_ptr()?.alloc_id,
                         mutable,
                     )?
                 } else {
@@ -592,18 +646,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub(super) fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
-        match ty.sty {
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyRef(_, ty, _) => !self.type_is_sized(ty),
-            ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
-            _ => false,
-        }
-    }
-
-    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Value> {
-        let cv = self.const_eval(gid)?;
-        self.const_to_value(cv.val)
+    crate fn deallocate_local(&mut self, local: LocalValue) -> EvalResult<'tcx> {
+        // FIXME: should we tell the user that there was a local which was never written to?
+        if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
+            trace!("deallocating local");
+            let ptr = ptr.to_ptr()?;
+            self.memory.dump_alloc(ptr.alloc_id);
+            self.memory.deallocate_local(ptr)?;
+        };
+        Ok(())
     }
 
     pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
@@ -704,62 +755,56 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     /// This function checks the memory where `ptr` points to.
     /// It will error if the bits at the destination do not match the ones described by the layout.
-    pub fn validate_ptr_target(
+    pub fn validate_mplace(
         &self,
-        ptr: Pointer,
-        ptr_align: Align,
-        mut layout: TyLayout<'tcx>,
+        dest: MPlaceTy<'tcx>,
         path: String,
-        seen: &mut FxHashSet<(Pointer, Ty<'tcx>)>,
-        todo: &mut Vec<(Pointer, Ty<'tcx>, String)>,
+        seen: &mut FxHashSet<(MPlaceTy<'tcx>)>,
+        todo: &mut Vec<(MPlaceTy<'tcx>, String)>,
     ) -> EvalResult<'tcx> {
-        self.memory.dump_alloc(ptr.alloc_id);
-        trace!("validate_ptr_target: {:?}, {:#?}", ptr, layout);
+        self.memory.dump_alloc(dest.to_ptr()?.alloc_id);
+        trace!("validate_mplace: {:?}, {:#?}", *dest, dest.layout);
 
-        let variant;
-        match layout.variants {
+        // Find the right variant
+        let (variant, dest) = match dest.layout.variants {
             layout::Variants::NicheFilling { niche: ref tag, .. } |
             layout::Variants::Tagged { ref tag, .. } => {
                 let size = tag.value.size(self);
-                let (tag_value, tag_layout) = self.read_field(
-                    Value::ByRef(ptr.into(), ptr_align),
-                    None,
-                    mir::Field::new(0),
-                    layout,
-                )?;
-                let tag_value = self.value_to_scalar(ValTy {
-                    value: tag_value,
-                    ty: tag_layout.ty
-                })?;
+                // we first read the tag value as scalar, to be able to validate it
+                let tag_mplace = self.mplace_field(dest, 0)?;
+                let tag_value = self.read_scalar(tag_mplace.into())?;
                 let path = format!("{}.TAG", path);
                 self.validate_scalar(
-                    ScalarMaybeUndef::Scalar(tag_value), size, tag, &path, tag_layout.ty
+                    tag_value, size, tag, &path, tag_mplace.layout.ty
                 )?;
-                let variant_index = self.read_discriminant_as_variant_index(
-                    Place::from_ptr(ptr, ptr_align),
-                    layout,
-                )?;
-                variant = variant_index;
-                layout = layout.for_variant(self, variant_index);
-                trace!("variant layout: {:#?}", layout);
+                // then we read it again to get the index, to continue
+                let variant = self.read_discriminant_as_variant_index(dest.into())?;
+                let dest = self.mplace_downcast(dest, variant)?;
+                trace!("variant layout: {:#?}", dest.layout);
+                (variant, dest)
             },
-            layout::Variants::Single { index } => variant = index,
-        }
-        match layout.fields {
+            layout::Variants::Single { index } => {
+                (index, dest)
+            }
+        };
+
+        // Validate all fields
+        match dest.layout.fields {
             // primitives are unions with zero fields
             layout::FieldPlacement::Union(0) => {
-                match layout.abi {
+                match dest.layout.abi {
                     // nothing to do, whatever the pointer points to, it is never going to be read
                     layout::Abi::Uninhabited => validation_failure!("a value of an uninhabited type", path),
                     // check that the scalar is a valid pointer or that its bit range matches the
                     // expectation.
-                    layout::Abi::Scalar(ref scalar) => {
-                        let size = scalar.value.size(self);
-                        let value = self.memory.read_scalar(ptr, ptr_align, size)?;
-                        self.validate_scalar(value, size, scalar, &path, layout.ty)?;
-                        if scalar.value == Primitive::Pointer {
+                    layout::Abi::Scalar(ref scalar_layout) => {
+                        let size = scalar_layout.value.size(self);
+                        let value = self.read_value(dest.into())?;
+                        let scalar = value.to_scalar_or_undef();
+                        self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
+                        if scalar_layout.value == Primitive::Pointer {
                             // ignore integer pointers, we can't reason about the final hardware
-                            if let Scalar::Ptr(ptr) = value.unwrap_or_err()? {
+                            if let Scalar::Ptr(ptr) = scalar.not_undef()? {
                                 let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                                 if let Some(AllocType::Static(did)) = alloc_kind {
                                     // statics from other crates are already checked
@@ -768,17 +813,19 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                         return Ok(());
                                     }
                                 }
-                                if let Some(tam) = layout.ty.builtin_deref(false) {
+                                if value.layout.ty.builtin_deref(false).is_some() {
+                                    trace!("Recursing below ptr {:#?}", value);
+                                    let ptr_place = self.ref_to_mplace(value)?;
                                     // we have not encountered this pointer+layout combination before
-                                    if seen.insert((ptr, tam.ty)) {
-                                        todo.push((ptr, tam.ty, format!("(*{})", path)))
+                                    if seen.insert(ptr_place) {
+                                        todo.push((ptr_place, format!("(*{})", path)))
                                     }
                                 }
                             }
                         }
                         Ok(())
                     },
-                    _ => bug!("bad abi for FieldPlacement::Union(0): {:#?}", layout.abi),
+                    _ => bug!("bad abi for FieldPlacement::Union(0): {:#?}", dest.layout.abi),
                 }
             }
             layout::FieldPlacement::Union(_) => {
@@ -787,52 +834,63 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
                 Ok(())
             },
-            layout::FieldPlacement::Array { stride, count } => {
-                let elem_layout = layout.field(self, 0)?;
+            layout::FieldPlacement::Array { count, .. } => {
                 for i in 0..count {
                     let mut path = path.clone();
-                    self.write_field_name(&mut path, layout.ty, i as usize, variant).unwrap();
-                    self.validate_ptr_target(ptr.offset(stride * i, self)?, ptr_align, elem_layout, path, seen, todo)?;
+                    self.dump_field_name(&mut path, dest.layout.ty, i as usize, variant).unwrap();
+                    let field = self.mplace_field(dest, i)?;
+                    self.validate_mplace(field, path, seen, todo)?;
                 }
                 Ok(())
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-
-                // check length field and vtable field
-                match layout.ty.builtin_deref(false).map(|tam| &tam.ty.sty) {
+                // fat pointers need special treatment
+                match dest.layout.ty.builtin_deref(false).map(|tam| &tam.ty.sty) {
                     | Some(ty::TyStr)
                     | Some(ty::TySlice(_)) => {
-                        let (len, len_layout) = self.read_field(
-                            Value::ByRef(ptr.into(), ptr_align),
-                            None,
-                            mir::Field::new(1),
-                            layout,
-                        )?;
-                        let len = self.value_to_scalar(ValTy { value: len, ty: len_layout.ty })?;
-                        if len.to_bits(len_layout.size).is_err() {
-                            return validation_failure!("length is not a valid integer", path);
+                        // check the length
+                        let len_mplace = self.mplace_field(dest, 1)?;
+                        let len = self.read_scalar(len_mplace.into())?;
+                        let len = match len.to_bits(len_mplace.layout.size) {
+                            Err(_) => return validation_failure!("length is not a valid integer", path),
+                            Ok(len) => len as u64,
+                        };
+                        // get the fat ptr
+                        let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
+                        let mut path = path.clone();
+                        self.dump_field_name(&mut path, dest.layout.ty, 0, variant).unwrap();
+                        // check all fields
+                        for i in 0..len {
+                            let mut path = path.clone();
+                            self.dump_field_name(&mut path, ptr.layout.ty, i as usize, 0).unwrap();
+                            let field = self.mplace_field(ptr, i)?;
+                            self.validate_mplace(field, path, seen, todo)?;
                         }
+                        // FIXME: For a TyStr, check that this is valid UTF-8
                     },
                     Some(ty::TyDynamic(..)) => {
-                        let (vtable, vtable_layout) = self.read_field(
-                            Value::ByRef(ptr.into(), ptr_align),
-                            None,
-                            mir::Field::new(1),
-                            layout,
-                        )?;
-                        let vtable = self.value_to_scalar(ValTy { value: vtable, ty: vtable_layout.ty })?;
+                        let vtable_mplace = self.mplace_field(dest, 1)?;
+                        let vtable = self.read_scalar(vtable_mplace.into())?;
                         if vtable.to_ptr().is_err() {
                             return validation_failure!("vtable address is not a pointer", path);
                         }
-                    }
-                    _ => {},
+                        // get the fat ptr
+                        let _ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
+                        // FIXME: What can we verify about this?
+                    },
+                    Some(ty) =>
+                        bug!("Unexpected fat pointer target type {:?}", ty),
+                    None => {
+                        // Not a pointer, perform regular aggregate handling below
+                        for i in 0..offsets.len() {
+                            let mut path = path.clone();
+                            self.dump_field_name(&mut path, dest.layout.ty, i, variant).unwrap();
+                            let field = self.mplace_field(dest, i as u64)?;
+                            self.validate_mplace(field, path, seen, todo)?;
+                        }
+                    },
                 }
-                for (i, &offset) in offsets.iter().enumerate() {
-                    let field_layout = layout.field(self, i)?;
-                    let mut path = path.clone();
-                    self.write_field_name(&mut path, layout.ty, i, variant).unwrap();
-                    self.validate_ptr_target(ptr.offset(offset, self)?, ptr_align, field_layout, path, seen, todo)?;
-                }
+
                 Ok(())
             }
         }
@@ -858,132 +916,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    fn unsize_into_ptr(
-        &mut self,
-        src: Value,
-        src_ty: Ty<'tcx>,
-        dest: Place,
-        dest_ty: Ty<'tcx>,
-        sty: Ty<'tcx>,
-        dty: Ty<'tcx>,
-    ) -> EvalResult<'tcx> {
-        // A<Struct> -> A<Trait> conversion
-        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
-
-        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                let ptr = self.into_ptr(src)?;
-                // u64 cast is from usize to u64, which is always good
-                let valty = ValTy {
-                    value: ptr.to_value_with_len(length.unwrap_usize(self.tcx.tcx), self.tcx.tcx),
-                    ty: dest_ty,
-                };
-                self.write_value(valty, dest)
-            }
-            (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
-                // For now, upcasts are limited to changes in marker
-                // traits, and hence never actually require an actual
-                // change to the vtable.
-                let valty = ValTy {
-                    value: src,
-                    ty: dest_ty,
-                };
-                self.write_value(valty, dest)
-            }
-            (_, &ty::TyDynamic(ref data, _)) => {
-                let trait_ref = data.principal().unwrap().with_self_ty(
-                    *self.tcx,
-                    src_pointee_ty,
-                );
-                let trait_ref = self.tcx.erase_regions(&trait_ref);
-                let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
-                let ptr = self.into_ptr(src)?;
-                let valty = ValTy {
-                    value: ptr.to_value_with_vtable(vtable),
-                    ty: dest_ty,
-                };
-                self.write_value(valty, dest)
-            }
-
-            _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
-        }
-    }
-
-    crate fn unsize_into(
-        &mut self,
-        src: Value,
-        src_layout: TyLayout<'tcx>,
-        dst: Place,
-        dst_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx> {
-        match (&src_layout.ty.sty, &dst_layout.ty.sty) {
-            (&ty::TyRef(_, s, _), &ty::TyRef(_, d, _)) |
-            (&ty::TyRef(_, s, _), &ty::TyRawPtr(TypeAndMut { ty: d, .. })) |
-            (&ty::TyRawPtr(TypeAndMut { ty: s, .. }),
-             &ty::TyRawPtr(TypeAndMut { ty: d, .. })) => {
-                self.unsize_into_ptr(src, src_layout.ty, dst, dst_layout.ty, s, d)
-            }
-            (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
-                assert_eq!(def_a, def_b);
-                if def_a.is_box() || def_b.is_box() {
-                    if !def_a.is_box() || !def_b.is_box() {
-                        bug!("invalid unsizing between {:?} -> {:?}", src_layout, dst_layout);
-                    }
-                    return self.unsize_into_ptr(
-                        src,
-                        src_layout.ty,
-                        dst,
-                        dst_layout.ty,
-                        src_layout.ty.boxed_ty(),
-                        dst_layout.ty.boxed_ty(),
-                    );
-                }
-
-                // unsizing of generic struct with pointer fields
-                // Example: `Arc<T>` -> `Arc<Trait>`
-                // here we need to increase the size of every &T thin ptr field to a fat ptr
-                for i in 0..src_layout.fields.count() {
-                    let (dst_f_place, dst_field) =
-                        self.place_field(dst, mir::Field::new(i), dst_layout)?;
-                    if dst_field.is_zst() {
-                        continue;
-                    }
-                    let (src_f_value, src_field) = match src {
-                        Value::ByRef(ptr, align) => {
-                            let src_place = Place::from_scalar_ptr(ptr.into(), align);
-                            let (src_f_place, src_field) =
-                                self.place_field(src_place, mir::Field::new(i), src_layout)?;
-                            (self.read_place(src_f_place)?, src_field)
-                        }
-                        Value::Scalar(_) | Value::ScalarPair(..) => {
-                            let src_field = src_layout.field(&self, i)?;
-                            assert_eq!(src_layout.fields.offset(i).bytes(), 0);
-                            assert_eq!(src_field.size, src_layout.size);
-                            (src, src_field)
-                        }
-                    };
-                    if src_field.ty == dst_field.ty {
-                        self.write_value(ValTy {
-                            value: src_f_value,
-                            ty: src_field.ty,
-                        }, dst_f_place)?;
-                    } else {
-                        self.unsize_into(src_f_value, src_field, dst_f_place, dst_field)?;
-                    }
-                }
-                Ok(())
-            }
-            _ => {
-                bug!(
-                    "unsize_into: invalid conversion: {:?} -> {:?}",
-                    src_layout,
-                    dst_layout
-                )
-            }
-        }
-    }
-
-    pub fn dump_local(&self, place: Place) {
+    pub fn dump_place(&self, place: Place) {
         // Debug output
         if !log_enabled!(::log::Level::Trace) {
             return;
@@ -1005,22 +938,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             panic!("Failed to access local: {:?}", err);
                         }
                     }
-                    Ok(Value::ByRef(ptr, align)) => {
+                    Ok(Operand::Indirect(mplace)) => {
+                        let (ptr, align) = mplace.to_scalar_ptr_align();
                         match ptr {
                             Scalar::Ptr(ptr) => {
                                 write!(msg, " by align({}) ref:", align.abi()).unwrap();
                                 allocs.push(ptr.alloc_id);
                             }
-                            ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
+                            ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
                         }
                     }
-                    Ok(Value::Scalar(val)) => {
+                    Ok(Operand::Immediate(Value::Scalar(val))) => {
                         write!(msg, " {:?}", val).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
-                    Ok(Value::ScalarPair(val1, val2)) => {
+                    Ok(Operand::Immediate(Value::ScalarPair(val1, val2))) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);
@@ -1034,9 +968,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 trace!("{}", msg);
                 self.memory.dump_allocs(allocs);
             }
-            Place::Ptr { ptr, align, .. } => {
+            Place::Ptr(mplace) => {
+                let (ptr, align) = mplace.to_scalar_ptr_align();
                 match ptr {
-                    ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
+                    Scalar::Ptr(ptr) => {
                         trace!("by align({}) ref:", align.abi());
                         self.memory.dump_alloc(ptr.alloc_id);
                     }
@@ -1092,7 +1027,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         super::truncate(value, ty)
     }
 
-    fn write_field_name(&self, s: &mut String, ty: Ty<'tcx>, i: usize, variant: usize) -> ::std::fmt::Result {
+    fn dump_field_name(&self, s: &mut String, ty: Ty<'tcx>, i: usize, variant: usize) -> ::std::fmt::Result {
         match ty.sty {
             ty::TyBool |
             ty::TyChar |
@@ -1154,8 +1089,25 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
             ty::TyInfer(_) | ty::TyError => {
-                bug!("write_field_name: unexpected type `{}`", ty)
+                bug!("dump_field_name: unexpected type `{}`", ty)
             }
         }
     }
+}
+
+pub fn sign_extend(value: u128, layout: TyLayout<'_>) -> u128 {
+    let size = layout.size.bits();
+    assert!(layout.abi.is_signed());
+    // sign extend
+    let shift = 128 - size;
+    // shift the unsigned value to the left
+    // and back to the right as signed (essentially fills with FF on the left)
+    (((value << shift) as i128) >> shift) as u128
+}
+
+pub fn truncate(value: u128, layout: TyLayout<'_>) -> u128 {
+    let size = layout.size.bits();
+    let shift = 128 - size;
+    // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+    (value << shift) >> shift
 }

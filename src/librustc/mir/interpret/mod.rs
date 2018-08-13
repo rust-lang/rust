@@ -13,7 +13,7 @@ pub use self::error::{
     FrameInfo, ConstEvalResult,
 };
 
-pub use self::value::{Scalar, Value, ConstValue, ScalarMaybeUndef};
+pub use self::value::{Scalar, ConstValue, ScalarMaybeUndef};
 
 use std::fmt;
 use mir;
@@ -135,7 +135,7 @@ impl<'tcx> Pointer {
         Pointer { alloc_id, offset }
     }
 
-    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
+    pub fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
         Pointer::new(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
@@ -147,7 +147,7 @@ impl<'tcx> Pointer {
         (Pointer::new(self.alloc_id, Size::from_bytes(res)), over)
     }
 
-    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),

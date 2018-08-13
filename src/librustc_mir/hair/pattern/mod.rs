@@ -16,7 +16,7 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use interpret::{const_val_field, const_variant_index, self};
+use interpret::{const_field, const_variant_index, self};
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue};
@@ -795,7 +795,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?}", cv);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = const_val_field(
+            let val = const_field(
                 self.tcx, self.param_env, instance,
                 variant_opt, field, cv,
             ).expect("field access failed");
@@ -1106,8 +1106,8 @@ pub fn compare_const_vals<'a, 'tcx>(
                         len_b,
                     ),
                 ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                    let len_a = len_a.unwrap_or_err().ok();
-                    let len_b = len_b.unwrap_or_err().ok();
+                    let len_a = len_a.not_undef().ok();
+                    let len_b = len_b.not_undef().ok();
                     if len_a.is_none() || len_b.is_none() {
                         tcx.sess.struct_err("str slice len is undef").delay_as_bug();
                     }
@@ -1153,8 +1153,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, tcx);
-            ConstValue::from_byval_value(value).unwrap()
+            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, tcx)
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);

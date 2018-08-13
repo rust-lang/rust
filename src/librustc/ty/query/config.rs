@@ -198,9 +198,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::const_value_to_allocation<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::const_to_allocation<'tcx> {
     fn describe(_tcx: TyCtxt, val: &'tcx ty::Const<'tcx>) -> String {
-        format!("converting value `{:?}` to an allocation", val)
+        format!("converting constant `{:?}` to an allocation", val)
     }
 }
 

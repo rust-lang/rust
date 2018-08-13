@@ -17,7 +17,7 @@ use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
 use middle::region;
-use mir::interpret::{EvalErrorKind, Scalar, Value, ScalarMaybeUndef};
+use mir::interpret::{EvalErrorKind, Scalar, ScalarMaybeUndef, ConstValue};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -1469,14 +1469,14 @@ impl<'tcx> TerminatorKind<'tcx> {
                     .iter()
                     .map(|&u| {
                         let mut s = String::new();
-                        print_miri_value(
-                            Scalar::Bits {
-                                bits: u,
-                                size: size.bytes() as u8,
-                            }.to_value(),
-                            switch_ty,
-                            &mut s,
-                        ).unwrap();
+                        let c = ty::Const {
+                            val: ConstValue::Scalar(Scalar::Bits {
+                                    bits: u,
+                                    size: size.bytes() as u8,
+                                }.into()),
+                            ty: switch_ty,
+                        };
+                        fmt_const_val(&mut s, &c).unwrap();
                         s.into()
                     })
                     .chain(iter::once(String::from("otherwise").into()))
@@ -2220,18 +2220,12 @@ impl<'tcx> Debug for Constant<'tcx> {
 }
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
-    if let Some(value) = const_val.to_byval_value() {
-        print_miri_value(value, const_val.ty, fmt)
-    } else {
-        write!(fmt, "{:?}:{}", const_val.val, const_val.ty)
-    }
-}
-
-pub fn print_miri_value<'tcx, W: Write>(value: Value, ty: Ty<'tcx>, f: &mut W) -> fmt::Result {
+pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
     use ty::TypeVariants::*;
+    let value = const_val.val;
+    let ty = const_val.ty;
     // print some primitives
-    if let Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits, .. })) = value {
+    if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = value {
         match ty.sty {
             TyBool if bits == 0 => return write!(f, "false"),
             TyBool if bits == 1 => return write!(f, "true"),
@@ -2258,8 +2252,8 @@ pub fn print_miri_value<'tcx, W: Write>(value: Value, ty: Ty<'tcx>, f: &mut W) -
         return write!(f, "{}", item_path_str(did));
     }
     // print string literals
-    if let Value::ScalarPair(ptr, len) = value {
-        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = ptr {
+    if let ConstValue::ScalarPair(ptr, len) = value {
+        if let Scalar::Ptr(ptr) = ptr {
             if let ScalarMaybeUndef::Scalar(Scalar::Bits { bits: len, .. }) = len {
                 if let TyRef(_, &ty::TyS { sty: TyStr, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {

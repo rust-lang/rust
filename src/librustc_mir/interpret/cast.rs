@@ -1,87 +1,82 @@
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::layout::{self, TyLayout};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
-use super::{EvalContext, Machine};
-use rustc::mir::interpret::{Scalar, EvalResult, Pointer, PointerArithmetic, Value, EvalErrorKind};
+use rustc::mir::interpret::{Scalar, EvalResult, Pointer, PointerArithmetic, EvalErrorKind};
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
-use interpret::eval_context::ValTy;
-use interpret::Place;
+
+use super::{EvalContext, Machine, PlaceTy, OpTy, Value};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+    fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
+        match ty.sty {
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyRef(_, ty, _) => !self.type_is_sized(ty),
+            ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
+            _ => false,
+        }
+    }
+
     crate fn cast(
         &mut self,
-        src: ValTy<'tcx>,
+        src: OpTy<'tcx>,
         kind: CastKind,
-        dest_ty: Ty<'tcx>,
-        dest: Place,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let src_layout = self.layout_of(src.ty)?;
-        let dst_layout = self.layout_of(dest_ty)?;
+        let src_layout = src.layout;
+        let dst_layout = dest.layout;
         use rustc::mir::CastKind::*;
         match kind {
             Unsize => {
-                self.unsize_into(src.value, src_layout, dest, dst_layout)?;
+                self.unsize_into(src, dest)?;
             }
 
             Misc => {
-                if self.type_is_fat_ptr(src.ty) {
-                    match (src.value, self.type_is_fat_ptr(dest_ty)) {
-                        (Value::ByRef { .. }, _) |
+                let src = self.read_value(src)?;
+                if self.type_is_fat_ptr(src_layout.ty) {
+                    match (src.value, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Value::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Value::ScalarPair(..), true) => {
-                            let valty = ValTy {
-                                value: src.value,
-                                ty: dest_ty,
-                            };
-                            self.write_value(valty, dest)?;
+                            // No change to value
+                            self.write_value(src.value, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Value::ScalarPair(data, _), false) => {
-                            let valty = ValTy {
-                                value: Value::Scalar(data),
-                                ty: dest_ty,
-                            };
-                            self.write_value(valty, dest)?;
+                            self.write_scalar(data, dest)?;
                         }
                     }
                 } else {
-                    let src_layout = self.layout_of(src.ty)?;
                     match src_layout.variants {
                         layout::Variants::Single { index } => {
-                            if let Some(def) = src.ty.ty_adt_def() {
+                            if let Some(def) = src_layout.ty.ty_adt_def() {
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
                                 return self.write_scalar(
-                                    dest,
                                     Scalar::Bits {
                                         bits: discr_val,
                                         size: dst_layout.size.bytes() as u8,
                                     },
-                                    dest_ty);
+                                    dest);
                             }
                         }
                         layout::Variants::Tagged { .. } |
                         layout::Variants::NicheFilling { .. } => {},
                     }
 
-                    let src_val = self.value_to_scalar(src)?;
-                    let dest_val = self.cast_scalar(src_val, src_layout, dst_layout)?;
-                    let valty = ValTy {
-                        value: Value::Scalar(dest_val.into()),
-                        ty: dest_ty,
-                    };
-                    self.write_value(valty, dest)?;
+                    let src = src.to_scalar()?;
+                    let dest_val = self.cast_scalar(src, src_layout, dest.layout)?;
+                    self.write_scalar(dest_val, dest)?;
                 }
             }
 
             ReifyFnPointer => {
-                match src.ty.sty {
+                // The src operand does not matter, just its type
+                match src_layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
                         if self.tcx.has_attr(def_id, "rustc_args_required_const") {
                             bug!("reifying a fn ptr that requires \
@@ -94,29 +89,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             substs,
                         ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
                         let fn_ptr = self.memory.create_fn_alloc(instance?);
-                        let valty = ValTy {
-                            value: Value::Scalar(Scalar::Ptr(fn_ptr.into()).into()),
-                            ty: dest_ty,
-                        };
-                        self.write_value(valty, dest)?;
+                        self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     ref other => bug!("reify fn pointer on {:?}", other),
                 }
             }
 
             UnsafeFnPointer => {
-                match dest_ty.sty {
+                let src = self.read_value(src)?;
+                match dest.layout.ty.sty {
                     ty::TyFnPtr(_) => {
-                        let mut src = src;
-                        src.ty = dest_ty;
-                        self.write_value(src, dest)?;
+                        // No change to value
+                        self.write_value(*src, dest)?;
                     }
                     ref other => bug!("fn to unsafe fn cast on {:?}", other),
                 }
             }
 
             ClosureFnPointer => {
-                match src.ty.sty {
+                // The src operand does not matter, just its type
+                match src_layout.ty.sty {
                     ty::TyClosure(def_id, substs) => {
                         let substs = self.tcx.subst_and_normalize_erasing_regions(
                             self.substs(),
@@ -130,11 +122,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(instance);
-                        let valty = ValTy {
-                            value: Value::Scalar(Scalar::Ptr(fn_ptr.into()).into()),
-                            ty: dest_ty,
-                        };
-                        self.write_value(valty, dest)?;
+                        let val = Value::Scalar(Scalar::Ptr(fn_ptr.into()).into());
+                        self.write_value(val, dest)?;
                     }
                     ref other => bug!("closure fn pointer on {:?}", other),
                 }
@@ -290,6 +279,113 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             TyUint(UintTy::Usize) => Ok(ptr.into()),
             TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
             _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
+        }
+    }
+
+    fn unsize_into_ptr(
+        &mut self,
+        src: OpTy<'tcx>,
+        dest: PlaceTy<'tcx>,
+        // The pointee types
+        sty: Ty<'tcx>,
+        dty: Ty<'tcx>,
+    ) -> EvalResult<'tcx> {
+        // A<Struct> -> A<Trait> conversion
+        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
+
+        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
+            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+                let ptr = self.read_value(src)?.to_scalar_ptr()?;
+                // u64 cast is from usize to u64, which is always good
+                let val = Value::new_slice(ptr, length.unwrap_usize(self.tcx.tcx), self.tcx.tcx);
+                self.write_value(val, dest)
+            }
+            (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
+                // For now, upcasts are limited to changes in marker
+                // traits, and hence never actually require an actual
+                // change to the vtable.
+                self.copy_op(src, dest)
+            }
+            (_, &ty::TyDynamic(ref data, _)) => {
+                // Initial cast from sized to dyn trait
+                let trait_ref = data.principal().unwrap().with_self_ty(
+                    *self.tcx,
+                    src_pointee_ty,
+                );
+                let trait_ref = self.tcx.erase_regions(&trait_ref);
+                let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
+                let ptr = self.read_value(src)?.to_scalar_ptr()?;
+                let val = Value::new_dyn_trait(ptr, vtable);
+                self.write_value(val, dest)
+            }
+
+            _ => bug!("invalid unsizing {:?} -> {:?}", src.layout.ty, dest.layout.ty),
+        }
+    }
+
+    fn unsize_into(
+        &mut self,
+        src: OpTy<'tcx>,
+        dest: PlaceTy<'tcx>,
+    ) -> EvalResult<'tcx> {
+        match (&src.layout.ty.sty, &dest.layout.ty.sty) {
+            (&ty::TyRef(_, s, _), &ty::TyRef(_, d, _)) |
+            (&ty::TyRef(_, s, _), &ty::TyRawPtr(TypeAndMut { ty: d, .. })) |
+            (&ty::TyRawPtr(TypeAndMut { ty: s, .. }),
+             &ty::TyRawPtr(TypeAndMut { ty: d, .. })) => {
+                self.unsize_into_ptr(src, dest, s, d)
+            }
+            (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+                assert_eq!(def_a, def_b);
+                if def_a.is_box() || def_b.is_box() {
+                    if !def_a.is_box() || !def_b.is_box() {
+                        bug!("invalid unsizing between {:?} -> {:?}", src.layout, dest.layout);
+                    }
+                    return self.unsize_into_ptr(
+                        src,
+                        dest,
+                        src.layout.ty.boxed_ty(),
+                        dest.layout.ty.boxed_ty(),
+                    );
+                }
+
+                // unsizing of generic struct with pointer fields
+                // Example: `Arc<T>` -> `Arc<Trait>`
+                // here we need to increase the size of every &T thin ptr field to a fat ptr
+                for i in 0..src.layout.fields.count() {
+                    let dst_field = self.place_field(dest, i as u64)?;
+                    if dst_field.layout.is_zst() {
+                        continue;
+                    }
+                    let src_field = match src.try_as_mplace() {
+                        Ok(mplace) => {
+                            let src_field = self.mplace_field(mplace, i as u64)?;
+                            src_field.into()
+                        }
+                        Err(..) => {
+                            let src_field_layout = src.layout.field(&self, i)?;
+                            // this must be a field covering the entire thing
+                            assert_eq!(src.layout.fields.offset(i).bytes(), 0);
+                            assert_eq!(src_field_layout.size, src.layout.size);
+                            // just sawp out the layout
+                            OpTy { op: src.op, layout: src_field_layout }
+                        }
+                    };
+                    if src_field.layout.ty == dst_field.layout.ty {
+                        self.copy_op(src_field, dst_field)?;
+                    } else {
+                        self.unsize_into(src_field, dst_field)?;
+                    }
+                }
+                Ok(())
+            }
+            _ => {
+                bug!(
+                    "unsize_into: invalid conversion: {:?} -> {:?}",
+                    src.layout,
+                    dest.layout
+                )
+            }
         }
     }
 }

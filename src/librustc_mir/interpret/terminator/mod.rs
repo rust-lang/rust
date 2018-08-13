@@ -1,14 +1,13 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{LayoutOf, Size};
+use rustc::ty::layout::LayoutOf;
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Scalar, Value};
-use super::{EvalContext, Place, Machine, ValTy};
+use rustc::mir::interpret::{EvalResult, Scalar};
+use super::{EvalContext, Machine, Value, OpTy, PlaceTy, ValTy, Operand};
 
 use rustc_data_structures::indexed_vec::Idx;
-use interpret::memory::HasMemory;
 
 mod drop;
 
@@ -25,7 +24,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.dump_local(self.frame().return_place);
+                self.dump_place(self.frame().return_place);
                 self.pop_stack_frame()?
             }
 
@@ -38,21 +37,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ..
             } => {
                 let discr_val = self.eval_operand(discr)?;
-                let discr_prim = self.value_to_scalar(discr_val)?;
-                let discr_layout = self.layout_of(discr_val.ty).unwrap();
-                trace!("SwitchInt({:?}, {:#?})", discr_prim, discr_layout);
+                let discr = self.read_value(discr_val)?;
+                trace!("SwitchInt({:#?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op
-                    let const_int = Scalar::Bits { bits: const_int, size: discr_layout.size.bytes() as u8 };
-                    let res = self.binary_op(mir::BinOp::Eq,
-                        discr_prim, discr_val.ty,
-                        const_int, discr_val.ty
+                    let const_int = Scalar::Bits { bits: const_int, size: discr.layout.size.bytes() as u8 };
+                    let (res, _) = self.binary_op(mir::BinOp::Eq,
+                        discr,
+                        ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
                     )?;
-                    if res.0.to_bits(Size::from_bytes(1))? != 0 {
+                    if res.to_bool()? {
                         target_block = targets[index];
                         break;
                     }
@@ -73,9 +71,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func)?;
-                let (fn_def, sig) = match func.ty.sty {
+                let (fn_def, sig) = match func.layout.ty.sty {
                     ty::TyFnPtr(sig) => {
-                        let fn_ptr = self.value_to_scalar(func)?.to_ptr()?;
+                        let fn_ptr = self.read_scalar(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
@@ -99,14 +97,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                     ty::TyFnDef(def_id, substs) => (
                         self.resolve(def_id, substs)?,
-                        func.ty.fn_sig(*self.tcx),
+                        func.layout.ty.fn_sig(*self.tcx),
                     ),
                     _ => {
-                        let msg = format!("can't handle callee of type {:?}", func.ty);
+                        let msg = format!("can't handle callee of type {:?}", func.layout.ty);
                         return err!(Unimplemented(msg));
                     }
                 };
-                let args = self.operands_to_args(args)?;
+                let args = self.eval_operands(args)?;
                 let sig = self.tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &sig,
@@ -114,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.eval_fn_call(
                     fn_def,
                     destination,
-                    &args,
+                    &args[..],
                     terminator.source_info.span,
                     sig,
                 )?;
@@ -127,19 +125,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             } => {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
-                let ty = self.place_ty(location);
-                let ty = self.tcx.subst_and_normalize_erasing_regions(
-                    self.substs(),
-                    ty::ParamEnv::reveal_all(),
-                    &ty,
-                );
+                let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_place(
                     place,
                     instance,
-                    ty,
                     terminator.source_info.span,
                     target,
                 )?;
@@ -152,17 +144,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_to_scalar(cond)?.to_bool()?;
+                let cond_val = self.eval_operand_and_read_scalar(cond)?.not_undef()?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_to_scalar(len)
+                            let len = self.eval_operand_and_read_scalar(len)
                                 .expect("can't eval len")
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.eval_operand_to_scalar(index)
+                            let index = self.eval_operand_and_read_scalar(index)
                                 .expect("can't eval index")
                                 .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })
@@ -259,8 +251,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Place, mir::BasicBlock)>,
-        args: &[ValTy<'tcx>],
+        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        args: &[OpTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -271,24 +263,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     Some(dest) => dest,
                     _ => return err!(Unreachable),
                 };
-                let ty = sig.output();
-                let layout = self.layout_of(ty)?;
-                M::call_intrinsic(self, instance, args, ret, layout, target)?;
-                self.dump_local(ret);
+                M::call_intrinsic(self, instance, args, ret, target)?;
+                self.dump_place(*ret);
                 Ok(())
             }
             // FIXME: figure out why we can't just go through the shim
             ty::InstanceDef::ClosureOnceShim { .. } => {
-                if M::eval_fn_call(self, instance, destination, args, span, sig)? {
+                if M::eval_fn_call(self, instance, destination, args, span)? {
                     return Ok(());
                 }
                 let mut arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     // closure as closure once
                     Abi::RustCall => {
-                        for (arg_local, &valty) in arg_locals.zip(args) {
+                        for (arg_local, &op) in arg_locals.zip(args) {
                             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            self.write_value(valty, dest)?;
+                            self.copy_op(op, dest)?;
                         }
                     }
                     // non capture closure as fn ptr
@@ -301,12 +291,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         );
                         trace!("args: {:#?}", args);
                         let local = arg_locals.nth(1).unwrap();
-                        for (i, &valty) in args.into_iter().enumerate() {
+                        for (i, &op) in args.into_iter().enumerate() {
                             let dest = self.eval_place(&mir::Place::Local(local).field(
                                 mir::Field::new(i),
-                                valty.ty,
+                                op.layout.ty,
                             ))?;
-                            self.write_value(valty, dest)?;
+                            self.copy_op(op, dest)?;
                         }
                     }
                     _ => bug!("bad ABI for ClosureOnceShim: {:?}", sig.abi),
@@ -318,7 +308,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
                 // Push the stack frame, and potentially be entirely done if the call got hooked
-                if M::eval_fn_call(self, instance, destination, args, span, sig)? {
+                if M::eval_fn_call(self, instance, destination, args, span)? {
+                    // TODO: Can we make it return the frame to push, instead
+                    // of the hook doing half of the work and us doing the argument
+                    // initialization?
                     return Ok(());
                 }
 
@@ -338,26 +331,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             // write first argument
                             let first_local = arg_locals.next().unwrap();
                             let dest = self.eval_place(&mir::Place::Local(first_local))?;
-                            self.write_value(args[0], dest)?;
+                            self.copy_op(args[0], dest)?;
                         }
 
                         // unpack and write all other args
-                        let layout = self.layout_of(args[1].ty)?;
-                        if let ty::TyTuple(_) = args[1].ty.sty {
+                        let layout = args[1].layout;
+                        if let ty::TyTuple(_) = layout.ty.sty {
                             if layout.is_zst() {
                                 // Nothing to do, no need to unpack zsts
                                 return Ok(());
                             }
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 for (i, arg_local) in arg_locals.enumerate() {
-                                    let field = mir::Field::new(i);
-                                    let (value, layout) = self.read_field(args[1].value, None, field, layout)?;
+                                    let arg = self.operand_field(args[1], i as u64)?;
                                     let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                                    let valty = ValTy {
-                                        value,
-                                        ty: layout.ty,
-                                    };
-                                    self.write_value(valty, dest)?;
+                                    self.copy_op(arg, dest)?;
                                 }
                             } else {
                                 trace!("manual impl of rust-call ABI");
@@ -365,20 +353,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 let dest = self.eval_place(
                                     &mir::Place::Local(arg_locals.next().unwrap()),
                                 )?;
-                                self.write_value(args[1], dest)?;
+                                self.copy_op(args[1], dest)?;
                             }
                         } else {
                             bug!(
-                                "rust-call ABI tuple argument was {:#?}, {:#?}",
-                                args[1].ty,
+                                "rust-call ABI tuple argument was {:#?}",
                                 layout
                             );
                         }
                     }
                     _ => {
-                        for (arg_local, &valty) in arg_locals.zip(args) {
+                        for (arg_local, &op) in arg_locals.zip(args) {
                             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            self.write_value(valty, dest)?;
+                            self.copy_op(op, dest)?;
                         }
                     }
                 }
@@ -388,16 +375,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
-                let (ptr, vtable) = self.into_ptr_vtable_pair(args[0].value)?;
+                let (ptr, vtable) = self.read_value(args[0])?.to_scalar_dyn_trait()?;
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
-                )?.unwrap_or_err()?.to_ptr()?;
+                )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
-                let ty = self.layout_of(args[0].ty)?.field(&self, 0)?.ty;
-                args[0].ty = ty;
-                args[0].value = Value::Scalar(ptr);
+                let layout = args[0].layout.field(&self, 0)?;
+                args[0].layout = layout;
+                args[0].op = Operand::Immediate(Value::Scalar(ptr.into()));
                 // recurse with concrete function
                 self.eval_fn_call(instance, destination, &args, span, sig)
             }

@@ -167,8 +167,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
                 let id = self.tcx.allocate_bytes(s.as_bytes());
-                let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, self.tcx);
-                ConstValue::from_byval_value(value).unwrap()
+                ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, self.tcx)
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);

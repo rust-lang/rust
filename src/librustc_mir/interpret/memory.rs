@@ -7,7 +7,7 @@ use rustc::ty::Instance;
 use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value, ScalarMaybeUndef,
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, ScalarMaybeUndef,
                             EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
@@ -301,6 +301,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
+    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
+    /// in-bounds!  This follows C's/LLVM's rules.
     pub fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
@@ -331,7 +334,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             assert!(self.tcx.is_static(def_id).is_some());
             EvalErrorKind::ReferencedConstant(err).into()
         }).map(|val| {
-            self.tcx.const_value_to_allocation(val)
+            self.tcx.const_to_allocation(val)
         })
     }
 
@@ -828,6 +831,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         {
             let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(type_align))?;
+            // TODO: Why do we still need `signed` here? We do NOT have it for loading!
             if signed {
                 write_target_int(endianness, dst, bytes as i128).unwrap();
             } else {
@@ -992,63 +996,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M>;
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M>;
-
-    /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
-    /// this may have to perform a load.
-    fn into_ptr(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        Ok(match value {
-            Value::ByRef(ptr, align) => {
-                self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
-            }
-            Value::Scalar(ptr) |
-            Value::ScalarPair(ptr, _) => ptr,
-        }.into())
-    }
-
-    fn into_ptr_vtable_pair(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, (ScalarMaybeUndef, Pointer)> {
-        match value {
-            Value::ByRef(ref_ptr, align) => {
-                let mem = self.memory();
-                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
-                let vtable = mem.read_ptr_sized(
-                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    align
-                )?.unwrap_or_err()?.to_ptr()?;
-                Ok((ptr, vtable))
-            }
-
-            Value::ScalarPair(ptr, vtable) => Ok((ptr, vtable.unwrap_or_err()?.to_ptr()?)),
-            _ => bug!("expected ptr and vtable, got {:?}", value),
-        }
-    }
-
-    fn into_slice(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, (ScalarMaybeUndef, u64)> {
-        match value {
-            Value::ByRef(ref_ptr, align) => {
-                let mem = self.memory();
-                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
-                let len = mem.read_ptr_sized(
-                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    align
-                )?.unwrap_or_err()?.to_bits(mem.pointer_size())? as u64;
-                Ok((ptr, len))
-            }
-            Value::ScalarPair(ptr, val) => {
-                let len = val.unwrap_or_err()?.to_bits(self.memory().pointer_size())?;
-                Ok((ptr, len as u64))
-            }
-            Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
-        }
-    }
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {

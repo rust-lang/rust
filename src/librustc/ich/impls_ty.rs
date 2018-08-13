@@ -397,12 +397,6 @@ impl_stable_hash_for!(enum mir::interpret::ScalarMaybeUndef {
     Undef
 });
 
-impl_stable_hash_for!(enum mir::interpret::Value {
-    Scalar(v),
-    ScalarPair(a, b),
-    ByRef(ptr, align)
-});
-
 impl_stable_hash_for!(struct mir::interpret::Pointer {
     alloc_id,
     offset
