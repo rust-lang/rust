@@ -28,14 +28,14 @@ impl Conv for SyntaxKind {
 
     fn conv(self) -> <Self as Conv>::Output {
         match self {
-            SyntaxKind::FUNCTION => SymbolKind::Function,
-            SyntaxKind::STRUCT => SymbolKind::Struct,
-            SyntaxKind::ENUM => SymbolKind::Enum,
-            SyntaxKind::TRAIT => SymbolKind::Interface,
+            SyntaxKind::FN_DEF => SymbolKind::Function,
+            SyntaxKind::STRUCT_DEF => SymbolKind::Struct,
+            SyntaxKind::ENUM_DEF => SymbolKind::Enum,
+            SyntaxKind::TRAIT_DEF => SymbolKind::Interface,
             SyntaxKind::MODULE => SymbolKind::Module,
-            SyntaxKind::TYPE_ITEM => SymbolKind::TypeParameter,
-            SyntaxKind::STATIC_ITEM => SymbolKind::Constant,
-            SyntaxKind::CONST_ITEM => SymbolKind::Constant,
+            SyntaxKind::TYPE_DEF => SymbolKind::TypeParameter,
+            SyntaxKind::STATIC_DEF => SymbolKind::Constant,
+            SyntaxKind::CONST_DEF => SymbolKind::Constant,
             _ => SymbolKind::Variable,
         }
     }

@@ -108,7 +108,7 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // unsafe fn foo() {}
         FN_KW => {
             function(p);
-            FUNCTION
+            FN_DEF
         }
 
         // test unsafe_trait
@@ -121,7 +121,7 @@ pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
         // unsafe auto trait T {}
         TRAIT_KW => {
             traits::trait_item(p);
-            TRAIT
+            TRAIT_DEF
         }
 
         // test unsafe_impl
@@ -157,7 +157,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         TYPE_KW => {
             type_item(p);
-            TYPE_ITEM
+            TYPE_DEF
         }
         MOD_KW => {
             mod_item(p);
@@ -171,11 +171,11 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
                      consider removing this semicolon"
                 );
             }
-            STRUCT
+            STRUCT_DEF
         }
         ENUM_KW => {
             structs::enum_item(p);
-            ENUM
+            ENUM_DEF
         }
         USE_KW => {
             use_item::use_item(p);
@@ -183,11 +183,11 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         CONST_KW if (la == IDENT || la == MUT_KW) => {
             consts::const_item(p);
-            CONST_ITEM
+            CONST_DEF
         }
         STATIC_KW => {
             consts::static_item(p);
-            STATIC_ITEM
+            STATIC_DEF
         }
         // test extern_block
         // extern {}

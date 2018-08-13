@@ -1,5 +1,5 @@
 FILE@[0; 18)
-  TRAIT@[0; 17)
+  TRAIT_DEF@[0; 17)
     UNSAFE_KW@[0; 6)
     WHITESPACE@[6; 7)
     TRAIT_KW@[7; 12)

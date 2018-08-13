@@ -1,5 +1,5 @@
 FILE@[0; 389)
-  FUNCTION@[0; 389)
+  FN_DEF@[0; 389)
     VISIBILITY@[0; 10)
       PUB_KW@[0; 3)
       L_PAREN@[3; 4)

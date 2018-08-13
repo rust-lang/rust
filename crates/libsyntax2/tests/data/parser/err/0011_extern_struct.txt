@@ -4,7 +4,7 @@ FILE@[0; 19)
       EXTERN_KW@[0; 6)
       err: `expected fn, trait or impl`
   WHITESPACE@[6; 7)
-  STRUCT@[7; 18)
+  STRUCT_DEF@[7; 18)
     STRUCT_KW@[7; 13)
     WHITESPACE@[13; 14)
     NAME@[14; 17)

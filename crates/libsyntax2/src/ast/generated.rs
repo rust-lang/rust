@@ -14,7 +14,7 @@ pub struct ConstItem<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for ConstItem<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            CONST_ITEM => Some(ConstItem { syntax }),
+            CONST_DEF => Some(ConstItem { syntax }),
             _ => None,
         }
     }
@@ -33,7 +33,7 @@ pub struct Enum<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for Enum<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            ENUM => Some(Enum { syntax }),
+            ENUM_DEF => Some(Enum { syntax }),
             _ => None,
         }
     }
@@ -76,7 +76,7 @@ pub struct Function<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for Function<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            FUNCTION => Some(Function { syntax }),
+            FN_DEF => Some(Function { syntax }),
             _ => None,
         }
     }
@@ -150,7 +150,7 @@ pub struct StaticItem<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for StaticItem<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            STATIC_ITEM => Some(StaticItem { syntax }),
+            STATIC_DEF => Some(StaticItem { syntax }),
             _ => None,
         }
     }
@@ -169,7 +169,7 @@ pub struct Struct<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for Struct<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            STRUCT => Some(Struct { syntax }),
+            STRUCT_DEF => Some(Struct { syntax }),
             _ => None,
         }
     }
@@ -188,7 +188,7 @@ pub struct Trait<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for Trait<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            TRAIT => Some(Trait { syntax }),
+            TRAIT_DEF => Some(Trait { syntax }),
             _ => None,
         }
     }
@@ -207,7 +207,7 @@ pub struct TypeItem<R: TreeRoot = Arc<SyntaxRoot>> {
 impl<R: TreeRoot> AstNode<R> for TypeItem<R> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
         match syntax.kind() {
-            TYPE_ITEM => Some(TypeItem { syntax }),
+            TYPE_DEF => Some(TypeItem { syntax }),
             _ => None,
         }
     }

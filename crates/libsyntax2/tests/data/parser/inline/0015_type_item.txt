@@ -1,5 +1,5 @@
 FILE@[0; 16)
-  TYPE_ITEM@[0; 15)
+  TYPE_DEF@[0; 15)
     TYPE_KW@[0; 4)
     WHITESPACE@[4; 5)
     NAME@[5; 8)

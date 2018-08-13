@@ -1,5 +1,5 @@
 FILE@[0; 25)
-  FUNCTION@[0; 24)
+  FN_DEF@[0; 24)
     CONST_KW@[0; 5)
     WHITESPACE@[5; 6)
     UNSAFE_KW@[6; 12)

@@ -1,5 +1,5 @@
 FILE@[0; 19)
-  STRUCT@[0; 18)
+  STRUCT_DEF@[0; 18)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)
     NAME@[7; 8)

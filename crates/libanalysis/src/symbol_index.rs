@@ -68,7 +68,7 @@ impl Query {
     ) -> Vec<&'a FileSymbol> {
         fn is_type(kind: SyntaxKind) -> bool {
             match kind {
-                STRUCT | ENUM | TRAIT | TYPE_ITEM => true,
+                STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
                 _ => false,
             }
         }
