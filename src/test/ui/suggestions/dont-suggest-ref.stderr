@@ -524,7 +524,7 @@ LL |         &mut Either::One(_t) => (),
    |                          -- data moved here
 ...
 LL |         &mut Either::Two(_t) => (),
-   |                          -- ... and here
+   |                          -- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:233:26
@@ -705,7 +705,7 @@ LL |         //~^ ERROR cannot move
 LL |         (&mut Either::One(_t),) => (),
    |                           -- data moved here
 LL |         (&mut Either::Two(_t),) => (),
-   |                           -- ... and here
+   |                           -- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:290:27
@@ -937,7 +937,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
    |         ---------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |         |   |      |
-   |         |   |      ... and here
+   |         |   |      ...and here
    |         |   data moved here
    |         help: consider removing the `&`: `(X(_t), X(_u))`
    |
@@ -953,7 +953,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
    |            -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |            |             |                |
-   |            |             |                ... and here
+   |            |             |                ...and here
    |            |             data moved here
    |            help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -969,7 +969,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
    |               -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |               |             |                |
-   |               |             |                ... and here
+   |               |             |                ...and here
    |               |             data moved here
    |               help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -986,12 +986,12 @@ LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
 LL |         //~^ ERROR cannot move
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |                       --               -- ... and here
+   |                       --               -- ...and here
    |                       |
    |                       data moved here
 ...
 LL |         &(Either::Two(_t), Either::One(_u)) => (),
-   |                       -- ... and here  -- ... and here
+   |                       -- ...and here   -- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:391:23
@@ -1019,7 +1019,7 @@ LL |         //~^ ERROR cannot move
 LL |         &(Either::One(_t), Either::Two(_u))
    |         -----------------------------------
    |         |             |                |
-   |         |             |                ... and here
+   |         |             |                ...and here
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1038,7 +1038,7 @@ LL |         //~^ ERROR cannot move
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
    |         |             |                |
-   |         |             |                ... and here
+   |         |             |                ...and here
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1057,7 +1057,7 @@ LL |         //~^ ERROR cannot move
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
    |         |             |                |
-   |         |             |                ... and here
+   |         |             |                ...and here
    |         |             data moved here
    |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1073,7 +1073,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
    |         -------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |         |       |      |
-   |         |       |      ... and here
+   |         |       |      ...and here
    |         |       data moved here
    |         help: consider removing the `&mut`: `(X(_t), X(_u))`
    |
@@ -1089,7 +1089,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |            ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |            |                 |                |
-   |            |                 |                ... and here
+   |            |                 |                ...and here
    |            |                 data moved here
    |            help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1105,7 +1105,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |               ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |               |                 |                |
-   |               |                 |                ... and here
+   |               |                 |                ...and here
    |               |                 data moved here
    |               help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1122,12 +1122,12 @@ LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
 LL |         //~^ ERROR cannot move
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |                           --               -- ... and here
+   |                           --               -- ...and here
    |                           |
    |                           data moved here
 ...
 LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
-   |                           -- ... and here  -- ... and here
+   |                           -- ...and here   -- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
   --> $DIR/dont-suggest-ref.rs:443:27
@@ -1155,7 +1155,7 @@ LL |         //~^ ERROR cannot move
 LL |         &mut (Either::One(_t), Either::Two(_u))
    |         ---------------------------------------
    |         |                 |                |
-   |         |                 |                ... and here
+   |         |                 |                ...and here
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1174,7 +1174,7 @@ LL |         //~^ ERROR cannot move
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |
-   |         |                 |                ... and here
+   |         |                 |                ...and here
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1193,7 +1193,7 @@ LL |         //~^ ERROR cannot move
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |
-   |         |                 |                ... and here
+   |         |                 |                ...and here
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1212,7 +1212,7 @@ LL |         //~^ ERROR cannot move
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |
-   |         |                 |                ... and here
+   |         |                 |                ...and here
    |         |                 data moved here
    |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
    |
@@ -1290,7 +1290,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     fn f5(&(X(_t), X(_u)): &(X, X)) { }
    |           ^^^^--^^^^^--^^
    |           |   |      |
-   |           |   |      ... and here
+   |           |   |      ...and here
    |           |   data moved here
    |           cannot move out of borrowed content
    |           help: consider removing the `&`: `(X(_t), X(_u))`
@@ -1307,7 +1307,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
    |           ^^^^^^^^--^^^^^--^^
    |           |       |      |
-   |           |       |      ... and here
+   |           |       |      ...and here
    |           |       data moved here
    |           cannot move out of borrowed content
    |           help: consider removing the `&mut`: `(X(_t), X(_u))`

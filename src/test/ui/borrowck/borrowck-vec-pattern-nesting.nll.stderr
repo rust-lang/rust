@@ -28,10 +28,21 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
 LL |     match vec {
    |           ^^^ cannot move out of here
 LL |         &mut [_a, //~ ERROR cannot move out
-   |               --
-   |               |
-   |               data moved here
-   |               help: to prevent move, use ref or ref mut: `ref _a`
+   |               -- data moved here
+   |
+note: move occurs because `_a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-vec-pattern-nesting.rs:44:15
+   |
+LL |         &mut [_a, //~ ERROR cannot move out
+   |               ^^
+help: consider removing the `&mut`
+   |
+LL |         [_a, //~ ERROR cannot move out
+LL |             //~| cannot move out
+LL |             //~| to prevent move
+LL |             ..
+LL |         ] => {
+   |
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:57:13
@@ -40,7 +51,7 @@ LL |     let a = vec[0]; //~ ERROR cannot move out
    |             ^^^^^^
    |             |
    |             cannot move out of here
-   |             help: consider using a reference instead: `&vec[0]`
+   |             help: consider borrowing here: `&vec[0]`
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:64:11
@@ -49,10 +60,19 @@ LL |     match vec {
    |           ^^^ cannot move out of here
 ...
 LL |          _b] => {}
-   |          --
-   |          |
-   |          data moved here
-   |          help: to prevent move, use ref or ref mut: `ref _b`
+   |          -- data moved here
+   |
+note: move occurs because `_b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-vec-pattern-nesting.rs:67:10
+   |
+LL |          _b] => {}
+   |          ^^
+help: consider removing the `&mut`
+   |
+LL |         [ //~ ERROR cannot move out
+LL |         //~^ cannot move out
+LL |          _b] => {}
+   |
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:70:13
@@ -61,7 +81,7 @@ LL |     let a = vec[0]; //~ ERROR cannot move out
    |             ^^^^^^
    |             |
    |             cannot move out of here
-   |             help: consider using a reference instead: `&vec[0]`
+   |             help: consider borrowing here: `&vec[0]`
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:77:11
@@ -69,14 +89,18 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
 LL |     match vec {
    |           ^^^ cannot move out of here
 LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
-   |               --  --  -- ... and here
-   |               |   |
-   |               |   ... and here
-   |               data moved here
-help: to prevent move, use ref or ref mut
+   |         -----------------
+   |         |     |   |   |
+   |         |     |   |   ...and here
+   |         |     |   ...and here
+   |         |     data moved here
+   |         help: consider removing the `&mut`: `[_a, _b, _c]`
    |
-LL |         &mut [ref _a, ref _b, ref _c] => {}  //~ ERROR cannot move out
-   |               ^^^^^^  ^^^^^^  ^^^^^^
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-vec-pattern-nesting.rs:78:15
+   |
+LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+   |               ^^  ^^  ^^
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:82:13
@@ -85,7 +109,7 @@ LL |     let a = vec[0]; //~ ERROR cannot move out
    |             ^^^^^^
    |             |
    |             cannot move out of here
-   |             help: consider using a reference instead: `&vec[0]`
+   |             help: consider borrowing here: `&vec[0]`
 
 error: aborting due to 8 previous errors
 
