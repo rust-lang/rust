@@ -11,7 +11,11 @@ pub struct ConstantCx {
 }
 
 impl ConstantCx {
-    pub fn finalize<'a, 'tcx: 'a, B: Backend>(mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<B>) {
+    pub fn finalize<'a, 'tcx: 'a, B: Backend>(
+        mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        module: &mut Module<B>,
+    ) {
         println!("todo allocs: {:?}", self.todo_allocs);
         define_all_allocs(tcx, module, &mut self);
         println!("done {:?}", self.done);
@@ -111,11 +115,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
     let alloc = fx.tcx.const_value_to_allocation(const_);
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
-    let data_id = get_global_for_alloc_id(
-        fx.module,
-        fx.constants,
-        alloc_id,
-    );
+    let data_id = get_global_for_alloc_id(fx.module, fx.constants, alloc_id);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     // TODO: does global_value return a ptr of a val?
     let global_ptr = fx.bcx.ins().global_value(types::I64, local_data_id);
@@ -143,7 +143,7 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
     data_id
 }
 
-fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a> (
+fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<B>,
     cx: &mut ConstantCx,

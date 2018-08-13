@@ -68,7 +68,7 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable, TypeVariants,
     };
-    pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc, fx::FxHashMap};
+    pub use rustc_data_structures::{fx::FxHashMap, indexed_vec::Idx, sync::Lrc};
     pub use rustc_mir::monomorphize::{collector, MonoItem};
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::codemap::DUMMY_SP;
@@ -258,7 +258,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
 
             let before = ::std::time::Instant::now();
-            let mono_items = collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0;
+            let mono_items =
+                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
+                    .0;
 
             // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
             save_incremental(tcx);
