@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::FxHashMap;
-use crate::utils::{match_qpath, paths, span_lint};
+use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
 use syntax::symbol::LocalInternedString;
 use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use syntax::codemap::Span;
@@ -247,7 +247,7 @@ impl EarlyLintPass for DefaultHashTypes {
         let ident_string = ident.to_string();
         if let Some(replace) = self.map.get(&ident_string) {
             let msg = format!("Prefer {} over {}, it has better performance and we don't need any collision prevention in clippy", replace, ident_string);
-            cx.span_lint(DEFAULT_HASH_TYPES, ident.span, &msg);
+            span_lint_and_sugg(cx, DEFAULT_HASH_TYPES, ident.span, &msg, "use", replace.to_owned());
         }
     }
 }
