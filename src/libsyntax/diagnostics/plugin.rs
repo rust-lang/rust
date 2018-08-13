@@ -19,9 +19,9 @@ use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use OneVector;
 use symbol::{keywords, Symbol};
 use tokenstream::{TokenTree};
-use util::small_vector::SmallVector;
 
 use diagnostics::metadata::output_metadata;
 
@@ -131,7 +131,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
-    MacEager::items(SmallVector::many(vec![
+    MacEager::items(OneVector::many(vec![
         ecx.item_mod(
             span,
             span,
@@ -214,7 +214,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         ),
     );
 
-    MacEager::items(SmallVector::many(vec![
+    MacEager::items(OneVector::many(vec![
         P(ast::Item {
             ident: *name,
             attrs: Vec::new(),
