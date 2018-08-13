@@ -170,14 +170,12 @@ pub fn liveness_of_locals<'tcx, V: Idx>(
 ) -> LivenessResult<V> {
     let num_live_vars = map.num_variables();
 
-    let def_use: IndexVec<_, DefsUses<V>> = mir
-        .basic_blocks()
+    let def_use: IndexVec<_, DefsUses<V>> = mir.basic_blocks()
         .iter()
         .map(|b| block(mode, map, b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LiveVarSet<V>> = mir
-        .basic_blocks()
+    let mut outs: IndexVec<_, LiveVarSet<V>> = mir.basic_blocks()
         .indices()
         .map(|_| LiveVarSet::new_empty(num_live_vars))
         .collect();
@@ -427,7 +425,9 @@ where
         if let Some(v_index) = self.map.from_local(local) {
             match categorize(context) {
                 Some(DefUse::Def) => self.defs_uses.add_def(v_index),
-                Some(DefUse::Use) if self.mode.include_regular_use => self.defs_uses.add_use(v_index),
+                Some(DefUse::Use) if self.mode.include_regular_use => {
+                    self.defs_uses.add_use(v_index)
+                }
                 Some(DefUse::Drop) if self.mode.include_drops => self.defs_uses.add_use(v_index),
                 _ => (),
             }
@@ -518,7 +518,8 @@ pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
         let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet<V>>| {
-            let live: Vec<String> = result[block].iter()
+            let live: Vec<String> = result[block]
+                .iter()
                 .map(|v| map.from_live_var(v))
                 .map(|local| format!("{:?}", local))
                 .collect();
