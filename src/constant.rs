@@ -133,22 +133,17 @@ fn trans_const_place<'a, 'tcx: 'a>(
 // If ret.1 is true, then the global didn't exist before
 fn define_global_for_alloc_id<'a, 'tcx: 'a, B: Backend>(
     module: &mut Module<B>,
-    cx: &mut ConstantCx,//<'a, 'tcx>,
+    cx: &mut ConstantCx,
     alloc_id: AllocId,
     todo: &mut HashMap<AllocId, DataId>,
-) -> (DataId, bool) {
-    use std::collections::hash_map::Entry;
-    match cx.constants.entry(alloc_id) {
-        Entry::Occupied(mut occ) => (*occ.get_mut(), false),
-        Entry::Vacant(vac) => {
-            let data_id = module
-                .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
-                .unwrap();
-            todo.insert(alloc_id, data_id);
-            vac.insert(data_id);
-            (data_id, true)
-        }
-    }
+) -> DataId {
+    *cx.constants.entry(alloc_id).or_insert_with(|| {
+        let data_id = module
+            .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
+            .unwrap();
+        todo.insert(alloc_id, data_id);
+        data_id
+    })
 }
 
 fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
@@ -185,7 +180,7 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
         );
 
         for &(offset, reloc) in alloc.relocations.iter() {
-            let data_id = define_global_for_alloc_id(module, cx, reloc, &mut todo).0;
+            let data_id = define_global_for_alloc_id(module, cx, reloc, &mut todo);
 
             let reloc_offset = {
                 let endianness = memory.endianness();
