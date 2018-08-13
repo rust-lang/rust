@@ -332,7 +332,7 @@ fn arg_list(p: &mut Parser) {
 //     let _ = format!();
 // }
 fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
-    assert!(paths::is_path_start(p));
+    assert!(paths::is_path_start(p) || p.at(L_ANGLE));
     let m = p.start();
     paths::expr_path(p);
     match p.current() {

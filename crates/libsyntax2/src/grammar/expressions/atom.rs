@@ -38,7 +38,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         Some(m) => return Some(m),
         None => (),
     }
-    if paths::is_path_start(p) {
+    if paths::is_path_start(p) || p.at(L_ANGLE) {
         return Some(path_expr(p, r));
     }
     let la = p.nth(1);

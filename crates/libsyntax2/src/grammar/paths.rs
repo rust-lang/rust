@@ -27,9 +27,6 @@ enum Mode {
 }
 
 fn path(p: &mut Parser, mode: Mode) {
-    if !is_path_start(p) {
-        return;
-    }
     let path = p.start();
     path_segment(p, mode, true);
     let mut qual = path.complete(p, PATH);
@@ -51,21 +48,36 @@ fn path(p: &mut Parser, mode: Mode) {
 }
 
 fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
-    let segment = p.start();
-    if first {
-        p.eat(COLONCOLON);
+    let m = p.start();
+    // test qual_paths
+    // type X = <A as B>::Output;
+    // fn foo() { <usize as Default>::default(); }
+    if first && p.eat(L_ANGLE) {
+        types::type_(p);
+        if p.eat(AS_KW) {
+            if is_path_start(p) {
+                types::path_type(p);
+            } else {
+                p.error("expected a trait");
+            }
+        }
+        p.expect(R_ANGLE);
+    } else {
+        if first {
+            p.eat(COLONCOLON);
+        }
+        match p.current() {
+            IDENT => {
+                name_ref(p);
+                path_generic_args(p, mode);
+            }
+            SELF_KW | SUPER_KW => p.bump(),
+            _ => {
+                p.err_and_bump("expected identifier");
+            }
+        };
     }
-    match p.current() {
-        IDENT => {
-            name_ref(p);
-            path_generic_args(p, mode);
-        }
-        SELF_KW | SUPER_KW => p.bump(),
-        _ => {
-            p.err_and_bump("expected identifier");
-        }
-    };
-    segment.complete(p, PATH_SEGMENT);
+    m.complete(p, PATH_SEGMENT);
 }
 
 fn path_generic_args(p: &mut Parser, mode: Mode) {

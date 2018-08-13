@@ -12,6 +12,7 @@ pub(super) fn type_(p: &mut Parser) {
         FOR_KW => for_type(p),
         IMPL_KW => impl_trait_type(p),
         DYN_KW => dyn_trait_type(p),
+        L_ANGLE => path_type(p),
         _ if paths::is_path_start(p) => path_type(p),
         _ => {
             p.err_and_bump("expected type");
@@ -214,7 +215,7 @@ fn dyn_trait_type(p: &mut Parser) {
 // type C = self::Foo;
 // type D = super::Foo;
 pub(super) fn path_type(p: &mut Parser) {
-    assert!(paths::is_path_start(p));
+    assert!(paths::is_path_start(p) || p.at(L_ANGLE));
     let m = p.start();
     paths::type_path(p);
     // test path_type_with_bounds
