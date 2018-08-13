@@ -21,6 +21,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(in_band_lifetimes)]
+#![feature(impl_header_lifetime_elision)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(unsize)]
