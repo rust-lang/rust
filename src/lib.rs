@@ -255,7 +255,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 defined_functions: Vec::new(),
             };
 
-            let mut log = ::std::fs::File::create("../target/log.txt").unwrap();
+            let mut log = ::std::fs::File::create("target/log.txt").unwrap();
 
             let before = ::std::time::Instant::now();
             let mono_items =
