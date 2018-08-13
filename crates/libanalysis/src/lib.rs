@@ -6,6 +6,9 @@ extern crate log;
 extern crate once_cell;
 extern crate libsyntax2;
 extern crate libeditor;
+extern crate fst;
+
+mod symbol_index;
 
 use once_cell::sync::OnceCell;
 
@@ -14,8 +17,11 @@ use std::{
     collections::hash_map::HashMap,
     path::{PathBuf, Path},
 };
+
 use libsyntax2::ast;
-use libeditor::LineIndex;
+use libeditor::{LineIndex, FileSymbol};
+
+use self::symbol_index::{FileSymbols, Query};
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
@@ -70,12 +76,7 @@ impl WorldState {
 impl World {
     pub fn file_syntax(&self, path: &Path) -> Result<ast::File> {
         let data = self.file_data(path)?;
-        let syntax = data.syntax
-            .get_or_init(|| {
-                trace!("parsing: {}", path.display());
-                ast::File::parse(&data.text)
-            }).clone();
-        Ok(syntax)
+        Ok(data.syntax(path).clone())
     }
 
     pub fn file_line_index(&self, path: &Path) -> Result<LineIndex> {
@@ -88,12 +89,28 @@ impl World {
         Ok(index.clone())
     }
 
+    pub fn world_symbols(&self, query: &str, f: &mut FnMut(&Path, &FileSymbol) -> Search) {
+        let q = Query::new(query);
+        for (path, data) in self.data.file_map.iter() {
+            let symbols = data.symbols(path.as_path());
+            if q.process(symbols, &mut |symbol| f(path, symbol)) == Search::Break {
+                break;
+            }
+        }
+    }
+
     fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
         match self.data.file_map.get(path) {
             Some(data) => Ok(data.clone()),
             None => bail!("unknown file: {}", path.display()),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Search {
+    Continue,
+    Break,
 }
 
 
@@ -105,6 +122,7 @@ struct WorldData {
 #[derive(Debug)]
 struct FileData {
     text: String,
+    symbols: OnceCell<FileSymbols>,
     syntax: OnceCell<ast::File>,
     lines: OnceCell<LineIndex>,
 }
@@ -113,8 +131,23 @@ impl FileData {
     fn new(text: String) -> FileData {
         FileData {
             text,
+            symbols: OnceCell::new(),
             syntax: OnceCell::new(),
             lines: OnceCell::new(),
         }
+    }
+
+    fn syntax(&self, path: &Path) -> &ast::File {
+        self.syntax
+            .get_or_init(|| {
+                trace!("parsing: {}", path.display());
+                ast::File::parse(&self.text)
+            })
+    }
+
+    fn symbols(&self, path: &Path) -> &FileSymbols {
+        let syntax = self.syntax(path);
+        self.symbols
+            .get_or_init(|| FileSymbols::new(syntax))
     }
 }
