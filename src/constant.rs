@@ -12,21 +12,23 @@ pub struct ConstantCx {
 
 impl ConstantCx {
     pub fn finalize<B: Backend>(mut self, module: &mut Module<B>) {
+        println!("constants {:?}", self.constants);
+        println!("done {:?}", self.done);
         for data_id in self.done.drain() {
             module.finalize_data(data_id);
         }
     }
 }
 
-pub fn codegen_static<'a, 'tcx: 'a, B: Backend>(_cx: &mut CodegenCx<'a, 'tcx, B>, def_id: DefId) {
-    unimpl!("Unimplemented static mono item {:?}", def_id);
+pub fn codegen_static<'a, 'tcx: 'a, B: Backend>(cx: &mut CodegenCx<'a, 'tcx, B>, def_id: DefId) {
+    unimpl!("static mono item {:?}", def_id);
 }
 
 pub fn codegen_static_ref<'a, 'tcx: 'a>(
-    _fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx>,
     static_: &Static<'tcx>,
 ) -> CPlace<'tcx> {
-    unimpl!("Unimplemented static mono item {:?}", static_.def_id);
+    unimpl!("static place {:?} ty {:?}", static_.def_id, static_.ty);
 }
 
 pub fn trans_promoted<'a, 'tcx: 'a>(
@@ -125,13 +127,13 @@ fn define_global_for_alloc_id<'a, 'tcx: 'a, B: Backend>(
     module: &mut Module<B>,
     cx: &mut ConstantCx,
     alloc_id: AllocId,
-    todo: &mut HashMap<AllocId, DataId>,
+    todo: &mut HashSet<AllocId>,
 ) -> DataId {
     *cx.constants.entry(alloc_id).or_insert_with(|| {
         let data_id = module
             .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
             .unwrap();
-        todo.insert(alloc_id, data_id);
+        todo.insert(alloc_id);
         data_id
     })
 }
@@ -139,7 +141,7 @@ fn define_global_for_alloc_id<'a, 'tcx: 'a, B: Backend>(
 fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<B>,
-    cx: &mut ConstantCx,//<'a, 'tcx>,
+    cx: &mut ConstantCx,
     alloc_id: AllocId,
 ) -> DataId {
     if let Some(data_id) = cx.constants.get(&alloc_id) {
@@ -148,23 +150,23 @@ fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
 
     let memory = Memory::<CompileTimeEvaluator>::new(tcx.at(DUMMY_SP), ());
 
-    let mut todo = HashMap::new();
-    define_global_for_alloc_id(module, cx, alloc_id, &mut todo);
+    let mut todo = HashSet::new();
+    todo.insert(alloc_id);
 
     loop {
-        let (alloc_id, data_id) = {
-            if let Some(alloc_id) = todo.keys().next().map(|alloc_id| *alloc_id) {
-                let data_id = todo.remove(&alloc_id).unwrap();
-                (alloc_id, data_id)
+        let alloc_id = {
+            if let Some(alloc_id) = todo.iter().next().map(|alloc_id| *alloc_id) {
+                todo.remove(&alloc_id);
+                alloc_id
             } else {
                 break;
             }
         };
 
-        println!(
-            "cur: {:?}:{:?} todo: {:?} done: {:?}",
-            alloc_id, data_id, todo, cx.done
-        );
+        let data_id = define_global_for_alloc_id(module, cx, alloc_id, &mut todo);
+        if cx.done.contains(&data_id) {
+            continue;
+        }
 
         let alloc = memory.get(alloc_id).unwrap();
         //let alloc = tcx.alloc_map.lock().get(alloc_id).unwrap();
