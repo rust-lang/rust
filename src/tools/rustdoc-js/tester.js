@@ -216,7 +216,8 @@ function lookForEntry(entry, data) {
 
 function main(argv) {
     if (argv.length !== 3) {
-        console.error("Expected toolchain to check as argument (for example 'x86_64-apple-darwin'");
+        console.error("Expected toolchain to check as argument (for example " +
+                      "'x86_64-apple-darwin')");
         return 1;
     }
     var toolchain = argv[2];

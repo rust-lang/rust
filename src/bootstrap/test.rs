@@ -585,6 +585,47 @@ impl Step for RustdocJS {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct DocUI {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+}
+
+impl Step for DocUI {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/test/doc-ui")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(DocUI {
+            host: run.host,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        if let Some(ref nodejs) = builder.config.nodejs {
+            let mut command = Command::new(nodejs);
+            command.args(&["src/tools/doc-ui/script.js",
+                           &*self.host,
+                           &builder.top_stage.to_string()]);
+            builder.ensure(::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+            });
+            builder.run(&mut command);
+        } else {
+            builder.info(&format!(
+                "No nodejs found, skipping \"src/test/doc-ui\" tests"
+            ));
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocUi {
     pub host: Interned<String>,
     pub target: Interned<String>,

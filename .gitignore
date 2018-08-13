@@ -109,3 +109,5 @@ version.texi
 
 no_llvm_build
 
+**node_modules/
+**doc-ui/.lock
