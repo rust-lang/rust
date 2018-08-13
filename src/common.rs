@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_module::{DataId, Module};
+use cranelift_module::Module;
 
 use crate::prelude::*;
 
@@ -361,7 +361,7 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
-    pub constants: &'a mut HashMap<AllocId, DataId>,
+    pub constants: &'a mut crate::constant::ConstantCx,
 }
 
 impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {

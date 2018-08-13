@@ -96,7 +96,7 @@ use crate::prelude::*;
 pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
-    pub constants: HashMap<AllocId, DataId>,
+    pub constants: crate::constant::ConstantCx,
     pub defined_functions: Vec<FuncId>,
 }
 
@@ -251,7 +251,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut cx = CodegenCx {
                 tcx,
                 module: &mut module,
-                constants: HashMap::new(),
+                constants: Default::default(),
                 defined_functions: Vec::new(),
             };
 
@@ -280,10 +280,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     }
                 }
             }
+
+            cx.constants.finalize(&mut cx.module);
+
             let after = ::std::time::Instant::now();
             println!("time: {:?}", after - before);
 
-            std::mem::replace(&mut cx.defined_functions, Vec::new())
+            cx.defined_functions
         };
 
         tcx.sess.warn("Compiled everything");

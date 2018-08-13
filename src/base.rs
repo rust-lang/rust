@@ -69,7 +69,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
             } => unimpl!("Unimplemented drop glue instance"),
             inst => unimpl!("Unimplemented instance {:?}", inst),
         },
-        MonoItem::Static(def_id) => unimpl!("Unimplemented static mono item {:?}", def_id),
+        MonoItem::Static(def_id) => {
+            crate::constant::codegen_static(cx, def_id);
+        }
         MonoItem::GlobalAsm(node_id) => cx
             .tcx
             .sess
@@ -860,9 +862,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
     match place {
         Place::Local(local) => fx.get_local_place(*local),
         Place::Promoted(promoted) => crate::constant::trans_promoted(fx, promoted.0),
-        Place::Static(static_) => {
-            unimpl!("static place {:?} ty {:?}", static_.def_id, static_.ty);
-        }
+        Place::Static(static_) => crate::constant::codegen_static_ref(fx, static_),
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
             match projection.elem {
