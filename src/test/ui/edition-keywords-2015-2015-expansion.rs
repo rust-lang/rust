@@ -12,7 +12,6 @@
 // aux-build:edition-kw-macro-2015.rs
 // compile-pass
 
-#![feature(raw_identifiers)]
 #![allow(async_idents)]
 
 #[macro_use]
