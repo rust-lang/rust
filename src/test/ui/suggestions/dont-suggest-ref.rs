@@ -45,7 +45,7 @@ pub fn main() {
     let vs = &vx;
     let vsm = &mut vec![X(Y)];
 
-    // --------
+    // -------- move from Either/X place --------
 
     let X(_t) = *s;
     //~^ ERROR cannot move
@@ -175,7 +175,7 @@ pub fn main() {
         // FIXME: should suggest removing `ref mut` too
     }
 
-    // --------
+    // -------- move from &Either/&X place --------
 
     let &X(_t) = s;
     //~^ ERROR cannot move
@@ -263,7 +263,37 @@ pub fn main() {
     //~| HELP consider removing the `&mut`
     //~| SUGGESTION X(_t)
 
-    // --------
+    // -------- move from tuple of &Either/&X (no suggestions) --------
+
+    let (&X(_t),) = (&x.clone(),);
+    //~^ ERROR cannot move
+    if let (&Either::One(_t),) = (&e.clone(),) { }
+    //~^ ERROR cannot move
+    while let (&Either::One(_t),) = (&e.clone(),) { }
+    //~^ ERROR cannot move
+    match (&e.clone(),) {
+        //~^ ERROR cannot move
+        (&Either::One(_t),)
+        | (&Either::Two(_t),) => (),
+    }
+    fn f3((&X(_t),): (&X,)) { }
+    //~^ ERROR cannot move
+
+    let (&mut X(_t),) = (&mut xm.clone(),);
+    //~^ ERROR cannot move
+    if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+    //~^ ERROR cannot move
+    while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+    //~^ ERROR cannot move
+    match (&mut em.clone(),) {
+        //~^ ERROR cannot move
+        (&mut Either::One(_t),) => (),
+        (&mut Either::Two(_t),) => (),
+    }
+    fn f4((&mut X(_t),): (&mut X,)) { }
+    //~^ ERROR cannot move
+
+    // -------- move from &Either/&X value --------
 
     let &X(_t) = &x;
     //~^ ERROR cannot move
@@ -342,7 +372,7 @@ pub fn main() {
         Either::Two(_t) => (),
     }
 
-    // --------
+    // -------- test for duplicate suggestions --------
 
     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
     //~^ ERROR cannot move
@@ -391,7 +421,7 @@ pub fn main() {
         (Either::Two(_t), Either::One(_u)) => (),
         _ => (),
     }
-    fn f3(&(X(_t), X(_u)): &(X, X)) { }
+    fn f5(&(X(_t), X(_u)): &(X, X)) { }
     //~^ ERROR cannot move
     //~| HELP consider removing the `&`
     //~| SUGGESTION (X(_t), X(_u))
@@ -451,7 +481,7 @@ pub fn main() {
         (Either::Two(_t), Either::One(_u)) => (),
         _ => (),
     }
-    fn f4(&mut (X(_t), X(_u)): &mut (X, X)) { }
+    fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
     //~^ ERROR cannot move
     //~| HELP consider removing the `&mut`
     //~| SUGGESTION (X(_t), X(_u))
