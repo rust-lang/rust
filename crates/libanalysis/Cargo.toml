@@ -8,6 +8,7 @@ log = "0.4.2"
 failure = "0.1.2"
 parking_lot = "0.6.3"
 once_cell = "0.1.4"
+rayon = "1.0.2"
 fst = { git = "https://github.com/matklad/fst", branch = "subsequence"}
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }

@@ -7,15 +7,21 @@ extern crate once_cell;
 extern crate libsyntax2;
 extern crate libeditor;
 extern crate fst;
+extern crate rayon;
 
 mod symbol_index;
 
 use once_cell::sync::OnceCell;
+use rayon::prelude::*;
 
 use std::{
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering::SeqCst},
+    },
     collections::hash_map::HashMap,
     path::{PathBuf, Path},
+    time::Instant,
 };
 
 use libsyntax2::{
@@ -29,6 +35,7 @@ use self::symbol_index::FileSymbols;
 pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
+const INDEXING_THRESHOLD: usize = 128;
 
 pub struct WorldState {
     data: Arc<WorldData>
@@ -56,7 +63,9 @@ impl WorldState {
 
     pub fn change_files(&mut self, changes: impl Iterator<Item=(PathBuf, Option<String>)>) {
         let data = self.data_mut();
+        let mut cnt = 0;
         for (path, text) in changes {
+            cnt += 1;
             data.file_map.remove(&path);
             if let Some(text) = text {
                 let file_data = FileData::new(text);
@@ -65,11 +74,15 @@ impl WorldState {
                 data.file_map.remove(&path);
             }
         }
+        *data.unindexed.get_mut() += cnt;
     }
 
     fn data_mut(&mut self) -> &mut WorldData {
         if Arc::get_mut(&mut self.data).is_none() {
             self.data = Arc::new(WorldData {
+                unindexed: AtomicUsize::new(
+                    self.data.unindexed.load(SeqCst)
+                ),
                 file_map: self.data.file_map.clone(),
             });
         }
@@ -95,10 +108,11 @@ impl World {
     }
 
     pub fn world_symbols<'a>(&'a self, mut query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a {
+        self.reindex();
         self.data.file_map.iter()
             .flat_map(move |(path, data)| {
-                let path: &'a Path = path.as_path();
                 let symbols = data.symbols();
+                let path: &'a Path = path.as_path();
                 query.process(symbols).into_iter().map(move |s| (path, s))
             })
     }
@@ -129,6 +143,23 @@ impl World {
         Ok(self.world_symbols(query).collect())
     }
 
+    fn reindex(&self) {
+        let data = &*self.data;
+        let unindexed = data.unindexed.load(SeqCst);
+        if unindexed < INDEXING_THRESHOLD {
+            return;
+        }
+        if unindexed == data.unindexed.compare_and_swap(unindexed, 0, SeqCst) {
+            let now = Instant::now();
+            data.file_map
+                .par_iter()
+                .for_each(|(_, data)| {
+                    data.symbols();
+                });
+            info!("parallel indexing took {:?}", now.elapsed());
+        }
+    }
+
     fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
         match self.data.file_map.get(path) {
             Some(data) => Ok(data.clone()),
@@ -150,6 +181,7 @@ pub const BREAK: SearchResult = Err(Break);
 
 #[derive(Default, Debug)]
 struct WorldData {
+    unindexed: AtomicUsize,
     file_map: HashMap<PathBuf, Arc<FileData>>,
 }
 
