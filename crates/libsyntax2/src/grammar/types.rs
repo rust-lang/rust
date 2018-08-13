@@ -166,8 +166,11 @@ fn fn_pointer_type(p: &mut Parser) {
         p.error("expected `fn`");
         return;
     }
-
-    params::param_list_opt_patterns(p);
+    if p.at(L_PAREN) {
+        params::param_list_opt_patterns(p);
+    } else {
+        p.error("expected parameters")
+    }
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
     fn_ret_type(p);

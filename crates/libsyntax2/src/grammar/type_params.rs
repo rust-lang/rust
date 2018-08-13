@@ -121,7 +121,12 @@ fn where_predicate(p: &mut Parser) {
         lifetime_bounds(p)
     } else {
         types::path_type(p);
-        bounds(p);
+        if p.at(COLON) {
+            bounds(p);
+        } else {
+            p.error("expected colon")
+        }
+
     }
     m.complete(p, WHERE_PRED);
 }

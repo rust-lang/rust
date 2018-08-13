@@ -1,20 +1,16 @@
 FILE@[0; 12)
-  USE_ITEM@[0; 9)
+  USE_ITEM@[0; 12)
     USE_KW@[0; 3)
     WHITESPACE@[3; 4)
-    USE_TREE@[4; 9)
-      PATH@[4; 9)
+    USE_TREE@[4; 11)
+      PATH@[4; 11)
         PATH@[4; 7)
           PATH_SEGMENT@[4; 7)
             NAME_REF@[4; 7)
               IDENT@[4; 7) "foo"
         COLONCOLON@[7; 9)
         err: `expected identifier`
-        err: `expected SEMI`
-        err: `expected an item`
-        PATH_SEGMENT@[9; 9)
-  ERROR@[9; 11)
-    INT_NUMBER@[9; 11) "92"
-    err: `expected an item`
-  ERROR@[11; 12)
+        PATH_SEGMENT@[9; 11)
+          ERROR@[9; 11)
+            INT_NUMBER@[9; 11) "92"
     SEMI@[11; 12)

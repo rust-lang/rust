@@ -60,6 +60,7 @@ fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
 //     let Bar(..) = ();
 // }
 fn path_pat(p: &mut Parser) -> CompletedMarker {
+    assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
     let kind = match p.current() {
@@ -116,8 +117,11 @@ fn struct_pat_fields(p: &mut Parser) {
                 p.bump();
                 pattern(p);
             }
-            _ => {
+            REF_KW | MUT_KW | IDENT => {
                 bind_pat(p, false);
+            },
+            _ => {
+                p.err_and_bump("expected ident");
             }
         }
         if !p.at(R_CURLY) {

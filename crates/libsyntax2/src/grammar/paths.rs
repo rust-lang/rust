@@ -62,7 +62,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
         }
         SELF_KW | SUPER_KW => p.bump(),
         _ => {
-            p.error("expected identifier");
+            p.err_and_bump("expected identifier");
         }
     };
     segment.complete(p, PATH_SEGMENT);
