@@ -1,0 +1,17 @@
+error[E0601]: `main` function not found in crate `issue_53251`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-53251.rs`
+
+error[E0087]: too many type parameters provided: expected at most 0 type parameters, found 1 type parameter
+  --> $DIR/issue-53251.rs:21:24
+   |
+LL |                 S::f::<i64>();
+   |                        ^^^ expected 0 type parameters
+...
+LL | impl_add!(a b);
+   | --------------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0087, E0601.
+For more information about an error, try `rustc --explain E0087`.
