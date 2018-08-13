@@ -228,5 +228,6 @@ Grammar(
         "StaticItem": ( traits: ["NameOwner"] ),
         "TypeItem": ( traits: ["NameOwner"] ),
         "Name": (),
+        "NameRef": (),
     },
 )

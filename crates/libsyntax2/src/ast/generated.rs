@@ -123,6 +123,24 @@ impl<R: TreeRoot> AstNode<R> for Name<R> {
 
 impl<R: TreeRoot> Name<R> {}
 
+// NameRef
+#[derive(Debug, Clone, Copy)]
+pub struct NameRef<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for NameRef<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            NAME_REF => Some(NameRef { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> NameRef<R> {}
+
 // StaticItem
 #[derive(Debug, Clone, Copy)]
 pub struct StaticItem<R: TreeRoot = Arc<SyntaxRoot>> {

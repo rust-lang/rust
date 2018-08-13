@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
-    SymbolInformation, Location,
+    SymbolInformation,
 };
 use libanalysis::{World, Query};
 use libeditor;
@@ -13,7 +13,7 @@ use serde_json::{to_value, from_value};
 use ::{
     req::{self, Decoration}, Result,
     util::FilePath,
-    conv::{Conv, ConvWith, MapConvWith},
+    conv::{Conv, ConvWith, TryConvWith, MapConvWith},
 };
 
 pub fn handle_syntax_tree(
@@ -115,21 +115,32 @@ pub fn handle_workspace_symbol(
 
     for (path, symbol) in world.world_symbols(query).take(128) {
         let line_index = world.file_line_index(path)?;
-
         let info = SymbolInformation {
             name: symbol.name.to_string(),
             kind: symbol.kind.conv(),
-            location: Location::new(
-                Url::from_file_path(path)
-                    .map_err(|()| format_err!("invalid url"))?,
-                symbol.node_range.conv_with(&line_index),
-            ),
+            location: (path, symbol.node_range).try_conv_with(&line_index)?,
             container_name: None,
         };
         acc.push(info);
     };
 
     Ok(Some(acc))
+}
+
+pub fn handle_goto_definition(
+    world: World,
+    params: req::TextDocumentPositionParams,
+) -> Result<Option<req::GotoDefinitionResponse>> {
+    let path = params.text_document.file_path()?;
+    let line_index = world.file_line_index(&path)?;
+    let offset = params.position.conv_with(&line_index);
+    let mut res = Vec::new();
+    for (path, symbol) in world.approximately_resolve_symbol(&path, offset)? {
+        let line_index = world.file_line_index(path)?;
+        let location = (path, symbol.node_range).try_conv_with(&line_index)?;
+        res.push(location)
+    }
+    Ok(Some(req::GotoDefinitionResponse::Array(res)))
 }
 
 pub fn handle_execute_command(

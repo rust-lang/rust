@@ -73,3 +73,11 @@ impl<R: TreeRoot> Name<R> {
         ident.leaf_text().unwrap()
     }
 }
+
+impl<R: TreeRoot> NameRef<R> {
+    pub fn text(&self) -> SmolStr {
+        let ident = self.syntax().first_child()
+            .unwrap();
+        ident.leaf_text().unwrap()
+    }
+}

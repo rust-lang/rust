@@ -26,6 +26,7 @@ use {
         handle_code_action,
         handle_execute_command,
         handle_workspace_symbol,
+        handle_goto_definition,
     },
 };
 
@@ -151,6 +152,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::WorkspaceSymbol>(
         &mut req, pool, world, sender, handle_workspace_symbol,
+    )?;
+    handle_request_on_threadpool::<req::GotoDefinition>(
+        &mut req, pool, world, sender, handle_goto_definition,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));

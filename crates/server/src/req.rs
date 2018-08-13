@@ -9,6 +9,7 @@ pub use languageserver_types::{
     CodeActionParams, ApplyWorkspaceEditParams,
     ExecuteCommandParams,
     WorkspaceSymbolParams,
+    TextDocumentPositionParams,
 };
 
 

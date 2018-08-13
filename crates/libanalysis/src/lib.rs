@@ -18,10 +18,14 @@ use std::{
     path::{PathBuf, Path},
 };
 
-use libsyntax2::ast;
+use libsyntax2::{
+    TextUnit,
+    ast::{self, AstNode},
+    algo::{find_leaf_at_offset, ancestors},
+};
 use libeditor::{LineIndex, FileSymbol};
 
-use self::symbol_index::{FileSymbols};
+use self::symbol_index::FileSymbols;
 pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -90,14 +94,38 @@ impl World {
         Ok(index.clone())
     }
 
-    pub fn world_symbols<'a>(&'a self, query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a
-    {
+    pub fn world_symbols<'a>(&'a self, query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a {
         self.data.file_map.iter()
             .flat_map(move |(path, data)| {
                 let path: &'a Path = path.as_path();
                 let symbols = data.symbols(path);
                 query.process(symbols).map(move |s| (path, s))
             })
+    }
+
+    pub fn approximately_resolve_symbol<'a>(
+        &'a self,
+        path: &Path,
+        offset: TextUnit,
+    ) -> Result<Vec<(&'a Path, &'a FileSymbol)>> {
+        let file = self.file_syntax(path)?;
+        let syntax = file.syntax();
+        let syntax = syntax.as_ref();
+        let name_ref =
+            find_leaf_at_offset(syntax, offset)
+                .left_biased()
+                .into_iter()
+                .flat_map(|node| ancestors(node))
+                .flat_map(ast::NameRef::cast)
+                .next();
+        let name = match name_ref {
+            None => return Ok(vec![]),
+            Some(name_ref) => name_ref.text(),
+        };
+
+        let mut query = Query::new(name.to_string());
+        query.exact();
+        Ok(self.world_symbols(query).take(4).collect())
     }
 
     fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {

@@ -20,7 +20,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         hover_provider: None,
         completion_provider: None,
         signature_help_provider: None,
-        definition_provider: None,
+        definition_provider: Some(true),
         type_definition_provider: None,
         implementation_provider: None,
         references_provider: None,

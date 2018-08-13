@@ -1,6 +1,10 @@
-use languageserver_types::{Range, SymbolKind, Position, TextEdit};
+use std::path::Path;
+
+use languageserver_types::{Range, SymbolKind, Position, TextEdit, Location, Url};
 use libeditor::{LineIndex, LineCol, Edit, AtomEdit};
 use libsyntax2::{SyntaxKind, TextUnit, TextRange};
+
+use Result;
 
 pub trait Conv {
     type Output;
@@ -11,6 +15,12 @@ pub trait ConvWith {
     type Ctx;
     type Output;
     fn conv_with(self, ctx: &Self::Ctx) -> Self::Output;
+}
+
+pub trait TryConvWith {
+    type Ctx;
+    type Output;
+    fn try_conv_with(self, ctx: &Self::Ctx) -> Result<Self::Output>;
 }
 
 impl Conv for SyntaxKind {
@@ -101,6 +111,20 @@ impl ConvWith for AtomEdit {
             range: self.delete.conv_with(line_index),
             new_text: self.insert,
         }
+    }
+}
+
+impl<'a> TryConvWith for (&'a Path, TextRange) {
+    type Ctx = LineIndex;
+    type Output = Location;
+
+    fn try_conv_with(self, line_index: &LineIndex) -> Result<Location> {
+        let loc = Location::new(
+            Url::from_file_path(self.0)
+                .map_err(|()| format_err!("can't convert path to url: {}", self.0.display()))?,
+            self.1.conv_with(line_index),
+        );
+        Ok(loc)
     }
 }
 
