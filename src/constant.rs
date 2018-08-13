@@ -6,8 +6,14 @@ use rustc_mir::interpret::{CompileTimeEvaluator, Memory};
 
 #[derive(Default)]
 pub struct ConstantCx {
-    todo_allocs: HashSet<AllocId>,
+    todo: HashSet<TodoItem>,
     done: HashSet<DataId>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+enum TodoItem {
+    Alloc(AllocId),
+    Static(DefId),
 }
 
 impl ConstantCx {
@@ -16,7 +22,7 @@ impl ConstantCx {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         module: &mut Module<B>,
     ) {
-        println!("todo allocs: {:?}", self.todo_allocs);
+        println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         println!("done {:?}", self.done);
         for data_id in self.done.drain() {
@@ -26,14 +32,15 @@ impl ConstantCx {
 }
 
 pub fn codegen_static<'a, 'tcx: 'a, B: Backend>(cx: &mut CodegenCx<'a, 'tcx, B>, def_id: DefId) {
-    unimpl!("static mono item {:?}", def_id);
+    cx.constants.todo.insert(TodoItem::Static(def_id));
 }
 
 pub fn codegen_static_ref<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     static_: &Static<'tcx>,
 ) -> CPlace<'tcx> {
-    unimpl!("static place {:?} ty {:?}", static_.def_id, static_.ty);
+    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id);
+    cplace_for_dataid(fx, static_.ty, data_id)
 }
 
 pub fn trans_promoted<'a, 'tcx: 'a>(
@@ -109,38 +116,36 @@ fn trans_const_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
-    let ty = fx.monomorphize(&const_.ty);
-    let layout = fx.layout_of(ty);
-
     let alloc = fx.tcx.const_value_to_allocation(const_);
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
-    let data_id = get_global_for_alloc_id(fx.module, fx.constants, alloc_id);
-    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    // TODO: does global_value return a ptr of a val?
-    let global_ptr = fx.bcx.ins().global_value(types::I64, local_data_id);
-    CPlace::Addr(global_ptr, layout)
+    fx.constants.todo.insert(TodoItem::Alloc(alloc_id));
+    let data_id = data_id_for_alloc_id(fx.module, alloc_id);
+    cplace_for_dataid(fx, const_.ty, data_id)
 }
 
-// If ret.1 is true, then the global didn't exist before
-fn define_global_for_alloc_id<'a, 'tcx: 'a, B: Backend>(
-    module: &mut Module<B>,
-    cx: &mut ConstantCx,
-    alloc_id: AllocId,
-) -> DataId {
+fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -> DataId {
     module
         .declare_data(&alloc_id.0.to_string(), Linkage::Local, false)
         .unwrap()
 }
 
-fn get_global_for_alloc_id<'a, 'tcx: 'a, B: Backend + 'a>(
-    module: &mut Module<B>,
-    cx: &mut ConstantCx,
-    alloc_id: AllocId,
-) -> DataId {
-    cx.todo_allocs.insert(alloc_id);
-    let data_id = define_global_for_alloc_id(module, cx, alloc_id);
-    data_id
+fn data_id_for_static<B: Backend>(tcx: TyCtxt, module: &mut Module<B>, def_id: DefId) -> DataId {
+    let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
+    module
+        .declare_data(&*symbol_name, Linkage::Export, false)
+        .unwrap()
+}
+
+fn cplace_for_dataid<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    ty: Ty<'tcx>,
+    data_id: DataId,
+) -> CPlace<'tcx> {
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let global_ptr = fx.bcx.ins().global_value(types::I64, local_data_id);
+    let layout = fx.layout_of(fx.monomorphize(&ty));
+    CPlace::Addr(global_ptr, layout)
 }
 
 fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
@@ -150,15 +155,38 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 ) {
     let memory = Memory::<CompileTimeEvaluator>::new(tcx.at(DUMMY_SP), ());
 
-    while let Some(alloc_id) = pop_set(&mut cx.todo_allocs) {
-        let data_id = define_global_for_alloc_id(module, cx, alloc_id);
-        println!("alloc_id {} data_id {}", alloc_id, data_id);
+    while let Some(todo_item) = pop_set(&mut cx.todo) {
+        let (data_id, alloc) = match todo_item {
+            TodoItem::Alloc(alloc_id) => {
+                println!("alloc_id {}", alloc_id);
+                let data_id = data_id_for_alloc_id(module, alloc_id);
+                let alloc = memory.get(alloc_id).unwrap();
+                (data_id, alloc)
+            }
+            TodoItem::Static(def_id) => {
+                println!("static {:?}", def_id);
+                let instance = ty::Instance::mono(tcx, def_id);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
+
+                let alloc = match const_.val {
+                    ConstValue::ByRef(alloc, n) if n.bytes() == 0 => alloc,
+                    _ => bug!("static const eval returned {:#?}", const_),
+                };
+
+                let data_id = data_id_for_static(tcx, module, def_id);
+                (data_id, alloc)
+            }
+        };
+
+        println!("data_id {}", data_id);
         if cx.done.contains(&data_id) {
             continue;
         }
 
-        let alloc = memory.get(alloc_id).unwrap();
-        //let alloc = tcx.alloc_map.lock().get(alloc_id).unwrap();
         let mut data_ctx = DataContext::new();
 
         data_ctx.define(
@@ -167,8 +195,8 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
         );
 
         for &(offset, reloc) in alloc.relocations.iter() {
-            cx.todo_allocs.insert(reloc);
-            let data_id = define_global_for_alloc_id(module, cx, reloc);
+            cx.todo.insert(TodoItem::Alloc(reloc));
+            let data_id = data_id_for_alloc_id(module, reloc);
 
             let reloc_offset = {
                 let endianness = memory.endianness();
@@ -186,7 +214,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
         cx.done.insert(data_id);
     }
 
-    assert!(cx.todo_allocs.is_empty(), "{:?}", cx.todo_allocs);
+    assert!(cx.todo.is_empty(), "{:?}", cx.todo);
 }
 
 fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> {
