@@ -150,16 +150,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a> (
 ) {
     let memory = Memory::<CompileTimeEvaluator>::new(tcx.at(DUMMY_SP), ());
 
-    loop {
-        let alloc_id = {
-            if let Some(alloc_id) = cx.todo_allocs.iter().next().map(|alloc_id| *alloc_id) {
-                cx.todo_allocs.remove(&alloc_id);
-                alloc_id
-            } else {
-                break;
-            }
-        };
-
+    while let Some(alloc_id) = pop_set(&mut cx.todo_allocs) {
         let data_id = define_global_for_alloc_id(module, cx, alloc_id);
         println!("alloc_id {} data_id {}", alloc_id, data_id);
         if cx.done.contains(&data_id) {
@@ -196,4 +187,13 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a> (
     }
 
     assert!(cx.todo_allocs.is_empty(), "{:?}", cx.todo_allocs);
+}
+
+fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> {
+    if let Some(elem) = set.iter().next().map(|elem| *elem) {
+        set.remove(&elem);
+        Some(elem)
+    } else {
+        None
+    }
 }
