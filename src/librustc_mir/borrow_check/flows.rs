@@ -27,7 +27,6 @@ use dataflow::Borrows;
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::MaybeUninitializedPlaces;
-use either::Either;
 use std::fmt;
 use std::rc::Rc;
 
@@ -62,11 +61,12 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     crate fn borrows_in_scope(
         &self,
         location: LocationIndex,
-    ) -> impl Iterator<Item = BorrowIndex> + '_ {
+        borrow_index: BorrowIndex,
+    ) -> bool {// impl Iterator<Item = BorrowIndex> + '_ {
         if let Some(ref polonius) = self.polonius_output {
-            Either::Left(polonius.errors_at(location).iter().cloned())
+            polonius.errors_at(location).contains(&borrow_index)
         } else {
-            Either::Right(self.borrows.iter_incoming())
+            self.borrows.contains(&borrow_index)
         }
     }
 

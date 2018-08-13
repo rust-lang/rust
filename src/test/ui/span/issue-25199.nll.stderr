@@ -1,9 +1,9 @@
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:80:27
+  --> $DIR/issue-25199.rs:83:5
    |
-LL |     let test = Test{test: &container};
-   |                           ^^^^^^^^^^ borrowed value does not live long enough
-...
+LL |     container.store(test);
+   |     ^^^^^^^^^ borrowed value does not live long enough
+LL |     //~^ ERROR `container` does not live long enough
 LL | }
    | -
    | |

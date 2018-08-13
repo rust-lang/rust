@@ -77,12 +77,12 @@ error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as im
   --> $DIR/borrowck-slice-pattern-element-loan.rs:75:21
    |
 LL |     if let [ref from_begin0, ref from_begin1, _, ref from_begin3, _, ..] = *s {
-   |                              --------------- immutable borrow occurs here
+   |                                                  --------------- immutable borrow occurs here
 ...
 LL |         if let [.., ref mut from_end4, _, _, _] = *s { //~ERROR
    |                     ^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 LL |             nop(&[from_begin0, from_begin1, from_begin3, from_end4]);
-   |                                ----------- borrow later used here
+   |                                             ----------- borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-slice-pattern-element-loan.rs:92:20
