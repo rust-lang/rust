@@ -15,7 +15,7 @@ use syntax_pos::{Span, NO_EXPANSION};
 use errors::DiagnosticBuilder;
 use super::StringReader;
 
-const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
+const UNICODE_ARRAY: &[(char, &str, char)] = &[
     (' ', "Line Separator", ' '),
     (' ', "Paragraph Separator", ' '),
     (' ', "Ogham Space mark", ' '),
