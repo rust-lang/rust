@@ -264,7 +264,9 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     p.bump();
     name_ref(p);
     type_args::type_arg_list(p, true);
-    arg_list(p);
+    if p.at(L_PAREN) {
+        arg_list(p);
+    }
     m.complete(p, METHOD_CALL_EXPR)
 }
 

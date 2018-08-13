@@ -118,7 +118,11 @@ fn where_predicate(p: &mut Parser) {
     let m = p.start();
     if p.at(LIFETIME) {
         p.eat(LIFETIME);
-        lifetime_bounds(p)
+        if p.at(COLON) {
+            lifetime_bounds(p)
+        } else {
+            p.error("expected colon")
+        }
     } else {
         types::path_type(p);
         if p.at(COLON) {
