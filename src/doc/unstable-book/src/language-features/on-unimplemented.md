@@ -80,7 +80,7 @@ error[E0277]: message
    = note: required by `iterate_chars`
 ```
 
-To allow for more targeted error messages, it is possible to filter the
+To allow more targeted error messages, it is possible to filter the
 application of these fields based on a variety of attributes when using
 `on`:
 
