@@ -44,7 +44,7 @@ use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
-use errors::{self, Applicability, DiagnosticBuilder};
+use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
 use parse::lexer::TokenAndSpan;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -1371,7 +1371,7 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
 
-            let d = self.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
+            let d = self.parse_fn_decl_with_self(|p: &mut Parser<'a>| {
                 // This is somewhat dubious; We don't want to allow
                 // argument names to be left off if there is a
                 // definition...
@@ -1753,21 +1753,59 @@ impl<'a> Parser<'a> {
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
-            let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
-            let ty = self.parse_ty()?;
-            let pat = P(Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
-                span: ty.span,
-            });
-            (pat, ty)
+
+            let parser_snapshot_before_pat = self.clone();
+
+            // We're going to try parsing the argument as a pattern (even though it's not
+            // allowed). This way we can provide better errors to the user.
+            let pat_arg: PResult<'a, _> = do catch {
+                let pat = self.parse_pat()?;
+                self.expect(&token::Colon)?;
+                (pat, self.parse_ty()?)
+            };
+
+            match pat_arg {
+                Ok((pat, ty)) => {
+                    let mut err = self.diagnostic().struct_span_err_with_code(
+                        pat.span,
+                        "patterns aren't allowed in methods without bodies",
+                        DiagnosticId::Error("E0642".into()),
+                    );
+                    err.span_suggestion_short_with_applicability(
+                        pat.span,
+                        "give this argument a name or use an underscore to ignore it",
+                        "_".to_owned(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
+                    let pat = P(Pat {
+                        node: PatKind::Wild,
+                        span: pat.span,
+                        id: ast::DUMMY_NODE_ID
+                    });
+                    (pat, ty)
+                }
+                Err(mut err) => {
+                    err.cancel();
+                    // Recover from attempting to parse the argument as a pattern. This means
+                    // the type is alone, with no name, e.g. `fn foo(u32)`.
+                    mem::replace(self, parser_snapshot_before_pat);
+                    debug!("parse_arg_general ident_to_pat");
+                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
+                    let ty = self.parse_ty()?;
+                    let pat = P(Pat {
+                        id: ast::DUMMY_NODE_ID,
+                        node: PatKind::Ident(
+                            BindingMode::ByValue(Mutability::Immutable), ident, None),
+                        span: ty.span,
+                    });
+                    (pat, ty)
+                }
+            }
         };
 
-        Ok(Arg {
-            ty,
-            pat,
-            id: ast::DUMMY_NODE_ID,
-        })
+        Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
     }
 
     /// Parse a single function argument
