@@ -14,3 +14,4 @@ smol_str = { path = "../smol_str" }
 
 [dev-dependencies]
 assert_eq_text = { path = "../assert_eq_text" }
+walkdir = "2.2.0"

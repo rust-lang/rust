@@ -1,6 +1,7 @@
 extern crate libsyntax2;
 #[macro_use]
 extern crate assert_eq_text;
+extern crate walkdir;
 
 use std::{
     fs,

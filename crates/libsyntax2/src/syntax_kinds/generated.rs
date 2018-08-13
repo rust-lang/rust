@@ -62,6 +62,7 @@ pub enum SyntaxKind {
     ENUM_KW,
     TRAIT_KW,
     IMPL_KW,
+    DYN_KW,
     TRUE_KW,
     FALSE_KW,
     AS_KW,
@@ -133,6 +134,7 @@ pub enum SyntaxKind {
     FN_POINTER_TYPE,
     FOR_TYPE,
     IMPL_TRAIT_TYPE,
+    DYN_TRAIT_TYPE,
     REF_PAT,
     BIND_PAT,
     PLACEHOLDER_PAT,
@@ -210,6 +212,7 @@ impl SyntaxKind {
             | ENUM_KW
             | TRAIT_KW
             | IMPL_KW
+            | DYN_KW
             | TRUE_KW
             | FALSE_KW
             | AS_KW
@@ -297,6 +300,7 @@ impl SyntaxKind {
             ENUM_KW => &SyntaxInfo { name: "ENUM_KW" },
             TRAIT_KW => &SyntaxInfo { name: "TRAIT_KW" },
             IMPL_KW => &SyntaxInfo { name: "IMPL_KW" },
+            DYN_KW => &SyntaxInfo { name: "DYN_KW" },
             TRUE_KW => &SyntaxInfo { name: "TRUE_KW" },
             FALSE_KW => &SyntaxInfo { name: "FALSE_KW" },
             AS_KW => &SyntaxInfo { name: "AS_KW" },
@@ -368,6 +372,7 @@ impl SyntaxKind {
             FN_POINTER_TYPE => &SyntaxInfo { name: "FN_POINTER_TYPE" },
             FOR_TYPE => &SyntaxInfo { name: "FOR_TYPE" },
             IMPL_TRAIT_TYPE => &SyntaxInfo { name: "IMPL_TRAIT_TYPE" },
+            DYN_TRAIT_TYPE => &SyntaxInfo { name: "DYN_TRAIT_TYPE" },
             REF_PAT => &SyntaxInfo { name: "REF_PAT" },
             BIND_PAT => &SyntaxInfo { name: "BIND_PAT" },
             PLACEHOLDER_PAT => &SyntaxInfo { name: "PLACEHOLDER_PAT" },
@@ -445,6 +450,7 @@ impl SyntaxKind {
             "enum" => ENUM_KW,
             "trait" => TRAIT_KW,
             "impl" => IMPL_KW,
+            "dyn" => DYN_KW,
             "true" => TRUE_KW,
             "false" => FALSE_KW,
             "as" => AS_KW,

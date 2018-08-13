@@ -1,0 +1,82 @@
+FILE@[0; 86)
+  STRUCT@[0; 84)
+    VISIBILITY@[0; 3)
+      PUB_KW@[0; 3)
+    WHITESPACE@[3; 4)
+    STRUCT_KW@[4; 10)
+    WHITESPACE@[10; 11)
+    NAME@[11; 16)
+      IDENT@[11; 16) "Cache"
+    L_PAREN@[16; 17)
+    WHITESPACE@[17; 22)
+    POS_FIELD@[22; 68)
+      PATH_TYPE@[22; 68)
+        PATH@[22; 68)
+          PATH_SEGMENT@[22; 68)
+            NAME_REF@[22; 29)
+              IDENT@[22; 29) "RefCell"
+            TYPE_ARG_LIST@[29; 68)
+              L_ANGLE@[29; 30)
+              TYPE_ARG@[30; 68)
+                PATH_TYPE@[30; 68)
+                  PATH@[30; 68)
+                    PATH_SEGMENT@[30; 68)
+                      NAME_REF@[30; 37)
+                        IDENT@[30; 37) "HashMap"
+                      TYPE_ARG_LIST@[37; 68)
+                        L_ANGLE@[37; 38)
+                        WHITESPACE@[38; 47)
+                        TYPE_ARG@[47; 53)
+                          PATH_TYPE@[47; 53)
+                            PATH@[47; 53)
+                              PATH_SEGMENT@[47; 53)
+                                NAME_REF@[47; 53)
+                                  IDENT@[47; 53) "TypeId"
+                        COMMA@[53; 54)
+                        WHITESPACE@[54; 63)
+                        TYPE_ARG@[63; 68)
+                          PATH_TYPE@[63; 68)
+                            PATH@[63; 68)
+                              PATH_SEGMENT@[63; 68)
+                                NAME_REF@[63; 66)
+                                  IDENT@[63; 66) "Box"
+                                TYPE_ARG_LIST@[66; 68)
+                                  L_ANGLE@[66; 67)
+                                  err: `expected type`
+                                  TYPE_ARG@[67; 68)
+                                    ERROR@[67; 68)
+                                      AT@[67; 68)
+                                      err: `expected COMMA`
+                                      err: `expected R_ANGLE`
+                                      err: `expected COMMA`
+                                      err: `expected R_ANGLE`
+                                      err: `expected COMMA`
+                                      err: `expected R_ANGLE`
+                                      err: `expected COMMA`
+    WHITESPACE@[68; 69)
+    POS_FIELD@[69; 72)
+      PATH_TYPE@[69; 72)
+        PATH@[69; 72)
+          PATH_SEGMENT@[69; 72)
+            NAME_REF@[69; 72)
+              IDENT@[69; 72) "Any"
+              err: `expected COMMA`
+              err: `expected type`
+    POS_FIELD@[72; 73)
+      ERROR@[72; 73)
+        R_ANGLE@[72; 73)
+    COMMA@[73; 74)
+    WHITESPACE@[74; 79)
+    err: `expected type`
+    POS_FIELD@[79; 80)
+      ERROR@[79; 80)
+        R_ANGLE@[79; 80)
+        err: `expected COMMA`
+        err: `expected type`
+    POS_FIELD@[80; 81)
+      ERROR@[80; 81)
+        R_ANGLE@[80; 81)
+    WHITESPACE@[81; 82)
+    R_PAREN@[82; 83)
+    SEMI@[83; 84)
+  WHITESPACE@[84; 86)
