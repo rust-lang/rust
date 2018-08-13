@@ -35,6 +35,7 @@ pub struct Query {
     lowercased: String,
     only_types: bool,
     exact: bool,
+    limit: usize,
 }
 
 impl Query {
@@ -45,6 +46,7 @@ impl Query {
             lowercased,
             only_types: false,
             exact: false,
+            limit: usize::max_value()
         }
     }
 
@@ -56,10 +58,14 @@ impl Query {
         self.exact = true;
     }
 
+    pub fn limit(&mut self, limit: usize) {
+        self.limit = limit
+    }
+
     pub(crate) fn process<'a>(
-        &self,
+        &mut self,
         file: &'a FileSymbols,
-    ) -> impl Iterator<Item=&'a FileSymbol> + 'a {
+    ) -> Vec<&'a FileSymbol> {
         fn is_type(kind: SyntaxKind) -> bool {
             match kind {
                 STRUCT | ENUM | TRAIT | TYPE_ITEM => true,
@@ -70,6 +76,9 @@ impl Query {
         let mut stream = file.map.search(automaton).into_stream();
         let mut res = Vec::new();
         while let Some((_, idx)) = stream.next() {
+            if self.limit == 0 {
+                break;
+            }
             let idx = idx as usize;
             let symbol = &file.symbols[idx];
             if self.only_types && !is_type(symbol.kind) {
@@ -78,9 +87,10 @@ impl Query {
             if self.exact && symbol.name != self.query {
                 continue;
             }
-            res.push(symbol)
+            res.push(symbol);
+            self.limit -= 1;
         }
-        res.into_iter()
+        res
     }
 }
 

@@ -110,10 +110,11 @@ pub fn handle_workspace_symbol(
         if !all_symbols {
             q.only_types();
         }
+        q.limit(128);
         q
     };
 
-    for (path, symbol) in world.world_symbols(query).take(128) {
+    for (path, symbol) in world.world_symbols(query) {
         let line_index = world.file_line_index(path)?;
         let info = SymbolInformation {
             name: symbol.name.to_string(),

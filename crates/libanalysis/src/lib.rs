@@ -94,12 +94,12 @@ impl World {
         Ok(index.clone())
     }
 
-    pub fn world_symbols<'a>(&'a self, query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a {
+    pub fn world_symbols<'a>(&'a self, mut query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a {
         self.data.file_map.iter()
             .flat_map(move |(path, data)| {
                 let path: &'a Path = path.as_path();
-                let symbols = data.symbols(path);
-                query.process(symbols).map(move |s| (path, s))
+                let symbols = data.symbols();
+                query.process(symbols).into_iter().map(move |s| (path, s))
             })
     }
 
@@ -125,7 +125,8 @@ impl World {
 
         let mut query = Query::new(name.to_string());
         query.exact();
-        Ok(self.world_symbols(query).take(4).collect())
+        query.limit(4);
+        Ok(self.world_symbols(query).collect())
     }
 
     fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
@@ -178,9 +179,14 @@ impl FileData {
             })
     }
 
-    fn symbols(&self, path: &Path) -> &FileSymbols {
-        let syntax = self.syntax(path);
+    fn syntax_transient(&self) -> ast::File {
+        self.syntax.get().map(|s| s.clone())
+            .unwrap_or_else(|| ast::File::parse(&self.text))
+    }
+
+    fn symbols(&self) -> &FileSymbols {
+        let syntax = self.syntax_transient();
         self.symbols
-            .get_or_init(|| FileSymbols::new(syntax))
+            .get_or_init(|| FileSymbols::new(&syntax))
     }
 }
