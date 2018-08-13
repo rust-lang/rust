@@ -1,6 +1,6 @@
-use std::{sync::Arc, ops::Deref};
+use std::{sync::Arc, ops::Deref, fmt};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SmolStr(Repr);
 
 impl SmolStr {
@@ -46,6 +46,18 @@ impl<'a> PartialEq<&'a str> for SmolStr {
 impl<'a> PartialEq<SmolStr> for &'a str {
     fn eq(&self, other: &SmolStr) -> bool {
         *self == other
+    }
+}
+
+impl fmt::Debug for SmolStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.as_str(), f)
+    }
+}
+
+impl fmt::Display for SmolStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
