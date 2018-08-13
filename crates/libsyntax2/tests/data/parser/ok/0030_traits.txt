@@ -97,19 +97,21 @@ FILE@[0; 164)
             WHITESPACE@[125; 126)
             L_CURLY@[126; 127)
             WHITESPACE@[127; 132)
-            err: `expected ident`
-            ERROR@[132; 134)
-              FN_KW@[132; 134)
-              err: `expected COMMA`
+            err: `expected a name`
+            BIND_PAT@[132; 134)
+              ERROR@[132; 134)
+                FN_KW@[132; 134)
+                err: `expected COMMA`
             WHITESPACE@[134; 135)
             BIND_PAT@[135; 147)
               NAME@[135; 147)
                 IDENT@[135; 147) "fn_with_expr"
                 err: `expected COMMA`
-                err: `expected ident`
-            ERROR@[147; 148)
-              L_PAREN@[147; 148)
-              err: `expected COMMA`
+                err: `expected a name`
+            BIND_PAT@[147; 148)
+              ERROR@[147; 148)
+                L_PAREN@[147; 148)
+                err: `expected COMMA`
             IDENT@[148; 149) "x"
             COLON@[149; 150)
             WHITESPACE@[150; 151)
@@ -128,13 +130,15 @@ FILE@[0; 164)
                 INT_NUMBER@[157; 158) "1"
               R_BRACK@[158; 159)
               err: `expected COMMA`
-              err: `expected ident`
-            ERROR@[159; 160)
-              R_PAREN@[159; 160)
-              err: `expected COMMA`
-              err: `expected ident`
-            ERROR@[160; 161)
-              SEMI@[160; 161)
+              err: `expected a name`
+            BIND_PAT@[159; 160)
+              ERROR@[159; 160)
+                R_PAREN@[159; 160)
+                err: `expected COMMA`
+                err: `expected a name`
+            BIND_PAT@[160; 161)
+              ERROR@[160; 161)
+                SEMI@[160; 161)
             WHITESPACE@[161; 162)
             R_CURLY@[162; 163)
             err: `expected COLON`

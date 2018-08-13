@@ -129,7 +129,7 @@ fn name(p: &mut Parser) {
         p.bump();
         m.complete(p, NAME);
     } else {
-        p.error("expected a name");
+        p.err_and_bump("expected a name");
     }
 }
 
@@ -139,7 +139,7 @@ fn name_ref(p: &mut Parser) {
         p.bump();
         m.complete(p, NAME_REF);
     } else {
-        p.error("expected identifier");
+        p.err_and_bump("expected identifier");
     }
 }
 

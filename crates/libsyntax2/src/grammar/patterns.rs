@@ -117,11 +117,8 @@ fn struct_pat_fields(p: &mut Parser) {
                 p.bump();
                 pattern(p);
             }
-            REF_KW | MUT_KW | IDENT => {
-                bind_pat(p, false);
-            },
             _ => {
-                p.err_and_bump("expected ident");
+                bind_pat(p, false);
             }
         }
         if !p.at(R_CURLY) {
