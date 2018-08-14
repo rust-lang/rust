@@ -110,7 +110,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
-use syntax_pos::{hygiene, DUMMY_SP, MultiSpan, FileName};
+use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 #[cfg(test)]
 mod test;
@@ -478,7 +478,6 @@ pub fn run_compiler<'a>(args: &[String],
         };
 
         let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
-        hygiene::set_default_edition(sopts.edition);
 
         driver::spawn_thread_pool(sopts, |sopts| {
             run_compiler_with_pool(matches, sopts, cfg, callbacks, file_loader, emitter_dest)

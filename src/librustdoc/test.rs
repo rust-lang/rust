@@ -37,7 +37,7 @@ use syntax::codemap::CodeMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::with_globals;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName, hygiene};
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -562,7 +562,6 @@ impl Collector {
                     rustc_driver::in_named_rustc_thread(name, move || with_globals(move || {
                         io::set_panic(panic);
                         io::set_print(print);
-                        hygiene::set_default_edition(edition);
                         run_test(&test,
                                  &cratename,
                                  &filename,
