@@ -5,7 +5,7 @@ use rustc::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use syntax::symbol::LocalInternedString;
-use syntax::util::small_vector::SmallVector;
+use rustc_data_structures::small_vec::OneVector;
 use crate::utils::{SpanlessEq, SpanlessHash};
 use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 
@@ -233,9 +233,9 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
 /// sequence of `if/else`.
 /// Eg. would return `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
-fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
-    let mut conds = SmallVector::new();
-    let mut blocks: SmallVector<&Block> = SmallVector::new();
+fn if_sequence(mut expr: &Expr) -> (OneVector<&Expr>, OneVector<&Block>) {
+    let mut conds = OneVector::new();
+    let mut blocks: OneVector<&Block> = OneVector::new();
 
     while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
