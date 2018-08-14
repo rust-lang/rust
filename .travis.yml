@@ -11,6 +11,8 @@ before_script:
 # mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
 - curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 - rvm get stable
+# in a cronjob, use latest (not pinned) nightly
+- if [ "$TRAVIS_EVENT_TYPE" = cron ]; then rustup override set nightly; fi
 # actual travis code
 - export PATH=$HOME/.local/bin:$PATH
 - rustup target add i686-unknown-linux-gnu
