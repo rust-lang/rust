@@ -295,7 +295,6 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
 
 pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     if !cx.renderinfo.borrow_mut().inlined.insert(did) {
-        debug!("already inlined, bailing: {:?}", did);
         return
     }
 
@@ -305,12 +304,9 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
-    if !did.is_local() {
-        if let Some(traitref) = associated_trait {
-            if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
-                debug!("trait {:?} not reachable, bailing: {:?}", traitref.def_id, did);
-                return
-            }
+    if let Some(traitref) = associated_trait {
+        if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
+            return
         }
     }
 
@@ -318,12 +314,9 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
-    if !did.is_local() {
-        if let Some(did) = for_.def_id() {
-            if !cx.access_levels.borrow().is_doc_reachable(did) {
-                debug!("impl type {:?} not accessible, bailing", did);
-                return
-            }
+    if let Some(did) = for_.def_id() {
+        if !cx.access_levels.borrow().is_doc_reachable(did) {
+            return
         }
     }
 
@@ -355,6 +348,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
            .map(|meth| meth.ident.to_string())
            .collect()
     }).unwrap_or(FxHashSet());
+
+    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
