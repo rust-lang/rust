@@ -1,7 +1,7 @@
 //! SIMD and vendor intrinsics support library.
 //!
 //! This crate defines the vendor intrinsics and types primarily used for SIMD
-//! in Rust. 
+//! in Rust.
 
 #![feature(const_fn, integer_atomics, staged_api, stdsimd)]
 #![feature(doc_cfg, allow_internal_unstable)]
@@ -30,6 +30,6 @@ use __do_not_use_this_import::fs;
 #[allow(unused_imports)]
 use __do_not_use_this_import::io;
 #[allow(unused_imports)]
-use __do_not_use_this_import::prelude;
-#[allow(unused_imports)]
 use __do_not_use_this_import::mem;
+#[allow(unused_imports)]
+use __do_not_use_this_import::prelude;

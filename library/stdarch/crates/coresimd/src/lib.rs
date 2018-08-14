@@ -26,8 +26,6 @@
     rustc_attrs,
     stdsimd,
     staged_api,
-    core_float,
-    core_slice_ext,
     align_offset,
     doc_cfg,
     mmx_target_feature,
@@ -43,7 +41,6 @@
     feature(
         use_extern_macros,
         test,
-        attr_literals,
         abi_vectorcall,
         untagged_unions
     )
