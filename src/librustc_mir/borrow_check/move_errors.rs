@@ -347,8 +347,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     _ => false,
                 };
                 if try_remove_deref && snippet.starts_with('*') {
-                    // This is false for (e.g.) index expressions `a[b]`,
-                    // which roughly desugar to `*Index::index(&a, b)` or
+                    // The snippet doesn't start with `*` in (e.g.) index
+                    // expressions `a[b]`, which roughly desugar to
+                    // `*Index::index(&a, b)` or
                     // `*IndexMut::index_mut(&mut a, b)`.
                     err.span_suggestion(
                         span,
@@ -365,13 +366,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                 binds_to.sort();
                 binds_to.dedup();
-                self.add_move_error_labels(err, &binds_to);
+                self.add_move_error_details(err, &binds_to);
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
                 binds_to.sort();
                 binds_to.dedup();
                 self.add_move_error_suggestions(err, &binds_to);
-                self.add_move_error_labels(err, &binds_to);
+                self.add_move_error_details(err, &binds_to);
             }
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { .. } => (),
@@ -428,7 +429,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn add_move_error_labels(
+    fn add_move_error_details(
         &self,
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
