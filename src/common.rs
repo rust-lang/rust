@@ -6,8 +6,6 @@ use cranelift_module::Module;
 
 use crate::prelude::*;
 
-pub type CurrentBackend = ::cranelift_simplejit::SimpleJITBackend;
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Variable(pub Local);
 

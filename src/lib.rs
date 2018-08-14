@@ -47,6 +47,15 @@ macro_rules! unimpl {
     };
 }
 
+macro_rules! each_module {
+    ($cx:expr, |$p:pat| $res:expr) => {
+        ModuleTup {
+            jit: $cx.jit.as_mut().map(|$p| $res),
+            faerie: $cx.faerie.as_mut().map(|$p| $res),
+        }
+    };
+}
+
 mod abi;
 mod analyze;
 mod base;
@@ -88,7 +97,7 @@ mod prelude {
     pub use crate::common::Variable;
     pub use crate::common::*;
 
-    pub use crate::CodegenCx;
+    pub use crate::{CodegenCx, ModuleTup};
 
     pub fn should_codegen(tcx: TyCtxt) -> bool {
         ::std::env::var("SHOULD_CODEGEN").is_ok()
@@ -96,16 +105,22 @@ mod prelude {
     }
 }
 
+use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
+pub struct CodegenCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub module: &'a mut Module<B>,
-    pub constants: crate::constant::ConstantCx,
+    pub jit: Option<(ConstantCx, &'a mut Module<SimpleJITBackend>)>,
+    pub faerie: Option<(ConstantCx, &'a mut Module<FaerieBackend>)>,
     pub defined_functions: Vec<FuncId>,
 
     // Cache
     pub context: Context,
+}
+
+pub struct ModuleTup<T> {
+    jit: Option<T>,
+    faerie: Option<T>,
 }
 
 struct CraneliftMetadataLoader;
@@ -265,8 +280,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             use std::io::Write;
             let mut cx = CodegenCx {
                 tcx,
-                module: &mut jit_module,
-                constants: Default::default(),
+                jit: Some((ConstantCx::default(), &mut jit_module)),
+                faerie: Some((ConstantCx::default(), &mut faerie_module)),
                 defined_functions: Vec::new(),
 
                 context: Context::new(),
@@ -299,13 +314,26 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 }
             }
 
-            cx.constants.finalize(tcx, &mut cx.module);
+            match cx {
+                CodegenCx {
+                    tcx,
+                    jit,
+                    faerie,
+                    defined_functions: _,
+                    context: _,
+                } => {
+                    jit.map(|jit| jit.0.finalize(tcx, jit.1));
+                    faerie.map(|faerie| faerie.0.finalize(tcx, faerie.1));
+                }
+            }
 
             let after = ::std::time::Instant::now();
             println!("time: {:?}", after - before);
 
             cx.defined_functions
         };
+
+        tcx.sess.abort_if_errors();
 
         tcx.sess.warn("Compiled everything");
 
@@ -334,9 +362,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             jit_module.finish();
         } else if should_codegen(tcx) {
-            for func_id in defined_functions {
-                jit_module.finalize_function(func_id);
-            }
+            jit_module.finalize_all();
+            faerie_module.finalize_all();
 
             tcx.sess.warn("Finalized everything");
         }

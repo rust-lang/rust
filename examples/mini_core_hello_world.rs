@@ -26,6 +26,8 @@ fn start(_main: *const u8, i: isize, _: *const *const u8) -> isize {
         puts(ptr);
     }
 
+    //panic(&("panic msg", "abc.rs", 0, 43));
+
     unsafe {
         NUM = 6 * 7 + 1 + (1u8 == 1u8) as u8; // 44
         *NUM_REF as isize

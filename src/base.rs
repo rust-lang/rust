@@ -1,10 +1,8 @@
 use crate::prelude::*;
 
-pub fn trans_mono_item<'a, 'tcx: 'a>(
-    cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
-    mono_item: MonoItem<'tcx>,
-) {
+pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: MonoItem<'tcx>) {
     let tcx = cx.tcx;
+    let context = &mut cx.context;
 
     match mono_item {
         MonoItem::Fn(inst) => match inst {
@@ -20,8 +18,10 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     String::from_utf8_lossy(&mir.into_inner())
                 ));
 
-                let func_id = trans_fn(cx.tcx, cx.module, &mut cx.constants, &mut cx.context, inst);
-                cx.defined_functions.push(func_id);
+                let res = each_module!(cx, |(ccx, m)| trans_fn(tcx, *m, ccx, context, inst));
+                if let Some(func_id) = res.jit {
+                    cx.defined_functions.push(func_id);
+                };
             }
             Instance {
                 def: InstanceDef::DropGlue(_, _),
@@ -30,7 +30,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
             inst => unimpl!("Unimplemented instance {:?}", inst),
         },
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.constants, def_id);
+            each_module!(cx, |(ccx, _m)| {
+                crate::constant::codegen_static(ccx, def_id);
+            });
         }
         MonoItem::GlobalAsm(node_id) => cx
             .tcx
@@ -41,7 +43,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
 fn trans_fn<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: &mut Module<SimpleJITBackend>,
+    module: &mut Module<impl Backend>,
     constants: &mut crate::constant::ConstantCx,
     context: &mut Context,
     instance: Instance<'tcx>,
