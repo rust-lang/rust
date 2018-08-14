@@ -9,7 +9,8 @@
 // except according to those terms.
 
 #![allow(dead_code, unused_imports)]
-#![feature(macro_vis_matcher, crate_visibility_modifier)]
+#![cfg_attr(stage0, feature(macro_vis_matcher))]
+#![feature(crate_visibility_modifier)]
 
 /**
 Ensure that `:vis` matches can be captured in existing positions, and passed

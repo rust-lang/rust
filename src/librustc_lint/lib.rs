@@ -26,7 +26,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(macro_vis_matcher)]
+#![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![cfg_attr(not(stage0), feature(nll))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
