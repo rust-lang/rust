@@ -261,6 +261,8 @@ Grammar(
             "ForType",
             "ImplTraitType",
             "DynTraitType",
-        ])
+        ]),
+
+        "NominalDef": ( enum: ["StructDef", "EnumDef"]),
     },
 )

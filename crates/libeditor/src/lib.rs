@@ -21,7 +21,7 @@ pub use self::{
     extend_selection::extend_selection,
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit, AtomEdit},
-    code_actions::{flip_comma},
+    code_actions::{flip_comma, add_derive},
 };
 
 #[derive(Debug)]

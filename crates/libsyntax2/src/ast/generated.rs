@@ -267,6 +267,31 @@ impl<R: TreeRoot> AstNode<R> for NeverType<R> {
 
 impl<R: TreeRoot> NeverType<R> {}
 
+// NominalDef
+#[derive(Debug, Clone, Copy)]
+pub enum NominalDef<R: TreeRoot = Arc<SyntaxRoot>> {
+    StructDef(StructDef<R>),
+    EnumDef(EnumDef<R>),
+}
+
+impl<R: TreeRoot> AstNode<R> for NominalDef<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            STRUCT_DEF => Some(NominalDef::StructDef(StructDef { syntax })),
+            ENUM_DEF => Some(NominalDef::EnumDef(EnumDef { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> {
+        match self {
+            NominalDef::StructDef(inner) => inner.syntax(),
+            NominalDef::EnumDef(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<R: TreeRoot> NominalDef<R> {}
+
 // ParenType
 #[derive(Debug, Clone, Copy)]
 pub struct ParenType<R: TreeRoot = Arc<SyntaxRoot>> {

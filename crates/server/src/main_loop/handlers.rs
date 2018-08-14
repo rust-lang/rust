@@ -87,27 +87,28 @@ pub fn handle_code_action(
     let file = world.file_syntax(&path)?;
     let line_index = world.file_line_index(&path)?;
     let offset = params.range.conv_with(&line_index).start();
-    let ret = if libeditor::flip_comma(&file, offset).is_some() {
-        let cmd = apply_code_action_cmd(
-            ActionId::FlipComma,
-            params.text_document,
-            offset,
-        );
-        Some(vec![cmd])
-    } else {
-        None
-    };
-    Ok(ret)
+    let mut ret = Vec::new();
+
+    let actions = &[
+        (ActionId::FlipComma, libeditor::flip_comma(&file, offset).is_some()),
+        (ActionId::AddDerive, libeditor::add_derive(&file, offset).is_some()),
+    ];
+
+    for (id, edit) in actions {
+        if *edit {
+            let cmd = apply_code_action_cmd(*id, params.text_document.clone(), offset);
+            ret.push(cmd);
+        }
+    }
+    return Ok(Some(ret));
 }
 
 pub fn handle_workspace_symbol(
     world: World,
     params: req::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
-    let mut acc = Vec::new();
-
+    let all_symbols = params.query.contains("#");
     let query = {
-        let all_symbols = params.query.contains("#");
         let query: String = params.query.chars()
             .filter(|&c| c != '#')
             .collect();
@@ -118,19 +119,29 @@ pub fn handle_workspace_symbol(
         q.limit(128);
         q
     };
+    let mut res = exec_query(&world, query)?;
+    if res.is_empty() && !all_symbols {
+        let mut query = Query::new(params.query);
+        query.limit(128);
+        res = exec_query(&world, query)?;
+    }
 
-    for (path, symbol) in world.world_symbols(query) {
-        let line_index = world.file_line_index(path)?;
-        let info = SymbolInformation {
-            name: symbol.name.to_string(),
-            kind: symbol.kind.conv(),
-            location: (path, symbol.node_range).try_conv_with(&line_index)?,
-            container_name: None,
+    return Ok(Some(res));
+
+    fn exec_query(world: &World, query: Query) -> Result<Vec<SymbolInformation>> {
+        let mut res = Vec::new();
+        for (path, symbol) in world.world_symbols(query) {
+            let line_index = world.file_line_index(path)?;
+            let info = SymbolInformation {
+                name: symbol.name.to_string(),
+                kind: symbol.kind.conv(),
+                location: (path, symbol.node_range).try_conv_with(&line_index)?,
+                container_name: None,
+            };
+            res.push(info);
         };
-        acc.push(info);
-    };
-
-    Ok(Some(acc))
+        Ok(res)
+    }
 }
 
 pub fn handle_goto_definition(
@@ -161,28 +172,28 @@ pub fn handle_execute_command(
     }
     let arg = params.arguments.pop().unwrap();
     let arg: ActionRequest = from_value(arg)?;
-    match arg.id {
-        ActionId::FlipComma => {
-            let path = arg.text_document.file_path()?;
-            let file = world.file_syntax(&path)?;
-            let line_index = world.file_line_index(&path)?;
-            let edit = match libeditor::flip_comma(&file, arg.offset) {
-                Some(edit) => edit(),
-                None => bail!("command not applicable"),
-            };
-            let mut changes = HashMap::new();
-            changes.insert(
-                arg.text_document.uri,
-                edit.conv_with(&line_index),
-            );
-            let edit = WorkspaceEdit {
-                changes: Some(changes),
-                document_changes: None,
-            };
+    let path = arg.text_document.file_path()?;
+    let file = world.file_syntax(&path)?;
+    let edit = match arg.id {
+        ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|edit| edit()),
+        ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|edit| edit()),
+    };
+    let edit = match edit {
+        Some(edit) => edit,
+        None => bail!("command not applicable"),
+    };
+    let line_index = world.file_line_index(&path)?;
+    let mut changes = HashMap::new();
+    changes.insert(
+        arg.text_document.uri,
+        edit.conv_with(&line_index),
+    );
+    let edit = WorkspaceEdit {
+        changes: Some(changes),
+        document_changes: None,
+    };
 
-            Ok(req::ApplyWorkspaceEditParams { edit })
-        }
-    }
+    Ok(req::ApplyWorkspaceEditParams { edit })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -207,13 +218,15 @@ fn apply_code_action_cmd(id: ActionId, doc: TextDocumentIdentifier, offset: Text
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 enum ActionId {
-    FlipComma
+    FlipComma,
+    AddDerive,
 }
 
 impl ActionId {
     fn title(&self) -> &'static str {
         match *self {
             ActionId::FlipComma => "Flip `,`",
+            ActionId::AddDerive => "Add `#[derive]`",
         }
     }
 }
