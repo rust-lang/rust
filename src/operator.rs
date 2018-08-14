@@ -197,14 +197,15 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             Rem if !signed => {
-                // Doing modulo a multiple of the alignment is allowed
+                // Doing modulo a divisor of the alignment is allowed.
+                // (Intuition: Modulo a divisor leaks less information.)
                 let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
                 let right = right as u64;
                 let ptr_size = self.memory.pointer_size().bytes() as u8;
                 if right == 1 {
                     // modulo 1 is always 0
                     (Scalar::Bits { bits: 0, size: ptr_size }, false)
-                } else if right % ptr_base_align == 0 {
+                } else if ptr_base_align % right == 0 {
                     // the base address would be cancelled out by the modulo operation, so we can
                     // just take the modulo of the offset
                     (Scalar::Bits { bits: (left.offset.bytes() % right) as u128, size: ptr_size }, false)
