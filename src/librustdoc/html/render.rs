@@ -1223,6 +1223,10 @@ impl<'a> SourceCollector<'a> {
 
 impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        if item.def_id.is_local() {
+            debug!("folding item \"{:?}\", a {}", item.name, item.type_());
+        }
+
         // If this is a stripped module,
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match item.inner {
