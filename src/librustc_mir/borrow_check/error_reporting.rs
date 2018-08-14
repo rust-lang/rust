@@ -342,7 +342,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
-            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unreachable!(),
+            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unsafe {
+                ::core::hint::unreachable_unchecked()
+            },
         };
 
         if issued_spans == borrow_spans {

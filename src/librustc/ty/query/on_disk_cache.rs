@@ -658,7 +658,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
                 }
             }
             _ => {
-                unreachable!()
+                unsafe { ::core::hint::unreachable_unchecked() }
             }
         };
 
@@ -751,7 +751,7 @@ for CacheDecoder<'a, 'tcx, 'x> {
                 Ok(mir::ClearCrossCrate::Set(val))
             }
             _ => {
-                unreachable!()
+                unsafe { ::core::hint::unreachable_unchecked() }
             }
         }
     }

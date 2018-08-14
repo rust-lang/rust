@@ -801,7 +801,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn reserve(&mut self, additional: usize) {
         match self.reserve_internal(additional, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::AllocErr) => unsafe { ::core::hint::unreachable_unchecked() },
             Ok(()) => { /* yay */ }
         }
     }
@@ -996,7 +996,7 @@ impl<K, V, S> HashMap<K, V, S>
                 elem.insert(v);
                 None
             }
-            None => unreachable!(),
+            None => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 
@@ -3469,7 +3469,7 @@ mod test_map {
 
         // Existing key (insert)
         match map.entry(1) {
-            Vacant(_) => unreachable!(),
+            Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
             Occupied(mut view) => {
                 assert_eq!(view.get(), &10);
                 assert_eq!(view.insert(100), 10);
@@ -3481,7 +3481,7 @@ mod test_map {
 
         // Existing key (update)
         match map.entry(2) {
-            Vacant(_) => unreachable!(),
+            Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
             Occupied(mut view) => {
                 let v = view.get_mut();
                 let new_v = (*v) * 10;
@@ -3493,7 +3493,7 @@ mod test_map {
 
         // Existing key (take)
         match map.entry(3) {
-            Vacant(_) => unreachable!(),
+            Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
             Occupied(view) => {
                 assert_eq!(view.remove(), 30);
             }
@@ -3504,7 +3504,7 @@ mod test_map {
 
         // Inexistent key (insert)
         match map.entry(10) {
-            Occupied(_) => unreachable!(),
+            Occupied(_) => unsafe { ::core::hint::unreachable_unchecked() },
             Vacant(view) => {
                 assert_eq!(*view.insert(1000), 1000);
             }

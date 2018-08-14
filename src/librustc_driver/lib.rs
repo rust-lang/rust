@@ -252,7 +252,9 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
 
     #[allow(deprecated)]
     #[no_debug]
-    static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
+    static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unsafe {
+        ::std::hint::unreachable_unchecked()
+    };
 
     INIT.call_once(|| {
         let codegen_name = sess.opts.debugging_opts.codegen_backend.as_ref()

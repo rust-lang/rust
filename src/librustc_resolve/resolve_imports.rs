@@ -290,7 +290,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             let module = unwrap_or!(single_import.imported_module.get(), return Err(Undetermined));
             let ident = match single_import.subclass {
                 SingleImport { source, .. } => source,
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             };
             match self.resolve_ident_in_module(module, ident, ns, false, path_span) {
                 Err(Determined) => continue,
@@ -414,7 +414,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             // which are not relevant to import resolution.
             GlobImport { is_prelude: true, .. } => {}
             GlobImport { .. } => self.current_module.globs.borrow_mut().push(directive),
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
     }
 
@@ -754,7 +754,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 self.resolve_glob_import(directive);
                 return true;
             }
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         };
 
         let mut indeterminate = false;
@@ -872,7 +872,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 }
                 return None;
             }
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         };
 
         let mut all_ns_err = true;

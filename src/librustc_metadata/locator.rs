@@ -426,7 +426,7 @@ impl<'a> Context<'a> {
 
         err.emit();
         self.sess.abort_if_errors();
-        unreachable!();
+        unsafe { ::std::hint::unreachable_unchecked() }
     }
 
     fn find_library_crate(&mut self,

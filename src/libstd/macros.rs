@@ -291,7 +291,7 @@ macro_rules! select {
         }
         let ret = sel.wait();
         $( if ret == $rx.id() { let $name = $rx.$meth(); $code } else )+
-        { unreachable!() }
+        { unsafe { ::std::hint::unreachable_unchecked() } }
     })
 }
 

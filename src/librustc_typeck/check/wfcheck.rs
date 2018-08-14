@@ -386,7 +386,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
             GenericParamDefKind::Type { has_default, .. } => {
                 has_default && def.index >= generics.parent_count as u32
             }
-            _ => unreachable!()
+            _ => unsafe { ::std::hint::unreachable_unchecked() }
         }
     };
 

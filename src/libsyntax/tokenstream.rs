@@ -337,7 +337,7 @@ impl TokenStream {
         match self.kind {
             TokenStreamKind::Tree(tree) => (tree, false),
             TokenStreamKind::JointTree(tree) => (tree, true),
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 
@@ -349,7 +349,7 @@ impl TokenStream {
             result.push(match stream.kind {
                 TokenStreamKind::Tree(tree) => f(i, tree).into(),
                 TokenStreamKind::JointTree(tree) => f(i, tree).joint(),
-                _ => unreachable!()
+                _ => unsafe { ::core::hint::unreachable_unchecked() }
             });
             i += 1;
         }
@@ -363,7 +363,7 @@ impl TokenStream {
             result.push(match stream.kind {
                 TokenStreamKind::Tree(tree) => f(tree).into(),
                 TokenStreamKind::JointTree(tree) => f(tree).joint(),
-                _ => unreachable!()
+                _ => unsafe { ::core::hint::unreachable_unchecked() }
             });
         }
         TokenStream::concat(result)
@@ -507,7 +507,7 @@ impl Iterator for Cursor {
     fn next(&mut self) -> Option<TokenTree> {
         self.next_as_stream().map(|stream| match stream.kind {
             TokenStreamKind::Tree(tree) | TokenStreamKind::JointTree(tree) => tree,
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         })
     }
 }

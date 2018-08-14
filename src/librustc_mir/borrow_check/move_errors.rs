@@ -243,7 +243,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                                 proj.base == Place::Local(Local::new(1))
                                             }
                                             Place::Promoted(_) |
-                                            Place::Local(_) | Place::Static(_) => unreachable!(),
+                                            Place::Local(_) | Place::Static(_) => unsafe {
+                                                ::core::hint::unreachable_unchecked()
+                                            },
                                         }
                                     } =>
                             {

@@ -504,7 +504,7 @@ impl File {
                 },
                 OPEN_CLOEXEC_SUPPORTED => need_to_set = false,
                 OPEN_CLOEXEC_NOTSUPPORTED => need_to_set = true,
-                _ => unreachable!(),
+                _ => unsafe { ::core::hint::unreachable_unchecked() },
             }
             if need_to_set {
                 fd.set_cloexec()?;

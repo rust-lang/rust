@@ -953,7 +953,7 @@ impl<'a> Iterator for Components<'a> {
                 State::Body => {
                     self.front = State::Done;
                 }
-                State::Done => unreachable!(),
+                State::Done => unsafe { ::core::hint::unreachable_unchecked() },
             }
         }
         None
@@ -1000,7 +1000,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     self.back = State::Done;
                     return None;
                 }
-                State::Done => unreachable!(),
+                State::Done => unsafe { ::core::hint::unreachable_unchecked() },
             }
         }
         None

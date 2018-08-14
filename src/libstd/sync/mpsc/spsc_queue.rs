@@ -276,14 +276,14 @@ mod tests {
                 Some(vec) => {
                     assert_eq!(&*vec, &[1]);
                 },
-                None => unreachable!()
+                None => ::core::hint::unreachable_unchecked()
             }
 
             match queue.pop() {
                 Some(vec) => {
                     assert_eq!(&*vec, &[1]);
                 },
-                None => unreachable!()
+                None => ::core::hint::unreachable_unchecked()
             }
         }
     }

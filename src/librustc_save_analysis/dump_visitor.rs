@@ -511,7 +511,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let (kind, keyword) = match item.node {
             ast::ItemKind::Struct(_, _) => (DefKind::Struct, keywords::Struct),
             ast::ItemKind::Union(_, _) => (DefKind::Union, keywords::Union),
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         };
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keyword);

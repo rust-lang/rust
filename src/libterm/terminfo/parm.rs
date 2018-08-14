@@ -166,7 +166,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                     '>' => x > y,
                                     'A' => x > 0 && y > 0,
                                     'O' => x > 0 || y > 0,
-                                    _ => unreachable!(),
+                                    _ => unsafe { ::std::hint::unreachable_unchecked() },
                                 } {
                                     1
                                 } else {
@@ -186,7 +186,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                     '!' if x > 0 => 0,
                                     '!' => 1,
                                     '~' => !x,
-                                    _ => unreachable!(),
+                                    _ => unsafe { ::std::hint::unreachable_unchecked() },
                                 }))
                             }
                             Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
@@ -227,7 +227,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 flags.width = cur as usize - '0' as usize;
                                 fstate = FormatStateWidth;
                             }
-                            _ => unreachable!(),
+                            _ => unsafe { ::std::hint::unreachable_unchecked() },
                         }
                         state = FormatPattern(flags, fstate);
                     }

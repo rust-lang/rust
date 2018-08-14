@@ -399,7 +399,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
             clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
-            clean::GenericBound::Outlives(..) => unreachable!(),
+            clean::GenericBound::Outlives(..) => unsafe { ::std::hint::unreachable_unchecked() },
         }
     });
     if trait_.def_id() == tcx.lang_items().deref_trait() {
@@ -494,7 +494,7 @@ fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> Option<clean::Ma
         let tts: Vec<_> = def.stream().into_trees().collect();
         tts.chunks(4).map(|arm| arm[0].span()).collect()
     } else {
-        unreachable!()
+        unsafe { ::std::hint::unreachable_unchecked() }
     };
 
     let source = format!("macro_rules! {} {{\n{}}}",

@@ -97,7 +97,7 @@ impl<A: Array> SmallVec<A> {
                     if let AccumulateVec::Array(array) = array {
                         match self.0 {
                             AccumulateVec::Heap(ref mut vec) => vec.extend(array),
-                            _ => unreachable!()
+                            _ => unsafe { ::core::hint::unreachable_unchecked() }
                         }
                     }
                 }

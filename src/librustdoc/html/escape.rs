@@ -36,7 +36,7 @@ impl<'a> fmt::Display for Escape<'a> {
                         '&' => "&amp;",
                         '\'' => "&#39;",
                         '"' => "&quot;",
-                        _ => unreachable!()
+                        _ => unsafe { ::std::hint::unreachable_unchecked() }
                     };
                     fmt.write_str(s)?;
                     last = i + 1;

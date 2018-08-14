@@ -360,7 +360,7 @@ impl<T> Packet<T> {
             Some(&mut GoUp(..)) => {
                 match self.recv(None) {
                     Err(Upgraded(port)) => Err(port),
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 }
             }
             Some(..) => Ok(true),
@@ -389,7 +389,7 @@ impl<T> Packet<T> {
                     Some(&mut GoUp(..)) => {
                         match self.queue.pop() {
                             Some(GoUp(port)) => SelUpgraded(token, port),
-                            _ => unreachable!(),
+                            _ => unsafe { ::core::hint::unreachable_unchecked() },
                         }
                     }
                     Some(..) => SelCanceled,
@@ -481,7 +481,7 @@ impl<T> Packet<T> {
                 Some(&mut GoUp(..)) => {
                     match self.queue.pop() {
                         Some(GoUp(port)) => Err(port),
-                        _ => unreachable!(),
+                        _ => unsafe { ::core::hint::unreachable_unchecked() },
                     }
                 }
                 _ => Ok(true),

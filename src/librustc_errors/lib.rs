@@ -749,7 +749,7 @@ impl Level {
                     .set_intense(true);
             }
             FailureNote => {}
-            Cancelled => unreachable!(),
+            Cancelled => unsafe { ::std::hint::unreachable_unchecked() },
         }
         spec
     }

@@ -45,7 +45,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    -> Box<dyn MacResult+'cx> {
     let code = match (token_tree.len(), token_tree.get(0)) {
         (1, Some(&TokenTree::Token(_, token::Ident(code, _)))) => code,
-        _ => unreachable!()
+        _ => unsafe { ::core::hint::unreachable_unchecked() }
     };
 
     ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
@@ -90,7 +90,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             Some(&TokenTree::Token(_, token::Literal(token::StrRaw(description, _), None)))) => {
             (code, Some(description))
         }
-        _ => unreachable!()
+        _ => unsafe { ::core::hint::unreachable_unchecked() }
     };
 
     // Check that the description starts and ends with a newline and doesn't
@@ -154,7 +154,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             // DIAGNOSTICS ident.
             &TokenTree::Token(_, token::Ident(ref name, _))
         ) => (*&crate_name, name),
-        _ => unreachable!()
+        _ => unsafe { ::core::hint::unreachable_unchecked() }
     };
 
     // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`

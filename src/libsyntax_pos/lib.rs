@@ -860,7 +860,7 @@ impl Encodable for FileMap {
                         1 => for diff in diff_iter { (diff.0 as u8).encode(s)? },
                         2 => for diff in diff_iter { (diff.0 as u16).encode(s)? },
                         4 => for diff in diff_iter { diff.0.encode(s)? },
-                        _ => unreachable!()
+                        _ => unsafe { ::std::hint::unreachable_unchecked() }
                     }
                 }
 
@@ -908,7 +908,7 @@ impl Decodable for FileMap {
                             1 => d.read_u8()? as u32,
                             2 => d.read_u16()? as u32,
                             4 => d.read_u32()?,
-                            _ => unreachable!()
+                            _ => unsafe { ::std::hint::unreachable_unchecked() }
                         };
 
                         line_start = line_start + BytePos(diff);

@@ -368,7 +368,7 @@ fn test_entry() {
 
     // Existing key (insert)
     match map.entry(1) {
-        Vacant(_) => unreachable!(),
+        Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
         Occupied(mut view) => {
             assert_eq!(view.get(), &10);
             assert_eq!(view.insert(100), 10);
@@ -380,7 +380,7 @@ fn test_entry() {
 
     // Existing key (update)
     match map.entry(2) {
-        Vacant(_) => unreachable!(),
+        Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
         Occupied(mut view) => {
             let v = view.get_mut();
             *v *= 10;
@@ -391,7 +391,7 @@ fn test_entry() {
 
     // Existing key (take)
     match map.entry(3) {
-        Vacant(_) => unreachable!(),
+        Vacant(_) => unsafe { ::core::hint::unreachable_unchecked() },
         Occupied(view) => {
             assert_eq!(view.remove(), 30);
         }
@@ -402,7 +402,7 @@ fn test_entry() {
 
     // Inexistent key (insert)
     match map.entry(10) {
-        Occupied(_) => unreachable!(),
+        Occupied(_) => unsafe { ::core::hint::unreachable_unchecked() },
         Vacant(view) => {
             assert_eq!(*view.insert(1000), 1000);
         }

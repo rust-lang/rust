@@ -2804,7 +2804,7 @@ impl<'a> State<'a> {
                 self.print_type(ty)?;
                 self.maybe_print_comment(ty.span.lo())
             }
-            ast::FunctionRetTy::Default(..) => unreachable!(),
+            ast::FunctionRetTy::Default(..) => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 
@@ -3048,7 +3048,7 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT)?;
         self.word_space("->")?;
         match decl.output {
-            ast::FunctionRetTy::Default(..) => unreachable!(),
+            ast::FunctionRetTy::Default(..) => unsafe { ::core::hint::unreachable_unchecked() },
             ast::FunctionRetTy::Ty(ref ty) =>
                 self.print_type(ty)?
         }

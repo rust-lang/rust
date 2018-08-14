@@ -872,7 +872,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                         None
                     }
                 }
-                ty::AssociatedKind::Existential => unreachable!(),
+                ty::AssociatedKind::Existential => unsafe { ::std::hint::unreachable_unchecked() },
             },
             inherent_impls: LazySeq::empty(),
             variances: if trait_item.kind == ty::AssociatedKind::Method {

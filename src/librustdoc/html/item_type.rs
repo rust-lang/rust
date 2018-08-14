@@ -88,7 +88,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
             clean::ForeignTypeItem         => ItemType::ForeignType,
             clean::KeywordItem(..)         => ItemType::Keyword,
-            clean::StrippedItem(..)        => unreachable!(),
+            clean::StrippedItem(..)        => unsafe { ::std::hint::unreachable_unchecked() },
         }
     }
 }

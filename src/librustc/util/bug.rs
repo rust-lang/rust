@@ -47,5 +47,5 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
             (None, _) => panic!(msg),
         }
     });
-    unreachable!();
+    unsafe { ::core::hint::unreachable_unchecked() };
 }

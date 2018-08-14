@@ -218,7 +218,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
     // Parse the macro_rules! invocation
     let body = match def.node {
         ast::ItemKind::MacroDef(ref body) => body,
-        _ => unreachable!(),
+        _ => unsafe { ::core::hint::unreachable_unchecked() },
     };
 
     // The pattern that macro_rules matches.

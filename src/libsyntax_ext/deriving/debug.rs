@@ -124,7 +124,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
             }
             stmts
         }
-        _ => unreachable!(),
+        _ => unsafe { ::std::hint::unreachable_unchecked() },
     };
 
     let expr = cx.expr_method_call(span, builder_expr, Ident::from_str("finish"), vec![]);

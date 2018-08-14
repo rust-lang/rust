@@ -145,7 +145,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             fn fold_path(&mut self, path: ast::Path) -> ast::Path {
                 match self.fold_qpath(None, path) {
                     (None, path) => path,
-                    _ => unreachable!(),
+                    _ => unsafe { ::std::hint::unreachable_unchecked() },
                 }
             }
 
@@ -168,7 +168,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                             ModuleKind::Def(_, name) => ast::PathSegment::from_ident(
                                 ast::Ident::with_empty_ctxt(name).with_span_pos(span)
                             ),
-                            _ => unreachable!(),
+                            _ => unsafe { ::std::hint::unreachable_unchecked() },
                         });
                         if let Some(qself) = &mut qself {
                             qself.position += 1;
@@ -553,7 +553,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         }
                     }
                 },
-                PathResult::Module(..) => unreachable!(),
+                PathResult::Module(..) => unsafe { ::std::hint::unreachable_unchecked() },
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 _ => {
                     self.found_unresolved_macro = true;
@@ -910,7 +910,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             }
         }
 
@@ -1076,7 +1076,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                                item, hygiene::default_edition()));
         self.macro_map.insert(def_id, ext);
 
-        let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };
+        let def = match item.node {
+            ast::ItemKind::MacroDef(ref def) => def,
+            _ => unsafe { ::std::hint::unreachable_unchecked() }
+        };
         if def.legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);

@@ -121,7 +121,7 @@ impl<T> Packet<T> {
                 }
 
                 // Not possible, these are one-use channels
-                DATA => unreachable!(),
+                DATA => ::core::hint::unreachable_unchecked(),
 
                 // There is a thread waiting on the other end. We leave the 'DATA'
                 // state inside so it'll pick it up on the other end.
@@ -187,7 +187,7 @@ impl<T> Packet<T> {
                     self.state.compare_and_swap(DATA, EMPTY, Ordering::SeqCst);
                     match (&mut *self.data.get()).take() {
                         Some(data) => Ok(data),
-                        None => unreachable!(),
+                        None => ::core::hint::unreachable_unchecked(),
                     }
                 }
 
@@ -209,7 +209,7 @@ impl<T> Packet<T> {
 
                 // We are the sole receiver; there cannot be a blocking
                 // receiver already.
-                _ => unreachable!()
+                _ => ::core::hint::unreachable_unchecked()
             }
         }
     }
@@ -266,7 +266,7 @@ impl<T> Packet<T> {
             DATA => unsafe { (&mut *self.data.get()).take().unwrap(); },
 
             // We're the only ones that can block on this port
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         }
     }
 
@@ -295,7 +295,7 @@ impl<T> Packet<T> {
                         up => { ptr::write(self.upgrade.get(), up); Ok(true) }
                     }
                 }
-                _ => unreachable!(), // we're the "one blocker"
+                _ => ::core::hint::unreachable_unchecked(), // we're the "one blocker"
             }
         }
     }
@@ -334,7 +334,7 @@ impl<T> Packet<T> {
                         }
                     }
                 }
-                _ => unreachable!(), // we're the "one blocker"
+                _ => ::core::hint::unreachable_unchecked(), // we're the "one blocker"
             }
         }
     }
@@ -359,7 +359,7 @@ impl<T> Packet<T> {
         // Now that we've got ownership of our state, figure out what to do
         // about it.
         match state {
-            EMPTY => unreachable!(),
+            EMPTY => unsafe { ::core::hint::unreachable_unchecked() },
             // our thread used for select was stolen
             DATA => Ok(true),
 

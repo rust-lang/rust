@@ -204,7 +204,7 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     let _ = syscall::exit(code as usize);
-    unreachable!();
+    unsafe { ::core::hint::unreachable_unchecked() };
 }
 
 pub fn getpid() -> u32 {

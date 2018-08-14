@@ -36,6 +36,7 @@ use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
 use num::FpCategory;
 use num::dec2flt::num::{self, Big};
 use num::dec2flt::table;
+use super::super::super::hint;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Unpacked {
@@ -298,14 +299,16 @@ pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
         "encode_normal: exponent out of range");
     // Leave sign bit at 0 ("+"), our numbers are all positive
     let bits = (k_enc as u64) << T::EXPLICIT_SIG_BITS | sig_enc;
-    T::from_bits(bits.try_into().unwrap_or_else(|_| unreachable!()))
+    T::from_bits(bits.try_into().unwrap_or_else(|_|
+        unsafe { hint::unreachable_unchecked() }))
 }
 
 /// Construct a subnormal. A mantissa of 0 is allowed and constructs zero.
 pub fn encode_subnormal<T: RawFloat>(significand: u64) -> T {
     assert!(significand < T::MIN_SIG, "encode_subnormal: not actually subnormal");
     // Encoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
-    T::from_bits(significand.try_into().unwrap_or_else(|_| unreachable!()))
+    T::from_bits(significand.try_into().unwrap_or_else(|_|
+        unsafe { hint::unreachable_unchecked() }))
 }
 
 /// Approximate a bignum with an Fp. Rounds within 0.5 ULP with half-to-even.

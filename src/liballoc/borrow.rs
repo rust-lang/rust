@@ -208,7 +208,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
             Borrowed(borrowed) => {
                 *self = Owned(borrowed.to_owned());
                 match *self {
-                    Borrowed(..) => unreachable!(),
+                    Borrowed(..) => unsafe { ::core::hint::unreachable_unchecked() },
                     Owned(ref mut owned) => owned,
                 }
             }

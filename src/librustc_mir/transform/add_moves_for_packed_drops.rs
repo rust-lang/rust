@@ -112,7 +112,7 @@ fn add_move_for_packed_drop<'a, 'tcx>(
     let (location, target, unwind) = match terminator.kind {
         TerminatorKind::Drop { ref location, target, unwind } =>
             (location, target, unwind),
-        _ => unreachable!()
+        _ => unsafe { ::core::hint::unreachable_unchecked() }
     };
 
     let source_info = terminator.source_info;

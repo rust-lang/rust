@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Some(hir_map::NodeItem(it)) => Self::item_scope_tag(&it),
             Some(hir_map::NodeTraitItem(it)) => Self::trait_item_scope_tag(&it),
             Some(hir_map::NodeImplItem(it)) => Self::impl_item_scope_tag(&it),
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {

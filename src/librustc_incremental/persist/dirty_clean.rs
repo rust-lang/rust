@@ -465,7 +465,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             .map(move |label| {
                 match DepNode::from_label_string(label, def_path_hash) {
                     Ok(dep_node) => dep_node,
-                    Err(()) => unreachable!(),
+                    Err(()) => unsafe { ::std::hint::unreachable_unchecked() },
                 }
             })
     }

@@ -630,7 +630,7 @@ impl<'a> Parser<'a> {
     crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
-            Ok(_) => unreachable!(),
+            Ok(_) => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 
@@ -2203,7 +2203,7 @@ impl<'a> Parser<'a> {
         };
         let delimited = match self.parse_token_tree() {
             TokenTree::Delimited(_, delimited) => delimited,
-            _ => unreachable!(),
+            _ => unsafe { ::core::hint::unreachable_unchecked() },
         };
         let delim = match delim {
             token::Paren => MacDelimiter::Parenthesis,
@@ -2743,7 +2743,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let name = match self.token {
                     token::Ident(ident, _) => ident,
-                    _ => unreachable!()
+                    _ => unsafe { ::core::hint::unreachable_unchecked() }
                 };
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
                 err.span_label(self.span, "unknown macro variable");
@@ -2779,7 +2779,7 @@ impl<'a> Parser<'a> {
                     tts: frame.tree_cursor.original_stream().into(),
                 })
             },
-            token::CloseDelim(_) | token::Eof => unreachable!(),
+            token::CloseDelim(_) | token::Eof => unsafe { ::core::hint::unreachable_unchecked() },
             _ => {
                 let (token, span) = (mem::replace(&mut self.token, token::Whitespace), self.span);
                 self.bump();
@@ -4454,7 +4454,7 @@ impl<'a> Parser<'a> {
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
                     match self.parse_token_tree() {
                         TokenTree::Delimited(_, ref delimited) => delimited.stream(),
-                        _ => unreachable!(),
+                        _ => unsafe { ::core::hint::unreachable_unchecked() },
                     }
                 } else if self.check(&token::OpenDelim(token::Paren)) {
                     let args = self.parse_token_tree();
@@ -4462,7 +4462,7 @@ impl<'a> Parser<'a> {
                         self.parse_token_tree()
                     } else {
                         self.unexpected()?;
-                        unreachable!()
+                        unsafe { ::core::hint::unreachable_unchecked() }
                     };
                     TokenStream::concat(vec![
                         args.into(),
@@ -4471,7 +4471,7 @@ impl<'a> Parser<'a> {
                     ])
                 } else {
                     self.unexpected()?;
-                    unreachable!()
+                    unsafe { ::core::hint::unreachable_unchecked() }
                 };
 
                 (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
@@ -5298,7 +5298,7 @@ impl<'a> Parser<'a> {
             // Preserve hygienic context.
             token::Ident(ident, _) =>
                 { let span = this.span; this.bump(); Ident::new(ident.name, span) }
-            _ => unreachable!()
+            _ => unsafe { ::core::hint::unreachable_unchecked() }
         };
         let isolated_self = |this: &mut Self, n| {
             this.look_ahead(n, |t| t.is_keyword(keywords::SelfValue)) &&

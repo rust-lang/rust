@@ -1856,7 +1856,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def).unpack() {
             return ty;
         }
-        unreachable!()
+        unsafe { ::std::hint::unreachable_unchecked() }
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -4981,7 +4981,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     let has_default = match param.kind {
                         GenericParamDefKind::Type { has_default, .. } => has_default,
-                        _ => unreachable!()
+                        _ => unsafe { ::std::hint::unreachable_unchecked() }
                     };
 
                     if let Some(ast_ty) = types.get(i) {

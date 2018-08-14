@@ -761,7 +761,7 @@ fn fmt_impl(i: &clean::Impl,
                     fmt::Display::fmt(&last.name, f)?;
                     fmt::Display::fmt(&last.args, f)?;
                 }
-                _ => unreachable!(),
+                _ => unsafe { ::std::hint::unreachable_unchecked() },
             }
         }
         write!(f, " for ")?;

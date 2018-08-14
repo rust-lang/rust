@@ -848,7 +848,7 @@ impl<T> Sender<T> {
             }
             Flavor::Stream(ref p) => return p.send(t).map_err(SendError),
             Flavor::Shared(ref p) => return p.send(t).map_err(SendError),
-            Flavor::Sync(..) => unreachable!(),
+            Flavor::Sync(..) => unsafe { ::core::hint::unreachable_unchecked() },
         };
 
         unsafe {
@@ -895,7 +895,7 @@ impl<T> Clone for Sender<T> {
                 p.clone_chan();
                 return Sender::new(Flavor::Shared(p.clone()));
             }
-            Flavor::Sync(..) => unreachable!(),
+            Flavor::Sync(..) => unsafe { ::core::hint::unreachable_unchecked() },
         };
 
         unsafe {
@@ -913,7 +913,7 @@ impl<T> Drop for Sender<T> {
             Flavor::Oneshot(ref p) => p.drop_chan(),
             Flavor::Stream(ref p) => p.drop_chan(),
             Flavor::Shared(ref p) => p.drop_chan(),
-            Flavor::Sync(..) => unreachable!(),
+            Flavor::Sync(..) => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1203,7 +1203,7 @@ impl<T> Receiver<T> {
                         Ok(t) => return Ok(t),
                         Err(oneshot::Disconnected) => return Err(RecvError),
                         Err(oneshot::Upgraded(rx)) => rx,
-                        Err(oneshot::Empty) => unreachable!(),
+                        Err(oneshot::Empty) => unsafe { ::core::hint::unreachable_unchecked() },
                     }
                 }
                 Flavor::Stream(ref p) => {
@@ -1211,14 +1211,14 @@ impl<T> Receiver<T> {
                         Ok(t) => return Ok(t),
                         Err(stream::Disconnected) => return Err(RecvError),
                         Err(stream::Upgraded(rx)) => rx,
-                        Err(stream::Empty) => unreachable!(),
+                        Err(stream::Empty) => unsafe { ::core::hint::unreachable_unchecked() },
                     }
                 }
                 Flavor::Shared(ref p) => {
                     match p.recv(None) {
                         Ok(t) => return Ok(t),
                         Err(shared::Disconnected) => return Err(RecvError),
-                        Err(shared::Empty) => unreachable!(),
+                        Err(shared::Empty) => unsafe { ::core::hint::unreachable_unchecked() },
                     }
                 }
                 Flavor::Sync(ref p) => return p.recv(None).map_err(|_| RecvError),

@@ -1342,7 +1342,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let af = match *rvalue {
                     Rvalue::Len(..) => ArtificialField::ArrayLength,
                     Rvalue::Discriminant(..) => ArtificialField::Discriminant,
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 };
                 self.access_place(
                     context,
@@ -1886,7 +1886,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared => unreachable!(),
+                    BorrowKind::Shared => unsafe { ::core::hint::unreachable_unchecked() },
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => {

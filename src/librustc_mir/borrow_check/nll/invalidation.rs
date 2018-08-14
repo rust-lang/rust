@@ -437,7 +437,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                 let af = match *rvalue {
                     Rvalue::Len(..) => ArtificialField::ArrayLength,
                     Rvalue::Discriminant(..) => ArtificialField::Discriminant,
-                    _ => unreachable!(),
+                    _ => unsafe { ::core::hint::unreachable_unchecked() },
                 };
                 self.access_place(
                     context,

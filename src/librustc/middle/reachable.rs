@@ -374,7 +374,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 
                 let trait_def_id = match trait_ref.path.def {
                     Def::Trait(def_id) => def_id,
-                    _ => unreachable!()
+                    _ => unsafe { ::core::hint::unreachable_unchecked() }
                 };
 
                 if !trait_def_id.is_local() {

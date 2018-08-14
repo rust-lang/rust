@@ -2057,7 +2057,7 @@ impl<'a> State<'a> {
                 self.print_type(&ty)?;
                 self.maybe_print_comment(ty.span.lo())
             }
-            hir::DefaultReturn(..) => unreachable!(),
+            hir::DefaultReturn(..) => unsafe { ::core::hint::unreachable_unchecked() },
         }
     }
 
@@ -2224,7 +2224,7 @@ impl<'a> State<'a> {
         self.ibox(indent_unit)?;
         self.word_space("->")?;
         match decl.output {
-            hir::DefaultReturn(..) => unreachable!(),
+            hir::DefaultReturn(..) => unsafe { ::core::hint::unreachable_unchecked() },
             hir::Return(ref ty) => self.print_type(&ty)?,
         }
         self.end()?;

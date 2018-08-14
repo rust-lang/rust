@@ -1289,7 +1289,7 @@ fn generic_simd_intrinsic(
             ty::TyInt(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::TyUint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::TyFloat(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         }
     }
 
@@ -1300,7 +1300,7 @@ fn generic_simd_intrinsic(
             ty::TyInt(v) => Type::int_from_ty(cx, v),
             ty::TyUint(v) => Type::uint_from_ty(cx, v),
             ty::TyFloat(v) => Type::float_from_ty(cx, v),
-            _ => unreachable!(),
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
         };
         while no_pointers > 0 {
             elem_ty = elem_ty.ptr_to();
@@ -1365,7 +1365,7 @@ fn generic_simd_intrinsic(
                                  argument `{}`, found `{}` != `*_ {}`",
                          arg_tys[1].simd_type(tcx).sty, arg_tys[1], in_elem, in_ty,
                          arg_tys[1].simd_type(tcx).sty, in_elem);
-                unreachable!();
+                unsafe { ::std::hint::unreachable_unchecked() };
             }
         };
         assert!(pointer_count > 0);
@@ -1462,7 +1462,7 @@ fn generic_simd_intrinsic(
                                  argument `{}`, found `{}` != `*mut {}`",
                          arg_tys[1].simd_type(tcx).sty, arg_tys[1], in_elem, in_ty,
                          arg_tys[1].simd_type(tcx).sty, in_elem);
-                unreachable!();
+                unsafe { ::std::hint::unreachable_unchecked() };
             }
         };
         assert!(pointer_count > 0);
