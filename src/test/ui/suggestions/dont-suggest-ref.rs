@@ -263,7 +263,9 @@ pub fn main() {
     //~| HELP consider removing the `&mut`
     //~| SUGGESTION X(_t)
 
-    // -------- move from tuple of &Either/&X (no suggestions) --------
+    // -------- move from tuple of &Either/&X --------
+
+    // FIXME: These should have suggestions.
 
     let (&X(_t),) = (&x.clone(),);
     //~^ ERROR cannot move
