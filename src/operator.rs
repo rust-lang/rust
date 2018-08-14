@@ -130,8 +130,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     err!(InvalidPointerMath)
                 }
             }
-            // These work if one operand is a pointer, the other an integer
-            Add | BitAnd | Sub
+            // These work if the left operand is a pointer, the right an integer
+            Add | BitAnd | Sub | Rem
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
                        left.is_ptr() && right.is_bits() => {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized
@@ -142,6 +142,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     left_kind == isize,
                 ).map(Some)
             }
+            // Commutative operators also work if the integer is on the left
             Add | BitAnd
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
                        left.is_bits() && right.is_ptr() => {
@@ -180,7 +181,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align.abi() - 1);
+                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let base_mask : u64 = !(ptr_base_align - 1);
                 let right = right as u64;
                 let ptr_size = self.memory.pointer_size().bytes() as u8;
                 if right & base_mask == base_mask {
@@ -189,6 +191,23 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
                     (Scalar::Bits { bits: (left.offset.bytes() & right) as u128, size: ptr_size }, false)
+                } else {
+                    return err!(ReadPointerAsBytes);
+                }
+            }
+
+            Rem if !signed => {
+                // Doing modulo a multiple of the alignment is allowed
+                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let right = right as u64;
+                let ptr_size = self.memory.pointer_size().bytes() as u8;
+                if right == 1 {
+                    // modulo 1 is always 0
+                    (Scalar::Bits { bits: 0, size: ptr_size }, false)
+                } else if right % ptr_base_align == 0 {
+                    // the base address would be cancelled out by the modulo operation, so we can
+                    // just take the modulo of the offset
+                    (Scalar::Bits { bits: (left.offset.bytes() % right) as u128, size: ptr_size }, false)
                 } else {
                     return err!(ReadPointerAsBytes);
                 }
