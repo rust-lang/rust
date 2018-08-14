@@ -15,9 +15,11 @@ ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none
 
 # We need to be outside of 'src' dir in order to run cargo
 WORK_DIR := $(RUST_TEST_TMPDIR)/run-make/$(TARGET)
+HERE := $(shell pwd)
 
 CRATE := cortex-m
-CRATE_VER := 0.5.0
+CRATE_URL := https://github.com/rust-embedded/cortex-m
+CRATE_SHA1 := a448e9156e2cb1e556e5441fd65426952ef4b927 # 0.5.0
 
 RUSTC := $(RUSTC_ORIGINAL)
 LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
@@ -26,7 +28,7 @@ all:
 	env
 	mkdir -p $(WORK_DIR)
 	-cd $(WORK_DIR) && rm -rf $(CRATE)
-	cd $(WORK_DIR) && $(CARGO) clone $(CRATE) --vers $(CRATE_VER)
+	cd $(WORK_DIR) && bash -x $(HERE)/../git_clone_sha1.sh $(CRATE) $(CRATE_URL) $(CRATE_SHA1)
 	cd $(WORK_DIR) && cd $(CRATE) && $(CARGO) build --target $(TARGET) -v
 else
 
