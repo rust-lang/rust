@@ -153,7 +153,7 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
-        if builder.config.llvm_thin_lto {
+        if builder.config.llvm_thin_lto && !emscripten {
             cfg.define("LLVM_ENABLE_LTO", "Thin")
                .define("LLVM_ENABLE_LLD", "ON");
         }
