@@ -59,6 +59,7 @@
 ///        `None`). You can think of it as filtering `P` to just the rows whose *first* pattern
 ///        can cover `c` (and expanding OR-patterns into distinct patterns), and then expanding
 ///        the constructor into all of its components.
+///        The specialisation of a row vector is computed by `specialize`.
 ///
 ///        It is computed as follows. For each row `p_i` of P, we have four cases:
 ///             1.1. `p_(i,1)= c(r_1, .., r_a)`. Then `S(c, P)` has a corresponding row:
@@ -74,9 +75,10 @@
 ///     2. `D(P)` is a "default matrix". This is used when we know there are missing
 ///        constructor cases, but there might be existing wildcard patterns, so to check the
 ///        usefulness of the matrix, we have to check all its *other* components.
+///        The default matrix is computed inline in `is_useful`.
 ///
 ///         It is computed as follows. For each row `p_i` of P, we have three cases:
-///             1.1. `p_(i,1)= c(r_1, .., r_a)`. Then `D(P)` has no corresponding row.
+///             1.1. `p_(i,1) = c(r_1, .., r_a)`. Then `D(P)` has no corresponding row.
 ///             1.2. `p_(i,1) = _`. Then `D(P)` has a corresponding row:
 ///                     p_(i,2), .., p_(i,n)
 ///             1.3. `p_(i,1) = r_1 | r_2`. Then `D(P)` has corresponding rows inlined from:
@@ -88,6 +90,7 @@
 /// The algorithm is inductive (on the number of columns: i.e. components of tuple patterns).
 /// That means we're going to check the components from left-to-right, so the algorithm
 /// operates principally on the first component of the matrix and new pattern `p_{m + 1}`.
+/// This algorithm is realised in the `is_useful` function.
 ///
 /// Base case. (`n = 0`, i.e. an empty tuple pattern)
 ///     - If `P` already contains an empty pattern (i.e. if the number of patterns `m > 0`),
@@ -101,6 +104,7 @@
 ///           we ignore all the patterns in `P` that involve other constructors. This is where
 ///           `S(c, P)` comes in:
 ///           `U(P, p_{m + 1}) := U(S(c, P), S(c, p_{m + 1}))`
+///           This special case is handled in `is_useful_specialized`.
 ///         - If `p_{m + 1} == _`, then we have two more cases:
 ///             + All the constructors of the first component of the type exist within
 ///               all the rows (after having expanded OR-patterns). In this case:
@@ -121,13 +125,48 @@
 /// ------------------------------
 /// The algorithm in the paper doesn't cover some of the special cases that arise in Rust, for
 /// example uninhabited types and variable-length slice patterns. These are drawn attention to
-/// throughout the code below.
+/// throughout the code below. I'll make a quick note here about how exhaustive integer matching
+/// is accounted for, though.
+///
+/// Exhaustive integer matching
+/// ---------------------------
+/// An integer type can be thought of as a (huge) sum type: 1 | 2 | 3 | ...
+/// So to support exhaustive integer matching, we can make use of the logic in the paper for
+/// OR-patterns. However, we obviously can't just treat ranges x..=y as individual sums, because
+/// they are likely gigantic. So we instead treat ranges as constructors of the integers. This means
+/// that we have a constructor *of* constructors (the integers themselves). We then need to work
+/// through all the inductive step rules above, deriving how the ranges would be treated as
+/// OR-patterns, and making sure that they're treated in the same way even when they're ranges.
+/// There are really only four special cases here:
+/// - When we match on a constructor that's actually a range, we have to treat it as if we would
+///   an OR-pattern.
+///     + It turns out that we can simply extend the case for single-value patterns in
+///      `specialize` to either be *equal* to a value constructor, or *contained within* a range
+///      constructor.
+///     + When the pattern itself is a range, you just want to tell whether any of the values in
+///       the pattern range coincide with values in the constructor range, which is precisely
+///       intersection.
+///   Since when encountering a range pattern for a value constructor, we also use inclusion, it
+///   means that whenever the constructor is a value/range and the pattern is also a value/range,
+///   we can simply use intersection to test usefulness.
+/// - When we're testing for usefulness of a pattern and the pattern's first component is a
+///   wildcard.
+///     + If all the constructors appear in the matrix, we have a slight complication. By default,
+///       the behaviour (i.e. a disjunction over specialised matrices for each constructor) is
+///       invalid, because we want a disjunction over every *integer* in each range, not just a
+///       disjunction over every range. This is a bit more tricky to deal with: essentially we need
+///       to form equivalence classes of subranges of the constructor range for which the behaviour
+///       of the matrix `P` and new pattern `p_{m + 1}` are the same. This is described in more
+///       detail in `split_grouped_constructors`.
+///     + If some constructors are missing from the matrix, it turns out we don't need to do
+///       anything special (because we know none of the integers are actually wildcards: i.e. we
+///       can't span wildcards using ranges).
 
 use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{FieldPattern, Pattern, PatternKind};
@@ -147,7 +186,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
 
-use std::cmp::{self, Ordering};
+use std::cmp::{self, Ordering, min, max};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;
@@ -800,8 +839,17 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    // The return value of `signed_bias` should be
-    // XORed with an endpoint to encode/decode it.
+    fn from_pat(tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                pat: &Pattern<'tcx>)
+                -> Option<IntRange<'tcx>> {
+        Self::from_ctor(tcx, &match pat.kind {
+            box PatternKind::Constant { value } => ConstantValue(value),
+            box PatternKind::Range { lo, hi, end } => ConstantRange(lo, hi, end),
+            _ => return None,
+        })
+    }
+
+    // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'_, 'tcx, 'tcx>, ty: Ty<'tcx>) -> u128 {
         match ty.sty {
             ty::TyInt(ity) => {
@@ -809,6 +857,24 @@ impl<'tcx> IntRange<'tcx> {
                 1u128 << (bits - 1)
             }
             _ => 0
+        }
+    }
+
+    /// Convert a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
+    fn range_to_ctor(
+        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        ty: Ty<'tcx>,
+        r: RangeInclusive<u128>,
+    ) -> Constructor<'tcx> {
+        let bias = IntRange::signed_bias(tcx, ty);
+        let ty = ty::ParamEnv::empty().and(ty);
+        let (lo, hi) = r.into_inner();
+        if lo == hi {
+            ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty))
+        } else {
+            ConstantRange(ty::Const::from_bits(tcx, lo ^ bias, ty),
+                          ty::Const::from_bits(tcx, hi ^ bias, ty),
+                          RangeEnd::Included)
         }
     }
 
@@ -823,41 +889,40 @@ impl<'tcx> IntRange<'tcx> {
         let ranges = ranges.into_iter().filter_map(|r| {
             IntRange::from_ctor(tcx, &r).map(|i| i.range)
         });
-        // Convert a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
-        let bias = IntRange::signed_bias(tcx, self.ty);
-        let ty = ty::ParamEnv::empty().and(self.ty);
-        let range_to_constant = |r: RangeInclusive<u128>| {
-            let (lo, hi) = r.into_inner();
-            if lo == hi {
-                ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty))
-            } else {
-                ConstantRange(ty::Const::from_bits(tcx, lo ^ bias, ty),
-                              ty::Const::from_bits(tcx, hi ^ bias, ty),
-                              RangeEnd::Included)
-            }
-        };
         let mut remaining_ranges = vec![];
+        let ty = self.ty;
         let (lo, hi) = self.range.into_inner();
         for subrange in ranges {
             let (subrange_lo, subrange_hi) = subrange.into_inner();
             if lo > subrange_hi || subrange_lo > hi  {
                 // The pattern doesn't intersect with the subrange at all,
                 // so the subrange remains untouched.
-                remaining_ranges.push(range_to_constant(subrange_lo..=subrange_hi));
+                remaining_ranges.push(Self::range_to_ctor(tcx, ty, subrange_lo..=subrange_hi));
             } else {
                 if lo > subrange_lo {
                     // The pattern intersects an upper section of the
                     // subrange, so a lower section will remain.
-                    remaining_ranges.push(range_to_constant(subrange_lo..=(lo - 1)));
+                    remaining_ranges.push(Self::range_to_ctor(tcx, ty, subrange_lo..=(lo - 1)));
                 }
                 if hi < subrange_hi {
                     // The pattern intersects a lower section of the
                     // subrange, so an upper section will remain.
-                    remaining_ranges.push(range_to_constant((hi + 1)..=subrange_hi));
+                    remaining_ranges.push(Self::range_to_ctor(tcx, ty, (hi + 1)..=subrange_hi));
                 }
             }
         }
         remaining_ranges
+    }
+
+    fn intersection(&self, other: &Self) -> Option<Self> {
+        let ty = self.ty;
+        let (lo, hi) = (*self.range.start(), *self.range.end());
+        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
+        if lo <= other_hi && other_lo <= hi {
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty })
+        } else {
+            None
+        }
     }
 }
 
@@ -937,7 +1002,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
-        constructors.into_iter().map(|c|
+        split_grouped_constructors(cx.tcx, constructors, matrix, v, pcx.ty).into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
         ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
@@ -952,16 +1017,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let all_ctors = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
-        // The only constructor patterns for which it is valid to
-        // treat the values as constructors are ranges (see
-        // `all_constructors` for details).
-        let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
-        let consider_value_constructors = exhaustive_integer_patterns
-            && all_ctors.iter().all(|ctor| match ctor {
-                ConstantRange(..) => true,
-                _ => false,
-            });
-
         // `missing_ctors` are those that should have appeared
         // as patterns in the `match` expression, but did not.
         let mut missing_ctors = vec![];
@@ -972,7 +1027,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // If a constructor appears in a `match` arm, we can
                     // eliminate it straight away.
                     refined_ctors = vec![]
-                } else if exhaustive_integer_patterns {
+                } else if cx.tcx.features().exhaustive_integer_patterns {
                     if let Some(interval) = IntRange::from_ctor(cx.tcx, used_ctor) {
                         // Refine the required constructors for the type by subtracting
                         // the range defined by the current constructor pattern.
@@ -1025,15 +1080,9 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
-            if consider_value_constructors {
-                // If we've successfully matched every value
-                // of the type, then we're done.
-                NotUseful
-            } else {
-                all_ctors.into_iter().map(|c| {
-                    is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
-                }).find(|result| result.is_useful()).unwrap_or(NotUseful)
-            }
+            split_grouped_constructors(cx.tcx, all_ctors, matrix, v, pcx.ty).into_iter().map(|c| {
+                is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
+            }).find(|result| result.is_useful()).unwrap_or(NotUseful)
         } else {
             let matrix = rows.iter().filter_map(|r| {
                 if r[0].is_wildcard() {
@@ -1119,14 +1168,16 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
+/// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e. `is_useful` applied
+/// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
     v: &[&'p Pattern<'tcx>],
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
-    witness: WitnessPreference) -> Usefulness<'tcx>
-{
+    witness: WitnessPreference,
+) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
@@ -1309,13 +1360,160 @@ fn slice_pat_covered_by_constructor<'tcx>(
     Ok(true)
 }
 
+/// For exhaustive integer matching, some constructors are grouped within other constructors
+/// (namely integer typed values are grouped within ranges). However, when specialising these
+/// constructors, we want to be specialising for the underlying constructors (the integers), not
+/// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
+/// mean creating a separate constructor for every single value in the range, which is clearly
+/// impractical. However, observe that for some ranges of integers, the specialisation will be
+/// identical across all values in that range (i.e. there are equivalence classes of ranges of
+/// constructors based on their `is_useful_specialised` outcome). These classes are grouped by
+/// the patterns that apply to them (both in the matrix `P` and in the new row `p_{m + 1}`). We
+/// can split the range whenever the patterns that apply to that range (specifically: the patterns
+/// that *intersect* with that range) change.
+/// Our solution, therefore, is to split the range constructor into subranges at every single point
+/// the group of intersecting patterns changes, which we can compute by converting each pattern to
+/// a range and recording its endpoints, then creating subranges between each consecutive pair of
+/// endpoints.
+/// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
+/// on actual integers. The nice thing about this is that the number of subranges is linear in the
+/// number of rows in the matrix (i.e. the number of cases in the `match` statement), so we don't
+/// need to be worried about matching over gargantuan ranges.
+fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ctors: Vec<Constructor<'tcx>>,
+    &Matrix(ref m): &Matrix<'p, 'tcx>,
+    p: &[&'p Pattern<'tcx>],
+    ty: Ty<'tcx>,
+) -> Vec<Constructor<'tcx>> {
+    let pat = &p[0];
+
+    let mut split_ctors = Vec::with_capacity(ctors.len());
+
+    for ctor in ctors.into_iter() {
+        match ctor {
+            // For now, only ranges may denote groups of "subconstructors", so we only need to
+            // special-case constant ranges.
+            ConstantRange(..) => {
+                // We only care about finding all the subranges within the range of the intersection
+                // of the new pattern `p_({m + 1},1)` (here `pat`) and the constructor range.
+                // Anything else is irrelevant, because it is guaranteed to result in `NotUseful`,
+                // which is the default case anyway, and can be ignored.
+                let mut ctor_range = IntRange::from_ctor(tcx, &ctor).unwrap();
+                if let Some(pat_range) = IntRange::from_pat(tcx, pat) {
+                    if let Some(new_range) = ctor_range.intersection(&pat_range) {
+                        ctor_range = new_range;
+                    } else {
+                        // If the intersection between `pat` and the constructor is empty, the
+                        // entire range is `NotUseful`.
+                        continue;
+                    }
+                } else {
+                    match pat.kind {
+                        box PatternKind::Wild => {
+                            // A wild pattern matches the entire range of values,
+                            // so the current values are fine.
+                        }
+                        // If the pattern is not a value (i.e. a degenerate range), a range or a
+                        // wildcard (which stands for the entire range), then it's guaranteed to
+                        // be `NotUseful`.
+                        _ => continue,
+                    }
+                }
+                // We're going to collect all the endpoints in the new pattern so we can create
+                // subranges between them.
+                let mut points = FxHashSet::default();
+                let (lo, hi) = (*ctor_range.range.start(), *ctor_range.range.end());
+                points.insert(lo);
+                points.insert(hi);
+                // We're going to iterate through every row pattern, adding endpoints in.
+                for row in m.iter() {
+                    if let Some(r) = IntRange::from_pat(tcx, row[0]) {
+                        // We're only interested in endpoints that lie (at least partially)
+                        // within the subrange domain.
+                        if let Some(r) = ctor_range.intersection(&r) {
+                            let (r_lo, r_hi) = r.range.into_inner();
+                            // Insert the endpoints.
+                            points.insert(r_lo);
+                            points.insert(r_hi);
+                            // There's a slight subtlety here, which involves the fact we're using
+                            // inclusive ranges everywhere. When we subdivide the range into
+                            // subranges, they can't overlap, or the subranges effectively
+                            // coalesce. We need hard boundaries between subranges. The simplest
+                            // way to do this is by adding extra "boundary points" to prevent this
+                            // intersection. Technically this means we occasionally check a few more
+                            // cases for usefulness than we need to (because they're part of another
+                            // equivalence class), but it's still linear and very simple to verify,
+                            // which is handy when it comes to matching, which can often be quite
+                            // fiddly.
+                            if r_lo > lo {
+                                points.insert(r_lo - 1);
+                            }
+                            if r_hi < hi {
+                                points.insert(r_hi + 1);
+                            }
+                        }
+                    }
+                }
+
+                // The patterns were iterated in an arbitrary order (i.e. in the order the user
+                // wrote them), so we need to make sure our endpoints are sorted.
+                let mut points: Vec<_> = points.into_iter().collect();
+                points.sort();
+                let mut points = points.into_iter();
+                let mut start = points.next().unwrap();
+                // Iterate through pairs of points, adding the subranges to `split_ctors`.
+                while let Some(end) = points.next() {
+                    split_ctors.push(IntRange::range_to_ctor(tcx, ty, start..=end));
+                    start = end;
+                }
+            }
+            // Any other constructor can be used unchanged.
+            _ => split_ctors.push(ctor),
+        }
+    }
+
+    split_ctors
+}
+
+/// Check whether there exists any shared value in either `ctor` or `pat` by intersecting them.
+fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ctor: &Constructor<'tcx>,
+    pat: &'p Pattern<'tcx>,
+) -> Option<Vec<&'p Pattern<'tcx>>> {
+    let mut integer_matching = false;
+    if let ConstantValue(value) | ConstantRange(value, _, _) = ctor {
+        if let ty::TyChar | ty::TyInt(_) | ty::TyUint(_) = value.ty.sty {
+            integer_matching = true;
+        }
+    }
+    if integer_matching {
+        match (IntRange::from_ctor(tcx, ctor), IntRange::from_pat(tcx, pat)) {
+            (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| vec![]),
+            _ => None,
+        }
+    } else {
+        // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
+        // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
+        // so intersection actually devolves into being covered by the pattern.
+        match constructor_covered_by_range(tcx, ctor, pat) {
+            Ok(true) => Some(vec![]),
+            Ok(false) | Err(ErrorReported) => None,
+        }
+    }
+}
+
 fn constructor_covered_by_range<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctor: &Constructor<'tcx>,
-    from: &'tcx ty::Const<'tcx>, to: &'tcx ty::Const<'tcx>,
-    end: RangeEnd,
-    ty: Ty<'tcx>,
+    pat: &Pattern<'tcx>,
 ) -> Result<bool, ErrorReported> {
+    let (from, to, end, ty) = match pat.kind {
+        box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
+        box PatternKind::Range { lo, hi, end } => (lo, hi, end, lo.ty),
+        _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
+    };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
     let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, ty::ParamEnv::empty().and(ty))
         .map(|res| res != Ordering::Less);
@@ -1379,9 +1577,8 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'p Pattern<'tcx>],
     constructor: &Constructor<'tcx>,
-    wild_patterns: &[&'p Pattern<'tcx>])
-    -> Option<Vec<&'p Pattern<'tcx>>>
-{
+    wild_patterns: &[&'p Pattern<'tcx>],
+) -> Option<Vec<&'p Pattern<'tcx>>> {
     let pat = &r[0];
 
     let head: Option<Vec<&Pattern>> = match *pat.kind {
@@ -1432,28 +1629,22 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     }
                 }
                 _ => {
-                    match constructor_covered_by_range(
-                        cx.tcx,
-                        constructor, value, value, RangeEnd::Included,
-                        value.ty,
-                    ) {
-                        Ok(true) => Some(vec![]),
-                        Ok(false) => None,
-                        Err(ErrorReported) => None,
-                    }
+                    // If the constructor is a single value, we add a row to the specialised matrix
+                    // if the pattern is equal to the constructor. If the constructor is a range of
+                    // values, we add a row to the specialised matrix if the pattern is contained
+                    // within the constructor. These two cases (for a single value pattern) can be
+                    // treated as intersection.
+                    constructor_intersects_pattern(cx.tcx, constructor, pat)
                 }
             }
         }
 
-        PatternKind::Range { lo, hi, ref end } => {
-            match constructor_covered_by_range(
-                cx.tcx,
-                constructor, lo, hi, end.clone(), lo.ty,
-            ) {
-                Ok(true) => Some(vec![]),
-                Ok(false) => None,
-                Err(ErrorReported) => None,
-            }
+        PatternKind::Range { .. } => {
+            // If the constructor is a single value, we add a row to the specialised matrix if the
+            // pattern contains the constructor. If the constructor is a range of values, we add a
+            // row to the specialised matrix if there exists any value that lies both within the
+            // pattern and the constructor. These two cases reduce to intersection.
+            constructor_intersects_pattern(cx.tcx, constructor, pat)
         }
 
         PatternKind::Array { ref prefix, ref slice, ref suffix } |
@@ -1463,14 +1654,12 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     let pat_len = prefix.len() + suffix.len();
                     if let Some(slice_count) = wild_patterns.len().checked_sub(pat_len) {
                         if slice_count == 0 || slice.is_some() {
-                            Some(
-                                prefix.iter().chain(
-                                wild_patterns.iter().map(|p| *p)
-                                                    .skip(prefix.len())
-                                                    .take(slice_count)
-                                                    .chain(
-                                suffix.iter()
-                            )).collect())
+                            Some(prefix.iter().chain(
+                                    wild_patterns.iter().map(|p| *p)
+                                                 .skip(prefix.len())
+                                                 .take(slice_count)
+                                                 .chain(suffix.iter())
+                            ).collect())
                         } else {
                             None
                         }

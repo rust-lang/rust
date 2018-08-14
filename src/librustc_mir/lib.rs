@@ -36,6 +36,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(unicode_internals)]
 #![feature(step_trait)]
 #![feature(slice_concat_ext)]
+#![feature(if_while_or_patterns)]
 
 #![recursion_limit="256"]
 
