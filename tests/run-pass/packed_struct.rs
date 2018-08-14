@@ -1,5 +1,3 @@
-// FIXME: We have to disable this, force_allocation fails.
-// TODO: I think this can be triggered even without validation.
 // compile-flags: -Zmir-emit-validate=0
 #![allow(dead_code)]
 #![feature(unsize, coerce_unsized)]
