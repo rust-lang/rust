@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{cmp, fmt, iter, str};
 
+use serde::ser::{self, Serialize, Serializer};
 use serde::de::{Deserialize, Deserializer};
 use serde_json as json;
 
@@ -50,6 +51,35 @@ impl fmt::Display for FileName {
             FileName::Real(p) => write!(f, "{}", p.to_str().unwrap()),
             FileName::Stdin => write!(f, "stdin"),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for FileName {
+    fn deserialize<D>(deserializer: D) -> Result<FileName, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if s == "stdin" {
+            Ok(FileName::Stdin)
+        } else {
+            Ok(FileName::Real(s.into()))
+        }
+    }
+}
+
+impl Serialize for FileName {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = match self {
+            FileName::Stdin => Ok("stdin"),
+            FileName::Real(path) => path.to_str().ok_or_else(||
+                ser::Error::custom("path can't be serialized as UTF-8 string"))
+        };
+
+        s.and_then(|s| serializer.serialize_str(s))
     }
 }
 
@@ -175,6 +205,20 @@ impl FileLines {
         Files(self.0.as_ref().map(|m| m.keys()))
     }
 
+    /// Returns JSON representation as accepted by the `--file-lines JSON` arg.
+    pub fn to_json_spans(&self) -> Vec<JsonSpan> {
+        match &self.0 {
+            None => vec![],
+            Some(file_ranges) => file_ranges
+                .iter()
+                .flat_map(|(file, ranges)| ranges.iter().map(move |r| (file, r)))
+                .map(|(file, range)| JsonSpan {
+                    file: file.to_owned(),
+                    range: (range.lo, range.hi),
+                }).collect(),
+        }
+    }
+
     /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
     /// the designated file (if any) and returns true if `f` ever does.
     fn file_range_matches<F>(&self, file_name: &FileName, f: F) -> bool
@@ -249,20 +293,10 @@ impl str::FromStr for FileLines {
 }
 
 // For JSON decoding.
-#[derive(Clone, Debug, Deserialize)]
-struct JsonSpan {
-    #[serde(deserialize_with = "deserialize_filename")]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct JsonSpan {
     file: FileName,
     range: (usize, usize),
-}
-
-fn deserialize_filename<'de, D: Deserializer<'de>>(d: D) -> Result<FileName, D::Error> {
-    let s = String::deserialize(d)?;
-    if s == "stdin" {
-        Ok(FileName::Stdin)
-    } else {
-        Ok(FileName::Real(s.into()))
-    }
 }
 
 impl JsonSpan {
@@ -349,5 +383,29 @@ mod test {
             Some(Range::new(3, 7)),
             Range::new(3, 7).merge(Range::new(4, 5))
         );
+    }
+
+    use std::{collections::HashMap, path::PathBuf};
+    use super::{FileName, FileLines};
+    use super::json::{self, json, json_internal};
+
+    #[test]
+    fn file_lines_to_json() {
+        let ranges: HashMap<FileName, Vec<Range>> = [
+            (FileName::Real(PathBuf::from("src/main.rs")), vec![
+                Range::new(1, 3),
+                Range::new(5, 7)
+            ]),
+            (FileName::Real(PathBuf::from("src/lib.rs")), vec![
+                Range::new(1, 7)
+        ])].iter().cloned().collect();
+
+        let file_lines = FileLines::from_ranges(ranges);
+        let json = json::to_value(&file_lines.to_json_spans()).unwrap();
+        assert_eq!(json, json! {[
+            {"file": "src/main.rs", "range": [1, 3]},
+            {"file": "src/main.rs", "range": [5, 7]},
+            {"file": "src/lib.rs",  "range": [1, 7]},
+        ]});
     }
 }
