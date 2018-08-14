@@ -228,7 +228,7 @@ pub struct DefaultHashTypes {
 }
 
 impl DefaultHashTypes {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         let mut map = FxHashMap::default();
         map.insert("HashMap".to_owned(), "FxHashMap".to_owned());
         map.insert("HashSet".to_owned(), "FxHashSet".to_owned());

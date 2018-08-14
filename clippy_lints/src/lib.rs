@@ -266,7 +266,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box serde_api::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
-    reg.register_early_lint_pass(box utils::internal_lints::DefaultHashTypes::new());
+    reg.register_early_lint_pass(box utils::internal_lints::DefaultHashTypes::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);
     reg.register_late_lint_pass(box utils::author::Pass);
     reg.register_late_lint_pass(box types::TypePass);
