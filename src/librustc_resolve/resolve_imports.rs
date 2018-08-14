@@ -194,13 +194,14 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     }
 
                     // Fall back to resolving to an external crate.
-                    if !self.extern_prelude.contains(&ident.name) {
+                    if !(ns == TypeNS && self.extern_prelude.contains(&ident.name)) {
                         // ... unless the crate name is not in the `extern_prelude`.
                         return binding;
                     }
                 }
 
                 let crate_root = if
+                    ns == TypeNS &&
                     root != keywords::Extern.name() &&
                     (
                         ident.name == keywords::Crate.name() ||
@@ -208,7 +209,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     )
                 {
                     self.resolve_crate_root(ident)
-                } else if !ident.is_path_segment_keyword() {
+                } else if ns == TypeNS && !ident.is_path_segment_keyword() {
                     let crate_id =
                         self.crate_loader.process_path_extern(ident.name, ident.span);
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
