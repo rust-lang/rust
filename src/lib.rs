@@ -103,6 +103,9 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub module: &'a mut Module<B>,
     pub constants: crate::constant::ConstantCx,
     pub defined_functions: Vec<FuncId>,
+
+    // Cache
+    pub context: Context,
 }
 
 struct CraneliftMetadataLoader;
@@ -248,16 +251,25 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
             .unwrap()
             .finish(flags);
-        let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
-        let mut context = Context::new();
+        let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+        let mut faerie_module: Module<FaerieBackend> = Module::new(
+            FaerieBuilder::new(
+                isa,
+                "some_file.o".to_string(),
+                FaerieTrapCollection::Disabled,
+                FaerieBuilder::default_libcall_names(),
+            ).unwrap(),
+        );
 
         let defined_functions = {
             use std::io::Write;
             let mut cx = CodegenCx {
                 tcx,
-                module: &mut module,
+                module: &mut jit_module,
                 constants: Default::default(),
                 defined_functions: Vec::new(),
+
+                context: Context::new(),
             };
 
             let mut log = ::std::fs::File::create("target/log.txt").unwrap();
@@ -273,9 +285,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             for mono_item in mono_items {
                 let cx = &mut cx;
-                let context = &mut context;
                 let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
-                    base::trans_mono_item(cx, context, mono_item);
+                    base::trans_mono_item(cx, mono_item);
                 }));
                 if let Err(err) = res {
                     match err.downcast::<NonFatal>() {
@@ -304,43 +315,34 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             let (name, sig) =
                 crate::abi::get_function_name_and_sig(tcx, Instance::mono(tcx, start_wrapper));
-            let called_func_id = module
+            let called_func_id = jit_module
                 .declare_function(&name, Linkage::Import, &sig)
                 .unwrap();
 
             for func_id in defined_functions {
                 if func_id != called_func_id {
-                    module.finalize_function(func_id);
+                    jit_module.finalize_function(func_id);
                 }
             }
             tcx.sess.warn("Finalized everything");
 
-            let finalized_function: *const u8 = module.finalize_function(called_func_id);
+            let finalized_function: *const u8 = jit_module.finalize_function(called_func_id);
             let f: extern "C" fn(*const u8, isize, *const *const u8) -> isize =
                 unsafe { ::std::mem::transmute(finalized_function) };
             let res = f(0 as *const u8, 0, 0 as *const _);
             tcx.sess.warn(&format!("main returned {}", res));
 
-            module.finish();
+            jit_module.finish();
         } else if should_codegen(tcx) {
             for func_id in defined_functions {
-                module.finalize_function(func_id);
+                jit_module.finalize_function(func_id);
             }
 
             tcx.sess.warn("Finalized everything");
         }
 
-        let mut translated_module: Module<FaerieBackend> = Module::new(
-            FaerieBuilder::new(
-                isa,
-                "some_file.o".to_string(),
-                FaerieTrapCollection::Disabled,
-                FaerieBuilder::default_libcall_names(),
-            ).unwrap(),
-        );
-
         Box::new(OngoingCodegen {
-            product: translated_module.finish(),
+            product: faerie_module.finish(),
             metadata: metadata.raw_data,
             crate_name: tcx.crate_name(LOCAL_CRATE),
         })

@@ -163,19 +163,6 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
     (tcx.symbol_name(inst).as_str().to_string(), sig)
 }
 
-impl<'a, 'tcx: 'a> CodegenCx<'a, 'tcx, CurrentBackend> {
-    pub fn predefine_function(&mut self, inst: Instance<'tcx>) -> (FuncId, Function) {
-        let (name, sig) = crate::abi::get_function_name_and_sig(self.tcx, inst);
-        let func_id = self
-            .module
-            .declare_function(&name, Linkage::Export, &sig)
-            .unwrap();
-        let func =
-            Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
-        (func_id, func)
-    }
-}
-
 impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
@@ -315,6 +302,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
             }
         }).collect::<Vec<(Local, ArgKind, Ty)>>();
 
+    fx.bcx.switch_to_block(start_ebb);
+
     match output_pass_mode {
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(types::I64, 0);
@@ -418,6 +407,10 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 
         fx.local_map.insert(local, place);
     }
+
+    fx.bcx
+        .ins()
+        .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 }
 
 pub fn codegen_call<'a, 'tcx: 'a>(

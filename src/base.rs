@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 pub fn trans_mono_item<'a, 'tcx: 'a>(
     cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
-    context: &mut Context,
     mono_item: MonoItem<'tcx>,
 ) {
     let tcx = cx.tcx;
@@ -21,41 +20,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     String::from_utf8_lossy(&mir.into_inner())
                 ));
 
-                let (func_id, mut func) = cx.predefine_function(inst);
-
-                let comments = trans_fn(cx, &mut func, inst);
-
-                let mut writer = crate::pretty_clif::CommentWriter(comments);
-                let mut cton = String::new();
-                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
-                    .unwrap();
-                tcx.sess.warn(&cton);
-
-                let flags = settings::Flags::new(settings::builder());
-                match ::cranelift::codegen::verify_function(&func, &flags) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        tcx.sess.err(&format!("{:?}", err));
-                        let pretty_error =
-                            ::cranelift::codegen::print_errors::pretty_verifier_error(
-                                &func,
-                                None,
-                                Some(Box::new(writer)),
-                                &err,
-                            );
-                        tcx.sess
-                            .fatal(&format!("cretonne verify error:\n{}", pretty_error));
-                    }
-                }
-
-                context.func = func;
-                // TODO: cranelift doesn't yet support some of the things needed
-                if should_codegen(cx.tcx) {
-                    cx.module.define_function(func_id, context).unwrap();
-                    cx.defined_functions.push(func_id);
-                }
-
-                context.clear();
+                let func_id = trans_fn(cx.tcx, cx.module, &mut cx.constants, &mut cx.context, inst);
+                cx.defined_functions.push(func_id);
             }
             Instance {
                 def: InstanceDef::DropGlue(_, _),
@@ -64,7 +30,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
             inst => unimpl!("Unimplemented instance {:?}", inst),
         },
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(cx, def_id);
+            crate::constant::codegen_static(&mut cx.constants, def_id);
         }
         MonoItem::GlobalAsm(node_id) => cx
             .tcx
@@ -73,25 +39,38 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
     }
 }
 
-pub fn trans_fn<'a, 'tcx: 'a>(
-    cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
-    f: &mut Function,
+fn trans_fn<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<SimpleJITBackend>,
+    constants: &mut crate::constant::ConstantCx,
+    context: &mut Context,
     instance: Instance<'tcx>,
-) -> HashMap<Inst, String> {
-    let mir = cx.tcx.optimized_mir(instance.def_id());
-    let mut func_ctx = FunctionBuilderContext::new();
-    let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
+) -> FuncId {
+    // Step 1. Get mir
+    let mir = tcx.optimized_mir(instance.def_id());
 
+    // Step 2. Declare function
+    let (name, sig) = get_function_name_and_sig(tcx, instance);
+    let func_id = module
+        .declare_function(&name, Linkage::Export, &sig)
+        .unwrap();
+
+    // Step 3. Make FunctionBuilder
+    let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    let mut func_ctx = FunctionBuilderContext::new();
+    let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(&mut func, &mut func_ctx);
+
+    // Step 4. Predefine ebb's
     let start_ebb = bcx.create_ebb();
-    bcx.switch_to_block(start_ebb);
     let mut ebb_map: HashMap<BasicBlock, Ebb> = HashMap::new();
     for (bb, _bb_data) in mir.basic_blocks().iter_enumerated() {
         ebb_map.insert(bb, bcx.create_ebb());
     }
 
+    // Step 5. Make FunctionCx
     let mut fx = FunctionCx {
-        tcx: cx.tcx,
-        module: &mut cx.module,
+        tcx,
+        module,
         instance,
         mir,
         bcx,
@@ -102,17 +81,53 @@ pub fn trans_fn<'a, 'tcx: 'a>(
         ebb_map,
         local_map: HashMap::new(),
         comments: HashMap::new(),
-        constants: &mut cx.constants,
+        constants,
     };
-    let fx = &mut fx;
 
-    crate::abi::codegen_fn_prelude(fx, start_ebb);
+    // Step 6. Codegen function
+    crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
+    codegen_fn_content(&mut fx);
 
-    fx.bcx
-        .ins()
-        .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
+    // Step 7. Print function to terminal for debugging
+    let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
+    let mut cton = String::new();
+    ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None).unwrap();
+    tcx.sess.warn(&cton);
 
-    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+    // Step 8. Verify function
+    verify_func(tcx, writer, &func);
+
+    // Step 9. Define function
+    // TODO: cranelift doesn't yet support some of the things needed
+    if should_codegen(tcx) {
+        context.func = func;
+        module.define_function(func_id, context).unwrap();
+        context.clear();
+    }
+
+    func_id
+}
+
+fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Function) {
+    let flags = settings::Flags::new(settings::builder());
+    match ::cranelift::codegen::verify_function(&func, &flags) {
+        Ok(_) => {}
+        Err(err) => {
+            tcx.sess.err(&format!("{:?}", err));
+            let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(
+                &func,
+                None,
+                Some(Box::new(writer)),
+                &err,
+            );
+            tcx.sess
+                .fatal(&format!("cretonne verify error:\n{}", pretty_error));
+        }
+    }
+}
+
+fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>) {
+    for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let ebb = fx.get_ebb(bb);
         fx.bcx.switch_to_block(ebb);
 
@@ -208,8 +223,6 @@ pub fn trans_fn<'a, 'tcx: 'a>(
 
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
-
-    fx.comments.clone()
 }
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &Statement<'tcx>) {

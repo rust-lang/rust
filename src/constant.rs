@@ -32,8 +32,8 @@ impl ConstantCx {
     }
 }
 
-pub fn codegen_static<'a, 'tcx: 'a, B: Backend>(cx: &mut CodegenCx<'a, 'tcx, B>, def_id: DefId) {
-    cx.constants.todo.insert(TodoItem::Static(def_id));
+pub fn codegen_static<'a, 'tcx: 'a>(ccx: &mut ConstantCx, def_id: DefId) {
+    ccx.todo.insert(TodoItem::Static(def_id));
 }
 
 pub fn codegen_static_ref<'a, 'tcx: 'a>(
