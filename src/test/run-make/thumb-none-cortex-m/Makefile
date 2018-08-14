@@ -13,16 +13,17 @@
 # See https://stackoverflow.com/questions/7656425/makefile-ifeq-logical-or
 ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi))
 
+# For cargo setting
+RUSTC := $(RUSTC_ORIGINAL)
+LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
 # We need to be outside of 'src' dir in order to run cargo
 WORK_DIR := $(TMPDIR)
+
 HERE := $(shell pwd)
 
 CRATE := cortex-m
 CRATE_URL := https://github.com/rust-embedded/cortex-m
 CRATE_SHA1 := a448e9156e2cb1e556e5441fd65426952ef4b927 # 0.5.0
-
-RUSTC := $(RUSTC_ORIGINAL)
-LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
 
 all:
 	env
