@@ -6,6 +6,32 @@ use {
 };
 {% for node, methods in ast %}
 // {{ node }}
+{%- if methods.enum %}
+#[derive(Debug, Clone, Copy)]
+pub enum {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
+{%- for kind in methods.enum %}
+    {{ kind }}({{ kind }}<R>),
+{%- endfor %}
+}
+
+impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+{%- for kind in methods.enum %}
+            {{ kind | SCREAM }} => Some({{ node }}::{{ kind }}({{ kind }} { syntax })),
+{%- endfor %}
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> {
+        match self {
+{%- for kind in methods.enum %}
+            {{ node }}::{{ kind }}(inner) => inner.syntax(),
+{%- endfor %}
+        }
+    }
+}
+{% else %}
 #[derive(Debug, Clone, Copy)]
 pub struct {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
     syntax: SyntaxNode<R>,
@@ -20,7 +46,7 @@ impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
     }
     fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
 }
-
+{% endif %}
 {% if methods.traits -%}
 {%- for t in methods.traits -%}
 impl<R: TreeRoot> ast::{{ t }}<R> for {{ node }}<R> {}

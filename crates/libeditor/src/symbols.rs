@@ -6,7 +6,6 @@ use libsyntax2::{
         visit::{visitor, Visitor},
         walk::{walk, WalkEvent, preorder},
     },
-    SyntaxKind::*,
 };
 use TextRange;
 
@@ -104,24 +103,21 @@ fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
         .visit(decl::<ast::ConstDef<_>>)
         .visit(decl::<ast::StaticDef<_>>)
         .visit(|im: ast::ImplItem<_>| {
-            let mut label = String::new();
-            let brace = im.syntax().children()
-                .find(|it| {
-                    let stop = it.kind() == L_CURLY;
-                    if !stop {
-                        label.push_str(&it.text());
-                    }
-                    stop
-                })?;
-            let navigation_range = TextRange::from_to(
-                im.syntax().range().start(),
-                brace.range().start(),
-            );
+            let target_type = im.target_type()?;
+            let target_trait = im.target_trait();
+            let label = match target_trait {
+                None => format!("impl {}", target_type.syntax().text()),
+                Some(t) => format!(
+                    "impl {} for {}",
+                    t.syntax().text(),
+                    target_type.syntax().text(),
+                ),
+            };
 
             let node = StructureNode {
                 parent: None,
                 label,
-                navigation_range,
+                navigation_range: target_type.syntax().range(),
                 node_range: im.syntax().range(),
                 kind: im.syntax().kind(),
             };

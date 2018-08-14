@@ -66,7 +66,7 @@ fn test_foo() {}
 }
 
 #[test]
-fn test_structure() {
+fn test_file_structure() {
     let file = file(r#"
 struct Foo {
     x: i32
@@ -94,8 +94,8 @@ impl fmt::Debug for E {}
            StructureNode { parent: None, label: "T", navigation_range: [81; 82), node_range: [76; 88), kind: TYPE_DEF },
            StructureNode { parent: None, label: "S", navigation_range: [96; 97), node_range: [89; 108), kind: STATIC_DEF },
            StructureNode { parent: None, label: "C", navigation_range: [115; 116), node_range: [109; 127), kind: CONST_DEF },
-           StructureNode { parent: None, label: "impl E ", navigation_range: [129; 136), node_range: [129; 138), kind: IMPL_ITEM },
-           StructureNode { parent: None, label: "impl fmt::Debug for E ", navigation_range: [140; 162), node_range: [140; 164), kind: IMPL_ITEM }]"#,
+           StructureNode { parent: None, label: "impl E", navigation_range: [134; 135), node_range: [129; 138), kind: IMPL_ITEM },
+           StructureNode { parent: None, label: "impl fmt::Debug for E", navigation_range: [160; 161), node_range: [140; 164), kind: IMPL_ITEM }]"#,
         &symbols,
     )
 }

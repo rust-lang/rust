@@ -82,3 +82,26 @@ impl<R: TreeRoot> NameRef<R> {
         ident.leaf_text().unwrap()
     }
 }
+
+impl <R: TreeRoot> ImplItem<R> {
+    pub fn target_type(&self) -> Option<TypeRef<R>> {
+        match self.target() {
+            (Some(t), None) | (_, Some(t)) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn target_trait(&self) -> Option<TypeRef<R>> {
+        match self.target() {
+            (Some(t), Some(_)) => Some(t),
+            _ => None,
+        }
+    }
+
+    fn target(&self) -> (Option<TypeRef<R>>, Option<TypeRef<R>>) {
+        let mut types = self.syntax().children().filter_map(TypeRef::cast);
+        let first = types.next();
+        let second = types.next();
+        (first, second)
+    }
+}

@@ -5,6 +5,24 @@ use {
     SyntaxKind::*,
 };
 
+// ArrayType
+#[derive(Debug, Clone, Copy)]
+pub struct ArrayType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ArrayType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            ARRAY_TYPE => Some(ArrayType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ArrayType<R> {}
+
 // ConstDef
 #[derive(Debug, Clone, Copy)]
 pub struct ConstDef<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -23,6 +41,24 @@ impl<R: TreeRoot> AstNode<R> for ConstDef<R> {
 
 impl<R: TreeRoot> ast::NameOwner<R> for ConstDef<R> {}
 impl<R: TreeRoot> ConstDef<R> {}
+
+// DynTraitType
+#[derive(Debug, Clone, Copy)]
+pub struct DynTraitType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for DynTraitType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            DYN_TRAIT_TYPE => Some(DynTraitType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> DynTraitType<R> {}
 
 // EnumDef
 #[derive(Debug, Clone, Copy)]
@@ -86,6 +122,42 @@ impl<R: TreeRoot> AstNode<R> for FnDef<R> {
 impl<R: TreeRoot> ast::NameOwner<R> for FnDef<R> {}
 impl<R: TreeRoot> FnDef<R> {}
 
+// FnPointerType
+#[derive(Debug, Clone, Copy)]
+pub struct FnPointerType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for FnPointerType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            FN_POINTER_TYPE => Some(FnPointerType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> FnPointerType<R> {}
+
+// ForType
+#[derive(Debug, Clone, Copy)]
+pub struct ForType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ForType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            FOR_TYPE => Some(ForType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ForType<R> {}
+
 // ImplItem
 #[derive(Debug, Clone, Copy)]
 pub struct ImplItem<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -103,6 +175,24 @@ impl<R: TreeRoot> AstNode<R> for ImplItem<R> {
 }
 
 impl<R: TreeRoot> ImplItem<R> {}
+
+// ImplTraitType
+#[derive(Debug, Clone, Copy)]
+pub struct ImplTraitType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ImplTraitType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            IMPL_TRAIT_TYPE => Some(ImplTraitType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ImplTraitType<R> {}
 
 // Module
 #[derive(Debug, Clone, Copy)]
@@ -158,6 +248,132 @@ impl<R: TreeRoot> AstNode<R> for NameRef<R> {
 }
 
 impl<R: TreeRoot> NameRef<R> {}
+
+// NeverType
+#[derive(Debug, Clone, Copy)]
+pub struct NeverType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for NeverType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            NEVER_TYPE => Some(NeverType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> NeverType<R> {}
+
+// ParenType
+#[derive(Debug, Clone, Copy)]
+pub struct ParenType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ParenType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            PAREN_TYPE => Some(ParenType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ParenType<R> {}
+
+// PathType
+#[derive(Debug, Clone, Copy)]
+pub struct PathType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for PathType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            PATH_TYPE => Some(PathType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> PathType<R> {}
+
+// PlaceholderType
+#[derive(Debug, Clone, Copy)]
+pub struct PlaceholderType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for PlaceholderType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            PLACEHOLDER_TYPE => Some(PlaceholderType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> PlaceholderType<R> {}
+
+// PointerType
+#[derive(Debug, Clone, Copy)]
+pub struct PointerType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for PointerType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            POINTER_TYPE => Some(PointerType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> PointerType<R> {}
+
+// ReferenceType
+#[derive(Debug, Clone, Copy)]
+pub struct ReferenceType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ReferenceType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            REFERENCE_TYPE => Some(ReferenceType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ReferenceType<R> {}
+
+// SliceType
+#[derive(Debug, Clone, Copy)]
+pub struct SliceType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for SliceType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            SLICE_TYPE => Some(SliceType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> SliceType<R> {}
 
 // StaticDef
 #[derive(Debug, Clone, Copy)]
@@ -216,6 +432,24 @@ impl<R: TreeRoot> AstNode<R> for TraitDef<R> {
 impl<R: TreeRoot> ast::NameOwner<R> for TraitDef<R> {}
 impl<R: TreeRoot> TraitDef<R> {}
 
+// TupleType
+#[derive(Debug, Clone, Copy)]
+pub struct TupleType<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for TupleType<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            TUPLE_TYPE => Some(TupleType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> TupleType<R> {}
+
 // TypeDef
 #[derive(Debug, Clone, Copy)]
 pub struct TypeDef<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -234,4 +468,62 @@ impl<R: TreeRoot> AstNode<R> for TypeDef<R> {
 
 impl<R: TreeRoot> ast::NameOwner<R> for TypeDef<R> {}
 impl<R: TreeRoot> TypeDef<R> {}
+
+// TypeRef
+#[derive(Debug, Clone, Copy)]
+pub enum TypeRef<R: TreeRoot = Arc<SyntaxRoot>> {
+    ParenType(ParenType<R>),
+    TupleType(TupleType<R>),
+    NeverType(NeverType<R>),
+    PathType(PathType<R>),
+    PointerType(PointerType<R>),
+    ArrayType(ArrayType<R>),
+    SliceType(SliceType<R>),
+    ReferenceType(ReferenceType<R>),
+    PlaceholderType(PlaceholderType<R>),
+    FnPointerType(FnPointerType<R>),
+    ForType(ForType<R>),
+    ImplTraitType(ImplTraitType<R>),
+    DynTraitType(DynTraitType<R>),
+}
+
+impl<R: TreeRoot> AstNode<R> for TypeRef<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            PAREN_TYPE => Some(TypeRef::ParenType(ParenType { syntax })),
+            TUPLE_TYPE => Some(TypeRef::TupleType(TupleType { syntax })),
+            NEVER_TYPE => Some(TypeRef::NeverType(NeverType { syntax })),
+            PATH_TYPE => Some(TypeRef::PathType(PathType { syntax })),
+            POINTER_TYPE => Some(TypeRef::PointerType(PointerType { syntax })),
+            ARRAY_TYPE => Some(TypeRef::ArrayType(ArrayType { syntax })),
+            SLICE_TYPE => Some(TypeRef::SliceType(SliceType { syntax })),
+            REFERENCE_TYPE => Some(TypeRef::ReferenceType(ReferenceType { syntax })),
+            PLACEHOLDER_TYPE => Some(TypeRef::PlaceholderType(PlaceholderType { syntax })),
+            FN_POINTER_TYPE => Some(TypeRef::FnPointerType(FnPointerType { syntax })),
+            FOR_TYPE => Some(TypeRef::ForType(ForType { syntax })),
+            IMPL_TRAIT_TYPE => Some(TypeRef::ImplTraitType(ImplTraitType { syntax })),
+            DYN_TRAIT_TYPE => Some(TypeRef::DynTraitType(DynTraitType { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> {
+        match self {
+            TypeRef::ParenType(inner) => inner.syntax(),
+            TypeRef::TupleType(inner) => inner.syntax(),
+            TypeRef::NeverType(inner) => inner.syntax(),
+            TypeRef::PathType(inner) => inner.syntax(),
+            TypeRef::PointerType(inner) => inner.syntax(),
+            TypeRef::ArrayType(inner) => inner.syntax(),
+            TypeRef::SliceType(inner) => inner.syntax(),
+            TypeRef::ReferenceType(inner) => inner.syntax(),
+            TypeRef::PlaceholderType(inner) => inner.syntax(),
+            TypeRef::FnPointerType(inner) => inner.syntax(),
+            TypeRef::ForType(inner) => inner.syntax(),
+            TypeRef::ImplTraitType(inner) => inner.syntax(),
+            TypeRef::DynTraitType(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<R: TreeRoot> TypeRef<R> {}
 
