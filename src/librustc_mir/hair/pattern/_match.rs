@@ -1360,6 +1360,19 @@ fn slice_pat_covered_by_constructor<'tcx>(
     Ok(true)
 }
 
+// Whether to evaluate a constructor using exhaustive integer matching. This is true if the
+// constructor is a range or constant with an integer type.
+fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
+    if tcx.features().exhaustive_integer_patterns {
+        if let ConstantValue(value) | ConstantRange(value, _, _) = ctor {
+            if let ty::TyChar | ty::TyInt(_) | ty::TyUint(_) = value.ty.sty {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// For exhaustive integer matching, some constructors are grouped within other constructors
 /// (namely integer typed values are grouped within ranges). However, when specialising these
 /// constructors, we want to be specialising for the underlying constructors (the integers), not
@@ -1394,7 +1407,7 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
         match ctor {
             // For now, only ranges may denote groups of "subconstructors", so we only need to
             // special-case constant ranges.
-            ConstantRange(..) => {
+            ConstantRange(..) if should_treat_range_exhaustively(tcx, &ctor) => {
                 // We only care about finding all the subranges within the range of the intersection
                 // of the new pattern `p_({m + 1},1)` (here `pat`) and the constructor range.
                 // Anything else is irrelevant, because it is guaranteed to result in `NotUseful`,
@@ -1509,13 +1522,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
     ctor: &Constructor<'tcx>,
     pat: &'p Pattern<'tcx>,
 ) -> Option<Vec<&'p Pattern<'tcx>>> {
-    let mut integer_matching = false;
-    if let ConstantValue(value) | ConstantRange(value, _, _) = ctor {
-        if let ty::TyChar | ty::TyInt(_) | ty::TyUint(_) = value.ty.sty {
-            integer_matching = true;
-        }
-    }
-    if integer_matching {
+    if should_treat_range_exhaustively(tcx, ctor) {
         match (IntRange::from_ctor(tcx, ctor), IntRange::from_pat(tcx, pat)) {
             (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| vec![]),
             _ => None,
