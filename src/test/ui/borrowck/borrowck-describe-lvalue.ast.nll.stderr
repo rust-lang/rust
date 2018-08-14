@@ -35,7 +35,7 @@ LL | |                    //[mir]~^ ERROR cannot borrow `x` as mutable more than
 LL | |                    *y = 1;
 LL | |                    drop(y);
 LL | |                 }
-   | |_________________^ requires that `'1` must outlive `'2`
+   | |_________________^ returning this value requires that `'1` must outlive `'2`
    |
    = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 

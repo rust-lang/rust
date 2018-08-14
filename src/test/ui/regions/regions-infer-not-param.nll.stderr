@@ -14,7 +14,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/regions-infer-not-param.rs:25:54
    |
 LL | fn take_direct<'a,'b>(p: direct<'a>) -> direct<'b> { p } //~ ERROR mismatched types
-   |                -- -- lifetime `'b` defined here      ^ return requires that `'a` must outlive `'b`
+   |                -- -- lifetime `'b` defined here      ^ returning this value requires that `'a` must outlive `'b`
    |                |
    |                lifetime `'a` defined here
 
@@ -22,7 +22,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/regions-infer-not-param.rs:29:63
    |
 LL | fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
-   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |                   |
    |                   lifetime `'a` defined here
 
@@ -30,7 +30,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/regions-infer-not-param.rs:29:63
    |
 LL | fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
-   |                   -- -- lifetime `'b` defined here            ^ return requires that `'a` must outlive `'b`
+   |                   -- -- lifetime `'b` defined here            ^ returning this value requires that `'a` must outlive `'b`
    |                   |
    |                   lifetime `'a` defined here
 

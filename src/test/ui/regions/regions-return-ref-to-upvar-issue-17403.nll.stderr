@@ -8,7 +8,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:17:24
    |
 LL |         let mut f = || &mut x; //~ ERROR cannot infer
-   |                     -- ^^^^^^ return requires that `'1` must outlive `'2`
+   |                     -- ^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                     ||
    |                     |return type of closure is &'2 mut i32
    |                     lifetime `'1` represents this closure's body

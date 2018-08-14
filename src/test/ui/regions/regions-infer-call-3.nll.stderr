@@ -4,13 +4,14 @@ warning: not reporting region error due to nll
 LL |     let z = with(|y| { select(x, y) });
    |                        ^^^^^^^^^^^^
 
-error: borrowed data escapes outside of closure
+error: unsatisfied lifetime constraints
   --> $DIR/regions-infer-call-3.rs:18:24
    |
 LL |     let z = with(|y| { select(x, y) });
-   |                   -    ^^^^^^^^^^^^ `y` escapes the closure body here
-   |                   |
-   |                   `y` is a reference that is only valid in the closure body
+   |                   --   ^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |                   ||
+   |                   |return type of closure is &'2 isize
+   |                   has type `&'1 isize`
 
 error: aborting due to previous error
 

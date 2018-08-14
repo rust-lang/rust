@@ -37,7 +37,7 @@ LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
    |      lifetime `'a` defined here
 ...
 LL |         u //~ ERROR E0312
-   |         ^ return requires that `'b` must outlive `'a`
+   |         ^ returning this value requires that `'b` must outlive `'a`
 
 error: unsatisfied lifetime constraints
   --> $DIR/wf-static-method.rs:43:9
@@ -48,7 +48,7 @@ LL | impl<'a, 'b> Evil<'a, 'b> {
    |      lifetime `'a` defined here
 LL |     fn inherent_evil(u: &'b u32) -> &'a u32 {
 LL |         u //~ ERROR E0312
-   |         ^ return requires that `'b` must outlive `'a`
+   |         ^ returning this value requires that `'b` must outlive `'a`
 
 error: aborting due to 2 previous errors
 

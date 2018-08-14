@@ -19,7 +19,7 @@ LL | fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
    |              lifetime `'a` defined here
 LL |     // However, it is not safe to assume that 'b <= 'a
 LL |     &*y //~ ERROR 23:5: 23:8: lifetime mismatch [E0623]
-   |     ^^^ requires that `'a` must outlive `'b`
+   |     ^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: unsatisfied lifetime constraints
   --> $DIR/regions-free-region-ordering-callee.rs:28:24

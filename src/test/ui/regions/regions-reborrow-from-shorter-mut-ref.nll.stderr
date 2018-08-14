@@ -14,7 +14,7 @@ LL |   fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut isize) -> &'b mut isize {
    | |                      lifetime `'a` defined here
 LL | |     &mut **p //~ ERROR 16:5: 16:13: lifetime mismatch [E0623]
 LL | | }
-   | |_^ requires that `'a` must outlive `'b`
+   | |_^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: aborting due to previous error
 

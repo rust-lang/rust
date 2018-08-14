@@ -12,7 +12,7 @@ LL | impl<'a> Box<'a> {
 LL |     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
    |           -- lifetime `'b` defined here
 LL |         g2.get()
-   |         ^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |         ^^^^^^^^ returning this value requires that `'b` must outlive `'a`
 
 error: aborting due to previous error
 

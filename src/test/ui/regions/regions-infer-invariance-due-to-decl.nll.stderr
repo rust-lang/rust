@@ -10,7 +10,7 @@ error: unsatisfied lifetime constraints
 LL | fn to_longer_lifetime<'r>(b_isize: invariant<'r>) -> invariant<'static> {
    |                       -- lifetime `'r` defined here
 LL |     b_isize //~ ERROR mismatched types
-   |     ^^^^^^^ return requires that `'r` must outlive `'static`
+   |     ^^^^^^^ returning this value requires that `'r` must outlive `'static`
 
 error: aborting due to previous error
 
