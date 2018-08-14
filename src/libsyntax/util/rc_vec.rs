@@ -27,12 +27,7 @@ impl<T> RcVec<T> {
         // to hold the initial elements. Callers that anticipate needing to
         // extend the vector may prefer RcVec::new_preserving_capacity.
         vec.shrink_to_fit();
-
-        RcVec {
-            offset: 0,
-            len: vec.len() as u32,
-            data: Lrc::new(vec),
-        }
+        Self::new_preserving_capacity(vec)
     }
 
     pub fn new_preserving_capacity(vec: Vec<T>) -> Self {
@@ -59,10 +54,10 @@ impl<T> RcVec<T> {
             Ok(mut vec) => {
                 // Drop any elements after our view of the data.
                 vec.truncate(self.offset as usize + self.len as usize);
-                // Drop any elements before our view of the data.
-                if self.offset != 0 {
-                    vec.drain(..self.offset as usize);
-                }
+                // Drop any elements before our view of the data. Do this after
+                // the `truncate` so that elements past the end of our view do
+                // not need to be copied around.
+                vec.drain(..self.offset as usize);
                 Ok(vec)
             }
 
