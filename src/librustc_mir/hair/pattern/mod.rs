@@ -1085,8 +1085,9 @@ pub fn compare_const_vals<'a, 'tcx>(
             },
             ty::TyInt(_) => {
                 let layout = tcx.layout_of(ty).ok()?;
-                let a = interpret::sign_extend(a, layout);
-                let b = interpret::sign_extend(b, layout);
+                assert!(layout.abi.is_signed());
+                let a = interpret::sign_extend(a, layout.size);
+                let b = interpret::sign_extend(b, layout.size);
                 Some((a as i128).cmp(&(b as i128)))
             },
             _ => Some(a.cmp(&b)),

@@ -1020,11 +1020,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
-        super::sign_extend(value, ty)
+        assert!(ty.abi.is_signed());
+        super::sign_extend(value, ty.size)
     }
 
     pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
-        super::truncate(value, ty)
+        super::truncate(value, ty.size)
     }
 
     fn dump_field_name(&self, s: &mut String, ty: Ty<'tcx>, i: usize, variant: usize) -> ::std::fmt::Result {
@@ -1095,9 +1096,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 }
 
-pub fn sign_extend(value: u128, layout: TyLayout<'_>) -> u128 {
-    let size = layout.size.bits();
-    assert!(layout.abi.is_signed());
+pub fn sign_extend(value: u128, size: Size) -> u128 {
+    let size = size.bits();
     // sign extend
     let shift = 128 - size;
     // shift the unsigned value to the left
@@ -1105,8 +1105,8 @@ pub fn sign_extend(value: u128, layout: TyLayout<'_>) -> u128 {
     (((value << shift) as i128) >> shift) as u128
 }
 
-pub fn truncate(value: u128, layout: TyLayout<'_>) -> u128 {
-    let size = layout.size.bits();
+pub fn truncate(value: u128, size: Size) -> u128 {
+    let size = size.bits();
     let shift = 128 - size;
     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
     (value << shift) >> shift
