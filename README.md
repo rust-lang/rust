@@ -7,7 +7,7 @@ undergraduate research course at the [University of Saskatchewan][usask].
 
 ## Building Miri
 
-I recommend that you install [rustup][rustup] to obtain Rust.  miri comes with a
+I recommend that you install [rustup][rustup] to obtain Rust.  Miri comes with a
 `rust-toolchain` file so rustup will automatically pick a suitable nightly
 version.  Then all you have to do is:
 
@@ -15,33 +15,25 @@ version.  Then all you have to do is:
 cargo build
 ```
 
-## Running tests
+## Running Miri
 
 ```sh
 cargo run tests/run-pass/vecs.rs # Or whatever test you like.
 ```
 
-## Running miri on your own project('s test suite)
-
-Install miri as a cargo subcommand with `cargo install --debug`.
-Then, inside your own project, use `cargo +nightly miri` to run your project, if it is
-a bin project, or run `cargo +nightly miri test` to run all tests in your project
-through miri.
-
-## Running miri with full libstd
+## Running Miri with full libstd
 
 Per default libstd does not contain the MIR of non-polymorphic functions. When
-miri hits a call to such a function, execution terminates. To fix this, it is
+Miri hits a call to such a function, execution terminates. To fix this, it is
 possible to compile libstd with full MIR:
 
 ```sh
 rustup component add rust-src
 cargo install xargo
-cd xargo/
-RUSTFLAGS='-Zalways-encode-mir' xargo build
+xargo/build.sh
 ```
 
-Now you can run miri against the libstd compiled by xargo:
+Now you can run Miri against the libstd compiled by xargo:
 
 ```sh
 MIRI_SYSROOT=~/.xargo/HOST cargo run tests/run-pass-fullmir/hashmap.rs
@@ -50,13 +42,23 @@ MIRI_SYSROOT=~/.xargo/HOST cargo run tests/run-pass-fullmir/hashmap.rs
 Notice that you will have to re-run the last step of the preparations above when
 your toolchain changes (e.g., when you update the nightly).
 
-You can also set `-Zmiri-start-fn` to make miri start evaluation with the
+You can also set `-Zmiri-start-fn` to make Miri start evaluation with the
 `start_fn` lang item, instead of starting at the `main` function.
+
+## Running Miri on your own project('s test suite)
+
+Install Miri as a cargo subcommand with `cargo install --all-features`, and install
+a full libstd as described above.
+
+Then, inside your own project, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly
+miri` to run your project, if it is a bin project, or run
+`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test` to run all tests in your
+project through Miri.
 
 ## Development and Debugging
 
-Since the heart of miri (the main interpreter engine) lives in rustc, working on
-miri will often require using a locally built rustc. This includes getting a
+Since the heart of Miri (the main interpreter engine) lives in rustc, working on
+Miri will often require using a locally built rustc. This includes getting a
 trace of the execution, as distributed rustc has `trace!` disabled.
 
 The first-time setup for a local rustc looks as follows:
@@ -68,12 +70,12 @@ cp config.toml.example config.toml
 ./x.py build src/rustc
 # You may have to change the architecture in the next command
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
-# Now cd to your miri directory
+# Now cd to your Miri directory
 rustup override set custom
 ```
 The `build` step can take 30 minutes and more.
 
-Now you can `cargo build` miri, and you can `cargo test --tests`.  (`--tests`
+Now you can `cargo build` Miri, and you can `cargo test --tests`.  (`--tests`
 is needed to skip doctests because we have not built rustdoc for your custom
 toolchain.) You can also set `RUST_LOG=rustc_mir::interpret=trace` as
 environment variable to get a step-by-step trace.

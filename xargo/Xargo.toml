@@ -1,2 +1,5 @@
-[dependencies]
-std = {features = ["panic_unwind", "jemalloc", "backtrace"]}
+[dependencies.std]
+features = ["panic_unwind", "jemalloc", "backtrace"]
+
+[dependencies.test]
+stage = 1
