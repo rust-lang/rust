@@ -168,13 +168,13 @@ where MWF: MirWithFlowState<'tcx>,
         let i = n.index();
 
         macro_rules! dump_set_for {
-            ($set:ident) => {
+            ($set:ident, $interpret:ident) => {
                 write!(w, "<td>")?;
 
                 let flow = self.mbcx.flow_state();
-                let entry_interp = flow.interpret_set(&flow.operator,
-                                                      flow.sets.$set(i),
-                                                      &self.render_idx);
+                let entry_interp = flow.$interpret(&flow.operator,
+                                                   flow.sets.$set(i),
+                                                   &self.render_idx);
                 for e in &entry_interp {
                     write!(w, "{:?}<br/>", e)?;
                 }
@@ -184,7 +184,7 @@ where MWF: MirWithFlowState<'tcx>,
 
         write!(w, "<tr>")?;
         // Entry
-        dump_set_for!(on_entry_set_for);
+        dump_set_for!(on_entry_set_for, interpret_set);
 
         // MIR statements
         write!(w, "<td>")?;
@@ -198,10 +198,10 @@ where MWF: MirWithFlowState<'tcx>,
         write!(w, "</td>")?;
 
         // Gen
-        dump_set_for!(gen_set_for);
+        dump_set_for!(gen_set_for, interpret_hybrid_set);
 
         // Kill
-        dump_set_for!(kill_set_for);
+        dump_set_for!(kill_set_for, interpret_hybrid_set);
 
         write!(w, "</tr>")?;
 
@@ -217,19 +217,14 @@ where MWF: MirWithFlowState<'tcx>,
                                           -> io::Result<()> {
         let i = n.index();
 
-        macro_rules! dump_set_for {
-            ($set:ident) => {
-                let flow = self.mbcx.flow_state();
-                let bits_per_block = flow.sets.bits_per_block();
-                let set = flow.sets.$set(i);
-                write!(w, "<td>{:?}</td>",
-                       dot::escape_html(&bits_to_string(set.words(), bits_per_block)))?;
-            }
-        }
+        let flow = self.mbcx.flow_state();
+        let bits_per_block = flow.sets.bits_per_block();
 
         write!(w, "<tr>")?;
+
         // Entry
-        dump_set_for!(on_entry_set_for);
+        let set = flow.sets.on_entry_set_for(i);
+        write!(w, "<td>{:?}</td>", dot::escape_html(&bits_to_string(set.words(), bits_per_block)))?;
 
         // Terminator
         write!(w, "<td>")?;
@@ -242,10 +237,12 @@ where MWF: MirWithFlowState<'tcx>,
         write!(w, "</td>")?;
 
         // Gen
-        dump_set_for!(gen_set_for);
+        let set = flow.sets.gen_set_for(i);
+        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
 
         // Kill
-        dump_set_for!(kill_set_for);
+        let set = flow.sets.kill_set_for(i);
+        write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
 
         write!(w, "</tr>")?;
 
