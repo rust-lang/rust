@@ -174,10 +174,14 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             p.bump();
             PREFIX_EXPR
         }
+        // test full_range_expr
+        // fn foo() { xs[..]; }
         DOTDOT => {
             m = p.start();
             p.bump();
-            expr_bp(p, r, 2);
+            if EXPR_FIRST.contains(p.current()) {
+                expr_bp(p, r, 2);
+            }
             return Some(m.complete(p, RANGE_EXPR));
         }
         _ => {
