@@ -3,6 +3,7 @@
 extern crate getopts;
 extern crate miri;
 extern crate rustc;
+extern crate rustc_metadata;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_codegen_utils;
@@ -12,7 +13,7 @@ extern crate syntax;
 extern crate log;
 
 use rustc::session::Session;
-use rustc::middle::cstore::CrateStore;
+use rustc_metadata::cstore::CStore;
 use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
@@ -70,7 +71,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         codegen_backend: &CodegenBackend,
         matches: &getopts::Matches,
         sess: &Session,
-        cstore: &CrateStore,
+        cstore: &CStore,
         input: &Input,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,

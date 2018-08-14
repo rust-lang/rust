@@ -51,7 +51,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset.overflowing_mul(pointee_size).0;
-        ptr.ptr_wrapping_signed_offset(offset, self)
+        Ok(ptr.ptr_wrapping_signed_offset(offset, self))
     }
 
     fn pointer_offset(
@@ -65,7 +65,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
         // allocation.
 
-        if ptr.is_null()? {
+        if ptr.is_null() {
             // NULL pointers must only be offset by 0
             return if offset == 0 {
                 Ok(ptr)
@@ -80,7 +80,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
             if let Scalar::Ptr(ptr) = ptr {
                 self.memory.check_bounds(ptr, false)?;
-            } else if ptr.is_null()? {
+            } else if ptr.is_null() {
                 // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
                 return err!(InvalidNullPointerUsage);
             }
@@ -96,7 +96,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     ) -> EvalResult<'tcx, i64> {
         assert_eq!(value.ty, self.tcx.types.isize);
         let raw = self.value_to_scalar(value)?.to_bits(self.memory.pointer_size())?;
-        let raw = sign_extend(self.tcx.tcx, raw, self.tcx.types.isize)?;
+        let raw = sign_extend(raw, self.layout_of(self.tcx.types.isize).unwrap());
         Ok(raw as i64)
     }
 
@@ -114,7 +114,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     ) -> EvalResult<'tcx, i32> {
         assert_eq!(value.ty, self.tcx.types.i32);
         let raw = self.value_to_scalar(value)?.to_bits(Size::from_bits(32))?;
-        let raw = sign_extend(self.tcx.tcx, raw, self.tcx.types.i32)?;
+        let raw = sign_extend(raw, self.layout_of(self.tcx.types.i32).unwrap());
         Ok(raw as i32)
     }
 

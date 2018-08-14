@@ -116,9 +116,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         Sub => {
                             return self.binary_op(
                                 Sub,
-                                Scalar::Bits { bits: left.offset.bytes() as u128, defined: self.memory.pointer_size().bits() as u8 },
+                                Scalar::Bits { bits: left.offset.bytes() as u128, size: self.memory.pointer_size().bytes() as u8 },
                                 self.tcx.types.usize,
-                                Scalar::Bits { bits: right.offset.bytes() as u128, defined: self.memory.pointer_size().bits() as u8 },
+                                Scalar::Bits { bits: right.offset.bytes() as u128, size: self.memory.pointer_size().bytes() as u8 },
                                 self.tcx.types.usize,
                             ).map(Some)
                         }
@@ -182,12 +182,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             BitAnd if !signed => {
                 let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align.abi() - 1);
                 let right = right as u64;
+                let ptr_size = self.memory.pointer_size().bytes() as u8;
                 if right & base_mask == base_mask {
                     // Case 1: The base address bits are all preserved, i.e., right is all-1 there
                     (Scalar::Ptr(Pointer::new(left.alloc_id, Size::from_bytes(left.offset.bytes() & right))), false)
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
-                    (Scalar::Bits { bits: (left.offset.bytes() & right) as u128, defined: 128 }, false)
+                    (Scalar::Bits { bits: (left.offset.bytes() & right) as u128, size: ptr_size }, false)
                 } else {
                     return err!(ReadPointerAsBytes);
                 }

@@ -26,12 +26,12 @@ install:
     - cd xargo
     - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-validate=1
     - xargo build
-    - set RUSTFLAGS=
     - cd ..
 
 build: false
 
 test_script:
+    - set RUSTFLAGS=-g
     - set RUST_BACKTRACE=1
     - cargo build --release
     - cargo test --release

@@ -1,32 +1,32 @@
 language: rust
 cache: cargo
-
-os:
-- osx
-- linux
-
 rust:
 - nightly
+
+os:
+- linux
+- osx
+
 before_script:
 # mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
 - curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 - rvm get stable
 # in a cronjob, use latest (not pinned) nightly
 - if [ "$TRAVIS_EVENT_TYPE" = cron ]; then rustup override set nightly; fi
-# actual travis code
+# prepare
 - export PATH=$HOME/.local/bin:$PATH
 - rustup target add i686-unknown-linux-gnu
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
 - cargo install xargo || echo "skipping xargo install"
-- export RUST_SYSROOT=$HOME/rust
+
 script:
 - set -e
 - |
   # Test and install plain miri
   cargo build --release --all-features &&
-  RUST_BACKTRACE=1 cargo test --release --all-features --all &&
+  cargo test --release --all-features &&
   cargo install --all-features --force
 - |
   # test that the rustc_tests binary compiles
@@ -55,7 +55,8 @@ script:
   cd ..
 - |
   # and run all tests with full mir
-  cargo test --release
+  cargo test --release --all-features
+
 notifications:
   email:
     on_success: never
