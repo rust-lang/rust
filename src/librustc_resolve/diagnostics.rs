@@ -775,7 +775,8 @@ The `Self` keyword was used outside an impl, trait, or type definition.
 Erroneous code example:
 
 ```compile_fail,E0411
-<Self>::foo; // error: use of `Self` outside of an impl, trait, or type definition
+<Self>::foo; // error: use of `Self` outside of an impl, trait, or type
+             // definition
 ```
 
 The `Self` keyword represents the current type, which explains why it can only

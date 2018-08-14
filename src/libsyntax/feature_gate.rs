@@ -138,7 +138,7 @@ declare_features! (
     (active, thread_local, "1.0.0", Some(29594), None),
     (active, trace_macros, "1.0.0", Some(29598), None),
 
-    // rustc internal, for now:
+    // rustc internal, for now
     (active, intrinsics, "1.0.0", None, None),
     (active, lang_items, "1.0.0", None, None),
     (active, format_args_nl, "1.29.0", None, None),
@@ -168,6 +168,7 @@ declare_features! (
     (active, optin_builtin_traits, "1.0.0", Some(13231), None),
 
     // Allows use of #[staged_api]
+    //
     // rustc internal
     (active, staged_api, "1.0.0", None, None),
 
@@ -245,24 +246,25 @@ declare_features! (
     // Allows associated type defaults
     (active, associated_type_defaults, "1.2.0", Some(29661), None),
 
-    // allow `repr(simd)`, and importing the various simd intrinsics
+    // Allows `repr(simd)`, and importing the various simd intrinsics
     (active, repr_simd, "1.4.0", Some(27731), None),
 
-    // allow `extern "platform-intrinsic" { ... }`
+    // Allows `extern "platform-intrinsic" { ... }`
     (active, platform_intrinsics, "1.4.0", Some(27731), None),
 
-    // allow `#[unwind(..)]`
+    // Allows `#[unwind(..)]`
     // rustc internal for rust runtime
     (active, unwind_attributes, "1.4.0", None, None),
 
-    // allow the use of `#[naked]` on functions.
+    // Allows the use of `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
 
-    // allow `#[no_debug]`
+    // Allows `#[no_debug]`
     (active, no_debug, "1.5.0", Some(29721), None),
 
-    // allow `#[omit_gdb_pretty_printer_section]`
-    // rustc internal.
+    // Allows `#[omit_gdb_pretty_printer_section]`
+    //
+    // rustc internal
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
 
     // Allows cfg(target_vendor = "...").
@@ -292,10 +294,10 @@ declare_features! (
     // The `!` type. Does not imply exhaustive_patterns (below) any more.
     (active, never_type, "1.13.0", Some(35121), None),
 
-    // Allows exhaustive pattern matching on types that contain uninhabited types.
+    // Allows exhaustive pattern matching on types that contain uninhabited types
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 
-    // Allows all literals in attribute lists and values of key-value pairs.
+    // Allows all literals in attribute lists and values of key-value pairs
     (active, attr_literals, "1.13.0", Some(34981), None),
 
     // Allows untagged unions `union U { ... }`
@@ -334,6 +336,7 @@ declare_features! (
     (active, sanitizer_runtime, "1.17.0", None, None),
 
     // Used to identify crates that contain the profiler runtime
+    //
     // rustc internal
     (active, profiler_runtime, "1.18.0", None, None),
 
@@ -391,7 +394,7 @@ declare_features! (
     // extern types
     (active, extern_types, "1.23.0", Some(43467), None),
 
-    // Allow trait methods with arbitrary self types
+    // Allows trait methods with arbitrary self types
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
 
     // `crate` in paths
@@ -400,7 +403,7 @@ declare_features! (
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
     (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
-    // generic associated types (RFC 1598)
+    // Generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265), None),
 
     // Resolve absolute paths as paths from other crates
@@ -475,7 +478,7 @@ declare_features! (
     // Scoped lints
     (active, tool_lints, "1.28.0", Some(44690), None),
 
-    // allow irrefutable patterns in if-let and while-let statements (RFC 2086)
+    // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
     (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
 
     // Allows use of the :literal macro fragment specifier (RFC 1576)
@@ -505,11 +508,14 @@ declare_features! (
     // impl Debug for Foo<'_>
     (active, impl_header_lifetime_elision, "1.30.0", Some(15872), Some(Edition::Edition2018)),
 
-    // Support for arbitrary delimited token streams in non-macro attributes.
+    // Support for arbitrary delimited token streams in non-macro attributes
     (active, unrestricted_attribute_tokens, "1.30.0", Some(44690), None),
 
-    // Allows `use x::y;` to resolve through `self::x`, not just `::x`.
+    // Allows `use x::y;` to resolve through `self::x`, not just `::x`
     (active, uniform_paths, "1.30.0", Some(53130), None),
+
+    // Allows `Self` in type definitions
+    (active, self_in_typedefs, "1.30.0", Some(49303), None),
 );
 
 declare_features! (

@@ -2204,9 +2204,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ItemKind::Union(_, ref generics) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
                     let item_def_id = this.definitions.local_def_id(item.id);
-                    this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                    if this.session.features_untracked().self_in_typedefs {
+                        this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                            visit::walk_item(this, item);
+                        });
+                    } else {
                         visit::walk_item(this, item);
-                    });
+                    }
                 });
             }
 
@@ -2977,7 +2981,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
                 err.code(DiagnosticId::Error("E0411".into()));
-                err.span_label(span, "`Self` is only available in traits, impls, and type definitions");
+                let available_in = if this.session.features_untracked().self_in_typedefs {
+                    "impls, traits, and type definitions"
+                } else {
+                    "traits and impls"
+                };
+                err.span_label(span, format!("`Self` is only available in {}", available_in));
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
