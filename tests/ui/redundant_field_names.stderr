@@ -13,33 +13,33 @@ error: redundant field names in struct initialization
    |         ^^^^^^^^ help: replace it with: `age`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:53:25
+  --> $DIR/redundant_field_names.rs:56:25
    |
-53 |     let _ = RangeFrom { start: start };
+56 |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:54:23
+  --> $DIR/redundant_field_names.rs:57:23
    |
-54 |     let _ = RangeTo { end: end };
+57 |     let _ = RangeTo { end: end };
    |                       ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:55:21
+  --> $DIR/redundant_field_names.rs:58:21
    |
-55 |     let _ = Range { start: start, end: end };
+58 |     let _ = Range { start: start, end: end };
    |                     ^^^^^^^^^^^^ help: replace it with: `start`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:55:35
+  --> $DIR/redundant_field_names.rs:58:35
    |
-55 |     let _ = Range { start: start, end: end };
+58 |     let _ = Range { start: start, end: end };
    |                                   ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:57:32
+  --> $DIR/redundant_field_names.rs:60:32
    |
-57 |     let _ = RangeToInclusive { end: end };
+60 |     let _ = RangeToInclusive { end: end };
    |                                ^^^^^^^^ help: replace it with: `end`
 
 error: aborting due to 7 previous errors
