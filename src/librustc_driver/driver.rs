@@ -57,7 +57,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
-use syntax_pos::FileName;
+use syntax_pos::{FileName, hygiene};
 use syntax_ext;
 
 use derive_registrar;
@@ -670,6 +670,7 @@ pub fn phase_1_parse_input<'a>(
 ) -> PResult<'a, ast::Crate> {
     sess.diagnostic()
         .set_continue_after_error(control.continue_parse_after_error);
+    hygiene::set_default_edition(sess.edition());
 
     if sess.profile_queries() {
         profile::begin(sess);

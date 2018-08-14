@@ -110,7 +110,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
-use syntax_pos::{hygiene, DUMMY_SP, MultiSpan, FileName};
+use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 #[cfg(test)]
 mod test;
@@ -478,7 +478,6 @@ pub fn run_compiler<'a>(args: &[String],
         };
 
         let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
-        hygiene::set_default_edition(sopts.edition);
 
         driver::spawn_thread_pool(sopts, |sopts| {
             run_compiler_with_pool(matches, sopts, cfg, callbacks, file_loader, emitter_dest)
@@ -1513,7 +1512,7 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
             true
         } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
             true
-        } else {
+        } else if rlim.rlim_cur < STACK_SIZE as libc::rlim_t {
             std::rt::deinit_stack_guard();
             rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
             if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
@@ -1525,6 +1524,8 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
                 std::rt::update_stack_guard();
                 false
             }
+        } else {
+            false
         }
     };
 

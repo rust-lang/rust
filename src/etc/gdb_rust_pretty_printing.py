@@ -127,6 +127,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_VECDEQUE:
         return RustStdVecDequePrinter(val)
 
+    if type_kind == rustpp.TYPE_KIND_STD_BTREESET:
+        return RustStdBTreeSetPrinter(val)
+
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
 
@@ -297,6 +300,29 @@ class RustStdVecDequePrinter(object):
         gdb_ptr = data_ptr.get_wrapped_value()
         for index in xrange(tail, head):
             yield (str(index), (gdb_ptr + index).dereference())
+
+
+class RustStdBTreeSetPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "array"
+
+    def to_string(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i)" % length))
+
+    def children(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
+        val = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        gdb_ptr = val.get_wrapped_value()
+        for index in xrange(length):
+            yield (str(index), gdb_ptr[index])
 
 
 class RustStdStringPrinter(object):
