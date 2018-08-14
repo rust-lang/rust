@@ -1,0 +1,18 @@
+error: unreachable expression
+  --> $DIR/better_divergence_checking.rs:30:59
+   |
+LL |   pub fn uninhabited_parameter_iii(_v: Void, x: i32) -> i32 {
+   |  ___________________________________________________________^
+LL | |     println!("Call me if you can!"); //~^ ERROR unreachable expression
+LL | |     x
+LL | | }
+   | |_^
+   |
+note: lint level defined here
+  --> $DIR/better_divergence_checking.rs:13:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

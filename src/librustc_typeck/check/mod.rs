@@ -434,6 +434,16 @@ pub enum PlaceOp {
 /// wake). Tracked semi-automatically (through type variables marked
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
+///
+/// We know a node diverges in the following (conservative) situations:
+/// - A function with a parameter whose type is uninhabited necessarily diverges.
+/// - A match expression with no arms necessarily diverges.
+/// - A match expression whose arms patterns all diverge necessarily diverges.
+/// - A match expression whose arms all diverge necessarily diverges.
+/// - An expression whose type is uninhabited necessarily diverges.
+///
+/// In the above, the node will be marked as diverging `Always` or `WarnedAlways`.
+/// In any other situation, it will be marked as `Maybe`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Diverges {
     /// Potentially unknown, some cases converge,
@@ -445,11 +455,18 @@ pub enum Diverges {
     Always,
 
     /// Same as `Always` but with a reachability
-    /// warning already emitted
-    WarnedAlways
+    /// warning already emitted.
+    WarnedAlways,
+
+    /// Same as `Always` but without a reachability
+    /// warning emitted. Unlike `Always`, cannot be
+    /// converted to `WarnedAlways`. Used when
+    /// unreachable code is expected (e.g. in
+    /// function parameters as part of trait impls).
+    UnwarnedAlways,
 }
 
-// Convenience impls for combinig `Diverges`.
+// Convenience impls for combining `Diverges`.
 
 impl ops::BitAnd for Diverges {
     type Output = Self;
@@ -1043,6 +1060,24 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // Check the pattern.
         fcx.check_pat_walk(&arg.pat, arg_ty,
             ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
+
+        // If any of a function's parameters have a type that is uninhabited, then it
+        // it is not possible to call that function (because its arguments cannot be constructed).
+        // Therefore, it must always diverge.
+        if fcx.tcx.features().exhaustive_patterns {
+            if arg_ty.conservative_is_uninhabited() {
+                let mut diverges = Diverges::Always;
+                if let hir::ExprKind::Block(ref block, _) = body.value.node {
+                    // If the function is completely empty, or has a single trailing
+                    // expression, then we do not issue a warning (as it was likely
+                    // mandated by a trait, rather than being an oversight).
+                    if block.stmts.is_empty() {
+                        diverges = Diverges::UnwarnedAlways;
+                    }
+                }
+                fcx.diverges.set(fcx.diverges.get() | diverges);
+            }
+        }
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -3623,9 +3658,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// that there are actually multiple representations for `TyError`, so avoid
     /// that when err needs to be handled differently.
     fn check_expr_with_expectation_and_needs(&self,
-                                                   expr: &'gcx hir::Expr,
-                                                   expected: Expectation<'tcx>,
-                                                   needs: Needs) -> Ty<'tcx> {
+                                             expr: &'gcx hir::Expr,
+                                             expected: Expectation<'tcx>,
+                                             needs: Needs) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
 
@@ -3649,9 +3684,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
         }
 
-        // Any expression that produces a value of type `!` must have diverged
-        if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
+        // Any expression that produces a value of an uninhabited type must have diverged.
+        if ty.conservative_is_uninhabited() {
+            if ty.is_never() || self.tcx.features().exhaustive_patterns {
+                self.diverges.set(self.diverges.get() | Diverges::Always);
+            }
         }
 
         // Record the type, which applies it effects.
