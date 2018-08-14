@@ -11,10 +11,7 @@
 // compile-pass
 
 #![feature(rust_2018_preview)]
-#![feature(raw_identifiers)]
-//~^ WARN the feature `raw_identifiers` is included in the Rust 2018 edition
+#![feature(impl_header_lifetime_elision)]
+//~^ WARN the feature `impl_header_lifetime_elision` is included in the Rust 2018 edition
 
-fn main() {
-    let foo = 0;
-    let bar = r#foo;
-}
+fn main() {}

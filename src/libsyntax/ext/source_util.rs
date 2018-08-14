@@ -17,9 +17,9 @@ use parse::{token, DirectoryOwnership};
 use parse;
 use print::pprust;
 use ptr::P;
+use OneVector;
 use symbol::Symbol;
 use tokenstream;
-use util::small_vector::SmallVector;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -111,8 +111,8 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
             Some(panictry!(self.p.parse_expr()))
         }
         fn make_items(mut self: Box<ExpandResult<'a>>)
-                      -> Option<SmallVector<P<ast::Item>>> {
-            let mut ret = SmallVector::new();
+                      -> Option<OneVector<P<ast::Item>>> {
+            let mut ret = OneVector::new();
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),

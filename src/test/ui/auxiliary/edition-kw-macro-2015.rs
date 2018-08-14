@@ -10,7 +10,6 @@
 
 // edition:2015
 
-#![feature(raw_identifiers)]
 #![allow(async_idents)]
 
 #[macro_export]

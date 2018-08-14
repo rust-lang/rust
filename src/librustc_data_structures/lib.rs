@@ -79,6 +79,7 @@ pub mod sorted_map;
 #[macro_use] pub mod stable_hasher;
 pub mod sync;
 pub mod tiny_list;
+pub mod thin_vec;
 pub mod transitive_relation;
 pub mod tuple_slice;
 pub use ena::unify;

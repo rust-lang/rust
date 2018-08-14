@@ -382,8 +382,9 @@ Erroneous code example:
 
 ```ignore (limited to a warning during 2018 edition development)
 #![feature(rust_2018_preview)]
-#![feature(raw_identifiers)] // error: the feature `raw_identifiers` is
-                             // included in the Rust 2018 edition
+#![feature(impl_header_lifetime_elision)] // error: the feature
+                                          // `impl_header_lifetime_elision` is
+                                          // included in the Rust 2018 edition
 ```
 
 "##,

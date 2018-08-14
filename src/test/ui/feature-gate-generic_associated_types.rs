@@ -19,6 +19,7 @@ trait PointerFamily<U> {
 }
 
 struct Foo;
+
 impl PointerFamily<u32> for Foo {
     type Pointer<usize> = Box<usize>;
     //~^ ERROR generic associated types are unstable
@@ -31,5 +32,9 @@ trait Bar {
     //~^ ERROR where clauses on associated types are unstable
 }
 
+impl Bar for Foo {
+    type Assoc where Self: Sized = Foo;
+    //~^ ERROR where clauses on associated types are unstable
+}
 
 fn main() {}

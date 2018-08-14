@@ -198,11 +198,11 @@ impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
         Ok(true)
     }
 
-    fn get_ref<'a>(&'a self) -> &'a T {
+    fn get_ref(&self) -> &T {
         &self.buf
     }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T {
+    fn get_mut(&mut self) -> &mut T {
         &mut self.buf
     }
 
