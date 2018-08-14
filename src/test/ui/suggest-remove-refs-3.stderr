@@ -9,7 +9,7 @@ LL | ||         & &v
    | ||___________- help: consider removing 5 leading `&`-references
 LL | |          .iter()
 LL | |          .enumerate() {
-   | |_____________________^ `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator; maybe try calling `.iter()` or a similar method
+   | |_____________________^ `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>`
    = note: required by `std::iter::IntoIterator::into_iter`
