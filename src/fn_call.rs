@@ -645,13 +645,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "GetProcAddress" |
             "TryEnterCriticalSection" => {
                 // pretend these do not exist/nothing happened, by returning zero
-                let ptr_size = self.memory.pointer_size();
-                self.write_scalar(dest, Scalar::from_int(0, ptr_size), dest_ty)?;
+                self.write_scalar(dest, Scalar::from_int(0, dest_layout.size), dest_ty)?;
             },
             "GetLastError" => {
                 // this is c::ERROR_CALL_NOT_IMPLEMENTED
-                let ptr_size = self.memory.pointer_size();
-                self.write_scalar(dest, Scalar::from_int(120, ptr_size), dest_ty)?;
+                self.write_scalar(dest, Scalar::from_int(120, dest_layout.size), dest_ty)?;
             },
 
             // Windows TLS
@@ -665,8 +663,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 if dest_layout.size.bits() < 128 && key >= (1u128 << dest_layout.size.bits() as u128) {
                     return err!(OutOfTls);
                 }
-                let ptr_size = self.memory.pointer_size();
-                self.write_scalar(dest, Scalar::from_uint(key, ptr_size), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_uint(key, dest_layout.size), dest_layout.ty)?;
             }
             "TlsGetValue" => {
                 let key = self.value_to_scalar(args[0])?.to_bytes()?;
@@ -677,10 +674,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let key = self.value_to_scalar(args[0])?.to_bytes()?;
                 let new_ptr = self.into_ptr(args[1].value)?.unwrap_or_err()?;
                 self.memory.store_tls(key, new_ptr)?;
-                let ptr_size = self.memory.pointer_size();
 
                 // Return success (1)
-                self.write_scalar(dest, Scalar::from_int(1, ptr_size), dest_ty)?;
+                self.write_scalar(dest, Scalar::from_int(1, dest_layout.size), dest_ty)?;
             }
 
             // We can't execute anything else
