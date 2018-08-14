@@ -89,6 +89,11 @@ mod prelude {
     pub use crate::common::*;
 
     pub use crate::CodegenCx;
+
+    pub fn should_codegen(tcx: TyCtxt) -> bool {
+        ::std::env::var("SHOULD_CODEGEN").is_ok()
+            || tcx.sess.crate_types.get().contains(&CrateType::Executable)
+    }
 }
 
 use crate::prelude::*;
@@ -317,6 +322,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.warn(&format!("main returned {}", res));
 
             module.finish();
+        } else if should_codegen(tcx) {
+            for func_id in defined_functions {
+                module.finalize_function(func_id);
+            }
+
+            tcx.sess.warn("Finalized everything");
         }
 
         let mut translated_module: Module<FaerieBackend> = Module::new(

@@ -278,33 +278,42 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         Spread(Vec<Value>),
     }
 
-    let func_params = fx.mir.args_iter().map(|local| {
-        let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
+    let func_params = fx
+        .mir
+        .args_iter()
+        .map(|local| {
+            let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
 
-        // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
-        if Some(local) == fx.mir.spread_arg {
-            // This argument (e.g. the last argument in the "rust-call" ABI)
-            // is a tuple that was spread at the ABI level and now we have
-            // to reconstruct it into a tuple local variable, from multiple
-            // individual function arguments.
+            // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
+            if Some(local) == fx.mir.spread_arg {
+                // This argument (e.g. the last argument in the "rust-call" ABI)
+                // is a tuple that was spread at the ABI level and now we have
+                // to reconstruct it into a tuple local variable, from multiple
+                // individual function arguments.
 
-            let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys) => tys,
-                _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
-            };
+                let tupled_arg_tys = match arg_ty.sty {
+                    ty::TyTuple(ref tys) => tys,
+                    _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
+                };
 
-            let mut ebb_params = Vec::new();
-            for arg_ty in tupled_arg_tys.iter() {
-                let cton_type = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
-                ebb_params.push(fx.bcx.append_ebb_param(start_ebb, cton_type));
+                let mut ebb_params = Vec::new();
+                for arg_ty in tupled_arg_tys.iter() {
+                    let cton_type =
+                        get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
+                    ebb_params.push(fx.bcx.append_ebb_param(start_ebb, cton_type));
+                }
+
+                (local, ArgKind::Spread(ebb_params), arg_ty)
+            } else {
+                let cton_type =
+                    get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
+                (
+                    local,
+                    ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, cton_type)),
+                    arg_ty,
+                )
             }
-
-            (local, ArgKind::Spread(ebb_params), arg_ty)
-        } else {
-            let cton_type = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
-            (local, ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, cton_type)), arg_ty)
-        }
-    }).collect::<Vec<(Local, ArgKind, Ty)>>();
+        }).collect::<Vec<(Local, ArgKind, Ty)>>();
 
     match output_pass_mode {
         PassMode::NoPass => {

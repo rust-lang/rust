@@ -50,13 +50,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
                 context.func = func;
                 // TODO: cranelift doesn't yet support some of the things needed
-                if cx
-                    .tcx
-                    .sess
-                    .crate_types
-                    .get()
-                    .contains(&CrateType::Executable)
-                {
+                if should_codegen(cx.tcx) {
                     cx.module.define_function(func_id, context).unwrap();
                     cx.defined_functions.push(func_id);
                 }
@@ -171,7 +165,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(
             } => {
                 fx.bcx.ins().trap(TrapCode::User(0));
                 // TODO: prevent panics on large and negative disciminants
-                if false {
+                if should_codegen(fx.tcx) {
                     let discr = trans_operand(fx, discr).load_value(fx);
                     let mut jt_data = JumpTableData::new();
                     for (i, value) in values.iter().enumerate() {
@@ -382,13 +376,23 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(fx, from, fx.cton_type(to_ty).unwrap(), false);
+                            let res = crate::common::cton_intcast(
+                                fx,
+                                from,
+                                fx.cton_type(to_ty).unwrap(),
+                                false,
+                            );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (TypeVariants::TyInt(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(fx, from, fx.cton_type(to_ty).unwrap(), true);
+                            let res = crate::common::cton_intcast(
+                                fx,
+                                from,
+                                fx.cton_type(to_ty).unwrap(),
+                                true,
+                            );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (TypeVariants::TyFloat(from_flt), TypeVariants::TyFloat(to_flt)) => {
@@ -552,7 +556,8 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                     lldiscr,
                     *niche_variants.end() as u64 as i64,
                 );
-                let if_true = cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), false);
+                let if_true =
+                    cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), false);
                 let if_false = fx
                     .bcx
                     .ins()

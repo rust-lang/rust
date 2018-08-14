@@ -14,7 +14,7 @@ fi
 
 RUSTC="rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=."
 
-$RUSTC examples/mini_core.rs --crate-name mini_core --crate-type lib &&
+SHOULD_CODEGEN=1 $RUSTC examples/mini_core.rs --crate-name mini_core --crate-type lib &&
 $RUSTC examples/example.rs --crate-type lib &&
 $RUSTC examples/mini_core_hello_world.rs --crate-type bin &&
 
