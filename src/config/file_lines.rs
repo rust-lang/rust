@@ -293,7 +293,7 @@ impl str::FromStr for FileLines {
 }
 
 // For JSON decoding.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deserialize, Serialize)]
 pub struct JsonSpan {
     file: FileName,
     range: (usize, usize),
@@ -401,11 +401,13 @@ mod test {
         ])].iter().cloned().collect();
 
         let file_lines = FileLines::from_ranges(ranges);
-        let json = json::to_value(&file_lines.to_json_spans()).unwrap();
+        let mut spans = file_lines.to_json_spans();
+        spans.sort();
+        let json = json::to_value(&spans).unwrap();
         assert_eq!(json, json! {[
+            {"file": "src/lib.rs",  "range": [1, 7]},
             {"file": "src/main.rs", "range": [1, 3]},
             {"file": "src/main.rs", "range": [5, 7]},
-            {"file": "src/lib.rs",  "range": [1, 7]},
         ]});
     }
 }
