@@ -55,6 +55,11 @@ pub(crate) fn scan_string(ptr: &mut Ptr) {
 }
 
 pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
+    let mut hashes = 0;
+    while ptr.next_is('#') {
+        hashes += 1;
+        ptr.bump();
+    }
     if !ptr.next_is('"') {
         return;
     }
@@ -62,7 +67,14 @@ pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
 
     while let Some(c) = ptr.bump() {
         if c == '"' {
-            return;
+            let mut hashes_left = hashes;
+            while ptr.next_is('#') && hashes_left > 0{
+                hashes_left -= 1;
+                ptr.bump();
+            }
+            if hashes_left == 0 {
+                return;
+            }
         }
     }
 }

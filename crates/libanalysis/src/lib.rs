@@ -20,7 +20,6 @@ use std::{
         atomic::{AtomicUsize, Ordering::SeqCst},
     },
     collections::hash_map::HashMap,
-    path::{PathBuf, Path},
     time::Instant,
 };
 
@@ -38,6 +37,7 @@ pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 const INDEXING_THRESHOLD: usize = 128;
 
 pub struct WorldState {
+    next_file_id: u32,
     data: Arc<WorldData>
 }
 
@@ -46,9 +46,13 @@ pub struct World {
     data: Arc<WorldData>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FileId(u32);
+
 impl WorldState {
     pub fn new() -> WorldState {
         WorldState {
+            next_file_id: 0,
             data: Arc::new(WorldData::default())
         }
     }
@@ -57,21 +61,27 @@ impl WorldState {
         World { data: self.data.clone() }
     }
 
-    pub fn change_file(&mut self, path: PathBuf, text: Option<String>) {
-        self.change_files(::std::iter::once((path, text)));
+    pub fn new_file_id(&mut self) -> FileId {
+        let id = FileId(self.next_file_id);
+        self.next_file_id += 1;
+        id
     }
 
-    pub fn change_files(&mut self, changes: impl Iterator<Item=(PathBuf, Option<String>)>) {
+    pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
+        self.change_files(::std::iter::once((file_id, text)));
+    }
+
+    pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
         let mut cnt = 0;
-        for (path, text) in changes {
+        for (id, text) in changes {
             cnt += 1;
-            data.file_map.remove(&path);
+            data.file_map.remove(&id);
             if let Some(text) = text {
                 let file_data = FileData::new(text);
-                data.file_map.insert(path, Arc::new(file_data));
+                data.file_map.insert(id, Arc::new(file_data));
             } else {
-                data.file_map.remove(&path);
+                data.file_map.remove(&id);
             }
         }
         *data.unindexed.get_mut() += cnt;
@@ -92,37 +102,33 @@ impl WorldState {
 
 
 impl World {
-    pub fn file_syntax(&self, path: &Path) -> Result<ast::File> {
-        let data = self.file_data(path)?;
-        Ok(data.syntax(path).clone())
+    pub fn file_syntax(&self, file_id: FileId) -> Result<ast::File> {
+        let data = self.file_data(file_id)?;
+        Ok(data.syntax().clone())
     }
 
-    pub fn file_line_index(&self, path: &Path) -> Result<LineIndex> {
-        let data = self.file_data(path)?;
+    pub fn file_line_index(&self, id: FileId) -> Result<LineIndex> {
+        let data = self.file_data(id)?;
         let index = data.lines
-            .get_or_init(|| {
-                trace!("calc line index: {}", path.display());
-                LineIndex::new(&data.text)
-            });
+            .get_or_init(|| LineIndex::new(&data.text));
         Ok(index.clone())
     }
 
-    pub fn world_symbols<'a>(&'a self, mut query: Query) -> impl Iterator<Item=(&'a Path, &'a FileSymbol)> + 'a {
+    pub fn world_symbols<'a>(&'a self, mut query: Query) -> impl Iterator<Item=(FileId, &'a FileSymbol)> + 'a {
         self.reindex();
         self.data.file_map.iter()
-            .flat_map(move |(path, data)| {
+            .flat_map(move |(id, data)| {
                 let symbols = data.symbols();
-                let path: &'a Path = path.as_path();
-                query.process(symbols).into_iter().map(move |s| (path, s))
+                query.process(symbols).into_iter().map(move |s| (*id, s))
             })
     }
 
     pub fn approximately_resolve_symbol<'a>(
         &'a self,
-        path: &Path,
+        id: FileId,
         offset: TextUnit,
-    ) -> Result<Vec<(&'a Path, &'a FileSymbol)>> {
-        let file = self.file_syntax(path)?;
+    ) -> Result<Vec<(FileId, &'a FileSymbol)>> {
+        let file = self.file_syntax(id)?;
         let syntax = file.syntax();
         let syntax = syntax.as_ref();
         let name_ref =
@@ -160,10 +166,10 @@ impl World {
         }
     }
 
-    fn file_data(&self, path: &Path) -> Result<Arc<FileData>> {
-        match self.data.file_map.get(path) {
+    fn file_data(&self, file_id: FileId) -> Result<Arc<FileData>> {
+        match self.data.file_map.get(&file_id) {
             Some(data) => Ok(data.clone()),
-            None => bail!("unknown file: {}", path.display()),
+            None => bail!("unknown file: {:?}", file_id),
         }
     }
 }
@@ -182,7 +188,7 @@ pub const BREAK: SearchResult = Err(Break);
 #[derive(Default, Debug)]
 struct WorldData {
     unindexed: AtomicUsize,
-    file_map: HashMap<PathBuf, Arc<FileData>>,
+    file_map: HashMap<FileId, Arc<FileData>>,
 }
 
 #[derive(Debug)]
@@ -203,12 +209,9 @@ impl FileData {
         }
     }
 
-    fn syntax(&self, path: &Path) -> &ast::File {
+    fn syntax(&self) -> &ast::File {
         self.syntax
-            .get_or_init(|| {
-                trace!("parsing: {}", path.display());
-                ast::File::parse(&self.text)
-            })
+            .get_or_init(|| ast::File::parse(&self.text))
     }
 
     fn syntax_transient(&self) -> ast::File {
