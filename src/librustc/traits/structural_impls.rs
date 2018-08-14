@@ -206,7 +206,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
             super::RepeatVec => Some(super::RepeatVec),
-            super::FieldSized(item) => Some(super::FieldSized(item)),
+            super::FieldSized { adt_kind, last } => Some(super::FieldSized { adt_kind, last }),
             super::ConstSized => Some(super::ConstSized),
             super::SharedStatic => Some(super::SharedStatic),
             super::BuiltinDerivedObligation(ref cause) => {

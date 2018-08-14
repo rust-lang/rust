@@ -1472,11 +1472,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::FieldSized(ref item) => {
+            ObligationCauseCode::FieldSized { adt_kind: ref item, last } => {
                 match *item {
                     AdtKind::Struct => {
-                        err.note("only the last field of a struct may have a dynamically \
-                                  sized type");
+                        if last {
+                            err.note("the last field of a packed struct may only have a \
+                                      dynamically sized type if it does not need drop to be run");
+                        } else {
+                            err.note("only the last field of a struct may have a dynamically \
+                                      sized type");
+                        }
                     }
                     AdtKind::Union => {
                         err.note("no field of a union may have a dynamically sized type");

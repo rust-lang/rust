@@ -192,8 +192,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// [T,..n] --> T must be Copy
     RepeatVec,
 
-    /// Types of fields (other than the last) in a struct must be sized.
-    FieldSized(AdtKind),
+    /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
+    FieldSized { adt_kind: AdtKind, last: bool },
 
     /// Constant expressions must be sized.
     ConstSized,
