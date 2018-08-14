@@ -24,20 +24,26 @@ before_script:
 script:
 - set -e
 - |
-  # get ourselves a MIR-ful libstd
-  xargo/build.sh
-- |
-  # Test plain miri
+  # Test and install plain miri
   cargo build --release --all-features &&
   RUST_BACKTRACE=1 cargo test --release --all-features --all &&
   cargo install --all-features --force
 - |
+  # test that the rustc_tests binary compiles
+  cd rustc_tests &&
+  cargo build --release &&
+  cd ..
+- |
+  # get ourselves a MIR-full libstd
+  xargo/build.sh &&
+  export MIRI_SYSROOT=~/.xargo/HOST
+- |
   # Test `cargo miri`
   cd cargo-miri-test &&
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn
+    cargo miri -q -- -Zmiri-start-fn
   else
-    MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
+    cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
     cat stdout.real stderr.real &&
     # Test `cargo miri` output. Not on mac because output redirecting doesn't
     # work. There is no error. It just stops CI.
@@ -45,16 +51,11 @@ script:
     diff -u stderr.ref stderr.real
   fi &&
   # Test `cargo miri test`
-  #cargo miri test &&
+  cargo miri test &&
   cd ..
 - |
   # and run all tests with full mir
-  MIRI_SYSROOT=~/.xargo/HOST cargo test --release
-- |
-  # test that the rustc_tests binary compiles
-  cd rustc_tests &&
-  cargo build --release &&
-  cd ..
+  cargo test --release
 notifications:
   email:
     on_success: never
