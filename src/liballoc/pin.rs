@@ -11,7 +11,7 @@
 //! Types which pin data to its location in memory
 //!
 //! It is sometimes useful to have objects that are guaranteed to not move,
-//! in the sense that their placement in memory in consistent, and can thus be relied upon.
+//! in the sense that their placement in memory does not change, and can thus be relied upon.
 //!
 //! A prime example of such a scenario would be building self-referencial structs,
 //! since moving an object with pointers to itself will invalidate them,
@@ -19,20 +19,17 @@
 //!
 //! In order to prevent objects from moving, they must be *pinned*,
 //! by wrapping the data in special pointer types, such as [`PinMut`] and [`PinBox`].
-//! These restrict access to the underlying data to only be immutable by implementing [`Deref`],
+//! On top of ensuring the data cannot be taked by value by being pointers,
+//! these types restrict access to the underlying data such that it cannot be moved out of them,
 //! unless the type implements the [`Unpin`] trait,
-//! which indicates that it doesn't need these restrictions and can be safely mutated,
-//! by implementing [`DerefMut`].
+//! which indicates that it can be used safely without these restrictions.
 //!
-//! This is done because, while modifying an object can be done in-place,
-//! it might also relocate a buffer when its at full capacity,
-//! or it might replace one object with another without logically "moving" them with [`swap`].
+//! A type may be moved out of a reference to it using a function like [`swap`],
+//! which replaces the contents of the references, and thus changes their place in memory.
 //!
 //! [`PinMut`]: struct.PinMut.html
 //! [`PinBox`]: struct.PinBox.html
 //! [`Unpin`]: ../../core/marker/trait.Unpin.html
-//! [`DerefMut`]: ../../core/ops/trait.DerefMut.html
-//! [`Deref`]: ../../core/ops/trait.Deref.html
 //! [`swap`]: ../../core/mem/fn.swap.html
 //!
 //! # Examples
@@ -83,10 +80,9 @@
 //! let mut still_unmoved = unmoved;
 //! assert_eq!(still_unmoved.slice, NonNull::from(&still_unmoved.data));
 //!
-//! // Now the only way to access to data (safely) is immutably,
-//! // so this will fail to compile:
-//! // still_unmoved.data.push_str(" world");
-//!
+//! // Since our type doesn't implement Unpin, this will fail to compile:
+//! // let new_unmoved = Unmovable::new("world".to_string());
+//! // std::mem::swap(&mut *still_unmoved, &mut *new_unmoved);
 //! ```
 
 #![unstable(feature = "pin", issue = "49150")]
