@@ -249,6 +249,25 @@ impl<R: TreeRoot> AstNode<R> for NameRef<R> {
 
 impl<R: TreeRoot> NameRef<R> {}
 
+// NamedField
+#[derive(Debug, Clone, Copy)]
+pub struct NamedField<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for NamedField<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            NAMED_FIELD => Some(NamedField { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ast::NameOwner<R> for NamedField<R> {}
+impl<R: TreeRoot> NamedField<R> {}
+
 // NeverType
 #[derive(Debug, Clone, Copy)]
 pub struct NeverType<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -436,7 +455,13 @@ impl<R: TreeRoot> AstNode<R> for StructDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for StructDef<R> {}
-impl<R: TreeRoot> StructDef<R> {}
+impl<R: TreeRoot> StructDef<R> {
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = NamedField<R>> + 'a {
+        self.syntax()
+            .children()
+            .filter_map(NamedField::cast)
+    }
+}
 
 // TraitDef
 #[derive(Debug, Clone, Copy)]

@@ -222,7 +222,13 @@ Grammar(
             ]
         ),
         "FnDef": ( traits: ["NameOwner"] ),
-        "StructDef": ( traits: ["NameOwner"] ),
+        "StructDef": (
+            traits: ["NameOwner"],
+            collections: [
+                ["fields", "NamedField"]
+            ]
+        ),
+        "NamedField": ( traits: ["NameOwner"] ),
         "EnumDef": ( traits: ["NameOwner"] ),
         "TraitDef": ( traits: ["NameOwner"] ),
         "Module": ( traits: ["NameOwner"] ),
@@ -230,6 +236,7 @@ Grammar(
         "StaticDef": ( traits: ["NameOwner"] ),
         "TypeDef": ( traits: ["NameOwner"] ),
         "ImplItem": (),
+
         "Name": (),
         "NameRef": (),
 
