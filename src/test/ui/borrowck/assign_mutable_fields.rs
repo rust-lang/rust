@@ -8,21 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This should never be allowed -- `foo.a` and `foo.b` are
-// overlapping, so since `x` is not `mut` we should not permit
-// reassignment.
+// Currently, we permit you to assign to individual fields of a mut
+// var, but we do not permit you to use the complete var afterwards.
+// We hope to fix this at some point.
+//
+// FIXME(#21232)
 
-#![feature(nll)]
-
-union Foo {
-    a: u32,
-    b: u32,
+fn assign_both_fields_and_use() {
+    let mut x: (u32, u32);
+    x.0 = 1;
+    x.1 = 22;
+    drop(x.0); //~ ERROR
+    drop(x.1); //~ ERROR
 }
 
-unsafe fn overlapping_fields() {
-    let x: Foo;
-    x.a = 1;  //~ ERROR
-    x.b = 22; //~ ERROR
+fn assign_both_fields_the_use_var() {
+    let mut x: (u32, u32);
+    x.0 = 1;
+    x.1 = 22;
+    drop(x); //~ ERROR
 }
 
 fn main() { }

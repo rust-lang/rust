@@ -1,19 +1,19 @@
-error[E0384]: cannot assign to immutable argument `y`
+error[E0594]: cannot assign to `*y`, as `y` is not declared as mutable
   --> $DIR/immut-function-arguments.rs:15:5
    |
 LL | fn f(y: Box<isize>) {
-   |      - consider changing this to `mut y`
+   |      - help: consider changing this to be mutable: `mut y`
 LL |     *y = 5; //[ast]~ ERROR cannot assign
-   |     ^^^^^^ cannot assign to immutable argument
+   |     ^^^^^^ cannot assign
 
-error[E0384]: cannot assign to immutable argument `q`
+error[E0594]: cannot assign to `*q`, as `q` is not declared as mutable
   --> $DIR/immut-function-arguments.rs:20:35
    |
 LL |     let _frob = |q: Box<isize>| { *q = 2; }; //[ast]~ ERROR cannot assign
-   |                  -                ^^^^^^ cannot assign to immutable argument
+   |                  -                ^^^^^^ cannot assign
    |                  |
-   |                  consider changing this to `mut q`
+   |                  help: consider changing this to be mutable: `mut q`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0384`.
+For more information about this error, try `rustc --explain E0594`.

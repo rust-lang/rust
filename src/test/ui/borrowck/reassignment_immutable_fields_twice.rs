@@ -11,8 +11,6 @@
 // This should never be allowed -- since `x` is not `mut`, so `x.0`
 // cannot be assigned twice.
 
-#![feature(nll)]
-
 fn var_then_field() {
     let x: (u32, u32);
     x = (22, 44);

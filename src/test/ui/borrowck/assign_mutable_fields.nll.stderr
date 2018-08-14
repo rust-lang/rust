@@ -1,5 +1,5 @@
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/assign_mutable_fields.rs:31:10
+  --> $DIR/assign_mutable_fields.rs:29:10
    |
 LL |     drop(x); //~ ERROR
    |          ^ use of possibly uninitialized `x`

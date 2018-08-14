@@ -8,25 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This test is currently disallowed, but we hope someday to support it.
-//
-// FIXME(#21232)
+// This should never be allowed -- `foo.a` and `foo.b` are
+// overlapping, so since `x` is not `mut` we should not permit
+// reassignment.
 
-#![feature(nll)]
-
-fn assign_both_fields_and_use() {
-    let x: (u32, u32);
-    x.0 = 1; //~ ERROR
-    x.1 = 22; //~ ERROR
-    drop(x.0);
-    drop(x.1);
+union Foo {
+    a: u32,
+    b: u32,
 }
 
-fn assign_both_fields_the_use_var() {
-    let x: (u32, u32);
-    x.0 = 1; //~ ERROR
-    x.1 = 22; //~ ERROR
-    drop(x); //~ ERROR
+unsafe fn overlapping_fields() {
+    let x: Foo;
+    x.a = 1;  //~ ERROR
+    x.b = 22; //~ ERROR
 }
 
 fn main() { }

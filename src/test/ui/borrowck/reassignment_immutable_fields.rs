@@ -8,26 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Currently, we permit you to assign to individual fields of a mut
-// var, but we do not permit you to use the complete var afterwards.
-// We hope to fix this at some point.
+// This test is currently disallowed, but we hope someday to support it.
 //
 // FIXME(#21232)
 
-#![feature(nll)]
-
 fn assign_both_fields_and_use() {
-    let mut x: (u32, u32);
-    x.0 = 1;
-    x.1 = 22;
-    drop(x.0);
-    drop(x.1);
+    let x: (u32, u32);
+    x.0 = 1; //~ ERROR
+    x.1 = 22; //~ ERROR
+    drop(x.0); //~ ERROR
+    drop(x.1); //~ ERROR
 }
 
 fn assign_both_fields_the_use_var() {
-    let mut x: (u32, u32);
-    x.0 = 1;
-    x.1 = 22;
+    let x: (u32, u32);
+    x.0 = 1; //~ ERROR
+    x.1 = 22; //~ ERROR
     drop(x); //~ ERROR
 }
 
