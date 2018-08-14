@@ -171,80 +171,6 @@ impl<'tcx> CodegenUnit<'tcx> {
             self.size_estimate = Some(size_estimate + delta);
         }
     }
-
-    /// CGU names should fulfill the following requirements:
-    /// - They should be able to act as a file name on any kind of file system
-    /// - They should not collide with other CGU names, even for different versions
-    ///   of the same crate.
-    ///
-    /// Consequently, we don't use special characters except for '.' and '-' and we
-    /// prefix each name with the crate-name and crate-disambiguator.
-    ///
-    /// This function will build CGU names of the form:
-    ///
-    /// ```
-    /// <crate-name>.<crate-disambiguator>(-<component>)*[.<special-suffix>]
-    /// ```
-    ///
-    /// The '.' before `<special-suffix>` makes sure that names with a special
-    /// suffix can never collide with a name built out of regular Rust
-    /// identifiers (e.g. module paths).
-    pub fn build_cgu_name<I, C, S>(tcx: TyCtxt,
-                                   cnum: CrateNum,
-                                   components: I,
-                                   special_suffix: Option<S>)
-                                   -> InternedString
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
-    {
-        let cgu_name = CodegenUnit::build_cgu_name_no_mangle(tcx,
-                                                             cnum,
-                                                             components,
-                                                             special_suffix);
-
-        if tcx.sess.opts.debugging_opts.human_readable_cgu_names {
-            cgu_name
-        } else {
-            let cgu_name = &cgu_name.as_str()[..];
-            Symbol::intern(&CodegenUnit::mangle_name(cgu_name)).as_interned_str()
-        }
-    }
-
-    /// Same as `CodegenUnit::build_cgu_name()` but will never mangle the
-    /// resulting name.
-    pub fn build_cgu_name_no_mangle<I, C, S>(tcx: TyCtxt,
-                                             cnum: CrateNum,
-                                             components: I,
-                                             special_suffix: Option<S>)
-                                             -> InternedString
-        where I: IntoIterator<Item=C>,
-              C: fmt::Display,
-              S: fmt::Display,
-    {
-        use std::fmt::Write;
-
-        let mut cgu_name = String::with_capacity(64);
-
-        // Start out with the crate name and disambiguator
-        write!(cgu_name,
-               "{}.{}",
-               tcx.crate_name(cnum),
-               tcx.crate_disambiguator(cnum)).unwrap();
-
-        // Add the components
-        for component in components {
-            write!(cgu_name, "-{}", component).unwrap();
-        }
-
-        if let Some(special_suffix) = special_suffix {
-            // We add a dot in here so it cannot clash with anything in a regular
-            // Rust identifier
-            write!(cgu_name, ".{}", special_suffix).unwrap();
-        }
-
-        Symbol::intern(&cgu_name[..]).as_interned_str()
-    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
@@ -312,5 +238,97 @@ impl Stats {
             *self.llvm_insns.entry(k).or_insert(0) += v;
         }
         self.fn_stats.extend(stats.fn_stats);
+    }
+}
+
+pub struct CodegenUnitNameBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    cache: FxHashMap<CrateNum, String>,
+}
+
+impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
+
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        CodegenUnitNameBuilder {
+            tcx,
+            cache: FxHashMap(),
+        }
+    }
+
+    /// CGU names should fulfill the following requirements:
+    /// - They should be able to act as a file name on any kind of file system
+    /// - They should not collide with other CGU names, even for different versions
+    ///   of the same crate.
+    ///
+    /// Consequently, we don't use special characters except for '.' and '-' and we
+    /// prefix each name with the crate-name and crate-disambiguator.
+    ///
+    /// This function will build CGU names of the form:
+    ///
+    /// ```
+    /// <crate-name>.<crate-disambiguator>(-<component>)*[.<special-suffix>]
+    /// ```
+    ///
+    /// The '.' before `<special-suffix>` makes sure that names with a special
+    /// suffix can never collide with a name built out of regular Rust
+    /// identifiers (e.g. module paths).
+    pub fn build_cgu_name<I, C, S>(&mut self,
+                                   cnum: CrateNum,
+                                   components: I,
+                                   special_suffix: Option<S>)
+                                   -> InternedString
+        where I: IntoIterator<Item=C>,
+              C: fmt::Display,
+              S: fmt::Display,
+    {
+        let cgu_name = self.build_cgu_name_no_mangle(cnum,
+                                                     components,
+                                                     special_suffix);
+
+        if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+            cgu_name
+        } else {
+            let cgu_name = &cgu_name.as_str()[..];
+            Symbol::intern(&CodegenUnit::mangle_name(cgu_name)).as_interned_str()
+        }
+    }
+
+    /// Same as `CodegenUnit::build_cgu_name()` but will never mangle the
+    /// resulting name.
+    pub fn build_cgu_name_no_mangle<I, C, S>(&mut self,
+                                             cnum: CrateNum,
+                                             components: I,
+                                             special_suffix: Option<S>)
+                                             -> InternedString
+        where I: IntoIterator<Item=C>,
+              C: fmt::Display,
+              S: fmt::Display,
+    {
+        use std::fmt::Write;
+
+        let mut cgu_name = String::with_capacity(64);
+
+        // Start out with the crate name and disambiguator
+        let tcx = self.tcx;
+        let crate_prefix = self.cache.entry(cnum).or_insert_with(|| {
+            let crate_disambiguator = format!("{}", tcx.crate_disambiguator(cnum));
+            // Using a shortened disambiguator of about 40 bits
+            format!("{}.{}", tcx.crate_name(cnum), &crate_disambiguator[0 .. 8])
+        });
+
+        write!(cgu_name, "{}", crate_prefix).unwrap();
+
+        // Add the components
+        for component in components {
+            write!(cgu_name, "-{}", component).unwrap();
+        }
+
+        if let Some(special_suffix) = special_suffix {
+            // We add a dot in here so it cannot clash with anything in a regular
+            // Rust identifier
+            write!(cgu_name, ".{}", special_suffix).unwrap();
+        }
+
+        Symbol::intern(&cgu_name[..]).as_interned_str()
     }
 }

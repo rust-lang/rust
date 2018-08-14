@@ -105,9 +105,9 @@
 use monomorphize::collector::InliningMap;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
-use rustc::mir::mono::{Linkage, Visibility};
+use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
@@ -203,8 +203,8 @@ impl<'tcx> CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(tcx: TyCtxt) -> InternedString {
-    CodegenUnit::build_cgu_name(tcx, LOCAL_CRATE, &["fallback"], Some("cgu"))
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder) -> InternedString {
+    name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
 pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -300,6 +300,9 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let export_generics = tcx.sess.opts.share_generics() &&
                           tcx.local_crate_exports_generics();
 
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+    let cgu_name_cache = &mut FxHashMap();
+
     for mono_item in mono_items {
         match mono_item.instantiation_mode(tcx) {
             InstantiationMode::GloballyShared { .. } => {}
@@ -311,8 +314,12 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           mono_item.is_generic_fn();
 
         let codegen_unit_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-            None => fallback_cgu_name(tcx),
+            Some(def_id) => compute_codegen_unit_name(tcx,
+                                                      cgu_name_builder,
+                                                      def_id,
+                                                      is_volatile,
+                                                      cgu_name_cache),
+            None => fallback_cgu_name(cgu_name_builder),
         };
 
         let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
@@ -336,7 +343,7 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
-        let codegen_unit_name = fallback_cgu_name(tcx);
+        let codegen_unit_name = fallback_cgu_name(cgu_name_builder);
         codegen_units.insert(codegen_unit_name.clone(),
                              CodegenUnit::new(codegen_unit_name.clone()));
     }
@@ -574,14 +581,15 @@ fn merge_codegen_units<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
         }
     }
 
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
     for (index, cgu) in codegen_units.iter_mut().enumerate() {
-        cgu.set_name(numbered_codegen_unit_name(tcx, index));
+        cgu.set_name(numbered_codegen_unit_name(cgu_name_builder, index));
     }
 }
 
 fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
-                                         inlining_map: &InliningMap<'tcx>)
-                                         -> PostInliningPartitioning<'tcx> {
+                                  inlining_map: &InliningMap<'tcx>)
+                                  -> PostInliningPartitioning<'tcx> {
     let mut new_partitioning = Vec::new();
     let mut mono_item_placements = FxHashMap();
 
@@ -775,30 +783,72 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       def_id: DefId,
-                                       volatile: bool)
-                                       -> InternedString {
-    let def_path = tcx.def_path(def_id);
+type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
 
-    let components = def_path.data.iter().take_while(|part| {
-        match part.data {
-            DefPathData::Module(..) => true,
-            _ => false,
+fn compute_codegen_unit_name(tcx: TyCtxt,
+                             name_builder: &mut CodegenUnitNameBuilder,
+                             def_id: DefId,
+                             volatile: bool,
+                             cache: &mut CguNameCache)
+                             -> InternedString {
+    // Find the innermost module that is not nested within a function
+    let mut current_def_id = def_id;
+    let mut cgu_def_id = None;
+    // Walk backwards from the item we want to find the module for:
+    loop {
+        let def_key = tcx.def_key(current_def_id);
+
+        match def_key.disambiguated_data.data {
+            DefPathData::Module(..) => {
+                if cgu_def_id.is_none() {
+                    cgu_def_id = Some(current_def_id);
+                }
+            }
+            DefPathData::CrateRoot { .. } => {
+                if cgu_def_id.is_none() {
+                    // If we have not found a module yet, take the crate root.
+                    cgu_def_id = Some(DefId {
+                        krate: def_id.krate,
+                        index: CRATE_DEF_INDEX,
+                    });
+                }
+                break
+            }
+            _ => {
+                // If we encounter something that is not a module, throw away
+                // any module that we've found so far because we now know that
+                // it is nested within something else.
+                cgu_def_id = None;
+            }
         }
-    }).map(|part| part.data.as_interned_str());
 
-    let volatile_suffix = if volatile {
-        Some("volatile")
-    } else {
-        None
-    };
+        current_def_id.index = def_key.parent.unwrap();
+    }
 
-    CodegenUnit::build_cgu_name(tcx, def_path.krate, components, volatile_suffix)
+    let cgu_def_id = cgu_def_id.unwrap();
+
+    cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
+        let def_path = tcx.def_path(cgu_def_id);
+
+        let components = def_path
+            .data
+            .iter()
+            .map(|part| part.data.as_interned_str());
+
+        let volatile_suffix = if volatile {
+            Some("volatile")
+        } else {
+            None
+        };
+
+        name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
+    }).clone()
 }
 
-fn numbered_codegen_unit_name(tcx: TyCtxt, index: usize) -> InternedString {
-    CodegenUnit::build_cgu_name_no_mangle(tcx, LOCAL_CRATE, &["cgu"], Some(index))
+fn numbered_codegen_unit_name(name_builder: &mut CodegenUnitNameBuilder,
+                              index: usize)
+                              -> InternedString {
+    name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

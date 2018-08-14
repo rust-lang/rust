@@ -29,7 +29,7 @@
 
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::dep_graph::{DepNode, DepConstructor};
-use rustc::mir::mono::CodegenUnit;
+use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED};
@@ -94,10 +94,10 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         // Remove the crate name
         assert_eq!(cgu_path_components.remove(0), crate_name);
 
-        let cgu_name = CodegenUnit::build_cgu_name(self.tcx,
-                                                   LOCAL_CRATE,
-                                                   cgu_path_components,
-                                                   cgu_special_suffix);
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(self.tcx);
+        let cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
+                                                       cgu_path_components,
+                                                       cgu_special_suffix);
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, MODULE), cgu_name);
 
