@@ -34,7 +34,7 @@ impl FuncWriter for CommentWriter {
     }
 }
 
-impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
         use std::collections::hash_map::Entry;
         match self.comments.entry(inst) {

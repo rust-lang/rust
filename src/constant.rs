@@ -37,7 +37,7 @@ pub fn codegen_static<'a, 'tcx: 'a>(ccx: &mut ConstantCx, def_id: DefId) {
 }
 
 pub fn codegen_static_ref<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     static_: &Static<'tcx>,
 ) -> CPlace<'tcx> {
     let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id);
@@ -45,7 +45,7 @@ pub fn codegen_static_ref<'a, 'tcx: 'a>(
 }
 
 pub fn trans_promoted<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     promoted: Promoted,
 ) -> CPlace<'tcx> {
     let const_ = fx
@@ -60,7 +60,7 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
 }
 
 pub fn trans_constant<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let const_ = fx.monomorphize(&constant.literal);
@@ -69,7 +69,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(
 }
 
 fn force_eval_const<'a, 'tcx: 'a>(
-    fx: &FunctionCx<'a, 'tcx>,
+    fx: &FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> &'tcx Const<'tcx> {
     match const_.val {
@@ -87,7 +87,7 @@ fn force_eval_const<'a, 'tcx: 'a>(
 }
 
 fn trans_const_value<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
@@ -114,7 +114,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
 }
 
 fn trans_const_place<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
     let alloc = fx.tcx.const_value_to_allocation(const_);
@@ -139,7 +139,7 @@ fn data_id_for_static<B: Backend>(tcx: TyCtxt, module: &mut Module<B>, def_id: D
 }
 
 fn cplace_for_dataid<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
     data_id: DataId,
 ) -> CPlace<'tcx> {

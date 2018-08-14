@@ -13,7 +13,7 @@ enum PassMode {
 }
 
 impl PassMode {
-    fn get_param_ty(self, _fx: &FunctionCx) -> Type {
+    fn get_param_ty(self, _fx: &FunctionCx<impl Backend>) -> Type {
         match self {
             PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByVal(cton_type) => cton_type,
@@ -163,7 +163,7 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
     (tcx.symbol_name(inst).as_str().to_string(), sig)
 }
 
-impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let (name, sig) = get_function_name_and_sig(self.tcx, inst);
@@ -243,7 +243,10 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     }
 }
 
-pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb: Ebb) {
+pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    start_ebb: Ebb,
+) {
     let ssa_analyzed = crate::analyze::analyze(fx);
     fx.tcx.sess.warn(&format!("ssa {:?}", ssa_analyzed));
 
@@ -414,7 +417,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 }
 
 pub fn codegen_call<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
@@ -507,7 +510,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     }
 }
 
-pub fn codegen_return(fx: &mut FunctionCx) {
+pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
     match get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
@@ -521,7 +524,7 @@ pub fn codegen_return(fx: &mut FunctionCx) {
 }
 
 fn codegen_intrinsic_call<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     fn_ty: Ty<'tcx>,
     sig: FnSig<'tcx>,
     args: &[CValue<'tcx>],

@@ -126,7 +126,7 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
     }
 }
 
-fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>) {
+fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let ebb = fx.get_ebb(bb);
         fx.bcx.switch_to_block(ebb);
@@ -225,7 +225,11 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>) {
     fx.bcx.finalize();
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &Statement<'tcx>) {
+fn trans_stmt<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    cur_ebb: Ebb,
+    stmt: &Statement<'tcx>,
+) {
     fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
@@ -504,7 +508,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
 }
 
 pub fn trans_get_discriminant<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     value: CValue<'tcx>,
     dest_layout: TyLayout<'tcx>,
 ) -> CValue<'tcx> {
@@ -630,7 +634,7 @@ macro_rules! binop_match {
 }
 
 fn trans_bool_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -663,7 +667,7 @@ fn trans_bool_binop<'a, 'tcx: 'a>(
 }
 
 pub fn trans_int_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -709,7 +713,7 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
 }
 
 pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -771,7 +775,7 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
 }
 
 fn trans_float_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -812,7 +816,7 @@ fn trans_float_binop<'a, 'tcx: 'a>(
 }
 
 fn trans_char_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -845,7 +849,7 @@ fn trans_char_binop<'a, 'tcx: 'a>(
 }
 
 fn trans_ptr_binop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
@@ -884,7 +888,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
 }
 
 pub fn trans_place<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     place: &Place<'tcx>,
 ) -> CPlace<'tcx> {
     match place {
@@ -937,7 +941,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
 }
 
 pub fn trans_operand<'a, 'tcx>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {
     match operand {

@@ -62,7 +62,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
 }
 
 fn codegen_field<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     base: Value,
     layout: TyLayout<'tcx>,
     field: mir::Field,
@@ -92,7 +92,7 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value
+    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
     where
         'tcx: 'a,
     {
@@ -114,7 +114,7 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value
+    pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
     where
         'tcx: 'a,
     {
@@ -138,7 +138,11 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn value_field<'a>(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CValue<'tcx>
+    pub fn value_field<'a>(
+        self,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        field: mir::Field,
+    ) -> CValue<'tcx>
     where
         'tcx: 'a,
     {
@@ -152,7 +156,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     pub fn const_val<'a>(
-        fx: &mut FunctionCx<'a, 'tcx>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
         const_val: i64,
     ) -> CValue<'tcx>
@@ -187,7 +191,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn temp(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> CPlace<'tcx> {
+    pub fn temp(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, ty: Ty<'tcx>) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
@@ -198,7 +202,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn from_stack_slot(
-        fx: &mut FunctionCx<'a, 'tcx>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         stack_slot: StackSlot,
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
@@ -206,7 +210,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0), layout)
     }
 
-    pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>) -> CValue<'tcx> {
+    pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
             CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(var), layout),
             CPlace::Addr(addr, layout) => CValue::ByRef(addr, layout),
@@ -220,7 +224,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue<'tcx>) {
+    pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
         match (&self.layout().ty.sty, &from.layout().ty.sty) {
             (TypeVariants::TyRef(_, t, dest_mut), TypeVariants::TyRef(_, u, src_mut))
                 if (if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
@@ -289,7 +293,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn place_field(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CPlace<'tcx> {
+    pub fn place_field(
+        self,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        field: mir::Field,
+    ) -> CPlace<'tcx> {
         let base = self.expect_addr();
         let layout = self.layout();
 
@@ -297,7 +305,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(field_ptr, field_layout)
     }
 
-    pub fn place_index(self, fx: &mut FunctionCx<'a, 'tcx>, index: Value) -> CPlace<'tcx> {
+    pub fn place_index(
+        self,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        index: Value,
+    ) -> CPlace<'tcx> {
         let addr = self.expect_addr();
         let layout = self.layout();
         match layout.ty.sty {
@@ -322,14 +334,14 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn downcast_variant(self, fx: &FunctionCx<'a, 'tcx>, variant: usize) -> Self {
+    pub fn downcast_variant(self, fx: &FunctionCx<'a, 'tcx, impl Backend>, variant: usize) -> Self {
         let layout = self.layout().for_variant(fx, variant);
         self.unchecked_cast_to(layout)
     }
 }
 
 pub fn cton_intcast<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     val: Value,
     to: Type,
     signed: bool,
@@ -349,9 +361,9 @@ pub fn cton_intcast<'a, 'tcx: 'a>(
     }
 }
 
-pub struct FunctionCx<'a, 'tcx: 'a> {
+pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub module: &'a mut Module<CurrentBackend>,
+    pub module: &'a mut Module<B>,
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
     pub param_substs: &'tcx Substs<'tcx>,
@@ -362,7 +374,7 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub constants: &'a mut crate::constant::ConstantCx,
 }
 
-impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{:?}", self.param_substs)?;
         writeln!(f, "{:?}", self.local_map)?;
@@ -379,7 +391,7 @@ impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx: 'a, B: Backend> LayoutOf for &'a FunctionCx<'a, 'tcx, B> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -389,25 +401,25 @@ impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> layout::HasTyCtxt<'tcx> for &'a FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx, B: Backend + 'a> layout::HasTyCtxt<'tcx> for &'a FunctionCx<'a, 'tcx, B> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx> layout::HasDataLayout for &'a FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx, B: Backend + 'a> layout::HasDataLayout for &'a FunctionCx<'a, 'tcx, B> {
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> HasTargetSpec for &'a FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for &'a FunctionCx<'a, 'tcx, B> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
+impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     pub fn monomorphize<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
