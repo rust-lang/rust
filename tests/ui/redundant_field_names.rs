@@ -49,6 +49,9 @@ fn main() {
     let _ = ..=end;
     let _ = start..=end;
 
+    // Issue #2799
+    let _: Vec<_> = (start..end).collect();
+
     // hand-written Range family structs are linted
     let _ = RangeFrom { start: start };
     let _ = RangeTo { end: end };
