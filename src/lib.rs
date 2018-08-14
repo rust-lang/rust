@@ -1,8 +1,6 @@
 #![feature(
     rustc_private,
     catch_expr,
-    inclusive_range_fields,
-    inclusive_range_methods,
 )]
 
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
