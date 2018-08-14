@@ -229,6 +229,7 @@ Grammar(
         "ConstDef": ( traits: ["NameOwner"] ),
         "StaticDef": ( traits: ["NameOwner"] ),
         "TypeDef": ( traits: ["NameOwner"] ),
+        "ImplItem": (),
         "Name": (),
         "NameRef": (),
     },

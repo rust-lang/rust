@@ -10,8 +10,9 @@ use {
 };
 pub use self::generated::*;
 
-pub trait AstNode<R: TreeRoot>: Sized {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self>;
+pub trait AstNode<R: TreeRoot> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self>
+        where Self: Sized;
     fn syntax(&self) -> &SyntaxNode<R>;
 }
 

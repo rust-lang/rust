@@ -48,29 +48,34 @@ pub fn handle_document_symbol(
     let file = world.file_syntax(&path)?;
     let line_index = world.file_line_index(&path)?;
 
-    let mut res: Vec<DocumentSymbol> = Vec::new();
+    let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
-    for symbol in libeditor::file_symbols(&file) {
-        let name = symbol.name.to_string();
+    for symbol in libeditor::file_structure(&file) {
         let doc_symbol = DocumentSymbol {
-            name: name.clone(),
-            detail: Some(name),
+            name: symbol.label,
+            detail: Some("".to_string()),
             kind: symbol.kind.conv(),
             deprecated: None,
             range: symbol.node_range.conv_with(&line_index),
-            selection_range: symbol.name_range.conv_with(&line_index),
+            selection_range: symbol.navigation_range.conv_with(&line_index),
             children: None,
         };
-        if let Some(idx) = symbol.parent {
-            let children = &mut res[idx].children;
-            if children.is_none() {
-                *children = Some(Vec::new());
+        parents.push((doc_symbol, symbol.parent));
+    }
+    let mut res = Vec::new();
+    while let Some((node, parent)) = parents.pop() {
+        match parent {
+            None => res.push(node),
+            Some(i) => {
+                let children = &mut parents[i].0.children;
+                if children.is_none() {
+                    *children = Some(Vec::new());
+                }
+                children.as_mut().unwrap().push(node);
             }
-            children.as_mut().unwrap().push(doc_symbol);
-        } else {
-            res.push(doc_symbol);
         }
     }
+
     Ok(Some(req::DocumentSymbolResponse::Nested(res)))
 }
 

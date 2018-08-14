@@ -36,6 +36,7 @@ impl Conv for SyntaxKind {
             SyntaxKind::TYPE_DEF => SymbolKind::TypeParameter,
             SyntaxKind::STATIC_DEF => SymbolKind::Constant,
             SyntaxKind::CONST_DEF => SymbolKind::Constant,
+            SyntaxKind::IMPL_ITEM => SymbolKind::Object,
             _ => SymbolKind::Variable,
         }
     }

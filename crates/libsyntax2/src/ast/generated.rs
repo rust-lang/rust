@@ -86,6 +86,24 @@ impl<R: TreeRoot> AstNode<R> for FnDef<R> {
 impl<R: TreeRoot> ast::NameOwner<R> for FnDef<R> {}
 impl<R: TreeRoot> FnDef<R> {}
 
+// ImplItem
+#[derive(Debug, Clone, Copy)]
+pub struct ImplItem<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for ImplItem<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            IMPL_ITEM => Some(ImplItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> ImplItem<R> {}
+
 // Module
 #[derive(Debug, Clone, Copy)]
 pub struct Module<R: TreeRoot = Arc<SyntaxRoot>> {

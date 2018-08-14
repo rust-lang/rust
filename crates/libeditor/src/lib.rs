@@ -19,7 +19,7 @@ pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
-    symbols::{FileSymbol, file_symbols},
+    symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit, AtomEdit},
     code_actions::{flip_comma},
 };
