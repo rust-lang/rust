@@ -34,22 +34,32 @@ macro_rules! impl_nonzero_fmt {
     }
 }
 
+macro_rules! doc_comment {
+    ($x:expr, $($tt:tt)*) => {
+        #[doc = $x]
+        $($tt)*
+    };
+}
+
 macro_rules! nonzero_integers {
     ( $( $Ty: ident($Int: ty); )+ ) => {
         $(
-            /// An integer that is known not to equal zero.
-            ///
-            /// This enables some memory layout optimization.
-            /// For example, `Option<NonZeroU32>` is the same size as `u32`:
-            ///
-            /// ```rust
-            /// use std::mem::size_of;
-            /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
-            /// ```
-            #[stable(feature = "nonzero", since = "1.28.0")]
-            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-            #[repr(transparent)]
-            pub struct $Ty(NonZero<$Int>);
+            doc_comment! {
+                concat!("An integer that is known not to equal zero.
+
+This enables some memory layout optimization.
+For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:
+
+```rust
+use std::mem::size_of;
+assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int),
+">());
+```"),
+                #[stable(feature = "nonzero", since = "1.28.0")]
+                #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+                #[repr(transparent)]
+                pub struct $Ty(NonZero<$Int>);
+            }
 
             impl $Ty {
                 /// Create a non-zero without checking the value.
@@ -175,13 +185,6 @@ pub mod flt2dec;
 pub mod dec2flt;
 pub mod bignum;
 pub mod diy_float;
-
-macro_rules! doc_comment {
-    ($x:expr, $($tt:tt)*) => {
-        #[doc = $x]
-        $($tt)*
-    };
-}
 
 mod wrapping;
 
