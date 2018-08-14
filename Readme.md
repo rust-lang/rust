@@ -33,7 +33,6 @@ $ ./build.sh
 ## Not yet supported
 
 * Checked binops
-* Statics
 * Drop glue
 
 * Building libraries

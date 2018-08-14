@@ -331,12 +331,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 pub fn cton_intcast<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     val: Value,
-    from: Ty<'tcx>,
-    to: Ty<'tcx>,
+    to: Type,
     signed: bool,
 ) -> Value {
-    let from = fx.cton_type(from).unwrap();
-    let to = fx.cton_type(to).unwrap();
+    let from = fx.bcx.func.dfg.value_type(val);
     if from == to {
         return val;
     }

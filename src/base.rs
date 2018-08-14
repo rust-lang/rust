@@ -382,13 +382,13 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, false);
+                            let res = crate::common::cton_intcast(fx, from, fx.cton_type(to_ty).unwrap(), false);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (TypeVariants::TyInt(_), TypeVariants::TyInt(_))
                         | (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
+                            let res = crate::common::cton_intcast(fx, from, fx.cton_type(to_ty).unwrap(), true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (TypeVariants::TyFloat(from_flt), TypeVariants::TyFloat(to_flt)) => {
@@ -516,7 +516,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 layout::Int(_, signed) => signed,
                 _ => false,
             };
-            let val = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, signed);
+            let val = cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), signed);
             return CValue::ByVal(val, dest_layout);
         }
         layout::Variants::NicheFilling {
@@ -552,7 +552,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                     lldiscr,
                     *niche_variants.end() as u64 as i64,
                 );
-                let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, false);
+                let if_true = cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), false);
                 let if_false = fx
                     .bcx
                     .ins()
@@ -565,25 +565,33 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
 }
 
 macro_rules! binop_match {
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, bug) => {
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, bug) => {
         bug!("binop {} on {} lhs: {:?} rhs: {:?}", stringify!($var), $bug_fmt, $lhs, $rhs)
     };
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, icmp($cc:ident)) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, icmp($cc:ident)) => {{
         assert_eq!($fx.tcx.types.bool, $ret_ty);
         let ret_layout = $fx.layout_of($ret_ty);
-        let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
+
+        // TODO HACK no encoding for icmp.i8
+        use crate::common::cton_intcast;
+        let (lhs, rhs) = (
+            cton_intcast($fx, $lhs, types::I64, $signed),
+            cton_intcast($fx, $rhs, types::I64, $signed),
+        );
+        let b = $fx.bcx.ins().icmp(IntCC::$cc, lhs, rhs);
+
         CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, fcmp($cc:ident)) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, fcmp($cc:ident)) => {{
         assert_eq!($fx.tcx.types.bool, $ret_ty);
         let ret_layout = $fx.layout_of($ret_ty);
         let b = $fx.bcx.ins().fcmp(FloatCC::$cc, $lhs, $rhs);
         CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, custom(|| $body:expr)) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, custom(|| $body:expr)) => {{
         $body
     }};
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $name:ident) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $name:ident) => {{
         let ret_layout = $fx.layout_of($ret_ty);
         CValue::ByVal($fx.bcx.ins().$name($lhs, $rhs), ret_layout)
     }};
@@ -597,7 +605,7 @@ macro_rules! binop_match {
         let rhs = $rhs.load_value($fx);
         match ($bin_op, $signed) {
             $(
-                (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, lhs, rhs, $ret_ty, $name $( ( $($next)* ) )?),
+                (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, $signed, lhs, rhs, $ret_ty, $name $( ( $($next)* ) )?),
             )*
         }
     }}
