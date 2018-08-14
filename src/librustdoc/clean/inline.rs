@@ -314,7 +314,16 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         }
     }
 
-    let for_ = tcx.type_of(did).clean(cx);
+    let for_ = if let Some(nodeid) = tcx.hir.as_local_node_id(did) {
+        match tcx.hir.expect_item(nodeid).node {
+            hir::ItemKind::Impl(.., ref t, _) => {
+                t.clean(cx)
+            }
+            _ => panic!("did given to build_impl was not an impl"),
+        }
+    } else {
+        tcx.type_of(did).clean(cx)
+    };
 
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
