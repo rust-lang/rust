@@ -767,14 +767,10 @@ impl Target {
         // the JSON parser is not updated to match the structs.
 
         let get_req_field = |name: &str| {
-            match obj.find(name)
-                     .map(|s| s.as_string())
-                     .and_then(|os| os.map(|s| s.to_string())) {
-                Some(val) => Ok(val),
-                None => {
-                    return Err(format!("Field {} in target specification is required", name))
-                }
-            }
+            obj.find(name)
+               .map(|s| s.as_string())
+               .and_then(|os| os.map(|s| s.to_string()))
+               .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 
         let get_opt_field = |name: &str, default: &str| {
