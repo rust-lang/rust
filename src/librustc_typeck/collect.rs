@@ -1925,6 +1925,7 @@ fn from_target_feature(
                 Some("mmx_target_feature") => rust_features.mmx_target_feature,
                 Some("sse4a_target_feature") => rust_features.sse4a_target_feature,
                 Some("tbm_target_feature") => rust_features.tbm_target_feature,
+                Some("wasm_target_feature") => rust_features.wasm_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
