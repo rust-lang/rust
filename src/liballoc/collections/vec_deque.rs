@@ -1859,7 +1859,7 @@ impl<T> VecDeque<T> {
         // Guarantees there is space in `self` for `other`.
         self.reserve(src_total);
 
-        let new_head = {
+        self.head = {
             let original_head = self.head;
 
             // The goal is to copy all values from `other` into `self`. To avoid any
@@ -1988,12 +1988,8 @@ impl<T> VecDeque<T> {
             }
         };
 
-        // Up until this point we are in a bad state as some values
-        // exist in both `self` and `other`. To preserve panic safety
-        // it is important we clear the old values from `other`...
-        other.clear();
-        // and that we update `head` as the last step, making the values accessible in `self`.
-        self.head = new_head;
+        // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
+        other.tail = other.head;
     }
 
     /// Retains only the elements specified by the predicate.
