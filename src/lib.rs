@@ -34,6 +34,7 @@ use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::{build_link_meta, out_filename};
 use rustc_data_structures::owning_ref::{self, OwningRef};
+use rustc_data_structures::svh::Svh;
 use syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
@@ -99,9 +100,9 @@ mod prelude {
 
     pub use crate::{CodegenCx, ModuleTup};
 
-    pub fn should_codegen(tcx: TyCtxt) -> bool {
+    pub fn should_codegen(sess: &Session) -> bool {
         ::std::env::var("SHOULD_CODEGEN").is_ok()
-            || tcx.sess.crate_types.get().contains(&CrateType::Executable)
+            || sess.crate_types.get().contains(&CrateType::Executable)
     }
 }
 
@@ -120,6 +121,7 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
 
 pub struct ModuleTup<T> {
     jit: Option<T>,
+    #[allow(dead_code)]
     faerie: Option<T>,
 }
 
@@ -135,7 +137,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
-            if entry.header().identifier() == b".rustc.clif_metadata" {
+            if entry.header().identifier().starts_with(b".rustc.clif_metadata") {
                 let mut buf = Vec::new();
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
@@ -182,6 +184,7 @@ struct OngoingCodegen {
     product: cranelift_faerie::FaerieProduct,
     metadata: Vec<u8>,
     crate_name: Symbol,
+    crate_hash: Svh,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -190,8 +193,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             match *cty {
                 CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {}
                 _ => {
-                    sess.parse_sess.span_diagnostic.warn(&format!(
-                        "LLVM unsupported, so output type {} is not supported",
+                    sess.err(&format!(
+                        "Rustc codegen cranelift doesn't support output type {}",
                         cty
                     ));
                 }
@@ -255,6 +258,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 _ => {}
             }
         }
+
+        if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
+            && std::env::var("SHOULD_RUN").is_ok()
+        {
+            tcx.sess
+                .err("Can't JIT run non executable (SHOULD_RUN env var is set)");
+        }
+
         tcx.sess.abort_if_errors();
 
         let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
@@ -287,7 +298,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 context: Context::new(),
             };
 
-            let mut log = ::std::fs::File::create("target/log.txt").unwrap();
+            let mut log = ::std::fs::File::create("log.txt").unwrap();
 
             let before = ::std::time::Instant::now();
             let mono_items =
@@ -338,7 +349,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx.sess.warn("Compiled everything");
 
         // TODO: this doesn't work most of the time
-        if tcx.sess.crate_types.get().contains(&CrateType::Executable) {
+        if std::env::var("SHOULD_RUN").is_ok() {
+            tcx.sess.warn("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
             let start_wrapper = tcx.lang_items().start_fn().expect("no start lang item");
 
             let (name, sig) =
@@ -361,7 +373,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.warn(&format!("main returned {}", res));
 
             jit_module.finish();
-        } else if should_codegen(tcx) {
+            ::std::process::exit(0);
+        } else if should_codegen(tcx.sess) {
             jit_module.finalize_all();
             faerie_module.finalize_all();
 
@@ -372,6 +385,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             product: faerie_module.finish(),
             metadata: metadata.raw_data,
             crate_name: tcx.crate_name(LOCAL_CRATE),
+            crate_hash: tcx.crate_hash(LOCAL_CRATE),
         })
     }
 
@@ -389,9 +403,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut artifact = ongoing_codegen.product.artifact;
         let metadata = ongoing_codegen.metadata;
 
+        let metadata_name = ".rustc.clif_metadata".to_string() + &ongoing_codegen.crate_hash.to_string();
         artifact
             .declare_with(
-                ".rustc.clif_metadata",
+                &metadata_name,
                 faerie::artifact::Decl::Data {
                     global: true,
                     writeable: false,
@@ -401,10 +416,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         for &crate_type in sess.opts.crate_types.iter() {
             match crate_type {
-                CrateType::Executable => {
-                    sess.warn("Rustc codegen cranelift doesn't produce executables, but is a JIT for them");
-                },
-                CrateType::Rlib /* | CrateType::Dylib */ => {
+                // TODO: link executable
+                CrateType::Executable | CrateType::Rlib => {
                     let output_name = out_filename(
                         sess,
                         crate_type,
@@ -415,10 +428,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     let mut builder = ar::Builder::new(file);
                     builder
                         .append(
-                            &ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64),
+                            &ar::Header::new(metadata_name.as_bytes().to_vec(), metadata.len() as u64),
                             ::std::io::Cursor::new(metadata.clone()),
                         ).unwrap();
-                    //artifact.write(file).unwrap();
+                    if should_codegen(sess) {
+                        let obj = artifact.emit().unwrap();
+                        builder
+                            .append(
+                                &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
+                                ::std::io::Cursor::new(obj),
+                            ).unwrap();
+                    }
                 }
                 _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
             }

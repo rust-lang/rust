@@ -101,7 +101,7 @@ fn trans_fn<'a, 'tcx: 'a>(
 
     // Step 9. Define function
     // TODO: cranelift doesn't yet support some of the things needed
-    if should_codegen(tcx) {
+    if should_codegen(tcx.sess) {
         context.func = func;
         module.define_function(func_id, context).unwrap();
         context.clear();
@@ -182,7 +182,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             } => {
                 fx.bcx.ins().trap(TrapCode::User(0));
                 // TODO: prevent panics on large and negative disciminants
-                if should_codegen(fx.tcx) {
+                if should_codegen(fx.tcx.sess) {
                     let discr = trans_operand(fx, discr).load_value(fx);
                     let mut jt_data = JumpTableData::new();
                     for (i, value) in values.iter().enumerate() {
