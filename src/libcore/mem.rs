@@ -956,7 +956,8 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ManuallyDrop<T> {
+#[repr(transparent)]
+pub struct ManuallyDrop<T: ?Sized> {
     value: T,
 }
 
@@ -990,7 +991,9 @@ impl<T> ManuallyDrop<T> {
     pub fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
     }
+}
 
+impl<T: ?Sized> ManuallyDrop<T> {
     /// Manually drops the contained value.
     ///
     /// # Safety
@@ -1006,7 +1009,7 @@ impl<T> ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> Deref for ManuallyDrop<T> {
+impl<T: ?Sized> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -1015,7 +1018,7 @@ impl<T> Deref for ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> DerefMut for ManuallyDrop<T> {
+impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
