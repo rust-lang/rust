@@ -331,6 +331,24 @@ error: use of `unwrap_or` followed by a function call
 343 |     let _ = stringy.unwrap_or("".to_owned());
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
+error: `error_code` is shadowed by `123_i32`
+   --> $DIR/methods.rs:377:9
+    |
+377 |     let error_code = 123_i32;
+    |         ^^^^^^^^^^
+    |
+    = note: `-D shadow-unrelated` implied by `-D warnings`
+note: initialization happens here
+   --> $DIR/methods.rs:377:22
+    |
+377 |     let error_code = 123_i32;
+    |                      ^^^^^^^
+note: previous binding is here
+   --> $DIR/methods.rs:364:9
+    |
+364 |     let error_code = 123_i32;
+    |         ^^^^^^^^^^
+
 error: use of `expect` followed by a function call
    --> $DIR/methods.rs:366:26
     |
@@ -435,5 +453,5 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 55 previous errors
+error: aborting due to 56 previous errors
 
