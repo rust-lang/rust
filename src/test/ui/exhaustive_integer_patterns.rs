@@ -138,4 +138,17 @@ fn main() {
         (1, _) => {}
         (_, None) => {}
     }
+
+    match (0u8, true) { //~ ERROR non-exhaustive patterns
+        (0..=125, false) => {}
+        (128..=255, false) => {}
+        (0..=255, true) => {}
+    }
+
+    match (0u8, true) {
+        (0..=125, false) => {}
+        (128..=255, false) => {}
+        (0..=255, true) => {}
+        (125..128, false) => {}
+    }
 }

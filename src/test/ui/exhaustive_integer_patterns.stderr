@@ -58,6 +58,12 @@ error[E0004]: non-exhaustive patterns: `(0u8, Some(_))` and `(2u8..=255u8, Some(
 LL |     match (0u8, Some(())) { //~ ERROR non-exhaustive patterns
    |           ^^^^^^^^^^^^^^^ patterns `(0u8, Some(_))` and `(2u8..=255u8, Some(_))` not covered
 
-error: aborting due to 9 previous errors
+error[E0004]: non-exhaustive patterns: `(126u8..=127u8, false)` not covered
+  --> $DIR/exhaustive_integer_patterns.rs:142:11
+   |
+LL |     match (0u8, true) { //~ ERROR non-exhaustive patterns
+   |           ^^^^^^^^^^^ pattern `(126u8..=127u8, false)` not covered
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
