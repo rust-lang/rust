@@ -24,9 +24,13 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 
 /// A pinned reference.
 ///
-/// A pinned reference is a lot like a mutable reference, except that it is not
-/// safe to move a value out of a pinned reference unless the type of that
-/// value implements the `Unpin` trait.
+/// This type is similar to a mutable reference, except that it pins its value,
+/// which prevents it from moving out of the reference, unless it implements [`Unpin`].
+///
+/// See the [`pin` module] documentation for furthur explanation on pinning.
+///
+/// [`Unpin`]: ../marker/trait.Unpin.html
+/// [`pin` module]: ../../alloc/pin/index.html
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
 pub struct PinMut<'a, T: ?Sized + 'a> {
@@ -56,7 +60,7 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
     /// may or may not implement `Unpin`.
     ///
     /// This constructor is unsafe because we do not know what will happen with
-    /// that data after the reference ends. If you cannot guarantee that the
+    /// that data after the lifetime of the reference ends. If you cannot guarantee that the
     /// data will never move again, calling this constructor is invalid.
     #[unstable(feature = "pin", issue = "49150")]
     pub unsafe fn new_unchecked(reference: &'a mut T) -> PinMut<'a, T> {
