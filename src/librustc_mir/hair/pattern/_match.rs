@@ -166,7 +166,7 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{FieldPattern, Pattern, PatternKind};
@@ -321,7 +321,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             tcx,
             module,
             pattern_arena: &pattern_arena,
-            byte_array_map: FxHashMap(),
+            byte_array_map: FxHashMap::default(),
         })
     }
 
@@ -1422,10 +1422,33 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                 }
                 // We're going to collect all the endpoints in the new pattern so we can create
                 // subranges between them.
-                let mut points = FxHashSet::default();
+                // If there's a single point, we need to identify it as belonging
+                // to a length-1 range, so it can be treated as an individual
+                // constructor, rather than as an endpoint. To do this, we keep track of which
+                // endpoint a point corresponds to. Whenever a point corresponds to both a start
+                // and an end, then we create a unit range for it.
+                #[derive(PartialEq, Clone, Copy, Debug)]
+                enum Endpoint {
+                    Start,
+                    End,
+                    Both,
+                };
+                let mut points = FxHashMap::default();
+                let add_endpoint = |points: &mut FxHashMap<_, _>, x, endpoint| {
+                    points.entry(x).and_modify(|ex_x| {
+                        if *ex_x != endpoint {
+                            *ex_x = Endpoint::Both
+                        }
+                    }).or_insert(endpoint);
+                };
+                let add_endpoints = |points: &mut FxHashMap<_, _>, lo, hi| {
+                    // Insert the endpoints, taking care to keep track of to
+                    // which endpoints a point corresponds.
+                    add_endpoint(points, lo, Endpoint::Start);
+                    add_endpoint(points, hi, Endpoint::End);
+                };
                 let (lo, hi) = (*ctor_range.range.start(), *ctor_range.range.end());
-                points.insert(lo);
-                points.insert(hi);
+                add_endpoints(&mut points, lo, hi);
                 // We're going to iterate through every row pattern, adding endpoints in.
                 for row in m.iter() {
                     if let Some(r) = IntRange::from_pat(tcx, row[0]) {
@@ -1433,39 +1456,43 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                         // within the subrange domain.
                         if let Some(r) = ctor_range.intersection(&r) {
                             let (r_lo, r_hi) = r.range.into_inner();
-                            // Insert the endpoints.
-                            points.insert(r_lo);
-                            points.insert(r_hi);
-                            // There's a slight subtlety here, which involves the fact we're using
-                            // inclusive ranges everywhere. When we subdivide the range into
-                            // subranges, they can't overlap, or the subranges effectively
-                            // coalesce. We need hard boundaries between subranges. The simplest
-                            // way to do this is by adding extra "boundary points" to prevent this
-                            // intersection. Technically this means we occasionally check a few more
-                            // cases for usefulness than we need to (because they're part of another
-                            // equivalence class), but it's still linear and very simple to verify,
-                            // which is handy when it comes to matching, which can often be quite
-                            // fiddly.
-                            if r_lo > lo {
-                                points.insert(r_lo - 1);
-                            }
-                            if r_hi < hi {
-                                points.insert(r_hi + 1);
-                            }
+                            add_endpoints(&mut points, r_lo, r_hi);
                         }
                     }
                 }
 
                 // The patterns were iterated in an arbitrary order (i.e. in the order the user
                 // wrote them), so we need to make sure our endpoints are sorted.
-                let mut points: Vec<_> = points.into_iter().collect();
-                points.sort();
+                let mut points: Vec<(u128, Endpoint)> = points.into_iter().collect();
+                points.sort_unstable_by_key(|(x, _)| *x);
                 let mut points = points.into_iter();
-                let mut start = points.next().unwrap();
+                let mut a = points.next().unwrap();
+
                 // Iterate through pairs of points, adding the subranges to `split_ctors`.
-                while let Some(end) = points.next() {
-                    split_ctors.push(IntRange::range_to_ctor(tcx, ty, start..=end));
-                    start = end;
+                // We have to be careful about the orientation of the points as endpoints, to make
+                // sure we're enumerating precisely the correct ranges. Too few and the matching is
+                // actually incorrect. Too many and our diagnostics are poorer. This involves some
+                // case analysis.
+                while let Some(b) = points.next() {
+                    // a < b (strictly)
+                    if let Endpoint::Both = a.1 {
+                        split_ctors.push(IntRange::range_to_ctor(tcx, ty, a.0..=a.0));
+                    }
+                    let c = match a.1 {
+                        Endpoint::Start => a.0,
+                        Endpoint::End | Endpoint::Both => a.0 + 1,
+                    };
+                    let d = match b.1 {
+                        Endpoint::Start | Endpoint::Both => b.0 - 1,
+                        Endpoint::End => b.0,
+                    };
+                    // In some cases, we won't need an intermediate range between two ranges
+                    // lie immediately adjacent to one another.
+                    if c <= d {
+                        split_ctors.push(IntRange::range_to_ctor(tcx, ty, c..=d));
+                    }
+
+                    a = b;
                 }
             }
             // Any other constructor can be used unchanged.
