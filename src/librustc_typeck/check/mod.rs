@@ -5154,6 +5154,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             None
         } {
+            self.set_tainted_by_errors(); // #53251
             err.span_label(span, format!("expected {}", expected_text)).emit();
         }
 
