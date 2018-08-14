@@ -6,7 +6,7 @@
 # all arguments are required.
 #
 # See below link for git usage:
-# https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/14091182#14091182
+# https://stackoverflow.com/questions/3489173#14091182
 
 # Mandatory arguments:
 PROJECT_NAME=$1
