@@ -1882,18 +1882,18 @@ impl<T> VecDeque<T> {
             // Values are not copied one by one but as slices in `copy_whole_slice`.
             // What slices are used depends on various properties of src and dst.
             // There are 6 cases in total:
-            //     1. `src` and `dst` are contiguous
-            //     2. `src` is contiguous and `dst` is discontiguous
-            //     3. `src` is discontiguous and `dst` is contiguous
-            //     4. `src` and `dst` are discontiguous
+            //     1. `src` is contiguous and fits in dst_high
+            //     2. `src` is contiguous and does not fit in dst_high
+            //     3. `src` is discontiguous and fits in dst_high
+            //     4. `src` is discontiguous and does not fit in dst_high
             //        + src_high is smaller than dst_high
-            //     5. `src` and `dst` are discontiguous
+            //     5. `src` is discontiguous and does not fit in dst_high
             //        + dst_high is smaller than src_high
-            //     6. `src` and `dst` are discontiguous
+            //     6. `src` is discontiguous and does not fit in dst_high
             //        + dst_high is the same size as src_high
             let src_contiguous = src_low.is_empty();
-            let dst_contiguous = dst_high.len() >= src_total;
-            match (src_contiguous, dst_contiguous) {
+            let dst_high_fits_src = dst_high.len() >= src_total;
+            match (src_contiguous, dst_high_fits_src) {
                 (true, true) => {
                     // 1.
                     // other [. . . o o o . . . . . .]
