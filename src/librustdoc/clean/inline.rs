@@ -334,23 +334,29 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     }
 
     let predicates = tcx.predicates_of(did);
-    let trait_items = if let Some(nodeid) = tcx.hir.as_local_node_id(did) {
+    let (trait_items, generics) = if let Some(nodeid) = tcx.hir.as_local_node_id(did) {
         match tcx.hir.expect_item(nodeid).node {
-            hir::ItemKind::Impl(.., ref item_ids) => {
-                item_ids.iter()
-                        .map(|ii| tcx.hir.impl_item(ii.id).clean(cx))
-                        .collect::<Vec<_>>()
+            hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => {
+                (
+                    item_ids.iter()
+                            .map(|ii| tcx.hir.impl_item(ii.id).clean(cx))
+                            .collect::<Vec<_>>(),
+                    gen.clean(cx),
+                )
             }
             _ => panic!("did given to build_impl was not an impl"),
         }
     } else {
-        tcx.associated_items(did).filter_map(|item| {
-            if associated_trait.is_some() || item.vis == ty::Visibility::Public {
-                Some(item.clean(cx))
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>()
+        (
+            tcx.associated_items(did).filter_map(|item| {
+                if associated_trait.is_some() || item.vis == ty::Visibility::Public {
+                    Some(item.clean(cx))
+                } else {
+                    None
+                }
+            }).collect::<Vec<_>>(),
+            (tcx.generics_of(did), &predicates).clean(cx),
+        )
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
@@ -378,7 +384,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal,
-            generics: (tcx.generics_of(did), &predicates).clean(cx),
+            generics,
             provided_trait_methods: provided,
             trait_,
             for_,
