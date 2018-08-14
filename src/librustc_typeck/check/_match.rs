@@ -299,10 +299,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let element_tys = tcx.mk_type_list(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
                 self.demand_eqtype(pat.span, expected, pat_ty);
-                for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                    self.check_pat_walk(elem, &element_tys[i], def_bm, true);
+                if self.has_errors.get() {
+                    let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
+                    let element_tys = tcx.mk_type_list(element_tys_iter);
+                    for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
+                        self.check_pat_walk(elem, &tcx.types.err, def_bm, true);
+                    }
+                    tcx.mk_ty(ty::TyTuple(element_tys))
+                } else {
+                    for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
+                        self.check_pat_walk(elem, &element_tys[i], def_bm, true);
+                    }
+                    pat_ty
                 }
-                pat_ty
             }
             PatKind::Box(ref inner) => {
                 let inner_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(inner.span));
