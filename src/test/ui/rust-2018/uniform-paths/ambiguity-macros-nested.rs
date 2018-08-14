@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xcrate.rs
 // edition:2018
 
-use crate; //~ ERROR crate root imports need to be explicitly named: `use crate as name;`
-use *; //~ ERROR cannot glob-import all possible crates
+#![feature(uniform_paths)]
 
-fn main() {
-    let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
-                      //~^ NOTE not a value
+// This test is similar to `ambiguity-macros.rs`, but nested in a module.
+
+mod foo {
+    pub use std::io;
+    //~^ ERROR import from `std` is ambiguous
+
+    macro_rules! m {
+        () => {
+            mod std {
+                pub struct io;
+            }
+        }
+    }
+    m!();
 }
+
+fn main() {}

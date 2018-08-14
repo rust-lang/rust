@@ -1,0 +1,16 @@
+error: import from `std` is ambiguous
+  --> $DIR/ambiguity.rs:15:5
+   |
+LL |   use std::io;
+   |       ^^^ could refer to external crate `::std`
+...
+LL | / mod std {
+LL | |     pub struct io;
+LL | | }
+   | |_- could also refer to `self::std`
+   |
+   = help: write `::std` or `self::std` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: aborting due to previous error
+

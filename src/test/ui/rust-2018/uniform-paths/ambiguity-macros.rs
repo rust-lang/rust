@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(extern_in_paths)]
+// edition:2018
 
-fn main() {
-    let extern = 0; //~ ERROR cannot find unit struct/variant or constant `extern` in this scope
+#![feature(uniform_paths)]
+
+// This test is similar to `ambiguity.rs`, but with macros defining local items.
+
+use std::io;
+//~^ ERROR import from `std` is ambiguous
+
+macro_rules! m {
+    () => {
+        mod std {
+            pub struct io;
+        }
+    }
 }
+m!();
+
+fn main() {}

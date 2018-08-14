@@ -10,6 +10,7 @@
 
 use {AmbiguityError, CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
+use ModuleOrUniformRoot;
 use Namespace::{self, TypeNS, MacroNS};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
@@ -538,7 +539,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), false, span, CrateLint::No) {
+            let res = self.resolve_path(None, &path, Some(MacroNS), false, span, CrateLint::No);
+            let def = match res {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => {
@@ -655,7 +657,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 WhereToResolve::Module(module) => {
                     let orig_current_module = mem::replace(&mut self.current_module, module);
                     let binding = self.resolve_ident_in_module_unadjusted(
-                            module, ident, ns, true, record_used, path_span,
+                        ModuleOrUniformRoot::Module(module),
+                        ident,
+                        ns,
+                        true,
+                        record_used,
+                        path_span,
                     );
                     self.current_module = orig_current_module;
                     binding.map(MacroBinding::Modern)
@@ -715,9 +722,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     let mut result = Err(Determinacy::Determined);
                     if use_prelude {
                         if let Some(prelude) = self.prelude {
-                            if let Ok(binding) =
-                                    self.resolve_ident_in_module_unadjusted(prelude, ident, ns,
-                                                                          false, false, path_span) {
+                            if let Ok(binding) = self.resolve_ident_in_module_unadjusted(
+                                ModuleOrUniformRoot::Module(prelude),
+                                ident,
+                                ns,
+                                false,
+                                false,
+                                path_span,
+                            ) {
                                 result = Ok(MacroBinding::Global(binding));
                             }
                         }
@@ -893,7 +905,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(&path, Some(MacroNS), true, span, CrateLint::No) {
+            match self.resolve_path(None, &path, Some(MacroNS), true, span, CrateLint::No) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));

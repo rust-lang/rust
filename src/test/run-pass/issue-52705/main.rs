@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xcrate.rs
+// aux-build:png.rs
+// edition:2018
 
-#![feature(extern_in_paths)]
+mod png {
+    use png as png_ext;
 
-use extern; //~ ERROR unresolved import `extern`
-            //~^ NOTE no `extern` in the root
-use extern::*; //~ ERROR cannot glob-import all possible crates
+    fn foo() -> png_ext::DecodingError { unimplemented!() }
+}
 
 fn main() {
-    let s = extern::xcrate; //~ ERROR expected value, found module `extern::xcrate`
-                            //~^ NOTE not a value
+    println!("Hello, world!");
 }

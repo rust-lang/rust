@@ -1,0 +1,13 @@
+error: import from `Foo` is ambiguous
+  --> $DIR/block-scoped-shadow.rs:19:9
+   |
+LL |     enum Foo {}
+   |     ----------- shadowed by block-scoped `Foo`
+LL |     use Foo::*;
+   |         ^^^
+   |
+   = help: write `::Foo` or `self::Foo` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: aborting due to previous error
+

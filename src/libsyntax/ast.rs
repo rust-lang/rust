@@ -101,7 +101,7 @@ impl Path {
     // or starts with something like `self`/`super`/`$crate`/etc.
     pub fn make_root(&self) -> Option<PathSegment> {
         if let Some(ident) = self.segments.get(0).map(|seg| seg.ident) {
-            if ident.is_path_segment_keyword() && ident.name != keywords::Crate.name() {
+            if ident.is_path_segment_keyword() {
                 return None;
             }
         }

@@ -10,8 +10,8 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {AmbiguityError, CrateLint, Module, PerNS};
-use Namespace::{self, TypeNS, MacroNS};
+use {AmbiguityError, CrateLint, Module, ModuleOrUniformRoot, PerNS};
+use Namespace::{self, TypeNS, MacroNS, ValueNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
@@ -85,11 +85,19 @@ pub struct ImportDirective<'a> {
 
     pub parent: Module<'a>,
     pub module_path: Vec<Ident>,
-    pub imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
+    /// The resolution of `module_path`.
+    pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
     pub subclass: ImportDirectiveSubclass<'a>,
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
     pub used: Cell<bool>,
+
+    /// Whether this import is a "canary" for the `uniform_paths` feature,
+    /// i.e. `use x::...;` results in an `use self::x as _;` canary.
+    /// This flag affects diagnostics: an error is reported if and only if
+    /// the import resolves successfully and an external crate with the same
+    /// name (`x` above) also exists; any resolution failures are ignored.
+    pub is_uniform_paths_canary: bool,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -133,13 +141,87 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `record_used` is `Some`, expansion and import resolution must be complete.
     pub fn resolve_ident_in_module_unadjusted(&mut self,
-                                              module: Module<'a>,
+                                              module: ModuleOrUniformRoot<'a>,
                                               ident: Ident,
                                               ns: Namespace,
                                               restricted_shadowing: bool,
                                               record_used: bool,
                                               path_span: Span)
                                               -> Result<&'a NameBinding<'a>, Determinacy> {
+        let module = match module {
+            ModuleOrUniformRoot::Module(module) => module,
+            ModuleOrUniformRoot::UniformRoot(root) => {
+                // HACK(eddyb): `resolve_path` uses `keywords::Invalid` to indicate
+                // paths of length 0, and currently these are relative `use` paths.
+                let can_be_relative = !ident.is_path_segment_keyword() &&
+                    root == keywords::Invalid.name();
+                if can_be_relative {
+                    // Relative paths should only get here if the feature-gate is on.
+                    assert!(self.session.rust_2018() &&
+                            self.session.features_untracked().uniform_paths);
+
+                    // Try first to resolve relatively.
+                    let mut ctxt = ident.span.ctxt().modern();
+                    let self_module = self.resolve_self(&mut ctxt, self.current_module);
+
+                    let binding = self.resolve_ident_in_module_unadjusted(
+                        ModuleOrUniformRoot::Module(self_module),
+                        ident,
+                        ns,
+                        restricted_shadowing,
+                        record_used,
+                        path_span,
+                    );
+
+                    // FIXME(eddyb) This may give false negatives, specifically
+                    // if a crate with the same name is found in `extern_prelude`,
+                    // preventing the check below this one from returning `binding`
+                    // in all cases.
+                    //
+                    // That is, if there's no crate with the same name, `binding`
+                    // is always returned, which is the result of doing the exact
+                    // same lookup of `ident`, in the `self` module.
+                    // But when a crate does exist, it will get chosen even when
+                    // macro expansion could result in a success from the lookup
+                    // in the `self` module, later on.
+                    //
+                    // NB. This is currently alleviated by the "ambiguity canaries"
+                    // (see `is_uniform_paths_canary`) that get introduced for the
+                    // maybe-relative imports handled here: if the false negative
+                    // case were to arise, it would *also* cause an ambiguity error.
+                    if binding.is_ok() {
+                        return binding;
+                    }
+
+                    // Fall back to resolving to an external crate.
+                    if !self.extern_prelude.contains(&ident.name) {
+                        // ... unless the crate name is not in the `extern_prelude`.
+                        return binding;
+                    }
+                }
+
+                let crate_root = if
+                    root != keywords::Extern.name() &&
+                    (
+                        ident.name == keywords::Crate.name() ||
+                        ident.name == keywords::DollarCrate.name()
+                    )
+                {
+                    self.resolve_crate_root(ident)
+                } else if !ident.is_path_segment_keyword() {
+                    let crate_id =
+                        self.crate_loader.process_path_extern(ident.name, ident.span);
+                    self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                } else {
+                    return Err(Determined);
+                };
+                self.populate_module_if_necessary(crate_root);
+                let binding = (crate_root, ty::Visibility::Public,
+                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                return Ok(binding);
+            }
+        };
+
         self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
@@ -260,7 +342,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             if !self.is_accessible(glob_import.vis.get()) {
                 continue
             }
-            let module = unwrap_or!(glob_import.imported_module.get(), return Err(Undetermined));
+            let module = match glob_import.imported_module.get() {
+                Some(ModuleOrUniformRoot::Module(module)) => module,
+                Some(ModuleOrUniformRoot::UniformRoot(_)) => continue,
+                None => return Err(Undetermined),
+            };
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
             match ident.span.glob_adjust(module.expansion, glob_import.span.ctxt().modern()) {
                 Some(Some(def)) => self.current_module = self.macro_def_scope(def),
@@ -268,7 +354,12 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 None => continue,
             };
             let result = self.resolve_ident_in_module_unadjusted(
-                module, ident, ns, false, false, path_span,
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                false,
+                false,
+                path_span,
             );
             self.current_module = orig_current_module;
             match result {
@@ -290,7 +381,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                                 root_span: Span,
                                 root_id: NodeId,
                                 vis: ty::Visibility,
-                                expansion: Mark) {
+                                expansion: Mark,
+                                is_uniform_paths_canary: bool) {
         let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
@@ -304,7 +396,10 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             vis: Cell::new(vis),
             expansion,
             used: Cell::new(false),
+            is_uniform_paths_canary,
         });
+
+        debug!("add_import_directive({:?})", directive);
 
         self.indeterminate_imports.push(directive);
         match directive.subclass {
@@ -523,7 +618,55 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut seen_spans = FxHashSet();
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
-            if let Some((span, err)) = self.finalize_import(import) {
+            let error = self.finalize_import(import);
+
+            // For a `#![feature(uniform_paths)]` `use self::x as _` canary,
+            // failure is ignored, while success may cause an ambiguity error.
+            if import.is_uniform_paths_canary {
+                let (name, result) = match import.subclass {
+                    SingleImport { source, ref result, .. } => {
+                        let type_ns = result[TypeNS].get().ok();
+                        let value_ns = result[ValueNS].get().ok();
+                        (source.name, type_ns.or(value_ns))
+                    }
+                    _ => bug!(),
+                };
+
+                if error.is_some() {
+                    continue;
+                }
+
+                let is_explicit_self =
+                    import.module_path.len() > 0 &&
+                    import.module_path[0].name == keywords::SelfValue.name();
+                let extern_crate_exists = self.extern_prelude.contains(&name);
+
+                // A successful `self::x` is ambiguous with an `x` external crate.
+                if is_explicit_self && !extern_crate_exists {
+                    continue;
+                }
+
+                errors = true;
+
+                let msg = format!("import from `{}` is ambiguous", name);
+                let mut err = self.session.struct_span_err(import.span, &msg);
+                if extern_crate_exists {
+                    err.span_label(import.span,
+                        format!("could refer to external crate `::{}`", name));
+                }
+                if let Some(result) = result {
+                    if is_explicit_self {
+                        err.span_label(result.span,
+                            format!("could also refer to `self::{}`", name));
+                    } else {
+                        err.span_label(result.span,
+                            format!("shadowed by block-scoped `{}`", name));
+                    }
+                }
+                err.help(&format!("write `::{0}` or `self::{0}` explicitly instead", name));
+                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                err.emit();
+            } else if let Some((span, err)) = error {
                 errors = true;
 
                 if let SingleImport { source, ref result, .. } = import.subclass {
@@ -553,9 +696,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // Report unresolved imports only if no hard error was already reported
         // to avoid generating multiple errors on the same import.
         if !errors {
-            if let Some(import) = self.indeterminate_imports.iter().next() {
+            for import in &self.indeterminate_imports {
+                if import.is_uniform_paths_canary {
+                    continue;
+                }
+
                 let error = ResolutionError::UnresolvedImport(None);
                 resolve_error(self.resolver, import.span, error);
+                break;
             }
         }
     }
@@ -576,8 +724,18 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
-            let result = self.resolve_path(&directive.module_path[..], None, false,
-                                           directive.span, directive.crate_lint());
+            let result = self.resolve_path(
+                Some(if directive.is_uniform_paths_canary {
+                    ModuleOrUniformRoot::Module(directive.parent)
+                } else {
+                    ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
+                }),
+                &directive.module_path[..],
+                None,
+                false,
+                directive.span,
+                directive.crate_lint(),
+            );
             directive.vis.set(vis);
 
             match result {
@@ -644,77 +802,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn finalize_import(&mut self, directive: &'b ImportDirective<'b>) -> Option<(Span, String)> {
         self.current_module = directive.parent;
         let ImportDirective { ref module_path, span, .. } = *directive;
-        let mut warn_if_binding_comes_from_local_crate = false;
-
-        // FIXME: Last path segment is treated specially in import resolution, so extern crate
-        // mode for absolute paths needs some special support for single-segment imports.
-        if module_path.len() == 1 && (module_path[0].name == keywords::CrateRoot.name() ||
-                                      module_path[0].name == keywords::Extern.name()) {
-            let is_extern = module_path[0].name == keywords::Extern.name() ||
-                            (self.session.features_untracked().extern_absolute_paths &&
-                             self.session.rust_2018());
-            match directive.subclass {
-                GlobImport { .. } if is_extern => {
-                    return Some((directive.span,
-                                 "cannot glob-import all possible crates".to_string()));
-                }
-                GlobImport { .. } if self.session.features_untracked().extern_absolute_paths => {
-                    self.lint_path_starts_with_module(
-                        directive.root_id,
-                        directive.root_span,
-                    );
-                }
-                SingleImport { source, target, .. } => {
-                    let crate_root = if source.name == keywords::Crate.name() &&
-                                        module_path[0].name != keywords::Extern.name() {
-                        if target.name == keywords::Crate.name() {
-                            return Some((directive.span,
-                                         "crate root imports need to be explicitly named: \
-                                          `use crate as name;`".to_string()));
-                        } else {
-                            Some(self.resolve_crate_root(source))
-                        }
-                    } else if is_extern && !source.is_path_segment_keyword() {
-                        let crate_id =
-                            self.resolver.crate_loader.process_use_extern(
-                                source.name,
-                                directive.span,
-                                directive.id,
-                                &self.resolver.definitions,
-                            );
-                        let crate_root =
-                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                        self.populate_module_if_necessary(crate_root);
-                        Some(crate_root)
-                    } else {
-                        warn_if_binding_comes_from_local_crate = true;
-                        None
-                    };
-
-                    if let Some(crate_root) = crate_root {
-                        let binding = (crate_root, ty::Visibility::Public, directive.span,
-                                       directive.expansion).to_name_binding(self.arenas);
-                        let binding = self.arenas.alloc_name_binding(NameBinding {
-                            kind: NameBindingKind::Import {
-                                binding,
-                                directive,
-                                used: Cell::new(false),
-                            },
-                            vis: directive.vis.get(),
-                            span: directive.span,
-                            expansion: directive.expansion,
-                        });
-                        let _ = self.try_define(directive.parent, target, TypeNS, binding);
-                        let import = self.import_map.entry(directive.id).or_default();
-                        import[TypeNS] = Some(PathResolution::new(binding.def()));
-                        return None;
-                    }
-                }
-                _ => {}
-            }
-        }
 
         let module_result = self.resolve_path(
+            Some(if directive.is_uniform_paths_canary {
+                ModuleOrUniformRoot::Module(directive.parent)
+            } else {
+                ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
+            }),
             &module_path,
             None,
             true,
@@ -734,7 +828,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if !self_path.is_empty() && !is_special(self_path[0]) &&
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
-                    self_result = Some(self.resolve_path(&self_path, None, false,
+                    self_result = Some(self.resolve_path(None, &self_path, None, false,
                                                          span, CrateLint::No));
                 }
                 return if let Some(PathResult::Module(..)) = self_result {
@@ -748,12 +842,27 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
         let (ident, result, type_ns_only) = match directive.subclass {
             SingleImport { source, ref result, type_ns_only, .. } => (source, result, type_ns_only),
-            GlobImport { .. } if module.def_id() == directive.parent.def_id() => {
-                // Importing a module into itself is not allowed.
-                return Some((directive.span,
-                             "Cannot glob-import a module into itself.".to_string()));
-            }
             GlobImport { is_prelude, ref max_vis } => {
+                if module_path.len() <= 1 {
+                    // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
+                    // 2 segments, so the `resolve_path` above won't trigger it.
+                    let mut full_path = module_path.clone();
+                    full_path.push(keywords::Invalid.ident());
+                    self.lint_if_path_starts_with_module(
+                        directive.crate_lint(),
+                        &full_path,
+                        directive.span,
+                        None,
+                    );
+                }
+
+                if let ModuleOrUniformRoot::Module(module) = module {
+                    if module.def_id() == directive.parent.def_id() {
+                        // Importing a module into itself is not allowed.
+                        return Some((directive.span,
+                            "Cannot glob-import a module into itself.".to_string()));
+                    }
+                }
                 if !is_prelude &&
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
                    !max_vis.get().is_at_least(directive.vis.get(), &*self) {
@@ -770,8 +879,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
                 if this.record_use(ident, ns, binding, directive.span) {
-                    this.resolution(module, ident, ns).borrow_mut().binding =
-                        Some(this.dummy_binding);
+                    if let ModuleOrUniformRoot::Module(module) = module {
+                        this.resolution(module, ident, ns).borrow_mut().binding =
+                            Some(this.dummy_binding);
+                    }
                 }
             }
         });
@@ -786,8 +897,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             });
 
             return if all_ns_failed {
-                let resolutions = module.resolutions.borrow();
-                let names = resolutions.iter().filter_map(|(&(ref i, _), resolution)| {
+                let resolutions = match module {
+                    ModuleOrUniformRoot::Module(module) =>
+                        Some(module.resolutions.borrow()),
+                    ModuleOrUniformRoot::UniformRoot(_) => None,
+                };
+                let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
+                let names = resolutions.filter_map(|(&(ref i, _), resolution)| {
                     if *i == ident { return None; } // Never suggest the same name
                     match *resolution.borrow() {
                         NameResolution { binding: Some(name_binding), .. } => {
@@ -813,11 +929,24 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         Some(name) => format!(". Did you mean to use `{}`?", name),
                         None => "".to_owned(),
                     };
-                let module_str = module_to_string(module);
-                let msg = if let Some(module_str) = module_str {
-                    format!("no `{}` in `{}`{}", ident, module_str, lev_suggestion)
-                } else {
-                    format!("no `{}` in the root{}", ident, lev_suggestion)
+                let msg = match module {
+                    ModuleOrUniformRoot::Module(module) => {
+                        let module_str = module_to_string(module);
+                        if let Some(module_str) = module_str {
+                            format!("no `{}` in `{}`{}", ident, module_str, lev_suggestion)
+                        } else {
+                            format!("no `{}` in the root{}", ident, lev_suggestion)
+                        }
+                    }
+                    ModuleOrUniformRoot::UniformRoot(_) => {
+                        if !ident.is_path_segment_keyword() {
+                            format!("no `{}` external crate{}", ident, lev_suggestion)
+                        } else {
+                            // HACK(eddyb) this shows up for `self` & `super`, which
+                            // should work instead - for now keep the same error message.
+                            format!("no `{}` in the root{}", ident, lev_suggestion)
+                        }
+                    }
                 };
                 Some((span, msg))
             } else {
@@ -868,26 +997,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
         }
 
-        if warn_if_binding_comes_from_local_crate {
-            let mut warned = false;
+        if module_path.len() <= 1 {
+            // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
+            // 2 segments, so the `resolve_path` above won't trigger it.
+            let mut full_path = module_path.clone();
+            full_path.push(ident);
             self.per_ns(|this, ns| {
-                let binding = match result[ns].get().ok() {
-                    Some(b) => b,
-                    None => return
-                };
-                if let NameBindingKind::Import { directive: d, .. } = binding.kind {
-                    if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
-                        return
-                    }
+                if let Ok(binding) = result[ns].get() {
+                    this.lint_if_path_starts_with_module(
+                        directive.crate_lint(),
+                        &full_path,
+                        directive.span,
+                        Some(binding),
+                    );
                 }
-                if warned {
-                    return
-                }
-                warned = true;
-                this.lint_path_starts_with_module(
-                    directive.root_id,
-                    directive.root_span,
-                );
             });
         }
 
@@ -904,7 +1027,15 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     }
 
     fn resolve_glob_import(&mut self, directive: &'b ImportDirective<'b>) {
-        let module = directive.imported_module.get().unwrap();
+        let module = match directive.imported_module.get().unwrap() {
+            ModuleOrUniformRoot::Module(module) => module,
+            ModuleOrUniformRoot::UniformRoot(_) => {
+                self.session.span_err(directive.span,
+                    "cannot glob-import all possible crates");
+                return;
+            }
+        };
+
         self.populate_module_if_necessary(module);
 
         if let Some(Def::Trait(_)) = module.def() {
@@ -1026,8 +1157,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                             };
                             let mut err = self.session.struct_span_err(binding.span, &msg);
 
-                            let imported_module = directive.imported_module.get()
-                                .expect("module should exist");
+                            let imported_module = match directive.imported_module.get() {
+                                Some(ModuleOrUniformRoot::Module(module)) => module,
+                                _ => bug!("module should exist"),
+                            };
                             let resolutions = imported_module.parent.expect("parent should exist")
                                 .resolutions.borrow();
                             let enum_path_segment_index = directive.module_path.len() - 1;

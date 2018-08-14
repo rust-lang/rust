@@ -17,7 +17,7 @@ use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
-use {PerNS, Resolver, ResolverArenas};
+use {ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -113,16 +113,24 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
     }
 
-    fn build_reduced_graph_for_use_tree(&mut self,
-                                        root_use_tree: &ast::UseTree,
-                                        root_id: NodeId,
-                                        use_tree: &ast::UseTree,
-                                        id: NodeId,
-                                        vis: ty::Visibility,
-                                        prefix: &ast::Path,
-                                        nested: bool,
-                                        item: &Item,
-                                        expansion: Mark) {
+    fn build_reduced_graph_for_use_tree(
+        &mut self,
+        root_use_tree: &ast::UseTree,
+        root_id: NodeId,
+        use_tree: &ast::UseTree,
+        id: NodeId,
+        vis: ty::Visibility,
+        prefix: &ast::Path,
+        mut uniform_paths_canary_emitted: bool,
+        nested: bool,
+        item: &Item,
+        expansion: Mark,
+    ) {
+        debug!("build_reduced_graph_for_use_tree(prefix={:?}, \
+                uniform_paths_canary_emitted={}, \
+                use_tree={:?}, nested={})",
+               prefix, uniform_paths_canary_emitted, use_tree, nested);
+
         let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
         let path = &use_tree.prefix;
 
@@ -130,6 +138,103 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             .chain(path.segments.iter())
             .map(|seg| seg.ident)
             .collect();
+
+        debug!("build_reduced_graph_for_use_tree: module_path={:?}", module_path);
+
+        // `#[feature(uniform_paths)]` allows an unqualified import path,
+        // e.g. `use x::...;` to resolve not just globally (`use ::x::...;`)
+        // but also relatively (`use self::x::...;`). To catch ambiguities
+        // that might arise from both of these being available and resolution
+        // silently picking one of them, an artificial `use self::x as _;`
+        // import is injected as a "canary", and an error is emitted if it
+        // successfully resolves while an `x` external crate exists.
+        //
+        // For each block scope around the `use` item, one special canary
+        // import of the form `use x as _;` is also injected, having its
+        // parent set to that scope; `resolve_imports` will only resolve
+        // it within its appropriate scope; if any of them successfully
+        // resolve, an ambiguity error is emitted, since the original
+        // import can't see the item in the block scope (`self::x` only
+        // looks in the enclosing module), but a non-`use` path could.
+        //
+        // Additionally, the canary might be able to catch limitations of the
+        // current implementation, where `::x` may be chosen due to `self::x`
+        // not existing, but `self::x` could appear later, from macro expansion.
+        //
+        // NB. The canary currently only errors if the `x::...` path *could*
+        // resolve as a relative path through the extern crate, i.e. `x` is
+        // in `extern_prelude`, *even though* `::x` might still forcefully
+        // load a non-`extern_prelude` crate.
+        // While always producing an ambiguity errors if `self::x` exists and
+        // a crate *could* be loaded, would be more conservative, imports for
+        // local modules named `test` (or less commonly, `syntax` or `log`),
+        // would need to be qualified (e.g. `self::test`), which is considered
+        // ergonomically unacceptable.
+        let emit_uniform_paths_canary =
+            !uniform_paths_canary_emitted &&
+            module_path.get(0).map_or(false, |ident| {
+                !ident.is_path_segment_keyword()
+            });
+        if emit_uniform_paths_canary {
+            // Relative paths should only get here if the feature-gate is on.
+            assert!(self.session.rust_2018() &&
+                    self.session.features_untracked().uniform_paths);
+
+            let source = module_path[0];
+            // Helper closure to emit a canary with the given base path.
+            let emit = |this: &mut Self, base: Option<Ident>| {
+                let subclass = SingleImport {
+                    target: Ident {
+                        name: keywords::Underscore.name().gensymed(),
+                        span: source.span,
+                    },
+                    source,
+                    result: PerNS {
+                        type_ns: Cell::new(Err(Undetermined)),
+                        value_ns: Cell::new(Err(Undetermined)),
+                        macro_ns: Cell::new(Err(Undetermined)),
+                    },
+                    type_ns_only: false,
+                };
+                this.add_import_directive(
+                    base.into_iter().collect(),
+                    subclass.clone(),
+                    source.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    ty::Visibility::Invisible,
+                    expansion,
+                    true, // is_uniform_paths_canary
+                );
+            };
+
+            // A single simple `self::x` canary.
+            emit(self, Some(Ident {
+                name: keywords::SelfValue.name(),
+                span: source.span,
+            }));
+
+            // One special unprefixed canary per block scope around
+            // the import, to detect items unreachable by `self::x`.
+            let orig_current_module = self.current_module;
+            let mut span = source.span.modern();
+            loop {
+                match self.current_module.kind {
+                    ModuleKind::Block(..) => emit(self, None),
+                    ModuleKind::Def(..) => break,
+                }
+                match self.hygienic_lexical_parent(self.current_module, &mut span) {
+                    Some(module) => {
+                        self.current_module = module;
+                    }
+                    None => break,
+                }
+            }
+            self.current_module = orig_current_module;
+
+            uniform_paths_canary_emitted = true;
+        }
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -142,8 +247,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if source.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let last_segment = *module_path.last().unwrap();
-                        if last_segment.name == keywords::CrateRoot.name() {
+                        let empty_prefix = module_path.last().map_or(true, |ident| {
+                            ident.name == keywords::CrateRoot.name()
+                        });
+                        if empty_prefix {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -154,10 +261,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         }
 
                         // Replace `use foo::self;` with `use foo;`
-                        let _ = module_path.pop();
-                        source = last_segment;
+                        source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = last_segment;
+                            ident = source;
                         }
                     }
                 } else {
@@ -169,13 +275,23 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
 
                     // Disallow `use $crate;`
-                    if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
+                    if source.name == keywords::DollarCrate.name() && module_path.is_empty() {
                         let crate_root = self.resolve_crate_root(source);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
                         };
-                        source.name = crate_name;
+                        // HACK(eddyb) unclear how good this is, but keeping `$crate`
+                        // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
+                        // while the current crate doesn't have a valid `crate_name`.
+                        if crate_name != keywords::Invalid.name() {
+                            // `crate_name` should not be interpreted as relative.
+                            module_path.push(Ident {
+                                name: keywords::CrateRoot.name(),
+                                span: source.span,
+                            });
+                            source.name = crate_name;
+                        }
                         if rename.is_none() {
                             ident.name = crate_name;
                         }
@@ -185,6 +301,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                    will become a hard error in a future release")
                             .emit();
                     }
+                }
+
+                if ident.name == keywords::Crate.name() {
+                    self.session.span_err(ident.span,
+                        "crate root imports need to be explicitly named: \
+                         `use crate as name;`");
                 }
 
                 let subclass = SingleImport {
@@ -206,6 +328,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id,
                     vis,
                     expansion,
+                    false, // is_uniform_paths_canary
                 );
             }
             ast::UseTreeKind::Glob => {
@@ -222,6 +345,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id,
                     vis,
                     expansion,
+                    false, // is_uniform_paths_canary
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -256,7 +380,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        root_use_tree, root_id, tree, id, vis, &prefix, true, item, expansion
+                        root_use_tree,
+                        root_id,
+                        tree,
+                        id,
+                        vis,
+                        &prefix,
+                        uniform_paths_canary_emitted,
+                        true,
+                        item,
+                        expansion,
                     );
                 }
             }
@@ -272,14 +405,32 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         match item.node {
             ItemKind::Use(ref use_tree) => {
+                let uniform_paths =
+                    self.session.rust_2018() &&
+                    self.session.features_untracked().uniform_paths;
                 // Imports are resolved as global by default, add starting root segment.
+                let root = if !uniform_paths {
+                    use_tree.prefix.make_root()
+                } else {
+                    // Except when `#![feature(uniform_paths)]` is on.
+                    None
+                };
                 let prefix = ast::Path {
-                    segments: use_tree.prefix.make_root().into_iter().collect(),
+                    segments: root.into_iter().collect(),
                     span: use_tree.span,
                 };
 
                 self.build_reduced_graph_for_use_tree(
-                    use_tree, item.id, use_tree, item.id, vis, &prefix, false, item, expansion,
+                    use_tree,
+                    item.id,
+                    use_tree,
+                    item.id,
+                    vis,
+                    &prefix,
+                    false, // uniform_paths_canary_emitted
+                    false,
+                    item,
+                    expansion,
                 );
             }
 
@@ -299,7 +450,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_id: item.id,
                     id: item.id,
                     parent,
-                    imported_module: Cell::new(Some(module)),
+                    imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
                     root_span: item.span,
                     span: item.span,
@@ -307,6 +458,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     vis: Cell::new(vis),
                     expansion,
                     used: Cell::new(used),
+                    is_uniform_paths_canary: false,
                 });
                 self.potentially_unused_imports.push(directive);
                 let imported_binding = self.import(binding, directive);
@@ -701,7 +853,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             root_id: item.id,
             id: item.id,
             parent: graph_root,
-            imported_module: Cell::new(Some(module)),
+            imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             root_span: span,
             span,
@@ -709,6 +861,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
             expansion,
             used: Cell::new(false),
+            is_uniform_paths_canary: false,
         });
 
         if let Some(span) = legacy_imports.import_all {
@@ -721,7 +874,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
-                let result = self.resolve_ident_in_module(module, ident, MacroNS, false, span);
+                let result = self.resolve_ident_in_module(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    MacroNS,
+                    false,
+                    span,
+                );
                 if let Ok(binding) = result {
                     let directive = macro_use_directive(span);
                     self.potentially_unused_imports.push(directive);
