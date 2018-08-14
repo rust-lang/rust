@@ -266,6 +266,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box serde_api::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
+    reg.register_early_lint_pass(box utils::internal_lints::DefaultHashTypes::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);
     reg.register_late_lint_pass(box utils::author::Pass);
     reg.register_late_lint_pass(box types::TypePass);
@@ -467,6 +468,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_lint_group("clippy_internal", vec![
         utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         utils::internal_lints::LINT_WITHOUT_LINT_PASS,
+        utils::internal_lints::DEFAULT_HASH_TYPES,
     ]);
 
     reg.register_lint_group("clippy", vec![

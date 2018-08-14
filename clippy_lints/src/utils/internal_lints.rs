@@ -3,9 +3,10 @@ use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::utils::{match_qpath, paths, span_lint};
+use rustc_data_structures::fx::FxHashMap;
+use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
 use syntax::symbol::LocalInternedString;
-use syntax::ast::{Crate as AstCrate, ItemKind, Name};
+use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use syntax::codemap::Span;
 use std::collections::{HashMap, HashSet};
 
@@ -51,6 +52,18 @@ declare_clippy_lint! {
     pub LINT_WITHOUT_LINT_PASS,
     internal,
     "declaring a lint without associating it in a LintPass"
+}
+
+
+/// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
+/// and recommends the FxHash* variants.
+///
+/// **Why is this bad?** The FxHash variants have better performance
+/// and we don't need any collision prevention in clippy.
+declare_clippy_lint! {
+    pub DEFAULT_HASH_TYPES,
+    internal,
+    "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
 
 
@@ -205,5 +218,36 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.cx.tcx.hir)
+    }
+}
+
+
+
+pub struct DefaultHashTypes {
+    map: FxHashMap<String, String>,
+}
+
+impl DefaultHashTypes {
+    pub fn default() -> Self {
+        let mut map = FxHashMap::default();
+        map.insert("HashMap".to_owned(), "FxHashMap".to_owned());
+        map.insert("HashSet".to_owned(), "FxHashSet".to_owned());
+        Self { map }
+    }
+}
+
+impl LintPass for DefaultHashTypes {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(DEFAULT_HASH_TYPES)
+    }
+}
+
+impl EarlyLintPass for DefaultHashTypes {
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
+        let ident_string = ident.to_string();
+        if let Some(replace) = self.map.get(&ident_string) {
+            let msg = format!("Prefer {} over {}, it has better performance and we don't need any collision prevention in clippy", replace, ident_string);
+            span_lint_and_sugg(cx, DEFAULT_HASH_TYPES, ident.span, &msg, "use", replace.to_owned());
+        }
     }
 }
