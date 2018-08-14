@@ -770,17 +770,17 @@ match x {
 "##,
 
 E0411: r##"
-The `Self` keyword was used outside an impl or a trait.
+The `Self` keyword was used outside an impl, trait, or type definition.
 
 Erroneous code example:
 
 ```compile_fail,E0411
-<Self>::foo; // error: use of `Self` outside of an impl or trait
+<Self>::foo; // error: use of `Self` outside of an impl, trait, or type definition
 ```
 
 The `Self` keyword represents the current type, which explains why it can only
-be used inside an impl or a trait. It gives access to the associated items of a
-type:
+be used inside an impl, trait, or type definition. It gives access to the
+associated items of a type:
 
 ```
 trait Foo {

@@ -2977,7 +2977,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
                 err.code(DiagnosticId::Error("E0411".into()));
-                err.span_label(span, "`Self` is only available in traits and impls");
+                err.span_label(span, "`Self` is only available in traits, impls, and type definitions");
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
