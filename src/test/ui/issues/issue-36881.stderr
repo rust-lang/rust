@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `issue_36881_aux`
+  --> $DIR/issue-36881.rs:16:9
+   |
+LL |     use issue_36881_aux::Foo; //~ ERROR unresolved import
+   |         ^^^^^^^^^^^^^^^ Maybe a missing `extern crate issue_36881_aux;`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

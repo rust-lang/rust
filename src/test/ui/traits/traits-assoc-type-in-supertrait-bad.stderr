@@ -1,0 +1,12 @@
+error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as std::iter::Iterator>::Item == u32`
+  --> $DIR/traits-assoc-type-in-supertrait-bad.rs:21:6
+   |
+LL | impl Foo for IntoIter<i32> { //~ ERROR type mismatch
+   |      ^^^ expected i32, found u32
+   |
+   = note: expected type `i32`
+              found type `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

@@ -1,0 +1,9 @@
+error[E0243]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/tag-type-args.rs:15:11
+   |
+LL | fn foo(c: quux) { assert!((false)); }
+   |           ^^^^ expected 1 type argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0243`.

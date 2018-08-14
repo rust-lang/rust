@@ -1,0 +1,112 @@
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:128:24
+   |
+LL |         use bar::baz::{foo, bar};
+   |                        ^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:128:29
+   |
+LL |         use bar::baz::{foo, bar};
+   |                             ^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:137:13
+   |
+LL |         use bar::baz;
+   |             ^^^^^^^^
+
+error[E0603]: module `i` is private
+  --> $DIR/privacy1.rs:161:9
+   |
+LL |     use self::foo::i::A; //~ ERROR: module `i` is private
+   |         ^^^^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:100:9
+   |
+LL |         ::bar::baz::A::foo();   //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:101:9
+   |
+LL |         ::bar::baz::A::bar();   //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:103:9
+   |
+LL |         ::bar::baz::A.foo2();   //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:104:9
+   |
+LL |         ::bar::baz::A.bar2();   //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^
+
+error[E0603]: trait `B` is private
+  --> $DIR/privacy1.rs:108:9
+   |
+LL |         ::bar::B::foo();        //~ ERROR: trait `B` is private
+   |         ^^^^^^^^^^^^^
+
+error[E0603]: function `epriv` is private
+  --> $DIR/privacy1.rs:114:13
+   |
+LL |             ::bar::epriv(); //~ ERROR: function `epriv` is private
+   |             ^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:123:9
+   |
+LL |         ::bar::baz::foo(); //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:124:9
+   |
+LL |         ::bar::baz::bar(); //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^^^
+
+error[E0603]: trait `B` is private
+  --> $DIR/privacy1.rs:153:10
+   |
+LL |     impl ::bar::B for f32 { fn foo() -> f32 { 1.0 } }
+   |          ^^^^^^^^
+
+error[E0624]: method `bar` is private
+  --> $DIR/privacy1.rs:73:9
+   |
+LL |         self::baz::A::bar(); //~ ERROR: method `bar` is private
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0624]: method `bar` is private
+  --> $DIR/privacy1.rs:91:5
+   |
+LL |     bar::A::bar(); //~ ERROR: method `bar` is private
+   |     ^^^^^^^^^^^
+
+error[E0624]: method `bar` is private
+  --> $DIR/privacy1.rs:98:9
+   |
+LL |         ::bar::A::bar();        //~ ERROR: method `bar` is private
+   |         ^^^^^^^^^^^^^
+
+error[E0624]: method `bar` is private
+  --> $DIR/privacy1.rs:101:9
+   |
+LL |         ::bar::baz::A::bar();   //~ ERROR: module `baz` is private
+   |         ^^^^^^^^^^^^^^^^^^
+
+error[E0624]: method `bar2` is private
+  --> $DIR/privacy1.rs:104:23
+   |
+LL |         ::bar::baz::A.bar2();   //~ ERROR: module `baz` is private
+   |                       ^^^^
+
+error: aborting due to 18 previous errors
+
+Some errors occurred: E0603, E0624.
+For more information about an error, try `rustc --explain E0603`.

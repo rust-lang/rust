@@ -1,0 +1,21 @@
+error[E0369]: binary operation `==` cannot be applied to type `fn() {main::f}`
+  --> $DIR/fn-compare-mismatch.rs:14:13
+   |
+LL |     let x = f == g;
+   |             ^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `fn() {main::f}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-compare-mismatch.rs:14:18
+   |
+LL |     let x = f == g;
+   |                  ^ expected fn item, found a different fn item
+   |
+   = note: expected type `fn() {main::f}`
+              found type `fn() {main::g}`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

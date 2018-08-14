@@ -1,0 +1,26 @@
+error: expected one of `)`, `,`, or `::`, found `(`
+  --> $DIR/malformed-derive-entry.rs:11:14
+   |
+LL | #[derive(Copy(Bad))]
+   |              ^ expected one of `)`, `,`, or `::` here
+
+error: expected one of `)`, `,`, or `::`, found `=`
+  --> $DIR/malformed-derive-entry.rs:15:14
+   |
+LL | #[derive(Copy="bad")]
+   |              ^ expected one of `)`, `,`, or `::` here
+
+warning: empty trait list in `derive`
+  --> $DIR/malformed-derive-entry.rs:19:1
+   |
+LL | #[derive()]
+   | ^^^^^^^^^^^
+
+warning: empty trait list in `derive`
+  --> $DIR/malformed-derive-entry.rs:23:1
+   |
+LL | #[derive]
+   | ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,9 @@
+error[E0573]: expected type, found module `a`
+  --> $DIR/trait-impl-for-module.rs:17:12
+   |
+LL | impl A for a { //~ ERROR expected type, found module
+   |            ^ did you mean `A`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0573`.

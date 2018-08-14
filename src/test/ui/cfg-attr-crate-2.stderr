@@ -1,0 +1,11 @@
+error[E0658]: no_core is experimental (see issue #29639)
+  --> $DIR/cfg-attr-crate-2.rs:15:21
+   |
+LL | #![cfg_attr(broken, no_core)] //~ ERROR no_core is experimental
+   |                     ^^^^^^^^
+   |
+   = help: add #![feature(no_core)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

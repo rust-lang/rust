@@ -1,0 +1,54 @@
+warning: not reporting region error due to nll
+  --> $DIR/wf-static-method.rs:27:9
+   |
+LL |         u //~ ERROR E0312
+   |         ^
+
+warning: not reporting region error due to nll
+  --> $DIR/wf-static-method.rs:36:18
+   |
+LL |         let me = Self::make_me(); //~ ERROR lifetime bound not satisfied
+   |                  ^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/wf-static-method.rs:43:9
+   |
+LL |         u //~ ERROR E0312
+   |         ^
+
+warning: not reporting region error due to nll
+  --> $DIR/wf-static-method.rs:51:5
+   |
+LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/wf-static-method.rs:55:5
+   |
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/wf-static-method.rs:27:9
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |         u //~ ERROR E0312
+   |         ^ return requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/wf-static-method.rs:43:9
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     fn inherent_evil(u: &'b u32) -> &'a u32 {
+LL |         u //~ ERROR E0312
+   |         ^ return requires that `'b` must outlive `'a`
+
+error: aborting due to 2 previous errors
+

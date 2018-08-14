@@ -1,0 +1,20 @@
+error[E0277]: `F` cannot be sent between threads safely
+  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:15:1
+   |
+LL | / fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+LL | |     //~^ ERROR `F` cannot be sent between threads safely
+LL | |     return X { field: blk };
+LL | | }
+   | |_^ `F` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `F`
+   = help: consider adding a `where F: std::marker::Send` bound
+note: required by `X`
+  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:11:1
+   |
+LL | struct X<F> where F: FnOnce() + 'static + Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

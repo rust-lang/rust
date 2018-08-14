@@ -1,0 +1,18 @@
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits2.rs:22:5
+   |
+LL |     128 > bar() //~ ERROR comparison is useless due to type limits
+   |     ^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-D unused-comparisons`
+
+warning: literal out of range for i8
+  --> $DIR/lint-type-limits2.rs:22:5
+   |
+LL |     128 > bar() //~ ERROR comparison is useless due to type limits
+   |     ^^^
+   |
+   = note: #[warn(overflowing_literals)] on by default
+
+error: aborting due to previous error
+

@@ -1,0 +1,66 @@
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:22:7
+   |
+LL |       5 ... 6 => { }
+   |       ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-range-fail-dominate.rs:17:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:28:7
+   |
+LL |       4 ... 6 => { }
+   |       ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:34:7
+   |
+LL |       4 ... 6 => { }
+   |       ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:40:7
+   |
+LL |       'a' ... 'z' => {}
+   |       ^^^^^^^^^^^
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range-fail-dominate.rs:45:7
+   |
+LL |       0.01f64 ... 6.5f64 => {}
+   |       ^^^^^^^
+   |
+   = note: #[warn(illegal_floating_point_literal_pattern)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range-fail-dominate.rs:45:19
+   |
+LL |       0.01f64 ... 6.5f64 => {}
+   |                   ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range-fail-dominate.rs:46:7
+   |
+LL |       0.02f64 => {}
+   |       ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:46:7
+   |
+LL |       0.02f64 => {}
+   |       ^^^^^^^
+
+error: aborting due to 5 previous errors
+

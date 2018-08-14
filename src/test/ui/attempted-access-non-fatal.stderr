@@ -1,0 +1,15 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:14:15
+   |
+LL |     let _ = x.foo; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
+   |               ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:15:15
+   |
+LL |     let _ = x.bar; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
+   |               ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

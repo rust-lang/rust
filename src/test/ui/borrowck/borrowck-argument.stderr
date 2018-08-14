@@ -1,0 +1,35 @@
+error[E0596]: cannot borrow immutable argument `arg` as mutable
+  --> $DIR/borrowck-argument.rs:20:5
+   |
+LL | fn func(arg: S) {
+   |         --- consider changing this to `mut arg`
+LL |     arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |     ^^^ cannot borrow mutably
+
+error[E0596]: cannot borrow immutable argument `arg` as mutable
+  --> $DIR/borrowck-argument.rs:25:9
+   |
+LL |     fn method(&self, arg: S) {
+   |                      --- consider changing this to `mut arg`
+LL |         arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |         ^^^ cannot borrow mutably
+
+error[E0596]: cannot borrow immutable argument `arg` as mutable
+  --> $DIR/borrowck-argument.rs:31:9
+   |
+LL |     fn default(&self, arg: S) {
+   |                       --- consider changing this to `mut arg`
+LL |         arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |         ^^^ cannot borrow mutably
+
+error[E0596]: cannot borrow immutable argument `arg` as mutable
+  --> $DIR/borrowck-argument.rs:42:17
+   |
+LL |     (|arg: S| { arg.mutate() })(s); //~ ERROR: cannot borrow immutable argument
+   |       ---       ^^^ cannot borrow mutably
+   |       |
+   |       consider changing this to `mut arg`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

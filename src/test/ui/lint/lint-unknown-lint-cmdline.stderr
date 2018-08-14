@@ -1,0 +1,7 @@
+error[E0602]: unknown lint: `bogus`
+   |
+   = note: requested on the command line with `-D bogus`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0602`.

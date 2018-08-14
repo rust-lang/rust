@@ -1,0 +1,21 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-free-region-ordering-incorrect.rs:27:15
+   |
+LL |       None => &self.val //~ ERROR cannot infer
+   |               ^^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-free-region-ordering-incorrect.rs:25:5
+   |
+LL |   impl<'b, T> Node<'b, T> {
+   |        -- lifetime `'b` defined here
+LL |     fn get<'a>(&'a self) -> &'b T {
+   |            -- lifetime `'a` defined here
+LL | /     match self.next {
+LL | |       Some(ref next) => next.get(),
+LL | |       None => &self.val //~ ERROR cannot infer
+LL | |     }
+   | |_____^ requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

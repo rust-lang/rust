@@ -1,0 +1,36 @@
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/empty-struct-tuple-pat.rs:32:9
+   |
+LL | struct Empty2();
+   | ---------------- a tuple struct `Empty2` is defined here
+...
+LL |         Empty2 => () //~ ERROR match bindings cannot shadow tuple structs
+   |         ^^^^^^ cannot be named the same as a tuple struct
+
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/empty-struct-tuple-pat.rs:35:9
+   |
+LL | use empty_struct::*;
+   |     --------------- a tuple struct `XEmpty6` is imported here
+...
+LL |         XEmpty6 => () //~ ERROR match bindings cannot shadow tuple structs
+   |         ^^^^^^^ cannot be named the same as a tuple struct
+
+error[E0532]: expected unit struct/variant or constant, found tuple variant `E::Empty4`
+  --> $DIR/empty-struct-tuple-pat.rs:39:9
+   |
+LL |         E::Empty4 => ()
+   |         ^^^^^^^^^ not a unit struct/variant or constant
+
+error[E0532]: expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
+  --> $DIR/empty-struct-tuple-pat.rs:43:9
+   |
+LL |         XE::XEmpty5 => (),
+   |         ^^^^-------
+   |             |
+   |             did you mean `XEmpty4`?
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0530, E0532.
+For more information about an error, try `rustc --explain E0530`.

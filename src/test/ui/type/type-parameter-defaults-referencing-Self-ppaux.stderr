@@ -1,0 +1,24 @@
+error[E0620]: cast to unsized type: `i32` as `dyn MyAdd<i32>`
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:24:13
+   |
+LL |     let y = x as MyAdd<i32>;
+   |             ^^^^^^^^^^^^^^^
+   |
+help: consider using a box or reference as appropriate
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:24:13
+   |
+LL |     let y = x as MyAdd<i32>;
+   |             ^
+
+error[E0038]: the trait `MyAdd` cannot be made into an object
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:24:18
+   |
+LL |     let y = x as MyAdd<i32>;
+   |                  ^^^^^^^^^^ the trait `MyAdd` cannot be made into an object
+   |
+   = note: method `add` references the `Self` type in its arguments or return type
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0038, E0620.
+For more information about an error, try `rustc --explain E0038`.

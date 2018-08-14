@@ -1,0 +1,47 @@
+error[E0208]: [+, +]
+  --> $DIR/variance-types-bounds.rs:17:1
+   |
+LL | / struct TestImm<A, B> { //~ ERROR [+, +]
+LL | |     x: A,
+LL | |     y: B,
+LL | | }
+   | |_^
+
+error[E0208]: [+, o]
+  --> $DIR/variance-types-bounds.rs:23:1
+   |
+LL | / struct TestMut<A, B:'static> { //~ ERROR [+, o]
+LL | |     x: A,
+LL | |     y: &'static mut B,
+LL | | }
+   | |_^
+
+error[E0208]: [+, o]
+  --> $DIR/variance-types-bounds.rs:29:1
+   |
+LL | / struct TestIndirect<A:'static, B:'static> { //~ ERROR [+, o]
+LL | |     m: TestMut<A, B>
+LL | | }
+   | |_^
+
+error[E0208]: [o, o]
+  --> $DIR/variance-types-bounds.rs:34:1
+   |
+LL | / struct TestIndirect2<A:'static, B:'static> { //~ ERROR [o, o]
+LL | |     n: TestMut<A, B>,
+LL | |     m: TestMut<B, A>
+LL | | }
+   | |_^
+
+error[E0208]: [o, o]
+  --> $DIR/variance-types-bounds.rs:48:1
+   |
+LL | / struct TestObject<A, R> { //~ ERROR [o, o]
+LL | |     n: Box<Setter<A>+Send>,
+LL | |     m: Box<Getter<R>+Send>,
+LL | | }
+   | |_^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0208`.

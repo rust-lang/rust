@@ -1,0 +1,4 @@
+error: empty library name given via `-l`
+
+error: aborting due to previous error
+

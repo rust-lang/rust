@@ -1,0 +1,22 @@
+error[E0075]: SIMD vector cannot be empty
+  --> $DIR/simd-type.rs:14:1
+   |
+LL | struct empty; //~ ERROR SIMD vector cannot be empty
+   | ^^^^^^^^^^^^^
+
+error[E0076]: SIMD vector should be homogeneous
+  --> $DIR/simd-type.rs:17:1
+   |
+LL | struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ SIMD elements must have the same type
+
+error[E0077]: SIMD vector element type should be machine type
+  --> $DIR/simd-type.rs:20:1
+   |
+LL | struct int4(isize, isize, isize, isize); //~ ERROR SIMD vector element type should be machine type
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0075, E0076, E0077.
+For more information about an error, try `rustc --explain E0075`.

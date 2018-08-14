@@ -1,0 +1,35 @@
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/utf8_idents.rs:13:5
+   |
+LL |     'β, //~ ERROR non-ascii idents are not fully supported
+   |     ^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/utf8_idents.rs:14:5
+   |
+LL |     γ  //~ ERROR non-ascii idents are not fully supported
+   |     ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/utf8_idents.rs:18:5
+   |
+LL |     δ: usize //~ ERROR non-ascii idents are not fully supported
+   |     ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/utf8_idents.rs:22:9
+   |
+LL |     let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
+   |         ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,9 @@
+error[E0383]: partial reinitialization of uninitialized structure `x.0`
+  --> $DIR/borrowck-partial-reinit-4.rs:27:5
+   |
+LL |     (x.0).0 = Some(Test);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0383`.

@@ -1,0 +1,60 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-param-into-object.rs:16:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-param-into-object.rs:22:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-param-into-object.rs:28:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-param-into-object.rs:34:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:16:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:22:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:28:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:34:5
+   |
+LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

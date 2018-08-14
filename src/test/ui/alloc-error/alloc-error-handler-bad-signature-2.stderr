@@ -1,0 +1,14 @@
+error: return type should be `!`
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:22:3
+   |
+LL | ) { //~ ERROR return type should be `!`
+   |   ^
+
+error: argument should be `Layout`
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:21:11
+   |
+LL |     info: Layout, //~ ERROR argument should be `Layout`
+   |           ^^^^^^
+
+error: aborting due to 2 previous errors
+

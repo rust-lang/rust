@@ -1,0 +1,20 @@
+error[E0574]: expected struct, variant or union type, found type parameter `T`
+  --> $DIR/lexical-scopes.rs:13:13
+   |
+LL |     let t = T { i: 0 }; //~ ERROR expected struct, variant or union type, found type parameter `T`
+   |             ^ not a struct, variant or union type
+help: possible better candidate is found in another module, you can import it into scope
+   |
+LL | use T;
+   |
+
+error[E0599]: no function or associated item named `f` found for type `Foo` in the current scope
+  --> $DIR/lexical-scopes.rs:20:5
+   |
+LL |     Foo::f(); //~ ERROR no function or associated item named `f`
+   |     ^^^^^^ function or associated item not found in `Foo`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0574, E0599.
+For more information about an error, try `rustc --explain E0574`.

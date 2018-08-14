@@ -1,0 +1,9 @@
+error[E0578]: cannot find module or enum `foo` in the crate root
+  --> $DIR/issue-28388-1.rs:13:5
+   |
+LL | use foo::{}; //~ ERROR cannot find module or enum `foo` in the crate root
+   |     ^^^ not found in the crate root
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0578`.

@@ -1,0 +1,8 @@
+error: no rules expected the token `@`
+  --> $DIR/fail-simple.rs:12:12
+   |
+LL |     panic!(@); //~ ERROR no rules expected the token `@`
+   |            ^
+
+error: aborting due to previous error
+

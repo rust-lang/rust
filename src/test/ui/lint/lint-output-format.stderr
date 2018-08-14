@@ -1,0 +1,27 @@
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-output-format.rs:16:1
+   |
+LL | extern crate lint_output_format; //~ ERROR use of unstable library feature
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-output-format.rs:17:31
+   |
+LL | use lint_output_format::{foo, bar}; //~ ERROR use of unstable library feature
+   |                               ^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-output-format.rs:21:14
+   |
+LL |     let _y = bar(); //~ ERROR use of unstable library feature
+   |              ^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

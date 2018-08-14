@@ -1,0 +1,20 @@
+error: unreachable pattern
+  --> $DIR/match-vec-fixed.rs:17:9
+   |
+LL |         [_, _, _] => {} //~ ERROR unreachable pattern
+   |         ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-vec-fixed.rs:11:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-vec-fixed.rs:21:9
+   |
+LL |         [_, 1, _] => {} //~ ERROR unreachable pattern
+   |         ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

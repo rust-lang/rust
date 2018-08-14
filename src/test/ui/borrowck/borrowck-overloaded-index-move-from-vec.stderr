@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of indexed content
+  --> $DIR/borrowck-overloaded-index-move-from-vec.rs:30:15
+   |
+LL |     let bad = v[0];
+   |               ^^^^
+   |               |
+   |               cannot move out of indexed content
+   |               help: consider using a reference instead: `&v[0]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

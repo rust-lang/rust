@@ -1,0 +1,58 @@
+error[E0253]: `foo` is not directly importable
+  --> $DIR/use-from-trait-xc.rs:15:5
+   |
+LL | use use_from_trait_xc::Trait::foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+
+error[E0253]: `Assoc` is not directly importable
+  --> $DIR/use-from-trait-xc.rs:18:5
+   |
+LL | use use_from_trait_xc::Trait::Assoc;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+
+error[E0253]: `CONST` is not directly importable
+  --> $DIR/use-from-trait-xc.rs:21:5
+   |
+LL | use use_from_trait_xc::Trait::CONST;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+
+error[E0432]: unresolved import `use_from_trait_xc::Foo`
+  --> $DIR/use-from-trait-xc.rs:24:24
+   |
+LL | use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
+   |                        ^^^ Not a module `Foo`
+
+error[E0432]: unresolved import `use_from_trait_xc::Foo`
+  --> $DIR/use-from-trait-xc.rs:27:24
+   |
+LL | use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
+   |                        ^^^ Not a module `Foo`
+
+error[E0432]: unresolved import `use_from_trait_xc::Bar`
+  --> $DIR/use-from-trait-xc.rs:30:24
+   |
+LL | use use_from_trait_xc::Bar::new as bnew;
+   |                        ^^^ Not a module `Bar`
+
+error[E0432]: unresolved import `use_from_trait_xc::Baz::new`
+  --> $DIR/use-from-trait-xc.rs:33:5
+   |
+LL | use use_from_trait_xc::Baz::new as baznew;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `Baz`
+
+error[E0603]: struct `Foo` is private
+  --> $DIR/use-from-trait-xc.rs:24:5
+   |
+LL | use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: struct `Foo` is private
+  --> $DIR/use-from-trait-xc.rs:27:5
+   |
+LL | use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0253, E0432, E0603.
+For more information about an error, try `rustc --explain E0253`.

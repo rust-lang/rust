@@ -1,0 +1,26 @@
+error[E0080]: referenced constant has errors
+  --> $DIR/const-err.rs:29:15
+   |
+LL | const FOO: u8 = [5u8][1];
+   |                 -------- index out of bounds: the len is 1 but the index is 1
+...
+LL |     black_box((FOO, FOO));
+   |               ^^^^^^^^^^
+
+error[E0080]: could not evaluate constant
+  --> $DIR/const-err.rs:29:15
+   |
+LL |     black_box((FOO, FOO));
+   |               ^^^^^^^^^^ referenced constant has errors
+
+error[E0080]: constant evaluation error
+  --> $DIR/const-err.rs:24:1
+   |
+LL | const FOO: u8 = [5u8][1];
+   | ^^^^^^^^^^^^^^^^--------^
+   |                 |
+   |                 index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

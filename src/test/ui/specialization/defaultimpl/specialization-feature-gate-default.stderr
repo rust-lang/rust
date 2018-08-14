@@ -1,0 +1,13 @@
+error[E0658]: specialization is unstable (see issue #31844)
+  --> $DIR/specialization-feature-gate-default.rs:17:1
+   |
+LL | / default impl<T> Foo for T { //~ ERROR specialization is unstable
+LL | |     fn foo(&self) {}
+LL | | }
+   | |_^
+   |
+   = help: add #![feature(specialization)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

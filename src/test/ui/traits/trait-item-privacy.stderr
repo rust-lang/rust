@@ -1,0 +1,176 @@
+error[E0599]: no method named `a` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:77:7
+   |
+LL | struct S;
+   | --------- method `a` not found for this
+...
+LL |     S.a(); //~ ERROR no method named `a` found for type `S` in the current scope
+   |       ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `a`, perhaps you need to implement it:
+           candidate #1: `method::A`
+
+error[E0599]: no method named `b` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:78:7
+   |
+LL | struct S;
+   | --------- method `b` not found for this
+...
+LL |     S.b(); //~ ERROR no method named `b` found for type `S` in the current scope
+   |       ^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use method::B;
+   |
+
+error[E0624]: method `a` is private
+  --> $DIR/trait-item-privacy.rs:82:7
+   |
+LL |     c.a(); //~ ERROR method `a` is private
+   |       ^
+
+error[E0599]: no function or associated item named `a` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:88:5
+   |
+LL | struct S;
+   | --------- function or associated item `a` not found for this
+...
+LL |     S::a(&S);
+   |     ^^^^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `a`, perhaps you need to implement it:
+           candidate #1: `method::A`
+
+error[E0599]: no function or associated item named `b` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:90:5
+   |
+LL | struct S;
+   | --------- function or associated item `b` not found for this
+...
+LL |     S::b(&S);
+   |     ^^^^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use method::B;
+   |
+
+error[E0624]: method `a` is private
+  --> $DIR/trait-item-privacy.rs:94:5
+   |
+LL |     C::a(&S); //~ ERROR method `a` is private
+   |     ^^^^
+
+error[E0599]: no associated item named `A` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:107:5
+   |
+LL | struct S;
+   | --------- associated item `A` not found for this
+...
+LL |     S::A; //~ ERROR no associated item named `A` found for type `S` in the current scope
+   |     ^^^^ associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `A`, perhaps you need to implement it:
+           candidate #1: `assoc_const::A`
+
+error[E0599]: no associated item named `B` found for type `S` in the current scope
+  --> $DIR/trait-item-privacy.rs:108:5
+   |
+LL | struct S;
+   | --------- associated item `B` not found for this
+...
+LL |     S::B; //~ ERROR no associated item named `B` found for type `S` in the current scope
+   |     ^^^^ associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use assoc_const::B;
+   |
+
+error[E0624]: associated constant `A` is private
+  --> $DIR/trait-item-privacy.rs:111:5
+   |
+LL |     C::A; //~ ERROR associated constant `A` is private
+   |     ^^^^
+
+error[E0277]: the trait bound `dyn assoc_const::C: assoc_const::A` is not satisfied
+  --> $DIR/trait-item-privacy.rs:111:5
+   |
+LL |     C::A; //~ ERROR associated constant `A` is private
+   |     ^^^^ the trait `assoc_const::A` is not implemented for `dyn assoc_const::C`
+   |
+note: required by `assoc_const::A::A`
+  --> $DIR/trait-item-privacy.rs:35:9
+   |
+LL |         const A: u8 = 0;
+   |         ^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `dyn assoc_const::C: assoc_const::B` is not satisfied
+  --> $DIR/trait-item-privacy.rs:114:5
+   |
+LL |     C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
+   |     ^^^^ the trait `assoc_const::B` is not implemented for `dyn assoc_const::C`
+   |
+note: required by `assoc_const::B::B`
+  --> $DIR/trait-item-privacy.rs:39:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^^^^^^
+
+error[E0038]: the trait `assoc_const::C` cannot be made into an object
+  --> $DIR/trait-item-privacy.rs:111:5
+   |
+LL |     C::A; //~ ERROR associated constant `A` is private
+   |     ^^^^ the trait `assoc_const::C` cannot be made into an object
+   |
+   = note: the trait cannot contain associated consts like `C`
+   = note: the trait cannot contain associated consts like `B`
+   = note: the trait cannot contain associated consts like `A`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/trait-item-privacy.rs:127:12
+   |
+LL |     let _: S::A; //~ ERROR ambiguous associated type
+   |            ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::A`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/trait-item-privacy.rs:128:12
+   |
+LL |     let _: S::B; //~ ERROR ambiguous associated type
+   |            ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::B`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/trait-item-privacy.rs:129:12
+   |
+LL |     let _: S::C; //~ ERROR ambiguous associated type
+   |            ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::C`
+
+error: associated type `A` is private
+  --> $DIR/trait-item-privacy.rs:131:12
+   |
+LL |     let _: T::A; //~ ERROR associated type `A` is private
+   |            ^^^^
+
+error: associated type `A` is private
+  --> $DIR/trait-item-privacy.rs:140:9
+   |
+LL |         A = u8, //~ ERROR associated type `A` is private
+   |         ^^^^^^
+
+error: aborting due to 17 previous errors
+
+Some errors occurred: E0038, E0223, E0277, E0599, E0624.
+For more information about an error, try `rustc --explain E0038`.

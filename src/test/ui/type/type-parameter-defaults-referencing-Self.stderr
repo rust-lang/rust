@@ -1,0 +1,11 @@
+error[E0393]: the type parameter `T` must be explicitly specified
+  --> $DIR/type-parameter-defaults-referencing-Self.rs:20:12
+   |
+LL | fn foo(x: &Foo) { }
+   |            ^^^ missing reference to `T`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0393`.

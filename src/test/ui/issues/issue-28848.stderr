@@ -1,0 +1,20 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/issue-28848.rs:22:5
+   |
+LL |     Foo::<'a, 'b>::xmute(u) //~ ERROR lifetime bound not satisfied
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime 'b as defined on the function body at 21:16
+  --> $DIR/issue-28848.rs:21:16
+   |
+LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
+   |                ^^
+note: but lifetime parameter must outlive the lifetime 'a as defined on the function body at 21:12
+  --> $DIR/issue-28848.rs:21:12
+   |
+LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
+   |            ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0478`.

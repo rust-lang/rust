@@ -1,0 +1,12 @@
+error[E0282]: type annotations needed
+  --> $DIR/match-unresolved-one-arm.rs:14:9
+   |
+LL |     let x = match () { //~ ERROR type annotations needed
+   |         ^
+   |         |
+   |         cannot infer type
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

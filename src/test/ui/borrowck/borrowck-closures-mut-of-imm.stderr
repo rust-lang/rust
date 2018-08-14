@@ -1,0 +1,32 @@
+error[E0524]: two closures require unique access to `x` at the same time
+  --> $DIR/borrowck-closures-mut-of-imm.rs:25:14
+   |
+LL |     let c1 = || set(&mut *x);
+   |              --           - previous borrow occurs due to use of `x` in closure
+   |              |
+   |              first closure is constructed here
+LL |     //~^ ERROR cannot borrow
+LL |     let c2 = || set(&mut *x);
+   |              ^^           - borrow occurs due to use of `x` in closure
+   |              |
+   |              second closure is constructed here
+...
+LL | }
+   | - borrow from first closure ends here
+
+error[E0596]: cannot borrow immutable borrowed content `***x` as mutable
+  --> $DIR/borrowck-closures-mut-of-imm.rs:23:26
+   |
+LL |     let c1 = || set(&mut *x);
+   |                          ^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content `***x` as mutable
+  --> $DIR/borrowck-closures-mut-of-imm.rs:25:26
+   |
+LL |     let c2 = || set(&mut *x);
+   |                          ^^ cannot borrow as mutable
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0524, E0596.
+For more information about an error, try `rustc --explain E0524`.

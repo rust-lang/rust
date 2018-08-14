@@ -1,0 +1,20 @@
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/cannot-mutate-captured-non-mut-var.rs:23:25
+   |
+LL |     let x = 1;
+   |         - help: consider changing this to be mutable: `mut x`
+LL |     to_fn_once(move|| { x = 2; });
+   |                         ^^^^^ cannot assign
+
+error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
+  --> $DIR/cannot-mutate-captured-non-mut-var.rs:28:25
+   |
+LL |     let s = std::io::stdin();
+   |         - help: consider changing this to be mutable: `mut s`
+LL |     to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
+   |                         ^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

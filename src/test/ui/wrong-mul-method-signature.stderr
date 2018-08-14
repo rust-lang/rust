@@ -1,0 +1,30 @@
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:26:5
+   |
+LL |     fn mul(self, s: &f64) -> Vec1 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected f64, found &f64
+   |
+   = note: expected type `fn(Vec1, f64) -> Vec1`
+              found type `fn(Vec1, &f64) -> Vec1`
+
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:43:5
+   |
+LL |     fn mul(self, s: f64) -> Vec2 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found f64
+   |
+   = note: expected type `fn(Vec2, Vec2) -> f64`
+              found type `fn(Vec2, f64) -> Vec2`
+
+error[E0053]: method `mul` has an incompatible type for trait
+  --> $DIR/wrong-mul-method-signature.rs:62:5
+   |
+LL |     fn mul(self, s: f64) -> f64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found f64
+   |
+   = note: expected type `fn(Vec3, f64) -> i32`
+              found type `fn(Vec3, f64) -> f64`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

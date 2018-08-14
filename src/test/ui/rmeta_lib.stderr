@@ -1,0 +1,4 @@
+error: crate `rmeta_meta` required to be available in rlib format, but was not found in this form
+
+error: aborting due to previous error
+

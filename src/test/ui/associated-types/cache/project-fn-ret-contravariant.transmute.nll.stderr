@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/project-fn-ret-contravariant.rs:48:8
+   |
+LL |    bar(foo, x) //[transmute]~ ERROR E0495
+   |        ^^^
+
+error: borrowed data escapes outside of function
+  --> $DIR/project-fn-ret-contravariant.rs:48:4
+   |
+LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
+   |               - `x` is a reference that is only valid in the function body
+LL |    bar(foo, x) //[transmute]~ ERROR E0495
+   |    ^^^^^^^^^^^ `x` escapes the function body here
+
+error: aborting due to previous error
+

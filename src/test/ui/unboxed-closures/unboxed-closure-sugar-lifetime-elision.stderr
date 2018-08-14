@@ -1,0 +1,11 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/unboxed-closure-sugar-lifetime-elision.rs:36:35
+   |
+LL |     let _: Foo(&isize, &usize) -> &usize; //~ ERROR missing lifetime specifier
+   |                                   ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

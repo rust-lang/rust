@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/unreachable-loop-patterns.rs:18:9
+   |
+LL |     for _ in x {}
+   |         ^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-loop-patterns.rs:13:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

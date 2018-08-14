@@ -1,0 +1,10 @@
+error: compilation successful
+  --> $DIR/const-fn-stability-calls-3.rs:23:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     let x = foo(); // use outside a constant is ok
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

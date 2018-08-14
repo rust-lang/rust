@@ -1,0 +1,72 @@
+error: field is never used: `b`
+  --> $DIR/lint-dead-code-4.rs:17:5
+   |
+LL |     b: bool, //~ ERROR: field is never used
+   |     ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-4.rs:13:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: variant is never constructed: `X`
+  --> $DIR/lint-dead-code-4.rs:25:5
+   |
+LL |     X, //~ ERROR variant is never constructed
+   |     ^
+
+error: variant is never constructed: `Y`
+  --> $DIR/lint-dead-code-4.rs:26:5
+   |
+LL | /     Y { //~ ERROR variant is never constructed
+LL | |         a: String,
+LL | |         b: i32,
+LL | |         c: i32,
+LL | |     },
+   | |_____^
+
+error: enum is never used: `ABC`
+  --> $DIR/lint-dead-code-4.rs:34:1
+   |
+LL | enum ABC { //~ ERROR enum is never used
+   | ^^^^^^^^
+
+error: variant is never constructed: `I`
+  --> $DIR/lint-dead-code-4.rs:46:5
+   |
+LL |     I, //~ ERROR variant is never constructed
+   |     ^
+
+error: field is never used: `b`
+  --> $DIR/lint-dead-code-4.rs:49:9
+   |
+LL |         b: i32, //~ ERROR field is never used
+   |         ^^^^^^
+
+error: field is never used: `c`
+  --> $DIR/lint-dead-code-4.rs:50:9
+   |
+LL |         c: i32, //~ ERROR field is never used
+   |         ^^^^^^
+
+error: variant is never constructed: `K`
+  --> $DIR/lint-dead-code-4.rs:52:5
+   |
+LL |     K //~ ERROR variant is never constructed
+   |     ^
+
+error: field is never used: `x`
+  --> $DIR/lint-dead-code-4.rs:71:5
+   |
+LL |     x: usize, //~ ERROR: field is never used
+   |     ^^^^^^^^
+
+error: field is never used: `c`
+  --> $DIR/lint-dead-code-4.rs:73:5
+   |
+LL |     c: bool, //~ ERROR: field is never used
+   |     ^^^^^^^
+
+error: aborting due to 10 previous errors
+

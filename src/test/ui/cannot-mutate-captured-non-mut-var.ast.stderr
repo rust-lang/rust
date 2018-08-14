@@ -1,0 +1,16 @@
+error[E0594]: cannot assign to immutable captured outer variable in an `FnOnce` closure `x`
+  --> $DIR/cannot-mutate-captured-non-mut-var.rs:23:25
+   |
+LL |     to_fn_once(move|| { x = 2; });
+   |                         ^^^^^
+
+error[E0596]: cannot borrow immutable captured outer variable in an `FnOnce` closure `s` as mutable
+  --> $DIR/cannot-mutate-captured-non-mut-var.rs:28:25
+   |
+LL |     to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
+   |                         ^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,0 +1,108 @@
+error[E0594]: cannot assign to `***p` which is behind a `&` reference
+  --> $DIR/borrowck-issue-14498.rs:29:5
+   |
+LL |     let p = &y;
+   |             -- help: consider changing this to be a mutable reference: `&mut y`
+LL |     ***p = 2; //[ast]~ ERROR cannot assign to data in a `&` reference
+   |     ^^^^^^^^ `p` is a `&` reference, so the data it refers to cannot be written
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:39:5
+   |
+LL |     let p = &y;
+   |             -- borrow of `**y` occurs here
+LL |     let q = &***p;
+LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:50:5
+   |
+LL |     let p = &y;
+   |             -- borrow of `**y` occurs here
+LL |     let q = &***p;
+LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:61:5
+   |
+LL |     let p = &y;
+   |             -- borrow of `**y` occurs here
+LL |     let q = &***p;
+LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:72:5
+   |
+LL |     let p = &y;
+   |             -- borrow of `**y` occurs here
+LL |     let q = &***p;
+LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:83:5
+   |
+LL |     let p = &y.a;
+   |             ---- borrow of `**y.a` occurs here
+LL |     let q = &***p;
+LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:94:5
+   |
+LL |     let p = &y.a;
+   |             ---- borrow of `**y.a` occurs here
+LL |     let q = &***p;
+LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:105:5
+   |
+LL |     let p = &y.a;
+   |             ---- borrow of `**y.a` occurs here
+LL |     let q = &***p;
+LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:116:5
+   |
+LL |     let p = &y.a;
+   |             ---- borrow of `**y.a` occurs here
+LL |     let q = &***p;
+LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0506, E0594.
+For more information about an error, try `rustc --explain E0506`.

@@ -1,0 +1,11 @@
+error: expected identifier, found `a::b::c`
+  --> $DIR/import-prefix-macro-2.rs:21:26
+   |
+LL |     ($p: path) => (use ::$p {S, Z}); //~ERROR  expected identifier, found `a::b::c`
+   |                          ^^ expected identifier
+...
+LL | import! { a::b::c }
+   | ------------------- in this macro invocation
+
+error: aborting due to previous error
+

@@ -1,0 +1,74 @@
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-in-coercion.rs:18:42
+   |
+LL |     let x: Box<Foo + 'static> = Box::new(v);
+   |                                          ^
+
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-in-coercion.rs:24:14
+   |
+LL |     Box::new(v)
+   |              ^
+
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-in-coercion.rs:31:14
+   |
+LL |     Box::new(v)
+   |              ^
+
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-in-coercion.rs:36:14
+   |
+LL |     Box::new(v)
+   |              ^
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:18:33
+   |
+LL | fn a(v: &[u8]) -> Box<Foo + 'static> {
+   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+LL |     let x: Box<Foo + 'static> = Box::new(v);
+   |                                 ^^^^^^^^^^^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:23:38
+   |
+LL |   fn b(v: &[u8]) -> Box<Foo + 'static> {
+   |  _________-----________________________^
+   | |         |
+   | |         help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+LL | |     Box::new(v)
+LL | |         //~^ ERROR explicit lifetime required in the type of `v` [E0621]
+LL | | }
+   | |_^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/region-object-lifetime-in-coercion.rs:28:28
+   |
+LL |   fn c(v: &[u8]) -> Box<Foo> {
+   |  _________-----______________^
+   | |         |
+   | |         help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+LL | |     // same as previous case due to RFC 599
+LL | |
+LL | |     Box::new(v)
+LL | |         //~^ ERROR explicit lifetime required in the type of `v` [E0621]
+LL | | }
+   | |_^ lifetime `'static` required
+
+error: unsatisfied lifetime constraints
+  --> $DIR/region-object-lifetime-in-coercion.rs:35:41
+   |
+LL |   fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
+   |  ______--_--______________________________^
+   | |      |  |
+   | |      |  lifetime `'b` defined here
+   | |      lifetime `'a` defined here
+LL | |     Box::new(v)
+LL | |         //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+LL | | }
+   | |_^ return requires that `'a` must outlive `'b`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

@@ -1,0 +1,21 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:42:12
+   |
+LL |     let _: &'a WithHrAssoc<TheType<'b>> = loop { };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:63:12
+   |
+LL |     let _: &'a WithHrAssocSub<TheType<'b>> = loop { };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: compilation successful
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:68:1
+   |
+LL | / fn main() {
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

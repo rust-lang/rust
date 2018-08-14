@@ -1,0 +1,76 @@
+error[E0601]: `main` function not found in crate `repr_transparent`
+   |
+   = note: consider adding a `main` function to `$DIR/repr-transparent.rs`
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:21:1
+   |
+LL | struct NoFields; //~ ERROR needs exactly one non-zero-sized field
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: non-zero-sized field
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:24:1
+   |
+LL | struct ContainsOnlyZst(()); //~ ERROR needs exactly one non-zero-sized field
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: non-zero-sized field
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:27:1
+   |
+LL | struct ContainsOnlyZstArray([bool; 0]); //~ ERROR needs exactly one non-zero-sized field
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: non-zero-sized field
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:30:1
+   |
+LL | struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: non-zero-sized field
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
+  --> $DIR/repr-transparent.rs:34:1
+   |
+LL | struct MultipleNonZst(u8, u8); //~ ERROR needs exactly one non-zero-sized field
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: non-zero-sized field
+  --> $DIR/repr-transparent.rs:34:23
+   |
+LL | struct MultipleNonZst(u8, u8); //~ ERROR needs exactly one non-zero-sized field
+   |                       ^^  ^^
+
+error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
+  --> $DIR/repr-transparent.rs:40:1
+   |
+LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: non-zero-sized field
+  --> $DIR/repr-transparent.rs:40:33
+   |
+LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
+   |                                 ^^^  ^^^^^^^^^^^^^^^^^^^
+
+error[E0691]: zero-sized field in transparent struct has alignment larger than 1
+  --> $DIR/repr-transparent.rs:44:32
+   |
+LL | struct NontrivialAlignZst(u32, [u16; 0]); //~ ERROR alignment larger than 1
+   |                                ^^^^^^^^
+
+error[E0691]: zero-sized field in transparent struct has alignment larger than 1
+  --> $DIR/repr-transparent.rs:50:24
+   |
+LL | struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
+   |                        ^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0601, E0690, E0691.
+For more information about an error, try `rustc --explain E0601`.

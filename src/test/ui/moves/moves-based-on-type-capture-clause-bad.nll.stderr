@@ -1,0 +1,16 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-capture-clause-bad.rs:18:20
+   |
+LL |     thread::spawn(move|| {
+   |                   ------ value moved into closure here
+LL |         println!("{}", x);
+   |                        - variable moved due to use in closure
+LL |     });
+LL |     println!("{}", x); //~ ERROR use of moved value
+   |                    ^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

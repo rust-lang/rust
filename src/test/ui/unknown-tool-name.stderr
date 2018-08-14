@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `foo`
+  --> $DIR/unknown-tool-name.rs:13:3
+   |
+LL | #[foo::bar] //~ ERROR failed to resolve. Use of undeclared type or module `foo`
+   |   ^^^ Use of undeclared type or module `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

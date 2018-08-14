@@ -1,0 +1,16 @@
+error[E0662]: input operand constraint contains '='
+  --> $DIR/asm-in-bad-modifier.rs:33:39
+   |
+LL |         asm!("mov $1, $0" : "=r"(x) : "=r"(5)); //~ ERROR operand constraint contains '='
+   |                                       ^^^^
+
+error[E0663]: input operand constraint contains '+'
+  --> $DIR/asm-in-bad-modifier.rs:34:39
+   |
+LL |         asm!("mov $1, $0" : "=r"(y) : "+r"(5)); //~ ERROR operand constraint contains '+'
+   |                                       ^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0662, E0663.
+For more information about an error, try `rustc --explain E0662`.

@@ -1,0 +1,21 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/single-segment.rs:14:5
+   |
+LL | use crate; //~ ERROR crate root imports need to be explicitly named: `use crate as name;`
+   |     ^^^^^
+
+error: cannot glob-import all possible crates
+  --> $DIR/single-segment.rs:15:5
+   |
+LL | use *; //~ ERROR cannot glob-import all possible crates
+   |     ^
+
+error[E0423]: expected value, found module `xcrate`
+  --> $DIR/single-segment.rs:18:13
+   |
+LL |     let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
+   |             ^^^^^^^^ not a value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

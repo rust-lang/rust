@@ -1,0 +1,64 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/repeat_count.rs:15:17
+   |
+LL |     let a = [0; n];
+   |                 ^ non-constant value
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:17:17
+   |
+LL |     let b = [0; ()];
+   |                 ^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:22:17
+   |
+LL |     let c = [0; true];
+   |                 ^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:25:17
+   |
+LL |     let d = [0; 0.5];
+   |                 ^^^ expected usize, found floating-point variable
+   |
+   = note: expected type `usize`
+              found type `{float}`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:30:17
+   |
+LL |     let e = [0; "foo"];
+   |                 ^^^^^ expected usize, found reference
+   |
+   = note: expected type `usize`
+              found type `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:35:17
+   |
+LL |     let f = [0; -4_isize];
+   |                 ^^^^^^^^ expected usize, found isize
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:38:23
+   |
+LL |     let f = [0_usize; -1_isize];
+   |                       ^^^^^^^^ expected usize, found isize
+
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:44:17
+   |
+LL |     let g = [0; G { g: () }];
+   |                 ^^^^^^^^^^^ expected usize, found struct `main::G`
+   |
+   = note: expected type `usize`
+              found type `main::G`
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0308, E0435.
+For more information about an error, try `rustc --explain E0308`.

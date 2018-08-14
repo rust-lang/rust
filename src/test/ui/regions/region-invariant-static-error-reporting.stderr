@@ -1,0 +1,23 @@
+error[E0308]: if and else have incompatible types
+  --> $DIR/region-invariant-static-error-reporting.rs:24:15
+   |
+LL |       let bad = if x.is_some() {
+   |  _______________^
+LL | |         x.unwrap()
+LL | |     } else {
+LL | |         mk_static()
+LL | |     };
+   | |_____^ lifetime mismatch
+   |
+   = note: expected type `Invariant<'a>`
+              found type `Invariant<'static>`
+note: the lifetime 'a as defined on the function body at 23:10...
+  --> $DIR/region-invariant-static-error-reporting.rs:23:10
+   |
+LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
+   |          ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

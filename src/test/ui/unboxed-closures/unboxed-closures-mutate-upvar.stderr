@@ -1,0 +1,53 @@
+error[E0595]: closure cannot assign to immutable local variable `n`
+  --> $DIR/unboxed-closures-mutate-upvar.rs:24:27
+   |
+LL |     let n = 0;
+   |         - consider changing this to `mut n`
+LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
+   |                           ^^ cannot borrow mutably
+
+error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
+  --> $DIR/unboxed-closures-mutate-upvar.rs:42:9
+   |
+LL |     let n = 0;
+   |         - help: consider making `n` mutable: `mut n`
+...
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^
+
+error[E0594]: cannot assign to captured outer variable in an `Fn` closure
+  --> $DIR/unboxed-closures-mutate-upvar.rs:56:9
+   |
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^
+   |
+   = note: `Fn` closures cannot capture their enclosing environment for modifications
+help: consider changing this closure to take self by mutable reference
+  --> $DIR/unboxed-closures-mutate-upvar.rs:55:23
+   |
+LL |       let mut f = to_fn(move || {
+   |  _______________________^
+LL | |         n += 1; //~ ERROR cannot assign
+LL | |     });
+   | |_____^
+
+error[E0594]: cannot assign to captured outer variable in an `Fn` closure
+  --> $DIR/unboxed-closures-mutate-upvar.rs:63:9
+   |
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^
+   |
+   = note: `Fn` closures cannot capture their enclosing environment for modifications
+help: consider changing this closure to take self by mutable reference
+  --> $DIR/unboxed-closures-mutate-upvar.rs:62:23
+   |
+LL |       let mut f = to_fn(move || {
+   |  _______________________^
+LL | |         n += 1; //~ ERROR cannot assign
+LL | |     });
+   | |_____^
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0594, E0595.
+For more information about an error, try `rustc --explain E0594`.

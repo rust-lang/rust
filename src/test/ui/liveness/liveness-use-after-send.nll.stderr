@@ -1,0 +1,13 @@
+error[E0382]: borrow of moved value: `message`
+  --> $DIR/liveness-use-after-send.rs:26:20
+   |
+LL |     send(ch, message);
+   |              ------- value moved here
+LL |     println!("{}", message); //~ ERROR use of moved value: `message`
+   |                    ^^^^^^^ value borrowed here after move
+   |
+   = note: move occurs because `message` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

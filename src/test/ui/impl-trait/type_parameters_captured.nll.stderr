@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/type_parameters_captured.rs:17:20
+   |
+LL | fn foo<T>(x: T) -> impl Any + 'static {
+   |                    ^^^^^^^^^^^^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/type_parameters_captured.rs:19:5
+   |
+LL |     x
+   |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

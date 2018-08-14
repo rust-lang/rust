@@ -1,0 +1,26 @@
+error: function is never used: `dead_fn`
+  --> $DIR/lint-dead-code-2.rs:32:1
+   |
+LL | fn dead_fn() {} //~ ERROR: function is never used
+   | ^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-2.rs:12:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: function is never used: `dead_fn2`
+  --> $DIR/lint-dead-code-2.rs:35:1
+   |
+LL | fn dead_fn2() {} //~ ERROR: function is never used
+   | ^^^^^^^^^^^^^
+
+error: function is never used: `main`
+  --> $DIR/lint-dead-code-2.rs:48:1
+   |
+LL | fn main() { //~ ERROR: function is never used
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

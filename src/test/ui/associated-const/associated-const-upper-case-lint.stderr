@@ -1,0 +1,14 @@
+error: associated constant `not_upper` should have an upper case name such as `NOT_UPPER`
+  --> $DIR/associated-const-upper-case-lint.rs:17:5
+   |
+LL |     const not_upper: bool = true;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/associated-const-upper-case-lint.rs:11:9
+   |
+LL | #![deny(non_upper_case_globals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

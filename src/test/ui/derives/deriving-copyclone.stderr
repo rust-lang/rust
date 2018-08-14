@@ -1,0 +1,42 @@
+error[E0277]: the trait bound `C: std::marker::Copy` is not satisfied
+  --> $DIR/deriving-copyclone.rs:41:5
+   |
+LL |     is_copy(B { a: 1, b: C }); //~ERROR Copy
+   |     ^^^^^^^ the trait `std::marker::Copy` is not implemented for `C`
+   |
+   = note: required because of the requirements on the impl of `std::marker::Copy` for `B<C>`
+note: required by `is_copy`
+  --> $DIR/deriving-copyclone.rs:28:1
+   |
+LL | fn is_copy<T: Copy>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `C: std::clone::Clone` is not satisfied
+  --> $DIR/deriving-copyclone.rs:42:5
+   |
+LL |     is_clone(B { a: 1, b: C }); //~ERROR Clone
+   |     ^^^^^^^^ the trait `std::clone::Clone` is not implemented for `C`
+   |
+   = note: required because of the requirements on the impl of `std::clone::Clone` for `B<C>`
+note: required by `is_clone`
+  --> $DIR/deriving-copyclone.rs:29:1
+   |
+LL | fn is_clone<T: Clone>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `D: std::marker::Copy` is not satisfied
+  --> $DIR/deriving-copyclone.rs:45:5
+   |
+LL |     is_copy(B { a: 1, b: D }); //~ERROR Copy
+   |     ^^^^^^^ the trait `std::marker::Copy` is not implemented for `D`
+   |
+   = note: required because of the requirements on the impl of `std::marker::Copy` for `B<D>`
+note: required by `is_copy`
+  --> $DIR/deriving-copyclone.rs:28:1
+   |
+LL | fn is_copy<T: Copy>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

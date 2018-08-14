@@ -1,0 +1,9 @@
+error[E0624]: method `nap` is private
+  --> $DIR/private-method.rs:34:8
+   |
+LL |   nyan.nap();
+   |        ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0624`.

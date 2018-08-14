@@ -1,0 +1,21 @@
+warning: not reporting region error due to nll
+  --> $DIR/match-ref-mut-invariance.rs:20:37
+   |
+LL |         match self.0 { ref mut x => x } //~ ERROR mismatched types
+   |                                     ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/match-ref-mut-invariance.rs:19:49
+   |
+LL |   impl<'b> S<'b> {
+   |        -- lifetime `'b` defined here
+LL |       fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
+   |  ____________--___________________________________^
+   | |            |
+   | |            lifetime `'a` defined here
+LL | |         match self.0 { ref mut x => x } //~ ERROR mismatched types
+LL | |     }
+   | |_____^ requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

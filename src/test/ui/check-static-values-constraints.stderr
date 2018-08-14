@@ -1,0 +1,67 @@
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/check-static-values-constraints.rs:75:43
+   |
+LL |                                           ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
+   |  ___________________________________________^
+LL | | //~^ ERROR destructors cannot be evaluated at compile-time
+LL | |                                                      field2: SafeEnum::Variant1}};
+   | |________________________________________________________________________________^ statics cannot evaluate destructors
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:89:33
+   |
+LL | static STATIC11: Box<MyOwned> = box MyOwned;
+   |                                 ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/check-static-values-constraints.rs:99:32
+   |
+LL |     field2: SafeEnum::Variant4("str".to_string())
+   |                                ^^^^^^^^^^^^^^^^^
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:104:5
+   |
+LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+   |     ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:105:5
+   |
+LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+   |     ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:109:6
+   |
+LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+   |      ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:110:6
+   |
+LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+   |      ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:116:5
+   |
+LL |     box 3;
+   |     ^^^^^ allocation not allowed in statics
+
+error[E0507]: cannot move out of static item
+  --> $DIR/check-static-values-constraints.rs:120:45
+   |
+LL |     let y = { static x: Box<isize> = box 3; x };
+   |                                             ^ cannot move out of static item
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:120:38
+   |
+LL |     let y = { static x: Box<isize> = box 3; x };
+   |                                      ^^^^^ allocation not allowed in statics
+
+error: aborting due to 10 previous errors
+
+Some errors occurred: E0010, E0015, E0493, E0507.
+For more information about an error, try `rustc --explain E0010`.

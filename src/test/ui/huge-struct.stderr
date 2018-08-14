@@ -1,0 +1,4 @@
+error: the type `SXX<SXX<SXX<u32>>>` is too big for the current architecture
+
+error: aborting due to previous error
+

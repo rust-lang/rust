@@ -1,0 +1,22 @@
+error[E0609]: no field `d` on type `&a`
+  --> $DIR/struct-pat-derived-error.rs:18:31
+   |
+LL |         let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
+   |                               ^
+
+error[E0026]: struct `a` does not have fields named `x`, `y`
+  --> $DIR/struct-pat-derived-error.rs:18:17
+   |
+LL |         let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
+   |                 ^  ^ struct `a` does not have these fields
+
+error[E0027]: pattern does not mention fields `b`, `c`
+  --> $DIR/struct-pat-derived-error.rs:18:13
+   |
+LL |         let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
+   |             ^^^^^^^^^^ missing fields `b`, `c`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0026, E0027, E0609.
+For more information about an error, try `rustc --explain E0026`.

@@ -1,0 +1,13 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-thread-local-static-borrow-outlives-fn.rs:21:21
+   |
+LL |      assert_static(&FOO); //[ast]~ ERROR [E0597]
+   |                     ^^^ - temporary value only lives until here
+   |                     |
+   |                     temporary value does not live long enough
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

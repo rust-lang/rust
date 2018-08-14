@@ -1,0 +1,30 @@
+warning: not reporting region error due to nll
+  --> $DIR/lub-match.rs:40:13
+   |
+LL |             s //~ ERROR E0312
+   |             ^
+
+warning: not reporting region error due to nll
+  --> $DIR/lub-match.rs:49:13
+   |
+LL |             s //~ ERROR E0312
+   |             ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/lub-match.rs:36:11
+   |
+LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+LL |     match *maybestr {
+   |           ^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/lub-match.rs:46:11
+   |
+LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+LL |     match *maybestr {
+   |           ^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

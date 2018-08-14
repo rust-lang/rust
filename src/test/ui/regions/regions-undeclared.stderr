@@ -1,0 +1,33 @@
+error[E0261]: use of undeclared lifetime name `'blk`
+  --> $DIR/regions-undeclared.rs:11:14
+   |
+LL | static c_x: &'blk isize = &22; //~ ERROR use of undeclared lifetime name `'blk`
+   |              ^^^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-undeclared.rs:14:10
+   |
+LL |     Foo(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
+   |          ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-undeclared.rs:15:10
+   |
+LL |     Bar(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
+   |          ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-undeclared.rs:18:15
+   |
+LL | fn fnDecl(x: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
+   |               ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-undeclared.rs:19:15
+   |
+LL |           y: &'a isize) //~ ERROR use of undeclared lifetime name `'a`
+   |               ^^ undeclared lifetime
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

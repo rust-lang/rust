@@ -1,0 +1,11 @@
+error: quote! with interpolated token
+  --> $DIR/quote-with-interpolated.rs:15:29
+   |
+LL |             quote_expr!(cx, $bar) //~ ERROR quote! with interpolated token
+   |                             ^^^^
+...
+LL |     foo!(bar);
+   |     ---------- in this macro invocation
+
+error: aborting due to previous error
+

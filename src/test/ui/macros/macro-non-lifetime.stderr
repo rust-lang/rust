@@ -1,0 +1,8 @@
+error: no rules expected the token `a`
+  --> $DIR/macro-non-lifetime.rs:18:8
+   |
+LL |     m!(a);
+   |        ^
+
+error: aborting due to previous error
+

@@ -1,0 +1,23 @@
+error[E0499]: cannot borrow `*f` as mutable more than once at a time
+  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:30:27
+   |
+LL |                     (f.c)(f, true);
+   |                     ----- ^      - first borrow ends here
+   |                     |     |
+   |                     |     second mutable borrow occurs here
+   |                     first mutable borrow occurs here
+
+error[E0382]: use of moved value: `f`
+  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:42:5
+   |
+LL |     let mut r = R {c: Box::new(f)};
+   |                                - value moved here
+LL |     f(&mut r, false) //~ ERROR use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `f` has type `F`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0382, E0499.
+For more information about an error, try `rustc --explain E0382`.

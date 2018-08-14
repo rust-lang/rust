@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve. crate root in paths can only be used in start position
+  --> $DIR/absolute-paths-in-nested-use-groups.rs:16:5
+   |
+LL |     ::bar,       //~ ERROR crate root in paths can only be used in start position
+   |     ^ crate root in paths can only be used in start position
+
+error[E0433]: failed to resolve. `super` in paths can only be used in start position
+  --> $DIR/absolute-paths-in-nested-use-groups.rs:17:5
+   |
+LL |     super::bar,  //~ ERROR `super` in paths can only be used in start position
+   |     ^^^^^ `super` in paths can only be used in start position
+
+error[E0433]: failed to resolve. `self` in paths can only be used in start position
+  --> $DIR/absolute-paths-in-nested-use-groups.rs:18:5
+   |
+LL |     self::bar,   //~ ERROR `self` in paths can only be used in start position
+   |     ^^^^ `self` in paths can only be used in start position
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

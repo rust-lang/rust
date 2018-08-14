@@ -1,0 +1,11 @@
+error[E0038]: the trait `Expr` cannot be made into an object
+  --> $DIR/object-safety-issue-22040.rs:22:23
+   |
+LL |     elements: Vec<Box<Expr+ 'x>>,
+   |                       ^^^^^^^^ the trait `Expr` cannot be made into an object
+   |
+   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

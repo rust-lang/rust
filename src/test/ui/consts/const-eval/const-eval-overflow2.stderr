@@ -1,0 +1,94 @@
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:24:1
+   |
+LL | / const VALS_I8: (i8,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      i8::MIN - 1,
+   | |      ----------- attempt to subtract with overflow
+LL | |      );
+   | |_______^
+   |
+note: lint level defined here
+  --> $DIR/const-eval-overflow2.rs:18:9
+   |
+LL | #![deny(const_err)]
+   |         ^^^^^^^^^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:30:1
+   |
+LL | / const VALS_I16: (i16,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      i16::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:36:1
+   |
+LL | / const VALS_I32: (i32,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      i32::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:42:1
+   |
+LL | / const VALS_I64: (i64,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      i64::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:48:1
+   |
+LL | / const VALS_U8: (u8,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      u8::MIN - 1,
+   | |      ----------- attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:54:1
+   |
+LL | / const VALS_U16: (u16,) = (
+LL | |      //~^ ERROR this constant cannot be used
+LL | |      u16::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:59:1
+   |
+LL | / const VALS_U32: (u32,) = (
+LL | |      //~^ ERROR this constant cannot be used
+LL | |      u32::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: this constant cannot be used
+  --> $DIR/const-eval-overflow2.rs:64:1
+   |
+LL | / const VALS_U64: (u64,) =
+LL | |      //~^ ERROR this constant cannot be used
+LL | |     (
+LL | |      u64::MIN - 1,
+   | |      ------------ attempt to subtract with overflow
+LL | |      );
+   | |_______^
+
+error: aborting due to 8 previous errors
+

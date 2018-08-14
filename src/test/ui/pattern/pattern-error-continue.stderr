@@ -1,0 +1,39 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `E`
+  --> $DIR/pattern-error-continue.rs:45:9
+   |
+LL |         E::V => {} //~ ERROR failed to resolve. Use of undeclared type or module `E`
+   |         ^ Use of undeclared type or module `E`
+
+error[E0532]: expected tuple struct/variant, found unit variant `A::D`
+  --> $DIR/pattern-error-continue.rs:28:9
+   |
+LL |         A::D(_) => (),       //~ ERROR expected tuple struct/variant, found unit variant `A::D`
+   |         ^^^-
+   |            |
+   |            did you mean `B`?
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+  --> $DIR/pattern-error-continue.rs:27:9
+   |
+LL |         A::B(_, _, _) => (), //~ ERROR this pattern has 3 fields, but
+   |         ^^^^^^^^^^^^^ expected 2 fields, found 3
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-error-continue.rs:32:9
+   |
+LL |         S { .. } => (),
+   |         ^^^^^^^^ expected char, found struct `S`
+   |
+   = note: expected type `char`
+              found type `S`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-error-continue.rs:40:7
+   |
+LL |     f(true);
+   |       ^^^^ expected char, found bool
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0023, E0308, E0433, E0532.
+For more information about an error, try `rustc --explain E0023`.

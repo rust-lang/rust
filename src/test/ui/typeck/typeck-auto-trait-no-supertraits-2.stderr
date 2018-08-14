@@ -1,0 +1,9 @@
+error[E0568]: auto traits cannot have super traits
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:13:1
+   |
+LL | auto trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0568`.

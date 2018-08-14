@@ -1,0 +1,11 @@
+error[E0605]: non-primitive cast: `non_nullary` as `isize`
+  --> $DIR/tag-variant-cast-non-nullary.rs:18:15
+   |
+LL |     let val = v as isize; //~ ERROR non-primitive cast: `non_nullary` as `isize` [E0605]
+   |               ^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0605`.

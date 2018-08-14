@@ -1,0 +1,17 @@
+error: type annotations needed
+  --> $DIR/edition-raw-pointer-method-2015.rs:20:15
+   |
+LL |     let _ = y.is_null();
+   |               ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/edition-raw-pointer-method-2015.rs:16:8
+   |
+LL | #[deny(warnings)]
+   |        ^^^^^^^^
+   = note: #[deny(tyvar_behind_raw_pointer)] implied by #[deny(warnings)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #46906 <https://github.com/rust-lang/rust/issues/46906>
+
+error: aborting due to previous error
+

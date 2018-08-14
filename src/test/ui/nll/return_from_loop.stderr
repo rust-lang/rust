@@ -1,0 +1,39 @@
+error[E0499]: cannot borrow `my_struct.field` as mutable more than once at a time (Ast)
+  --> $DIR/return_from_loop.rs:32:9
+   |
+LL |     let value = &mut my_struct.field;
+   |                      --------------- first mutable borrow occurs here
+LL |     loop {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `my_struct.field` as mutable more than once at a time (Ast)
+  --> $DIR/return_from_loop.rs:45:9
+   |
+LL |     let value = &mut my_struct.field;
+   |                      --------------- first mutable borrow occurs here
+LL |     loop {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `my_struct.field` as mutable more than once at a time (Mir)
+  --> $DIR/return_from_loop.rs:32:9
+   |
+LL |     let value = &mut my_struct.field;
+   |                 -------------------- first mutable borrow occurs here
+LL |     loop {
+LL |         my_struct.field.push_str("Hello, world!");
+   |         ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL |         value.len();
+   |         ----- borrow later used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

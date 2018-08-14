@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `bar`
+  --> $DIR/export2.rs:12:18
+   |
+LL |     pub fn x() { bar::x(); } //~ ERROR failed to resolve. Use of undeclared type or module `bar`
+   |                  ^^^ Use of undeclared type or module `bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

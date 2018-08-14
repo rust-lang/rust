@@ -1,0 +1,26 @@
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:14:13
+   |
+LL |     let _ = #[cfg(unset)] ();
+   |             ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:16:21
+   |
+LL |     let _ = 1 + 2 + #[cfg(unset)] 3;
+   |                     ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:18:23
+   |
+LL |     let _ = [1, 2, 3][#[cfg(unset)] 1];
+   |                       ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:20:13
+   |
+LL |     let _ = #[test] ();
+   |             ^^^^^^^
+
+error: aborting due to 4 previous errors
+

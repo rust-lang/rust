@@ -1,0 +1,111 @@
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:24:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+LL |     capitalize(slice);
+LL |     data.push('d');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:27:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+...
+LL |     data.push('e');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:30:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+...
+LL |     data.push('f');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:40:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+LL |     capitalize(slice);
+LL |     data.push('d');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:42:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+...
+LL |     data.push('e');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Ast)
+  --> $DIR/loan_ends_mid_block_vec.rs:44:5
+   |
+LL |     let slice = &mut data;
+   |                      ---- first mutable borrow occurs here
+...
+LL |     data.push('f');
+   |     ^^^^ second mutable borrow occurs here
+LL |     //~^ ERROR (Ast) [E0499]
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+  --> $DIR/loan_ends_mid_block_vec.rs:24:5
+   |
+LL |     let slice = &mut data;
+   |                 --------- first mutable borrow occurs here
+LL |     capitalize(slice);
+LL |     data.push('d');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL |     capitalize(slice);
+   |                ----- borrow later used here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+  --> $DIR/loan_ends_mid_block_vec.rs:27:5
+   |
+LL |     let slice = &mut data;
+   |                 --------- first mutable borrow occurs here
+...
+LL |     data.push('e');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL |     capitalize(slice);
+   |                ----- borrow later used here
+
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+  --> $DIR/loan_ends_mid_block_vec.rs:30:5
+   |
+LL |     let slice = &mut data;
+   |                 --------- first mutable borrow occurs here
+...
+LL |     data.push('f');
+   |     ^^^^ second mutable borrow occurs here
+...
+LL |     capitalize(slice);
+   |                ----- borrow later used here
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

@@ -1,0 +1,15 @@
+error[E0603]: module `bar` is private
+  --> $DIR/shadowed-use-visibility.rs:19:9
+   |
+LL |     use foo::bar::f as g; //~ ERROR module `bar` is private
+   |         ^^^^^^^^^^^^^^^^
+
+error[E0603]: module `f` is private
+  --> $DIR/shadowed-use-visibility.rs:25:5
+   |
+LL | use bar::f::f; //~ ERROR module `f` is private
+   |     ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,8 @@
+error: my error message
+  --> $DIR/extenv-not-defined-custom.rs:11:13
+   |
+LL | fn main() { env!("__HOPEFULLY_NOT_DEFINED__", "my error message"); } //~ ERROR: my error message
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

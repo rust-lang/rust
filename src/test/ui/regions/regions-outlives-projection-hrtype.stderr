@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/regions-outlives-projection-hrtype.rs:36:1
+   |
+LL | fn main() { } //~ ERROR compilation successful
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

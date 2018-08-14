@@ -1,0 +1,26 @@
+error: unused import: `a::x`
+  --> $DIR/lint-directives-on-use-items-issue-10534.rs:22:9
+   |
+LL |     use a::x; //~ ERROR: unused import
+   |         ^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-directives-on-use-items-issue-10534.rs:11:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused import: `a::y`
+  --> $DIR/lint-directives-on-use-items-issue-10534.rs:31:9
+   |
+LL |     use a::y; //~ ERROR: unused import
+   |         ^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-directives-on-use-items-issue-10534.rs:30:12
+   |
+LL |     #[deny(unused_imports)]
+   |            ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

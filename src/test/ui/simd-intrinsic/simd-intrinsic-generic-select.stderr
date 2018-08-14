@@ -1,0 +1,21 @@
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: mismatched lengths: mask length `8` != other vector length `4`
+  --> $DIR/simd-intrinsic-generic-select.rs:47:9
+   |
+LL |         simd_select(m8, x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `u32`, expected `i_`
+  --> $DIR/simd-intrinsic-generic-select.rs:50:9
+   |
+LL |         simd_select(x, x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `f32`, expected `i_`
+  --> $DIR/simd-intrinsic-generic-select.rs:53:9
+   |
+LL |         simd_select(z, z, z);
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

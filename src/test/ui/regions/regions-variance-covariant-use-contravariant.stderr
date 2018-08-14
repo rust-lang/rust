@@ -1,0 +1,14 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-variance-covariant-use-contravariant.rs:35:32
+   |
+LL | fn use_<'short,'long>(c: Covariant<'long>,
+   |                          ----------------
+LL |                       s: &'short isize,
+   |                          ------------- these two types are declared with different lifetimes...
+...
+LL |     let _: Covariant<'short> = c; //~ ERROR E0623
+   |                                ^ ...but data from `s` flows into `c` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

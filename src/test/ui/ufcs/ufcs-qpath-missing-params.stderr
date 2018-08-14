@@ -1,0 +1,9 @@
+error[E0089]: too few type parameters provided: expected 1 type parameter, found 0 type parameters
+  --> $DIR/ufcs-qpath-missing-params.rs:24:5
+   |
+LL |     <String as IntoCow>::into_cow("foo".to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0089`.

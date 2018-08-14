@@ -1,0 +1,43 @@
+error: function is marked #[no_mangle], but not exported
+  --> $DIR/lint-unexported-no-mangle.rs:14:1
+   |
+LL |   fn foo() { //~ ERROR function is marked #[no_mangle], but not exported
+   |   ^
+   |   |
+   |  _help: try making it public: `pub`
+   | |
+LL | | }
+   | |_^
+   |
+   = note: requested on the command line with `-F private-no-mangle-fns`
+
+error: const items should never be #[no_mangle]
+  --> $DIR/lint-unexported-no-mangle.rs:19:1
+   |
+LL | const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
+   | -----^^^^^^^^^^^^^^
+   | |
+   | help: try a static value: `pub static`
+   |
+   = note: requested on the command line with `-F no-mangle-const-items`
+
+error: const items should never be #[no_mangle]
+  --> $DIR/lint-unexported-no-mangle.rs:22:1
+   |
+LL | pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
+   | ---------^^^^^^^^^^^^^^^^^^
+   | |
+   | help: try a static value: `pub static`
+
+error: static is marked #[no_mangle], but not exported
+  --> $DIR/lint-unexported-no-mangle.rs:33:1
+   |
+LL | static PRIVATE_BAR: u64 = 1; //~ ERROR static is marked #[no_mangle], but not exported
+   | -^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: try making it public: `pub`
+   |
+   = note: requested on the command line with `-F private-no-mangle-statics`
+
+error: aborting due to 4 previous errors
+

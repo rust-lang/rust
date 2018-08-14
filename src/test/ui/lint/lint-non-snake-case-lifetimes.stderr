@@ -1,0 +1,14 @@
+error: lifetime `'FooBar` should have a snake case name such as `'foo_bar`
+  --> $DIR/lint-non-snake-case-lifetimes.rs:14:6
+   |
+LL | fn f<'FooBar>( //~ ERROR lifetime `'FooBar` should have a snake case name such as `'foo_bar`
+   |      ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-non-snake-case-lifetimes.rs:11:9
+   |
+LL | #![deny(non_snake_case)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

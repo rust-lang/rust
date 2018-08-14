@@ -1,0 +1,10 @@
+error: symbol `fail` is already defined
+  --> $DIR/dupe-symbols-5.rs:18:1
+   |
+LL | / pub fn b() {
+LL | | //~^ symbol `fail` is already defined
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

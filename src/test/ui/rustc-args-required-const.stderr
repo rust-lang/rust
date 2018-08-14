@@ -1,0 +1,14 @@
+error: argument 1 is required to be a constant
+  --> $DIR/rustc-args-required-const.rs:33:5
+   |
+LL |     foo(a); //~ ERROR: argument 1 is required to be a constant
+   |     ^^^^^^
+
+error: argument 2 is required to be a constant
+  --> $DIR/rustc-args-required-const.rs:35:5
+   |
+LL |     bar(a, a); //~ ERROR: argument 2 is required to be a constant
+   |     ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

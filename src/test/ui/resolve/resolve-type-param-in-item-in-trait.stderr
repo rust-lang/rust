@@ -1,0 +1,45 @@
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:18:22
+   |
+LL | trait TraitA<A> {
+   |              - type variable from outer function
+LL |     fn outer(&self) {
+   |        ----- try adding a local type parameter in this method instead
+LL |         enum Foo<B> {
+LL |             Variance(A)
+   |                      ^ use of type variable from outer function
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:26:23
+   |
+LL | trait TraitB<A> {
+   |              - type variable from outer function
+LL |     fn outer(&self) {
+   |        ----- try adding a local type parameter in this method instead
+LL |         struct Foo<B>(A);
+   |                       ^ use of type variable from outer function
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:33:28
+   |
+LL | trait TraitC<A> {
+   |              - type variable from outer function
+LL |     fn outer(&self) {
+   |        ----- try adding a local type parameter in this method instead
+LL |         struct Foo<B> { a: A }
+   |                            ^ use of type variable from outer function
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:40:22
+   |
+LL | trait TraitD<A> {
+   |              - type variable from outer function
+LL |     fn outer(&self) {
+LL |         fn foo<B>(a: A) { }
+   |            ------    ^ use of type variable from outer function
+   |            |
+   |            help: try using a local type parameter instead: `foo<B, A>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

@@ -1,0 +1,9 @@
+error[E0080]: could not evaluate enum discriminant
+  --> $DIR/const-err4.rs:18:11
+   |
+LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

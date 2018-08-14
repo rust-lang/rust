@@ -1,0 +1,11 @@
+error[E0658]: arbitrary tokens in non-macro attributes are unstable (see issue #44690)
+  --> $DIR/macro-attribute.rs:11:1
+   |
+LL | #[doc = $not_there] //~ ERROR arbitrary tokens in non-macro attributes are unstable
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unrestricted_attribute_tokens)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

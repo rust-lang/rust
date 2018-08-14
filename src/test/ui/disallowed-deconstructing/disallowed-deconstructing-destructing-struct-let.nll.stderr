@@ -1,0 +1,12 @@
+error[E0509]: cannot move out of type `X`, which implements the `Drop` trait
+  --> $DIR/disallowed-deconstructing-destructing-struct-let.rs:22:22
+   |
+LL |     let X { x: y } = x; //~ ERROR cannot move out of type
+   |                -     ^ cannot move out of here
+   |                |
+   |                data moved here
+   |                help: to prevent move, use ref or ref mut: `ref y`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0509`.

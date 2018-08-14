@@ -1126,6 +1126,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
+        debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
             if self.props.compile_pass {
                 return;
@@ -1136,26 +1137,21 @@ impl<'test> TestCx<'test> {
                 ));
             }
         }
-        let mut next_err_idx = 0;
-        let mut next_err_pat = self.props.error_patterns[next_err_idx].trim();
-        let mut done = false;
-        for line in output_to_check.lines() {
-            if line.contains(next_err_pat) {
-                debug!("found error pattern {}", next_err_pat);
-                next_err_idx += 1;
-                if next_err_idx == self.props.error_patterns.len() {
-                    debug!("found all error patterns");
-                    done = true;
-                    break;
-                }
-                next_err_pat = self.props.error_patterns[next_err_idx].trim();
+
+        let mut missing_patterns: Vec<String> = Vec::new();
+
+        for pattern in &self.props.error_patterns {
+            if output_to_check.contains(pattern.trim()) {
+                debug!("found error pattern {}", pattern);
+            } else {
+                missing_patterns.push(pattern.to_string());
             }
         }
-        if done {
+
+        if missing_patterns.is_empty() {
             return;
         }
 
-        let missing_patterns = &self.props.error_patterns[next_err_idx..];
         if missing_patterns.len() == 1 {
             self.fatal_proc_rec(
                 &format!("error pattern '{}' not found!", missing_patterns[0]),
@@ -1163,7 +1159,7 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                self.error(&format!("error pattern '{}' not found!", *pattern));
+                self.error(&format!("error pattern '{}' not found!", pattern));
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
         }
@@ -1186,6 +1182,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_expected_errors(&self, expected_errors: Vec<errors::Error>, proc_res: &ProcRes) {
+        debug!("check_expected_errors: expected_errors={:?} proc_res.status={:?}",
+               expected_errors, proc_res.status);
         if proc_res.status.success()
             && expected_errors
                 .iter()
@@ -2668,12 +2666,17 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
+
+        debug!("run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
+               proc_res.status={:?} props.error_patterns={:?}",
+               explicit, self.config.compare_mode, expected_errors, proc_res.status,
+               self.props.error_patterns);
         if !explicit && self.config.compare_mode.is_none() {
-            if !expected_errors.is_empty() || !proc_res.status.success() {
-                // "// error-pattern" comments
-                self.check_expected_errors(expected_errors, &proc_res);
-            } else if !self.props.error_patterns.is_empty() || !proc_res.status.success() {
+            if !expected_errors.is_empty() && !proc_res.status.success() {
                 // "//~ERROR comments"
+                self.check_expected_errors(expected_errors, &proc_res);
+            } else if !self.props.error_patterns.is_empty() && !proc_res.status.success() {
+                // "// error-pattern" comments
                 self.check_error_patterns(&proc_res.stderr, &proc_res);
             }
         }
@@ -2914,6 +2917,20 @@ impl<'test> TestCx<'test> {
             src_dir.display().to_string()
         };
         normalized = normalized.replace(&src_dir_str, "$SRC_DIR");
+
+        // Paths into the build directory
+        let test_build_dir = &self.config.build_base;
+        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
+
+        // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
+        normalized = normalized.replace(test_build_dir.to_str().unwrap(), "$TEST_BUILD_DIR");
+        // eg. /home/user/rust/build
+        normalized = normalized.replace(&parent_build_dir.to_str().unwrap(), "$BUILD_DIR");
+
+        // Paths into lib directory.
+        let mut lib_dir = parent_build_dir.parent().unwrap().to_path_buf();
+        lib_dir.push("lib");
+        normalized = normalized.replace(&lib_dir.to_str().unwrap(), "$LIB_DIR");
 
         if json {
             // escaped newlines in json strings should be readable

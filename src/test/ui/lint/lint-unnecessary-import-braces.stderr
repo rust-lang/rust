@@ -1,0 +1,14 @@
+error: braces around A is unnecessary
+  --> $DIR/lint-unnecessary-import-braces.rs:13:1
+   |
+LL | use test::{A}; //~ ERROR braces around A is unnecessary
+   | ^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-unnecessary-import-braces.rs:11:9
+   |
+LL | #![deny(unused_import_braces)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

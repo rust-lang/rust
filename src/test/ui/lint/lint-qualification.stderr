@@ -1,0 +1,14 @@
+error: unnecessary qualification
+  --> $DIR/lint-qualification.rs:19:5
+   |
+LL |     foo::bar(); //~ ERROR: unnecessary qualification
+   |     ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-qualification.rs:11:9
+   |
+LL | #![deny(unused_qualifications)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

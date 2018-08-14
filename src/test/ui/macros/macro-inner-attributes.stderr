@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `a`
+  --> $DIR/macro-inner-attributes.rs:27:5
+   |
+LL |     a::bar();
+   |     ^ Use of undeclared type or module `a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

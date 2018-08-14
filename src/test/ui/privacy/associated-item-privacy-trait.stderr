@@ -1,0 +1,317 @@
+error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as priv_trait::PrivTr>::method}` is private
+  --> $DIR/associated-item-privacy-trait.rs:27:21
+   |
+LL |         let value = <Pub as PrivTr>::method;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as priv_trait::PrivTr>::method}` is private
+  --> $DIR/associated-item-privacy-trait.rs:29:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: type `for<'r> fn(&'r Self) {<Self as priv_trait::PrivTr>::method}` is private
+  --> $DIR/associated-item-privacy-trait.rs:31:13
+   |
+LL |         Pub.method();
+   |             ^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: associated constant `PrivTr::CONST` is private
+  --> $DIR/associated-item-privacy-trait.rs:33:9
+   |
+LL |         <Pub as PrivTr>::CONST;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-trait.rs:35:13
+   |
+LL |         let _: <Pub as PrivTr>::AssocTy;
+   |             ^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-trait.rs:35:16
+   |
+LL |         let _: <Pub as PrivTr>::AssocTy;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-trait.rs:38:34
+   |
+LL |         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-trait.rs:40:34
+   |
+LL |         pub trait InSignatureTr: PrivTr {}
+   |                                  ^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-trait.rs:42:14
+   |
+LL |         impl PrivTr for u8 {}
+   |              ^^^^^^
+...
+LL |     priv_trait::mac!();
+   |     ------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:59:21
+   |
+LL |         let value = <Pub as PubTr>::method;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:61:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:63:13
+   |
+LL |         Pub.method(loop {});
+   |             ^^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:80:21
+   |
+LL |         let value = <Pub as PubTr>::method::<Priv>;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:82:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:84:9
+   |
+LL |         Pub.method::<Priv>();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:104:21
+   |
+LL |         let value = <Pub as PubTr>::method;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:106:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:108:21
+   |
+LL |         let value = <Pub as PubTr<_>>::method;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:110:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:112:9
+   |
+LL |         Pub.method();
+   |         ^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:115:21
+   |
+LL |         let value = <Priv as PubTr<_>>::method;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:117:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:119:9
+   |
+LL |         Priv.method();
+   |         ^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:122:9
+   |
+LL |         <Pub as PubTr>::CONST;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:124:9
+   |
+LL |         <Pub as PubTr<_>>::CONST;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:126:9
+   |
+LL |         <Priv as PubTr<_>>::CONST;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:129:13
+   |
+LL |         let _: <Pub as PubTr>::AssocTy;
+   |             ^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:129:16
+   |
+LL |         let _: <Pub as PubTr>::AssocTy;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:132:13
+   |
+LL |         let _: <Pub as PubTr<_>>::AssocTy;
+   |             ^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:132:16
+   |
+LL |         let _: <Pub as PubTr<_>>::AssocTy;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:135:13
+   |
+LL |         let _: <Priv as PubTr<_>>::AssocTy;
+   |             ^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:135:16
+   |
+LL |         let _: <Priv as PubTr<_>>::AssocTy;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:139:35
+   |
+LL |         pub type InSignatureTy1 = <Pub as PubTr>::AssocTy;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:141:35
+   |
+LL |         pub type InSignatureTy2 = <Priv as PubTr<Pub>>::AssocTy;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-trait.rs:143:14
+   |
+LL |         impl PubTr for u8 {}
+   |              ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: aborting due to 35 previous errors
+

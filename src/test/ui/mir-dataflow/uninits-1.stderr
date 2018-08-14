@@ -1,0 +1,34 @@
+error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:29:14
+   |
+LL |     unsafe { rustc_peek(&x) }; //~ ERROR rustc_peek: bit not set
+   |              ^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:30:14
+   |
+LL |     unsafe { rustc_peek(&y) }; //~ ERROR rustc_peek: bit not set
+   |              ^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:31:14
+   |
+LL |     unsafe { rustc_peek(&z) }; //~ ERROR rustc_peek: bit not set
+   |              ^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:47:14
+   |
+LL |     unsafe { rustc_peek(&x); } //~ ERROR rustc_peek: bit not set
+   |              ^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:55:14
+   |
+LL |     unsafe { rustc_peek(&ret); } //~ ERROR rustc_peek: bit not set
+   |              ^^^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 6 previous errors
+

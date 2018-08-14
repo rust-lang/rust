@@ -1,0 +1,22 @@
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/inner-static-type-parameter.rs:16:19
+   |
+LL | fn foo<T>() {
+   |    --- - type variable from outer function
+   |    |
+   |    try adding a local type parameter in this method instead
+LL |     static a: Bar<T> = Bar::What;
+   |                   ^ use of type variable from outer function
+
+error[E0392]: parameter `T` is never used
+  --> $DIR/inner-static-type-parameter.rs:13:10
+   |
+LL | enum Bar<T> { What } //~ ERROR parameter `T` is never used
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0392, E0401.
+For more information about an error, try `rustc --explain E0392`.

@@ -1,0 +1,21 @@
+error[E0446]: private type `foo::Priv` in public interface
+  --> $DIR/private-in-public.rs:18:9
+   |
+LL |     struct Priv;
+   |     - `foo::Priv` declared as private
+...
+LL |         pub(crate) fn g(_: Priv) {} //~ ERROR E0446
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `foo::Priv` in public interface
+  --> $DIR/private-in-public.rs:19:9
+   |
+LL |     struct Priv;
+   |     - `foo::Priv` declared as private
+...
+LL |         crate fn h(_: Priv) {} //~ ERROR E0446
+   |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0446`.

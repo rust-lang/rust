@@ -1,0 +1,14 @@
+error: variant is never constructed: `Variant1`
+  --> $DIR/lint-dead-code-variant.rs:15:5
+   |
+LL |     Variant1, //~ ERROR: variant is never constructed
+   |     ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-variant.rs:11:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

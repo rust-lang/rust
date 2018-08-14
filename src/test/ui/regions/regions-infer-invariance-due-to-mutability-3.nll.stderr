@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-invariance-due-to-mutability-3.rs:21:5
+   |
+LL |     b_isize //~ ERROR mismatched types
+   |     ^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-infer-invariance-due-to-mutability-3.rs:21:5
+   |
+LL | fn to_longer_lifetime<'r>(b_isize: invariant<'r>) -> invariant<'static> {
+   |                       -- lifetime `'r` defined here
+LL |     b_isize //~ ERROR mismatched types
+   |     ^^^^^^^ return requires that `'r` must outlive `'static`
+
+error: aborting due to previous error
+

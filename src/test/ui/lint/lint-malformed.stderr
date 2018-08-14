@@ -1,0 +1,15 @@
+error[E0452]: malformed lint attribute
+  --> $DIR/lint-malformed.rs:11:1
+   |
+LL | #![deny = "foo"] //~ ERROR malformed lint attribute
+   | ^^^^^^^^^^^^^^^^
+
+error[E0452]: malformed lint attribute
+  --> $DIR/lint-malformed.rs:12:10
+   |
+LL | #![allow(bar = "baz")] //~ ERROR malformed lint attribute
+   |          ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0452`.

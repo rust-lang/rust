@@ -1,0 +1,8 @@
+error: unexpected lifetime `'a` in pattern
+  --> $DIR/self-vs-path-ambiguity.rs:19:11
+   |
+LL |     fn i(&'a self::S: &S) {} //~ ERROR unexpected lifetime `'a` in pattern
+   |           ^^ unexpected lifetime
+
+error: aborting due to previous error
+

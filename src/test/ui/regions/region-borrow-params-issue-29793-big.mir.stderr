@@ -1,0 +1,25 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/region-borrow-params-issue-29793-big.rs:81:43
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ---------        ^ borrowed value does not live long enough
+   |                          |
+   |                          value captured here
+...
+LL |     });
+   |     - `x` dropped here while still borrowed
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/region-borrow-params-issue-29793-big.rs:81:54
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ---------                   ^ borrowed value does not live long enough
+   |                          |
+   |                          value captured here
+...
+LL |     });
+   |     - `y` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

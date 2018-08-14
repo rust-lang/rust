@@ -1,0 +1,35 @@
+warning: not reporting region error due to nll
+  --> $DIR/project-fn-ret-contravariant.rs:53:16
+   |
+LL |    let a = bar(foo, y);
+   |                ^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/project-fn-ret-contravariant.rs:54:16
+   |
+LL |    let b = bar(foo, x);
+   |                ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/project-fn-ret-contravariant.rs:53:12
+   |
+LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   |              -- -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |    let a = bar(foo, y);
+   |            ^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/project-fn-ret-contravariant.rs:54:12
+   |
+LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   |              -- -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |    let a = bar(foo, y);
+LL |    let b = bar(foo, x);
+   |            ^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+
+error: aborting due to 2 previous errors
+

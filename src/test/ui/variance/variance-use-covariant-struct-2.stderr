@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/variance-use-covariant-struct-2.rs:26:16
+   |
+LL | #[rustc_error] fn main() { } //~ ERROR compilation successful
+   |                ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

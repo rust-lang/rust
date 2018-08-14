@@ -1,0 +1,20 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/regions-early-bound-error-method.rs:30:9
+   |
+LL |         g2.get()
+   |         ^^^^^^^^
+   |
+note: ...the reference is valid for the lifetime 'a as defined on the impl at 28:6...
+  --> $DIR/regions-early-bound-error-method.rs:28:6
+   |
+LL | impl<'a> Box<'a> {
+   |      ^^
+note: ...but the borrowed content is only valid for the lifetime 'b as defined on the method body at 29:11
+  --> $DIR/regions-early-bound-error-method.rs:29:11
+   |
+LL |     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
+   |           ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0312`.

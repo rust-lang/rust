@@ -1,0 +1,46 @@
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:33:24
+   |
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
+   |                        ^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:37:24
+   |
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
+   |                        ^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:45:10
+   |
+LL |     &mut **x //~ ERROR cannot borrow
+   |          ^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:49:10
+   |
+LL |     &mut **x //~ ERROR cannot borrow
+   |          ^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to immutable borrowed content
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:53:5
+   |
+LL |     *x = 3; //~ ERROR cannot assign
+   |     ^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to immutable borrowed content
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:57:5
+   |
+LL |     **x = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to immutable borrowed content
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:61:5
+   |
+LL |     **x = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,0 +1,68 @@
+error[E0405]: cannot find trait `Add` in this scope
+  --> $DIR/no-implicit-prelude.rs:20:6
+   |
+LL | impl Add for Test {} //~ ERROR cannot find trait `Add` in this scope
+   |      ^^^ not found in this scope
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use std::ops::Add;
+   |
+
+error[E0405]: cannot find trait `Clone` in this scope
+  --> $DIR/no-implicit-prelude.rs:21:6
+   |
+LL | impl Clone for Test {} //~ ERROR cannot find trait `Clone` in this scope
+   |      ^^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::clone::Clone;
+   |
+LL | use std::prelude::v1::Clone;
+   |
+
+error[E0405]: cannot find trait `Iterator` in this scope
+  --> $DIR/no-implicit-prelude.rs:22:6
+   |
+LL | impl Iterator for Test {} //~ ERROR cannot find trait `Iterator` in this scope
+   |      ^^^^^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::iter::Iterator;
+   |
+LL | use std::prelude::v1::Iterator;
+   |
+
+error[E0405]: cannot find trait `ToString` in this scope
+  --> $DIR/no-implicit-prelude.rs:23:6
+   |
+LL | impl ToString for Test {} //~ ERROR cannot find trait `ToString` in this scope
+   |      ^^^^^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::prelude::v1::ToString;
+   |
+LL | use std::string::ToString;
+   |
+
+error[E0405]: cannot find trait `Writer` in this scope
+  --> $DIR/no-implicit-prelude.rs:24:6
+   |
+LL | impl Writer for Test {} //~ ERROR cannot find trait `Writer` in this scope
+   |      ^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `drop` in this scope
+  --> $DIR/no-implicit-prelude.rs:27:5
+   |
+LL |     drop(2) //~ ERROR cannot find function `drop` in this scope
+   |     ^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::mem::drop;
+   |
+LL | use std::prelude::v1::drop;
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0405, E0425.
+For more information about an error, try `rustc --explain E0405`.

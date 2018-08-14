@@ -1,0 +1,31 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:21:5
+   |
+LL | struct Foo<'a,T> {
+   |               - help: consider adding an explicit lifetime bound `T: 'a`...
+LL |     f: &'a fn(T),
+   |     ^^^^^^^^^^^^
+   |
+note: ...so that the reference type `&'a fn(T)` does not outlive the data it points at
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:21:5
+   |
+LL |     f: &'a fn(T),
+   |     ^^^^^^^^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:26:5
+   |
+LL | struct Bar<'a,T> {
+   |               - help: consider adding an explicit lifetime bound `T: 'a`...
+LL |     f: &'a Trait<T>,
+   |     ^^^^^^^^^^^^^^^
+   |
+note: ...so that the reference type `&'a (dyn Trait<T> + 'a)` does not outlive the data it points at
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:26:5
+   |
+LL |     f: &'a Trait<T>,
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

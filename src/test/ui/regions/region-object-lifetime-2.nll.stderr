@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-2.rs:20:7
+   |
+LL |     x.borrowed() //~ ERROR cannot infer
+   |       ^^^^^^^^
+
+error: borrowed data escapes outside of function
+  --> $DIR/region-object-lifetime-2.rs:20:5
+   |
+LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a Foo) -> &'b () {
+   |                                                 - `x` is a reference that is only valid in the function body
+LL |     x.borrowed() //~ ERROR cannot infer
+   |     ^^^^^^^^^^^^ `x` escapes the function body here
+
+error: aborting due to previous error
+

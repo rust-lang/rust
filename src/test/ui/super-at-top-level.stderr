@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. There are too many initial `super`s.
+  --> $DIR/super-at-top-level.rs:11:5
+   |
+LL | use super::f; //~ ERROR There are too many initial `super`s
+   |     ^^^^^ There are too many initial `super`s.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,8 @@
+error: expected expression, found reserved keyword `do`
+  --> $DIR/catch-in-while.rs:14:11
+   |
+LL |     while do catch { false } {} //~ ERROR expected expression, found reserved keyword `do`
+   |           ^^ expected expression
+
+error: aborting due to previous error
+

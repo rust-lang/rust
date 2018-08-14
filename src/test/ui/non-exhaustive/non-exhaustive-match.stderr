@@ -1,0 +1,51 @@
+error[E0004]: non-exhaustive patterns: `a` not covered
+  --> $DIR/non-exhaustive-match.rs:18:11
+   |
+LL |     match x { t::b => { } } //~ ERROR non-exhaustive patterns: `a` not covered
+   |           ^ pattern `a` not covered
+
+error[E0004]: non-exhaustive patterns: `false` not covered
+  --> $DIR/non-exhaustive-match.rs:19:11
+   |
+LL |     match true { //~ ERROR non-exhaustive patterns: `false` not covered
+   |           ^^^^ pattern `false` not covered
+
+error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+  --> $DIR/non-exhaustive-match.rs:22:11
+   |
+LL |     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
+   |           ^^^^^^^^ pattern `Some(_)` not covered
+
+error[E0004]: non-exhaustive patterns: `(_, _, _)` not covered
+  --> $DIR/non-exhaustive-match.rs:25:11
+   |
+LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, _)` not covered
+   |           ^^^^^^^^^ pattern `(_, _, _)` not covered
+
+error[E0004]: non-exhaustive patterns: `(a, a)` not covered
+  --> $DIR/non-exhaustive-match.rs:28:11
+   |
+LL |     match (t::a, t::a) { //~ ERROR non-exhaustive patterns: `(a, a)` not covered
+   |           ^^^^^^^^^^^^ pattern `(a, a)` not covered
+
+error[E0004]: non-exhaustive patterns: `b` not covered
+  --> $DIR/non-exhaustive-match.rs:32:11
+   |
+LL |     match t::a { //~ ERROR non-exhaustive patterns: `b` not covered
+   |           ^^^^ pattern `b` not covered
+
+error[E0004]: non-exhaustive patterns: `[]` not covered
+  --> $DIR/non-exhaustive-match.rs:43:11
+   |
+LL |     match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
+   |           ^^^^ pattern `[]` not covered
+
+error[E0004]: non-exhaustive patterns: `[_, _, _, _]` not covered
+  --> $DIR/non-exhaustive-match.rs:56:11
+   |
+LL |     match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
+   |           ^^^^ pattern `[_, _, _, _]` not covered
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

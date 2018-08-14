@@ -1,0 +1,126 @@
+error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
+  --> $DIR/associated-types-eq-hr.rs:92:5
+   |
+LL |     foo::<UintStruct>(); //~ ERROR type mismatch
+   |     ^^^^^^^^^^^^^^^^^ expected usize, found isize
+   |
+   = note: expected type `&usize`
+              found type `&isize`
+note: required by `foo`
+  --> $DIR/associated-types-eq-hr.rs:54:1
+   |
+LL | / fn foo<T>()
+LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
+LL | | {
+LL | |     // ok for IntStruct, but not UintStruct
+LL | | }
+   | |_^
+
+error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
+  --> $DIR/associated-types-eq-hr.rs:94:5
+   |
+LL |     bar::<IntStruct>(); //~ ERROR type mismatch
+   |     ^^^^^^^^^^^^^^^^ expected isize, found usize
+   |
+   = note: expected type `&isize`
+              found type `&usize`
+note: required by `bar`
+  --> $DIR/associated-types-eq-hr.rs:60:1
+   |
+LL | / fn bar<T>()
+LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
+LL | | {
+LL | |     // ok for UintStruct, but not IntStruct
+LL | | }
+   | |_^
+
+error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
+  --> $DIR/associated-types-eq-hr.rs:97:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+   |
+   = help: the following implementations were found:
+             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+note: required by `tuple_one`
+  --> $DIR/associated-types-eq-hr.rs:66:1
+   |
+LL | / fn tuple_one<T>()
+LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
+LL | | {
+LL | |     // not ok for tuple, two lifetimes and we pick first
+LL | | }
+   | |_^
+
+error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'x isize`
+  --> $DIR/associated-types-eq-hr.rs:97:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+   |
+note: required by `tuple_one`
+  --> $DIR/associated-types-eq-hr.rs:66:1
+   |
+LL | / fn tuple_one<T>()
+LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
+LL | | {
+LL | |     // not ok for tuple, two lifetimes and we pick first
+LL | | }
+   | |_^
+
+error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
+  --> $DIR/associated-types-eq-hr.rs:101:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+   |
+   = help: the following implementations were found:
+             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+note: required by `tuple_two`
+  --> $DIR/associated-types-eq-hr.rs:72:1
+   |
+LL | / fn tuple_two<T>()
+LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
+LL | | {
+LL | |     // not ok for tuple, two lifetimes and we pick second
+LL | | }
+   | |_^
+
+error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'y isize`
+  --> $DIR/associated-types-eq-hr.rs:101:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+   |
+note: required by `tuple_two`
+  --> $DIR/associated-types-eq-hr.rs:72:1
+   |
+LL | / fn tuple_two<T>()
+LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
+LL | | {
+LL | |     // not ok for tuple, two lifetimes and we pick second
+LL | | }
+   | |_^
+
+error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
+  --> $DIR/associated-types-eq-hr.rs:107:5
+   |
+LL |     tuple_four::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+   |
+   = help: the following implementations were found:
+             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+note: required by `tuple_four`
+  --> $DIR/associated-types-eq-hr.rs:84:1
+   |
+LL | / fn tuple_four<T>()
+LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize)>
+LL | | {
+LL | |     // not ok for tuple, two lifetimes, and lifetime matching is invariant
+LL | | }
+   | |_^
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

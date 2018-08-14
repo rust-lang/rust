@@ -1,0 +1,22 @@
+error[E0567]: auto traits cannot have generic parameters
+  --> $DIR/auto-trait-validation.rs:13:1
+   |
+LL | auto trait Generic<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0568]: auto traits cannot have super traits
+  --> $DIR/auto-trait-validation.rs:15:1
+   |
+LL | auto trait Bound : Copy {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0380]: auto traits cannot have methods or associated items
+  --> $DIR/auto-trait-validation.rs:17:1
+   |
+LL | auto trait MyTrait { fn foo() {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0380, E0567, E0568.
+For more information about an error, try `rustc --explain E0380`.

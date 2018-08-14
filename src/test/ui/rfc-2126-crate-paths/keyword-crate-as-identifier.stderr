@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. `crate` in paths can only be used in start position
+  --> $DIR/keyword-crate-as-identifier.rs:14:9
+   |
+LL |     let crate = 0; //~ ERROR failed to resolve. `crate` in paths can only be used in start position
+   |         ^^^^^ `crate` in paths can only be used in start position
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

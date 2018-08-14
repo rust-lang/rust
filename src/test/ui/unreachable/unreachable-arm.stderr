@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/unreachable-arm.rs:21:9
+   |
+LL |         Foo::A(_, 1) => { } //~ ERROR unreachable pattern
+   |         ^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-arm.rs:14:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

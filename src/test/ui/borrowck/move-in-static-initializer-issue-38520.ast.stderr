@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-in-static-initializer-issue-38520.rs:27:23
+   |
+LL | static Y: usize = get(*&X); //[ast]~ ERROR E0507
+   |                       ^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-in-static-initializer-issue-38520.rs:29:22
+   |
+LL | const Z: usize = get(*&X); //[ast]~ ERROR E0507
+   |                      ^^^ cannot move out of borrowed content
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

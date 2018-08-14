@@ -1,0 +1,116 @@
+error: literal out of range for u8
+  --> $DIR/lint-type-overflow.rs:21:18
+   |
+LL |     let x1: u8 = 256; //~ error: literal out of range for u8
+   |                  ^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-type-overflow.rs:12:9
+   |
+LL | #![deny(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for u8
+  --> $DIR/lint-type-overflow.rs:24:14
+   |
+LL |     let x1 = 256_u8; //~ error: literal out of range for u8
+   |              ^^^^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:27:18
+   |
+LL |     let x1: i8 = 128; //~ error: literal out of range for i8
+   |                  ^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:29:19
+   |
+LL |     let x3: i8 = -129; //~ error: literal out of range for i8
+   |                   ^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:30:19
+   |
+LL |     let x3: i8 = -(129); //~ error: literal out of range for i8
+   |                   ^^^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:31:20
+   |
+LL |     let x3: i8 = -{129}; //~ error: literal out of range for i8
+   |                    ^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:33:10
+   |
+LL |     test(1000); //~ error: literal out of range for i8
+   |          ^^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:35:13
+   |
+LL |     let x = 128_i8; //~ error: literal out of range for i8
+   |             ^^^^^^
+
+error: literal out of range for i8
+  --> $DIR/lint-type-overflow.rs:39:14
+   |
+LL |     let x = -129_i8; //~ error: literal out of range for i8
+   |              ^^^^^^
+
+error: literal out of range for i32
+  --> $DIR/lint-type-overflow.rs:43:18
+   |
+LL |     let x: i32 = 2147483648; //~ error: literal out of range for i32
+   |                  ^^^^^^^^^^
+
+error: literal out of range for i32
+  --> $DIR/lint-type-overflow.rs:44:13
+   |
+LL |     let x = 2147483648_i32; //~ error: literal out of range for i32
+   |             ^^^^^^^^^^^^^^
+
+error: literal out of range for i32
+  --> $DIR/lint-type-overflow.rs:47:19
+   |
+LL |     let x: i32 = -2147483649; //~ error: literal out of range for i32
+   |                   ^^^^^^^^^^
+
+error: literal out of range for i32
+  --> $DIR/lint-type-overflow.rs:48:14
+   |
+LL |     let x = -2147483649_i32; //~ error: literal out of range for i32
+   |              ^^^^^^^^^^^^^^
+
+error: literal out of range for i32
+  --> $DIR/lint-type-overflow.rs:49:13
+   |
+LL |     let x = 2147483648; //~ error: literal out of range for i32
+   |             ^^^^^^^^^^
+
+error: literal out of range for i64
+  --> $DIR/lint-type-overflow.rs:51:13
+   |
+LL |     let x = 9223372036854775808_i64; //~ error: literal out of range for i64
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for i64
+  --> $DIR/lint-type-overflow.rs:53:13
+   |
+LL |     let x = 18446744073709551615_i64; //~ error: literal out of range for i64
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for i64
+  --> $DIR/lint-type-overflow.rs:54:19
+   |
+LL |     let x: i64 = -9223372036854775809; //~ error: literal out of range for i64
+   |                   ^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for i64
+  --> $DIR/lint-type-overflow.rs:55:14
+   |
+LL |     let x = -9223372036854775809_i64; //~ error: literal out of range for i64
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+

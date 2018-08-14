@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `Struct: Trait<isize>` is not satisfied
+  --> $DIR/trait-coercion-generic-bad.rs:26:32
+   |
+LL |     let s: Box<Trait<isize>> = Box::new(Struct { person: "Fred" });
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<isize>` is not implemented for `Struct`
+   |
+   = help: the following implementations were found:
+             <Struct as Trait<&'static str>>
+   = note: required for the cast to the object type `dyn Trait<isize>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

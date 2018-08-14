@@ -1,0 +1,40 @@
+error: inherent impls cannot be negative
+  --> $DIR/syntax-trait-polarity.rs:17:1
+   |
+LL | impl !TestType {}
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/syntax-trait-polarity.rs:22:1
+   |
+LL | unsafe impl !Send for TestType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: inherent impls cannot be negative
+  --> $DIR/syntax-trait-polarity.rs:29:1
+   |
+LL | impl<T> !TestType2<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/syntax-trait-polarity.rs:32:1
+   |
+LL | unsafe impl<T> !Send for TestType2<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
+  --> $DIR/syntax-trait-polarity.rs:24:1
+   |
+LL | impl !TestTrait for TestType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
+  --> $DIR/syntax-trait-polarity.rs:34:1
+   |
+LL | impl<T> !TestTrait for TestType2<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0192, E0198.
+For more information about an error, try `rustc --explain E0192`.

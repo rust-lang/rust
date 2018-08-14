@@ -1,0 +1,19 @@
+warning: not reporting region error due to nll
+  --> $DIR/variance-use-covariant-struct-1.rs:20:5
+   |
+LL |     v //~ ERROR mismatched types
+   |     ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/variance-use-covariant-struct-1.rs:20:5
+   |
+LL | fn foo<'min,'max>(v: SomeStruct<&'min ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v //~ ERROR mismatched types
+   |     ^ return requires that `'min` must outlive `'max`
+
+error: aborting due to previous error
+

@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/tutorial-suffix-inference-test.rs:19:18
+   |
+LL |     identity_u16(x);
+   |                  ^ expected u16, found u8
+help: you can cast an `u8` to `u16`, which will zero-extend the source value
+   |
+LL |     identity_u16(x.into());
+   |                  ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/tutorial-suffix-inference-test.rs:22:18
+   |
+LL |     identity_u16(y);
+   |                  ^ expected u16, found i32
+
+error[E0308]: mismatched types
+  --> $DIR/tutorial-suffix-inference-test.rs:31:18
+   |
+LL |     identity_u16(a);
+   |                  ^ expected u16, found isize
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

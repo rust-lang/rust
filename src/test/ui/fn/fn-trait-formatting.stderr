@@ -1,0 +1,46 @@
+error[E0308]: mismatched types
+  --> $DIR/fn-trait-formatting.rs:16:17
+   |
+LL |     let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
+   |
+   = note: expected type `()`
+              found type `std::boxed::Box<dyn std::ops::FnOnce(isize)>`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-trait-formatting.rs:20:17
+   |
+LL |     let _: () = (box |_: isize, isize| {}) as Box<Fn(isize, isize)>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
+   |
+   = note: expected type `()`
+              found type `std::boxed::Box<dyn std::ops::Fn(isize, isize)>`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-trait-formatting.rs:24:17
+   |
+LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> isize>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
+   |
+   = note: expected type `()`
+              found type `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
+
+error[E0277]: the trait bound `{integer}: std::ops::Fn<(isize,)>` is not satisfied
+  --> $DIR/fn-trait-formatting.rs:29:5
+   |
+LL |     needs_fn(1);
+   |     ^^^^^^^^ the trait `std::ops::Fn<(isize,)>` is not implemented for `{integer}`
+   |
+   = help: the following implementations were found:
+             <&'a F as std::ops::Fn<A>>
+             <core::str::LinesAnyMap as std::ops::Fn<(&'a str,)>>
+note: required by `needs_fn`
+  --> $DIR/fn-trait-formatting.rs:13:1
+   |
+LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

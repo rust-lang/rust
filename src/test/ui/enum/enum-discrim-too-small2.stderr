@@ -1,0 +1,32 @@
+error: literal out of range for i8
+  --> $DIR/enum-discrim-too-small2.rs:18:11
+   |
+LL |     Ci8 = 223, //~ ERROR literal out of range for i8
+   |           ^^^
+   |
+note: lint level defined here
+  --> $DIR/enum-discrim-too-small2.rs:11:9
+   |
+LL | #![deny(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for i16
+  --> $DIR/enum-discrim-too-small2.rs:25:12
+   |
+LL |     Ci16 = 55555, //~ ERROR literal out of range for i16
+   |            ^^^^^
+
+error: literal out of range for i32
+  --> $DIR/enum-discrim-too-small2.rs:32:12
+   |
+LL |     Ci32 = 3_000_000_000, //~ ERROR literal out of range for i32
+   |            ^^^^^^^^^^^^^
+
+error: literal out of range for i64
+  --> $DIR/enum-discrim-too-small2.rs:39:12
+   |
+LL |     Ci64 = 9223372036854775809, //~ ERROR literal out of range for i64
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

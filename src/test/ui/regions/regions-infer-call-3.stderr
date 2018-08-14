@@ -1,0 +1,30 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'r in function call due to conflicting requirements
+  --> $DIR/regions-infer-call-3.rs:18:24
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |                        ^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 18:18...
+  --> $DIR/regions-infer-call-3.rs:18:18
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |                  ^^^^^^^^^^^^^^^^^^^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/regions-infer-call-3.rs:18:34
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |                                  ^
+note: but, the lifetime must be valid for the call at 18:13...
+  --> $DIR/regions-infer-call-3.rs:18:13
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...so type `&isize` of expression is valid during the expression
+  --> $DIR/regions-infer-call-3.rs:18:13
+   |
+LL |     let z = with(|y| { select(x, y) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/type-ascription-soundness.rs:17:17
+   |
+LL |     let ref x = arr: &[u8]; //~ ERROR mismatched types
+   |                 ^^^ expected slice, found array of 3 elements
+   |
+   = note: expected type `&[u8]`
+              found type `&[u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/type-ascription-soundness.rs:18:21
+   |
+LL |     let ref mut x = arr: &[u8]; //~ ERROR mismatched types
+   |                     ^^^ expected slice, found array of 3 elements
+   |
+   = note: expected type `&[u8]`
+              found type `&[u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/type-ascription-soundness.rs:19:11
+   |
+LL |     match arr: &[u8] { //~ ERROR mismatched types
+   |           ^^^ expected slice, found array of 3 elements
+   |
+   = note: expected type `&[u8]`
+              found type `&[u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/type-ascription-soundness.rs:22:17
+   |
+LL |     let _len = (arr: &[u8]).len(); //~ ERROR mismatched types
+   |                 ^^^ expected slice, found array of 3 elements
+   |
+   = note: expected type `&[u8]`
+              found type `&[u8; 3]`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

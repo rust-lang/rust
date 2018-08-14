@@ -1,0 +1,76 @@
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:25:27
+   |
+LL |         let _f = to_fn(|| x = 42); //~ ERROR cannot assign
+   |                           ^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:25:24
+   |
+LL |         let _f = to_fn(|| x = 42); //~ ERROR cannot assign
+   |                        ^^^^^^^^^
+
+error[E0596]: cannot borrow `y` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:28:31
+   |
+LL |         let _g = to_fn(|| set(&mut y)); //~ ERROR cannot borrow
+   |                               ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:28:24
+   |
+LL |         let _g = to_fn(|| set(&mut y)); //~ ERROR cannot borrow
+   |                        ^^^^^^^^^^^^^^
+
+error[E0594]: cannot assign to `z`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:31:55
+   |
+LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); }); //~ ERROR cannot assign
+   |                                                       ^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:31:52
+   |
+LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); }); //~ ERROR cannot assign
+   |                                                    ^^^^^^^^^
+
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:37:32
+   |
+LL |         let _f = to_fn(move || x = 42); //~ ERROR cannot assign
+   |                                ^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:37:24
+   |
+LL |         let _f = to_fn(move || x = 42); //~ ERROR cannot assign
+   |                        ^^^^^^^^^^^^^^
+
+error[E0596]: cannot borrow `y` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:40:36
+   |
+LL |         let _g = to_fn(move || set(&mut y)); //~ ERROR cannot borrow
+   |                                    ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:40:24
+   |
+LL |         let _g = to_fn(move || set(&mut y)); //~ ERROR cannot borrow
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+error[E0594]: cannot assign to `z`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:43:65
+   |
+LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); }); //~ ERROR cannot assign
+   |                                                                 ^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/borrow-immutable-upvar-mutation.rs:43:57
+   |
+LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); }); //~ ERROR cannot assign
+   |                                                         ^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,0 +1,47 @@
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
+  --> $DIR/coerce-overloaded-autoderef.rs:22:24
+   |
+LL |     let y = borrow_mut(x);
+   |                        - first mutable borrow occurs here
+LL |     let z = borrow_mut(x);
+   |                        ^ second mutable borrow occurs here
+...
+LL |     drop((y, z));
+   |           - borrow later used here
+
+error[E0506]: cannot assign to `**x` because it is borrowed
+  --> $DIR/coerce-overloaded-autoderef.rs:31:5
+   |
+LL |     let y = borrow(x);
+   |                    - borrow of `**x` occurs here
+LL |     let z = borrow(x);
+LL |     **x += 1;
+   |     ^^^^^^^^ assignment to borrowed `**x` occurs here
+...
+LL |     drop((y, z));
+   |           - borrow later used here
+
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
+  --> $DIR/coerce-overloaded-autoderef.rs:38:20
+   |
+LL |     borrow_mut2(x, x);
+   |     ---------------^-
+   |     |           |  |
+   |     |           |  second mutable borrow occurs here
+   |     |           first mutable borrow occurs here
+   |     borrow later used here
+
+error[E0502]: cannot borrow `*x` as immutable because it is also borrowed as mutable
+  --> $DIR/coerce-overloaded-autoderef.rs:44:16
+   |
+LL |     borrow2(x, x);
+   |     -----------^-
+   |     |       |  |
+   |     |       |  immutable borrow occurs here
+   |     |       mutable borrow occurs here
+   |     borrow later used here
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0499, E0502, E0506.
+For more information about an error, try `rustc --explain E0499`.

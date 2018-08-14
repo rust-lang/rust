@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/call-fn-never-arg-wrong-type.rs:20:9
+   |
+LL |     foo("wow"); //~ ERROR mismatched types
+   |         ^^^^^ expected !, found reference
+   |
+   = note: expected type `!`
+              found type `&'static str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,15 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/unboxed-closure-region.rs:18:12
+   |
+LL |         || x //~ ERROR `x` does not live long enough
+   |         -- ^ borrowed value does not live long enough
+   |         |
+   |         capture occurs here
+LL |     };
+   |     - borrowed value only lives until here
+LL | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

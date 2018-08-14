@@ -1,0 +1,100 @@
+error[E0665]: `Default` cannot be derived for enums, only structs
+  --> $DIR/macros-nonfatal-errors.rs:20:10
+   |
+LL | #[derive(Default)] //~ ERROR
+   |          ^^^^^^^
+
+error: inline assembly must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:24:10
+   |
+LL |     asm!(invalid); //~ ERROR
+   |          ^^^^^^^
+
+error: concat_idents! requires ident args.
+  --> $DIR/macros-nonfatal-errors.rs:26:5
+   |
+LL |     concat_idents!("not", "idents"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:28:17
+   |
+LL |     option_env!(invalid); //~ ERROR
+   |                 ^^^^^^^
+
+error: expected string literal
+  --> $DIR/macros-nonfatal-errors.rs:29:10
+   |
+LL |     env!(invalid); //~ ERROR
+   |          ^^^^^^^
+
+error: expected string literal
+  --> $DIR/macros-nonfatal-errors.rs:30:10
+   |
+LL |     env!(foo, abr, baz); //~ ERROR
+   |          ^^^
+
+error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
+  --> $DIR/macros-nonfatal-errors.rs:31:5
+   |
+LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: non-ident macro paths are experimental (see issue #35896)
+  --> $DIR/macros-nonfatal-errors.rs:33:5
+   |
+LL |     foo::blah!(); //~ ERROR
+   |     ^^^^^^^^^
+   |
+   = help: add #![feature(use_extern_macros)] to the crate attributes to enable
+
+error: format argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:35:13
+   |
+LL |     format!(invalid); //~ ERROR
+   |             ^^^^^^^
+help: you might be missing a string literal to format with
+   |
+LL |     format!("{}", invalid); //~ ERROR
+   |             ^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:37:14
+   |
+LL |     include!(invalid); //~ ERROR
+   |              ^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:39:18
+   |
+LL |     include_str!(invalid); //~ ERROR
+   |                  ^^^^^^^
+
+error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: No such file or directory (os error 2)
+  --> $DIR/macros-nonfatal-errors.rs:40:5
+   |
+LL |     include_str!("i'd be quite surprised if a file with this name existed"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:41:20
+   |
+LL |     include_bytes!(invalid); //~ ERROR
+   |                    ^^^^^^^
+
+error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: No such file or directory (os error 2)
+  --> $DIR/macros-nonfatal-errors.rs:42:5
+   |
+LL |     include_bytes!("i'd be quite surprised if a file with this name existed"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trace_macros! accepts only `true` or `false`
+  --> $DIR/macros-nonfatal-errors.rs:44:5
+   |
+LL |     trace_macros!(invalid); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+Some errors occurred: E0658, E0665.
+For more information about an error, try `rustc --explain E0658`.

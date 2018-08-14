@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `thing`
+  --> $DIR/bad-module.rs:12:15
+   |
+LL |     let foo = thing::len(Vec::new());
+   |               ^^^^^ Use of undeclared type or module `thing`
+
+error[E0433]: failed to resolve. Use of undeclared type or module `foo`
+  --> $DIR/bad-module.rs:15:15
+   |
+LL |     let foo = foo::bar::baz();
+   |               ^^^ Use of undeclared type or module `foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

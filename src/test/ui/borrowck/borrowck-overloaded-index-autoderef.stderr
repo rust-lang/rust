@@ -1,0 +1,76 @@
+error[E0502]: cannot borrow `*f` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:47:15
+   |
+LL |     let _p = &mut f[&s];
+   |                   - mutable borrow occurs here
+LL |     let _q = &f[&s]; //~ ERROR cannot borrow
+   |               ^ immutable borrow occurs here
+LL | }
+   | - mutable borrow ends here
+
+error[E0499]: cannot borrow `*f` as mutable more than once at a time
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:52:19
+   |
+LL |     let _p = &mut f[&s];
+   |                   - first mutable borrow occurs here
+LL |     let _q = &mut f[&s]; //~ ERROR cannot borrow
+   |                   ^ second mutable borrow occurs here
+LL | }
+   | - first borrow ends here
+
+error[E0499]: cannot borrow `f.foo` as mutable more than once at a time
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:61:19
+   |
+LL |     let _p = &mut f.foo[&s];
+   |                   ----- first mutable borrow occurs here
+LL |     let _q = &mut f.foo[&s]; //~ ERROR cannot borrow
+   |                   ^^^^^ second mutable borrow occurs here
+LL | }
+   | - first borrow ends here
+
+error[E0502]: cannot borrow `f.foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:71:19
+   |
+LL |     let _p = &f.foo[&s];
+   |               ----- immutable borrow occurs here
+LL |     let _q = &mut f.foo[&s]; //~ ERROR cannot borrow
+   |                   ^^^^^ mutable borrow occurs here
+LL | }
+   | - immutable borrow ends here
+
+error[E0506]: cannot assign to `f.foo` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:76:5
+   |
+LL |     let _p = &f.foo[&s];
+   |               ----- borrow of `f.foo` occurs here
+LL |     f.foo = g; //~ ERROR cannot assign
+   |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
+
+error[E0506]: cannot assign to `*f` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:81:5
+   |
+LL |     let _p = &f.foo[&s];
+   |               ----- borrow of `*f` occurs here
+LL |     *f = g; //~ ERROR cannot assign
+   |     ^^^^^^ assignment to borrowed `*f` occurs here
+
+error[E0506]: cannot assign to `f.foo` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:86:5
+   |
+LL |     let _p = &mut f.foo[&s];
+   |                   ----- borrow of `f.foo` occurs here
+LL |     f.foo = g; //~ ERROR cannot assign
+   |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
+
+error[E0506]: cannot assign to `*f` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-autoderef.rs:91:5
+   |
+LL |     let _p = &mut f.foo[&s];
+   |                   ----- borrow of `*f` occurs here
+LL |     *f = g; //~ ERROR cannot assign
+   |     ^^^^^^ assignment to borrowed `*f` occurs here
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0499, E0502, E0506.
+For more information about an error, try `rustc --explain E0499`.

@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `xs` as mutable more than once at a time
+  --> $DIR/vec-mut-iter-borrow.rs:15:9
+   |
+LL |     for x in &mut xs {
+   |              -------
+   |              |
+   |              first mutable borrow occurs here
+   |              borrow used here in later iteration of loop
+LL |         xs.push(1) //~ ERROR cannot borrow `xs`
+   |         ^^ second mutable borrow occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0499`.

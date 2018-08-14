@@ -1,0 +1,13 @@
+error[E0597]: `local.inner` does not live long enough
+  --> $DIR/borrowck-fn-in-const-c.rs:27:17
+   |
+LL |         return &local.inner; //~ ERROR does not live long enough
+   |                 ^^^^^^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

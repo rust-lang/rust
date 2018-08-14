@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/ptr-coercion.rs:17:25
+   |
+LL |     let x: *mut isize = x; //~  ERROR mismatched types
+   |                         ^ types differ in mutability
+   |
+   = note: expected type `*mut isize`
+              found type `*const isize`
+
+error[E0308]: mismatched types
+  --> $DIR/ptr-coercion.rs:23:25
+   |
+LL |     let x: *mut isize = &42; //~  ERROR mismatched types
+   |                         ^^^ types differ in mutability
+   |
+   = note: expected type `*mut isize`
+              found type `&isize`
+
+error[E0308]: mismatched types
+  --> $DIR/ptr-coercion.rs:29:25
+   |
+LL |     let x: *mut isize = x; //~  ERROR mismatched types
+   |                         ^ types differ in mutability
+   |
+   = note: expected type `*mut isize`
+              found type `*const isize`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

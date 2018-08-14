@@ -1,0 +1,107 @@
+error[E0307]: invalid `self` type: isize
+  --> $DIR/ufcs-explicit-self-bad.rs:18:18
+   |
+LL |     fn foo(self: isize, x: isize) -> isize {
+   |                  ^^^^^
+   |
+   = note: type must be `Foo` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error[E0307]: invalid `self` type: Bar<isize>
+  --> $DIR/ufcs-explicit-self-bad.rs:29:18
+   |
+LL |     fn foo(self: Bar<isize>, x: isize) -> isize {
+   |                  ^^^^^^^^^^
+   |
+   = note: type must be `Bar<T>` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error[E0307]: invalid `self` type: &Bar<usize>
+  --> $DIR/ufcs-explicit-self-bad.rs:33:18
+   |
+LL |     fn bar(self: &Bar<usize>, x: isize) -> isize {
+   |                  ^^^^^^^^^^^
+   |
+   = note: type must be `Bar<T>` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error[E0308]: mismatched method receiver
+  --> $DIR/ufcs-explicit-self-bad.rs:47:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched method receiver
+   |                     ^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'a Bar<T>`
+              found type `&Bar<T>`
+note: the anonymous lifetime #1 defined on the method body at 47:5...
+  --> $DIR/ufcs-explicit-self-bad.rs:47:5
+   |
+LL |     fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched method receiver
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 45:6
+  --> $DIR/ufcs-explicit-self-bad.rs:45:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+
+error[E0308]: mismatched method receiver
+  --> $DIR/ufcs-explicit-self-bad.rs:47:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched method receiver
+   |                     ^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'a Bar<T>`
+              found type `&Bar<T>`
+note: the lifetime 'a as defined on the impl at 45:6...
+  --> $DIR/ufcs-explicit-self-bad.rs:45:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime #1 defined on the method body at 47:5
+  --> $DIR/ufcs-explicit-self-bad.rs:47:5
+   |
+LL |     fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched method receiver
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched method receiver
+  --> $DIR/ufcs-explicit-self-bad.rs:49:21
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'a Bar<T>`
+              found type `&Bar<T>`
+note: the anonymous lifetime #2 defined on the method body at 49:5...
+  --> $DIR/ufcs-explicit-self-bad.rs:49:5
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 45:6
+  --> $DIR/ufcs-explicit-self-bad.rs:45:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+
+error[E0308]: mismatched method receiver
+  --> $DIR/ufcs-explicit-self-bad.rs:49:21
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'a Bar<T>`
+              found type `&Bar<T>`
+note: the lifetime 'a as defined on the impl at 45:6...
+  --> $DIR/ufcs-explicit-self-bad.rs:45:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 49:5
+  --> $DIR/ufcs-explicit-self-bad.rs:49:5
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0307, E0308.
+For more information about an error, try `rustc --explain E0307`.

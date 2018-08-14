@@ -1,0 +1,11 @@
+error[E0197]: inherent impls cannot be unsafe
+  --> $DIR/trait-safety-inherent-impl.rs:15:1
+   |
+LL | / unsafe impl SomeStruct { //~ ERROR inherent impls cannot be unsafe
+LL | |     fn foo(self) { }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0197`.

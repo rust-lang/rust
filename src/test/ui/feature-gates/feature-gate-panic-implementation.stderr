@@ -1,0 +1,11 @@
+error[E0658]: #[panic_implementation] is an unstable feature (see issue #44489)
+  --> $DIR/feature-gate-panic-implementation.rs:18:1
+   |
+LL | #[panic_implementation] //~ ERROR #[panic_implementation] is an unstable feature (see issue #44489)
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(panic_implementation)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

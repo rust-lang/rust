@@ -1,0 +1,29 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/lub-if.rs:38:9
+   |
+LL |         s  //~ ERROR E0312
+   |         ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime 'a as defined on the function body at 33:17
+  --> $DIR/lub-if.rs:33:17
+   |
+LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 ^^
+
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/lub-if.rs:45:9
+   |
+LL |         s  //~ ERROR E0312
+   |         ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime 'a as defined on the function body at 42:17
+  --> $DIR/lub-if.rs:42:17
+   |
+LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0312`.

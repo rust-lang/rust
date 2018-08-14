@@ -96,7 +96,7 @@ impl fmt::Display for Mode {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
     Nll,
     Polonius,

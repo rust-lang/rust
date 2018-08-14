@@ -1,0 +1,53 @@
+error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to conflicting requirements
+  --> $DIR/object-lifetime-default-elision.rs:81:5
+   |
+LL |     ss
+   |     ^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 64:10...
+  --> $DIR/object-lifetime-default-elision.rs:64:10
+   |
+LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+   |          ^^
+note: ...so that the type `(dyn SomeTrait + 'a)` is not borrowed for too long
+  --> $DIR/object-lifetime-default-elision.rs:81:5
+   |
+LL |     ss
+   |     ^^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 64:13...
+  --> $DIR/object-lifetime-default-elision.rs:64:13
+   |
+LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+   |             ^^
+   = note: ...so that the expression is assignable:
+           expected &'b (dyn SomeTrait + 'b)
+              found &dyn SomeTrait
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/object-lifetime-default-elision.rs:81:5
+   |
+LL |     ss
+   |     ^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 64:10...
+  --> $DIR/object-lifetime-default-elision.rs:64:10
+   |
+LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+   |          ^^
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/object-lifetime-default-elision.rs:81:5
+   |
+LL |     ss
+   |     ^^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 64:13...
+  --> $DIR/object-lifetime-default-elision.rs:64:13
+   |
+LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+   |             ^^
+   = note: ...so that the expression is assignable:
+           expected &'b (dyn SomeTrait + 'b)
+              found &dyn SomeTrait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0495`.

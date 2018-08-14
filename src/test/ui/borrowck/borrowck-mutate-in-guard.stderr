@@ -1,0 +1,22 @@
+error[E0302]: cannot assign in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:20:25
+   |
+LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
+   |                         ^^^^^^^^^^^^^^^^^^ assignment in pattern guard
+
+error[E0301]: cannot mutably borrow in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:22:38
+   |
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                      ^ borrowed mutably in pattern guard
+
+error[E0302]: cannot assign in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:22:41
+   |
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                         ^^^^^^^^^^^^^^^^^^^ assignment in pattern guard
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0301, E0302.
+For more information about an error, try `rustc --explain E0301`.

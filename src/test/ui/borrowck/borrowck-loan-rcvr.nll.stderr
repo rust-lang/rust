@@ -1,0 +1,27 @@
+error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-loan-rcvr.rs:34:14
+   |
+LL |       p.blockm(|| { //~ ERROR cannot borrow `p` as mutable
+   |       -        ^^ mutable borrow occurs here
+   |       |
+   |  _____immutable borrow occurs here
+   | |
+LL | |         p.x = 10;
+   | |         - second borrow occurs due to use of `p` in closure
+LL | |     })
+   | |______- borrow later used here
+
+error[E0502]: cannot borrow `p` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-loan-rcvr.rs:45:5
+   |
+LL |     let l = &mut p;
+   |             ------ mutable borrow occurs here
+LL |     p.impurem(); //~ ERROR cannot borrow
+   |     ^ immutable borrow occurs here
+LL | 
+LL |     l.x += 1;
+   |     -------- borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

@@ -1,0 +1,23 @@
+error[E0391]: cycle detected when computing the bounds for type parameter `T`
+  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+   |
+LL |           T : Add<T::Item>
+   |                   ^^^^^^^
+   |
+   = note: ...which again requires computing the bounds for type parameter `T`, completing the cycle
+note: cycle used when processing `A`
+  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+   |
+LL |           T : Add<T::Item>
+   |                   ^^^^^^^
+
+error[E0220]: associated type `Item` not found for `T`
+  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+   |
+LL |           T : Add<T::Item>
+   |                   ^^^^^^^ associated type `Item` not found
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0220, E0391.
+For more information about an error, try `rustc --explain E0220`.

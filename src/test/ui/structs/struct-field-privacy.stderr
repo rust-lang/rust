@@ -1,0 +1,33 @@
+error[E0616]: field `a` of struct `inner::A` is private
+  --> $DIR/struct-field-privacy.rs:33:5
+   |
+LL |     b.a; //~ ERROR: field `a` of struct `inner::A` is private
+   |     ^^^
+
+error[E0616]: field `b` of struct `inner::B` is private
+  --> $DIR/struct-field-privacy.rs:36:5
+   |
+LL |     c.b; //~ ERROR: field `b` of struct `inner::B` is private
+   |     ^^^
+
+error[E0616]: field `a` of struct `xc::A` is private
+  --> $DIR/struct-field-privacy.rs:38:5
+   |
+LL |     d.a; //~ ERROR: field `a` of struct `xc::A` is private
+   |     ^^^
+
+error[E0616]: field `b` of struct `xc::B` is private
+  --> $DIR/struct-field-privacy.rs:42:5
+   |
+LL |     e.b; //~ ERROR: field `b` of struct `xc::B` is private
+   |     ^^^
+
+error[E0616]: field `1` of struct `inner::Z` is private
+  --> $DIR/struct-field-privacy.rs:45:5
+   |
+LL |     z.1; //~ ERROR: field `1` of struct `inner::Z` is private
+   |     ^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0616`.

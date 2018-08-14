@@ -1,0 +1,644 @@
+warning: use of deprecated item 'lint_stability::deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:36:9
+   |
+LL |         deprecated(); //~ WARN use of deprecated item 'lint_stability::deprecated'
+   |         ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-stability-deprecated.rs:17:9
+   |
+LL | #![warn(deprecated)]
+   |         ^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:41:9
+   |
+LL |         Trait::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:43:9
+   |
+LL |         <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:45:9
+   |
+LL |         deprecated_text(); //~ WARN use of deprecated item 'lint_stability::deprecated_text': text
+   |         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:50:9
+   |
+LL |         Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:52:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:54:9
+   |
+LL |         deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:59:9
+   |
+LL |         Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:61:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:63:9
+   |
+LL |         deprecated_unstable_text(); //~ WARN use of deprecated item 'lint_stability::deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:68:9
+   |
+LL |         Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:70:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedStruct': text
+  --> $DIR/lint-stability-deprecated.rs:117:17
+   |
+LL |         let _ = DeprecatedStruct { //~ WARN use of deprecated item 'lint_stability::DeprecatedStruct'
+   |                 ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedUnstableStruct': text
+  --> $DIR/lint-stability-deprecated.rs:120:17
+   |
+LL |         let _ = DeprecatedUnstableStruct {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedUnitStruct': text
+  --> $DIR/lint-stability-deprecated.rs:127:17
+   |
+LL |         let _ = DeprecatedUnitStruct; //~ WARN use of deprecated item 'lint_stability::DeprecatedUnitStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedUnstableUnitStruct': text
+  --> $DIR/lint-stability-deprecated.rs:128:17
+   |
+LL |         let _ = DeprecatedUnstableUnitStruct; //~ WARN use of deprecated item 'lint_stability::DeprecatedUnstableUnitStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Enum::DeprecatedVariant': text
+  --> $DIR/lint-stability-deprecated.rs:132:17
+   |
+LL |         let _ = Enum::DeprecatedVariant; //~ WARN use of deprecated item 'lint_stability::Enum::DeprecatedVariant'
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Enum::DeprecatedUnstableVariant': text
+  --> $DIR/lint-stability-deprecated.rs:133:17
+   |
+LL |         let _ = Enum::DeprecatedUnstableVariant; //~ WARN use of deprecated item 'lint_stability::Enum::DeprecatedUnstableVariant'
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedTupleStruct': text
+  --> $DIR/lint-stability-deprecated.rs:137:17
+   |
+LL |         let _ = DeprecatedTupleStruct (1); //~ WARN use of deprecated item 'lint_stability::DeprecatedTupleStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedUnstableTupleStruct': text
+  --> $DIR/lint-stability-deprecated.rs:138:17
+   |
+LL |         let _ = DeprecatedUnstableTupleStruct (1); //~ WARN use of deprecated item 'lint_stability::DeprecatedUnstableTupleStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:147:25
+   |
+LL |         macro_test_arg!(deprecated_text()); //~ WARN use of deprecated item 'lint_stability::deprecated_text': text
+   |                         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:148:25
+   |
+LL |         macro_test_arg!(deprecated_unstable_text()); //~ WARN use of deprecated item 'lint_stability::deprecated_unstable_text': text
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:149:41
+   |
+LL |         macro_test_arg!(macro_test_arg!(deprecated_text())); //~ WARN use of deprecated item 'lint_stability::deprecated_text': text
+   |                                         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:154:9
+   |
+LL |         Trait::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:156:9
+   |
+LL |         <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:158:9
+   |
+LL |         Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:160:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:162:9
+   |
+LL |         Trait::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:164:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:166:9
+   |
+LL |         Trait::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:168:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedTrait': text
+  --> $DIR/lint-stability-deprecated.rs:196:10
+   |
+LL |     impl DeprecatedTrait for S {} //~ WARN use of deprecated item 'lint_stability::DeprecatedTrait': text
+   |          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedTrait': text
+  --> $DIR/lint-stability-deprecated.rs:198:25
+   |
+LL |     trait LocalTrait2 : DeprecatedTrait { } //~ WARN use of deprecated item 'lint_stability::DeprecatedTrait': text
+   |                         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'inheritance::inherited_stability::unstable_mod::deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:217:9
+   |
+LL |         unstable_mod::deprecated(); //~ WARN use of deprecated item 'inheritance::inherited_stability::unstable_mod::deprecated': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:339:9
+   |
+LL |         deprecated(); //~ WARN use of deprecated item 'this_crate::deprecated'
+   |         ^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:344:9
+   |
+LL |         Trait::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:346:9
+   |
+LL |         <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:348:9
+   |
+LL |         deprecated_text(); //~ WARN use of deprecated item 'this_crate::deprecated_text': text
+   |         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:353:9
+   |
+LL |         Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:355:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedStruct': text
+  --> $DIR/lint-stability-deprecated.rs:393:17
+   |
+LL |         let _ = DeprecatedStruct {
+   |                 ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedUnitStruct': text
+  --> $DIR/lint-stability-deprecated.rs:400:17
+   |
+LL |         let _ = DeprecatedUnitStruct; //~ WARN use of deprecated item 'this_crate::DeprecatedUnitStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Enum::DeprecatedVariant': text
+  --> $DIR/lint-stability-deprecated.rs:404:17
+   |
+LL |         let _ = Enum::DeprecatedVariant; //~ WARN use of deprecated item 'this_crate::Enum::DeprecatedVariant'
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedTupleStruct': text
+  --> $DIR/lint-stability-deprecated.rs:408:17
+   |
+LL |         let _ = DeprecatedTupleStruct (1); //~ WARN use of deprecated item 'this_crate::DeprecatedTupleStruct'
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:415:9
+   |
+LL |         Trait::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:417:9
+   |
+LL |         <Foo as Trait>::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:419:9
+   |
+LL |         Trait::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:421:9
+   |
+LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::test_fn_body::fn_in_body': text
+  --> $DIR/lint-stability-deprecated.rs:448:9
+   |
+LL |         fn_in_body(); //~ WARN use of deprecated item 'this_crate::test_fn_body::fn_in_body': text
+   |         ^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedTrait': text
+  --> $DIR/lint-stability-deprecated.rs:468:10
+   |
+LL |     impl DeprecatedTrait for S { } //~ WARN use of deprecated item 'this_crate::DeprecatedTrait'
+   |          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedTrait': text
+  --> $DIR/lint-stability-deprecated.rs:470:24
+   |
+LL |     trait LocalTrait : DeprecatedTrait { } //~ WARN use of deprecated item 'this_crate::DeprecatedTrait'
+   |                        ^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::test_method_body::fn_in_body': text
+  --> $DIR/lint-stability-deprecated.rs:456:13
+   |
+LL |             fn_in_body(); //~ WARN use of deprecated item 'this_crate::MethodTester::test_method_body::fn_in_body': text
+   |             ^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated': text
+  --> $DIR/lint-stability-deprecated.rs:109:48
+   |
+LL |         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
+   |                                                ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated': text
+  --> $DIR/lint-stability-deprecated.rs:113:13
+   |
+LL |             TypeDeprecated = u16,
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:37:13
+   |
+LL |         foo.method_deprecated(); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated'
+   |             ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:38:9
+   |
+LL |         Foo::method_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:39:9
+   |
+LL |         <Foo>::method_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:40:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:42:9
+   |
+LL |         <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:46:13
+   |
+LL |         foo.method_deprecated_text(); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:47:9
+   |
+LL |         Foo::method_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:48:9
+   |
+LL |         <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:49:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:51:9
+   |
+LL |         <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:55:13
+   |
+LL |         foo.method_deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable'
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:56:9
+   |
+LL |         Foo::method_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:57:9
+   |
+LL |         <Foo>::method_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:58:13
+   |
+LL |         foo.trait_deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:60:9
+   |
+LL |         <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:64:13
+   |
+LL |         foo.method_deprecated_unstable_text(); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:65:9
+   |
+LL |         Foo::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:66:9
+   |
+LL |         <Foo>::method_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::MethodTester::method_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:67:13
+   |
+LL |         foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:69:9
+   |
+LL |         <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedStruct::i': text
+  --> $DIR/lint-stability-deprecated.rs:118:13
+   |
+LL |             i: 0 //~ WARN use of deprecated item 'lint_stability::DeprecatedStruct::i'
+   |             ^^^^
+
+warning: use of deprecated item 'lint_stability::DeprecatedUnstableStruct::i': text
+  --> $DIR/lint-stability-deprecated.rs:122:13
+   |
+LL |             i: 0 //~ WARN use of deprecated item 'lint_stability::DeprecatedUnstableStruct::i'
+   |             ^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:153:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:155:9
+   |
+LL |         <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:157:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:159:9
+   |
+LL |         <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:161:13
+   |
+LL |         foo.trait_deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:163:9
+   |
+LL |         <Foo>::trait_deprecated_unstable(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:165:13
+   |
+LL |         foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:167:9
+   |
+LL |         <Foo>::trait_deprecated_unstable_text(&foo); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:184:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:185:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable': text
+  --> $DIR/lint-stability-deprecated.rs:186:13
+   |
+LL |         foo.trait_deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+  --> $DIR/lint-stability-deprecated.rs:187:13
+   |
+LL |         foo.trait_deprecated_unstable_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:340:13
+   |
+LL |         foo.method_deprecated(); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated'
+   |             ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:341:9
+   |
+LL |         Foo::method_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:342:9
+   |
+LL |         <Foo>::method_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:343:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:345:9
+   |
+LL |         <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:349:13
+   |
+LL |         foo.method_deprecated_text(); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:350:9
+   |
+LL |         Foo::method_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:351:9
+   |
+LL |         <Foo>::method_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:352:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:354:9
+   |
+LL |         <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::DeprecatedStruct::i': text
+  --> $DIR/lint-stability-deprecated.rs:395:13
+   |
+LL |             i: 0 //~ WARN use of deprecated item 'this_crate::DeprecatedStruct::i'
+   |             ^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:414:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:416:9
+   |
+LL |         <Foo>::trait_deprecated(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:418:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:420:9
+   |
+LL |         <Foo>::trait_deprecated_text(&foo); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated': text
+  --> $DIR/lint-stability-deprecated.rs:437:13
+   |
+LL |         foo.trait_deprecated(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
+   |             ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+  --> $DIR/lint-stability-deprecated.rs:438:13
+   |
+LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: compilation successful
+  --> $DIR/lint-stability-deprecated.rs:473:16
+   |
+LL | #[rustc_error] fn main() {} //~ ERROR: compilation successful
+   |                ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

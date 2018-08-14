@@ -1,0 +1,15 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/variance-cell-is-invariant.rs:26:25
+   |
+LL | fn use_<'short,'long>(c: Foo<'short>,
+   |                          ----------- these two types are declared with different lifetimes...
+LL |                       s: &'short isize,
+LL |                       l: &'long isize,
+   |                          ------------
+LL |                       _where:Option<&'short &'long ()>) {
+LL |     let _: Foo<'long> = c; //~ ERROR E0623
+   |                         ^ ...but data from `c` flows into `l` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

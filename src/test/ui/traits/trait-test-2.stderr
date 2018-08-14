@@ -1,0 +1,41 @@
+error[E0087]: too many type parameters provided: expected at most 0 type parameters, found 1 type parameter
+  --> $DIR/trait-test-2.rs:18:14
+   |
+LL |     10.dup::<i32>(); //~ ERROR expected at most 0 type parameters, found 1 type parameter
+   |              ^^^ expected 0 type parameters
+
+error[E0087]: too many type parameters provided: expected at most 1 type parameter, found 2 type parameters
+  --> $DIR/trait-test-2.rs:19:20
+   |
+LL |     10.blah::<i32, i32>(); //~ ERROR expected at most 1 type parameter, found 2 type parameters
+   |                    ^^^ expected 1 type parameter
+
+error[E0277]: the trait bound `dyn bar: bar` is not satisfied
+  --> $DIR/trait-test-2.rs:20:26
+   |
+LL |     (box 10 as Box<bar>).dup();
+   |                          ^^^ the trait `bar` is not implemented for `dyn bar`
+
+error[E0038]: the trait `bar` cannot be made into an object
+  --> $DIR/trait-test-2.rs:20:16
+   |
+LL |     (box 10 as Box<bar>).dup();
+   |                ^^^^^^^^ the trait `bar` cannot be made into an object
+   |
+   = note: method `dup` references the `Self` type in its arguments or return type
+   = note: method `blah` has generic type parameters
+
+error[E0038]: the trait `bar` cannot be made into an object
+  --> $DIR/trait-test-2.rs:20:6
+   |
+LL |     (box 10 as Box<bar>).dup();
+   |      ^^^^^^ the trait `bar` cannot be made into an object
+   |
+   = note: method `dup` references the `Self` type in its arguments or return type
+   = note: method `blah` has generic type parameters
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn bar>>` for `std::boxed::Box<{integer}>`
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0038, E0087, E0277.
+For more information about an error, try `rustc --explain E0038`.

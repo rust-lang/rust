@@ -1,0 +1,46 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:33:19
+   |
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
+   |                   ^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:37:19
+   |
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
+   |                   ^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:45:5
+   |
+LL |     &mut **x //~ ERROR cannot borrow
+   |     ^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:49:5
+   |
+LL |     &mut **x //~ ERROR cannot borrow
+   |     ^^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:53:5
+   |
+LL |     *x = 3; //~ ERROR cannot assign
+   |     ^^^^^^ cannot assign
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:57:5
+   |
+LL |     **x = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:61:5
+   |
+LL |     **x = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot assign
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

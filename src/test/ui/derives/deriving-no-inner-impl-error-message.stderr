@@ -1,0 +1,28 @@
+error[E0369]: binary operation `==` cannot be applied to type `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:15:5
+   |
+LL |     x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
+
+error[E0369]: binary operation `!=` cannot be applied to type `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:15:5
+   |
+LL |     x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
+
+error[E0277]: the trait bound `NoCloneOrEq: std::clone::Clone` is not satisfied
+  --> $DIR/deriving-no-inner-impl-error-message.rs:20:5
+   |
+LL |     x: NoCloneOrEq
+   |     ^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `NoCloneOrEq`
+   |
+   = note: required by `std::clone::Clone::clone`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

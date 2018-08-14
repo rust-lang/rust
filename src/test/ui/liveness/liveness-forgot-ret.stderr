@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/liveness-forgot-ret.rs:13:25
+   |
+LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected isize, found ()
+   |
+   = note: expected type `isize`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

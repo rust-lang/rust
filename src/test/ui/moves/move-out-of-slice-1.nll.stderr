@@ -1,0 +1,14 @@
+error[E0508]: cannot move out of type `[A]`, a non-copy slice
+  --> $DIR/move-out-of-slice-1.rs:17:11
+   |
+LL |     match a {
+   |           ^ cannot move out of here
+LL |         box [a] => {}, //~ ERROR cannot move out of type `[A]`, a non-copy slice
+   |              -
+   |              |
+   |              data moved here
+   |              help: to prevent move, use ref or ref mut: `ref a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0508`.

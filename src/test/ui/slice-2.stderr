@@ -1,0 +1,27 @@
+error[E0608]: cannot index into a value of type `Foo`
+  --> $DIR/slice-2.rs:17:6
+   |
+LL |     &x[..]; //~ ERROR cannot index into a value of type `Foo`
+   |      ^^^^^
+
+error[E0608]: cannot index into a value of type `Foo`
+  --> $DIR/slice-2.rs:18:6
+   |
+LL |     &x[Foo..]; //~ ERROR cannot index into a value of type `Foo`
+   |      ^^^^^^^^
+
+error[E0608]: cannot index into a value of type `Foo`
+  --> $DIR/slice-2.rs:19:6
+   |
+LL |     &x[..Foo]; //~ ERROR cannot index into a value of type `Foo`
+   |      ^^^^^^^^
+
+error[E0608]: cannot index into a value of type `Foo`
+  --> $DIR/slice-2.rs:20:6
+   |
+LL |     &x[Foo..Foo]; //~ ERROR cannot index into a value of type `Foo`
+   |      ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0608`.

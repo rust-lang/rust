@@ -1,0 +1,191 @@
+error: type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+  --> $DIR/associated-item-privacy-inherent.rs:23:21
+   |
+LL |         let value = Pub::method;
+   |                     ^^^^^^^^^^^
+...
+LL |     priv_nominal::mac!();
+   |     --------------------- in this macro invocation
+
+error: type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+  --> $DIR/associated-item-privacy-inherent.rs:25:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_nominal::mac!();
+   |     --------------------- in this macro invocation
+
+error: type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+  --> $DIR/associated-item-privacy-inherent.rs:27:13
+   |
+LL |         Pub.method();
+   |             ^^^^^^
+...
+LL |     priv_nominal::mac!();
+   |     --------------------- in this macro invocation
+
+error: associated constant `CONST` is private
+  --> $DIR/associated-item-privacy-inherent.rs:29:9
+   |
+LL |         Pub::CONST;
+   |         ^^^^^^^^^^
+...
+LL |     priv_nominal::mac!();
+   |     --------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:47:21
+   |
+LL |         let value = Pub::method;
+   |                     ^^^^^^^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:49:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_signature::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:51:13
+   |
+LL |         Pub.method(loop {});
+   |             ^^^^^^
+...
+LL |     priv_signature::mac!();
+   |     ----------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:67:21
+   |
+LL |         let value = Pub::method::<Priv>;
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:69:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:71:9
+   |
+LL |         Pub.method::<Priv>();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_substs::mac!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:90:21
+   |
+LL |         let value = <Pub>::method;
+   |                     ^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:92:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:94:21
+   |
+LL |         let value = Pub::method;
+   |                     ^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:96:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:98:21
+   |
+LL |         let value = <Pub>::static_method;
+   |                     ^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:100:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:102:21
+   |
+LL |         let value = Pub::static_method;
+   |                     ^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:104:9
+   |
+LL |         value;
+   |         ^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:106:19
+   |
+LL |         Pub(Priv).method();
+   |                   ^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:109:10
+   |
+LL |         <Pub>::CONST;
+   |          ^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-inherent.rs:111:9
+   |
+LL |         Pub::CONST;
+   |         ^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: aborting due to 21 previous errors
+

@@ -1,0 +1,15 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/match-non-exhaustive.rs:12:11
+   |
+LL |     match 0 { 1 => () } //~ ERROR non-exhaustive patterns
+   |           ^ pattern `_` not covered
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/match-non-exhaustive.rs:13:11
+   |
+LL |     match 0 { 0 if false => () } //~ ERROR non-exhaustive patterns
+   |           ^ pattern `_` not covered
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

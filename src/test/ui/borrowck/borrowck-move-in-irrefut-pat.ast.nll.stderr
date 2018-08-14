@@ -1,0 +1,32 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:16:13
+   |
+LL | fn arg_item(&_x: &String) {}
+   |             ^--
+   |             ||
+   |             |data moved here
+   |             |help: to prevent move, use ref or ref mut: `ref _x`
+   |             cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:21:11
+   |
+LL |     with(|&_x| ())
+   |           ^--
+   |           ||
+   |           |data moved here
+   |           |help: to prevent move, use ref or ref mut: `ref _x`
+   |           cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:27:15
+   |
+LL |     let &_x = &"hi".to_string();
+   |          --   ^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |          |
+   |          data moved here
+   |          help: to prevent move, use ref or ref mut: `ref _x`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

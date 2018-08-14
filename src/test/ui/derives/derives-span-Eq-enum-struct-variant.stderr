@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Error: std::cmp::Eq` is not satisfied
+  --> $DIR/derives-span-Eq-enum-struct-variant.rs:19:6
+   |
+LL |      x: Error //~ ERROR
+   |      ^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Error`
+   |
+   = note: required by `std::cmp::AssertParamIsEq`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

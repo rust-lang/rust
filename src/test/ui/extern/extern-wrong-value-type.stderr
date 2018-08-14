@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `extern "C" fn() {f}: std::ops::Fn<()>` is not satisfied
+  --> $DIR/extern-wrong-value-type.rs:19:5
+   |
+LL |     is_fn(f);
+   |     ^^^^^ the trait `std::ops::Fn<()>` is not implemented for `extern "C" fn() {f}`
+   |
+note: required by `is_fn`
+  --> $DIR/extern-wrong-value-type.rs:14:1
+   |
+LL | fn is_fn<F>(_: F) where F: Fn() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

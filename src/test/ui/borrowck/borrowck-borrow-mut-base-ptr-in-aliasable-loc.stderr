@@ -1,0 +1,29 @@
+error[E0389]: cannot assign to data in a `&` reference
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:5
+   |
+LL |     **t1 = 22; //~ ERROR cannot assign
+   |     ^^^^^^^^^ assignment into an immutable reference
+
+error[E0502]: cannot borrow `**t0` as immutable because `*t0` is also borrowed as mutable
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:24:22
+   |
+LL |     let t1 = &mut *t0;
+   |                   --- mutable borrow occurs here
+LL |     let p: &isize = &**t0; //~ ERROR cannot borrow
+   |                      ^^^^ immutable borrow occurs here
+LL |     **t1 = 22;
+LL | }
+   | - mutable borrow ends here
+
+error[E0389]: cannot borrow data mutably in a `&` reference
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:29:31
+   |
+LL | fn foo4(t0: & &mut isize) {
+   |             ------------ use `&mut &mut isize` here to make mutable
+LL |     let x:  &mut isize = &mut **t0; //~ ERROR cannot borrow
+   |                               ^^^^ assignment into an immutable reference
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0389, E0502.
+For more information about an error, try `rustc --explain E0389`.

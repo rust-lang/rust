@@ -1,0 +1,64 @@
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:22:13
+   |
+LL |     let s = T::A {};
+   |             ^^^^ not a struct
+
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/struct-path-associated-type.rs:24:20
+   |
+LL |     let z = T::A::<u8> {};
+   |                    ^^ type parameter not allowed
+
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:24:13
+   |
+LL |     let z = T::A::<u8> {};
+   |             ^^^^^^^^^^ not a struct
+
+error[E0071]: expected struct, variant or union type, found associated type
+  --> $DIR/struct-path-associated-type.rs:28:9
+   |
+LL |         T::A {} => {}
+   |         ^^^^ not a struct
+
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/struct-path-associated-type.rs:35:20
+   |
+LL |     let z = T::A::<u8> {}; //~ ERROR type parameters are not allowed on this type
+   |                    ^^ type parameter not allowed
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:42:13
+   |
+LL |     let s = S::A {}; //~ ERROR ambiguous associated type
+   |             ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::A`
+
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/struct-path-associated-type.rs:43:20
+   |
+LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
+   |                    ^^ type parameter not allowed
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:43:13
+   |
+LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
+   |             ^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::A`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-path-associated-type.rs:46:9
+   |
+LL |         S::A {} => {} //~ ERROR ambiguous associated type
+   |         ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::A`
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0071, E0109, E0223.
+For more information about an error, try `rustc --explain E0071`.

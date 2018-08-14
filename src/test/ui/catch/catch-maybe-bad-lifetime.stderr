@@ -1,0 +1,33 @@
+error[E0506]: cannot assign to `i` because it is borrowed
+  --> $DIR/catch-maybe-bad-lifetime.rs:23:9
+   |
+LL |             &i
+   |              - borrow of `i` occurs here
+...
+LL |         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
+   |         ^^^^^ assignment to borrowed `i` occurs here
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/catch-maybe-bad-lifetime.rs:33:24
+   |
+LL |             ::std::mem::drop(x);
+   |                              - value moved here
+LL |         };
+LL |         println!("{}", x); //~ ERROR use of moved value: `x`
+   |                        ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0506]: cannot assign to `i` because it is borrowed
+  --> $DIR/catch-maybe-bad-lifetime.rs:45:9
+   |
+LL |             j = &i;
+   |                  - borrow of `i` occurs here
+LL |         };
+LL |         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
+   |         ^^^^^ assignment to borrowed `i` occurs here
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0382, E0506.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,16 @@
+error[E0214]: parenthesized parameters may only be used with a trait
+  --> $DIR/unboxed-closure-sugar-used-on-struct.rs:17:18
+   |
+LL | fn foo(b: Box<Bar()>) {
+   |                  ^^ only traits may use parentheses
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/unboxed-closure-sugar-used-on-struct.rs:17:15
+   |
+LL | fn foo(b: Box<Bar()>) {
+   |               ^^^^^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0121, E0214.
+For more information about an error, try `rustc --explain E0121`.

@@ -1,0 +1,14 @@
+error: return type should be `!`
+  --> $DIR/panic-implementation-bad-signature-1.rs:22:6
+   |
+LL | ) -> () //~ ERROR return type should be `!`
+   |      ^^
+
+error: argument should be `&PanicInfo`
+  --> $DIR/panic-implementation-bad-signature-1.rs:21:11
+   |
+LL |     info: PanicInfo, //~ ERROR argument should be `&PanicInfo`
+   |           ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

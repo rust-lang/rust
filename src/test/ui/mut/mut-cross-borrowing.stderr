@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/mut-cross-borrowing.rs:17:7
+   |
+LL |     f(x)    //~ ERROR mismatched types
+   |       ^
+   |       |
+   |       expected &mut isize, found struct `std::boxed::Box`
+   |       help: consider mutably borrowing here: `&mut x`
+   |
+   = note: expected type `&mut isize`
+              found type `std::boxed::Box<{integer}>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

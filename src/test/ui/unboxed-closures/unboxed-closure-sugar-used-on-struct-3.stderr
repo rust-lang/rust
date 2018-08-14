@@ -1,0 +1,9 @@
+error[E0214]: parenthesized parameters may only be used with a trait
+  --> $DIR/unboxed-closure-sugar-used-on-struct-3.rs:24:16
+   |
+LL |     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
+   |                ^^^^^^^^^^^^^^^^ only traits may use parentheses
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0214`.

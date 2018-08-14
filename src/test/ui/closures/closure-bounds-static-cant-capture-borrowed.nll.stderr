@@ -1,0 +1,39 @@
+warning: not reporting region error due to nll
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:9
+   |
+LL |       bar(|| {
+   |  _________^
+LL | |         //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+LL | |         let _ = x;
+LL | |     })
+   | |_____^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:5
+   |
+LL |   fn foo(x: &()) {
+   |             --- help: add explicit lifetime `'static` to the type of `x`: `&'static ()`
+LL | /     bar(|| {
+LL | |         //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+LL | |         let _ = x;
+LL | |     })
+   | |______^ lifetime `'static` required
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:17:17
+   |
+LL |     bar(|| {
+   |         -- value captured here
+LL |         //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+LL |         let _ = x;
+   |                 ^ borrowed value does not live long enough
+LL |     })
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0597, E0621.
+For more information about an error, try `rustc --explain E0597`.

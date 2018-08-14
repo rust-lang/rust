@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve. Not a module `V`
+  --> $DIR/resolve-variant-assoc-item.rs:15:8
+   |
+LL |     E::V::associated_item; //~ ERROR failed to resolve. Not a module `V`
+   |        ^ Not a module `V`
+
+error[E0433]: failed to resolve. Not a module `V`
+  --> $DIR/resolve-variant-assoc-item.rs:16:5
+   |
+LL |     V::associated_item; //~ ERROR failed to resolve. Not a module `V`
+   |     ^ Not a module `V`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

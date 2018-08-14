@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `baz::zed`
+  --> $DIR/import2.rs:11:10
+   |
+LL | use baz::zed::bar; //~ ERROR unresolved import `baz::zed` [E0432]
+   |          ^^^ Could not find `zed` in `baz`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

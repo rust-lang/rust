@@ -1,0 +1,21 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/associated-types-subtyping-1.rs:36:38
+   |
+LL | fn method2<'a,'b,T>(x: &'a T, y: &'b T)
+   |                        -----     ----- these two types are declared with different lifetimes...
+...
+LL |     let _c: <T as Trait<'b>>::Type = a; //~ ERROR E0623
+   |                                      ^ ...but data from `y` flows into `x` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/associated-types-subtyping-1.rs:45:38
+   |
+LL | fn method3<'a,'b,T>(x: &'a T, y: &'b T)
+   |                        -----     ----- these two types are declared with different lifetimes...
+...
+LL |     let _c: <T as Trait<'a>>::Type = b; //~ ERROR E0623
+   |                                      ^ ...but data from `y` flows into `x` here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

@@ -1,0 +1,4 @@
+error: native frameworks are only available on macOS targets
+
+error: aborting due to previous error
+

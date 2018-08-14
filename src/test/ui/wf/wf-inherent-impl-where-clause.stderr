@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
+  --> $DIR/wf-inherent-impl-where-clause.rs:21:1
+   |
+LL | / impl<T,U> Foo<T,U> where T: ExtraCopy<U> //~ ERROR E0277
+LL | | {
+LL | | }
+   | |_^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+   = help: consider adding a `where U: std::marker::Copy` bound
+note: required by `ExtraCopy`
+  --> $DIR/wf-inherent-impl-where-clause.rs:17:1
+   |
+LL | trait ExtraCopy<T:Copy> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

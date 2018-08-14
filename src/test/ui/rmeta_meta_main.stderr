@@ -1,0 +1,9 @@
+error[E0560]: struct `rmeta_meta::Foo` has no field named `field2`
+  --> $DIR/rmeta_meta_main.rs:23:19
+   |
+LL |     let _ = Foo { field2: 42 }; //~ ERROR struct `rmeta_meta::Foo` has no field named `field2`
+   |                   ^^^^^^ field does not exist - did you mean `field`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0560`.

@@ -1,0 +1,10 @@
+error: compilation successful
+  --> $DIR/rustc-error.rs:14:1
+   |
+LL | / fn main() {
+LL | |     //~^ ERROR compilation successful
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

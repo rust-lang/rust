@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `foo`
+  --> $DIR/export-fully-qualified.rs:16:20
+   |
+LL |     pub fn bar() { foo::baz(); } //~ ERROR failed to resolve. Use of undeclared type or module `foo`
+   |                    ^^^ Use of undeclared type or module `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

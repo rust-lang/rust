@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-projection.rs:31:5
+   |
+LL | fn generic<T>() -> <T as Foo>::Assoc {
+   |                    ----------------- expected `<T as Foo>::Assoc` because of return type
+...
+LL |     () //~ ERROR mismatched types
+   |     ^^ expected associated type, found ()
+   |
+   = note: expected type `<T as Foo>::Assoc`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-projection.rs:38:5
+   |
+LL | fn monomorphic() -> () {
+   |                     -- expected `()` because of return type
+...
+LL |     generic::<()>() //~ ERROR mismatched types
+   |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected (), found associated type
+   |
+   = note: expected type `()`
+              found type `<() as Foo>::Assoc`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

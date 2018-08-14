@@ -1,0 +1,31 @@
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/bad-expr-path2.rs:16:5
+   |
+LL |     log(debug, m1::arguments);
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find value `debug` in this scope
+  --> $DIR/bad-expr-path2.rs:16:9
+   |
+LL |     log(debug, m1::arguments);
+   |         ^^^^^ not found in this scope
+
+error[E0423]: expected value, found module `m1::arguments`
+  --> $DIR/bad-expr-path2.rs:16:16
+   |
+LL |     log(debug, m1::arguments);
+   |                ^^^^^^^^^^^^^ not a value
+
+error[E0580]: main function has wrong type
+  --> $DIR/bad-expr-path2.rs:15:1
+   |
+LL | fn main(arguments: Vec<String>) { //~ ERROR main function has wrong type
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected type `fn()`
+              found type `fn(std::vec::Vec<std::string::String>)`
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0423, E0425, E0580.
+For more information about an error, try `rustc --explain E0423`.

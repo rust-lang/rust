@@ -1,0 +1,31 @@
+error[E0432]: unresolved import `a::$crate`
+  --> $DIR/dollar-crate-is-keyword-2.rs:15:13
+   |
+LL |         use a::$crate; //~ ERROR unresolved import `a::$crate`
+   |             ^^^^^^^^^ no `$crate` in `a`
+...
+LL | m!();
+   | ----- in this macro invocation
+
+error[E0433]: failed to resolve. `$crate` in paths can only be used in start position
+  --> $DIR/dollar-crate-is-keyword-2.rs:16:16
+   |
+LL |         use a::$crate::b; //~ ERROR `$crate` in paths can only be used in start position
+   |                ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL | m!();
+   | ----- in this macro invocation
+
+error[E0433]: failed to resolve. `$crate` in paths can only be used in start position
+  --> $DIR/dollar-crate-is-keyword-2.rs:17:21
+   |
+LL |         type A = a::$crate; //~ ERROR `$crate` in paths can only be used in start position
+   |                     ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL | m!();
+   | ----- in this macro invocation
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

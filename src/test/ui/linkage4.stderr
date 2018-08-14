@@ -1,0 +1,11 @@
+error[E0658]: the `linkage` attribute is experimental and not portable across platforms (see issue #29603)
+  --> $DIR/linkage4.rs:11:1
+   |
+LL | #[linkage = "external"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(linkage)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

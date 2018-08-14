@@ -1,0 +1,146 @@
+error: type `(dyn priv_trait::PubTr<AssocTy=u8> + '<empty>)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:21:13
+   |
+LL |         let _: Box<PubTr<AssocTy = u8>>;
+   |             ^
+...
+LL |     priv_trait::mac1!();
+   |     -------------------- in this macro invocation
+
+error: type `(dyn priv_trait::PubTr<AssocTy=u8> + '<empty>)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:21:16
+   |
+LL |         let _: Box<PubTr<AssocTy = u8>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac1!();
+   |     -------------------- in this macro invocation
+
+error: type `(dyn priv_trait::PubTr<AssocTy=u8> + 'static)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:24:31
+   |
+LL |         type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac1!();
+   |     -------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:26:31
+   |
+LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
+   |                               ^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac1!();
+   |     -------------------- in this macro invocation
+
+error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + '<empty>)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:30:13
+   |
+LL |         let _: Box<PrivTr<AssocTy = u8>>;
+   |             ^
+...
+LL |     priv_trait::mac2!();
+   |     -------------------- in this macro invocation
+
+error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + '<empty>)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:30:16
+   |
+LL |         let _: Box<PrivTr<AssocTy = u8>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac2!();
+   |     -------------------- in this macro invocation
+
+error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + 'static)` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:33:31
+   |
+LL |         type InSignatureTy1 = Box<PrivTr<AssocTy = u8>>;
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac2!();
+   |     -------------------- in this macro invocation
+
+error: trait `priv_trait::PrivTr` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:35:31
+   |
+LL |         trait InSignatureTr1: PrivTr<AssocTy = u8> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_trait::mac2!();
+   |     -------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:54:13
+   |
+LL |         let _: Box<PubTrWithParam<AssocTy = u8>>;
+   |             ^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:54:16
+   |
+LL |         let _: Box<PubTrWithParam<AssocTy = u8>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:57:13
+   |
+LL |         let _: Box<PubTr<AssocTy = u8>>;
+   |             ^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:57:16
+   |
+LL |         let _: Box<PubTr<AssocTy = u8>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:60:35
+   |
+LL |         pub type InSignatureTy1 = Box<PubTrWithParam<AssocTy = u8>>;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:62:35
+   |
+LL |         pub type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:64:31
+   |
+LL |         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: type `priv_parent_substs::Priv` is private
+  --> $DIR/associated-item-privacy-type-binding.rs:66:31
+   |
+LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
+   |                               ^^^^^^^^^^^^^^^^^^^
+...
+LL |     priv_parent_substs::mac!();
+   |     --------------------------- in this macro invocation
+
+error: aborting due to 16 previous errors
+

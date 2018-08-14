@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/mut-pattern-mismatched.rs:16:10
+   |
+LL |      let &_ //~  ERROR mismatched types
+   |          ^^ types differ in mutability
+   |
+   = note: expected type `&mut {integer}`
+              found type `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/mut-pattern-mismatched.rs:25:9
+   |
+LL |     let &mut _ //~  ERROR mismatched types
+   |         ^^^^^^ types differ in mutability
+   |
+   = note: expected type `&{integer}`
+              found type `&mut _`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

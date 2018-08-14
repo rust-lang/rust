@@ -1,0 +1,9 @@
+error[E0202]: associated types are not allowed in inherent impls
+  --> $DIR/assoc-inherent.rs:16:5
+   |
+LL |     type Bar = isize; //~ERROR associated types are not allowed in inherent impls
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0202`.

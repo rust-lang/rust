@@ -1,0 +1,28 @@
+error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+  --> $DIR/constructor-lifetime-args.rs:27:5
+   |
+LL |     S::<'static>(&0, &0);
+   |     ^^^^^^^^^^^^ expected 2 lifetime parameters
+
+error[E0088]: too many lifetime parameters provided: expected at most 2 lifetime parameters, found 3 lifetime parameters
+  --> $DIR/constructor-lifetime-args.rs:29:27
+   |
+LL |     S::<'static, 'static, 'static>(&0, &0);
+   |                           ^^^^^^^ expected 2 lifetime parameters
+
+error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+  --> $DIR/constructor-lifetime-args.rs:32:5
+   |
+LL |     E::V::<'static>(&0);
+   |     ^^^^^^^^^^^^^^^ expected 2 lifetime parameters
+
+error[E0088]: too many lifetime parameters provided: expected at most 2 lifetime parameters, found 3 lifetime parameters
+  --> $DIR/constructor-lifetime-args.rs:34:30
+   |
+LL |     E::V::<'static, 'static, 'static>(&0);
+   |                              ^^^^^^^ expected 2 lifetime parameters
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0088, E0090.
+For more information about an error, try `rustc --explain E0088`.

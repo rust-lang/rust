@@ -1,0 +1,58 @@
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:18:11
+   |
+LL |     while i >= 0 { //~ ERROR comparison is useless due to type limits
+   |           ^^^^^^
+   |
+   = note: requested on the command line with `-D unused-comparisons`
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:29:13
+   |
+LL |     let _ = u > 255; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:30:13
+   |
+LL |     let _ = 255 < u; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:31:13
+   |
+LL |     let _ = u < 0; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:32:13
+   |
+LL |     let _ = 0 > u; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:33:13
+   |
+LL |     let _ = u <= 255; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:34:13
+   |
+LL |     let _ = 255 >= u; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:35:13
+   |
+LL |     let _ = u >= 0; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^
+
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits.rs:36:13
+   |
+LL |     let _ = 0 <= u; //~ ERROR comparison is useless due to type limits
+   |             ^^^^^^
+
+error: aborting due to 9 previous errors
+

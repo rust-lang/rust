@@ -1,0 +1,88 @@
+error[E0596]: cannot borrow field of immutable binding as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:57:24
+   |
+LL |     let __isize = &mut x.y; //~ ERROR cannot borrow
+   |                        ^^^ cannot mutably borrow field of immutable binding
+
+error[E0596]: cannot borrow field of immutable binding as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:61:24
+   |
+LL |     let __isize = &mut x.y; //~ ERROR cannot borrow
+   |                        ^^^ cannot mutably borrow field of immutable binding
+
+error[E0596]: cannot borrow field of immutable binding as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:69:10
+   |
+LL |     &mut x.y //~ ERROR cannot borrow
+   |          ^^^ cannot mutably borrow field of immutable binding
+
+error[E0596]: cannot borrow field of immutable binding as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:73:10
+   |
+LL |     &mut x.y //~ ERROR cannot borrow
+   |          ^^^ cannot mutably borrow field of immutable binding
+
+error[E0594]: cannot assign to field of immutable binding
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:77:5
+   |
+LL |     x.y = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+
+error[E0594]: cannot assign to field of immutable binding
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:81:5
+   |
+LL |     x.y = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+
+error[E0594]: cannot assign to field of immutable binding
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:85:5
+   |
+LL |     x.y = 3; //~ ERROR cannot assign
+   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:93:5
+   |
+LL |     x.set(0, 0); //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:97:5
+   |
+LL |     x.set(0, 0); //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:105:5
+   |
+LL |     x.y_mut() //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:109:5
+   |
+LL |     x.y_mut() //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:113:6
+   |
+LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
+   |      ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:117:6
+   |
+LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
+   |      ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:121:6
+   |
+LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
+   |      ^ cannot borrow as mutable
+
+error: aborting due to 14 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

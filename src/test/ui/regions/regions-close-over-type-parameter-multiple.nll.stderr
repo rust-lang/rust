@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-close-over-type-parameter-multiple.rs:30:5
+   |
+LL |     box v as Box<SomeTrait+'a> //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-close-over-type-parameter-multiple.rs:30:5
+   |
+LL |     box v as Box<SomeTrait+'a> //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `A: 'c`...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

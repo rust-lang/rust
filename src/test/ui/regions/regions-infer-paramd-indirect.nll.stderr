@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-paramd-indirect.rs:33:18
+   |
+LL |         self.f = b;
+   |                  ^
+
+error: borrowed data escapes outside of function
+  --> $DIR/regions-infer-paramd-indirect.rs:33:9
+   |
+LL |     fn set_f_bad(&mut self, b: Box<b>) {
+   |                  ---------  - `b` is a reference that is only valid in the function body
+   |                  |
+   |                  `self` is declared here, outside of the function body
+LL |         self.f = b;
+   |         ^^^^^^ `b` escapes the function body here
+
+error: aborting due to previous error
+

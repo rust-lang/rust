@@ -1,0 +1,34 @@
+error[E0268]: `break` outside of loop
+  --> $DIR/break-outside-loop.rs:20:15
+   |
+LL |     let pth = break; //~ ERROR: `break` outside of loop
+   |               ^^^^^ cannot break outside of a loop
+
+error[E0268]: `continue` outside of loop
+  --> $DIR/break-outside-loop.rs:21:17
+   |
+LL |     if cond() { continue } //~ ERROR: `continue` outside of loop
+   |                 ^^^^^^^^ cannot break outside of a loop
+
+error[E0267]: `break` inside of a closure
+  --> $DIR/break-outside-loop.rs:27:25
+   |
+LL |             if cond() { break } //~ ERROR: `break` inside of a closure
+   |                         ^^^^^ cannot break inside of a closure
+
+error[E0267]: `continue` inside of a closure
+  --> $DIR/break-outside-loop.rs:28:25
+   |
+LL |             if cond() { continue } //~ ERROR: `continue` inside of a closure
+   |                         ^^^^^^^^ cannot break inside of a closure
+
+error[E0268]: `break` outside of loop
+  --> $DIR/break-outside-loop.rs:34:25
+   |
+LL |     let unconstrained = break; //~ ERROR: `break` outside of loop
+   |                         ^^^^^ cannot break outside of a loop
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0267, E0268.
+For more information about an error, try `rustc --explain E0267`.

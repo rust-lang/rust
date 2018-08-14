@@ -1,0 +1,13 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `Foo`
+  --> $DIR/assignment-operator-unimplemented.rs:16:3
+   |
+LL |   a += *b; //~ Error: binary assignment operation `+=` cannot be applied to type `Foo`
+   |   -^^^^^^
+   |   |
+   |   cannot use `+=` on type `Foo`
+   |
+   = note: an implementation of `std::ops::AddAssign` might be missing for `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0368`.

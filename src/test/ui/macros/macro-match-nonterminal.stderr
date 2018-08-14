@@ -1,0 +1,8 @@
+error: missing fragment specifier
+  --> $DIR/macro-match-nonterminal.rs:11:24
+   |
+LL | macro_rules! test { ($a, $b) => (()); } //~ ERROR missing fragment
+   |                        ^
+
+error: aborting due to previous error
+

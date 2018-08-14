@@ -1,0 +1,11 @@
+error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
+  --> $DIR/reserved-attr-on-macro.rs:11:1
+   |
+LL | #[rustc_attribute_should_be_reserved] //~ ERROR attributes with the prefix `rustc_` are reserved
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

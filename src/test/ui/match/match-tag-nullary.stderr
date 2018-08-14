@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/match-tag-nullary.rs:16:40
+   |
+LL | fn main() { let x: a = a::A; match x { b::B => { } } }
+   |                                        ^^^^ expected enum `a`, found enum `b`
+   |
+   = note: expected type `a`
+              found type `b`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

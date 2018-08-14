@@ -1,0 +1,13 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:5
+   |
+LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
+   |                                -------------     -----
+   |                                |
+   |                                this parameter and the return type are declared with different lifetimes...
+LL |     S { pointer: &mut *p.pointer }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...but data from `p` is returned here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

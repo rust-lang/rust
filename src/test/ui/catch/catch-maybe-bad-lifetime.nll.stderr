@@ -1,0 +1,14 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/catch-maybe-bad-lifetime.rs:33:24
+   |
+LL |             ::std::mem::drop(x);
+   |                              - value moved here
+LL |         };
+LL |         println!("{}", x); //~ ERROR use of moved value: `x`
+   |                        ^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

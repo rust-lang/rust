@@ -1,0 +1,11 @@
+error[E0600]: cannot apply unary operator `-` to type `bool`
+  --> $DIR/unop-neg-bool.rs:12:5
+   |
+LL |     -true; //~ ERROR cannot apply unary operator `-` to type `bool`
+   |     ^^^^^ cannot apply unary operator `-`
+   |
+   = note: an implementation of `std::ops::Neg` might be missing for `bool`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0600`.

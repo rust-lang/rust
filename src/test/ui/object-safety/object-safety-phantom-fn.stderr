@@ -1,0 +1,9 @@
+error: compilation successful
+  --> $DIR/object-safety-phantom-fn.rs:31:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

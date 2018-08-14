@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/const-tup-index-span.rs:13:23
+   |
+LL | const TUP: (usize,) = 5usize << 64;
+   |                       ^^^^^^^^^^^^ expected tuple, found usize
+   |
+   = note: expected type `(usize,)`
+              found type `usize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
