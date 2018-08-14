@@ -383,7 +383,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         binds_to: &[Local],
     ) {
-        let mut suggestions: Vec<(Span, String, String)> = Vec::new();
+        let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.mir.local_decls[*local];
             if let Some(
@@ -411,7 +411,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     }
                     suggestions.push((
                         pat_span,
-                        format!("consider removing the `{}`", to_remove),
+                        to_remove,
                         suggestion.to_owned(),
                     ));
                 }
@@ -419,8 +419,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
-        for (span, msg, suggestion) in suggestions {
-            err.span_suggestion(span, &msg, suggestion);
+        for (span, to_remove, suggestion) in suggestions {
+            err.span_suggestion(
+                span,
+                &format!("consider removing the `{}`", to_remove),
+                suggestion
+            );
         }
     }
 
