@@ -42,7 +42,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub PRINT_WITH_NEWLINE,
     style,
-    "using `print!()` with a format string that ends in a newline"
+    "using `print!()` with a format string that ends in a single newline"
 }
 
 /// **What it does:** Checks for printing on *stdout*. The purpose of this lint
@@ -135,7 +135,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub WRITE_WITH_NEWLINE,
     style,
-    "using `write!()` with a format string that ends in a newline"
+    "using `write!()` with a format string that ends in a single newline"
 }
 
 /// **What it does:** This lint warns about the use of literals as `write!`/`writeln!` args.
@@ -194,18 +194,18 @@ impl EarlyLintPass for Pass {
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
-                if fmtstr.ends_with("\\n") {
+                if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, PRINT_WITH_NEWLINE, mac.span,
                             "using `print!()` with a format string that ends in a \
-                            newline, consider using `println!()` instead");
+                            single newline, consider using `println!()` instead");
                 }
             }
         } else if mac.node.path == "write" {
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
-                if fmtstr.ends_with("\\n") {
+                if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, WRITE_WITH_NEWLINE, mac.span,
                             "using `write!()` with a format string that ends in a \
-                            newline, consider using `writeln!()` instead");
+                            single newline, consider using `writeln!()` instead");
                 }
             }
         } else if mac.node.path == "writeln" {

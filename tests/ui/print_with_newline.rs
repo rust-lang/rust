@@ -6,7 +6,7 @@
 fn main() {
     print!("Hello\n");
     print!("Hello {}\n", "world");
-    print!("Hello {} {}\n\n", "world", "#2");
+    print!("Hello {} {}\n", "world", "#2");
     print!("{}\n", 1265);
 
     // these are all fine
@@ -18,4 +18,7 @@ fn main() {
     print!("Issue\n{}", 1265);
     print!("{}", 1265);
     print!("\n{}", 1275);
+    print!("\n\n");
+    print!("like eof\n\n");
+    print!("Hello {} {}\n\n", "world", "#2");
 }
