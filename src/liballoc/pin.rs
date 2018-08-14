@@ -103,6 +103,15 @@ use core::task::{Context, Poll};
 use boxed::Box;
 
 /// A pinned, heap allocated reference.
+///
+/// This type is similar to [`Box`], except that it pins its value,
+/// which prevents it from moving out of the reference, unless it implements [`Unpin`].
+///
+/// See the [module documentation] for furthur explaination on pinning.
+///
+/// [`Box`]: ../boxed/struct.Box.html
+/// [`Unpin`]: ../../core/marker/trait.Unpin.html
+/// [module documentation]: index.html
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
 #[repr(transparent)]
