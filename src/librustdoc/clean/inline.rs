@@ -158,12 +158,11 @@ pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
+    let mut crate_name = cx.tcx.crate_name(did.krate).to_string();
     if did.is_local() {
-        debug!("record_extern_fqn(did={:?}, kind+{:?}): def_id is local, aborting", did, kind);
-        return;
+        crate_name = cx.crate_name.clone().unwrap_or(crate_name);
     }
 
-    let crate_name = cx.tcx.crate_name(did.krate).to_string();
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
         let s = elem.data.to_string();
@@ -178,7 +177,12 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     } else {
         once(crate_name).chain(relative).collect()
     };
-    cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
+
+    if did.is_local() {
+        cx.renderinfo.borrow_mut().exact_paths.insert(did, fqn);
+    } else {
+        cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
+    }
 }
 
 pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
