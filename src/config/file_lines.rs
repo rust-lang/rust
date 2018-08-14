@@ -15,8 +15,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{cmp, fmt, iter, str};
 
-use serde::ser::{self, Serialize, Serializer};
 use serde::de::{Deserialize, Deserializer};
+use serde::ser::{self, Serialize, Serializer};
 use serde_json as json;
 
 use syntax::codemap::{self, FileMap};
@@ -75,8 +75,9 @@ impl Serialize for FileName {
     {
         let s = match self {
             FileName::Stdin => Ok("stdin"),
-            FileName::Real(path) => path.to_str().ok_or_else(||
-                ser::Error::custom("path can't be serialized as UTF-8 string"))
+            FileName::Real(path) => path
+                .to_str()
+                .ok_or_else(|| ser::Error::custom("path can't be serialized as UTF-8 string")),
         };
 
         s.and_then(|s| serializer.serialize_str(s))
@@ -385,29 +386,37 @@ mod test {
         );
     }
 
-    use std::{collections::HashMap, path::PathBuf};
-    use super::{FileName, FileLines};
     use super::json::{self, json, json_internal};
+    use super::{FileLines, FileName};
+    use std::{collections::HashMap, path::PathBuf};
 
     #[test]
     fn file_lines_to_json() {
         let ranges: HashMap<FileName, Vec<Range>> = [
-            (FileName::Real(PathBuf::from("src/main.rs")), vec![
-                Range::new(1, 3),
-                Range::new(5, 7)
-            ]),
-            (FileName::Real(PathBuf::from("src/lib.rs")), vec![
-                Range::new(1, 7)
-        ])].iter().cloned().collect();
+            (
+                FileName::Real(PathBuf::from("src/main.rs")),
+                vec![Range::new(1, 3), Range::new(5, 7)],
+            ),
+            (
+                FileName::Real(PathBuf::from("src/lib.rs")),
+                vec![Range::new(1, 7)],
+            ),
+        ]
+            .iter()
+            .cloned()
+            .collect();
 
         let file_lines = FileLines::from_ranges(ranges);
         let mut spans = file_lines.to_json_spans();
         spans.sort();
         let json = json::to_value(&spans).unwrap();
-        assert_eq!(json, json! {[
-            {"file": "src/lib.rs",  "range": [1, 7]},
-            {"file": "src/main.rs", "range": [1, 3]},
-            {"file": "src/main.rs", "range": [5, 7]},
-        ]});
+        assert_eq!(
+            json,
+            json! {[
+                {"file": "src/lib.rs",  "range": [1, 7]},
+                {"file": "src/main.rs", "range": [1, 3]},
+                {"file": "src/main.rs", "range": [5, 7]},
+            ]}
+        );
     }
 }
