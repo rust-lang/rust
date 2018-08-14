@@ -4719,7 +4719,12 @@ impl<'a> Parser<'a> {
         if !self.eat(&token::OpenDelim(token::Brace)) {
             let sp = self.span;
             let tok = self.this_token_to_string();
+            let mut do_not_suggest_help = false;
             let mut e = self.span_fatal(sp, &format!("expected `{{`, found `{}`", tok));
+            if self.token.is_keyword(keywords::In) || self.token == token::Colon {
+                do_not_suggest_help = true;
+                e.span_label(sp, "expected `{`");
+            }
 
             // Check to see if the user has written something like
             //
@@ -4729,7 +4734,8 @@ impl<'a> Parser<'a> {
             // Which is valid in other languages, but not Rust.
             match self.parse_stmt_without_recovery(false) {
                 Ok(Some(stmt)) => {
-                    if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace)) {
+                    if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+                        || do_not_suggest_help {
                         // if the next token is an open brace (e.g., `if a b {`), the place-
                         // inside-a-block suggestion would be more likely wrong than right
                         return Err(e);
