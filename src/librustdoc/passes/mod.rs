@@ -195,6 +195,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
+                debug!("Stripper: recursing into stripped {} {:?}", i.type_(), i.name);
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.fold_item_recur(i);
                 self.update_retained = old;
@@ -218,6 +219,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
+                        debug!("Stripper: stripping {} {:?}", i.type_(), i.name);
                         return None;
                     }
                 }
@@ -231,6 +233,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             clean::ModuleItem(..) => {
                 if i.def_id.is_local() && i.visibility != Some(clean::Public) {
+                    debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
                     self.update_retained = old;
@@ -302,11 +305,13 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
             }
             if let Some(did) = imp.for_.def_id() {
                 if did.is_local() && !imp.for_.is_generic() && !self.retained.contains(&did) {
+                    debug!("ImplStripper: impl item for stripped type; removing");
                     return None;
                 }
             }
             if let Some(did) = imp.trait_.def_id() {
                 if did.is_local() && !self.retained.contains(&did) {
+                    debug!("ImplStripper: impl item for stripped trait; removing");
                     return None;
                 }
             }
@@ -314,6 +319,8 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id() {
                         if did.is_local() && !self.retained.contains(&did) {
+                            debug!("ImplStripper: stripped item in trait's generics; \
+                                   removing impl");
                             return None;
                         }
                     }

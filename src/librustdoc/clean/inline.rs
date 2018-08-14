@@ -527,6 +527,7 @@ pub fn record_extern_trait(cx: &DocContext, did: DefId) {
 
     cx.active_extern_traits.borrow_mut().push(did);
 
+    debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
     cx.external_traits.borrow_mut().insert(did, trait_);
