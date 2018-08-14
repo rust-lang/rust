@@ -1025,6 +1025,10 @@ impl Build {
         self.rust_version()
     }
 
+    fn llvm_link_tools_dynamically(&self, target: Interned<String>) -> bool {
+        (target.contains("linux-gnu") || target.contains("apple-darwin"))
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
