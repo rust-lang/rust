@@ -49,6 +49,7 @@ TYPE_KIND_REGULAR_UNION     = 17
 TYPE_KIND_OS_STRING         = 18
 TYPE_KIND_STD_VECDEQUE      = 19
 TYPE_KIND_STD_BTREESET      = 20
+TYPE_KIND_STD_BTREEMAP      = 21
 
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "RUST$ENUM$DISR"
@@ -74,6 +75,9 @@ STD_VECDEQUE_FIELD_NAMES = [STD_VECDEQUE_FIELD_NAME_TAIL,
 
 # std::collections::BTreeSet<> related constants
 STD_BTREESET_FIELD_NAMES = ["map"]
+
+# std::collections::BTreeMap<> related constants
+STD_BTREEMAP_FIELD_NAMES = ["root", "length"]
 
 # std::String related constants
 STD_STRING_FIELD_NAMES = ["vec"]
@@ -183,6 +187,11 @@ class Type(object):
         if (unqualified_type_name.startswith("BTreeSet<") and
                 self.__conforms_to_field_layout(STD_BTREESET_FIELD_NAMES)):
             return TYPE_KIND_STD_BTREESET
+
+        # STD COLLECTION BTREEMAP
+        if (unqualified_type_name.startswith("BTreeMap<") and
+                self.__conforms_to_field_layout(STD_BTREEMAP_FIELD_NAMES)):
+            return TYPE_KIND_STD_BTREEMAP
 
         # STD STRING
         if (unqualified_type_name.startswith("String") and
@@ -372,6 +381,18 @@ def extract_length_and_ptr_from_std_btreeset(vec_val):
     map = vec_val.get_child_at_index(0)
     root = map.get_child_at_index(0)
     length = map.get_child_at_index(1).as_integer()
+    node = root.get_child_at_index(0)
+    ptr = node.get_child_at_index(0)
+    unique_ptr_val = ptr.get_child_at_index(0)
+    data_ptr = unique_ptr_val.get_child_at_index(0)
+    assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
+    return (length, data_ptr)
+
+
+def extract_length_and_ptr_from_std_btreemap(vec_val):
+    assert vec_val.type.get_type_kind() == TYPE_KIND_STD_BTREEMAP
+    root = vec_val.get_child_at_index(0)
+    length = vec_val.get_child_at_index(1).as_integer()
     node = root.get_child_at_index(0)
     ptr = node.get_child_at_index(0)
     unique_ptr_val = ptr.get_child_at_index(0)
