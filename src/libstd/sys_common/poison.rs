@@ -82,7 +82,7 @@ pub struct Guard {
 /// }).join();
 ///
 /// match mutex.lock() {
-///     Ok(_) => unsafe { ::core::hint::unreachable_unchecked() },
+///     Ok(_) => unreachable!(),
 ///     Err(p_err) => {
 ///         let data = p_err.get_ref();
 ///         println!("recovered: {}", data);

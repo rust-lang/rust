@@ -408,7 +408,7 @@ enum State {
 ///         assert_eq!(Prefix::Disk(b'C'), prefix_component.kind());
 ///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
 ///     }
-///     _ => unsafe { ::core::hint::unreachable_unchecked() },
+///     _ => unreachable!(),
 /// }
 /// # }
 /// ```
