@@ -250,8 +250,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let adt_align = self.layout_of(args[0].ty)?.align;
                 let place = Place::from_scalar_ptr(adt_ptr, adt_align);
                 let discr_val = self.read_discriminant_value(place, layout)?;
-                let ptr_size = self.memory.pointer_size();
-                self.write_scalar(dest, Scalar::from_uint(discr_val, ptr_size), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_uint(discr_val, dest_layout.size), dest_layout.ty)?;
             }
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
