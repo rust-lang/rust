@@ -14,7 +14,7 @@
 ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi))
 
 # We need to be outside of 'src' dir in order to run cargo
-WORK_DIR := $(RUST_TEST_TMPDIR)/run-make/$(TARGET)
+WORK_DIR := $(TMPDIR)
 HERE := $(shell pwd)
 
 CRATE := cortex-m
