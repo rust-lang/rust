@@ -634,14 +634,16 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let ptr_size = self.memory.pointer_size();
                 self.write_scalar(dest, Scalar::from_int(1, ptr_size), dest_ty)?;
             },
-            "GetModuleHandleW" |
-            "GetProcAddress" |
             "InitializeCriticalSection" |
             "EnterCriticalSection" |
-            "TryEnterCriticalSection" |
             "LeaveCriticalSection" |
             "DeleteCriticalSection" |
             "SetLastError" => {
+                // Function does not return anything, nothing to do
+            },
+            "GetModuleHandleW" |
+            "GetProcAddress" |
+            "TryEnterCriticalSection" => {
                 // pretend these do not exist/nothing happened, by returning zero
                 let ptr_size = self.memory.pointer_size();
                 self.write_scalar(dest, Scalar::from_int(0, ptr_size), dest_ty)?;
