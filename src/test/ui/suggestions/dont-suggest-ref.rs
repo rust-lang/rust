@@ -108,7 +108,7 @@ pub fn main() {
         //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
-        // FIXME: should suggest removing `ref mut` too
+        // FIXME: should suggest removing `ref` too
     }
 
     let X(_t) = vs[0];
@@ -172,7 +172,7 @@ pub fn main() {
         //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
-        // FIXME: should suggest removing `ref mut` too
+        // FIXME: should suggest removing `ref` too
     }
 
     // -------- move from &Either/&X place --------
