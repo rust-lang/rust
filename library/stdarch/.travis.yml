@@ -30,18 +30,6 @@ matrix:
       env: TARGET=x86_64-apple-darwin NO_ADD=1
       script: ci/run.sh
     - env: TARGET=wasm32-unknown-unknown
-      before_script:
-        - git clone --recursive https://github.com/WebAssembly/wabt
-        - (cd wabt && git reset --hard a0bdeb7 && make -j4)
-        - export PATH=$PATH:$PWD/wabt/bin
-      script:
-        - cargo build --target wasm32-unknown-unknown -p stdsimd
-        - cargo build --target wasm32-unknown-unknown -p stdsimd --release
-        - cargo rustc --target wasm32-unknown-unknown -p stdsimd --release --example wasm -- -C lto
-        - wasm2wat target/wasm32-unknown-unknown/release/examples/wasm.wasm -o wasm.wat
-        - cat wasm.wat
-        - grep current_memory wasm.wat
-        - grep grow_memory wasm.wat
     - env: TARGET=thumbv6m-none-eabi NOSTD=1
     - env: TARGET=thumbv7m-none-eabi NOSTD=1
     - env: TARGET=thumbv7em-none-eabi NOSTD=1

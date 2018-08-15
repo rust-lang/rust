@@ -38,17 +38,9 @@ pub fn assert_instr(
     // testing for.
     let disable_assert_instr =
         std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
-    let maybe_ignore = if cfg!(optimized) && !disable_assert_instr {
-        TokenStream::new()
-    } else {
-        (quote! { #[ignore] }).into()
-    };
 
     use quote::ToTokens;
     let instr_str = instr
-        .clone()
-        .into_token_stream()
-        .to_string()
         .replace('.', "_")
         .replace(|c: char| c.is_whitespace(), "");
     let assert_name = syn::Ident::new(
@@ -124,16 +116,22 @@ pub fn assert_instr(
         }
     };
 
+    // If instruction tests are disabled avoid emitting this shim at all, just
+    // return the original item without our attribute.
+    if !cfg!(optimized) || disable_assert_instr {
+        return (quote! { #item }).into();
+    }
+
     let tts: TokenStream = quote! {
-        #[test]
+        #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+        #[cfg_attr(not(target_arch = "wasm32"), test)]
         #[allow(non_snake_case)]
-        #maybe_ignore
         fn #assert_name() {
             #to_test
 
             ::stdsimd_test::assert(#shim_name as usize,
                                    stringify!(#shim_name),
-                                   stringify!(#instr));
+                                   #instr);
         }
     }.into();
     // why? necessary now to get tests to work?
@@ -148,13 +146,17 @@ pub fn assert_instr(
 }
 
 struct Invoc {
-    instr: syn::Expr,
+    instr: String,
     args: Vec<(syn::Ident, syn::Expr)>,
 }
 
 impl syn::synom::Synom for Invoc {
     named!(parse -> Self, do_parse!(
-        instr: syn!(syn::Expr) >>
+        instr: alt!(
+            map!(syn!(syn::Ident), |s| s.to_string())
+            |
+            map!(syn!(syn::LitStr), |s| s.value())
+        ) >>
         args: many0!(do_parse!(
             syn!(syn::token::Comma) >>
             name: syn!(syn::Ident) >>

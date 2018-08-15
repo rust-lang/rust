@@ -3,6 +3,9 @@ members = [
   "crates/stdsimd-verify",
   "crates/stdsimd",
 ]
+exclude = [
+  "crates/wasm-assert-instr-tests"
+]
 
 [profile.release]
 debug = true

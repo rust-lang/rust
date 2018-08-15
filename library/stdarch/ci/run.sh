@@ -59,12 +59,16 @@ cargo_test() {
 cargo_test
 cargo_test "--release"
 
-# Test x86 targets compiled with AVX.
+# Test targets compiled with extra features.
 case ${TARGET} in
     x86*)
         RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         export STDSIMD_DISABLE_ASSERT_INSTR=1
         cargo_test "--release"
+        ;;
+    wasm32-unknown-unknown*)
+        # export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128"
+        cargo_test "--release --features=wasm_simd128"
         ;;
     *)
         ;;

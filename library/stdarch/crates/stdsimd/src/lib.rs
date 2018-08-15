@@ -17,6 +17,7 @@ extern crate libc;
 extern crate std as __do_not_use_this_import;
 
 #[cfg(test)]
+#[allow(unused_imports)]
 #[macro_use(println, print)]
 extern crate std;
 

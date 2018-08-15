@@ -51,8 +51,7 @@ extern "platform-intrinsic" {
     pub fn simd_select<M, T>(m: M, a: T, b: T) -> T;
 
     pub fn simd_fmin<T>(a: T, b: T) -> T;
-    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/416
-    // pub fn simd_fmax<T>(a: T, b: T) -> T;
+    pub fn simd_fmax<T>(a: T, b: T) -> T;
 
     pub fn simd_fsqrt<T>(a: T) -> T;
     pub fn simd_fma<T>(a: T, b: T, c: T) -> T;

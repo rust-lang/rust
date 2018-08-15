@@ -17,11 +17,15 @@ extern crate cc;
 extern crate lazy_static;
 extern crate rustc_demangle;
 extern crate simd_test_macro;
+extern crate wasm_bindgen;
 
 use std::collections::HashMap;
 use std::env;
+use std::path::Path;
 use std::process::Command;
 use std::str;
+
+use wasm_bindgen::prelude::*;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
@@ -32,6 +36,7 @@ lazy_static! {
 }
 
 struct Function {
+    addr: Option<usize>,
     instrs: Vec<Instruction>,
 }
 
@@ -40,6 +45,10 @@ struct Instruction {
 }
 
 fn disassemble_myself() -> HashMap<String, Vec<Function>> {
+    if cfg!(target_arch = "wasm32") {
+        return parse_wasm2wat();
+    }
+
     let me = env::current_exe().expect("failed to get current exe");
 
     if cfg!(target_arch = "x86_64")
@@ -145,6 +154,7 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
         ret.entry(normalize(symbol))
             .or_insert_with(Vec::new)
             .push(Function {
+                addr: None,
                 instrs: instructions,
             });
     }
@@ -189,6 +199,7 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
         ret.entry(normalize(symbol))
             .or_insert_with(Vec::new)
             .push(Function {
+                addr: None,
                 instrs: instructions,
             });
     }
@@ -239,11 +250,106 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
         ret.entry(normalize(symbol))
             .or_insert_with(Vec::new)
             .push(Function {
+                addr: None,
                 instrs: instructions,
             });
     }
 
     ret
+}
+
+
+#[wasm_bindgen(module = "child_process")]
+extern "C" {
+    #[wasm_bindgen(js_name = execSync)]
+    fn exec_sync(cmd: &str) -> Buffer;
+}
+
+#[wasm_bindgen(module = "buffer")]
+extern "C" {
+    type Buffer;
+    #[wasm_bindgen(method, js_name = toString)]
+    fn to_string(this: &Buffer) -> String;
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = require)]
+    fn resolve(module: &str) -> String;
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn js_console_log(s: &str);
+}
+
+// println! doesn't work on wasm32 right now, so shadow the compiler's println!
+// macro with our own shim that redirects to `console.log`.
+#[cfg(target_arch = "wasm32")]
+macro_rules! println {
+    ($($args:tt)*) => (js_console_log(&format!($($args)*)))
+}
+
+fn parse_wasm2wat() -> HashMap<String, Vec<Function>> {
+    // Our wasm module in the wasm-bindgen test harness is called
+    // "wasm-bindgen-test_bg". When running in node this is actually a shim JS
+    // file. Ask node where that JS file is, and then we use that with a wasm
+    // extension to find the wasm file itself.
+    let js_shim = resolve("wasm-bindgen-test_bg");
+    let js_shim = Path::new(&js_shim).with_extension("wasm");
+
+    // Execute `wasm2wat` synchronously, waiting for and capturing all of its
+    // output.
+    let output =
+        exec_sync(&format!("wasm2wat {}", js_shim.display())).to_string();
+
+    let mut ret: HashMap<String, Vec<Function>> = HashMap::new();
+    let mut lines = output.lines().map(|s| s.trim());
+    while let Some(line) = lines.next() {
+        // If we found the table of function pointers, fill in the known
+        // address for all our `Function` instances
+        if line.starts_with("(elem") {
+            for (i, name) in line.split_whitespace().skip(3).enumerate() {
+                let name = name.trim_right_matches(")");
+                for f in ret.get_mut(name).expect("ret.get_mut(name) failed") {
+                    f.addr = Some(i + 1);
+                }
+            }
+            continue;
+        }
+
+        // If this isn't a function, we don't care about it.
+        if !line.starts_with("(func ") {
+            continue;
+        }
+
+        let mut function = Function {
+            instrs: Vec::new(),
+            addr: None,
+        };
+
+        // Empty functions will end in `))` so there's nothing to do, otherwise
+        // we'll have a bunch of following lines which are instructions.
+        //
+        // Lines that have an imbalanced `)` mark the end of a function.
+        if !line.ends_with("))") {
+            while let Some(line) = lines.next() {
+                function.instrs.push(Instruction {
+                    parts: line
+                        .split_whitespace()
+                        .map(|s| s.to_string())
+                        .collect(),
+                });
+                if !line.starts_with("(") && line.ends_with(")") {
+                    break;
+                }
+            }
+        }
+
+        // The second element here split on whitespace should be the name of
+        // the function, skipping the type/params/results
+        ret.entry(line.split_whitespace().nth(1).unwrap().to_string())
+            .or_insert(Vec::new())
+            .push(function);
+    }
+    return ret;
 }
 
 fn normalize(symbol: &str) -> String {
@@ -259,27 +365,8 @@ fn normalize(symbol: &str) -> String {
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
 pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
-    // Translate this function pointer to a symbolic name that we'd have found
-    // in the disassembly.
-    let mut sym = None;
-    backtrace::resolve(fnptr as *mut _, |name| {
-        sym = name.name().and_then(|s| s.as_str()).map(normalize);
-    });
-
-    let functions =
-        if let Some(s) = sym.as_ref().and_then(|s| DISASSEMBLY.get(s)) {
-            s
-        } else {
-            if let Some(sym) = sym {
-                println!("assumed symbol name: `{}`", sym);
-            }
-            println!("maybe related functions");
-            for f in DISASSEMBLY.keys().filter(|k| k.contains(fnname)) {
-                println!("\t- {}", f);
-            }
-            panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
-        };
-
+    let mut fnname = fnname.to_string();
+    let functions = get_functions(fnptr, &mut fnname);
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
 
@@ -362,16 +449,14 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
     // Help debug by printing out the found disassembly, and then panic as we
     // didn't find the instruction.
-    println!(
-        "disassembly for {}: ",
-        sym.as_ref().expect("symbol not found")
-    );
+    println!("disassembly for {}: ", fnname,);
     for (i, instr) in instrs.iter().enumerate() {
-        print!("\t{:2}: ", i);
+        let mut s = format!("\t{:2}: ", i);
         for part in &instr.parts {
-            print!("{} ", part);
+            s.push_str(part);
+            s.push_str(" ");
         }
-        println!();
+        println!("{}", s);
     }
 
     if !found {
@@ -392,6 +477,39 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
              instructions, which hint that inlining failed"
         );
     }
+}
+
+fn get_functions(fnptr: usize, fnname: &mut String) -> &'static [Function] {
+    // Translate this function pointer to a symbolic name that we'd have found
+    // in the disassembly.
+    let mut sym = None;
+    backtrace::resolve(fnptr as *mut _, |name| {
+        sym = name.name().and_then(|s| s.as_str()).map(normalize);
+    });
+
+    if let Some(sym) = &sym {
+        if let Some(s) = DISASSEMBLY.get(sym) {
+            *fnname = sym.to_string();
+            return s;
+        }
+    }
+
+    let exact_match = DISASSEMBLY
+        .iter()
+        .find(|(_, list)| list.iter().any(|f| f.addr == Some(fnptr)));
+    if let Some((name, list)) = exact_match {
+        *fnname = name.to_string();
+        return list;
+    }
+
+    if let Some(sym) = sym {
+        println!("assumed symbol name: `{}`", sym);
+    }
+    println!("maybe related functions");
+    for f in DISASSEMBLY.keys().filter(|k| k.contains(&**fnname)) {
+        println!("\t- {}", f);
+    }
+    panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
 }
 
 pub fn assert_skip_test_ok(name: &str) {

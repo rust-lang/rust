@@ -37,3 +37,7 @@ path = "../../examples/hex.rs"
 name = "wasm"
 crate-type = ["cdylib"]
 path = "../../examples/wasm.rs"
+
+[features]
+default = []
+wasm_simd128 = ["coresimd/wasm_simd128"]

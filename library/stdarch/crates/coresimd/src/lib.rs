@@ -11,6 +11,7 @@
 #![allow(unused_features)]
 #![feature(
     const_fn,
+    const_fn_union,
     link_llvm_intrinsics,
     platform_intrinsics,
     repr_simd,
@@ -34,7 +35,7 @@
     arm_target_feature,
     aarch64_target_feature,
     mips_target_feature,
-    powerpc_target_feature
+    powerpc_target_feature,
 )]
 #![cfg_attr(
     test,
@@ -80,6 +81,9 @@ extern crate stdsimd;
 extern crate stdsimd_test;
 #[cfg(test)]
 extern crate test;
+
+#[cfg(all(test, target_arch = "wasm32"))]
+extern crate wasm_bindgen_test;
 
 #[path = "../../../coresimd/mod.rs"]
 mod coresimd;

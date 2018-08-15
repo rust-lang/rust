@@ -13,8 +13,8 @@ run() {
       --user `id -u`:`id -g` \
       --rm \
       --init \
-      --volume $HOME/.cargo:/cargo \
-      --env CARGO_HOME=/cargo \
+      --volume $HOME/.cargo:/cargo-h \
+      --env CARGO_HOME=/cargo-h \
       --volume `rustc --print sysroot`:/rust:ro \
       --env TARGET=$target \
       --env STDSIMD_TEST_EVERYTHING \
@@ -25,7 +25,7 @@ run() {
       --privileged \
       stdsimd \
       bash \
-      -c 'PATH=$PATH:/rust/bin exec ci/run.sh'
+      -c 'PATH=/rust/bin:$PATH exec ci/run.sh'
 }
 
 if [ -z "$1" ]; then

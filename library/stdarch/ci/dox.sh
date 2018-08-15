@@ -44,6 +44,7 @@ dox aarch64 aarch64-unknown-linux-gnu
 dox powerpc64le powerpc64le-unknown-linux-gnu
 dox mips mips-unknown-linux-gnu
 dox mips64 mips64-unknown-linux-gnuabi64
+dox wasm32 wasm32-unknown-unknown
 
 # If we're on travis, not a PR, and on the right branch, publish!
 if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
