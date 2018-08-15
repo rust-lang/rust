@@ -143,6 +143,7 @@ impl<T> ToOwned for T
 /// ```
 ///
 /// Another example showing how to keep `Cow` in a struct:
+///
 /// ```
 /// use std::borrow::{Cow, ToOwned};
 ///
