@@ -208,11 +208,14 @@ impl<T> VecDeque<T> {
         let head = self.head;
         let tail = self.tail;
         let buf = self.buffer_as_mut_slice();
-        if head == tail {
+        if head != tail {
+            // In buf, head..tail contains the VecDeque and tail..head is unused.
+            // So calling `ring_slices` with tail and head swapped returns unused slices.
+            RingSlices::ring_slices(buf, tail, head)
+        } else {
+            // Swapping doesn't help when head == tail.
             let (before, after) = buf.split_at_mut(head);
             (after, before)
-        } else {
-            RingSlices::ring_slices(buf, tail, head)
         }
     }
 
