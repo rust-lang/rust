@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Functionality for ordering and comparison.
+//! Functionality for ordering and relational operations.
 //!
-//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
-//! by the compiler to implement comparison operators. Rust programs may
-//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//! This module defines four traits related to ordering and comparisons:
 //!
-//! [`PartialOrd`]: trait.PartialOrd.html
-//! [`PartialEq`]: trait.PartialEq.html
+//! * [`PartialEq`]: which overloads the `==` and `!=` operators,
+//! * [`PartialOrd`] (requires `PartialEq`): which overloads the `<`, `<=`, `>`, 
+//!   and `>=` operators,
 //!
-//! # Examples
+//! state that values of a type can be compared for equality, or ordered, but that
+//! not all values of the type can be compared to all other values (more on this below).
 //!
 //! ```
 //! let x: u32 = 0;
@@ -32,6 +31,66 @@
 //! assert_eq!(x == y, false);
 //! assert_eq!(x.eq(&y), false);
 //! ```
+//!
+//! This module also provides the following two traits:
+//!
+//! * [`Eq`]: which requires `PartialEq`, states that all values of a type can be
+//!   compared to all others,
+//! * [`Ord`]: which requires `PartialOrd` and `Eq`, states that the ordering
+//!   relations expressed by the comparison operators form all total ordering relations 
+//!   (more on this below).
+//!
+//! The distinction between these traits is important: it tell us what it _means_ for a 
+//! sequence of values to be ordered.
+//!
+//! Two commonly encountered examples are integers and floating-point numbers. For example, every [`i32`] 
+//! value is comparable to every other. If you can tell that two `i32` values are distinc, then these two
+//! values never compare equal, and if you sorte a sequence of `i32` values like `[1, 1, 0, -5]` using `<=`,
+//! doing so will always produce the same unique result: `[-5, 0, 1, 1]`. We say that `<=` imposes a _total_
+//! order, and denote this by implementing `Ord` for `i32`.
+//!
+//! However, none of this holds for IEEE-754 floating-point numbers like `f32`. There is a special `f32` value 
+//! called "Not a Number" (`NaN`) for which any relational operation alwys return false, that is: 
+//! `a == NaN` is always `false`, even when `a` is `NaN`. For this reason `f32` only implements `PartialOrd`, and it 
+//! does not implement neither `Eq` nor `Ord`. What does this mean in practice? It means two things:
+//!
+//! * there are sequences of `f32`s that we can order using `<=` and will always produce the same unique 
+//!   result: sorting `[3.0, 5.0, 1.0]` into `[1.0, 3.0, 5.0]`.
+//!
+//! * there are also sequences of `f32`s that when ordered using `<=` will produce a different result depending
+//!  on which algorithm we use to sort them: we can sort `[-0.0, NaN, +0.0] into all its permutations 
+//! (`[-0.0, +0.0, NaN]`, `[+0.0, -0.0, NaN]`, `[NaN, +0.0, -0.0]`, etc. are all "sorted" under `<=`).
+//!
+//! Another example is the "subset relation" on sets in which, for sets `a` and `b`, `a < b` is true if and only 
+//! if `a` is a proper subset of `b` (e.g. `{4, 9} < {1, 4, 5, 9}` is true). The problem is that when neither 
+//! `a` is a subset of `b` nor `b` is a subset of `a` nor `a = b` (e.g. `{1, 3}` and `{1, 4}`), we cannot sensible 
+//! compare `a` and `b`, so that `a < b`, `a == b`, and `a > b` all return false.
+//!
+//! The distinction between a _total_ order and a _partial_ order is important, and impacts what it means for
+//! the values of a type to be "sorted". This impacts how it makes sense to use these values. For example,
+//! if we sort a vector of `f32`s containing `NaN`s, does it make sense to use binary search to try to find a value
+//! in that vector? Will it always work? Does it make sense to put `f32`s containing `NaN`s into a set? a hash table?
+//! etc. Algorithms and data-structures that require a total order or total equality to work correctly can constrain
+//! the types they accept with the [`Eq`] and [`Ord`] traits, while those for which a partial order or partial equality
+//! is enough can use the `PartialEq` and `PartialOrd` traits.
+//!
+//! This leads us to the final question: which traits should a type implement ? There is no easy answer: a type should only 
+//! implement the traits that make sense for the type, but this answer does not help. The different traits have
+//! different semantic requirements in their operations, and if a type cannot satisfy these requirements then it probably
+//! should not implement the trait. However, there are types that _could_ satisfy the requirements but for which it 
+//! still might not make sense to implement the trait. For example, a `Point(i32,i32)` could implement `Ord` by using
+//! a lexicographical-order, but whether this might make sense would depend on the application. Another example is 
+//! floating-point numbers: the IEEE754 standard provides _multiple_ different orderings for floating-point numbers. The one
+//! we have seen above is cheap to compute, but it is only a partial order. The IEEE754 standard also provides a 
+//! total order for floating point numbers that is more expensive to compute. So which ordering should they implement? Arguably,
+//! they should offer both orders and let the user choose, but they can only implement the trait once. For these kind of types,
+/// for which multiple orderings exist, it might make sense to not implement any order at all, but use another mechanism 
+//! (e.g. a wrapper type) to allow users to select the order they want. 
+//!
+//! [`PartialOrd`]: trait.PartialOrd.html
+//! [`PartialEq`]: trait.PartialEq.html
+//! [`Ord`]: trait.Ord.html
+//! [`Eq`]: trait.Eq.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -512,16 +571,56 @@ impl PartialOrd for Ordering {
     }
 }
 
-/// Trait for values that can be compared for a sort-order.
+/// Trait for values that can be partially ordered.
 ///
-/// The comparison must satisfy, for all `a`, `b` and `c`:
+/// This traits defines the operators `<`, `>`, `<=`, and `>=` which compare two values and return `bool`, 
+/// where `<` and `>` form [_strict_ partial ordering relations][wiki_porder].
 ///
-/// - antisymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
-/// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// The `PartialOrd` trait  has fewer requirements of the ordering relation than Ord. In particular, `partial_cmp` 
+/// can return `None` if two elements cannot be compared. That means that `PartialOrd` can be implemented 
+/// for types with incomparable values like floating-point numbers (`NaN`) and for ordering relations like 
+/// subset relations.
 ///
-/// Note that these requirements mean that the trait itself must be implemented symmetrically and
-/// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
-/// PartialOrd<V>`.
+/// It extends the partial equivalence relation provided by `PartialEq` (`==`) with `partial_cmp(a, b) -> Option<Ordering>`, 
+/// which is a [trichotomy](https://en.wikipedia.org/wiki/Trichotomy_(mathematics)) of the ordering relation when 
+/// its result is `Some`:
+///
+/// * `a < b` if and only if `partial_cmp(a, b) == Some(Less)`
+/// * `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`
+/// * `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`
+///
+/// and the absence of an ordering between `a` and `b` if and only if `partial_cmp(a, b) == None`. 
+/// Furthermore, this trait defines `<=` as `a < b || a == b` and `>=` as `a > b || a == b`.
+///
+/// The comparisons must satisfy, for all `a`, `b`, and `c`:
+///
+/// * _transitivity_: if `a < b` and `b < c` then `a < c`
+/// * _duality_: if `a < b` then `b > a`
+///
+/// The `lt` (`<`), `le` (`<=`), `gt` (`>`), and `ge` (`>=`) methods are implemented in terms of `partial_cmp` 
+/// according to these rules. The default implementations can be overridden for performance reasons, but manual 
+/// implementations must satisfy the rules above.
+///
+/// From these rules it follows that `PartialOrd` must be implemented symmetrically and transitively.
+/// That is, for two distinct types `T` and `U`, `T: PartialOrd<U>` requires the following trait 
+/// implementations to exist and satisfy these rules: `T: PartialOrd<T>`, `U: PartialOrd<T>`, 
+/// and `U: PartialOrd<U>`. If for a third distinct type `V` `T: PartialOrd<V>` is provided, then
+/// the following implementations should be implemented accordingly: `V: PartialOrd<V>`, 
+/// `V: PartialOrd<T>`, `U: PartialOrd<V>`, and `V: PartialOrd<U>`.
+/// 
+/// The following corollaries follow from transitivity of `<`, duality, and from the definition of `<` et al. 
+/// in terms of the same `partial_cmp`:
+///
+/// * irreflexivity of `<`: `!(a < a)`
+/// * transitivity of `>`: if `a > b` and `b > c` then `a > c`
+/// * asymmetry of `<`: if `a < b` then `!(b < a)`
+///
+/// Stronger ordering relations can be expressed by using the `Eq` and `Ord` traits, where the `PartialOrd` 
+/// methods provide:
+///
+/// * a [_non-strict_ partial ordering relation](https://en.wikipedia.org/wiki/Partially_ordered_set#Strict_and_non-strict_partial_orders)
+///   if `T: PartialOrd + Eq`
+/// * a [total ordering relation](https://en.wikipedia.org/wiki/Total_order) if `T: Ord`
 ///
 /// ## Derivable
 ///
@@ -610,6 +709,8 @@ impl PartialOrd for Ordering {
 /// assert_eq!(x < y, true);
 /// assert_eq!(x.lt(&y), true);
 /// ```
+///
+/// [wiki_porder]: https://en.wikipedia.org/wiki/Partially_ordered_set#Strict_and_non-strict_partial_orders
 #[lang = "partial_ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = ">")]
