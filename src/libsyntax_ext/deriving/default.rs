@@ -76,8 +76,8 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
             }
         }
         StaticEnum(..) => {
-            span_err_if_not_stage0!(cx, trait_span, E0665,
-                                    "`Default` cannot be derived for enums, only structs");
+            span_err!(cx, trait_span, E0665,
+                      "`Default` cannot be derived for enums, only structs");
             // let compilation continue
             cx.expr_usize(trait_span, 0)
         }
