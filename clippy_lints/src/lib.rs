@@ -173,18 +173,14 @@ pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
+use crate::utils::conf::Conf;
+
 mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
-pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore) {
-    store.register_pre_expansion_pass(Some(session), box write::Pass);
-    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
-}
-
-#[rustfmt::skip]
-pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
-    let conf = match utils::conf::file_from_args(reg.args()) {
+pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
+    match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
@@ -226,8 +222,19 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
                     .emit();
             toml::from_str("").expect("we never error on empty config files")
         }
-    };
+    }
+}
 
+pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore, conf: &Conf) {
+    store.register_pre_expansion_pass(Some(session), box write::Pass);
+    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
+    store.register_pre_expansion_pass(Some(session), box non_expressive_names::NonExpressiveNames {
+        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
+    });
+}
+
+#[rustfmt::skip]
+pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     let mut store = reg.sess.lint_store.borrow_mut();
     store.register_removed(
         "should_assert_eq",
@@ -329,9 +336,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box vec::Pass);
-    reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
-    });
     reg.register_late_lint_pass(box drop_forget_ref::Pass);
     reg.register_late_lint_pass(box empty_enum::EmptyEnum);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
@@ -347,9 +351,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
-    reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
+    reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names.clone()));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
-    reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
+    reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents.clone()));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);

@@ -25,7 +25,8 @@ pub fn plugin_registrar(reg: &mut Registry<'_>) {
         }
     });
 
-    clippy_lints::register_plugins(reg);
+    let conf = clippy_lints::read_conf(reg);
+    clippy_lints::register_plugins(reg, &conf);
 }
 
 // only exists to let the dogfood integration test works.

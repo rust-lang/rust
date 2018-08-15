@@ -5,7 +5,7 @@ use syntax::symbol::LocalInternedString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
-use crate::utils::{in_macro, span_lint, span_lint_and_then};
+use crate::utils::{span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for names that are very similar and thus confusing.
 ///
@@ -147,9 +147,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
     fn check_name(&mut self, span: Span, name: Name) {
-        if in_macro(span) {
-            return;
-        }
         let interned_name = name.as_str();
         if interned_name.chars().any(char::is_uppercase) {
             return;
@@ -309,6 +306,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
     }
+    fn visit_mac(&mut self, _mac: &Mac) {
+        // do not check macs
+    }
 }
 
 impl EarlyLintPass for NonExpressiveNames {
@@ -323,7 +323,6 @@ impl EarlyLintPass for NonExpressiveNames {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
-
 }
 
 fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
