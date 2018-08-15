@@ -36,6 +36,7 @@
 #![feature(staged_api)]
 #![feature(lang_items)]
 #![feature(optin_builtin_traits)]
+#![feature(non_exhaustive)]
 
 #![recursion_limit="256"]
 
