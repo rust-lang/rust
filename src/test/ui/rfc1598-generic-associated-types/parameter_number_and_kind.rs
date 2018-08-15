@@ -9,12 +9,13 @@
 // except according to those terms.
 
 #![feature(generic_associated_types)]
+//~^ WARNING the feature `generic_associated_types` is incomplete
 #![feature(associated_type_defaults)]
 
-//FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
-//follow-up PR
+// FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
+// follow-up PR.
 
-//FIXME(#44265): Update expected errors once E110 is resolved, now does not get past `trait Foo`
+// FIXME(#44265): Update expected errors once E110 is resolved, now does not get past `trait Foo`.
 
 trait Foo {
     type A<'a>;
