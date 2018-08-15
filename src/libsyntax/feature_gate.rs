@@ -1923,6 +1923,14 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     let mut features = Features::new();
     let mut edition_enabled_features = FxHashMap();
 
+    for &edition in ALL_EDITIONS {
+        if edition <= crate_edition {
+            // The `crate_edition` implies its respective umbrella feature-gate
+            // (i.e. `#![feature(rust_20XX_preview)]` isn't needed on edition 20XX).
+            edition_enabled_features.insert(Symbol::intern(edition.feature_name()), edition);
+        }
+    }
+
     for &(name, .., f_edition, set) in ACTIVE_FEATURES {
         if let Some(f_edition) = f_edition {
             if f_edition <= crate_edition {
@@ -1993,25 +2001,26 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue
             };
 
+            if let Some(edition) = edition_enabled_features.get(&name) {
+                struct_span_warn!(
+                    span_handler,
+                    mi.span,
+                    E0705,
+                    "the feature `{}` is included in the Rust {} edition",
+                    name,
+                    edition,
+                ).emit();
+                continue;
+            }
+
             if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
                 // Handled in the separate loop above.
                 continue;
             }
 
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
-                if let Some(edition) = edition_enabled_features.get(&name) {
-                    struct_span_warn!(
-                        span_handler,
-                        mi.span,
-                        E0705,
-                        "the feature `{}` is included in the Rust {} edition",
-                        name,
-                        edition,
-                    ).emit();
-                } else {
-                    set(&mut features, mi.span);
-                    features.declared_lang_features.push((name, mi.span, None));
-                }
+                set(&mut features, mi.span);
+                features.declared_lang_features.push((name, mi.span, None));
                 continue
             }
 

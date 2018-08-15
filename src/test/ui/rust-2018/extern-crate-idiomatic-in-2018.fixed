@@ -15,7 +15,6 @@
 // The "normal case". Ideally we would remove the `extern crate` here,
 // but we don't.
 
-#![feature(rust_2018_preview)]
 #![deny(rust_2018_idioms)]
 #![allow(dead_code)]
 

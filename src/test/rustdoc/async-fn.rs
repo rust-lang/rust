@@ -13,7 +13,7 @@
 
 // FIXME: once `--edition` is stable in rustdoc, remove that `compile-flags` directive
 
-#![feature(rust_2018_preview, async_await, futures_api)]
+#![feature(async_await, futures_api)]
 
 // @has async_fn/struct.S.html
 // @has - '//code' 'pub async fn f()'
