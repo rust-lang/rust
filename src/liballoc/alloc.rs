@@ -56,6 +56,22 @@ pub struct Global;
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc`].
+///
+/// # Examples
+///
+/// ```
+/// use std::alloc::{alloc, dealloc, Layout};
+///
+/// unsafe {
+///     let layout = Layout::new::<u16>();
+///     let ptr = alloc(layout);
+///
+///     *(ptr as *mut u16) = 42;
+///     assert_eq!(*(ptr as *mut u16), 42);
+///
+///     dealloc(ptr, layout);
+/// }
+/// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
@@ -110,6 +126,21 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc_zeroed`].
+///
+/// # Examples
+///
+/// ```
+/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+///
+/// unsafe {
+///     let layout = Layout::new::<u16>();
+///     let ptr = alloc_zeroed(layout);
+///
+///     assert_eq!(*(ptr as *mut u16), 0);
+///
+///     dealloc(ptr, layout);
+/// }
+/// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
