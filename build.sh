@@ -13,27 +13,30 @@ else
 fi
 
 extract_data() {
+    pushd target/out/
     ar x $1 data.o &&
     chmod +rw data.o &&
     mv data.o $2
+    popd
 }
 
-RUSTC="rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=."
+RUSTC="rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=target/out --out-dir target/out"
 
-pushd target/libcore
+rm -r target/out
 
-SHOULD_CODEGEN=1 $RUSTC ../../examples/mini_core.rs --crate-name mini_core --crate-type lib &&
+SHOULD_CODEGEN=1 $RUSTC examples/mini_core.rs --crate-name mini_core --crate-type lib &&
 extract_data libmini_core.rlib mini_core.o &&
 
-$RUSTC ../../examples/example.rs --crate-type lib &&
+$RUSTC examples/example.rs --crate-type lib &&
 
-SHOULD_RUN=1 $RUSTC ../../examples/mini_core_hello_world.rs --crate-type bin &&
+SHOULD_RUN=1 $RUSTC examples/mini_core_hello_world.rs --crate-type bin &&
 
-$RUSTC ../../examples/mini_core_hello_world.rs --crate-type bin &&
+$RUSTC examples/mini_core_hello_world.rs --crate-type bin &&
 extract_data mini_core_hello_world mini_core_hello_world.o &&
 
-gcc mini_core.o mini_core_hello_world.o -o mini_core_hello_world &&
-./mini_core_hello_world &&
+gcc target/out/mini_core.o target/out/mini_core_hello_world.o -o target/out/mini_core_hello_world || exit 1
+./target/out/mini_core_hello_world
 
-$RUSTC src/libcore/lib.rs --color=always --crate-type lib -Cincremental=incremental 2>&1 | (head -n 20; echo "===="; tail -n 1000)
-cat log.txt | sort | uniq -c | grep -v "rval unsize move" | grep -v "rval len"
+$RUSTC target/libcore/src/libcore/lib.rs --color=always --crate-type lib -Cincremental=target/incremental 2>&1 | (head -n 20; echo "===="; tail -n 1000)
+cat target/libcore/log.txt | sort | uniq -c | grep -v "rval unsize move" | grep -v "rval len"
+

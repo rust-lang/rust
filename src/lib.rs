@@ -253,7 +253,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 context: Context::new(),
             };
 
-            let mut log = ::std::fs::File::create("log.txt").unwrap();
+            let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
 
             let before = ::std::time::Instant::now();
             let mono_items =
