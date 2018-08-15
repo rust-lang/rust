@@ -559,6 +559,14 @@ a {
 	text-decoration: underline;
 }
 
+.invisible > .srclink {
+	position: absolute;
+	top: 0;
+	right: 0;
+	font-size: 17px;
+	font-weight: normal;
+}
+
 .block a.current.crate { font-weight: 500; }
 
 .search-container {
