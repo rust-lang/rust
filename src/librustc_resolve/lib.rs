@@ -1399,7 +1399,7 @@ pub struct Resolver<'a, 'b: 'a> {
     proc_mac_errors: Vec<macros::ProcMacError>,
     /// crate-local macro expanded `macro_export` referred to by a module-relative path
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
-
+    /// macro-expanded `macro_rules` shadowing existing macros
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,

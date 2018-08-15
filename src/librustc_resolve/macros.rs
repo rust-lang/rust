@@ -319,9 +319,9 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         None
     }
 
-    fn resolve_invoc(&mut self, invoc: &Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
-        let (path, macro_kind, derives_in_scope) = match invoc.kind {
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, scope: Mark, force: bool)
+                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
+        let (path, kind, derives_in_scope) = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } =>
                 return Ok(None),
             InvocationKind::Attr { attr: Some(ref attr), ref traits, .. } =>
@@ -331,90 +331,26 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             InvocationKind::Derive { ref path, .. } =>
                 (path, MacroKind::Derive, &[][..]),
         };
-        let def = self.resolve_macro_to_def(scope, path, macro_kind, derives_in_scope, force)?;
 
-        if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
-            self.report_proc_macro_stub(invoc.span());
-            return Err(Determinacy::Determined);
-        } else if let Def::NonMacroAttr(attr_kind) = def {
-            // Note that not only attributes, but anything in macro namespace can result in a
-            // `Def::NonMacroAttr` definition (e.g. `inline!()`), so we must report the error
-            // below for these cases.
-            let is_attr_invoc =
-                if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
-            let path = invoc.path().expect("no path for non-macro attr");
-            match attr_kind {
-                NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper |
-                NonMacroAttrKind::Custom if is_attr_invoc => {
-                    let features = self.session.features_untracked();
-                    if attr_kind == NonMacroAttrKind::Tool &&
-                       !features.tool_attributes {
-                        feature_err(&self.session.parse_sess, "tool_attributes",
-                                    invoc.span(), GateIssue::Language,
-                                    "tool attributes are unstable").emit();
-                    }
-                    if attr_kind == NonMacroAttrKind::Custom {
-                        assert!(path.segments.len() == 1);
-                        let name = path.segments[0].ident.name.as_str();
-                        if name.starts_with("rustc_") {
-                            if !features.rustc_attrs {
-                                let msg = "unless otherwise specified, attributes with the prefix \
-                                        `rustc_` are reserved for internal compiler diagnostics";
-                                feature_err(&self.session.parse_sess, "rustc_attrs", invoc.span(),
-                                            GateIssue::Language, &msg).emit();
-                            }
-                        } else if name.starts_with("derive_") {
-                            if !features.custom_derive {
-                                feature_err(&self.session.parse_sess, "custom_derive", invoc.span(),
-                                            GateIssue::Language, EXPLAIN_DERIVE_UNDERSCORE).emit();
-                            }
-                        } else if !features.custom_attribute {
-                            let msg = format!("The attribute `{}` is currently unknown to the \
-                                               compiler and may have meaning added to it in the \
-                                               future", path);
-                            feature_err(&self.session.parse_sess, "custom_attribute", invoc.span(),
-                                        GateIssue::Language, &msg).emit();
-                        }
-                    }
+        let (def, ext) = self.resolve_macro_to_def(path, kind, scope, derives_in_scope, force)?;
 
-                    return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr {
-                        mark_used: attr_kind == NonMacroAttrKind::Tool,
-                    })));
-                }
-                _ => {
-                    self.report_non_macro_attr(path.span, def);
-                    return Err(Determinacy::Determined);
-                }
-            }
+        if let Def::Macro(def_id, _) = def {
+            self.macro_defs.insert(invoc.expansion_data.mark, def_id);
+            let normal_module_def_id =
+                self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
+            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
+                                                            normal_module_def_id);
+            invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
+            invoc.expansion_data.mark.set_is_builtin(def_id.krate == BUILTIN_MACROS_CRATE);
         }
-        let def_id = def.def_id();
 
-        self.macro_defs.insert(invoc.expansion_data.mark, def_id);
-        let normal_module_def_id =
-            self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
-        self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
-                                                        normal_module_def_id);
-
-        self.unused_macros.remove(&def_id);
-        let ext = self.get_macro(def);
-        invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
-        invoc.expansion_data.mark.set_is_builtin(def_id.krate == BUILTIN_MACROS_CRATE);
         Ok(Some(ext))
     }
 
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                     -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        self.resolve_macro_to_def(scope, path, kind, &[], force).and_then(|def| {
-            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
-                self.report_proc_macro_stub(path.span);
-                return Err(Determinacy::Determined);
-            } else if let Def::NonMacroAttr(..) = def {
-                self.report_non_macro_attr(path.span, def);
-                return Err(Determinacy::Determined);
-            }
-            self.unused_macros.remove(&def.def_id());
-            Ok(self.get_macro(def))
-        })
+    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
+                          derives_in_scope: &[ast::Path], force: bool)
+                          -> Result<Lrc<SyntaxExtension>, Determinacy> {
+        Ok(self.resolve_macro_to_def(path, kind, scope, derives_in_scope, force)?.1)
     }
 
     fn check_unused_macros(&self) {
@@ -436,43 +372,89 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 }
 
 impl<'a, 'cl> Resolver<'a, 'cl> {
-    fn report_proc_macro_stub(&self, span: Span) {
-        self.session.span_err(span,
-                              "can't use a procedural macro from the same crate that defines it");
-    }
-
-    fn report_non_macro_attr(&self, span: Span, def: Def) {
-        self.session.span_err(span, &format!("expected a macro, found {}", def.kind_name()));
-    }
-
-    fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+    fn resolve_macro_to_def(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
                             derives_in_scope: &[ast::Path], force: bool)
-                            -> Result<Def, Determinacy> {
-        let def = self.resolve_macro_to_def_inner(scope, path, kind, derives_in_scope, force);
+                            -> Result<(Def, Lrc<SyntaxExtension>), Determinacy> {
+        let def = self.resolve_macro_to_def_inner(path, kind, scope, derives_in_scope, force);
+
+        // Report errors and enforce feature gates for the resolved macro.
         if def != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.
-            path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
-                self.session.span_err(segment.args.as_ref().unwrap().span(),
-                                      "generic arguments in macro path");
-            });
-        }
-        if kind != MacroKind::Bang && path.segments.len() > 1 &&
-           def != Ok(Def::NonMacroAttr(NonMacroAttrKind::Tool)) {
-            if !self.session.features_untracked().proc_macro_path_invoc {
-                emit_feature_err(
-                    &self.session.parse_sess,
-                    "proc_macro_path_invoc",
-                    path.span,
-                    GateIssue::Language,
-                    "paths of length greater than one in macro invocations are \
-                     currently unstable",
-                );
+            for segment in &path.segments {
+                if let Some(args) = &segment.args {
+                    self.session.span_err(args.span(), "generic arguments in macro path");
+                }
             }
         }
-        def
+
+        let def = def?;
+
+        if path.segments.len() > 1 {
+            if kind != MacroKind::Bang {
+                if def != Def::NonMacroAttr(NonMacroAttrKind::Tool) &&
+                   !self.session.features_untracked().proc_macro_path_invoc {
+                    let msg = format!("non-ident {} paths are unstable", kind.descr());
+                    emit_feature_err(&self.session.parse_sess, "proc_macro_path_invoc",
+                                     path.span, GateIssue::Language, &msg);
+                }
+            }
+        }
+
+        match def {
+            Def::Macro(def_id, macro_kind) => {
+                self.unused_macros.remove(&def_id);
+                if macro_kind == MacroKind::ProcMacroStub {
+                    let msg = "can't use a procedural macro from the same crate that defines it";
+                    self.session.span_err(path.span, msg);
+                    return Err(Determinacy::Determined);
+                }
+            }
+            Def::NonMacroAttr(attr_kind) => {
+                if kind == MacroKind::Attr {
+                    let features = self.session.features_untracked();
+                    if attr_kind == NonMacroAttrKind::Tool && !features.tool_attributes {
+                        feature_err(&self.session.parse_sess, "tool_attributes", path.span,
+                                    GateIssue::Language, "tool attributes are unstable").emit();
+                    }
+                    if attr_kind == NonMacroAttrKind::Custom {
+                        assert!(path.segments.len() == 1);
+                        let name = path.segments[0].ident.name.as_str();
+                        if name.starts_with("rustc_") {
+                            if !features.rustc_attrs {
+                                let msg = "unless otherwise specified, attributes with the prefix \
+                                           `rustc_` are reserved for internal compiler diagnostics";
+                                feature_err(&self.session.parse_sess, "rustc_attrs", path.span,
+                                            GateIssue::Language, &msg).emit();
+                            }
+                        } else if name.starts_with("derive_") {
+                            if !features.custom_derive {
+                                feature_err(&self.session.parse_sess, "custom_derive", path.span,
+                                            GateIssue::Language, EXPLAIN_DERIVE_UNDERSCORE).emit();
+                            }
+                        } else if !features.custom_attribute {
+                            let msg = format!("The attribute `{}` is currently unknown to the \
+                                               compiler and may have meaning added to it in the \
+                                               future", path);
+                            feature_err(&self.session.parse_sess, "custom_attribute", path.span,
+                                        GateIssue::Language, &msg).emit();
+                        }
+                    }
+                } else {
+                    // Not only attributes, but anything in macro namespace can result in
+                    // `Def::NonMacroAttr` definition (e.g. `inline!()`), so we must report
+                    // an error for those cases.
+                    let msg = format!("expected a macro, found {}", def.kind_name());
+                    self.session.span_err(path.span, &msg);
+                    return Err(Determinacy::Determined);
+                }
+            }
+            _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
+        }
+
+        Ok((def, self.get_macro(def)))
     }
 
-    pub fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+    pub fn resolve_macro_to_def_inner(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
                                       derives_in_scope: &[ast::Path], force: bool)
                                       -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
@@ -550,7 +532,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         enum ConvertToDeriveHelper { Yes, No, DontKnow }
         let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
         for derive in derives_in_scope {
-            match self.resolve_macro(scope, derive, MacroKind::Derive, force) {
+            match self.resolve_macro_path(derive, MacroKind::Derive, scope, &[], force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&path[0].name) {
                         convert_to_derive_helper = ConvertToDeriveHelper::Yes;
