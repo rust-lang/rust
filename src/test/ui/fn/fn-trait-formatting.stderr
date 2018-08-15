@@ -25,15 +25,13 @@ LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> is
    = note: expected type `()`
               found type `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
 
-error[E0277]: the trait bound `{integer}: std::ops::Fn<(isize,)>` is not satisfied
+error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:29:5
    |
 LL |     needs_fn(1);
-   |     ^^^^^^^^ the trait `std::ops::Fn<(isize,)>` is not implemented for `{integer}`
+   |     ^^^^^^^^ expected an `Fn<(isize,)>` closure, found `{integer}`
    |
-   = help: the following implementations were found:
-             <&'a F as std::ops::Fn<A>>
-             <core::str::LinesAnyMap as std::ops::Fn<(&'a str,)>>
+   = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `{integer}`
 note: required by `needs_fn`
   --> $DIR/fn-trait-formatting.rs:13:1
    |
