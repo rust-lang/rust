@@ -106,7 +106,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
             CValue::const_val(fx, ty, bits as i128 as i64)
         }
         TypeVariants::TyFnDef(def_id, substs) => {
-            let func_ref = fx.get_function_ref(Instance::new(def_id, substs));
+            let func_ref = fx.get_function_ref(Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap());
             CValue::Func(func_ref, layout)
         }
         _ => trans_const_place(fx, const_).to_cvalue(fx),
