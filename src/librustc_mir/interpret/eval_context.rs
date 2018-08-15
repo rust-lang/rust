@@ -604,8 +604,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
         }
 
-        self.memory.cur_frame = self.cur_frame();
-
         if self.stack.len() > self.stack_limit {
             err!(StackFrameLimitReached)
         } else {
@@ -619,10 +617,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        if !self.stack.is_empty() {
-            // TODO: Is this the correct time to start considering these accesses as originating from the returned-to stack frame?
-            self.memory.cur_frame = self.cur_frame();
-        }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
                 if let Place::Ptr(MemPlace { ptr, .. }) = frame.return_place {

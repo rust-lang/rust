@@ -43,9 +43,6 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
     alloc_map: FxHashMap<AllocId, Allocation>,
 
-    /// The current stack frame.  Used to check accesses against locks.
-    pub cur_frame: usize,
-
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
@@ -63,14 +60,12 @@ impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
             data,
             alloc_kind,
             alloc_map,
-            cur_frame,
             tcx: _,
         } = self;
 
         *data == other.data
             && *alloc_kind == other.alloc_kind
             && *alloc_map == other.alloc_map
-            && *cur_frame == other.cur_frame
     }
 }
 
@@ -83,12 +78,10 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
             data,
             alloc_kind: _,
             alloc_map: _,
-            cur_frame,
             tcx: _,
         } = self;
 
         data.hash(state);
-        cur_frame.hash(state);
 
         // We ignore some fields which don't change between evaluation steps.
 
@@ -114,7 +107,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             alloc_kind: FxHashMap::default(),
             alloc_map: FxHashMap::default(),
             tcx,
-            cur_frame: usize::max_value(),
         }
     }
 
