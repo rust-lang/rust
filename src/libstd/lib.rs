@@ -256,6 +256,7 @@
 #![feature(const_ip)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![feature(duration_as_u128)]
 #![feature(exact_size_is_empty)]
 #![feature(external_doc)]
 #![feature(fixed_size_array)]
