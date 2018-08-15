@@ -1277,12 +1277,10 @@ impl MacroBranch {
         let body_indent = if has_block_body {
             shape.indent
         } else {
-            // We'll hack the indent below, take this into account when formatting,
-            let body_indent = shape.indent.block_indent(&config);
-            let new_width = config.max_width() - body_indent.width();
-            config.set().max_width(new_width);
-            body_indent
+            shape.indent.block_indent(&config)
         };
+        let new_width = config.max_width() - body_indent.width();
+        config.set().max_width(new_width);
 
         // First try to format as items, then as statements.
         let new_body = match ::format_snippet(&body_str, &config) {
