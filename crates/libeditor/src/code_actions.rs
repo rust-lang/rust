@@ -10,7 +10,17 @@ use libsyntax2::{
     },
 };
 
-pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> Edit + 'a> {
+pub struct ActionResult {
+    pub edit: Edit,
+    pub cursor_position: CursorPosition,
+}
+
+pub enum CursorPosition {
+    Same,
+    Offset(TextUnit),
+}
+
+pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let syntax = file.syntax();
     let syntax = syntax.as_ref();
 
@@ -21,18 +31,27 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
         let mut edit = EditBuilder::new();
         edit.replace(left.range(), right.text());
         edit.replace(right.range(), left.text());
-        edit.finish()
+        ActionResult {
+            edit: edit.finish(),
+            cursor_position: CursorPosition::Same,
+        }
     })
 }
 
-pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> Edit + 'a> {
+pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let syntax = file.syntax();
     let syntax = syntax.as_ref();
     let nominal = find_node::<ast::NominalDef<_>>(syntax, offset)?;
     Some(move || {
         let mut edit = EditBuilder::new();
-        edit.insert(nominal.syntax().range().start(), "#[derive()]\n".to_string());
-        edit.finish()
+        let node_start = nominal.syntax().range().start();
+        edit.insert(node_start, "#[derive()]\n".to_string());
+        ActionResult {
+            edit: edit.finish(),
+            cursor_position: CursorPosition::Offset(
+                node_start + TextUnit::of_str("#[derive(")
+            ),
+        }
     })
 }
 

@@ -6,10 +6,10 @@ extern crate assert_eq_text;
 
 use std::fmt;
 use itertools::Itertools;
-use libsyntax2::AstNode;
 use libeditor::{
-    File, TextUnit, TextRange,
-    highlight, runnables, extend_selection, file_structure, flip_comma,
+    File, TextUnit, TextRange, ActionResult, CursorPosition,
+    highlight, runnables, extend_selection, file_structure,
+    flip_comma, add_derive,
 };
 
 #[test]
@@ -103,13 +103,19 @@ impl fmt::Debug for E {}
 
 #[test]
 fn test_swap_comma() {
-    check_modification(
+    check_action(
         "fn foo(x: i32,<|> y: Result<(), ()>) {}",
-        "fn foo(y: Result<(), ()>, x: i32) {}",
-        &|file, offset| {
-            let edit = flip_comma(file, offset).unwrap()();
-            edit.apply(&file.syntax().text())
-        },
+        "fn foo(y: Result<(), ()>,<|> x: i32) {}",
+        |file, off| flip_comma(file, off).map(|f| f()),
+    )
+}
+
+#[test]
+fn test_add_derive() {
+    check_action(
+        "struct Foo { a: i32, <|>}",
+        "#[derive(<|>)]\nstruct Foo { a: i32, }",
+        |file, off| add_derive(file, off).map(|f| f()),
     )
 }
 
@@ -123,21 +129,36 @@ fn dbg_eq(expected: &str, actual: &impl fmt::Debug) {
     assert_eq!(expected, actual);
 }
 
-fn check_modification(
+fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
     before: &str,
     after: &str,
-    f: &impl Fn(&File, TextUnit) -> String,
+    f: F,
 ) {
+    let (before_cursor_pos, before) = extract_cursor(before);
+    let file = file(&before);
+    let result = f(&file, before_cursor_pos).expect("code action is not applicable");
+    let actual = result.edit.apply(&before);
+    let actual_cursor_pos: u32 = match result.cursor_position {
+        CursorPosition::Same => result.edit.apply_to_offset(before_cursor_pos).unwrap(),
+        CursorPosition::Offset(off) => off,
+    }.into();
+    let actual_cursor_pos = actual_cursor_pos as usize;
+    let mut actual_with_cursor = String::new();
+    actual_with_cursor.push_str(&actual[..actual_cursor_pos]);
+    actual_with_cursor.push_str("<|>");
+    actual_with_cursor.push_str(&actual[actual_cursor_pos..]);
+    assert_eq_text!(after, &actual_with_cursor);
+}
+
+fn extract_cursor(text: &str) -> (TextUnit, String) {
     let cursor = "<|>";
-    let cursor_pos = match before.find(cursor) {
-        None => panic!("before text should contain cursor marker"),
+    let cursor_pos = match text.find(cursor) {
+        None => panic!("text should contain cursor marker"),
         Some(pos) => pos,
     };
-    let mut text = String::with_capacity(before.len() - cursor.len());
-    text.push_str(&before[..cursor_pos]);
-    text.push_str(&before[cursor_pos + cursor.len()..]);
+    let mut new_text = String::with_capacity(text.len() - cursor.len());
+    new_text.push_str(&text[..cursor_pos]);
+    new_text.push_str(&text[cursor_pos + cursor.len()..]);
     let cursor_pos = TextUnit::from(cursor_pos as u32);
-    let file = file(&text);
-    let actual = f(&file, cursor_pos);
-    assert_eq_text!(after, &actual);
+    (cursor_pos, new_text)
 }

@@ -67,6 +67,21 @@ impl Edit {
         assert_eq!(buf.len(), total_len);
         buf
     }
+
+    pub fn apply_to_offset(&self, offset: TextUnit) -> Option<TextUnit> {
+        let mut res = offset;
+        for atom in self.atoms.iter() {
+            if atom.delete.start() >= offset {
+                break;
+            }
+            if offset < atom.delete.end() {
+                return None
+            }
+            res += TextUnit::of_str(&atom.insert);
+            res -= atom.delete.len();
+        }
+        Some(res)
+    }
 }
 
 impl AtomEdit {

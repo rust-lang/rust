@@ -21,7 +21,7 @@ pub use self::{
     extend_selection::extend_selection,
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit, AtomEdit},
-    code_actions::{flip_comma, add_derive},
+    code_actions::{flip_comma, add_derive, ActionResult, CursorPosition},
 };
 
 #[derive(Debug)]
@@ -34,13 +34,6 @@ pub struct HighlightedRange {
 pub struct Diagnostic {
     pub range: TextRange,
     pub msg: String,
-}
-
-#[derive(Debug)]
-pub struct Symbol {
-    // pub parent: ???,
-    pub name: String,
-    pub range: TextRange,
 }
 
 #[derive(Debug)]

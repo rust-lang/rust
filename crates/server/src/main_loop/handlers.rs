@@ -187,12 +187,12 @@ pub fn handle_execute_command(
     let arg: ActionRequest = from_value(arg)?;
     let file_id = arg.text_document.try_conv_with(&path_map)?;
     let file = world.file_syntax(file_id)?;
-    let edit = match arg.id {
-        ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|edit| edit()),
-        ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|edit| edit()),
+    let action_result = match arg.id {
+        ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|f| f()),
+        ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|f| f()),
     };
-    let edit = match edit {
-        Some(edit) => edit,
+    let edit = match action_result {
+        Some(action_result) => action_result.edit,
         None => bail!("command not applicable"),
     };
     let line_index = world.file_line_index(file_id)?;
