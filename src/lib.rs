@@ -60,8 +60,8 @@ mod analyze;
 mod base;
 mod common;
 mod constant;
-mod pretty_clif;
 mod metadata;
+mod pretty_clif;
 
 mod prelude {
     pub use std::any::Any;
@@ -222,22 +222,31 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
             .unwrap()
             .finish(flags);
-        let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
-        let mut faerie_module: Module<FaerieBackend> = Module::new(
-            FaerieBuilder::new(
-                isa,
-                "some_file.o".to_string(),
-                FaerieTrapCollection::Disabled,
-                FaerieBuilder::default_libcall_names(),
-            ).unwrap(),
-        );
+        let (mut jit_module, mut faerie_module): (
+            Option<Module<SimpleJITBackend>>,
+            Option<Module<FaerieBackend>>,
+        ) = if std::env::var("SHOULD_RUN").is_ok() {
+            (Some(Module::new(SimpleJITBuilder::new())), None)
+        } else {
+            (
+                None,
+                Some(Module::new(
+                    FaerieBuilder::new(
+                        isa,
+                        "some_file.o".to_string(),
+                        FaerieTrapCollection::Disabled,
+                        FaerieBuilder::default_libcall_names(),
+                    ).unwrap(),
+                )),
+            )
+        };
 
         let defined_functions = {
             use std::io::Write;
             let mut cx = CodegenCx {
                 tcx,
-                jit: Some((ConstantCx::default(), &mut jit_module)),
-                faerie: Some((ConstantCx::default(), &mut faerie_module)),
+                jit: jit_module.as_mut().map(|m| (ConstantCx::default(), m)),
+                faerie: faerie_module.as_mut().map(|m| (ConstantCx::default(), m)),
                 defined_functions: Vec::new(),
 
                 context: Context::new(),
@@ -294,7 +303,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx.sess.warn("Compiled everything");
 
         // TODO: this doesn't work most of the time
-        if std::env::var("SHOULD_RUN").is_ok() {
+        if let Some(mut jit_module) = jit_module {
             tcx.sess.warn("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
             let start_wrapper = tcx.lang_items().start_fn().expect("no start lang item");
 
@@ -320,14 +329,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
             jit_module.finish();
             ::std::process::exit(0);
         } else if should_codegen(tcx.sess) {
-            jit_module.finalize_all();
-            faerie_module.finalize_all();
+            faerie_module.as_mut().map(|m| m.finalize_all());
 
             tcx.sess.warn("Finalized everything");
         }
 
         Box::new(OngoingCodegen {
-            product: faerie_module.finish(),
+            product: faerie_module.unwrap().finish(),
             metadata: metadata.raw_data,
             crate_name: tcx.crate_name(LOCAL_CRATE),
             crate_hash: tcx.crate_hash(LOCAL_CRATE),
@@ -348,7 +356,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut artifact = ongoing_codegen.product.artifact;
         let metadata = ongoing_codegen.metadata;
 
-        let metadata_name = ".rustc.clif_metadata".to_string() + &ongoing_codegen.crate_hash.to_string();
+        let metadata_name =
+            ".rustc.clif_metadata".to_string() + &ongoing_codegen.crate_hash.to_string();
         artifact
             .declare_with(
                 &metadata_name,
@@ -373,7 +382,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     let mut builder = ar::Builder::new(file);
                     builder
                         .append(
-                            &ar::Header::new(metadata_name.as_bytes().to_vec(), metadata.len() as u64),
+                            &ar::Header::new(
+                                metadata_name.as_bytes().to_vec(),
+                                metadata.len() as u64,
+                            ),
                             ::std::io::Cursor::new(metadata.clone()),
                         ).unwrap();
                     if should_codegen(sess) {

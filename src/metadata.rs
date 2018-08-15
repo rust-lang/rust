@@ -1,7 +1,7 @@
-use std::path::Path;
-use std::fs::File;
-use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc::middle::cstore::MetadataLoader;
+use rustc_data_structures::owning_ref::{self, OwningRef};
+use std::fs::File;
+use std::path::Path;
 
 pub struct CraneliftMetadataLoader;
 
@@ -15,7 +15,11 @@ impl MetadataLoader for CraneliftMetadataLoader {
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
-            if entry.header().identifier().starts_with(b".rustc.clif_metadata") {
+            if entry
+                .header()
+                .identifier()
+                .starts_with(b".rustc.clif_metadata")
+            {
                 let mut buf = Vec::new();
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();

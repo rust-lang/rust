@@ -336,7 +336,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 .unwrap()
                 .contains(crate::analyze::Flags::NOT_SSA)
             {
-                fx.bcx.declare_var(mir_var(local), fx.cton_type(ty).unwrap());
+                fx.bcx
+                    .declare_var(mir_var(local), fx.cton_type(ty).unwrap());
                 match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
                     PassMode::NoPass => unimplemented!("pass mode nopass"),
                     PassMode::ByVal(_) => fx.bcx.def_var(mir_var(local), ebb_param),
@@ -401,7 +402,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             });
             CPlace::from_stack_slot(fx, stack_slot, ty)
         } else {
-            fx.bcx.declare_var(mir_var(local), fx.cton_type(ty).unwrap());
+            fx.bcx
+                .declare_var(mir_var(local), fx.cton_type(ty).unwrap());
             CPlace::Var(local, layout)
         };
 
