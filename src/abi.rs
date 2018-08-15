@@ -317,10 +317,9 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             );
         }
         PassMode::ByVal(ret_ty) => {
-            let var = Variable(RETURN_PLACE);
-            fx.bcx.declare_var(var, ret_ty);
+            fx.bcx.declare_var(mir_var(RETURN_PLACE), ret_ty);
             fx.local_map
-                .insert(RETURN_PLACE, CPlace::Var(var, ret_layout));
+                .insert(RETURN_PLACE, CPlace::Var(RETURN_PLACE, ret_layout));
         }
         PassMode::ByRef => {
             fx.local_map
@@ -337,17 +336,16 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 .unwrap()
                 .contains(crate::analyze::Flags::NOT_SSA)
             {
-                let var = Variable(local);
-                fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
+                fx.bcx.declare_var(mir_var(local), fx.cton_type(ty).unwrap());
                 match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
                     PassMode::NoPass => unimplemented!("pass mode nopass"),
-                    PassMode::ByVal(_) => fx.bcx.def_var(var, ebb_param),
+                    PassMode::ByVal(_) => fx.bcx.def_var(mir_var(local), ebb_param),
                     PassMode::ByRef => {
                         let val = CValue::ByRef(ebb_param, fx.layout_of(ty)).load_value(fx);
-                        fx.bcx.def_var(var, val);
+                        fx.bcx.def_var(mir_var(local), val);
                     }
                 }
-                fx.local_map.insert(local, CPlace::Var(var, layout));
+                fx.local_map.insert(local, CPlace::Var(local, layout));
                 continue;
             }
         }
@@ -403,9 +401,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             });
             CPlace::from_stack_slot(fx, stack_slot, ty)
         } else {
-            let var = Variable(local);
-            fx.bcx.declare_var(var, fx.cton_type(ty).unwrap());
-            CPlace::Var(var, layout)
+            fx.bcx.declare_var(mir_var(local), fx.cton_type(ty).unwrap());
+            CPlace::Var(local, layout)
         };
 
         fx.local_map.insert(local, place);

@@ -94,7 +94,6 @@ mod prelude {
 
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
-    pub use crate::common::Variable;
     pub use crate::common::*;
 
     pub use crate::{CodegenCx, ModuleTup};

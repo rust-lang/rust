@@ -6,17 +6,8 @@ use cranelift_module::Module;
 
 use crate::prelude::*;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Variable(pub Local);
-
-impl EntityRef for Variable {
-    fn new(u: usize) -> Self {
-        Variable(Local::new(u))
-    }
-
-    fn index(self) -> usize {
-        self.0.index()
-    }
+pub fn mir_var(loc: Local) -> Variable {
+    Variable::with_u32(loc.index() as u32)
 }
 
 pub fn cton_type_from_ty<'a, 'tcx: 'a>(
@@ -178,7 +169,7 @@ impl<'tcx> CValue<'tcx> {
 /// A place where you can write a value to or read a value from
 #[derive(Debug, Copy, Clone)]
 pub enum CPlace<'tcx> {
-    Var(Variable, TyLayout<'tcx>),
+    Var(Local, TyLayout<'tcx>),
     Addr(Value, TyLayout<'tcx>),
 }
 
@@ -210,7 +201,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
-            CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(var), layout),
+            CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(mir_var(var)), layout),
             CPlace::Addr(addr, layout) => CValue::ByRef(addr, layout),
         }
     }
@@ -251,7 +242,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         match self {
             CPlace::Var(var, _) => {
                 let data = from.load_value(fx);
-                fx.bcx.def_var(var, data)
+                fx.bcx.def_var(mir_var(var), data)
             }
             CPlace::Addr(addr, layout) => {
                 let size = layout.size.bytes() as i32;
@@ -365,7 +356,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
     pub param_substs: &'tcx Substs<'tcx>,
-    pub bcx: FunctionBuilder<'a, Variable>,
+    pub bcx: FunctionBuilder<'a>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
