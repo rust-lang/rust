@@ -67,7 +67,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx> {
-        trace!("{:?}", stmt);
+        debug!("{:?}", stmt);
 
         use rustc::mir::StatementKind::*;
 
@@ -281,12 +281,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
-        trace!("{:?}", terminator.kind);
+        debug!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
-            trace!("// {:?}", self.frame().block);
+            debug!("// {:?}", self.frame().block);
         }
         Ok(())
     }

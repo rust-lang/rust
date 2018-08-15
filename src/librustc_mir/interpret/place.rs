@@ -516,6 +516,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src_val: Value,
         dest : PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
+        trace!("write_value: {:?} <- {:?}", *dest, src_val);
         // See if we can avoid an allocation. This is the counterpart to `try_read_value`,
         // but not factored as a separate function.
         match dest.place {
@@ -543,7 +544,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         value: Value,
         dest: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        trace!("write_value_to_ptr: {:#?}, {:#?}", value, dest.layout);
         assert_eq!(dest.extra, PlaceExtra::None);
         // Note that it is really important that the type here is the right one, and matches the type things are read at.
         // In case `src_val` is a `ScalarPair`, we don't do any magic here to handle padding properly, which is only
@@ -584,8 +584,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src: OpTy<'tcx>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        trace!("Copying {:?} to {:?}", src, dest);
-        assert_eq!(src.layout.size, dest.layout.size, "Size mismatch when copying!");
+        assert_eq!(src.layout.size, dest.layout.size,
+            "Size mismatch when copying!\nsrc: {:#?}\ndest: {:#?}", src, dest);
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
         let (src_ptr, src_align) = match self.try_read_value(src)? {
@@ -595,6 +595,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Err(mplace) => mplace.to_scalar_ptr_align(),
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
+        trace!("copy_op: {:?} <- {:?}", *dest, *src);
         let (dest_ptr, dest_align) = self.force_allocation(dest)?.to_scalar_ptr_align();
         self.memory.copy(
             src_ptr, src_align,

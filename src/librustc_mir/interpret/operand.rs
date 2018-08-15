@@ -395,21 +395,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
-    pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, OpTy<'tcx>> {
+    pub fn eval_operand(&mut self, mir_op: &mir::Operand<'tcx>) -> EvalResult<'tcx, OpTy<'tcx>> {
         use rustc::mir::Operand::*;
-        match *op {
+        let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) |
             Move(ref place) =>
-                self.eval_place_to_op(place),
+                self.eval_place_to_op(place)?,
 
             Constant(ref constant) => {
-                let ty = self.monomorphize(op.ty(self.mir(), *self.tcx), self.substs());
+                let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
                 let layout = self.layout_of(ty)?;
                 let op = self.const_value_to_op(constant.literal.val)?;
-                Ok(OpTy { op, layout })
+                OpTy { op, layout }
             }
-        }
+        };
+        trace!("{:?}: {:?}", mir_op, *op);
+        Ok(op)
     }
 
     /// Evaluate a bunch of operands at once

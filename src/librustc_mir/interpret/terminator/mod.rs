@@ -38,7 +38,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             } => {
                 let discr_val = self.eval_operand(discr)?;
                 let discr = self.read_value(discr_val)?;
-                trace!("SwitchInt({:#?})", *discr);
+                trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
@@ -286,10 +286,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // and need to pack arguments
                     Abi::Rust => {
                         trace!(
-                            "arg_locals: {:#?}",
-                            self.frame().mir.args_iter().collect::<Vec<_>>()
+                            "args: {:#?}",
+                            self.frame().mir.args_iter().zip(args.iter())
+                                .map(|(local, arg)| (local, **arg, arg.layout.ty)).collect::<Vec<_>>()
                         );
-                        trace!("args: {:#?}", args);
                         let local = arg_locals.nth(1).unwrap();
                         for (i, &op) in args.into_iter().enumerate() {
                             let dest = self.eval_place(&mir::Place::Local(local).field(
@@ -319,10 +319,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
                 trace!(
-                    "arg_locals: {:#?}",
-                    self.frame().mir.args_iter().collect::<Vec<_>>()
+                    "args: {:#?}",
+                    self.frame().mir.args_iter().zip(args.iter())
+                        .map(|(local, arg)| (local, **arg, arg.layout.ty)).collect::<Vec<_>>()
                 );
-                trace!("args: {:#?}", args);
                 match sig.abi {
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);

@@ -13,7 +13,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         span: Span,
         target: BasicBlock,
     ) -> EvalResult<'tcx> {
-        trace!("drop_place: {:#?}", place);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.
         // However, unaligned accesses will probably make the actual drop implementation fail -- a problem shared
         // by rustc.
@@ -29,7 +28,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         span: Span,
         target: BasicBlock,
     ) -> EvalResult<'tcx> {
-        trace!("drop: {:#?}, {:?}, {:?}", arg, ty.sty, instance.def);
+        trace!("drop: {:?},\n  {:?}, {:?}", arg, ty.sty, instance.def);
 
         let instance = match ty.sty {
             ty::TyDynamic(..) => {
