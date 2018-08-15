@@ -142,6 +142,7 @@ impl<T> ToOwned for T
 /// abs_all(&mut input);
 /// ```
 ///
+/// Another example showing how to keep `Cow` in a struct:
 /// ```
 /// use std::borrow::{Cow, ToOwned};
 ///
@@ -174,7 +175,6 @@ impl<T> ToOwned for T
 ///     _ => panic!("expect owned data"),
 /// }
 /// ```
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Cow<'a, B: ?Sized + 'a>
     where B: ToOwned
