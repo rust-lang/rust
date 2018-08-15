@@ -258,25 +258,35 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id))
                 }
             };
-            let unsized_len = if
+            let all_sized =
                 all_sized ||
                 variant.fields.is_empty() ||
-                needs_drop_copy()
-            {
+                needs_drop_copy();
+            let unsized_len = if all_sized {
                 0
             } else {
                 1
             };
-            for field in &variant.fields[..variant.fields.len() - unsized_len] {
+            for (idx, field) in variant.fields[..variant.fields.len() - unsized_len]
+                .iter()
+                .enumerate()
+            {
+                let last = idx == variant.fields.len() - 1;
                 fcx.register_bound(
                     field.ty,
                     fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
-                    traits::ObligationCause::new(field.span,
-                                                    fcx.body_id,
-                                                    traits::FieldSized(match item.node.adt_kind() {
-                                                    Some(i) => i,
-                                                    None => bug!(),
-                                                    })));
+                    traits::ObligationCause::new(
+                        field.span,
+                        fcx.body_id,
+                        traits::FieldSized {
+                            adt_kind: match item.node.adt_kind() {
+                                Some(i) => i,
+                                None => bug!(),
+                            },
+                            last
+                        }
+                    )
+                );
             }
 
             // All field types must be well-formed.

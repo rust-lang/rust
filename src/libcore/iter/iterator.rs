@@ -1110,7 +1110,7 @@ pub trait Iterator {
     ///
     /// [`flat_map()`]: #method.flat_map
     #[inline]
-    #[stable(feature = "iterator_flatten", since = "1.29")]
+    #[stable(feature = "iterator_flatten", since = "1.29.0")]
     fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
         Flatten { inner: flatten_compat(self) }

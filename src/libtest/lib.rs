@@ -324,7 +324,14 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
 /// test is considered a failure. By default, invokes `report()`
 /// and checks for a `0` result.
 pub fn assert_test_result<T: Termination>(result: T) {
-    assert_eq!(result.report(), 0);
+    let code = result.report();
+    assert_eq!(
+        code,
+        0,
+        "the test returned a termination value with a non-zero status code ({}) \
+         which indicates a failure",
+        code
+    );
 }
 
 #[derive(Copy, Clone, Debug)]

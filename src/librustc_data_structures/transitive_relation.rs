@@ -97,12 +97,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     {
         let mut result = TransitiveRelation::new();
         for edge in &self.edges {
-            f(&self.elements[edge.source.0]).and_then(|source| {
-                f(&self.elements[edge.target.0]).and_then(|target| {
-                    result.add(source, target);
-                    Some(())
-                })
-            })?;
+            result.add(f(&self.elements[edge.source.0])?, f(&self.elements[edge.target.0])?);
         }
         Some(result)
     }
