@@ -4629,8 +4629,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let methods = self.get_conversion_methods(expr.span, expected, found);
             if let Ok(expr_text) = self.sess().codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
-                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.ident))
-                    .collect::<Vec<_>>();
+                    .filter_map(|(receiver, method)| {
+                        let method_call = format!(".{}()", method.ident);
+                        if receiver.ends_with(&method_call) {
+                            None  // do not suggest code that is already there (#53348)
+                        } else {
+                            Some(format!("{}{}", receiver, method_call))
+                        }
+                    }) .collect::<Vec<_>>();
                 if !suggestions.is_empty() {
                     err.span_suggestions(expr.span, "try using a conversion method", suggestions);
                 }
