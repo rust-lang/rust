@@ -16,7 +16,6 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(iterator_find_map)]
 #![cfg_attr(not(stage0), feature(nll))]
 #![feature(set_stdio)]
 #![feature(slice_sort_by_cached_key)]

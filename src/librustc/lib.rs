@@ -45,7 +45,6 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(iterator_find_map)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(macro_vis_matcher)]
 #![feature(never_type)]
