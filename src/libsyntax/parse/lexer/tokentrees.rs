@@ -77,17 +77,23 @@ impl<'a> StringReader<'a> {
                     // Incorrect delimiter.
                     token::CloseDelim(other) => {
                         let token_str = token_to_string(&self.token);
-                        let msg = format!("incorrect close delimiter: `{}`", token_str);
-                        let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
-                        err.span_label(self.span, "incorrect close delimiter");
-                        // This is a conservative error: only report the last unclosed delimiter.
-                        // The previous unclosed delimiters could actually be closed! The parser
-                        // just hasn't gotten to them yet.
-                        if let Some(&(_, sp)) = self.open_braces.last() {
-                            err.span_label(sp, "unclosed delimiter");
-                        };
-                        err.emit();
-
+                        if self.last_unclosed_found_span != Some(self.span) {
+                            // do not complain about the same unclosed delimiter multiple times
+                            self.last_unclosed_found_span = Some(self.span);
+                            let msg = format!("incorrect close delimiter: `{}`", token_str);
+                            let mut err = self.sess.span_diagnostic.struct_span_err(
+                                self.span,
+                                &msg,
+                            );
+                            err.span_label(self.span, "incorrect close delimiter");
+                            // This is a conservative error: only report the last unclosed
+                            // delimiter. The previous unclosed delimiters could actually be
+                            // closed! The parser just hasn't gotten to them yet.
+                            if let Some(&(_, sp)) = self.open_braces.last() {
+                                err.span_label(sp, "unclosed delimiter");
+                            };
+                            err.emit();
+                        }
                         self.open_braces.pop().unwrap();
 
                         // If the incorrect delimiter matches an earlier opening
