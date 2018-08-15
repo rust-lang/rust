@@ -1285,10 +1285,14 @@ impl MacroBranch {
         // First try to format as items, then as statements.
         let new_body = match ::format_snippet(&body_str, &config) {
             Some(new_body) => new_body,
-            None => match ::format_code_block(&body_str, &config) {
-                Some(new_body) => new_body,
-                None => return None,
-            },
+            None => {
+                let new_width = new_width + config.tab_spaces();
+                config.set().max_width(new_width);
+                match ::format_code_block(&body_str, &config) {
+                    Some(new_body) => new_body,
+                    None => return None,
+                }
+            }
         };
         let new_body = wrap_str(new_body, config.max_width(), shape)?;
 
