@@ -65,9 +65,9 @@ impl ToBar for Bar {
 
 pub fn main() {
     // With a vec of ints.
-    let f1 = Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+    let f1 : Fat<[isize; 3]> = Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
     foo(&f1);
-    let f2 = &f1;
+    let f2 : &Fat<[isize; 3]> = &f1;
     foo(f2);
     let f3: &Fat<[isize]> = f2;
     foo(f3);
