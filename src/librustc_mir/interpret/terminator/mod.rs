@@ -129,7 +129,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_place(
+                self.drop_in_place(
                     place,
                     instance,
                     terminator.source_info.span,

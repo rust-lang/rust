@@ -66,16 +66,18 @@ trait Trait {}
 
 // OK
 const A: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.str};
-// should lint
+// bad
 const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
+//~^ ERROR this constant likely exhibits undefined behavior
 // bad
 const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
 //~^ ERROR this constant likely exhibits undefined behavior
 
 // OK
 const A2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.slice};
-// should lint
+// bad
 const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
+//~^ ERROR this constant likely exhibits undefined behavior
 // bad
 const C2: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
 //~^ ERROR this constant likely exhibits undefined behavior

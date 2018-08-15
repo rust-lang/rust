@@ -721,4 +721,39 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
         Ok(OpTy { op, layout: place.layout })
     }
+
+    /// Turn a place that is a dyn trait (i.e., PlaceExtra::Vtable and the appropriate layout)
+    /// or a slice into the specific fixed-size place and layout that is given by the vtable/len.
+    /// This "unpacks" the existential quantifier, so to speak.
+    pub fn unpack_unsized_mplace(&self, mplace: MPlaceTy<'tcx>) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+        trace!("Unpacking {:?} ({:?})", *mplace, mplace.layout.ty);
+        let layout = match mplace.extra {
+            PlaceExtra::Vtable(vtable) => {
+                // the drop function signature
+                let drop_instance = self.read_drop_type_from_vtable(vtable)?;
+                trace!("Found drop fn: {:?}", drop_instance);
+                let fn_sig = drop_instance.ty(*self.tcx).fn_sig(*self.tcx);
+                let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
+                // the drop function takes *mut T where T is the type being dropped, so get that
+                let ty = fn_sig.inputs()[0].builtin_deref(true).unwrap().ty;
+                let layout = self.layout_of(ty)?;
+                // Sanity checks
+                let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
+                assert_eq!(size, layout.size);
+                assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+                // Done!
+                layout
+            },
+            PlaceExtra::Length(len) => {
+                let ty = self.tcx.mk_array(mplace.layout.field(self, 0)?.ty, len);
+                self.layout_of(ty)?
+            }
+            PlaceExtra::None => bug!("Expected a fat pointer"),
+        };
+        trace!("Unpacked type: {:?}", layout.ty);
+        Ok(MPlaceTy {
+            mplace: MemPlace { extra: PlaceExtra::None, ..*mplace },
+            layout
+        })
+    }
 }

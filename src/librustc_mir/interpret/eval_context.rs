@@ -10,7 +10,7 @@ use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout, Primitive
 };
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::fx::{FxHashSet, FxHasher};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -24,7 +24,7 @@ use syntax::source_map::{self, Span};
 use syntax::ast::Mutability;
 
 use super::{
-    Value, ValTy, Operand, MemPlace, MPlaceTy, Place,
+    Value, ValTy, Operand, MemPlace, MPlaceTy, Place, PlaceExtra,
     Memory, Machine
 };
 
@@ -442,10 +442,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+        &self,
+        t: T,
+        substs: &'tcx Substs<'tcx>
+    ) -> T {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
-        let substituted = ty.subst(*self.tcx, substs);
+        let substituted = t.subst(*self.tcx, substs);
         self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
@@ -844,35 +848,41 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 match dest.layout.ty.builtin_deref(false).map(|tam| &tam.ty.sty) {
                     | Some(ty::TyStr)
                     | Some(ty::TySlice(_)) => {
-                        // check the length
+                        // check the length (for nicer error messages)
                         let len_mplace = self.mplace_field(dest, 1)?;
                         let len = self.read_scalar(len_mplace.into())?;
                         let len = match len.to_bits(len_mplace.layout.size) {
                             Err(_) => return validation_failure!("length is not a valid integer", path),
                             Ok(len) => len as u64,
                         };
-                        // get the fat ptr
+                        // get the fat ptr, and recursively check it
                         let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                        let mut path = path.clone();
-                        self.dump_field_name(&mut path, dest.layout.ty, 0, variant).unwrap();
-                        // check all fields
-                        for i in 0..len {
+                        assert_eq!(ptr.extra, PlaceExtra::Length(len));
+                        let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                        if seen.insert(unpacked_ptr) {
                             let mut path = path.clone();
-                            self.dump_field_name(&mut path, ptr.layout.ty, i as usize, 0).unwrap();
-                            let field = self.mplace_field(ptr, i)?;
-                            self.validate_mplace(field, path, seen, todo)?;
+                            self.dump_field_name(&mut path, dest.layout.ty, 0, 0).unwrap();
+                            todo.push((unpacked_ptr, path))
                         }
-                        // FIXME: For a TyStr, check that this is valid UTF-8
                     },
                     Some(ty::TyDynamic(..)) => {
-                        let vtable_mplace = self.mplace_field(dest, 1)?;
-                        let vtable = self.read_scalar(vtable_mplace.into())?;
-                        if vtable.to_ptr().is_err() {
-                            return validation_failure!("vtable address is not a pointer", path);
+                        // check the vtable (for nicer error messages)
+                        let vtable = self.read_scalar(self.mplace_field(dest, 1)?.into())?;
+                        let vtable = match vtable.to_ptr() {
+                            Err(_) => return validation_failure!("vtable address is not a pointer", path),
+                            Ok(vtable) => vtable,
+                        };
+                        // get the fat ptr, and recursively check it
+                        let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
+                        assert_eq!(ptr.extra, PlaceExtra::Vtable(vtable));
+                        let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                        if seen.insert(unpacked_ptr) {
+                            let mut path = path.clone();
+                            self.dump_field_name(&mut path, dest.layout.ty, 0, 0).unwrap();
+                            todo.push((unpacked_ptr, path))
                         }
-                        // get the fat ptr
-                        let _ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                        // FIXME: What can we verify about this?
+                        // FIXME: More checks for the vtable... making sure it is exactly
+                        // the one one would expect for this type.
                     },
                     Some(ty) =>
                         bug!("Unexpected fat pointer target type {:?}", ty),
@@ -884,6 +894,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             let field = self.mplace_field(dest, i as u64)?;
                             self.validate_mplace(field, path, seen, todo)?;
                         }
+                        // FIXME: For a TyStr, check that this is valid UTF-8.
                     },
                 }
 
