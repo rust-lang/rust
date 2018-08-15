@@ -263,3 +263,19 @@ macro_rules! impl_as_byte_slice_arrays {
         }
     };
 }
+
+// #2919
+fn foo() {
+    {
+        macro_rules! touch_value {
+            ($func:ident, $value:expr) => {{
+                let result = API::get_cached().$func(self, key.as_ptr(), $value, ffi::VSPropAppendMode::paTouch);
+                let result = API::get_cached().$func(self, key.as_ptr(), $value, ffi::VSPropAppend);
+                let result = API::get_cached().$func(self, key.as_ptr(), $value, ffi::VSPropAppendM);
+                let result = APIIIIIIIII::get_cached().$func(self, key.as_ptr(), $value, ffi::VSPropAppendM);
+                let result = API::get_cached().$func(self, key.as_ptr(), $value, ffi::VSPropAppendMMMMMMMMMM);
+                debug_assert!(result == 0);
+            }};
+        }
+    }
+}
