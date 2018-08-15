@@ -1,5 +1,14 @@
 use crate::prelude::*;
 
+struct PrintOnPanic(String);
+impl Drop for PrintOnPanic {
+    fn drop(&mut self) {
+        if ::std::thread::panicking() {
+            println!("{}", self.0);
+        }
+    }
+}
+
 pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: MonoItem<'tcx>) {
     let tcx = cx.tcx;
     let context = &mut cx.context;
@@ -12,11 +21,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: Mo
             } => {
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                tcx.sess.warn(&format!(
-                    "{:?}:\n\n{}",
-                    inst,
-                    String::from_utf8_lossy(&mir.into_inner())
-                ));
+                let mir_file_name = "target/out/mir/".to_string() + &format!("{:?}", def_id).replace('/', "@");
+                ::std::fs::write(mir_file_name, mir.into_inner()).unwrap();
+                let _print_guard = PrintOnPanic(format!("{:?}", inst));
 
                 let res = each_module!(cx, |(ccx, m)| trans_fn(tcx, *m, ccx, context, inst));
                 if let Some(func_id) = res.jit {
@@ -84,6 +91,8 @@ fn trans_fn<'a, 'tcx: 'a>(
         local_map: HashMap::new(),
         comments: HashMap::new(),
         constants,
+
+        top_nop: None,
     };
 
     // Step 6. Codegen function
@@ -96,7 +105,8 @@ fn trans_fn<'a, 'tcx: 'a>(
     let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
     let mut cton = String::new();
     ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None).unwrap();
-    tcx.sess.warn(&cton);
+    let clif_file_name = "target/out/clif/".to_string() + &tcx.symbol_name(instance).as_str();
+    ::std::fs::write(clif_file_name, cton.as_bytes()).unwrap();
 
     // Step 8. Verify function
     verify_func(tcx, writer, &func);
@@ -235,7 +245,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
     cur_ebb: Ebb,
     stmt: &Statement<'tcx>,
 ) {
-    fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
+    let _print_guard = PrintOnPanic(format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
     fx.add_comment(inst, format!("{:?}", stmt));

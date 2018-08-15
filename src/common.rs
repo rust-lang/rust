@@ -361,6 +361,9 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
     pub constants: &'a mut crate::constant::ConstantCx,
+
+    /// add_global_comment inserts a comment here
+    pub top_nop: Option<Inst>,
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {

@@ -242,7 +242,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     start_ebb: Ebb,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
-    fx.tcx.sess.warn(&format!("ssa {:?}", ssa_analyzed));
 
     match fx.self_sig().abi {
         Abi::Rust | Abi::RustCall => {}
@@ -300,6 +299,9 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         }).collect::<Vec<(Local, ArgKind, Ty)>>();
 
     fx.bcx.switch_to_block(start_ebb);
+
+    fx.top_nop = Some(fx.bcx.ins().nop());
+    fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     match output_pass_mode {
         PassMode::NoPass => {

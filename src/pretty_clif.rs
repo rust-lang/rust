@@ -35,6 +35,10 @@ impl FuncWriter for CommentWriter {
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
+    pub fn add_global_comment<'s, S: Into<Cow<'s, str>>>(&mut self, comment: S) {
+        self.add_comment(self.top_nop.expect("fx.top_nop not yet set"), comment)
+    }
+
     pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
         use std::collections::hash_map::Entry;
         match self.comments.entry(inst) {

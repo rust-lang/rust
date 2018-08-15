@@ -23,6 +23,8 @@ extract_data() {
 RUSTC="rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.$dylib_ext -L crate=target/out --out-dir target/out"
 
 rm -r target/out
+mkdir -p target/out/mir
+mkdir -p target/out/clif
 
 SHOULD_CODEGEN=1 $RUSTC examples/mini_core.rs --crate-name mini_core --crate-type lib &&
 extract_data libmini_core.rlib mini_core.o &&
@@ -39,4 +41,3 @@ gcc target/out/mini_core.o target/out/mini_core_hello_world.o -o target/out/mini
 
 $RUSTC target/libcore/src/libcore/lib.rs --color=always --crate-type lib -Cincremental=target/incremental 2>&1 | (head -n 20; echo "===="; tail -n 1000)
 cat target/libcore/log.txt | sort | uniq -c | grep -v "rval unsize move" | grep -v "rval len"
-
