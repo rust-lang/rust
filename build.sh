@@ -30,7 +30,7 @@ $RUSTC ../../examples/example.rs --crate-type lib &&
 SHOULD_RUN=1 $RUSTC ../../examples/mini_core_hello_world.rs --crate-type bin &&
 
 $RUSTC ../../examples/mini_core_hello_world.rs --crate-type bin &&
-extract_data mini_core_hello_world mini_core_hello_world.o
+extract_data mini_core_hello_world mini_core_hello_world.o &&
 
 gcc mini_core.o mini_core_hello_world.o -o mini_core_hello_world &&
 ./mini_core_hello_world &&

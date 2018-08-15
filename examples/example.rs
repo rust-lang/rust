@@ -33,12 +33,14 @@ enum BoolOption {
     None,
 }
 
+/*
 fn option_unwrap_or(o: BoolOption, d: bool) -> bool {
     match o {
         BoolOption::Some(b) => b,
         BoolOption::None => d,
     }
 }
+*/
 
 fn ret_42() -> u8 {
     42
@@ -60,12 +62,12 @@ fn cmp_raw_ptr(a: *const u8, b: *const u8) -> bool {
     a == b
 }
 
-fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize, u8, u32) {
+/*fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize, u8, u32) {
     (
         a as u8, a as u16, a as u32, a as usize, a as i8, a as i16, a as i32, a as isize, b as u8,
         b as u32,
     )
-}
+}*/
 
 fn char_cast(c: char) -> u8 {
     c as u8
@@ -151,9 +153,9 @@ fn repeat_array() -> [u8; 3] {
     [0; 3]
 }
 
-unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
+/*unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
     intrinsics::ctlz_nonzero(a)
-}
+}*/
 
 fn ptr_as_usize(ptr: *const u8) -> usize {
     ptr as usize
@@ -163,9 +165,9 @@ fn float_cast(a: f32, b: f64) -> (f64, f32) {
     (a as f64, b as f32)
 }
 
-fn int_to_float(a: u8, b: i32) -> (f64, f32) {
+/*fn int_to_float(a: u8, b: i32) -> (f64, f32) {
     (a as f64, b as f32)
-}
+}*/
 
 fn make_array() -> [u8; 3] {
     [42, 0, 5]
