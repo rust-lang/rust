@@ -44,7 +44,7 @@ struct NonFatal(pub String);
 
 macro_rules! unimpl {
     ($($tt:tt)*) => {
-        panic!(::NonFatal(format!($($tt)*)));
+        panic!(crate::NonFatal(format!($($tt)*)));
     };
 }
 
@@ -268,7 +268,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         tcx.sess.abort_if_errors();
 
-        let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
+        let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
         let metadata = tcx.encode_metadata(&link_meta);
 
         let mut flags_builder = settings::builder();
