@@ -1923,11 +1923,49 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     let mut features = Features::new();
     let mut edition_enabled_features = FxHashMap();
 
-    for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
+    for &(name, .., f_edition, set) in ACTIVE_FEATURES {
         if let Some(f_edition) = f_edition {
             if f_edition <= crate_edition {
                 set(&mut features, DUMMY_SP);
                 edition_enabled_features.insert(Symbol::intern(name), crate_edition);
+            }
+        }
+    }
+
+    // Process the edition umbrella feature-gates first, to ensure
+    // `edition_enabled_features` is completed before it's queried.
+    for attr in krate_attrs {
+        if !attr.check_name("feature") {
+            continue
+        }
+
+        let list = match attr.meta_item_list() {
+            Some(list) => list,
+            None => continue,
+        };
+
+        for mi in list {
+            let name = if let Some(word) = mi.word() {
+                word.name()
+            } else {
+                continue
+            };
+
+            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
+                if *edition <= crate_edition {
+                    continue;
+                }
+
+                for &(name, .., f_edition, set) in ACTIVE_FEATURES {
+                    if let Some(f_edition) = f_edition {
+                        if f_edition <= *edition {
+                            // FIXME(Manishearth) there is currently no way to set
+                            // lib features by edition
+                            set(&mut features, DUMMY_SP);
+                            edition_enabled_features.insert(Symbol::intern(name), *edition);
+                        }
+                    }
+                }
             }
         }
     }
@@ -1955,23 +1993,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue
             };
 
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
-                if *edition <= crate_edition {
-                    continue
-                }
-
-                for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
-                    if let Some(f_edition) = f_edition {
-                        if f_edition <= *edition {
-                            // FIXME(Manishearth) there is currently no way to set
-                            // lib features by edition
-                            set(&mut features, DUMMY_SP);
-                            edition_enabled_features.insert(Symbol::intern(name), *edition);
-                        }
-                    }
-                }
-
-                continue
+            if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
+                // Handled in the separate loop above.
+                continue;
             }
 
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {

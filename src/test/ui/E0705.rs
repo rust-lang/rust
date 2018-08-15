@@ -10,9 +10,9 @@
 
 // compile-pass
 
-#![feature(rust_2018_preview)]
 #![feature(raw_identifiers)]
 //~^ WARN the feature `raw_identifiers` is included in the Rust 2018 edition
+#![feature(rust_2018_preview)]
 
 fn main() {
     let foo = 0;
