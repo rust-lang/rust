@@ -79,11 +79,12 @@ impl<'a> StringReader<'a> {
                         let token_str = token_to_string(&self.token);
                         let msg = format!("incorrect close delimiter: `{}`", token_str);
                         let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
+                        err.span_label(self.span, "incorrect close delimiter");
                         // This is a conservative error: only report the last unclosed delimiter.
                         // The previous unclosed delimiters could actually be closed! The parser
                         // just hasn't gotten to them yet.
                         if let Some(&(_, sp)) = self.open_braces.last() {
-                            err.span_note(sp, "unclosed delimiter");
+                            err.span_label(sp, "unclosed delimiter");
                         };
                         err.emit();
 
@@ -118,7 +119,8 @@ impl<'a> StringReader<'a> {
                 // matching opening delimiter).
                 let token_str = token_to_string(&self.token);
                 let msg = format!("unexpected close delimiter: `{}`", token_str);
-                let err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
+                let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
+                err.span_label(self.span, "unexpected close delimiter");
                 Err(err)
             },
             _ => {
