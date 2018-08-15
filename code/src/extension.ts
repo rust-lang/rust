@@ -35,6 +35,22 @@ export function activate(context: vscode.ExtensionContext) {
             return new vscode.Selection(r.start, r.end)
         })
     })
+    registerCommand('libsyntax-rust.matchingBrace', async () => {
+        let editor = vscode.window.activeTextEditor
+        if (editor == null || editor.document.languageId != "rust") return
+        let request: FindMatchingBraceParams = {
+            textDocument: { uri: editor.document.uri.toString() },
+            offsets: editor.selections.map((s) => {
+                return client.code2ProtocolConverter.asPosition(s.active)
+             })
+        }
+        let response = await client.sendRequest<lc.Position[]>("m/findMatchingBrace", request)
+        editor.selections = editor.selections.map((sel, idx) => {
+            let active = client.protocol2CodeConverter.asPosition(response[idx])
+            let anchor = sel.isEmpty ? active : sel.anchor
+            return new vscode.Selection(anchor, active)
+        })
+    })
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(
         'libsyntax-rust',
@@ -182,6 +198,11 @@ interface ExtendSelectionParams {
 
 interface ExtendSelectionResult {
     selections: lc.Range[];
+}
+
+interface FindMatchingBraceParams {
+    textDocument: lc.TextDocumentIdentifier;
+    offsets: lc.Position[];
 }
 
 interface PublishDecorationsParams {

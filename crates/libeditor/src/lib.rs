@@ -12,8 +12,8 @@ mod code_actions;
 use libsyntax2::{
     ast::{self, NameOwner},
     AstNode,
-    algo::walk,
-    SyntaxKind::*,
+    algo::{walk, find_leaf_at_offset},
+    SyntaxKind::{self, *},
 };
 pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::{
@@ -50,6 +50,28 @@ pub enum RunnableKind {
 
 pub fn parse(text: &str) -> ast::File {
     ast::File::parse(text)
+}
+
+pub fn matching_brace(file: &ast::File, offset: TextUnit) -> Option<TextUnit> {
+    const BRACES: &[SyntaxKind] = &[
+        L_CURLY, R_CURLY,
+        L_BRACK, R_BRACK,
+        L_PAREN, R_PAREN,
+        L_ANGLE, R_ANGLE,
+    ];
+    let syntax = file.syntax();
+    let syntax = syntax.as_ref();
+    let (brace_node, brace_idx) = find_leaf_at_offset(syntax, offset)
+        .filter_map(|node| {
+            let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
+            Some((node, idx))
+        })
+        .next()?;
+    let parent = brace_node.parent()?;
+    let matching_kind = BRACES[brace_idx ^ 1];
+    let matching_node = parent.children()
+        .find(|node| node.kind() == matching_kind)?;
+    Some(matching_node.range().start())
 }
 
 pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {

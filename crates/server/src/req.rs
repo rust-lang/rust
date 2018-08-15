@@ -1,5 +1,5 @@
 use serde::{ser::Serialize, de::DeserializeOwned};
-use languageserver_types::{TextDocumentIdentifier, Range, Url};
+use languageserver_types::{TextDocumentIdentifier, Range, Url, Position};
 use url_serde;
 
 pub use languageserver_types::{
@@ -63,6 +63,21 @@ pub struct ExtendSelectionParams {
 #[serde(rename_all = "camelCase")]
 pub struct ExtendSelectionResult {
     pub selections: Vec<Range>,
+}
+
+pub enum FindMatchingBrace {}
+
+impl Request for FindMatchingBrace {
+    type Params = FindMatchingBraceParams;
+    type Result = Vec<Position>;
+    const METHOD: &'static str = "m/findMatchingBrace";
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FindMatchingBraceParams {
+    pub text_document: TextDocumentIdentifier,
+    pub offsets: Vec<Position>,
 }
 
 pub enum PublishDecorations {}

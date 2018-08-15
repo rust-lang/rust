@@ -36,6 +36,11 @@
       {
         "command": "libsyntax-rust.extendSelection",
         "title": "Rust Extend Selection"
+      },
+      {
+        "command": "libsyntax-rust.matchingBrace",
+        "key": "ctrl+shift+m",
+        "title": "Rust Matching Brace"
       }
     ],
     "keybindings": [

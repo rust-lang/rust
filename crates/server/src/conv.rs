@@ -117,6 +117,14 @@ impl ConvWith for AtomEdit {
     }
 }
 
+impl<T: ConvWith> ConvWith for Option<T> {
+    type Ctx = <T as ConvWith>::Ctx;
+    type Output = Option<<T as ConvWith>::Output>;
+    fn conv_with(self, ctx: &Self::Ctx) -> Self::Output {
+        self.map(|x| ConvWith::conv_with(x, ctx))
+    }
+}
+
 impl<'a> TryConvWith for &'a Url {
     type Ctx = PathMap;
     type Output = FileId;

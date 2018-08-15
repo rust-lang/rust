@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
-    SymbolInformation,
+    SymbolInformation, Position,
 };
 use libanalysis::{World, Query};
 use libeditor;
@@ -40,6 +40,25 @@ pub fn handle_extend_selection(
         .map_conv_with(&line_index)
         .collect();
     Ok(req::ExtendSelectionResult { selections })
+}
+
+pub fn handle_find_matching_brace(
+    world: World,
+    path_map: PathMap,
+    params: req::FindMatchingBraceParams,
+) -> Result<Vec<Position>> {
+    let file_id = params.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
+    let res = params.offsets
+        .into_iter()
+        .map_conv_with(&line_index)
+        .map(|offset| {
+            libeditor::matching_brace(&file, offset).unwrap_or(offset)
+        })
+        .map_conv_with(&line_index)
+        .collect();
+    Ok(res)
 }
 
 pub fn handle_document_symbol(

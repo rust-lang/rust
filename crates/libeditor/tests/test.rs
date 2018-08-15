@@ -9,7 +9,7 @@ use itertools::Itertools;
 use libeditor::{
     File, TextUnit, TextRange, ActionResult, CursorPosition,
     highlight, runnables, extend_selection, file_structure,
-    flip_comma, add_derive,
+    flip_comma, add_derive, matching_brace,
 };
 
 #[test]
@@ -119,6 +119,25 @@ fn test_add_derive() {
     )
 }
 
+#[test]
+fn test_matching_brace() {
+    fn do_check(before: &str, after: &str) {
+        let (pos, before) = extract_cursor(before);
+        let file = file(&before);
+        let new_pos = match matching_brace(&file, pos) {
+            None => pos,
+            Some(pos) => pos,
+        };
+        let actual = add_cursor(&before, new_pos);
+        assert_eq_text!(after, &actual);
+    }
+
+    do_check(
+        "struct Foo { a: i32, }<|>",
+        "struct Foo <|>{ a: i32, }",
+    );
+}
+
 fn file(text: &str) -> File {
     File::parse(text)
 }
@@ -138,16 +157,12 @@ fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
     let file = file(&before);
     let result = f(&file, before_cursor_pos).expect("code action is not applicable");
     let actual = result.edit.apply(&before);
-    let actual_cursor_pos: u32 = match result.cursor_position {
+    let actual_cursor_pos = match result.cursor_position {
         CursorPosition::Same => result.edit.apply_to_offset(before_cursor_pos).unwrap(),
         CursorPosition::Offset(off) => off,
-    }.into();
-    let actual_cursor_pos = actual_cursor_pos as usize;
-    let mut actual_with_cursor = String::new();
-    actual_with_cursor.push_str(&actual[..actual_cursor_pos]);
-    actual_with_cursor.push_str("<|>");
-    actual_with_cursor.push_str(&actual[actual_cursor_pos..]);
-    assert_eq_text!(after, &actual_with_cursor);
+    };
+    let actual = add_cursor(&actual, actual_cursor_pos);
+    assert_eq_text!(after, &actual);
 }
 
 fn extract_cursor(text: &str) -> (TextUnit, String) {
@@ -161,4 +176,14 @@ fn extract_cursor(text: &str) -> (TextUnit, String) {
     new_text.push_str(&text[cursor_pos + cursor.len()..]);
     let cursor_pos = TextUnit::from(cursor_pos as u32);
     (cursor_pos, new_text)
+}
+
+fn add_cursor(text: &str, offset: TextUnit) -> String {
+    let offset: u32 = offset.into();
+    let offset: usize = offset as usize;
+    let mut res = String::new();
+    res.push_str(&text[..offset]);
+    res.push_str("<|>");
+    res.push_str(&text[offset..]);
+    res
 }

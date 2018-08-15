@@ -1,3 +1,5 @@
 [workspace]
 members = [ "crates/*" ]
-exclude = [ "crates/indxr" ]
+
+[profile.release]
+debug = true

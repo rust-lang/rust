@@ -26,6 +26,7 @@ use {
         handle_execute_command,
         handle_workspace_symbol,
         handle_goto_definition,
+        handle_find_matching_brace,
     },
 };
 
@@ -147,6 +148,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::ExtendSelection>(
         &mut req, pool, path_map, world, sender, handle_extend_selection,
+    )?;
+    handle_request_on_threadpool::<req::FindMatchingBrace>(
+        &mut req, pool, path_map, world, sender, handle_find_matching_brace,
     )?;
     handle_request_on_threadpool::<req::DocumentSymbolRequest>(
         &mut req, pool, path_map, world, sender, handle_document_symbol,
