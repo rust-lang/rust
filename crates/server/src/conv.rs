@@ -1,10 +1,12 @@
-use std::path::Path;
-
-use languageserver_types::{Range, SymbolKind, Position, TextEdit, Location, Url};
+use languageserver_types::{
+    Range, SymbolKind, Position, TextEdit, Location, Url,
+    TextDocumentIdentifier, VersionedTextDocumentIdentifier, TextDocumentItem,
+};
 use libeditor::{LineIndex, LineCol, Edit, AtomEdit};
 use libsyntax2::{SyntaxKind, TextUnit, TextRange};
+use libanalysis::FileId;
 
-use Result;
+use {Result, PathMap};
 
 pub trait Conv {
     type Output;
@@ -115,20 +117,64 @@ impl ConvWith for AtomEdit {
     }
 }
 
-impl<'a> TryConvWith for (&'a Path, TextRange) {
-    type Ctx = LineIndex;
-    type Output = Location;
-
-    fn try_conv_with(self, line_index: &LineIndex) -> Result<Location> {
-        let loc = Location::new(
-            Url::from_file_path(self.0)
-                .map_err(|()| format_err!("can't convert path to url: {}", self.0.display()))?,
-            self.1.conv_with(line_index),
-        );
-        Ok(loc)
+impl<'a> TryConvWith for &'a Url {
+    type Ctx = PathMap;
+    type Output = FileId;
+    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
+        let path = self.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", self))?;
+        path_map.get_id(&path).ok_or_else(|| format_err!("unknown file: {}", path.display()))
     }
 }
 
+impl TryConvWith for FileId {
+    type Ctx = PathMap;
+    type Output = Url;
+    fn try_conv_with(self, path_map: &PathMap) -> Result<Url> {
+        let path = path_map.get_path(self);
+        let url = Url::from_file_path(path)
+            .map_err(|()| format_err!("can't convert path to url: {}", path.display()))?;
+        Ok(url)
+    }
+}
+
+impl<'a> TryConvWith for &'a TextDocumentItem {
+    type Ctx = PathMap;
+    type Output = FileId;
+    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
+        self.uri.try_conv_with(path_map)
+    }
+}
+
+impl<'a> TryConvWith for &'a VersionedTextDocumentIdentifier {
+    type Ctx = PathMap;
+    type Output = FileId;
+    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
+        self.uri.try_conv_with(path_map)
+    }
+}
+
+impl<'a> TryConvWith for &'a TextDocumentIdentifier {
+    type Ctx = PathMap;
+    type Output = FileId;
+    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
+        self.uri.try_conv_with(path_map)
+    }
+}
+
+pub fn to_location(
+    file_id: FileId,
+    range: TextRange,
+    path_map: &PathMap,
+    line_index: &LineIndex,
+) -> Result<Location> {
+        let url = file_id.try_conv_with(path_map)?;
+        let loc = Location::new(
+            url,
+            range.conv_with(line_index),
+        );
+        Ok(loc)
+}
 
 pub trait MapConvWith<'a>: Sized {
     type Ctx;

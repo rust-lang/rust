@@ -11,27 +11,29 @@ use libsyntax2::TextUnit;
 use serde_json::{to_value, from_value};
 
 use ::{
+    PathMap,
     req::{self, Decoration}, Result,
-    util::FilePath,
-    conv::{Conv, ConvWith, TryConvWith, MapConvWith},
+    conv::{Conv, ConvWith, TryConvWith, MapConvWith, to_location},
 };
 
 pub fn handle_syntax_tree(
     world: World,
+    path_map: PathMap,
     params: req::SyntaxTreeParams,
 ) -> Result<String> {
-    let path = params.text_document.file_path()?;
-    let file = world.file_syntax(&path)?;
+    let id = params.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(id)?;
     Ok(libeditor::syntax_tree(&file))
 }
 
 pub fn handle_extend_selection(
     world: World,
+    path_map: PathMap,
     params: req::ExtendSelectionParams,
 ) -> Result<req::ExtendSelectionResult> {
-    let path = params.text_document.file_path()?;
-    let file = world.file_syntax(&path)?;
-    let line_index = world.file_line_index(&path)?;
+    let file_id = params.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
     let selections = params.selections.into_iter()
         .map_conv_with(&line_index)
         .map(|r| libeditor::extend_selection(&file, r).unwrap_or(r))
@@ -42,11 +44,12 @@ pub fn handle_extend_selection(
 
 pub fn handle_document_symbol(
     world: World,
+    path_map: PathMap,
     params: req::DocumentSymbolParams,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
-    let path = params.text_document.file_path()?;
-    let file = world.file_syntax(&path)?;
-    let line_index = world.file_line_index(&path)?;
+    let file_id = params.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
 
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
@@ -81,11 +84,12 @@ pub fn handle_document_symbol(
 
 pub fn handle_code_action(
     world: World,
+    path_map: PathMap,
     params: req::CodeActionParams,
 ) -> Result<Option<Vec<Command>>> {
-    let path = params.text_document.file_path()?;
-    let file = world.file_syntax(&path)?;
-    let line_index = world.file_line_index(&path)?;
+    let file_id = params.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
     let offset = params.range.conv_with(&line_index).start();
     let mut ret = Vec::new();
 
@@ -105,6 +109,7 @@ pub fn handle_code_action(
 
 pub fn handle_workspace_symbol(
     world: World,
+    path_map: PathMap,
     params: req::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let all_symbols = params.query.contains("#");
@@ -119,23 +124,26 @@ pub fn handle_workspace_symbol(
         q.limit(128);
         q
     };
-    let mut res = exec_query(&world, query)?;
+    let mut res = exec_query(&world, &path_map, query)?;
     if res.is_empty() && !all_symbols {
         let mut query = Query::new(params.query);
         query.limit(128);
-        res = exec_query(&world, query)?;
+        res = exec_query(&world, &path_map, query)?;
     }
 
     return Ok(Some(res));
 
-    fn exec_query(world: &World, query: Query) -> Result<Vec<SymbolInformation>> {
+    fn exec_query(world: &World, path_map: &PathMap, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
-        for (path, symbol) in world.world_symbols(query) {
-            let line_index = world.file_line_index(path)?;
+        for (file_id, symbol) in world.world_symbols(query) {
+            let line_index = world.file_line_index(file_id)?;
             let info = SymbolInformation {
                 name: symbol.name.to_string(),
                 kind: symbol.kind.conv(),
-                location: (path, symbol.node_range).try_conv_with(&line_index)?,
+                location: to_location(
+                    file_id, symbol.node_range,
+                    path_map, &line_index
+                )?,
                 container_name: None,
             };
             res.push(info);
@@ -146,15 +154,19 @@ pub fn handle_workspace_symbol(
 
 pub fn handle_goto_definition(
     world: World,
+    path_map: PathMap,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
-    let path = params.text_document.file_path()?;
-    let line_index = world.file_line_index(&path)?;
+    let file_id = params.text_document.try_conv_with(&path_map)?;
+    let line_index = world.file_line_index(file_id)?;
     let offset = params.position.conv_with(&line_index);
     let mut res = Vec::new();
-    for (path, symbol) in world.approximately_resolve_symbol(&path, offset)? {
-        let line_index = world.file_line_index(path)?;
-        let location = (path, symbol.node_range).try_conv_with(&line_index)?;
+    for (file_id, symbol) in world.approximately_resolve_symbol(file_id, offset)? {
+        let line_index = world.file_line_index(file_id)?;
+        let location = to_location(
+            file_id, symbol.node_range,
+            &path_map, &line_index,
+        )?;
         res.push(location)
     }
     Ok(Some(req::GotoDefinitionResponse::Array(res)))
@@ -162,6 +174,7 @@ pub fn handle_goto_definition(
 
 pub fn handle_execute_command(
     world: World,
+    path_map: PathMap,
     mut params: req::ExecuteCommandParams,
 ) -> Result<req::ApplyWorkspaceEditParams> {
     if params.command.as_str() != "apply_code_action" {
@@ -172,8 +185,8 @@ pub fn handle_execute_command(
     }
     let arg = params.arguments.pop().unwrap();
     let arg: ActionRequest = from_value(arg)?;
-    let path = arg.text_document.file_path()?;
-    let file = world.file_syntax(&path)?;
+    let file_id = arg.text_document.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
     let edit = match arg.id {
         ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|edit| edit()),
         ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|edit| edit()),
@@ -182,7 +195,7 @@ pub fn handle_execute_command(
         Some(edit) => edit,
         None => bail!("command not applicable"),
     };
-    let line_index = world.file_line_index(&path)?;
+    let line_index = world.file_line_index(file_id)?;
     let mut changes = HashMap::new();
     changes.insert(
         arg.text_document.uri,
@@ -231,10 +244,14 @@ impl ActionId {
     }
 }
 
-pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnosticsParams> {
-    let path = uri.file_path()?;
-    let file = world.file_syntax(&path)?;
-    let line_index = world.file_line_index(&path)?;
+pub fn publish_diagnostics(
+    world: World,
+    path_map: PathMap,
+    uri: Url
+) -> Result<req::PublishDiagnosticsParams> {
+    let file_id = uri.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
     let diagnostics = libeditor::diagnostics(&file)
         .into_iter()
         .map(|d| Diagnostic {
@@ -248,10 +265,14 @@ pub fn publish_diagnostics(world: World, uri: Url) -> Result<req::PublishDiagnos
     Ok(req::PublishDiagnosticsParams { uri, diagnostics })
 }
 
-pub fn publish_decorations(world: World, uri: Url) -> Result<req::PublishDecorationsParams> {
-    let path = uri.file_path()?;
-    let file = world.file_syntax(&path)?;
-    let line_index = world.file_line_index(&path)?;
+pub fn publish_decorations(
+    world: World,
+    path_map: PathMap,
+    uri: Url
+) -> Result<req::PublishDecorationsParams> {
+    let file_id = uri.try_conv_with(&path_map)?;
+    let file = world.file_syntax(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
     let decorations = libeditor::highlight(&file)
         .into_iter()
         .map(|h| Decoration {

@@ -37,7 +37,6 @@ pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 const INDEXING_THRESHOLD: usize = 128;
 
 pub struct WorldState {
-    next_file_id: u32,
     data: Arc<WorldData>
 }
 
@@ -47,24 +46,17 @@ pub struct World {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FileId(u32);
+pub struct FileId(pub u32);
 
 impl WorldState {
     pub fn new() -> WorldState {
         WorldState {
-            next_file_id: 0,
             data: Arc::new(WorldData::default())
         }
     }
 
     pub fn snapshot(&self) -> World {
         World { data: self.data.clone() }
-    }
-
-    pub fn new_file_id(&mut self) -> FileId {
-        let id = FileId(self.next_file_id);
-        self.next_file_id += 1;
-        id
     }
 
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {

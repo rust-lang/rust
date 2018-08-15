@@ -17,15 +17,16 @@ extern crate walkdir;
 extern crate libeditor;
 extern crate libanalysis;
 extern crate libsyntax2;
+extern crate im;
 
 mod io;
 mod caps;
 mod req;
 mod dispatch;
-mod util;
 mod conv;
 mod main_loop;
 mod vfs;
+mod path_map;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::bounded;
@@ -33,7 +34,8 @@ use flexi_logger::{Logger, Duplicate};
 use libanalysis::WorldState;
 
 use ::{
-    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification}
+    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
+    path_map::PathMap,
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
