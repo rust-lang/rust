@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasDataLayout};
+use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{
@@ -275,22 +275,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 assert!(field < len, "Tried to access element {} of array/slice with length {}", field, len);
                 stride * field
             }
-            _ => bug!("Unexpected layout for field access: {:#?}", base.layout),
+            layout::FieldPlacement::Union(count) => {
+                assert!(field < count as u64, "Tried to access field {} of union with {} fields", field, count);
+                // Offset is always 0
+                Size::from_bytes(0)
+            }
         };
         // the only way conversion can fail if is this is an array (otherwise we already panicked
         // above). In that case, all fields are equal.
         let field = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
         // Adjust offset
-        let offset = match base.extra {
-            PlaceExtra::Vtable(tab) => {
-                let (_, align) = self.size_and_align_of_dst(ValTy {
-                    layout: base.layout,
-                    value: Value::new_dyn_trait(base.ptr, tab),
-                })?;
-                offset.abi_align(align)
-            }
-            _ => offset,
+        let offset = if field.is_unsized() {
+            let vtable = match base.extra {
+                PlaceExtra::Vtable(tab) => tab,
+                _ => bug!("Unsized place with unsized field must come with vtable"),
+            };
+            let (_, align) = self.read_size_and_align_from_vtable(vtable)?;
+            offset.abi_align(align)
+        } else {
+            // No adjustment needed
+            offset
         };
 
         let ptr = base.ptr.ptr_offset(offset, self)?;

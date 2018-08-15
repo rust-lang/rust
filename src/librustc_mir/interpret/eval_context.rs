@@ -465,36 +465,38 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     /// Return the size and alignment of the value at the given type.
     /// Note that the value does not matter if the type is sized. For unsized types,
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
-    pub fn size_and_align_of_dst(
+    pub fn size_and_align_of_val(
         &self,
         val: ValTy<'tcx>,
     ) -> EvalResult<'tcx, (Size, Align)> {
-        if !val.layout.is_unsized() {
-            Ok(val.layout.size_and_align())
+        let pointee_ty = val.layout.ty.builtin_deref(true).unwrap().ty;
+        let layout = self.layout_of(pointee_ty)?;
+        if !layout.is_unsized() {
+            Ok(layout.size_and_align())
         } else {
-            match val.layout.ty.sty {
+            match layout.ty.sty {
                 ty::TyAdt(..) | ty::TyTuple(..) => {
                     // First get the size of all statically known fields.
                     // Don't use type_of::sizing_type_of because that expects t to be sized,
                     // and it also rounds up to alignment, which we want to avoid,
                     // as the unsized field's alignment could be smaller.
-                    assert!(!val.layout.ty.is_simd());
-                    debug!("DST layout: {:?}", val.layout);
+                    assert!(!layout.ty.is_simd());
+                    debug!("DST layout: {:?}", layout);
 
-                    let sized_size = val.layout.fields.offset(val.layout.fields.count() - 1);
-                    let sized_align = val.layout.align;
+                    let sized_size = layout.fields.offset(layout.fields.count() - 1);
+                    let sized_align = layout.align;
                     debug!(
                         "DST {} statically sized prefix size: {:?} align: {:?}",
-                        val.layout.ty,
+                        layout.ty,
                         sized_size,
                         sized_align
                     );
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let field_layout = val.layout.field(self, val.layout.fields.count() - 1)?;
+                    let field_layout = layout.field(self, layout.fields.count() - 1)?;
                     let (unsized_size, unsized_align) =
-                        self.size_and_align_of_dst(ValTy {
+                        self.size_and_align_of_val(ValTy {
                             value: val.value,
                             layout: field_layout
                         })?;
@@ -533,12 +535,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
-                    let (elem_size, align) = val.layout.field(self, 0)?.size_and_align();
+                    let (elem_size, align) = layout.field(self, 0)?.size_and_align();
                     let (_, len) = val.to_scalar_slice(self)?;
                     Ok((elem_size * len, align))
                 }
 
-                _ => bug!("size_of_val::<{:?}>", val.layout.ty),
+                _ => bug!("size_of_val::<{:?}>", layout.ty),
             }
         }
     }
@@ -963,10 +965,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 self.memory.dump_allocs(allocs);
             }
             Place::Ptr(mplace) => {
-                let (ptr, align) = mplace.to_scalar_ptr_align();
-                match ptr {
+                match mplace.ptr {
                     Scalar::Ptr(ptr) => {
-                        trace!("by align({}) ref:", align.abi());
+                        trace!("by align({}) ref:", mplace.align.abi());
                         self.memory.dump_alloc(ptr.alloc_id);
                     }
                     ptr => trace!(" integral by ref: {:?}", ptr),
