@@ -30,24 +30,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx> {
         trace!("drop: {:?},\n  {:?}, {:?}", arg, ty.sty, instance.def);
 
-        let instance = match ty.sty {
+        let (instance, arg) = match ty.sty {
             ty::TyDynamic(..) => {
-                if let Value::ScalarPair(_, vtable) = arg {
-                    self.read_drop_type_from_vtable(vtable.to_ptr()?)?
+                if let Value::ScalarPair(ptr, vtable) = arg {
+                    // Figure out the specific drop function to call, and just pass along
+                    // the thin part of the pointer.
+                    let instance = self.read_drop_type_from_vtable(vtable.to_ptr()?)?;
+                    trace!("Dropping via vtable: {:?}", instance.def);
+                    (instance, Value::Scalar(ptr))
                 } else {
                     bug!("expected fat ptr, got {:?}", arg);
                 }
             }
-            _ => instance,
+            _ => (instance, arg),
         };
 
         // the drop function expects a reference to the value
+        let fn_sig = self.tcx.fn_sig(instance.def_id()).skip_binder().clone();
         let arg = OpTy {
             op: Operand::Immediate(arg),
-            layout: self.layout_of(self.tcx.mk_mut_ptr(ty))?,
+            layout: self.layout_of(fn_sig.output())?,
         };
+        trace!("Dropped type: {:?}", fn_sig.output());
 
-        let fn_sig = self.tcx.fn_sig(instance.def_id()).skip_binder().clone();
         // This should always be (), but getting it from the sig seems
         // easier than creating a layout of ().
         let dest = PlaceTy::null(&self, self.layout_of(fn_sig.output())?);

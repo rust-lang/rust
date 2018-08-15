@@ -257,6 +257,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
+        if let Some((place, _)) = destination {
+            assert_eq!(place.layout.ty, sig.output());
+        }
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 let (ret, target) = match destination {
