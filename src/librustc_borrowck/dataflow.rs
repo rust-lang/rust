@@ -14,9 +14,9 @@
 //! and thus uses bitvectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
-use cfg;
-use cfg::CFGIndex;
-use ty::TyCtxt;
+use rustc::cfg;
+use rustc::cfg::CFGIndex;
+use rustc::ty::TyCtxt;
 use std::io;
 use std::mem;
 use std::usize;
@@ -24,10 +24,10 @@ use syntax::print::pprust::PrintState;
 
 use rustc_data_structures::graph::implementation::OUTGOING;
 
-use util::nodemap::FxHashMap;
-use hir;
-use hir::intravisit::{self, IdRange};
-use hir::print as pprust;
+use rustc::util::nodemap::FxHashMap;
+use rustc::hir;
+use rustc::hir::intravisit::{self, IdRange};
+use rustc::hir::print as pprust;
 
 
 #[derive(Copy, Clone, Debug)]
@@ -193,7 +193,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
     fn add_entries_from_fn_body(index: &mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
                                 body: &hir::Body,
                                 entry: CFGIndex) {
-        use hir::intravisit::Visitor;
+        use rustc::hir::intravisit::Visitor;
 
         struct Formals<'a> {
             entry: CFGIndex,

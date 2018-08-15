@@ -91,7 +91,6 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: ty::ParamEnv<'tcx>,
     movable_generator: bool,
 }
 
@@ -215,7 +214,6 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         dfcx_loans,
         move_data,
         all_loans,
-        param_env,
         movable_generator,
     };
     let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
@@ -801,8 +799,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 use_kind,
                 &lp,
                 the_move,
-                moved_lp,
-                self.param_env);
+                moved_lp);
             false
         });
     }

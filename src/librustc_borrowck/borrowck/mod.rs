@@ -24,10 +24,6 @@ use rustc::hir::HirId;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
-use rustc::middle::dataflow::DataFlowContext;
-use rustc::middle::dataflow::BitwiseOperator;
-use rustc::middle::dataflow::DataFlowOperator;
-use rustc::middle::dataflow::KillFrom;
 use rustc::middle::borrowck::{BorrowCheckResult, SignalledError};
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::expr_use_visitor as euv;
@@ -53,6 +49,8 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
+
+use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 pub mod check_loans;
 
@@ -640,8 +638,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      use_kind: MovedValueUseKind,
                                      lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
-                                     moved_lp: &LoanPath<'tcx>,
-                                     _param_env: ty::ParamEnv<'tcx>) {
+                                     moved_lp: &LoanPath<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),
@@ -804,23 +801,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
         err.emit();
         self.signal_error();
-    }
-
-    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
-                                                         s: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'a> {
-        self.tcx.sess.struct_span_err_with_code(s, msg, code)
-    }
-
-    pub fn span_err_with_code<S: Into<MultiSpan>>(
-        &self,
-        s: S,
-        msg: &str,
-        code: DiagnosticId,
-    ) {
-        self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
     fn report_bckerr(&self, err: &BckError<'a, 'tcx>) {

@@ -135,7 +135,6 @@ pub mod middle {
     pub mod borrowck;
     pub mod expr_use_visitor;
     pub mod cstore;
-    pub mod dataflow;
     pub mod dead;
     pub mod dependency_format;
     pub mod entry;

@@ -21,7 +21,7 @@ use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
 use rustc::cfg::CFGIndex;
-use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
+use dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
 use dot::IntoCow;
 
