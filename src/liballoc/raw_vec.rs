@@ -204,6 +204,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// Unique::empty() if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
+    #[inline]
     pub fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }
