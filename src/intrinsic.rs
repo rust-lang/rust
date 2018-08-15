@@ -1,21 +1,20 @@
 use rustc::mir;
-use rustc::ty::layout::{TyLayout, LayoutOf, Size, Primitive, Integer::*};
+use rustc::ty::layout::{self, LayoutOf, Size, Primitive, Integer::*};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Scalar, Value, ScalarMaybeUndef};
-use rustc_mir::interpret::{Place, PlaceExtra, HasMemory, EvalContext, ValTy};
+use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef};
+use rustc_mir::interpret::{
+    PlaceExtra, PlaceTy, EvalContext, OpTy, Value
+};
 
-use helpers::EvalContextExt as HelperEvalContextExt;
-
-use super::ScalarExt;
+use super::{ScalarExt, FalibleScalarExt, OperatorEvalContextExt};
 
 pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: TyLayout<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: PlaceTy<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 }
@@ -24,9 +23,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: TyLayout<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: PlaceTy<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let substs = instance.substs;
@@ -34,44 +32,51 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "add_with_overflow" => {
-                self.intrinsic_with_overflow(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_with_overflow(
                     mir::BinOp::Add,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?
             }
 
             "sub_with_overflow" => {
-                self.intrinsic_with_overflow(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_with_overflow(
                     mir::BinOp::Sub,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?
             }
 
             "mul_with_overflow" => {
-                self.intrinsic_with_overflow(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_with_overflow(
                     mir::BinOp::Mul,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?
             }
 
             "arith_offset" => {
-                let offset = self.value_to_isize(args[1])?;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_ptr(dest, result_ptr, dest_layout.ty)?;
+                let offset = self.read_scalar(args[1])?.to_isize(&self)?;
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
+
+                let pointee_ty = substs.type_at(0);
+                let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
+                let offset = offset.overflowing_mul(pointee_size).0;
+                let result_ptr = ptr.ptr_wrapping_signed_offset(offset, &self);
+                self.write_scalar(result_ptr, dest)?;
             }
 
             "assume" => {
-                let cond = self.value_to_scalar(args[0])?.to_bool()?;
+                let cond = self.read_scalar(args[0])?.to_bool()?;
                 if !cond {
                     return err!(AssumptionNotHeld);
                 }
@@ -81,24 +86,18 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "atomic_load_relaxed" |
             "atomic_load_acq" |
             "volatile_load" => {
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let align = self.layout_of(args[0].ty)?.align;
-
-                let valty = ValTy {
-                    value: Value::ByRef(ptr, align),
-                    ty: substs.type_at(0),
-                };
-                self.write_value(valty, dest)?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let val = self.read_scalar(ptr.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
+                self.write_scalar(val, dest)?;
             }
 
             "atomic_store" |
             "atomic_store_relaxed" |
             "atomic_store_rel" |
             "volatile_store" => {
-                let ty = substs.type_at(0);
-                let align = self.layout_of(ty)?.align;
-                let dest = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                self.write_value_to_ptr(args[1].value, dest, align, ty)?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let val = self.read_scalar(args[1])?; // make sure it fits into a scalar; otherwise it cannot be atomic
+                self.write_scalar(val, ptr.into())?;
             }
 
             "atomic_fence_acq" => {
@@ -106,47 +105,26 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
-                let ty = substs.type_at(0);
-                let align = self.layout_of(ty)?.align;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let change = self.value_to_scalar(args[1])?;
-                let old = self.read_value(ptr, align, ty)?;
-                let old = match old {
-                    Value::Scalar(val) => val,
-                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ScalarPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
-                };
-                self.write_scalar(dest, old, ty)?;
-                self.write_scalar(
-                    Place::from_scalar_ptr(ptr.into(), align),
-                    change,
-                    ty,
-                )?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let new = self.read_scalar(args[1])?;
+                let old = self.read_scalar(ptr.into())?;
+                self.write_scalar(old, dest)?; // old value is returned
+                self.write_scalar(new, ptr.into())?;
             }
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
-                let ty = substs.type_at(0);
-                let align = self.layout_of(ty)?.align;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let expect_old = self.value_to_scalar(args[1])?;
-                let change = self.value_to_scalar(args[2])?;
-                let old = self.read_value(ptr, align, ty)?;
-                let old = match old {
-                    Value::Scalar(val) => val.unwrap_or_err()?,
-                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ScalarPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
-                };
-                let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
-                let valty = ValTy {
-                    value: Value::ScalarPair(old.into(), val.into()),
-                    ty: dest_layout.ty,
-                };
-                self.write_value(valty, dest)?;
-                self.write_scalar(
-                    Place::from_scalar_ptr(ptr.into(), dest_layout.align),
-                    change,
-                    ty,
-                )?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let expect_old = self.read_value(args[1])?; // read as value for the sake of `binary_op()`
+                let new = self.read_scalar(args[2])?;
+                let old = self.read_value(ptr.into())?; // read as value for the sake of `binary_op()`
+                // binary_op will bail if either of them is not a scalar
+                let (eq, _) = self.binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let res = Value::ScalarPair(old.to_scalar_or_undef(), eq.into());
+                self.write_value(res, dest)?; // old value is returned
+                // update ptr depending on comparison
+                if eq.to_bool()? {
+                    self.write_scalar(new, ptr.into())?;
+                }
             }
 
             "atomic_or" |
@@ -174,19 +152,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "atomic_xsub_rel" |
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
-                let ty = substs.type_at(0);
-                let align = self.layout_of(ty)?.align;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let change = self.value_to_scalar(args[1])?;
-                let old = self.read_value(ptr, align, ty)?;
-                let old = match old {
-                    Value::Scalar(val) => val,
-                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ScalarPair(..) => {
-                        bug!("atomic_xadd_relaxed doesn't work with nonprimitives")
-                    }
-                };
-                self.write_scalar(dest, old, ty)?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let rhs = self.read_value(args[1])?;
+                let old = self.read_value(ptr.into())?;
+                self.write_value(*old, dest)?; // old value is returned
                 let op = match intrinsic_name.split('_').nth(1).unwrap() {
                     "or" => mir::BinOp::BitOr,
                     "xor" => mir::BinOp::BitXor,
@@ -196,8 +165,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     _ => bug!(),
                 };
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = self.binary_op(op, old.unwrap_or_err()?, ty, change, ty)?;
-                self.write_scalar(Place::from_scalar_ptr(ptr.into(), dest_layout.align), val, ty)?;
+                let (val, _) = self.binary_op(op, old, rhs)?;
+                self.write_scalar(val, ptr.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -207,13 +176,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let elem_ty = substs.type_at(0);
                 let elem_layout = self.layout_of(elem_ty)?;
                 let elem_size = elem_layout.size.bytes();
-                let count = self.value_to_usize(args[2])?;
+                let count = self.read_scalar(args[2])?.to_usize(&self)?;
                 if count * elem_size != 0 {
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
                     let elem_align = elem_layout.align;
-                    let src = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                    let dest = self.into_ptr(args[1].value)?.unwrap_or_err()?;
+                    let src = self.read_scalar(args[0])?.not_undef()?;
+                    let dest = self.read_scalar(args[1])?.not_undef()?;
                     self.memory.copy(
                         src,
                         elem_align,
@@ -227,7 +196,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
                 let ty = substs.type_at(0);
-                let num = self.value_to_scalar(args[0])?.to_bytes()?;
+                let num = self.read_scalar(args[0])?.to_bytes()?;
                 let kind = match self.layout_of(ty)?.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
                     _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
@@ -240,22 +209,18 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 } else {
                     numeric_intrinsic(intrinsic_name, num, kind)?
                 };
-                self.write_scalar(dest, num, ty)?;
+                self.write_scalar(num, dest)?;
             }
 
             "discriminant_value" => {
-                let ty = substs.type_at(0);
-                let layout = self.layout_of(ty)?;
-                let adt_ptr = self.into_ptr(args[0].value)?;
-                let adt_align = self.layout_of(args[0].ty)?.align;
-                let place = Place::from_scalar_ptr(adt_ptr, adt_align);
-                let discr_val = self.read_discriminant_value(place, layout)?;
-                self.write_scalar(dest, Scalar::from_uint(discr_val, dest_layout.size), dest_layout.ty)?;
+                let place = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let discr_val = self.read_discriminant_value(place.into())?;
+                self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
             }
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = self.value_to_scalar(args[0])?.to_bytes()?;
+                let f = self.read_scalar(args[0])?.to_bytes()?;
                 let f = f32::from_bits(f as u32);
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
@@ -272,12 +237,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "truncf32" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_scalar(dest, Scalar::from_f32(f), dest_layout.ty)?;
+                self.write_scalar(Scalar::from_f32(f), dest)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = self.value_to_scalar(args[0])?.to_bytes()?;
+                let f = self.read_scalar(args[0])?.to_bytes()?;
                 let f = f64::from_bits(f as u64);
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
@@ -294,13 +259,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "truncf64" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_scalar(dest, Scalar::from_f64(f), dest_layout.ty)?;
+                self.write_scalar(Scalar::from_f64(f), dest)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
-                let ty = substs.type_at(0);
-                let a = self.value_to_scalar(args[0])?;
-                let b = self.value_to_scalar(args[1])?;
+                let a = self.read_value(args[0])?;
+                let b = self.read_value(args[1])?;
                 let op = match intrinsic_name {
                     "fadd_fast" => mir::BinOp::Add,
                     "fsub_fast" => mir::BinOp::Sub,
@@ -309,48 +273,43 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let result = self.binary_op(op, a, ty, b, ty)?;
-                self.write_scalar(dest, result.0, dest_layout.ty)?;
+                let result = self.binary_op(op, a, b)?;
+                self.write_scalar(result.0, dest)?;
             }
 
             "exact_div" => {
                 // Performs an exact division, resulting in undefined behavior where
                 // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
-                let ty = substs.type_at(0);
-                let a = self.value_to_scalar(args[0])?;
-                let b = self.value_to_scalar(args[1])?;
+                let a = self.read_value(args[0])?;
+                let b = self.read_value(args[1])?;
                 // check x % y != 0
-                if !self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0.is_null() {
+                if !self.binary_op(mir::BinOp::Rem, a, b)?.0.is_null() {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
-                let result = self.binary_op(mir::BinOp::Div, a, ty, b, ty)?;
-                self.write_scalar(dest, result.0, dest_layout.ty)?;
+                let result = self.binary_op(mir::BinOp::Div, a, b)?;
+                self.write_scalar(result.0, dest)?;
             },
 
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
-                // we don't want to force an allocation in case the destination is a simple value
-                match dest {
-                    Place::Local { frame, local } => {
-                        match self.stack()[frame].locals[local].access()? {
-                            Value::ByRef(ptr, _) => {
-                                // These writes have no alignment restriction anyway.
-                                self.memory.write_repeat(ptr, 0, dest_layout.size)?;
-                            }
-                            Value::Scalar(_) => self.write_value(ValTy { value: Value::Scalar(Scalar::null(dest_layout.size).into()), ty: dest_layout.ty }, dest)?,
-                            Value::ScalarPair(..) => {
-                                self.write_value(ValTy { value: Value::ScalarPair(Scalar::null(dest_layout.size).into(), Scalar::null(dest_layout.size).into()), ty: dest_layout.ty }, dest)?;
-                            }
-                        }
-                    },
-                    Place::Ptr {
-                        ptr,
-                        align: _align,
-                        extra: PlaceExtra::None,
-                    } => self.memory.write_repeat(ptr.unwrap_or_err()?, 0, dest_layout.size)?,
-                    Place::Ptr { .. } => {
-                        bug!("init intrinsic tried to write to fat or unaligned ptr target")
+                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
+                // but we also do not want to create a new allocation with 0s and then copy that over.
+                match dest.layout.abi {
+                    layout::Abi::Scalar(ref s) => {
+                        let x = Scalar::null(s.value.size(&self));
+                        self.write_value(Value::Scalar(x.into()), dest)?;
+                    }
+                    layout::Abi::ScalarPair(ref s1, ref s2) => {
+                        let x = Scalar::null(s1.value.size(&self));
+                        let y = Scalar::null(s2.value.size(&self));
+                        self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
+                    }
+                    _ => {
+                        // Do it in memory
+                        let mplace = self.force_allocation(dest)?;
+                        assert_eq!(mplace.extra, PlaceExtra::None);
+                        self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
                     }
                 }
             }
@@ -360,7 +319,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let elem_align = self.layout_of(elem_ty)?.align.abi();
                 let ptr_size = self.memory.pointer_size();
                 let align_val = Scalar::from_uint(elem_align as u128, ptr_size);
-                self.write_scalar(dest, align_val, dest_layout.ty)?;
+                self.write_scalar(align_val, dest)?;
             }
 
             "pref_align_of" => {
@@ -369,14 +328,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let align = layout.align.pref();
                 let ptr_size = self.memory.pointer_size();
                 let align_val = Scalar::from_uint(align as u128, ptr_size);
-                self.write_scalar(dest, align_val, dest_layout.ty)?;
+                self.write_scalar(align_val, dest)?;
             }
 
             "move_val_init" => {
-                let ty = substs.type_at(0);
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let align = self.layout_of(args[0].ty)?.align;
-                self.write_value_to_ptr(args[1].value, ptr, align, ty)?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                self.copy_op(args[1], ptr.into())?;
             }
 
             "needs_drop" => {
@@ -384,120 +341,116 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let env = ty::ParamEnv::reveal_all();
                 let needs_drop = ty.needs_drop(self.tcx.tcx, env);
                 self.write_scalar(
-                    dest,
                     Scalar::from_bool(needs_drop),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "offset" => {
-                let offset = self.value_to_isize(args[1])?;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_ptr(dest, result_ptr, dest_layout.ty)?;
+                let offset = self.read_scalar(args[1])?.to_isize(&self)?;
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let result_ptr = self.pointer_offset_inbounds(ptr, substs.type_at(0), offset)?;
+                self.write_scalar(result_ptr, dest)?;
             }
 
             "overflowing_sub" => {
-                self.intrinsic_overflowing(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_ignore_overflow(
                     mir::BinOp::Sub,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "overflowing_mul" => {
-                self.intrinsic_overflowing(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_ignore_overflow(
                     mir::BinOp::Mul,
-                    args[0],
-                    args[1],
+                    r,
+                    l,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "overflowing_add" => {
-                self.intrinsic_overflowing(
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                self.binop_ignore_overflow(
                     mir::BinOp::Add,
-                    args[0],
-                    args[1],
+                    r,
+                    l,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "powf32" => {
-                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
+                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let f = f32::from_bits(f as u32);
-                let f2 = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(32))?;
+                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
                 let f2 = f32::from_bits(f2 as u32);
                 self.write_scalar(
-                    dest,
                     Scalar::from_f32(f.powf(f2)),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "powf64" => {
-                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
+                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let f = f64::from_bits(f as u64);
-                let f2 = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(64))?;
+                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
                 let f2 = f64::from_bits(f2 as u64);
                 self.write_scalar(
-                    dest,
                     Scalar::from_f64(f.powf(f2)),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "fmaf32" => {
-                let a = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
+                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let a = f32::from_bits(a as u32);
-                let b = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(32))?;
+                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
                 let b = f32::from_bits(b as u32);
-                let c = self.value_to_scalar(args[2])?.to_bits(Size::from_bits(32))?;
+                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(32))?;
                 let c = f32::from_bits(c as u32);
                 self.write_scalar(
-                    dest,
                     Scalar::from_f32(a * b + c),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "fmaf64" => {
-                let a = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
+                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let a = f64::from_bits(a as u64);
-                let b = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(64))?;
+                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
                 let b = f64::from_bits(b as u64);
-                let c = self.value_to_scalar(args[2])?.to_bits(Size::from_bits(64))?;
+                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(64))?;
                 let c = f64::from_bits(c as u64);
                 self.write_scalar(
-                    dest,
                     Scalar::from_f64(a * b + c),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "powif32" => {
-                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
+                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let f = f32::from_bits(f as u32);
-                let i = self.value_to_i32(args[1])?;
+                let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
-                    dest,
                     Scalar::from_f32(f.powi(i)),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "powif64" => {
-                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
+                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let f = f64::from_bits(f as u64);
-                let i = self.value_to_i32(args[1])?;
+                let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
-                    dest,
                     Scalar::from_f64(f.powi(i)),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
@@ -505,29 +458,27 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let size = self.layout_of(ty)?.size.bytes();
                 let ptr_size = self.memory.pointer_size();
-                self.write_scalar(dest, Scalar::from_uint(size, ptr_size), dest_layout.ty)?;
+                self.write_scalar(Scalar::from_uint(size, ptr_size), dest)?;
             }
 
             "size_of_val" => {
-                let ty = substs.type_at(0);
-                let (size, _) = self.size_and_align_of_dst(ty, args[0].value)?;
+                let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let (size, _) = self.size_and_align_of_mplace(mplace)?;
                 let ptr_size = self.memory.pointer_size();
                 self.write_scalar(
-                    dest,
                     Scalar::from_uint(size.bytes() as u128, ptr_size),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
             "min_align_of_val" |
             "align_of_val" => {
-                let ty = substs.type_at(0);
-                let (_, align) = self.size_and_align_of_dst(ty, args[0].value)?;
+                let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let (_, align) = self.size_and_align_of_mplace(mplace)?;
                 let ptr_size = self.memory.pointer_size();
                 self.write_scalar(
-                    dest,
                     Scalar::from_uint(align.abi(), ptr_size),
-                    dest_layout.ty,
+                    dest,
                 )?;
             }
 
@@ -535,110 +486,105 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
                 let value = self.str_to_value(&ty_name)?;
-                self.write_value(ValTy { value, ty: dest_layout.ty }, dest)?;
+                self.write_value(value, dest)?;
             }
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_scalar(dest, Scalar::Bits { bits: n as u128, size: 8 }, dest_layout.ty)?;
+                self.write_scalar(Scalar::Bits { bits: n as u128, size: 8 }, dest)?;
             }
 
             "transmute" => {
-                let src_ty = substs.type_at(0);
-                let _src_align = self.layout_of(src_ty)?.align;
-                let ptr = self.force_allocation(dest)?.to_ptr()?;
-                let dest_align = self.layout_of(substs.type_at(1))?.align;
-                self.write_value_to_ptr(args[0].value, ptr.into(), dest_align, src_ty).unwrap();
+                // Go through an allocation, to make sure the completely different layouts
+                // do not pose a problem.  (When the user transmutes through a union,
+                // there will not be a layout mismatch.)
+                let dest = self.force_allocation(dest)?;
+                self.copy_op(args[0], dest.into())?;
             }
 
             "unchecked_shl" => {
-                let bits = dest_layout.size.bytes() as u128 * 8;
-                let rhs = self.value_to_scalar(args[1])?
-                    .to_bytes()?;
-                if rhs >= bits {
+                let bits = dest.layout.size.bytes() as u128 * 8;
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                let rval = r.to_scalar()?.to_bytes()?;
+                if rval >= bits {
                     return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shl", rhs),
+                        format!("Overflowing shift by {} in unchecked_shl", rval),
                     ));
                 }
-                self.intrinsic_overflowing(
+                self.binop_ignore_overflow(
                     mir::BinOp::Shl,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "unchecked_shr" => {
-                let bits = dest_layout.size.bytes() as u128 * 8;
-                let rhs = self.value_to_scalar(args[1])?
-                    .to_bytes()?;
-                if rhs >= bits {
+                let bits = dest.layout.size.bytes() as u128 * 8;
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                let rval = r.to_scalar()?.to_bytes()?;
+                if rval >= bits {
                     return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shr", rhs),
+                        format!("Overflowing shift by {} in unchecked_shr", rval),
                     ));
                 }
-                self.intrinsic_overflowing(
+                self.binop_ignore_overflow(
                     mir::BinOp::Shr,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "unchecked_div" => {
-                let rhs = self.value_to_scalar(args[1])?
-                    .to_bytes()?;
-                if rhs == 0 {
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                let rval = r.to_scalar()?.to_bytes()?;
+                if rval == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_div")));
                 }
-                self.intrinsic_overflowing(
+                self.binop_ignore_overflow(
                     mir::BinOp::Div,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "unchecked_rem" => {
-                let rhs = self.value_to_scalar(args[1])?
-                    .to_bytes()?;
-                if rhs == 0 {
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                let rval = r.to_scalar()?.to_bytes()?;
+                if rval == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_rem")));
                 }
-                self.intrinsic_overflowing(
+                self.binop_ignore_overflow(
                     mir::BinOp::Rem,
-                    args[0],
-                    args[1],
+                    l,
+                    r,
                     dest,
-                    dest_layout.ty,
                 )?;
             }
 
             "uninit" => {
-                // we don't want to force an allocation in case the destination is a simple value
-                match dest {
-                    Place::Local { frame, local } => {
-                        match self.stack()[frame].locals[local].access()? {
-                            Value::ByRef(ptr, _) => {
-                                // These writes have no alignment restriction anyway.
-                                self.memory.mark_definedness(ptr, dest_layout.size, false)?;
-                            }
-                            Value::Scalar(_) => self.write_value(ValTy { value: Value::Scalar(ScalarMaybeUndef::Undef), ty: dest_layout.ty }, dest)?,
-                            Value::ScalarPair(..) => {
-                                self.write_value(ValTy { value: Value::ScalarPair(ScalarMaybeUndef::Undef, ScalarMaybeUndef::Undef), ty: dest_layout.ty }, dest)?;
-                            }
-                        }
-                    },
-                    Place::Ptr {
-                        ptr,
-                        align: _align,
-                        extra: PlaceExtra::None,
-                    } => self.memory.mark_definedness(ptr.unwrap_or_err()?, dest_layout.size, false)?,
-                    Place::Ptr { .. } => {
-                        bug!("uninit intrinsic tried to write to fat or unaligned ptr target")
+                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
+                // but we also do not want to create a new allocation with 0s and then copy that over.
+                match dest.layout.abi {
+                    layout::Abi::Scalar(..) => {
+                        let x = ScalarMaybeUndef::Undef;
+                        self.write_value(Value::Scalar(x), dest)?;
+                    }
+                    layout::Abi::ScalarPair(..) => {
+                        let x = ScalarMaybeUndef::Undef;
+                        self.write_value(Value::ScalarPair(x, x), dest)?;
+                    }
+                    _ => {
+                        // Do it in memory
+                        let mplace = self.force_allocation(dest)?;
+                        assert_eq!(mplace.extra, PlaceExtra::None);
+                        self.memory.mark_definedness(mplace.ptr, dest.layout.size, false)?;
                     }
                 }
             }
@@ -646,9 +592,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "write_bytes" => {
                 let ty = substs.type_at(0);
                 let ty_layout = self.layout_of(ty)?;
-                let val_byte = self.value_to_u8(args[1])?;
-                let ptr = self.into_ptr(args[0].value)?.unwrap_or_err()?;
-                let count = self.value_to_usize(args[2])?;
+                let val_byte = self.read_scalar(args[1])?.to_u8()?;
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let count = self.read_scalar(args[2])?.to_usize(&self)?;
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)

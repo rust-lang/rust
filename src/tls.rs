@@ -119,19 +119,19 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
             let mir = self.load_mir(instance.def)?;
+            let ret = Place::null(&self);
             self.push_stack_frame(
                 instance,
                 mir.span,
                 mir,
-                Place::undef(),
+                ret,
                 StackPopCleanup::None,
             )?;
             let arg_local = self.frame().mir.args_iter().next().ok_or_else(
                 || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-            let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-            self.write_ptr(dest, ptr, ty)?;
+            self.write_scalar(ptr, dest)?;
 
             // step until out of stackframes
             while self.step()? {}

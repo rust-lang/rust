@@ -1,19 +1,17 @@
-use rustc::ty;
-use rustc::ty::layout::Primitive;
+use rustc::ty::{self, Ty};
+use rustc::ty::layout::{TyLayout, Primitive};
 use rustc::mir;
 
 use super::*;
-
-use helpers::EvalContextExt as HelperEvalContextExt;
 
 pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
         left: Scalar,
-        left_ty: ty::Ty<'tcx>,
+        left_layout: TyLayout<'tcx>,
         right: Scalar,
-        right_ty: ty::Ty<'tcx>,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
 
     fn ptr_int_arithmetic(
@@ -23,6 +21,13 @@ pub trait EvalContextExt<'tcx> {
         right: i128,
         signed: bool,
     ) -> EvalResult<'tcx, (Scalar, bool)>;
+
+    fn pointer_offset_inbounds(
+        &self,
+        ptr: Scalar,
+        pointee_ty: Ty<'tcx>,
+        offset: i64,
+    ) -> EvalResult<'tcx, Scalar>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
@@ -30,9 +35,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         &self,
         bin_op: mir::BinOp,
         left: Scalar,
-        left_ty: ty::Ty<'tcx>,
+        left_layout: TyLayout<'tcx>,
         right: Scalar,
-        right_ty: ty::Ty<'tcx>,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
         trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
 
@@ -45,7 +50,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             8 => I64,
             16 => I128,
             _ => unreachable!(),
-        }, false);
+        }, /*signed*/ false);
         let isize = Primitive::Int(match self.memory.pointer_size().bytes() {
             1 => I8,
             2 => I16,
@@ -53,24 +58,23 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             8 => I64,
             16 => I128,
             _ => unreachable!(),
-        }, true);
-        let left_layout = self.layout_of(left_ty)?;
+        }, /*signed*/ true);
         let left_kind = match left_layout.abi {
             ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => Err(EvalErrorKind::TypeNotPrimitive(left_ty))?,
+            _ => Err(EvalErrorKind::TypeNotPrimitive(left_layout.ty))?,
         };
-        let right_layout = self.layout_of(right_ty)?;
         let right_kind = match right_layout.abi {
             ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => Err(EvalErrorKind::TypeNotPrimitive(right_ty))?,
+            _ => Err(EvalErrorKind::TypeNotPrimitive(right_layout.ty))?,
         };
         match bin_op {
-            Offset if left_kind == Primitive::Pointer && right_kind == usize => {
-                let pointee_ty = left_ty
+            Offset => {
+                assert!(left_kind == Primitive::Pointer && right_kind == usize);
+                let pointee_ty = left_layout.ty
                     .builtin_deref(true)
                     .expect("Offset called on non-ptr type")
                     .ty;
-                let ptr = self.pointer_offset(
+                let ptr = self.pointer_offset_inbounds(
                     left,
                     pointee_ty,
                     right.to_bits(self.memory.pointer_size())? as i64,
@@ -114,12 +118,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         Gt => left.offset > right.offset,
                         Ge => left.offset >= right.offset,
                         Sub => {
+                            let left_offset = Scalar::from_uint(left.offset.bytes(), self.memory.pointer_size());
+                            let right_offset = Scalar::from_uint(right.offset.bytes(), self.memory.pointer_size());
+                            let layout = self.layout_of(self.tcx.types.usize)?;
                             return self.binary_op(
                                 Sub,
-                                Scalar::Bits { bits: left.offset.bytes() as u128, size: self.memory.pointer_size().bytes() as u8 },
-                                self.tcx.types.usize,
-                                Scalar::Bits { bits: right.offset.bytes() as u128, size: self.memory.pointer_size().bytes() as u8 },
-                                self.tcx.types.usize,
+                                ValTy { value: Value::Scalar(left_offset.into()), layout },
+                                ValTy { value: Value::Scalar(right_offset.into()), layout },
                             ).map(Some)
                         }
                         _ => bug!("We already established it has to be one of these operators."),
@@ -199,5 +204,41 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 return err!(Unimplemented(msg));
             }
         })
+    }
+
+    /// This function raises an error if the offset moves the pointer outside of its allocation.  We consider
+    /// ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
+    /// We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
+    /// allocation.
+    fn pointer_offset_inbounds(
+        &self,
+        ptr: Scalar,
+        pointee_ty: Ty<'tcx>,
+        offset: i64,
+    ) -> EvalResult<'tcx, Scalar> {
+        if ptr.is_null() {
+            // NULL pointers must only be offset by 0
+            return if offset == 0 {
+                Ok(ptr)
+            } else {
+                err!(InvalidNullPointerUsage)
+            };
+        }
+        // FIXME: assuming here that type size is < i64::max_value()
+        let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
+        let offset = offset.checked_mul(pointee_size).ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
+        // Now let's see what kind of pointer this is
+        if let Scalar::Ptr(ptr) = ptr {
+            // Both old and new pointer must be in-bounds.
+            // (Of the same allocation, but that part is trivial with our representation.)
+            self.memory.check_bounds(ptr, false)?;
+            let ptr = ptr.signed_offset(offset, self)?;
+            self.memory.check_bounds(ptr, false)?;
+            Ok(Scalar::Ptr(ptr))
+        } else {
+            // An integer pointer. They can move around freely, as long as they do not overflow
+            // (which ptr_signed_offset checks).
+            ptr.ptr_signed_offset(offset, self)
+        }
     }
 }

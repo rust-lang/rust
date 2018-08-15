@@ -27,6 +27,7 @@ use rustc_data_structures::fx::FxHasher;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
+use std::marker::PhantomData;
 use std::collections::{HashMap, BTreeMap};
 use std::hash::{Hash, Hasher};
 
@@ -41,81 +42,14 @@ mod memory;
 mod tls;
 mod locks;
 mod range_map;
-mod validation;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::EvalContextExt as TlsEvalContextExt;
 use locks::LockInfo;
-use locks::MemoryExt as LockMemoryExt;
-use validation::EvalContextExt as ValidationEvalContextExt;
 use range_map::RangeMap;
-use validation::{ValidationQuery, AbsPlace};
-
-pub trait ScalarExt {
-    fn null(size: Size) -> Self;
-    fn from_i32(i: i32) -> Self;
-    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self;
-    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self;
-    fn from_f32(f: f32) -> Self;
-    fn from_f64(f: f64) -> Self;
-    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64>;
-    fn is_null(self) -> bool;
-    /// HACK: this function just extracts all bits if `defined != 0`
-    /// Mainly used for args of C-functions and we should totally correctly fetch the size
-    /// of their arguments
-    fn to_bytes(self) -> EvalResult<'static, u128>;
-}
-
-impl ScalarExt for Scalar {
-    fn null(size: Size) -> Self {
-        Scalar::Bits { bits: 0, size: size.bytes() as u8 }
-    }
-
-    fn from_i32(i: i32) -> Self {
-        Scalar::Bits { bits: i as u32 as u128, size: 4 }
-    }
-
-    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i.into(), size: ptr_size.bytes() as u8 }
-    }
-
-    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i.into() as u128, size: ptr_size.bytes() as u8 }
-    }
-
-    fn from_f32(f: f32) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
-    }
-
-    fn from_f64(f: f64) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
-    }
-
-    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64> {
-        let b = self.to_bits(ecx.memory.pointer_size())?;
-        assert_eq!(b as u64 as u128, b);
-        Ok(b as u64)
-    }
-
-    fn is_null(self) -> bool {
-        match self {
-            Scalar::Bits { bits, .. } => bits == 0,
-            Scalar::Ptr(_) => false
-        }
-    }
-
-    fn to_bytes(self) -> EvalResult<'static, u128> {
-        match self {
-            Scalar::Bits { bits, size } => {
-                assert_ne!(size, 0);
-                Ok(bits)
-            },
-            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
-        }
-    }
-}
+use helpers::{ScalarExt, FalibleScalarExt};
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -180,31 +114,22 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // First argument: pointer to main()
         let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let main_ty = main_instance.ty(ecx.tcx.tcx);
-        let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::Ptr(main_ptr).into()),
-                ty: main_ptr_ty,
-            },
-            dest,
-        )?;
+        ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
         // Second argument (argc): 1
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let ty = ecx.tcx.types.isize;
-        ecx.write_scalar(dest, Scalar::from_int(1, ptr_size), ty)?;
+        ecx.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
 
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
         let foo = ecx.memory.allocate_bytes(b"foo\0");
-        let ptr_align = ecx.tcx.data_layout.pointer_align;
-        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, MemoryKind::Stack)?;
-        ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo).into(), ptr_size, ptr_align, false)?;
-        ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
-        ecx.write_ptr(dest, foo_ptr.into(), ty)?;
+        let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
+        let foo_layout = ecx.layout_of(foo_ty)?;
+        let foo_place = ecx.allocate(foo_layout, MemoryKind::Stack)?;
+        ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
+        ecx.memory.mark_static_initialized(foo_place.to_ptr()?.alloc_id, Mutability::Immutable)?;
+        ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
     } else {
@@ -293,15 +218,15 @@ pub struct Evaluator<'tcx> {
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
 
-    /// Places that were suspended by the validation subsystem, and will be recovered later
-    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
+    /// Use the lifetime
+    _dummy : PhantomData<&'tcx ()>,
 }
 
 impl<'tcx> Hash for Evaluator<'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Evaluator {
             env_vars,
-            suspended: _,
+            _dummy: _,
         } = self;
 
         env_vars.iter()
@@ -373,34 +298,32 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Place, mir::BasicBlock)>,
-        args: &[ValTy<'tcx>],
+        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        args: &[OpTy<'tcx>],
         span: Span,
-        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
-        ecx.eval_fn_call(instance, destination, args, span, sig)
+        ecx.eval_fn_call(instance, destination, args, span)
     }
 
     fn call_intrinsic<'a>(
         ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: TyLayout<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: PlaceTy<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
-        ecx.call_intrinsic(instance, args, dest, dest_layout, target)
+        ecx.call_intrinsic(instance, args, dest, target)
     }
 
     fn try_ptr_op<'a>(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
-        left_ty: ty::Ty<'tcx>,
+        left_layout: TyLayout<'tcx>,
         right: Scalar,
-        right_ty: ty::Ty<'tcx>,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
-        ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
+        ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 
     fn mark_static_initialized<'a>(
@@ -460,14 +383,16 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let call_stackframe = ecx.stack().len();
         while ecx.step()? && ecx.stack().len() >= call_stackframe {
             if ecx.stack().len() == call_stackframe {
-                let frame = ecx.frame_mut();
-                let bb = &frame.mir.basic_blocks()[frame.block];
-                if bb.statements.len() == frame.stmt && !bb.is_cleanup {
-                    if let ::rustc::mir::TerminatorKind::Return = bb.terminator().kind {
-                        for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
-                            // Don't deallocate locals, because the return value might reference them
-                            frame.storage_dead(local);
-                        }
+                let cleanup = {
+                    let frame = ecx.frame();
+                    let bb = &frame.mir.basic_blocks()[frame.block];
+                    bb.statements.len() == frame.stmt && !bb.is_cleanup &&
+                        if let ::rustc::mir::TerminatorKind::Return = bb.terminator().kind { true } else { false }
+                };
+                if cleanup {
+                    for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
+                        // Don't deallocate locals, because the return value might reference them
+                        ecx.storage_dead(local);
                     }
                 }
             }
@@ -481,11 +406,9 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ty: ty::Ty<'tcx>,
-        dest: Place,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let layout = ecx.layout_of(ty)?;
-
+        trace!("box_alloc for {:?}", dest.layout.ty);
         // Call the `exchange_malloc` lang item
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
@@ -494,7 +417,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             malloc,
             malloc_mir.span,
             malloc_mir,
-            dest,
+            *dest,
             // Don't do anything when we are done.  The statement() function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
             // exchange_malloc returns, we go on evaluating exactly where we want to be.
@@ -502,31 +425,18 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
-        let usize = ecx.tcx.types.usize;
-        let ptr_size = ecx.memory.pointer_size();
+        let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
 
         // First argument: size
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::from_uint(match layout.size.bytes() {
-                    0 => 1,
-                    size => size,
-                }, ptr_size).into()),
-                ty: usize,
-            },
-            dest,
-        )?;
+        // (0 is allowed here, this is expected to be handled by the lang item)
+        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let size = layout.size.bytes();
+        ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
 
         // Second argument: align
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::from_uint(layout.align.abi(), ptr_size).into()),
-                ty: usize,
-            },
-            dest,
-        )?;
+        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let align = layout.align.abi();
+        ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
         // No more arguments
         assert!(args.next().is_none(), "exchange_malloc lang item has more arguments than expected");
@@ -542,52 +452,32 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn check_locks<'a>(
-        mem: &Memory<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer,
-        size: Size,
-        access: AccessKind,
+        _mem: &Memory<'a, 'mir, 'tcx, Self>,
+        _ptr: Pointer,
+        _size: Size,
+        _access: AccessKind,
     ) -> EvalResult<'tcx> {
-        mem.check_locks(ptr, size.bytes(), access)
+        Ok(())
     }
 
     fn add_lock<'a>(
-        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-    ) {
-        mem.data.locks.insert(id, RangeMap::new());
-    }
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
+        _id: AllocId,
+    ) { }
 
     fn free_lock<'a>(
-        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-        len: u64,
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
+        _id: AllocId,
+        _len: u64,
     ) -> EvalResult<'tcx> {
-        mem.data.locks
-            .remove(&id)
-            .expect("allocation has no corresponding locks")
-            .check(
-                Some(mem.cur_frame),
-                0,
-                len,
-                AccessKind::Read,
-            )
-            .map_err(|lock| {
-                EvalErrorKind::DeallocatedLockedMemory {
-                    //ptr, FIXME
-                    ptr: Pointer {
-                        alloc_id: AllocId(0),
-                        offset: Size::from_bytes(0),
-                    },
-                    lock: lock.active,
-                }.into()
-            })
+        Ok(())
     }
 
     fn end_region<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        reg: Option<::rustc::middle::region::Scope>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _reg: Option<::rustc::middle::region::Scope>,
     ) -> EvalResult<'tcx> {
-        ecx.end_region(reg)
+        Ok(())
     }
 
     fn validation_op<'a>(
