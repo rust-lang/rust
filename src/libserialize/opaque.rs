@@ -31,6 +31,7 @@ impl Encoder {
         self.data
     }
 
+    #[inline]
     pub fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.data.extend_from_slice(s);
     }
@@ -193,6 +194,7 @@ impl<'a> Decoder<'a> {
         self.position += bytes;
     }
 
+    #[inline]
     pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
         let start = self.position;
         let end = start + s.len();
@@ -326,6 +328,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(Cow::Borrowed(s))
     }
 
+    #[inline]
     fn error(&mut self, err: &str) -> Self::Error {
         err.to_string()
     }

@@ -118,6 +118,7 @@ pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W)
     }
 }
 
+#[inline]
 pub fn write_signed_leb128(out: &mut Vec<u8>, value: i128) {
     write_signed_leb128_to(value, |v| write_to_vec(out, v))
 }
