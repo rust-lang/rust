@@ -1,4 +1,7 @@
-use SyntaxNodeRef;
+use {
+    SyntaxNodeRef,
+    algo::generate,
+};
 
 pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
     walk(root).filter_map(|event| match event {
@@ -14,32 +17,22 @@ pub enum WalkEvent<'a> {
 }
 
 pub fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = WalkEvent<'a>> {
-    let mut done = false;
-    ::itertools::unfold(WalkEvent::Enter(root), move |pos| {
-        if done {
-            return None;
-        }
-        let res = *pos;
-        *pos = match *pos {
+    generate(Some(WalkEvent::Enter(root)), |pos| {
+        let next = match *pos {
             WalkEvent::Enter(node) => match node.first_child() {
                 Some(child) => WalkEvent::Enter(child),
                 None => WalkEvent::Exit(node),
             },
             WalkEvent::Exit(node) => {
-                if node == root {
-                    done = true;
-                    WalkEvent::Exit(node)
-                } else {
-                    match node.next_sibling() {
-                        Some(sibling) => WalkEvent::Enter(sibling),
-                        None => match node.parent() {
-                            Some(node) => WalkEvent::Exit(node),
-                            None => WalkEvent::Exit(node),
-                        },
-                    }
+                match node.next_sibling() {
+                    Some(sibling) => WalkEvent::Enter(sibling),
+                    None => match node.parent() {
+                        Some(node) => WalkEvent::Exit(node),
+                        None => return None,
+                    },
                 }
             }
         };
-        Some(res)
+        Some(next)
     })
 }
