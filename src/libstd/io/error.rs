@@ -97,6 +97,7 @@ struct Custom {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
+#[non_exhaustive]
 pub enum ErrorKind {
     /// An entity was not found, often a file.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -180,15 +181,6 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
-
-    /// A marker variant that tells the compiler that users of this enum cannot
-    /// match it exhaustively.
-    #[unstable(feature = "io_error_internals",
-               reason = "better expressed through extensible enums that this \
-                         enum cannot be exhaustively matched against",
-               issue = "0")]
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ErrorKind {
@@ -212,7 +204,6 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
-            ErrorKind::__Nonexhaustive => unreachable!()
         }
     }
 }

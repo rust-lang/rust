@@ -311,6 +311,7 @@
 #![feature(doc_keyword)]
 #![feature(panic_info_message)]
 #![feature(panic_implementation)]
+#![feature(non_exhaustive)]
 
 #![default_lib_allocator]
 
