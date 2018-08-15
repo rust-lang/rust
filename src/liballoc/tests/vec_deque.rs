@@ -1004,6 +1004,31 @@ fn test_append_permutations() {
     }
 }
 
+struct DropCounter<'a> {
+    count: &'a mut u32,
+}
+
+impl<'a> Drop for DropCounter<'a> {
+    fn drop(&mut self) {
+        *self.count += 1;
+    }
+}
+
+#[test]
+fn test_append_double_drop() {
+    let (mut count_a, mut count_b) = (0, 0);
+    {
+        let mut a = VecDeque::new();
+        let mut b = VecDeque::new();
+        a.push_back(DropCounter { count: &mut count_a });
+        b.push_back(DropCounter { count: &mut count_b });
+
+        a.append(&mut b);
+    }
+    assert_eq!(count_a, 1);
+    assert_eq!(count_b, 1);
+}
+
 #[test]
 fn test_retain() {
     let mut buf = VecDeque::new();
