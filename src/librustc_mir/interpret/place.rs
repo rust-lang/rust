@@ -283,31 +283,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
         // the only way conversion can fail if is this is an array (otherwise we already panicked
         // above). In that case, all fields are equal.
-        let field = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
+        let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
         // Adjust offset
-        let offset = if field.is_unsized() {
-            let vtable = match base.extra {
-                PlaceExtra::Vtable(tab) => tab,
-                _ => bug!("Unsized place with unsized field must come with vtable"),
-            };
-            let (_, align) = self.read_size_and_align_from_vtable(vtable)?;
-            offset.abi_align(align)
-        } else {
-            // No adjustment needed
-            offset
+        let offset = match base.extra {
+            PlaceExtra::Vtable(vtable) => {
+                let (_, align) = self.read_size_and_align_from_vtable(vtable)?;
+                // FIXME: Is this right? Should we always do this, or only when actually
+                // accessing the field to which the vtable applies?
+                offset.abi_align(align)
+            }
+            _ => {
+                // No adjustment needed
+                offset
+            }
         };
 
         let ptr = base.ptr.ptr_offset(offset, self)?;
-        let align = base.align.min(field.align);
-        let extra = if !field.is_unsized() {
+        let align = base.align.min(field_layout.align);
+        let extra = if !field_layout.is_unsized() {
             PlaceExtra::None
         } else {
             assert!(base.extra != PlaceExtra::None, "Expected fat ptr");
             base.extra
         };
 
-        Ok(MPlaceTy { mplace: MemPlace { ptr, align, extra }, layout: field })
+        Ok(MPlaceTy { mplace: MemPlace { ptr, align, extra }, layout: field_layout })
     }
 
     pub fn mplace_subslice(
