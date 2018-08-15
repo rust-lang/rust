@@ -442,7 +442,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let len = impl_candidates.len();
+        impl_candidates.sort_by_cached_key(ToString::to_string);
+
         let end = if impl_candidates.len() <= 5 {
             impl_candidates.len()
         } else {
