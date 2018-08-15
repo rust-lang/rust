@@ -89,6 +89,8 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 6. Codegen function
     crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
     codegen_fn_content(&mut fx);
+    fx.bcx.seal_all_blocks();
+    fx.bcx.finalize();
 
     // Step 7. Print function to terminal for debugging
     let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
@@ -180,7 +182,6 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 values,
                 targets,
             } => {
-                fx.bcx.ins().trap(TrapCode::User(0));
                 // TODO: prevent panics on large and negative disciminants
                 if should_codegen(fx.tcx.sess) {
                     let discr = trans_operand(fx, discr).load_value(fx);
@@ -193,6 +194,8 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                     fx.bcx.ins().br_table(discr, jump_table);
                     let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
                     fx.bcx.ins().jump(otherwise_ebb, &[]);
+                } else {
+                    fx.bcx.ins().trap(TrapCode::User(0));
                 }
             }
             TerminatorKind::Call {
