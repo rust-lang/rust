@@ -23,9 +23,9 @@ impl ConstantCx {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         module: &mut Module<B>,
     ) {
-        println!("todo {:?}", self.todo);
+        //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
-        println!("done {:?}", self.done);
+        //println!("done {:?}", self.done);
         for data_id in self.done.drain() {
             module.finalize_data(data_id);
         }
@@ -159,13 +159,13 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
     while let Some(todo_item) = pop_set(&mut cx.todo) {
         let (data_id, alloc) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
-                println!("alloc_id {}", alloc_id);
+                //println!("alloc_id {}", alloc_id);
                 let data_id = data_id_for_alloc_id(module, alloc_id);
                 let alloc = memory.get(alloc_id).unwrap();
                 (data_id, alloc)
             }
             TodoItem::Static(def_id) => {
-                println!("static {:?}", def_id);
+                //println!("static {:?}", def_id);
                 let instance = ty::Instance::mono(tcx, def_id);
                 let cid = GlobalId {
                     instance,
@@ -183,7 +183,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             }
         };
 
-        println!("data_id {}", data_id);
+        //("data_id {}", data_id);
         if cx.done.contains(&data_id) {
             continue;
         }

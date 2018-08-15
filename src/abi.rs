@@ -55,12 +55,6 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
-            println!(
-                "rust-call sig: {:?} inputs: {:?} output: {:?}",
-                sig,
-                sig.inputs(),
-                sig.output()
-            );
             assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => tupled_arguments,
@@ -439,11 +433,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             }
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         }
-        println!(
-            "{:?} {:?}",
-            pack_arg.layout().ty,
-            args.iter().map(|a| a.layout().ty).collect::<Vec<_>>()
-        );
         args
     } else {
         args.into_iter()
@@ -462,7 +451,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     let ret_layout = fx.layout_of(sig.output());
 
     let output_pass_mode = get_pass_mode(fx.tcx, sig.abi, sig.output(), true);
-    println!("{:?}", output_pass_mode);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match destination {

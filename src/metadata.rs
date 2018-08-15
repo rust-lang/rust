@@ -36,26 +36,6 @@ impl MetadataLoader for CraneliftMetadataLoader {
         _target: &::rustc_target::spec::Target,
         _path: &Path,
     ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
-        //use goblin::Object;
-
-        //let buffer = ::std::fs::read(path).map_err(|e|format!("{:?}", e))?;
-        /*match Object::parse(&buffer).map_err(|e|format!("{:?}", e))? {
-            Object::Elf(elf) => {
-                println!("elf: {:#?}", &elf);
-            },
-            Object::PE(pe) => {
-                println!("pe: {:#?}", &pe);
-            },
-            Object::Mach(mach) => {
-                println!("mach: {:#?}", &mach);
-            },
-            Object::Archive(archive) => {
-                return Err(format!("archive: {:#?}", &archive));
-            },
-            Object::Unknown(magic) => {
-                return Err(format!("unknown magic: {:#x}", magic))
-            }
-        }*/
         Err("dylib metadata loading is not yet supported".to_string())
     }
 }

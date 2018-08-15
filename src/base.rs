@@ -771,7 +771,6 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     out_place
         .place_field(fx, mir::Field::new(0))
         .write_cvalue(fx, res);
-    println!("abc");
     out_place
         .place_field(fx, mir::Field::new(1))
         .write_cvalue(fx, has_overflow);
