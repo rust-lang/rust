@@ -1,6 +1,9 @@
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:40:21
    |
+LL |     let x = X(Y);
+   |         - captured outer variable
+...
 LL |         let X(_t) = x;
    |               --    ^
    |               |     |
@@ -17,6 +20,9 @@ LL |         let X(_t) = x;
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:44:34
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |     |
@@ -33,6 +39,9 @@ LL |         if let Either::One(_t) = e { }
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:48:37
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |     |
@@ -49,6 +58,9 @@ LL |         while let Either::One(_t) = e { }
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:52:15
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         match e {
    |               ^
    |               |
@@ -67,6 +79,9 @@ LL |             Either::One(_t)
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:59:15
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         match e {
    |               ^
    |               |
@@ -85,6 +100,9 @@ LL |             Either::One(_t) => (),
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:68:25
    |
+LL |     let x = X(Y);
+   |         - captured outer variable
+...
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |         |
@@ -101,6 +119,9 @@ LL |         let X(mut _t) = x;
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:72:38
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |         |
@@ -117,6 +138,9 @@ LL |         if let Either::One(mut _t) = em { }
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:76:41
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |         |
@@ -133,6 +157,9 @@ LL |         while let Either::One(mut _t) = em { }
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:80:15
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         match em {
    |               ^^
    |               |
@@ -151,6 +178,9 @@ LL |             Either::One(mut _t)
 error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:87:15
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         match em {
    |               ^^
    |               |
@@ -169,6 +199,9 @@ LL |             Either::One(mut _t) => (),
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:107:21
    |
+LL |     let x = X(Y);
+   |         - captured outer variable
+...
 LL |         let X(_t) = x;
    |               --    ^
    |               |     |
@@ -185,6 +218,9 @@ LL |         let X(_t) = x;
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:111:34
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |     |
@@ -201,6 +237,9 @@ LL |         if let Either::One(_t) = e { }
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:115:37
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |     |
@@ -217,6 +256,9 @@ LL |         while let Either::One(_t) = e { }
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:119:15
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         match e {
    |               ^
    |               |
@@ -235,6 +277,9 @@ LL |             Either::One(_t)
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:126:15
    |
+LL |     let e = Either::One(X(Y));
+   |         - captured outer variable
+...
 LL |         match e {
    |               ^
    |               |
@@ -253,6 +298,9 @@ LL |             Either::One(_t) => (),
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:135:25
    |
+LL |     let x = X(Y);
+   |         - captured outer variable
+...
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |         |
@@ -269,6 +317,9 @@ LL |         let X(mut _t) = x;
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:139:38
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |         |
@@ -285,6 +336,9 @@ LL |         if let Either::One(mut _t) = em { }
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:143:41
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |         |
@@ -301,6 +355,9 @@ LL |         while let Either::One(mut _t) = em { }
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:147:15
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         match em {
    |               ^^
    |               |
@@ -319,6 +376,9 @@ LL |             Either::One(mut _t)
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:154:15
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         match em {
    |               ^^
    |               |
@@ -337,6 +397,9 @@ LL |             Either::One(mut _t) => (),
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/dont-suggest-ref-in-closure.rs:162:15
    |
+LL |     let mut em = Either::One(X(Y));
+   |         ------ captured outer variable
+...
 LL |         match em {
    |               ^^
    |               |
