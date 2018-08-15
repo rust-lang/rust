@@ -151,6 +151,11 @@ use std::process::{self, Command};
 use std::slice;
 use std::str;
 
+#[cfg(unix)]
+use std::os::unix::fs::symlink as symlink_file;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file;
+
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 use filetime::FileTime;
 
@@ -1005,6 +1010,14 @@ impl Build {
         self.rust_version()
     }
 
+    fn lldb_package_vers(&self) -> String {
+        self.package_vers(&self.rust_version())
+    }
+
+    fn lldb_vers(&self) -> String {
+        self.rust_version()
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
@@ -1123,20 +1136,24 @@ impl Build {
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
         let _ = fs::remove_file(&dst);
-        // Attempt to "easy copy" by creating a hard link (symlinks don't work on
-        // windows), but if that fails just fall back to a slow `copy` operation.
-        if let Ok(()) = fs::hard_link(src, dst) {
-            return
+        let metadata = t!(src.symlink_metadata());
+        if metadata.file_type().is_symlink() {
+            let link = t!(fs::read_link(src));
+            t!(symlink_file(link, dst));
+        } else if let Ok(()) = fs::hard_link(src, dst) {
+            // Attempt to "easy copy" by creating a hard link
+            // (symlinks don't work on windows), but if that fails
+            // just fall back to a slow `copy` operation.
+        } else {
+            if let Err(e) = fs::copy(src, dst) {
+                panic!("failed to copy `{}` to `{}`: {}", src.display(),
+                       dst.display(), e)
+            }
+            t!(fs::set_permissions(dst, metadata.permissions()));
+            let atime = FileTime::from_last_access_time(&metadata);
+            let mtime = FileTime::from_last_modification_time(&metadata);
+            t!(filetime::set_file_times(dst, atime, mtime));
         }
-        if let Err(e) = fs::copy(src, dst) {
-            panic!("failed to copy `{}` to `{}`: {}", src.display(),
-                dst.display(), e)
-        }
-        let metadata = t!(src.metadata());
-        t!(fs::set_permissions(dst, metadata.permissions()));
-        let atime = FileTime::from_last_access_time(&metadata);
-        let mtime = FileTime::from_last_modification_time(&metadata);
-        t!(filetime::set_file_times(dst, atime, mtime));
     }
 
     /// Search-and-replaces within a file. (Not maximally efficiently: allocates a

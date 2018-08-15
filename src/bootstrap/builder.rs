@@ -461,6 +461,7 @@ impl<'a> Builder<'a> {
                 dist::Rustfmt,
                 dist::Clippy,
                 dist::LlvmTools,
+                dist::Lldb,
                 dist::Extended,
                 dist::HashSign
             ),

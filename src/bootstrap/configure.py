@@ -68,6 +68,7 @@ o("cargo-openssl-static", "build.openssl-static", "static openssl in cargo")
 o("profiler", "build.profiler", "build the profiler runtime")
 o("emscripten", None, "compile the emscripten backend as well as LLVM")
 o("full-tools", None, "enable all tools")
+o("lldb", "rust.lldb", "build lldb")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
@@ -350,7 +351,7 @@ set('build.configure-args', sys.argv[1:])
 # all the various comments and whatnot.
 #
 # Note that the `target` section is handled separately as we'll duplicate it
-# per configure dtarget, so there's a bit of special handling for that here.
+# per configured target, so there's a bit of special handling for that here.
 sections = {}
 cur_section = None
 sections[None] = []
