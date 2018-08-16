@@ -278,7 +278,6 @@ impl Level {
             Level::Warning => errors::Level::Warning,
             Level::Note => errors::Level::Note,
             Level::Help => errors::Level::Help,
-            Level::__Nonexhaustive => unreachable!("Level::__Nonexhaustive"),
         }
     }
 }
