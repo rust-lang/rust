@@ -16,7 +16,6 @@ pub trait Bar {
     // @has - '//*[@href="#associatedtype.Bar"]' 'Bar'
     type Bar = ();
     // @has - '//*[@id="associatedconstant.Baz"]' 'const Baz: usize'
-    // @has - '//*[@class="docblock"]' 'Baz: usize = 7'
     // @has - '//*[@href="#associatedconstant.Baz"]' 'Baz'
     const Baz: usize = 7;
     // @has - '//*[@id="tymethod.bar"]' 'fn bar'

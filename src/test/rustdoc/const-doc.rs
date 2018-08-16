@@ -23,7 +23,7 @@ pub struct ContentType {
 
 impl ContentType {
     // @has const_doc/struct.ContentType.html
-    // @has  - '//*[@class="docblock"]' 'Any: ContentType = ContentType{ttype: Foo{f: '
+    // @has  - '//*[@id="associatedconstant.Any"]' 'const Any: ContentType'
     pub const Any: ContentType = ContentType { ttype: Foo { f: PhantomData, },
                                                subtype: Foo { f: PhantomData, },
                                                params: None, };
