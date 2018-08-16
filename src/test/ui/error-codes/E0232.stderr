@@ -4,7 +4,7 @@ error[E0232]: `#[rustc_on_unimplemented]` requires a value
 LL | #[rustc_on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ value required here
    |
-   = note: eg `#[rustc_on_unimplemented = "foo"]`
+   = note: eg `#[rustc_on_unimplemented(message="foo")]`
 
 error: aborting due to previous error
 
