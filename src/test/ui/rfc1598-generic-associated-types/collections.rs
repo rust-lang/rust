@@ -9,10 +9,11 @@
 // except according to those terms.
 
 #![feature(generic_associated_types)]
+//~^ WARNING the feature `generic_associated_types` is incomplete
 #![feature(associated_type_defaults)]
 
-//FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
-//follow-up PR
+// FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
+// follow-up PR.
 
 // A Collection trait and collection families. Based on
 // http://smallcultfollowing.com/babysteps/blog/2016/11/03/

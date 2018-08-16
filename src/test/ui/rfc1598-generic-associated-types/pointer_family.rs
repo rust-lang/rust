@@ -9,8 +9,9 @@
 // except according to those terms.
 
 #![feature(generic_associated_types)]
+//~^ WARNING the feature `generic_associated_types` is incomplete
 
-//FIXME(#44265): "type parameter not allowed" errors will be addressed in a follow-up PR
+// FIXME(#44265): "type parameter not allowed" errors will be addressed in a follow-up PR.
 
 use std::rc::Rc;
 use std::sync::Arc;
