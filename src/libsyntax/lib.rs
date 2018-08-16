@@ -130,6 +130,9 @@ pub mod util {
 
     mod rc_slice;
     pub use self::rc_slice::RcSlice;
+
+    mod rc_vec;
+    pub use self::rc_vec::RcVec;
 }
 
 pub mod json;
