@@ -8,4 +8,8 @@ fn main() {
     let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
     let y: f64 = unsafe { std::mem::transmute(x) };
     assert_eq!(y, 42.0_f64);
+
+    assert_eq!(5.0f32 as u32, 5);
+    assert_eq!(5.0f32 as i32, 5);
+    assert_eq!(-5.0f32 as i32, -5);
 }

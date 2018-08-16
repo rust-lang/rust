@@ -526,7 +526,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     Scalar::from_uint(key, key_layout.size).into(),
                     key_layout.size,
                     key_layout.align,
-                    false,
                 )?;
 
                 // Return success (0)
