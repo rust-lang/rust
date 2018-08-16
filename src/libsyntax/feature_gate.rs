@@ -1526,27 +1526,29 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        match attr.parse_meta(self.context.parse_sess) {
-            Ok(meta) => {
-                // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
-                let mut allow_attr_literal = false;
-                if attr.path == "repr" {
-                    if let Some(content) = meta.meta_item_list() {
-                        allow_attr_literal = content.iter().any(
-                            |c| c.check_name("align") || c.check_name("packed"));
+        if !self.context.features.unrestricted_attribute_tokens {
+            // Unfortunately, `parse_meta` cannot be called speculatively because it can report
+            // errors by itself, so we have to call it only if the feature is disabled.
+            match attr.parse_meta(self.context.parse_sess) {
+                Ok(meta) => {
+                    // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
+                    let mut allow_attr_literal = false;
+                    if attr.path == "repr" {
+                        if let Some(content) = meta.meta_item_list() {
+                            allow_attr_literal = content.iter().any(
+                                |c| c.check_name("align") || c.check_name("packed"));
+                        }
+                    }
+
+                    if !allow_attr_literal && contains_novel_literal(&meta) {
+                        gate_feature_post!(&self, attr_literals, attr.span,
+                                        "non-string literals in attributes, or string \
+                                        literals in top-level positions, are experimental");
                     }
                 }
-
-                if !allow_attr_literal && contains_novel_literal(&meta) {
-                    gate_feature_post!(&self, attr_literals, attr.span,
-                                    "non-string literals in attributes, or string \
-                                    literals in top-level positions, are experimental");
+                Err(mut err) => {
+                    err.help("try enabling `#![feature(unrestricted_attribute_tokens)]`").emit()
                 }
-            }
-            Err(mut err) => {
-                err.cancel();
-                gate_feature_post!(&self, unrestricted_attribute_tokens, attr.span,
-                                    "arbitrary tokens in non-macro attributes are unstable");
             }
         }
     }

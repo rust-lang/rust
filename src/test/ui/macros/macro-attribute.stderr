@@ -1,11 +1,8 @@
-error[E0658]: arbitrary tokens in non-macro attributes are unstable (see issue #44690)
-  --> $DIR/macro-attribute.rs:11:1
+error: expected `]`, found `not_there`
+  --> $DIR/macro-attribute.rs:13:10
    |
-LL | #[doc = $not_there] //~ ERROR arbitrary tokens in non-macro attributes are unstable
-   | ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(unrestricted_attribute_tokens)] to the crate attributes to enable
+LL | #[doc = $not_there] //~ ERROR expected `]`, found `not_there`
+   |          ^^^^^^^^^ expected `]`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

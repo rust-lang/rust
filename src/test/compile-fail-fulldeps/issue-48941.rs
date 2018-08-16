@@ -17,10 +17,7 @@
 #![feature(plugin)]
 #![plugin(macro_crate_test)]
 
-#[noop_attribute"x"] //~ ERROR expected one of
-fn night() { }
-
-#[noop_attribute("hi"), rank = 2] //~ ERROR unexpected token
+#[noop_attribute("hi", rank = a)] //~ ERROR expected unsuffixed literal or identifier, found a
 fn knight() { }
 
 #[noop_attribute("/user", data= = "<user")] //~ ERROR literal or identifier

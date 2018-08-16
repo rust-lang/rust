@@ -12,9 +12,9 @@ use attr;
 use ast;
 use codemap::respan;
 use parse::{SeqSep, PResult};
-use parse::token::{self, Nonterminal};
+use parse::token::{self, Nonterminal, DelimToken};
 use parse::parser::{Parser, TokenType, PathStyle};
-use tokenstream::TokenStream;
+use tokenstream::{TokenStream, TokenTree};
 
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -116,7 +116,7 @@ impl<'a> Parser<'a> {
                 };
 
                 self.expect(&token::OpenDelim(token::Bracket))?;
-                let (path, tokens) = self.parse_path_and_tokens()?;
+                let (path, tokens) = self.parse_meta_item_unrestricted()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 let hi = self.prev_span;
 
@@ -138,7 +138,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    crate fn parse_path_and_tokens(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+    /// Parse an inner part of attribute - path and following tokens.
+    /// The tokens must be either a delimited token stream, or empty token stream,
+    /// or the "legacy" key-value form.
+    /// PATH `(` TOKEN_STREAM `)`
+    /// PATH `[` TOKEN_STREAM `]`
+    /// PATH `{` TOKEN_STREAM `}`
+    /// PATH
+    /// PATH `=` TOKEN_TREE
+    /// The delimiters or `=` are still put into the resulting token stream.
+    crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
@@ -150,7 +159,22 @@ impl<'a> Parser<'a> {
             self.bump();
             (meta.ident, meta.node.tokens(meta.span))
         } else {
-            (self.parse_path(PathStyle::Mod)?, self.parse_tokens())
+            let path = self.parse_path(PathStyle::Mod)?;
+            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
+               self.check(&token::OpenDelim(DelimToken::Bracket)) ||
+               self.check(&token::OpenDelim(DelimToken::Brace)) {
+                   self.parse_token_tree().into()
+            } else if self.eat(&token::Eq) {
+                let eq = TokenTree::Token(self.prev_span, token::Eq);
+                let tree = match self.token {
+                    token::CloseDelim(_) | token::Eof => self.unexpected()?,
+                    _ => self.parse_token_tree(),
+                };
+                TokenStream::concat(vec![eq.into(), tree.into()])
+            } else {
+                TokenStream::empty()
+            };
+            (path, tokens)
         })
     }
 

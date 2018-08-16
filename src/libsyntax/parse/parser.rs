@@ -825,7 +825,7 @@ impl<'a> Parser<'a> {
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
-    fn check(&mut self, tok: &token::Token) -> bool {
+    crate fn check(&mut self, tok: &token::Token) -> bool {
         let is_present = self.token == *tok;
         if !is_present { self.expected_tokens.push(TokenType::Token(tok.clone())); }
         is_present

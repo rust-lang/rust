@@ -607,7 +607,7 @@ impl NestedMetaItemKind {
 }
 
 impl Lit {
-    fn tokens(&self) -> TokenStream {
+    crate fn tokens(&self) -> TokenStream {
         TokenTree::Token(self.span, self.node.token()).into()
     }
 }
@@ -794,7 +794,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         );
 
         let start_span = parser.span;
-        let (path, tokens) = panictry!(parser.parse_path_and_tokens());
+        let (path, tokens) = panictry!(parser.parse_meta_item_unrestricted());
         let end_span = parser.span;
         if parser.token != token::Eof {
             parse_sess.span_diagnostic
