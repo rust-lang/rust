@@ -26,9 +26,8 @@ use std::{
 use libsyntax2::{
     TextUnit,
     ast::{self, AstNode},
-    algo::{find_leaf_at_offset, ancestors},
 };
-use libeditor::{LineIndex, FileSymbol};
+use libeditor::{LineIndex, FileSymbol, find_node};
 
 use self::symbol_index::FileSymbols;
 pub use self::symbol_index::Query;
@@ -123,13 +122,7 @@ impl World {
         let file = self.file_syntax(id)?;
         let syntax = file.syntax();
         let syntax = syntax.as_ref();
-        let name_ref =
-            find_leaf_at_offset(syntax, offset)
-                .left_biased()
-                .into_iter()
-                .flat_map(|node| ancestors(node))
-                .flat_map(ast::NameRef::cast)
-                .next();
+        let name_ref = find_node::<ast::NameRef<_>>(syntax, offset);
         let name = match name_ref {
             None => return Ok(vec![]),
             Some(name_ref) => name_ref.text(),

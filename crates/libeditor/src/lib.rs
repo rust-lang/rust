@@ -21,7 +21,10 @@ pub use self::{
     extend_selection::extend_selection,
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit, AtomEdit},
-    code_actions::{flip_comma, add_derive, ActionResult, CursorPosition},
+    code_actions::{
+        ActionResult, CursorPosition, find_node,
+        flip_comma, add_derive,
+    },
 };
 
 #[derive(Debug)]
@@ -59,9 +62,7 @@ pub fn matching_brace(file: &ast::File, offset: TextUnit) -> Option<TextUnit> {
         L_PAREN, R_PAREN,
         L_ANGLE, R_ANGLE,
     ];
-    let syntax = file.syntax();
-    let syntax = syntax.as_ref();
-    let (brace_node, brace_idx) = find_leaf_at_offset(syntax, offset)
+    let (brace_node, brace_idx) = find_leaf_at_offset(file.syntax_ref(), offset)
         .filter_map(|node| {
             let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
             Some((node, idx))
@@ -75,9 +76,8 @@ pub fn matching_brace(file: &ast::File, offset: TextUnit) -> Option<TextUnit> {
 }
 
 pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {
-    let syntax = file.syntax();
     let mut res = Vec::new();
-    for node in walk::preorder(syntax.as_ref()) {
+    for node in walk::preorder(file.syntax_ref()) {
         let tag = match node.kind() {
             ERROR => "error",
             COMMENT | DOC_COMMENT => "comment",
@@ -99,10 +99,9 @@ pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {
 }
 
 pub fn diagnostics(file: &ast::File) -> Vec<Diagnostic> {
-    let syntax = file.syntax();
     let mut res = Vec::new();
 
-    for node in walk::preorder(syntax.as_ref()) {
+    for node in walk::preorder(file.syntax_ref()) {
         if node.kind() == ERROR {
             res.push(Diagnostic {
                 range: node.range(),

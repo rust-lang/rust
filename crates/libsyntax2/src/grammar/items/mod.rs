@@ -55,9 +55,6 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
     }
 }
 
-pub(super) const ITEM_FIRST: TokenSet =
-    token_set![EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, ENUM_KW, FN_KW, PUB_KW, POUND];
-
 pub(super) enum MaybeItem {
     None,
     Item(SyntaxKind),
@@ -322,13 +319,14 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     flavor
 }
 
-fn token_tree(p: &mut Parser) {
+pub(super) fn token_tree(p: &mut Parser) {
     let closing_paren_kind = match p.current() {
         L_CURLY => R_CURLY,
         L_PAREN => R_PAREN,
         L_BRACK => R_BRACK,
         _ => unreachable!(),
     };
+    let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(closing_paren_kind) {
         match p.current() {
@@ -338,4 +336,5 @@ fn token_tree(p: &mut Parser) {
         }
     };
     p.expect(closing_paren_kind);
+    m.complete(p, TOKEN_TREE);
 }

@@ -221,24 +221,26 @@ Grammar(
                 ["functions", "FnDef"]
             ]
         ),
-        "FnDef": ( traits: ["NameOwner"] ),
+        "FnDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "StructDef": (
-            traits: ["NameOwner"],
+            traits: ["NameOwner", "AttrsOwner"],
             collections: [
                 ["fields", "NamedField"]
             ]
         ),
-        "NamedField": ( traits: ["NameOwner"] ),
-        "EnumDef": ( traits: ["NameOwner"] ),
-        "TraitDef": ( traits: ["NameOwner"] ),
-        "Module": ( traits: ["NameOwner"] ),
-        "ConstDef": ( traits: ["NameOwner"] ),
-        "StaticDef": ( traits: ["NameOwner"] ),
-        "TypeDef": ( traits: ["NameOwner"] ),
+        "NamedField": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "EnumDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "TraitDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "Module": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "ConstDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "StaticDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "TypeDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "ImplItem": (),
 
         "Name": (),
         "NameRef": (),
+        "Attr": ( options: [ ["value", "TokenTree"] ] ),
+        "TokenTree": (),
 
         "ParenType": (),
         "TupleType": (),

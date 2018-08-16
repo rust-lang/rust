@@ -19,9 +19,10 @@ FILE@[0; 95)
         NAME_REF@[14; 17)
           IDENT@[14; 17) "bar"
           err: `expected EXCL`
-    L_PAREN@[17; 18)
-    R_PAREN@[18; 19)
-    err: `expected SEMI`
+    TOKEN_TREE@[17; 19)
+      L_PAREN@[17; 18)
+      R_PAREN@[18; 19)
+      err: `expected SEMI`
   WHITESPACE@[19; 20)
   err: `expected an item`
   ERROR@[20; 80)

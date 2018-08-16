@@ -66,7 +66,7 @@ fn find_non_trivia_leaf(syntax: SyntaxNodeRef, offset: TextUnit) -> Option<Synta
         .find(|leaf| !leaf.kind().is_trivia())
 }
 
-fn find_node<'a, N: AstNode<&'a SyntaxRoot>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
+pub fn find_node<'a, N: AstNode<&'a SyntaxRoot>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
     let leaf = find_non_trivia_leaf(syntax, offset)?;
     ancestors(leaf)
         .filter_map(N::cast)

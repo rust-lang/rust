@@ -70,19 +70,19 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
         return;
     }
     let dir = project_dir();
-    let path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
+    let pretty_path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
     if expected.trim() == actual.trim() {
         println!("whitespace difference, rewriting");
-        println!("file: {}\n", path.display());
+        println!("file: {}\n", pretty_path.display());
         fs::write(path, actual).unwrap();
         return;
     }
     if REWRITE {
-        println!("rewriting {}", path.display());
+        println!("rewriting {}", pretty_path.display());
         fs::write(path, actual).unwrap();
         return;
     }
-    assert_eq_text!(expected, actual, "file: {}", path.display());
+    assert_eq_text!(expected, actual, "file: {}", pretty_path.display());
 }
 
 fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {

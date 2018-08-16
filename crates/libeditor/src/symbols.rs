@@ -26,8 +26,7 @@ pub struct FileSymbol {
 }
 
 pub fn file_symbols(file: &ast::File) -> Vec<FileSymbol> {
-    let syntax = file.syntax();
-    preorder(syntax.as_ref())
+    preorder(file.syntax_ref())
         .filter_map(to_symbol)
         .collect()
 }
@@ -57,9 +56,8 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
 pub fn file_structure(file: &ast::File) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
-    let syntax = file.syntax();
 
-    for event in walk(syntax.as_ref()) {
+    for event in walk(file.syntax_ref()) {
         match event {
             WalkEvent::Enter(node) => {
                 match structure_node(node) {

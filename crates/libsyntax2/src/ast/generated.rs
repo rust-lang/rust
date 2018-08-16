@@ -23,6 +23,31 @@ impl<R: TreeRoot> AstNode<R> for ArrayType<R> {
 
 impl<R: TreeRoot> ArrayType<R> {}
 
+// Attr
+#[derive(Debug, Clone, Copy)]
+pub struct Attr<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for Attr<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            ATTR => Some(Attr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> Attr<R> {
+    pub fn value(&self) -> Option<TokenTree<R>> {
+        self.syntax()
+            .children()
+            .filter_map(TokenTree::cast)
+            .next()
+    }
+}
+
 // ConstDef
 #[derive(Debug, Clone, Copy)]
 pub struct ConstDef<R: TreeRoot = Arc<SyntaxRoot>> {
@@ -40,6 +65,7 @@ impl<R: TreeRoot> AstNode<R> for ConstDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for ConstDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for ConstDef<R> {}
 impl<R: TreeRoot> ConstDef<R> {}
 
 // DynTraitType
@@ -77,6 +103,7 @@ impl<R: TreeRoot> AstNode<R> for EnumDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for EnumDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for EnumDef<R> {}
 impl<R: TreeRoot> EnumDef<R> {}
 
 // File
@@ -120,6 +147,7 @@ impl<R: TreeRoot> AstNode<R> for FnDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for FnDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for FnDef<R> {}
 impl<R: TreeRoot> FnDef<R> {}
 
 // FnPointerType
@@ -211,6 +239,7 @@ impl<R: TreeRoot> AstNode<R> for Module<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for Module<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for Module<R> {}
 impl<R: TreeRoot> Module<R> {}
 
 // Name
@@ -266,6 +295,7 @@ impl<R: TreeRoot> AstNode<R> for NamedField<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for NamedField<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for NamedField<R> {}
 impl<R: TreeRoot> NamedField<R> {}
 
 // NeverType
@@ -436,6 +466,7 @@ impl<R: TreeRoot> AstNode<R> for StaticDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for StaticDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for StaticDef<R> {}
 impl<R: TreeRoot> StaticDef<R> {}
 
 // StructDef
@@ -455,6 +486,7 @@ impl<R: TreeRoot> AstNode<R> for StructDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for StructDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for StructDef<R> {}
 impl<R: TreeRoot> StructDef<R> {
     pub fn fields<'a>(&'a self) -> impl Iterator<Item = NamedField<R>> + 'a {
         self.syntax()
@@ -462,6 +494,24 @@ impl<R: TreeRoot> StructDef<R> {
             .filter_map(NamedField::cast)
     }
 }
+
+// TokenTree
+#[derive(Debug, Clone, Copy)]
+pub struct TokenTree<R: TreeRoot = Arc<SyntaxRoot>> {
+    syntax: SyntaxNode<R>,
+}
+
+impl<R: TreeRoot> AstNode<R> for TokenTree<R> {
+    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+        match syntax.kind() {
+            TOKEN_TREE => Some(TokenTree { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+}
+
+impl<R: TreeRoot> TokenTree<R> {}
 
 // TraitDef
 #[derive(Debug, Clone, Copy)]
@@ -480,6 +530,7 @@ impl<R: TreeRoot> AstNode<R> for TraitDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for TraitDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for TraitDef<R> {}
 impl<R: TreeRoot> TraitDef<R> {}
 
 // TupleType
@@ -517,6 +568,7 @@ impl<R: TreeRoot> AstNode<R> for TypeDef<R> {
 }
 
 impl<R: TreeRoot> ast::NameOwner<R> for TypeDef<R> {}
+impl<R: TreeRoot> ast::AttrsOwner<R> for TypeDef<R> {}
 impl<R: TreeRoot> TypeDef<R> {}
 
 // TypeRef

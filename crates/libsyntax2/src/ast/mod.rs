@@ -2,10 +2,11 @@ mod generated;
 
 use std::sync::Arc;
 
+use itertools::Itertools;
 use smol_str::SmolStr;
 
 use {
-    SyntaxNode, SyntaxRoot, TreeRoot, SyntaxError,
+    SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot, SyntaxError,
     SyntaxKind::*,
 };
 pub use self::generated::*;
@@ -14,6 +15,9 @@ pub trait AstNode<R: TreeRoot> {
     fn cast(syntax: SyntaxNode<R>) -> Option<Self>
         where Self: Sized;
     fn syntax(&self) -> &SyntaxNode<R>;
+    fn syntax_ref<'a>(&'a self) -> SyntaxNodeRef<'a> where R: 'a {
+        self.syntax().as_ref()
+    }
 }
 
 pub trait NameOwner<R: TreeRoot>: AstNode<R> {
@@ -22,6 +26,14 @@ pub trait NameOwner<R: TreeRoot>: AstNode<R> {
             .children()
             .filter_map(Name::cast)
             .next()
+    }
+}
+
+pub trait AttrsOwner<R: TreeRoot>: AstNode<R> {
+    fn attrs<'a>(&'a self) -> Box<Iterator<Item=Attr<R>> + 'a> where R: 'a {
+        let it = self.syntax().children()
+            .filter_map(Attr::cast);
+        Box::new(it)
     }
 }
 
@@ -39,31 +51,20 @@ impl<R: TreeRoot> File<R> {
 
 impl<R: TreeRoot> FnDef<R> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
-        self.syntax()
-            .children()
-            .filter(|node| node.kind() == ATTR)
-            .any(|attr| {
-                let mut metas = attr.children().filter(|node| node.kind() == META_ITEM);
-                let meta = match metas.next() {
-                    None => return false,
-                    Some(meta) => {
-                        if metas.next().is_some() {
-                            return false;
-                        }
-                        meta
-                    }
-                };
-                let mut children = meta.children();
-                match children.next() {
-                    None => false,
-                    Some(child) => {
-                        if children.next().is_some() {
-                            return false;
-                        }
-                        child.kind() == IDENT && child.text() == atom
-                    }
-                }
-            })
+        self.attrs()
+            .filter_map(|x| x.value())
+            .filter_map(|x| as_atom(x))
+            .any(|x| x == atom)
+    }
+}
+
+fn as_atom<R: TreeRoot>(tt: TokenTree<R>) -> Option<SmolStr> {
+    let syntax = tt.syntax_ref();
+    let (_bra, attr, _ket) = syntax.children().collect_tuple()?;
+    if attr.kind() == IDENT {
+        Some(attr.leaf_text().unwrap())
+    } else {
+        None
     }
 }
 
