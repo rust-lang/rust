@@ -98,7 +98,7 @@ pub fn get_fn(
         if instance.def.is_inline(tcx) {
             attributes::inline(llfn, attributes::InlineAttr::Hint);
         }
-        attributes::from_fn_attrs(cx, llfn, instance.def.def_id());
+        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()));
 
         let instance_def_id = instance.def_id();
 

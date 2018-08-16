@@ -182,7 +182,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     if instance.def.is_inline(cx.tcx) {
         attributes::inline(lldecl, attributes::InlineAttr::Hint);
     }
-    attributes::from_fn_attrs(cx, lldecl, instance.def.def_id());
+    attributes::from_fn_attrs(cx, lldecl, Some(instance.def.def_id()));
 
     cx.instances.borrow_mut().insert(instance, lldecl);
 }
