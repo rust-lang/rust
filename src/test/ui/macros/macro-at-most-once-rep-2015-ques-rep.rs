@@ -10,7 +10,7 @@
 
 // Test behavior of `?` macro _kleene op_ under the 2015 edition. Namely, it doesn't exist.
 
-// compile-flags: --edition=2015
+// edition:2015
 
 macro_rules! bar {
     ($(a)?) => {} //~ERROR expected `*` or `+`

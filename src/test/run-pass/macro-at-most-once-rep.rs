@@ -18,7 +18,7 @@
 //
 // This test focuses on non-error cases and making sure the correct number of repetitions happen.
 
-// compile-flags: --edition=2018
+// edition:2018
 
 #![feature(macro_at_most_once_rep)]
 

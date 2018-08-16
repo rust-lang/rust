@@ -11,7 +11,7 @@
 // Test behavior of `?` macro _separator_ under the 2015 edition. Namely, `?` can be used as a
 // separator, but you get a migration warning for the edition.
 
-// compile-flags: --edition=2015
+// edition:2015
 // compile-pass
 
 #![warn(rust_2018_compatibility)]

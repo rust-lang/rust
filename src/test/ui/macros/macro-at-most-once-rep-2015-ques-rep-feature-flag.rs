@@ -12,7 +12,7 @@
 // with the feature flag.
 
 // gate-test-macro_at_most_once_rep
-// compile-flags: --edition=2015
+// edition:2015
 
 #![feature(macro_at_most_once_rep)]
 

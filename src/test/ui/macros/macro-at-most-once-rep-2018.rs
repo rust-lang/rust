@@ -10,7 +10,7 @@
 
 // Tests that `?` is a Kleene op and not a macro separator in the 2018 edition.
 
-// compile-flags: --edition=2018
+// edition:2018
 
 #![feature(macro_at_most_once_rep)]
 
