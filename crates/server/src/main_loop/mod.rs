@@ -167,7 +167,10 @@ fn on_request(
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));
 
-        let world = world.snapshot();
+        let world = world.snapshot({
+            let pm = path_map.clone();
+            move |id, path| pm.resolve(id, path)
+        });
         let path_map = path_map.clone();
         let sender = sender.clone();
         pool.execute(move || {
@@ -234,7 +237,14 @@ fn on_notification(
         mem_map.insert(file_id, None);
         world.change_file(file_id, Some(params.text_document.text));
         update_file_notifications_on_threadpool(
-            pool, world.snapshot(), path_map.clone(), sender.clone(), uri,
+            pool,
+            world.snapshot({
+                let pm = path_map.clone();
+                move |id, path| pm.resolve(id, path)
+            }),
+            path_map.clone(),
+            sender.clone(),
+            uri,
         );
         Ok(())
     })?;
@@ -245,7 +255,14 @@ fn on_notification(
             .text;
         world.change_file(file_id, Some(text));
         update_file_notifications_on_threadpool(
-            pool, world.snapshot(), path_map.clone(), sender.clone(), params.text_document.uri,
+            pool,
+            world.snapshot({
+                let pm = path_map.clone();
+                move |id, path| pm.resolve(id, path)
+            }),
+            path_map.clone(),
+            sender.clone(),
+            params.text_document.uri,
         );
         Ok(())
     })?;
@@ -281,7 +298,10 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
 ) -> Result<()>
 {
     dispatch::handle_request::<R, _>(req, |params, resp| {
-        let world = world.snapshot();
+        let world = world.snapshot({
+            let pm = path_map.clone();
+            move |id, path| pm.resolve(id, path)
+        });
         let path_map = path_map.clone();
         let sender = sender.clone();
         pool.execute(move || {

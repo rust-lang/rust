@@ -34,6 +34,11 @@ impl PathMap {
             .as_path()
     }
 
+    pub fn resolve(&self, id: FileId, relpath: &Path) -> Option<FileId> {
+        let path = self.get_path(id).join(relpath);
+        self.get_id(&path)
+    }
+
     fn insert(&mut self, path: PathBuf, id: FileId) {
         self.path2id.insert(path.clone(), id);
         self.id2path.insert(id, path.clone());

@@ -15,6 +15,8 @@ use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
 use std::{
+    fmt,
+    path::Path,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering::SeqCst},
@@ -35,13 +37,22 @@ pub use self::symbol_index::Query;
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 const INDEXING_THRESHOLD: usize = 128;
 
+pub type FileResolver = dyn Fn(FileId, &Path) -> Option<FileId> + Send + Sync;
+
 pub struct WorldState {
     data: Arc<WorldData>
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct World {
+    file_resolver: Arc<FileResolver>,
     data: Arc<WorldData>,
+}
+
+impl fmt::Debug for World {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (&*self.data).fmt(f)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -54,8 +65,11 @@ impl WorldState {
         }
     }
 
-    pub fn snapshot(&self) -> World {
-        World { data: self.data.clone() }
+    pub fn snapshot(&self, file_resolver: impl Fn(FileId, &Path) -> Option<FileId> + 'static + Send + Sync) -> World {
+        World {
+            file_resolver: Arc::new(file_resolver),
+            data: self.data.clone()
+        }
     }
 
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
@@ -132,6 +146,10 @@ impl World {
         query.exact();
         query.limit(4);
         Ok(self.world_symbols(query).collect())
+    }
+
+    fn resolve_relative_path(&self, id: FileId, path: &Path) -> Option<FileId> {
+        (self.file_resolver)(id, path)
     }
 
     fn reindex(&self) {
