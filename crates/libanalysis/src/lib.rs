@@ -166,17 +166,6 @@ impl World {
     }
 }
 
-
-pub type SearchResult = ::std::result::Result<Continue, Break>;
-
-pub struct Continue;
-
-pub struct Break;
-
-pub const CONTINUE: SearchResult = Ok(Continue);
-pub const BREAK: SearchResult = Err(Break);
-
-
 #[derive(Default, Debug)]
 struct WorldData {
     unindexed: AtomicUsize,
