@@ -55,36 +55,33 @@ use core::mem;
 use core::raw;
 use core::panic::BoxMeUp;
 
-// Rust runtime's startup objects depend on these symbols, so make them public.
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub use imp::eh_frame_registry::*;
+#[macro_use]
+mod macros;
 
-// *-pc-windows-msvc
-#[cfg(target_env = "msvc")]
-#[path = "seh.rs"]
-mod imp;
-
-// x86_64-pc-windows-gnu
-#[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))]
-#[path = "seh64_gnu.rs"]
-mod imp;
-
-// i686-pc-windows-gnu and all others
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          target_os = "cloudabi",
-          target_os = "redox",
-          all(windows, target_arch = "x86", target_env = "gnu")))]
-#[path = "gcc.rs"]
-mod imp;
-
-// emscripten
-#[cfg(target_os = "emscripten")]
-#[path = "emcc.rs"]
-mod imp;
-
-#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
-#[path = "wasm32.rs"]
-mod imp;
+cfg_if! {
+    if #[cfg(target_os = "emscripten")] {
+        #[path = "emcc.rs"]
+        mod imp;
+    } else if #[cfg(target_arch = "wasm32")] {
+        #[path = "dummy.rs"]
+        mod imp;
+    } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
+        #[path = "dummy.rs"]
+        mod imp;
+    } else if #[cfg(target_env = "msvc")] {
+        #[path = "seh.rs"]
+        mod imp;
+    } else if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+        #[path = "seh64_gnu.rs"]
+        mod imp;
+    } else {
+        // Rust runtime's startup objects depend on these symbols, so make them public.
+        #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+        pub use imp::eh_frame_registry::*;
+        #[path = "gcc.rs"]
+        mod imp;
+    }
+}
 
 mod dwarf;
 mod windows;

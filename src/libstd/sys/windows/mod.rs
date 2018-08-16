@@ -266,8 +266,12 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 // handlers.
 //
 // https://msdn.microsoft.com/en-us/library/dn774154.aspx
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unreachable_code)]
 pub unsafe fn abort_internal() -> ! {
-    asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
-    ::intrinsics::unreachable();
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+        ::intrinsics::unreachable();
+    }
+    ::intrinsics::abort();
 }

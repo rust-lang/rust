@@ -229,6 +229,7 @@ impl StackFrame for c::STACKFRAME_EX {
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_I386
     }
+
     #[cfg(target_arch = "x86_64")]
     fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
         self.AddrPC.Offset = ctx.Rip as u64;
@@ -238,6 +239,17 @@ impl StackFrame for c::STACKFRAME_EX {
         self.AddrFrame.Offset = ctx.Rbp as u64;
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Fp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARM64
     }
 
     fn get_addr(&self) -> *const u8 {
@@ -260,6 +272,7 @@ impl StackFrame for c::STACKFRAME64 {
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_I386
     }
+
     #[cfg(target_arch = "x86_64")]
     fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
         self.AddrPC.Offset = ctx.Rip as u64;
@@ -269,6 +282,17 @@ impl StackFrame for c::STACKFRAME64 {
         self.AddrFrame.Offset = ctx.Rbp as u64;
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Fp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARM64
     }
 
     fn get_addr(&self) -> *const u8 {
