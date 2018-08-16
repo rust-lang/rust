@@ -436,6 +436,46 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
+        let l = dst.len();
+        match self.try_encode_utf8(dst) {
+            Some(s) => s,
+            None => panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                           self.len_utf8(), self as u32, l),
+        }
+    }
+
+    /// Encodes this character as UTF-8 into the provided byte buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
+    /// Returns `None` if buffer too short.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, 'ß' takes two bytes to encode.
+    ///
+    /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
+    /// let mut b = [0; 2];
+    ///
+    /// let result = 'ß'.try_encode_utf8(&mut b).unwrap();
+    ///
+    /// assert_eq!(result, "ß");
+    ///
+    /// assert_eq!(result.len(), 2);
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
+    /// let mut b = [0; 1];
+    ///
+    /// assert_eq!(None, 'ß'.try_encode_utf8(&mut b));
+    /// ```
+    #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
+    #[inline]
+    pub fn try_encode_utf8(self, dst: &mut [u8]) -> Option<&mut str> {
         let code = self as u32;
         unsafe {
             let len =
@@ -458,12 +498,9 @@ impl char {
                 *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
                 4
             } else {
-                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf8(),
-                    code,
-                    dst.len())
+                return None;
             };
-            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
+            Some(from_utf8_unchecked_mut(dst.get_unchecked_mut(..len)))
         }
     }
 
@@ -484,43 +521,73 @@ impl char {
     ///
     /// let result = '𝕊'.encode_utf16(&mut b);
     ///
+    /// assert_eq!(result, "𝕊");
+    ///
     /// assert_eq!(result.len(), 2);
     /// ```
     ///
     /// A buffer that's too small:
     ///
     /// ```
-    /// use std::thread;
+    /// let mut b = [0; 1];
     ///
-    /// let result = thread::spawn(|| {
-    ///     let mut b = [0; 1];
-    ///
-    ///     // this panics
-    ///     '𝕊'.encode_utf16(&mut b);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// assert_eq!(None, '𝕊'.encode_utf16(&mut b));
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
+        let l = dst.len();
+        match self.try_encode_utf16(dst) {
+            Some(s) => s,
+            None => panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                           self.len_utf16(), self as u32, l),
+        }
+    }
+
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
+    /// Returns `None` if buffer too short.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, '𝕊' takes two `u16`s to encode.
+    ///
+    /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
+    /// let mut b = [0; 2];
+    ///
+    /// let result = '𝕊'.try_encode_utf16(&mut b).unwrap();
+    ///
+    /// assert_eq!(result.len(), 2);
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
+    /// let mut b = [0; 1];
+    ///
+    /// assert_eq!(None, '𝕊'.try_encode_utf16(&mut b));
+    /// ```
+    #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
+    #[inline]
+    pub fn try_encode_utf16(self, dst: &mut [u16]) -> Option<&mut [u16]> {
         let mut code = self as u32;
         unsafe {
             if (code & 0xFFFF) == code && !dst.is_empty() {
                 // The BMP falls through (assuming non-surrogate, as it should)
                 *dst.get_unchecked_mut(0) = code as u16;
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
+                Some(slice::from_raw_parts_mut(dst.as_mut_ptr(), 1))
             } else if dst.len() >= 2 {
                 // Supplementary planes break into surrogates.
                 code -= 0x1_0000;
                 *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
                 *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
+                Some(slice::from_raw_parts_mut(dst.as_mut_ptr(), 2))
             } else {
-                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf16(),
-                    code,
-                    dst.len())
+                None
             }
         }
     }
