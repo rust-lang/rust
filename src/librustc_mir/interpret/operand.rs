@@ -261,9 +261,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     pub fn uninit_operand(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Operand> {
-        // FIXME: Aren't we supposed to also be immediate for a ZST?
         // This decides which types we will use the Immediate optimization for, and hence should
         // match what `try_read_value` and `eval_place_to_op` support.
+        if layout.is_zst() {
+            return Ok(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
+        }
+
         Ok(match layout.abi {
             layout::Abi::Scalar(..) =>
                 Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)),
