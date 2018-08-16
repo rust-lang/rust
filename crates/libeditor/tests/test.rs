@@ -116,7 +116,12 @@ fn test_add_derive() {
         "struct Foo { a: i32, <|>}",
         "#[derive(<|>)]\nstruct Foo { a: i32, }",
         |file, off| add_derive(file, off).map(|f| f()),
-    )
+    );
+    check_action(
+        "#[derive(Clone)]\nstruct Foo { a: i32<|>, }",
+        "#[derive(Clone<|>)]\nstruct Foo { a: i32, }",
+        |file, off| add_derive(file, off).map(|f| f()),
+    );
 }
 
 #[test]

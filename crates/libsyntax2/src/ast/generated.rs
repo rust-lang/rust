@@ -339,6 +339,7 @@ impl<R: TreeRoot> AstNode<R> for NominalDef<R> {
     }
 }
 
+impl<R: TreeRoot> ast::AttrsOwner<R> for NominalDef<R> {}
 impl<R: TreeRoot> NominalDef<R> {}
 
 // ParenType

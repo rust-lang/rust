@@ -1,6 +1,6 @@
 use {TextUnit, File, EditBuilder, Edit};
 use libsyntax2::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AttrsOwner},
     SyntaxKind::COMMA,
     SyntaxNodeRef,
     SyntaxRoot,
@@ -39,18 +39,28 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
 }
 
 pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
-    let syntax = file.syntax();
-    let syntax = syntax.as_ref();
-    let nominal = find_node::<ast::NominalDef<_>>(syntax, offset)?;
+    let nominal = find_node::<ast::NominalDef<_>>(file.syntax_ref(), offset)?;
     Some(move || {
+        let derive_attr = nominal
+            .attrs()
+            .filter_map(|x| x.as_call())
+            .filter(|(name, _arg)| name == "derive")
+            .map(|(_name, arg)| arg)
+            .next();
         let mut edit = EditBuilder::new();
-        let node_start = nominal.syntax().range().start();
-        edit.insert(node_start, "#[derive()]\n".to_string());
+        let offset = match derive_attr {
+            None => {
+                let node_start = nominal.syntax().range().start();
+                edit.insert(node_start, "#[derive()]\n".to_string());
+                node_start + TextUnit::of_str("#[derive(")
+            }
+            Some(tt) => {
+                tt.syntax().range().end() - TextUnit::of_char(')')
+            }
+        };
         ActionResult {
             edit: edit.finish(),
-            cursor_position: CursorPosition::Offset(
-                node_start + TextUnit::of_str("#[derive(")
-            ),
+            cursor_position: CursorPosition::Offset(offset),
         }
     })
 }

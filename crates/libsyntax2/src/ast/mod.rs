@@ -52,19 +52,31 @@ impl<R: TreeRoot> File<R> {
 impl<R: TreeRoot> FnDef<R> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs()
-            .filter_map(|x| x.value())
-            .filter_map(|x| as_atom(x))
+            .filter_map(|x| x.as_atom())
             .any(|x| x == atom)
     }
 }
 
-fn as_atom<R: TreeRoot>(tt: TokenTree<R>) -> Option<SmolStr> {
-    let syntax = tt.syntax_ref();
-    let (_bra, attr, _ket) = syntax.children().collect_tuple()?;
-    if attr.kind() == IDENT {
-        Some(attr.leaf_text().unwrap())
-    } else {
-        None
+impl<R: TreeRoot> Attr<R> {
+    pub fn as_atom(&self) -> Option<SmolStr> {
+        let tt = self.value()?;
+        let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
+        if attr.kind() == IDENT {
+            Some(attr.leaf_text().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_call(&self) -> Option<(SmolStr, TokenTree<R>)> {
+        let tt = self.value()?;
+        let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
+        let args = TokenTree::cast(args)?;
+        if attr.kind() == IDENT {
+            Some((attr.leaf_text().unwrap(), args))
+        } else {
+            None
+        }
     }
 }
 

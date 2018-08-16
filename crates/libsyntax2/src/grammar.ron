@@ -272,6 +272,9 @@ Grammar(
             "DynTraitType",
         ]),
 
-        "NominalDef": ( enum: ["StructDef", "EnumDef"]),
+        "NominalDef": (
+            enum: ["StructDef", "EnumDef"],
+            traits: [ "AttrsOwner" ],
+        ),
     },
 )
