@@ -179,6 +179,14 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore, conf: &Conf) {
+    store.register_pre_expansion_pass(Some(session), box write::Pass);
+    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
+    store.register_pre_expansion_pass(Some(session), box non_expressive_names::NonExpressiveNames {
+        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
+    });
+}
+
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
     match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
@@ -223,14 +231,6 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
             toml::from_str("").expect("we never error on empty config files")
         }
     }
-}
-
-pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore, conf: &Conf) {
-    store.register_pre_expansion_pass(Some(session), box write::Pass);
-    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
-    store.register_pre_expansion_pass(Some(session), box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
-    });
 }
 
 #[rustfmt::skip]
