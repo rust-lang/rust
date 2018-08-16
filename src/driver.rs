@@ -96,7 +96,9 @@ pub fn main() {
                     .span,
             );
             registry.args_hidden = Some(Vec::new());
-            clippy_lints::register_plugins(&mut registry);
+
+            let conf = clippy_lints::read_conf(&registry);
+            clippy_lints::register_plugins(&mut registry, &conf);
 
             let rustc_plugin::registry::Registry {
                 early_lint_passes,
@@ -118,7 +120,7 @@ pub fn main() {
             for (name, to) in lint_groups {
                 ls.register_group(Some(sess), true, name, to);
             }
-            clippy_lints::register_pre_expansion_lints(sess, &mut ls);
+            clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
 
             sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
             sess.plugin_attributes.borrow_mut().extend(attributes);

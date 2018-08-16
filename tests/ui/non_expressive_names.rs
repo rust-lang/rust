@@ -1,7 +1,7 @@
 
 
 #![warn(clippy,similar_names)]
-#![allow(unused)]
+#![allow(unused, println_empty_string)]
 
 
 struct Foo {
@@ -140,6 +140,11 @@ fn underscores_and_numbers() {
     let ____1 = 1; //~ERROR Consider a more descriptive name
     let __1___2 = 12; //~ERROR Consider a more descriptive name
     let _1_ok= 1;
+}
+
+fn issue2927() {
+  let args = 1;
+  format!("{:?}", 2);
 }
 
 struct Bar;
