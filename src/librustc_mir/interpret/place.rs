@@ -551,15 +551,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // correct if we never look at this data with the wrong type.
         match value {
             Value::Scalar(scalar) => {
-                let signed = match dest.layout.abi {
-                    layout::Abi::Scalar(ref scal) => match scal.value {
-                        layout::Primitive::Int(_, signed) => signed,
-                        _ => false,
-                    },
-                    _ => false,
-                };
                 self.memory.write_scalar(
-                    dest.ptr, dest.align, scalar, dest.layout.size, dest.layout.align, signed
+                    dest.ptr, dest.align, scalar, dest.layout.size, dest.layout.align
                 )
             }
             Value::ScalarPair(a_val, b_val) => {
@@ -572,9 +565,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let a_ptr = dest.ptr;
                 let b_offset = a_size.abi_align(b_align);
                 let b_ptr = a_ptr.ptr_offset(b_offset, &self)?.into();
-                // TODO: What about signedess?
-                self.memory.write_scalar(a_ptr, dest.align, a_val, a_size, a_align, false)?;
-                self.memory.write_scalar(b_ptr, dest.align, b_val, b_size, b_align, false)
+
+                self.memory.write_scalar(a_ptr, dest.align, a_val, a_size, a_align)?;
+                self.memory.write_scalar(b_ptr, dest.align, b_val, b_size, b_align)
             }
         }
     }

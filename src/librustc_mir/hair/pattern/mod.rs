@@ -16,10 +16,10 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use interpret::{const_field, const_variant_index, self};
+use interpret::{const_field, const_variant_index};
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::interpret::{Scalar, GlobalId, ConstValue};
+use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -1086,8 +1086,8 @@ pub fn compare_const_vals<'a, 'tcx>(
             ty::TyInt(_) => {
                 let layout = tcx.layout_of(ty).ok()?;
                 assert!(layout.abi.is_signed());
-                let a = interpret::sign_extend(a, layout.size);
-                let b = interpret::sign_extend(b, layout.size);
+                let a = sign_extend(a, layout.size);
+                let b = sign_extend(b, layout.size);
                 Some((a as i128).cmp(&(b as i128)))
             },
             _ => Some(a.cmp(&b)),

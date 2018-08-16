@@ -567,23 +567,31 @@ pub fn write_target_uint(
     }
 }
 
-pub fn write_target_int(
-    endianness: layout::Endian,
-    mut target: &mut [u8],
-    data: i128,
-) -> Result<(), io::Error> {
-    let len = target.len();
-    match endianness {
-        layout::Endian::Little => target.write_int128::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_int128::<BigEndian>(data, len),
-    }
-}
-
 pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     match endianness {
         layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
         layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Methods to faciliate working with signed integers stored in a u128
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn sign_extend(value: u128, size: Size) -> u128 {
+    let size = size.bits();
+    // sign extend
+    let shift = 128 - size;
+    // shift the unsigned value to the left
+    // and back to the right as signed (essentially fills with FF on the left)
+    (((value << shift) as i128) >> shift) as u128
+}
+
+pub fn truncate(value: u128, size: Size) -> u128 {
+    let size = size.bits();
+    let shift = 128 - size;
+    // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+    (value << shift) >> shift
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -8,8 +8,8 @@ use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, ScalarMaybeUndef,
-                            EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
-pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
+                            EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType, truncate};
+pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
 use syntax::ast::Mutability;
@@ -791,7 +791,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         val: ScalarMaybeUndef,
         type_size: Size,
         type_align: Align,
-        signed: bool,
     ) -> EvalResult<'tcx> {
         let endianness = self.endianness();
         self.check_align(ptr, ptr_align)?;
@@ -815,6 +814,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, type_size.bytes());
+                assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                    "Unexpected value of size {} when writing to memory", size);
                 bits
             },
         };
@@ -823,12 +824,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         {
             let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(type_align))?;
-            // TODO: Why do we still need `signed` here? We do NOT have it for loading!
-            if signed {
-                write_target_int(endianness, dst, bytes as i128).unwrap();
-            } else {
-                write_target_uint(endianness, dst, bytes).unwrap();
-            }
+            write_target_uint(endianness, dst, bytes).unwrap();
         }
 
         // See if we have to also write a relocation
@@ -845,9 +841,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, ptr_align, false)
+        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, ptr_align)
     }
 
     fn int_align(&self, size: Size) -> Align {

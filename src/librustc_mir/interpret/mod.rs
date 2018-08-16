@@ -13,8 +13,7 @@ mod traits;
 mod const_eval;
 
 pub use self::eval_context::{
-    EvalContext, Frame, StackPopCleanup,
-    sign_extend, truncate, LocalValue,
+    EvalContext, Frame, StackPopCleanup, LocalValue,
 };
 
 pub use self::place::{Place, PlaceExtra, PlaceTy, MemPlace, MPlaceTy};

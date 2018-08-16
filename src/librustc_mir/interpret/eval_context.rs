@@ -18,6 +18,7 @@ use rustc::mir::interpret::{
     GlobalId, Scalar, FrameInfo, AllocType,
     EvalResult, EvalErrorKind,
     ScalarMaybeUndef,
+    truncate, sign_extend,
 };
 
 use syntax::source_map::{self, Span};
@@ -906,10 +907,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
+    #[inline(always)]
     pub fn frame(&self) -> &Frame<'mir, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
+    #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
@@ -1028,13 +1031,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         (frames, self.tcx.span)
     }
 
+    #[inline(always)]
     pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
-        super::sign_extend(value, ty.size)
+        sign_extend(value, ty.size)
     }
 
+    #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
-        super::truncate(value, ty.size)
+        truncate(value, ty.size)
     }
 
     fn dump_field_name(&self, s: &mut String, ty: Ty<'tcx>, i: usize, variant: usize) -> ::std::fmt::Result {
@@ -1105,18 +1110,3 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 }
 
-pub fn sign_extend(value: u128, size: Size) -> u128 {
-    let size = size.bits();
-    // sign extend
-    let shift = 128 - size;
-    // shift the unsigned value to the left
-    // and back to the right as signed (essentially fills with FF on the left)
-    (((value << shift) as i128) >> shift) as u128
-}
-
-pub fn truncate(value: u128, size: Size) -> u128 {
-    let size = size.bits();
-    let shift = 128 - size;
-    // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
-    (value << shift) >> shift
-}
