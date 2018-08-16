@@ -396,6 +396,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! writeln {
     ($dst:expr) => (
         write!($dst, "\n")
@@ -403,11 +404,8 @@ macro_rules! writeln {
     ($dst:expr,) => (
         writeln!($dst)
     );
-    ($dst:expr, $fmt:expr) => (
-        write!($dst, concat!($fmt, "\n"))
-    );
-    ($dst:expr, $fmt:expr, $($arg:tt)*) => (
-        write!($dst, concat!($fmt, "\n"), $($arg)*)
+    ($dst:expr, $($arg:tt)*) => (
+        $dst.write_fmt(format_args_nl!($($arg)*))
     );
 }
 
