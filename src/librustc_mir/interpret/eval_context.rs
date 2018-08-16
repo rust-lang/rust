@@ -24,7 +24,7 @@ use syntax::source_map::{self, Span};
 use syntax::ast::Mutability;
 
 use super::{
-    Value, ValTy, Operand, MemPlace, MPlaceTy, Place, PlaceExtra,
+    Value, Operand, MemPlace, MPlaceTy, Place, PlaceExtra,
     Memory, Machine
 };
 
@@ -466,18 +466,19 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.layout_of(local_ty)
     }
 
-    /// Return the size and alignment of the value at the given type.
+    /// Return the actual dynamic size and alignment of the place at the given type.
     /// Note that the value does not matter if the type is sized. For unsized types,
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
-    pub fn size_and_align_of_val(
+    pub fn size_and_align_of_mplace(
         &self,
-        val: ValTy<'tcx>,
+        mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, (Size, Align)> {
-        let pointee_ty = val.layout.ty.builtin_deref(true).unwrap().ty;
-        let layout = self.layout_of(pointee_ty)?;
-        if !layout.is_unsized() {
-            Ok(layout.size_and_align())
+        if let PlaceExtra::None = mplace.extra {
+            assert!(!mplace.layout.is_unsized());
+            Ok(mplace.layout.size_and_align())
         } else {
+            let layout = mplace.layout;
+            assert!(layout.is_unsized());
             match layout.ty.sty {
                 ty::TyAdt(..) | ty::TyTuple(..) => {
                     // First get the size of all statically known fields.
@@ -498,12 +499,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let field_layout = layout.field(self, layout.fields.count() - 1)?;
-                    let (unsized_size, unsized_align) =
-                        self.size_and_align_of_val(ValTy {
-                            value: val.value,
-                            layout: field_layout
-                        })?;
+                    let field = self.mplace_field(mplace, layout.fields.count() as u64 - 1)?;
+                    let (unsized_size, unsized_align) = self.size_and_align_of_mplace(field)?;
 
                     // FIXME (#26403, #27023): We should be adding padding
                     // to `sized_size` (to accommodate the `unsized_align`
@@ -533,18 +530,24 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     Ok((size.abi_align(align), align))
                 }
                 ty::TyDynamic(..) => {
-                    let (_, vtable) = val.to_scalar_dyn_trait()?;
+                    let vtable = match mplace.extra {
+                        PlaceExtra::Vtable(vtable) => vtable,
+                        _ => bug!("Expected vtable"),
+                    };
                     // the second entry in the vtable is the dynamic size of the object.
                     self.read_size_and_align_from_vtable(vtable)
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
+                    let len = match mplace.extra {
+                        PlaceExtra::Length(len) => len,
+                        _ => bug!("Expected length"),
+                    };
                     let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                    let (_, len) = val.to_scalar_slice(self)?;
                     Ok((elem_size * len, align))
                 }
 
-                _ => bug!("size_of_val::<{:?}>", layout.ty),
+                _ => bug!("size_of_val::<{:?}> not supported", layout.ty),
             }
         }
     }
