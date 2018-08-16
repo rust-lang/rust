@@ -384,10 +384,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     ptr_align
                 )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
+
+                // We have to patch the self argument, in particular get the layout
+                // expected by the actual function. Cannot just use "field 0" due to
+                // Box<self>.
                 let mut args = args.to_vec();
-                let layout = args[0].layout.field(&self, 0)?;
-                args[0].layout = layout;
-                args[0].op = Operand::Immediate(Value::Scalar(ptr.into()));
+                let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
+                let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
+                args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(&self, 0)?;
+                args[0].op = Operand::Immediate(Value::Scalar(ptr.into())); // strip vtable
+                trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(instance, destination, &args, span, sig)
             }
