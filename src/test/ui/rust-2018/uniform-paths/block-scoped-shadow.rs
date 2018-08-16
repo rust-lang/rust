@@ -14,10 +14,18 @@
 
 enum Foo { A, B }
 
+struct std;
+
 fn main() {
     enum Foo {}
     use Foo::*;
-    //~^ ERROR import from `Foo` is ambiguous
+    //~^ ERROR `Foo` import is ambiguous
 
     let _ = (A, B);
+
+    fn std() {}
+    enum std {}
+    use std as foo;
+    //~^ ERROR `std` import is ambiguous
+    //~| ERROR `std` import is ambiguous
 }

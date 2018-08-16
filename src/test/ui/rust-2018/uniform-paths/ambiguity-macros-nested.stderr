@@ -1,13 +1,13 @@
-error: import from `std` is ambiguous
+error: `std` import is ambiguous
   --> $DIR/ambiguity-macros-nested.rs:18:13
    |
 LL |       pub use std::io;
-   |               ^^^ could refer to external crate `::std`
+   |               ^^^ can refer to external crate `::std`
 ...
 LL | /             mod std {
 LL | |                 pub struct io;
 LL | |             }
-   | |_____________- could also refer to `self::std`
+   | |_____________- can refer to `self::std`
    |
    = help: write `::std` or `self::std` explicitly instead
    = note: relative `use` paths enabled by `#![feature(uniform_paths)]`

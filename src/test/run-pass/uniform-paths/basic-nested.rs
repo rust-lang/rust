@@ -10,7 +10,7 @@
 
 // edition:2018
 
-#![feature(uniform_paths)]
+#![feature(decl_macro, uniform_paths)]
 
 // This test is similar to `basic.rs`, but nested in modules.
 
@@ -40,6 +40,11 @@ mod bar {
     // item, e.g. the automatically injected `extern crate std;`, which in
     // the Rust 2018 should no longer be visible through `crate::std`.
     pub use std::io;
+
+    // Also test that items named `std` in other namespaces don't
+    // cause ambiguity errors for the import from `std` above.
+    pub fn std() {}
+    pub macro std() {}
 }
 
 
@@ -49,4 +54,6 @@ fn main() {
     foo::local_io(());
     io::stdout();
     bar::io::stdout();
+    bar::std();
+    bar::std!();
 }
