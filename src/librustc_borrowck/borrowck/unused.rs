@@ -13,6 +13,7 @@ use rustc::hir::{self, HirId};
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::ty;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use errors::Applicability;
 use std::slice;
 use syntax::ptr::P;
 
@@ -83,7 +84,11 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                                      hir_id,
                                      span,
                                      "variable does not need to be mutable")
-                .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
+                .span_suggestion_short_with_applicability(
+                    mut_span,
+                    "remove this `mut`",
+                    "".to_owned(),
+                    Applicability::MachineApplicable)
                 .emit();
         }
     }

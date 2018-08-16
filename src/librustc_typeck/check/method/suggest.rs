@@ -24,7 +24,7 @@ use util::nodemap::FxHashSet;
 
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::{Span, FileName};
 
 
@@ -406,11 +406,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if static_sources.len() == 1 {
                     if let Some(expr) = rcvr_expr {
-                        err.span_suggestion(expr.span.to(span),
+                        err.span_suggestion_with_applicability(expr.span.to(span),
                                             "use associated function syntax instead",
                                             format!("{}::{}",
                                                     self.ty_to_string(actual),
-                                                    item_name));
+                                                    item_name),
+                                            Applicability::MachineApplicable);
                     } else {
                         err.help(&format!("try with `{}::{}`",
                                           self.ty_to_string(actual), item_name));
