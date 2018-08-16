@@ -5,10 +5,16 @@ LL |     match &s.x {
    |           ^^^^ cannot move out of borrowed content
 LL |         &E::Foo => {}
 LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
-   |                 ----------
-   |                 |
-   |                 data moved here
-   |                 help: to prevent move, use ref or ref mut: `ref identifier`
+   |         -------------------
+   |         |       |
+   |         |       data moved here
+   |         help: consider removing the `&`: `E::Bar(identifier)`
+   |
+note: move occurs because `identifier` has type `std::string::String`, which does not implement the `Copy` trait
+  --> $DIR/by-move-pattern-binding.rs:26:17
+   |
+LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+   |                 ^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -5,14 +5,24 @@ LL |     match *f {             //~ ERROR cannot move out of
    |           ^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider removing this dereference operator: `f`
+   |           help: consider removing the `*`: `f`
 LL |                            //~| cannot move out
 LL |         Foo::Foo1(num1,
-   |                   ---- move occurs because num1 has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+   |                   ---- data moved here
 LL |                   num2) => (),
-   |                   ---- move occurs because num2 has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+   |                   ---- ...and here
 LL |         Foo::Foo2(num) => (),
-   |                   --- move occurs because num has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+   |                   --- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:23:19
+   |
+LL |         Foo::Foo1(num1,
+   |                   ^^^^
+LL |                   num2) => (),
+   |                   ^^^^
+LL |         Foo::Foo2(num) => (),
+   |                   ^^^
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
   --> $DIR/borrowck-move-error-with-note.rs:39:11
@@ -23,12 +33,15 @@ LL |     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
 LL |             f: _s,
    |                -- data moved here
 LL |             g: _t
-   |                -- ... and here
-help: to prevent move, use ref or ref mut
+   |                -- ...and here
    |
-LL |             f: ref _s,
-LL |             g: ref _t
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:42:16
    |
+LL |             f: _s,
+   |                ^^
+LL |             g: _t
+   |                ^^
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-error-with-note.rs:57:11
@@ -37,10 +50,16 @@ LL |     match a.a {           //~ ERROR cannot move out of
    |           ^^^
    |           |
    |           cannot move out of borrowed content
-   |           help: consider using a reference instead: `&a.a`
+   |           help: consider borrowing here: `&a.a`
 LL |                           //~| cannot move out
 LL |         n => {
-   |         - move occurs because n has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |         - data moved here
+   |
+note: move occurs because `n` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:59:9
+   |
+LL |         n => {
+   |         ^
 
 error: aborting due to 3 previous errors
 

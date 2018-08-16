@@ -1235,7 +1235,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     ty::BindByReference(..) => {
                         let let_span = self.tcx.hir.span(node_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
-                        if let Some((let_span, replace_str)) = suggestion {
+                        if let Some(replace_str) = suggestion {
                             db.span_suggestion(
                                 let_span,
                                 "use a mutable reference instead",

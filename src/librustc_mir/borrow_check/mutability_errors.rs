@@ -329,7 +329,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
                         ..
-                    })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+                    })) => {
+                        let pattern_span = local_decl.source_info.span;
+                        suggest_ref_mut(self.tcx, pattern_span)
+                            .map(|replacement| (pattern_span, replacement))
+                    }
 
                     //
                     ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),

@@ -7,14 +7,23 @@ LL |                 &[Foo { string: a },
    |                                 - data moved here
 ...
 LL |                   Foo { string: b }] => {
-   |                                 - ... and here
-help: to prevent move, use ref or ref mut
+   |                                 - ...and here
    |
-LL |                 &[Foo { string: ref a },
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:30:33
+   |
+LL |                 &[Foo { string: a },
+   |                                 ^
+...
+LL |                   Foo { string: b }] => {
+   |                                 ^
+help: consider removing the `&`
+   |
+LL |                 [Foo { string: a },
 LL |                 //~^ ERROR cannot move out of type `[Foo]`
 LL |                 //~| cannot move out
 LL |                 //~| to prevent move
-LL |                   Foo { string: ref b }] => {
+LL |                   Foo { string: b }] => {
    |
 
 error: aborting due to previous error

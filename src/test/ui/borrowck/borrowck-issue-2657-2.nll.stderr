@@ -5,7 +5,7 @@ LL |         let _b = *y; //~ ERROR cannot move out
    |                  ^^
    |                  |
    |                  cannot move out of borrowed content
-   |                  help: consider removing this dereference operator: `y`
+   |                  help: consider removing the `*`: `y`
 
 error: aborting due to previous error
 

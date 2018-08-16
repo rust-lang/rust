@@ -5,7 +5,7 @@ LL |     let a = unsafe { *mut_ref() };
    |                      ^^^^^^^^^^
    |                      |
    |                      cannot move out of borrowed content
-   |                      help: consider using a reference instead: `&*mut_ref()`
+   |                      help: consider removing the `*`: `mut_ref()`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-20801.rs:39:22
@@ -14,7 +14,7 @@ LL |     let b = unsafe { *imm_ref() };
    |                      ^^^^^^^^^^
    |                      |
    |                      cannot move out of borrowed content
-   |                      help: consider using a reference instead: `&*imm_ref()`
+   |                      help: consider removing the `*`: `imm_ref()`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-20801.rs:42:22
@@ -23,7 +23,7 @@ LL |     let c = unsafe { *mut_ptr() };
    |                      ^^^^^^^^^^
    |                      |
    |                      cannot move out of borrowed content
-   |                      help: consider using a reference instead: `&*mut_ptr()`
+   |                      help: consider removing the `*`: `mut_ptr()`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-20801.rs:45:22
@@ -32,7 +32,7 @@ LL |     let d = unsafe { *const_ptr() };
    |                      ^^^^^^^^^^^^
    |                      |
    |                      cannot move out of borrowed content
-   |                      help: consider using a reference instead: `&*const_ptr()`
+   |                      help: consider removing the `*`: `const_ptr()`
 
 error: aborting due to 4 previous errors
 

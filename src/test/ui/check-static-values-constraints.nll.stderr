@@ -56,7 +56,7 @@ LL |     let y = { static x: Box<isize> = box 3; x };
    |                                             ^
    |                                             |
    |                                             cannot move out of static item
-   |                                             help: consider using a reference instead: `&x`
+   |                                             help: consider borrowing here: `&x`
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:120:38

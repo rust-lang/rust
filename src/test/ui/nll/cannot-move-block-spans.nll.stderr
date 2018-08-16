@@ -5,7 +5,7 @@ LL |     let x = { *r }; //~ ERROR
    |               ^^
    |               |
    |               cannot move out of borrowed content
-   |               help: consider removing this dereference operator: `r`
+   |               help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:16:22
@@ -14,7 +14,7 @@ LL |     let y = unsafe { *r }; //~ ERROR
    |                      ^^
    |                      |
    |                      cannot move out of borrowed content
-   |                      help: consider removing this dereference operator: `r`
+   |                      help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:17:26
@@ -23,7 +23,7 @@ LL |     let z = loop { break *r; }; //~ ERROR
    |                          ^^
    |                          |
    |                          cannot move out of borrowed content
-   |                          help: consider removing this dereference operator: `r`
+   |                          help: consider removing the `*`: `r`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:21:15
@@ -32,7 +32,7 @@ LL |     let x = { arr[0] }; //~ ERROR
    |               ^^^^^^
    |               |
    |               cannot move out of here
-   |               help: consider using a reference instead: `&arr[0]`
+   |               help: consider borrowing here: `&arr[0]`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:22:22
@@ -41,7 +41,7 @@ LL |     let y = unsafe { arr[0] }; //~ ERROR
    |                      ^^^^^^
    |                      |
    |                      cannot move out of here
-   |                      help: consider using a reference instead: `&arr[0]`
+   |                      help: consider borrowing here: `&arr[0]`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:23:26
@@ -50,7 +50,7 @@ LL |     let z = loop { break arr[0]; }; //~ ERROR
    |                          ^^^^^^
    |                          |
    |                          cannot move out of here
-   |                          help: consider using a reference instead: `&arr[0]`
+   |                          help: consider borrowing here: `&arr[0]`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:27:38
@@ -59,7 +59,7 @@ LL |     let x = { let mut u = 0; u += 1; *r }; //~ ERROR
    |                                      ^^
    |                                      |
    |                                      cannot move out of borrowed content
-   |                                      help: consider removing this dereference operator: `r`
+   |                                      help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:28:45
@@ -68,7 +68,7 @@ LL |     let y = unsafe { let mut u = 0; u += 1; *r }; //~ ERROR
    |                                             ^^
    |                                             |
    |                                             cannot move out of borrowed content
-   |                                             help: consider removing this dereference operator: `r`
+   |                                             help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:29:49
@@ -77,7 +77,7 @@ LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; }; //~ ERROR
    |                                                 ^^
    |                                                 |
    |                                                 cannot move out of borrowed content
-   |                                                 help: consider removing this dereference operator: `r`
+   |                                                 help: consider removing the `*`: `r`
 
 error: aborting due to 9 previous errors
 

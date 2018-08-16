@@ -1,0 +1,998 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:50:17
+   |
+LL |     let X(_t) = *s;
+   |           --    ^^
+   |           |     |
+   |           |     cannot move out of borrowed content
+   |           |     help: consider removing the `*`: `s`
+   |           data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:50:11
+   |
+LL |     let X(_t) = *s;
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:54:30
+   |
+LL |     if let Either::One(_t) = *r { }
+   |                        --    ^^
+   |                        |     |
+   |                        |     cannot move out of borrowed content
+   |                        |     help: consider removing the `*`: `r`
+   |                        data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:54:24
+   |
+LL |     if let Either::One(_t) = *r { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:58:33
+   |
+LL |     while let Either::One(_t) = *r { }
+   |                           --    ^^
+   |                           |     |
+   |                           |     cannot move out of borrowed content
+   |                           |     help: consider removing the `*`: `r`
+   |                           data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:58:27
+   |
+LL |     while let Either::One(_t) = *r { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:62:11
+   |
+LL |     match *r {
+   |           ^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `r`
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:66:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:69:11
+   |
+LL |     match *r {
+   |           ^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `r`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:73:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:78:17
+   |
+LL |     let X(_t) = *sm;
+   |           --    ^^^
+   |           |     |
+   |           |     cannot move out of borrowed content
+   |           |     help: consider removing the `*`: `sm`
+   |           data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:78:11
+   |
+LL |     let X(_t) = *sm;
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:82:30
+   |
+LL |     if let Either::One(_t) = *rm { }
+   |                        --    ^^^
+   |                        |     |
+   |                        |     cannot move out of borrowed content
+   |                        |     help: consider removing the `*`: `rm`
+   |                        data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:82:24
+   |
+LL |     if let Either::One(_t) = *rm { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:86:33
+   |
+LL |     while let Either::One(_t) = *rm { }
+   |                           --    ^^^
+   |                           |     |
+   |                           |     cannot move out of borrowed content
+   |                           |     help: consider removing the `*`: `rm`
+   |                           data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:86:27
+   |
+LL |     while let Either::One(_t) = *rm { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:90:11
+   |
+LL |     match *rm {
+   |           ^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `rm`
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:94:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:97:11
+   |
+LL |     match *rm {
+   |           ^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `rm`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:101:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:105:11
+   |
+LL |     match *rm {
+   |           ^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `rm`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:109:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:114:17
+   |
+LL |     let X(_t) = vs[0];
+   |           --    ^^^^^
+   |           |     |
+   |           |     cannot move out of borrowed content
+   |           |     help: consider borrowing here: `&vs[0]`
+   |           data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:114:11
+   |
+LL |     let X(_t) = vs[0];
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:118:30
+   |
+LL |     if let Either::One(_t) = vr[0] { }
+   |                        --    ^^^^^
+   |                        |     |
+   |                        |     cannot move out of borrowed content
+   |                        |     help: consider borrowing here: `&vr[0]`
+   |                        data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:118:24
+   |
+LL |     if let Either::One(_t) = vr[0] { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:122:33
+   |
+LL |     while let Either::One(_t) = vr[0] { }
+   |                           --    ^^^^^
+   |                           |     |
+   |                           |     cannot move out of borrowed content
+   |                           |     help: consider borrowing here: `&vr[0]`
+   |                           data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:122:27
+   |
+LL |     while let Either::One(_t) = vr[0] { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:126:11
+   |
+LL |     match vr[0] {
+   |           ^^^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&vr[0]`
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:130:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:133:11
+   |
+LL |     match vr[0] {
+   |           ^^^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&vr[0]`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:137:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:142:17
+   |
+LL |     let X(_t) = vsm[0];
+   |           --    ^^^^^^
+   |           |     |
+   |           |     cannot move out of borrowed content
+   |           |     help: consider borrowing here: `&vsm[0]`
+   |           data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:142:11
+   |
+LL |     let X(_t) = vsm[0];
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:146:30
+   |
+LL |     if let Either::One(_t) = vrm[0] { }
+   |                        --    ^^^^^^
+   |                        |     |
+   |                        |     cannot move out of borrowed content
+   |                        |     help: consider borrowing here: `&vrm[0]`
+   |                        data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:146:24
+   |
+LL |     if let Either::One(_t) = vrm[0] { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:150:33
+   |
+LL |     while let Either::One(_t) = vrm[0] { }
+   |                           --    ^^^^^^
+   |                           |     |
+   |                           |     cannot move out of borrowed content
+   |                           |     help: consider borrowing here: `&vrm[0]`
+   |                           data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:150:27
+   |
+LL |     while let Either::One(_t) = vrm[0] { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:154:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&vrm[0]`
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:158:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:161:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&vrm[0]`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:165:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:169:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&vrm[0]`
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:173:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:180:18
+   |
+LL |     let &X(_t) = s;
+   |         ------   ^ cannot move out of borrowed content
+   |         |  |
+   |         |  data moved here
+   |         help: consider removing the `&`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:180:12
+   |
+LL |     let &X(_t) = s;
+   |            ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:184:31
+   |
+LL |     if let &Either::One(_t) = r { }
+   |            ----------------   ^ cannot move out of borrowed content
+   |            |            |
+   |            |            data moved here
+   |            help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:184:25
+   |
+LL |     if let &Either::One(_t) = r { }
+   |                         ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:188:34
+   |
+LL |     while let &Either::One(_t) = r { }
+   |               ----------------   ^ cannot move out of borrowed content
+   |               |            |
+   |               |            data moved here
+   |               help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:188:28
+   |
+LL |     while let &Either::One(_t) = r { }
+   |                            ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:192:11
+   |
+LL |     match r {
+   |           ^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t)
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:194:22
+   |
+LL |         &Either::One(_t)
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:200:11
+   |
+LL |     match r {
+   |           ^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t) => (),
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:202:22
+   |
+LL |         &Either::One(_t) => (),
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:207:11
+   |
+LL |     match r {
+   |           ^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t) => (),
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:209:22
+   |
+LL |         &Either::One(_t) => (),
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:219:22
+   |
+LL |     let &mut X(_t) = sm;
+   |         ----------   ^^ cannot move out of borrowed content
+   |         |      |
+   |         |      data moved here
+   |         help: consider removing the `&mut`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:219:16
+   |
+LL |     let &mut X(_t) = sm;
+   |                ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:223:35
+   |
+LL |     if let &mut Either::One(_t) = rm { }
+   |            --------------------   ^^ cannot move out of borrowed content
+   |            |                |
+   |            |                data moved here
+   |            help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:223:29
+   |
+LL |     if let &mut Either::One(_t) = rm { }
+   |                             ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:227:38
+   |
+LL |     while let &mut Either::One(_t) = rm { }
+   |               --------------------   ^^ cannot move out of borrowed content
+   |               |                |
+   |               |                data moved here
+   |               help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:227:32
+   |
+LL |     while let &mut Either::One(_t) = rm { }
+   |                                ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:231:11
+   |
+LL |     match rm {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |                          -- data moved here
+...
+LL |         &mut Either::Two(_t) => (),
+   |                          -- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/simple.rs:233:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+...
+LL |         &mut Either::Two(_t) => (),
+   |                          ^^
+help: consider removing the `&mut`
+   |
+LL |         Either::One(_t) => (),
+   |         ^^^^^^^^^^^^^^^
+help: consider removing the `&mut`
+   |
+LL |         Either::Two(_t) => (),
+   |         ^^^^^^^^^^^^^^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:240:11
+   |
+LL |     match rm {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:242:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:247:11
+   |
+LL |     match rm {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:249:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:254:11
+   |
+LL |     match rm {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:256:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:270:21
+   |
+LL |     let (&X(_t),) = (&x.clone(),);
+   |             --      ^^^^^^^^^^^^^ cannot move out of borrowed content
+   |             |
+   |             data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:270:13
+   |
+LL |     let (&X(_t),) = (&x.clone(),);
+   |             ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:272:34
+   |
+LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
+   |                          --      ^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                          |
+   |                          data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:272:26
+   |
+LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:274:37
+   |
+LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
+   |                             --      ^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                             |
+   |                             data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:274:29
+   |
+LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
+   |                             ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:276:11
+   |
+LL |     match (&e.clone(),) {
+   |           ^^^^^^^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         (&Either::One(_t),)
+   |                       -- data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:278:23
+   |
+LL |         (&Either::One(_t),)
+   |                       ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:284:25
+   |
+LL |     let (&mut X(_t),) = (&mut xm.clone(),);
+   |                 --      ^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                 |
+   |                 data moved here
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:284:17
+   |
+LL |     let (&mut X(_t),) = (&mut xm.clone(),);
+   |                 ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:286:38
+   |
+LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+   |                              --      ^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                              |
+   |                              data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:286:30
+   |
+LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+   |                              ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:288:41
+   |
+LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+   |                                 --      ^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                                 |
+   |                                 data moved here
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:288:33
+   |
+LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+   |                                 ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:290:11
+   |
+LL |     match (&mut em.clone(),) {
+   |           ^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         (&mut Either::One(_t),) => (),
+   |                           -- data moved here
+LL |         (&mut Either::Two(_t),) => (),
+   |                           -- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/simple.rs:292:27
+   |
+LL |         (&mut Either::One(_t),) => (),
+   |                           ^^
+LL |         (&mut Either::Two(_t),) => (),
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:300:18
+   |
+LL |     let &X(_t) = &x;
+   |         ------   ^^ cannot move out of borrowed content
+   |         |  |
+   |         |  data moved here
+   |         help: consider removing the `&`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:300:12
+   |
+LL |     let &X(_t) = &x;
+   |            ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:304:31
+   |
+LL |     if let &Either::One(_t) = &e { }
+   |            ----------------   ^^ cannot move out of borrowed content
+   |            |            |
+   |            |            data moved here
+   |            help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:304:25
+   |
+LL |     if let &Either::One(_t) = &e { }
+   |                         ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:308:34
+   |
+LL |     while let &Either::One(_t) = &e { }
+   |               ----------------   ^^ cannot move out of borrowed content
+   |               |            |
+   |               |            data moved here
+   |               help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:308:28
+   |
+LL |     while let &Either::One(_t) = &e { }
+   |                            ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:312:11
+   |
+LL |     match &e {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t)
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:314:22
+   |
+LL |         &Either::One(_t)
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:320:11
+   |
+LL |     match &e {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t) => (),
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:322:22
+   |
+LL |         &Either::One(_t) => (),
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:327:11
+   |
+LL |     match &e {
+   |           ^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &Either::One(_t) => (),
+   |         ----------------
+   |         |            |
+   |         |            data moved here
+   |         help: consider removing the `&`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:329:22
+   |
+LL |         &Either::One(_t) => (),
+   |                      ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:335:22
+   |
+LL |     let &mut X(_t) = &mut xm;
+   |         ----------   ^^^^^^^ cannot move out of borrowed content
+   |         |      |
+   |         |      data moved here
+   |         help: consider removing the `&mut`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:335:16
+   |
+LL |     let &mut X(_t) = &mut xm;
+   |                ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:339:35
+   |
+LL |     if let &mut Either::One(_t) = &mut em { }
+   |            --------------------   ^^^^^^^ cannot move out of borrowed content
+   |            |                |
+   |            |                data moved here
+   |            help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:339:29
+   |
+LL |     if let &mut Either::One(_t) = &mut em { }
+   |                             ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:343:38
+   |
+LL |     while let &mut Either::One(_t) = &mut em { }
+   |               --------------------   ^^^^^^^ cannot move out of borrowed content
+   |               |                |
+   |               |                data moved here
+   |               help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:343:32
+   |
+LL |     while let &mut Either::One(_t) = &mut em { }
+   |                                ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:347:11
+   |
+LL |     match &mut em {
+   |           ^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t)
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:349:26
+   |
+LL |         &mut Either::One(_t)
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:355:11
+   |
+LL |     match &mut em {
+   |           ^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:357:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:362:11
+   |
+LL |     match &mut em {
+   |           ^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:364:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:369:11
+   |
+LL |     match &mut em {
+   |           ^^^^^^^ cannot move out of borrowed content
+LL |         //~^ ERROR cannot move
+LL |         &mut Either::One(_t) => (),
+   |         --------------------
+   |         |                |
+   |         |                data moved here
+   |         help: consider removing the `&mut`: `Either::One(_t)`
+   |
+note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:371:26
+   |
+LL |         &mut Either::One(_t) => (),
+   |                          ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:214:11
+   |
+LL |     fn f1(&X(_t): &X) { }
+   |           ^^^--^
+   |           |  |
+   |           |  data moved here
+   |           cannot move out of borrowed content
+   |           help: consider removing the `&`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:214:14
+   |
+LL |     fn f1(&X(_t): &X) { }
+   |              ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:261:11
+   |
+LL |     fn f2(&mut X(_t): &mut X) { }
+   |           ^^^^^^^--^
+   |           |      |
+   |           |      data moved here
+   |           cannot move out of borrowed content
+   |           help: consider removing the `&mut`: `X(_t)`
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:261:18
+   |
+LL |     fn f2(&mut X(_t): &mut X) { }
+   |                  ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:281:11
+   |
+LL |     fn f3((&X(_t),): (&X,)) { }
+   |           ^^^^--^^^
+   |           |   |
+   |           |   data moved here
+   |           cannot move out of borrowed content
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:281:15
+   |
+LL |     fn f3((&X(_t),): (&X,)) { }
+   |               ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/simple.rs:295:11
+   |
+LL |     fn f4((&mut X(_t),): (&mut X,)) { }
+   |           ^^^^^^^^--^^^
+   |           |       |
+   |           |       data moved here
+   |           cannot move out of borrowed content
+   |
+note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/simple.rs:295:19
+   |
+LL |     fn f4((&mut X(_t),): (&mut X,)) { }
+   |                   ^^
+
+error: aborting due to 60 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

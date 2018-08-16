@@ -5,9 +5,15 @@ LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          -  -    ^^^^
    |          |  |    |
    |          |  |    cannot move out of borrowed content
-   |          |  |    help: consider using a reference instead: `&x[0]`
-   |          |  move occurs because b has type `std::string::String`, which does not implement the `Copy` trait
-   |          move occurs because a has type `std::string::String`, which does not implement the `Copy` trait
+   |          |  |    help: consider borrowing here: `&x[0]`
+   |          |  ...and here
+   |          data moved here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/issue-40402-2.rs:15:10
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |          ^  ^
 
 error: aborting due to previous error
 

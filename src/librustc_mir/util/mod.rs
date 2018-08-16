@@ -31,14 +31,14 @@ pub use self::graphviz::write_node_label as write_graphviz_node_label;
 /// If possible, suggest replacing `ref` with `ref mut`.
 pub fn suggest_ref_mut<'cx, 'gcx, 'tcx>(
     tcx: ty::TyCtxt<'cx, 'gcx, 'tcx>,
-    pattern_span: Span,
-) -> Option<(Span, String)> {
-    let hi_src = tcx.sess.codemap().span_to_snippet(pattern_span).unwrap();
+    binding_span: Span,
+) -> Option<(String)> {
+    let hi_src = tcx.sess.codemap().span_to_snippet(binding_span).unwrap();
     if hi_src.starts_with("ref")
         && hi_src["ref".len()..].starts_with(Pattern_White_Space)
     {
         let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
-        Some((pattern_span, replacement))
+        Some(replacement)
     } else {
         None
     }
