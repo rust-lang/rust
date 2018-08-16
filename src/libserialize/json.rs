@@ -365,6 +365,9 @@ impl std::error::Error for EncoderError {
 }
 
 impl From<fmt::Error> for EncoderError {
+    /// Converts a [`fmt::Error`] into `EncoderError`
+    ///
+    /// This conversion does not allocate memory.
     fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
 }
 
@@ -1387,10 +1390,9 @@ impl Stack {
 
     // Used by Parser to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
-        if let Some(InternalIndex(_)) = self.stack.last() {
-            true
-        } else {
-            false
+        match self.stack.last() {
+            Some(InternalIndex(_)) => true,
+            _ => false,
         }
     }
 

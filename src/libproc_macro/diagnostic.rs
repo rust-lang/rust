@@ -16,6 +16,7 @@ use syntax_pos::MultiSpan;
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
+#[non_exhaustive]
 pub enum Level {
     /// An error.
     Error,
@@ -25,8 +26,6 @@ pub enum Level {
     Note,
     /// A help message.
     Help,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// A structure representing a diagnostic message and associated children

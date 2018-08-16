@@ -2306,24 +2306,14 @@ mod sig {
 
     /// One, not zero, based LSB. That is, returns 0 for a zeroed significand.
     pub(super) fn olsb(limbs: &[Limb]) -> usize {
-        for (i, &limb) in limbs.iter().enumerate() {
-            if limb != 0 {
-                return i * LIMB_BITS + limb.trailing_zeros() as usize + 1;
-            }
-        }
-
-        0
+        limbs.iter().enumerate().find(|(_, &limb)| limb != 0).map_or(0,
+            |(i, limb)| i * LIMB_BITS + limb.trailing_zeros() as usize + 1)
     }
 
     /// One, not zero, based MSB. That is, returns 0 for a zeroed significand.
     pub(super) fn omsb(limbs: &[Limb]) -> usize {
-        for (i, &limb) in limbs.iter().enumerate().rev() {
-            if limb != 0 {
-                return (i + 1) * LIMB_BITS - limb.leading_zeros() as usize;
-            }
-        }
-
-        0
+        limbs.iter().enumerate().rfind(|(_, &limb)| limb != 0).map_or(0,
+            |(i, limb)| (i + 1) * LIMB_BITS - limb.leading_zeros() as usize)
     }
 
     /// Comparison (unsigned) of two significands.

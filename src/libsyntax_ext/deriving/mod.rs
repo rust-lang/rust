@@ -19,17 +19,6 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-macro_rules! span_err_if_not_stage0 {
-    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
-        #[cfg(not(stage0))] {
-            span_err!($cx, $sp, $code, $text)
-        }
-        #[cfg(stage0)] {
-            $cx.span_err($sp, $text)
-        }
-    }
-}
-
 macro path_local($x:ident) {
     generic::ty::Path::new_local(stringify!($x))
 }

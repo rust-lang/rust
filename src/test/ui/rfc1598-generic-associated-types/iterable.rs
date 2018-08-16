@@ -9,11 +9,12 @@
 // except according to those terms.
 
 #![feature(generic_associated_types)]
+//~^ WARNING the feature `generic_associated_types` is incomplete
 
 use std::ops::Deref;
 
-//FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
-//follow-up PR
+// FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
+// follow-up PR.
 
 trait Iterable {
     type Item<'a>;

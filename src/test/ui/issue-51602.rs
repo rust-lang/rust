@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Default)] //~ ERROR E0665
-enum Food {
-    Sweet,
-    Salty,
-}
-
-fn main() {
+fn main(){
+    if i in 1..10 {
+        break;
+    }
 }

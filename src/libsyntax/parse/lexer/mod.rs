@@ -67,6 +67,7 @@ pub struct StringReader<'a> {
     span_src_raw: Span,
     open_braces: Vec<(token::DelimToken, Span)>,
     crate override_span: Option<Span>,
+    last_unclosed_found_span: Option<Span>,
 }
 
 impl<'a> StringReader<'a> {
@@ -216,6 +217,7 @@ impl<'a> StringReader<'a> {
             span_src_raw: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
             override_span,
+            last_unclosed_found_span: None,
         }
     }
 

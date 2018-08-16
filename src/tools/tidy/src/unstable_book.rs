@@ -60,6 +60,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
         .map(|entry| entry.file_name().into_string().unwrap())
+        .filter(|n| n.ends_with(".md"))
         .map(|n| n.trim_right_matches(".md").to_owned())
         .collect()
 }

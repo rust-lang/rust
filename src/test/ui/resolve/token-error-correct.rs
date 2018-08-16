@@ -15,4 +15,3 @@ fn main() {
     //~^ ERROR: expected expression, found `;`
 }
 //~^ ERROR: incorrect close delimiter: `}`
-//~| ERROR: incorrect close delimiter: `}`
