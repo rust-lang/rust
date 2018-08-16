@@ -4249,7 +4249,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut candidates = Vec::new();
         let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
-        worklist.push((start_module, Vec::new(), false));
+        let not_local_module = crate_name != keywords::Crate.ident();
+        worklist.push((start_module, Vec::new(), not_local_module));
 
         while let Some((in_module,
                         path_segments,
