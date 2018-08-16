@@ -218,10 +218,6 @@ before_install:
       echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json;
       sudo service docker restart;
     fi
-  - date
-  - sudo atq || true
-  - sudo grep -rE 'shutdown|poweroff|halt' /var/spool/cron || true
-  - sudo grep -E 'google-clock-skew|ntpd|startup-script' /var/log/syslog || true
 
 install:
   - case "$TRAVIS_OS_NAME" in
@@ -278,8 +274,6 @@ after_success:
       du . | sort -nr | head -n100
 
 after_failure:
-  # Requested by travis to debug "shutting down NOW" errors
-  - sudo tail -n 500 /var/log/syslog
   - >
       echo "#### Build failed; Disk usage after running script:";
       df -h;
