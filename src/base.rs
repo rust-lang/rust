@@ -21,7 +21,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: Mo
             } => {
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                let mir_file_name = "target/out/mir/".to_string() + &format!("{:?}", def_id).replace('/', "@");
+                let mir_file_name =
+                    "target/out/mir/".to_string() + &format!("{:?}", def_id).replace('/', "@");
                 ::std::fs::write(mir_file_name, mir.into_inner()).unwrap();
                 let _print_guard = PrintOnPanic(format!("{:?}", inst));
 
