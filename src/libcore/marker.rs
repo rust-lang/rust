@@ -609,16 +609,27 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// this trait cannot prevent types from moving by itself.
 ///
 /// Instead it can be used to prevent moves through the type system,
-/// by controlling the behavior of special pointers types like [`PinMut`],
-/// which "pin" the type in place by wrapping it in a type which can only be dereferenced immutably.
+/// by controlling the behavior of special pointer types like [`PinMut`],
+/// which "pin" the type in place by not allowing it to be moved out via mutable references.
 ///
 /// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out of said pointers with functions such as [`swap`].
+/// which then allows it to move out of said pointers, with functions such as [`replace`].
+///
+/// So this, for example, can only be done on types implementing `Unpin`:
+///
+/// ```rust
+/// #![feature(pin)]
+/// use std::mem::{PinMut, replace};
+///
+/// let mut string = "this".to_string();
+/// let mut pinned_string = PinMut::new(&mut string);
+/// replace(&mut *pinned_string, "other".to_string());
+/// ```
 ///
 /// This trait is automatically implemented for almost every type.
 ///
 /// [`PinMut`]: ../mem/struct.PinMut.html
-/// [`swap`]: ../mem/fn.swap.html
+/// [`replace`]: ../mem/fn.replace.html
 #[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 
