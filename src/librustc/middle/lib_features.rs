@@ -18,8 +18,7 @@ use ty::TyCtxt;
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::{Span, DUMMY_SP};
-use hir;
-use hir::itemlikevisit::ItemLikeVisitor;
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;
 
@@ -59,47 +58,44 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
         }
     }
 
-    fn extract(&self, attrs: &[Attribute]) -> Vec<(Symbol, Option<Symbol>, Span)> {
+    fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
         let stab_attrs = vec!["stable", "unstable", "rustc_const_unstable"];
-        let mut features = vec![];
 
-        for attr in attrs {
-            // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
-            // `#[rustc_const_unstable (..)]`).
-            if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
-                attr.check_name(stab_attr)
-            }) {
-                let meta_item = attr.meta();
-                if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
-                    let mut feature = None;
-                    let mut since = None;
-                    for meta in metas {
-                        if let Some(mi) = meta.meta_item() {
-                            // Find the `feature = ".."` meta-item.
-                            match (&*mi.name().as_str(), mi.value_str()) {
-                                ("feature", val) => feature = val,
-                                ("since", val) => since = val,
-                                _ => {}
-                            }
+        // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
+        // `#[rustc_const_unstable (..)]`).
+        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
+            attr.check_name(stab_attr)
+        }) {
+            let meta_item = attr.meta();
+            if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
+                let mut feature = None;
+                let mut since = None;
+                for meta in metas {
+                    if let Some(mi) = meta.meta_item() {
+                        // Find the `feature = ".."` meta-item.
+                        match (&*mi.name().as_str(), mi.value_str()) {
+                            ("feature", val) => feature = val,
+                            ("since", val) => since = val,
+                            _ => {}
                         }
                     }
-                    if let Some(feature) = feature {
-                        // This additional check for stability is to make sure we
-                        // don't emit additional, irrelevant errors for malformed
-                        // attributes.
-                        if *stab_attr != "stable" || since.is_some() {
-                            features.push((feature, since, attr.span));
-                        }
-                    }
-                    // We need to iterate over the other attributes, because
-                    // `rustc_const_unstable` is not mutually exclusive with
-                    // the other stability attributes, so we can't just `break`
-                    // here.
                 }
+                if let Some(feature) = feature {
+                    // This additional check for stability is to make sure we
+                    // don't emit additional, irrelevant errors for malformed
+                    // attributes.
+                    if *stab_attr != "stable" || since.is_some() {
+                        return Some((feature, since, attr.span));
+                    }
+                }
+                // We need to iterate over the other attributes, because
+                // `rustc_const_unstable` is not mutually exclusive with
+                // the other stability attributes, so we can't just `break`
+                // here.
             }
         }
 
-        features
+        None
     }
 
     fn collect_feature(&mut self, feature: Symbol, since: Option<Symbol>, span: Span) {
@@ -140,25 +136,17 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
             }
         }
     }
-
-    fn collect_from_attrs(&mut self, attrs: &[Attribute]) {
-        for (feature, stable, span) in self.extract(attrs) {
-            self.collect_feature(feature, stable, span);
-        }
-    }
 }
 
-impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LibFeatureCollector<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
-        self.collect_from_attrs(&item.attrs);
+impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.tcx.hir)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
-        self.collect_from_attrs(&trait_item.attrs);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
-        self.collect_from_attrs(&impl_item.attrs);
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+        if let Some((feature, stable, span)) = self.extract(attr) {
+            self.collect_feature(feature, stable, span);
+        }
     }
 }
 
@@ -169,10 +157,6 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatures {
             collector.collect_feature(feature, since, DUMMY_SP);
         }
     }
-    collector.collect_from_attrs(&tcx.hir.krate().attrs);
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
-    for exported_macro in &tcx.hir.krate().exported_macros {
-        collector.collect_from_attrs(&exported_macro.attrs);
-    }
+    intravisit::walk_crate(&mut collector, tcx.hir.krate());
     collector.lib_features
 }
