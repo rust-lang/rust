@@ -449,8 +449,12 @@ fn rewrite_comment_inner(
                 }
             } else if is_prev_line_multi_line && !line.is_empty() {
                 result.push(' ')
-            } else if is_last && !closer.is_empty() && line.is_empty() {
-                result.push_str(&indent_str);
+            } else if is_last && line.is_empty() {
+                // trailing blank lines are unwanted
+                if !closer.is_empty() {
+                    result.push_str(&indent_str);
+                }
+                break;
             } else {
                 result.push_str(&comment_line_separator);
                 if !has_leading_whitespace && result.ends_with(' ') {
