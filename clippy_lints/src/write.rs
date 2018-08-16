@@ -179,7 +179,7 @@ impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
         if mac.node.path == "println" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr == "" {
                     span_lint_and_sugg(
                         cx,
@@ -193,7 +193,7 @@ impl EarlyLintPass for Pass {
             }
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, PRINT_WITH_NEWLINE, mac.span,
                             "using `print!()` with a format string that ends in a \
@@ -201,7 +201,7 @@ impl EarlyLintPass for Pass {
                 }
             }
         } else if mac.node.path == "write" {
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, WRITE_WITH_NEWLINE, mac.span,
                             "using `write!()` with a format string that ends in a \
@@ -209,15 +209,16 @@ impl EarlyLintPass for Pass {
                 }
             }
         } else if mac.node.path == "writeln" {
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+            let check_tts = check_tts(cx, &mac.node.tts, true);
+            if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
                     span_lint_and_sugg(
                         cx,
                         WRITELN_EMPTY_STRING,
                         mac.span,
-                        "using `writeln!(v, \"\")`",
+                        format!("using `writeln!({}, \"\")`", check_tts.1).as_str(),
                         "replace it with",
-                        "writeln!(v)".to_string(),
+                        format!("using `writeln!({})`", check_tts.1),
                     );
                 }
             }
@@ -225,7 +226,7 @@ impl EarlyLintPass for Pass {
     }
 }
 
-fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Option<String> {
+fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     let tts = TokenStream::from(tts.clone());
     let mut parser = parser::Parser::new(
         &cx.sess.parse_sess,
@@ -234,12 +235,14 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
         false,
         false,
     );
-    if is_write {
-        // skip the initial write target
-        parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
-        // might be `writeln!(foo)`
-        parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok()?;
-    }
+    // skip the initial write target
+    let expr: Option<Expr> = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
+        Some(p) => Some(p.into_vec().0),
+        None => None,
+    };
+    // might be `writeln!(foo)`
+    parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok()?;
+
     let fmtstr = parser.parse_str().map_err(|mut err| err.cancel()).ok()?.0.to_string();
     use fmt_macros::*;
     let tmp = fmtstr.clone();
@@ -247,7 +250,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     let mut fmt_parser = Parser::new(&tmp, None);
     while let Some(piece) = fmt_parser.next() {
         if !fmt_parser.errors.is_empty() {
-            return None;
+            return (None, expr);
         }
         if let Piece::NextArgument(arg) = piece {
             if arg.format.ty == "?" {
@@ -266,7 +269,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     loop {
         if !parser.eat(&token::Comma) {
             assert!(parser.eat(&token::Eof));
-            return Some(fmtstr);
+            return (Some(fmtstr), expr);
         }
         let expr = parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
         const SIMPLE: FormatSpec<'_> = FormatSpec {
