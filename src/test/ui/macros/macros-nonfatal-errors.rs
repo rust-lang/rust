@@ -10,7 +10,6 @@
 
 // normalize-stderr-test: "The system cannot find the file specified\." -> "No such file or directory"
 // ignore-tidy-linelength
-// ignore-stage1
 
 // test that errors in a (selection) of macros don't kill compilation
 // immediately, so that we get more errors listed at a time.

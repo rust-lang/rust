@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-stage1
-
 #[derive(Default)] //~ ERROR E0665
 enum Food {
     Sweet,
