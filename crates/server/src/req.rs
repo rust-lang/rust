@@ -101,3 +101,11 @@ pub struct Decoration {
     pub range: Range,
     pub tag: &'static str
 }
+
+pub enum MoveCursor {}
+
+impl Request for MoveCursor {
+    type Params = Position;
+    type Result = ();
+    const METHOD: &'static str = "m/moveCursor";
+}

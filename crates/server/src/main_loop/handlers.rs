@@ -6,7 +6,7 @@ use languageserver_types::{
     SymbolInformation, Position,
 };
 use libanalysis::{World, Query};
-use libeditor;
+use libeditor::{self, CursorPosition};
 use libsyntax2::TextUnit;
 use serde_json::{to_value, from_value};
 
@@ -195,7 +195,7 @@ pub fn handle_execute_command(
     world: World,
     path_map: PathMap,
     mut params: req::ExecuteCommandParams,
-) -> Result<req::ApplyWorkspaceEditParams> {
+) -> Result<(req::ApplyWorkspaceEditParams, Option<Position>)> {
     if params.command.as_str() != "apply_code_action" {
         bail!("unknown cmd: {:?}", params.command);
     }
@@ -209,23 +209,24 @@ pub fn handle_execute_command(
     let action_result = match arg.id {
         ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|f| f()),
         ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|f| f()),
-    };
-    let edit = match action_result {
-        Some(action_result) => action_result.edit,
-        None => bail!("command not applicable"),
-    };
+    }.ok_or_else(|| format_err!("command not applicable"))?;
     let line_index = world.file_line_index(file_id)?;
     let mut changes = HashMap::new();
     changes.insert(
         arg.text_document.uri,
-        edit.conv_with(&line_index),
+        action_result.edit.conv_with(&line_index),
     );
     let edit = WorkspaceEdit {
         changes: Some(changes),
         document_changes: None,
     };
+    let edit = req::ApplyWorkspaceEditParams { edit };
+    let cursor_pos = match action_result.cursor_position {
+        CursorPosition::Same => None,
+        CursorPosition::Offset(offset) => Some(offset.conv_with(&line_index)),
+    };
 
-    Ok(req::ApplyWorkspaceEditParams { edit })
+    Ok((edit, cursor_pos))
 }
 
 #[derive(Serialize, Deserialize)]

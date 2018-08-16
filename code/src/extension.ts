@@ -111,6 +111,16 @@ function startServer() {
                 )
             }
         )
+        client.onRequest(
+            new lc.RequestType<lc.Position, void, any, any>("m/moveCursor"),
+            (params: lc.Position, token: lc.CancellationToken) => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor == null) return
+                if (!editor.selection.isEmpty) return
+                let position = client.protocol2CodeConverter.asPosition(params)
+                editor.selection = new vscode.Selection(position, position);
+            }
+        )
     })
     client.start();
 }

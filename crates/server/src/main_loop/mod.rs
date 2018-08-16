@@ -171,21 +171,29 @@ fn on_request(
         let path_map = path_map.clone();
         let sender = sender.clone();
         pool.execute(move || {
-            let task = match handle_execute_command(world, path_map, params) {
-                Ok(req) => match to_value(req) {
-                    Err(e) => Task::Die(e.into()),
-                    Ok(params) => {
-                        let request = RawRequest {
-                            id: 0,
-                            method: <req::ApplyWorkspaceEdit as req::ClientRequest>::METHOD.to_string(),
-                            params,
-                        };
-                        Task::Request(request)
-                    }
-                },
-                Err(e) => Task::Die(e),
+            let (edit, cursor) = match handle_execute_command(world, path_map, params) {
+                Ok(res) => res,
+                Err(e) => return sender.send(Task::Die(e)),
             };
-            sender.send(task)
+            match to_value(edit) {
+                Err(e) => return sender.send(Task::Die(e.into())),
+                Ok(params) => {
+                    let request = RawRequest {
+                        id: 0,
+                        method: <req::ApplyWorkspaceEdit as req::ClientRequest>::METHOD.to_string(),
+                        params,
+                    };
+                    sender.send(Task::Request(request))
+                }
+            }
+            if let Some(cursor) = cursor {
+                let request = RawRequest {
+                    id: 0,
+                    method: <req::MoveCursor as req::ClientRequest>::METHOD.to_string(),
+                    params: to_value(cursor).unwrap(),
+                };
+                sender.send(Task::Request(request))
+            }
         });
         Ok(())
     })?;
