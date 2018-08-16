@@ -1,0 +1,5 @@
+language: rust
+
+script:
+  - cargo test
+  - cargo run --example serde
