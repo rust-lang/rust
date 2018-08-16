@@ -184,23 +184,25 @@ impl<'tcx> OpTy<'tcx> {
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularily for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
-    fn try_read_value_from_ptr(
+    fn try_read_value_from_mplace(
         &self,
-        ptr: Scalar,
-        ptr_align: Align,
-        layout: TyLayout<'tcx>,
+        mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
+        if mplace.extra != PlaceExtra::None {
+            return Ok(None);
+        }
+        let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
         self.memory.check_align(ptr, ptr_align)?;
 
-        if layout.size.bytes() == 0 {
+        if mplace.layout.size.bytes() == 0 {
             return Ok(Some(Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits: 0, size: 0 }))));
         }
 
         let ptr = ptr.to_ptr()?;
 
-        match layout.abi {
+        match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
-                let scalar = self.memory.read_scalar(ptr, ptr_align, layout.size)?;
+                let scalar = self.memory.read_scalar(ptr, ptr_align, mplace.layout.size)?;
                 Ok(Some(Value::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -226,21 +228,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// in a `Value`, not on which data is stored there currently.
     pub(super) fn try_read_value(
         &self,
-        OpTy { op: src, layout } : OpTy<'tcx>,
+        src : OpTy<'tcx>,
     ) -> EvalResult<'tcx, Result<Value, MemPlace>> {
-        match src {
-            Operand::Indirect(mplace) => {
-                if mplace.extra == PlaceExtra::None {
-                    if let Some(val) =
-                        self.try_read_value_from_ptr(mplace.ptr, mplace.align, layout)?
-                    {
-                        return Ok(Ok(val));
-                    }
+        Ok(match src.try_as_mplace() {
+            Ok(mplace) => {
+                if let Some(val) = self.try_read_value_from_mplace(mplace)? {
+                    Ok(val)
+                } else {
+                    Err(*mplace)
                 }
-                Ok(Err(mplace))
             },
-            Operand::Immediate(val) => Ok(Ok(val)),
-        }
+            Err(val) => Ok(val),
+        })
     }
 
     /// Read a value from a place, asserting that that is possible with the given layout.
