@@ -246,7 +246,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             };
             let (dest, bb) = destination.expect("128 lowerings can't diverge");
             let l = ecx.read_value(args[0])?;
-            let r = ecx.read_value(args[0])?;
+            let r = ecx.read_value(args[1])?;
             if oflo {
                 ecx.binop_with_overflow(op, l, r, dest)?;
             } else {
