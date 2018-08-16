@@ -84,15 +84,21 @@ fn named_fields(p: &mut Parser) {
     p.expect(R_CURLY);
 
     fn named_field(p: &mut Parser) {
-        let field = p.start();
+        let m = p.start();
+        // test field_attrs
+        // struct S {
+        //     #[serde(with = "url_serde")]
+        //     pub uri: Uri,
+        // }
+        attributes::outer_attributes(p);
         visibility(p);
         if p.at(IDENT) {
             name(p);
             p.expect(COLON);
             types::type_(p);
-            field.complete(p, NAMED_FIELD);
+            m.complete(p, NAMED_FIELD);
         } else {
-            field.abandon(p);
+            m.abandon(p);
             p.err_and_bump("expected field declaration");
         }
     }
