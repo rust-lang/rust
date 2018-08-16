@@ -520,7 +520,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         trace!("write_value: {:?} <- {:?}", *dest, src_val);
         // See if we can avoid an allocation. This is the counterpart to `try_read_value`,
         // but not factored as a separate function.
-        match dest.place {
+        let mplace = match dest.place {
             Place::Local { frame, local } => {
                 match *self.stack[frame].locals[local].access_mut()? {
                     Operand::Immediate(ref mut dest_val) => {
@@ -528,14 +528,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         *dest_val = src_val;
                         return Ok(());
                     },
-                    _ => {},
+                    Operand::Indirect(mplace) => mplace, // already in memory
                 }
             },
-            _ => {},
+            Place::Ptr(mplace) => mplace, // already in memory
         };
 
-        // Slow path: write to memory
-        let dest = self.force_allocation(dest)?;
+        // This is already in memory, write there.
+        let dest = MPlaceTy { mplace, layout: dest.layout };
         self.write_value_to_mplace(src_val, dest)
     }
 
@@ -565,7 +565,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Value::ScalarPair(a_val, b_val) => {
                 let (a, b) = match dest.layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_value_to_ptr: invalid ScalarPair layout: {:#?}", dest.layout)
+                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}", dest.layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let (a_align, b_align) = (a.align(&self), b.align(&self));
@@ -591,8 +591,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
         let (src_ptr, src_align) = match self.try_read_value(src)? {
             Ok(src_val) =>
-                // Yay, we got a value that we can write directly.
-                return self.write_value(src_val, dest),
+                // Yay, we got a value that we can write directly.  We write with the
+                // *source layout*, because that was used to load, and if they do not match
+                // this is a transmute we want to support.
+                return self.write_value(src_val, PlaceTy { place: *dest, layout: src.layout }),
             Err(mplace) => mplace.to_scalar_ptr_align(),
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
