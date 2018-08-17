@@ -11,6 +11,7 @@ mod step;
 mod terminator;
 mod traits;
 mod const_eval;
+mod validity;
 
 pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup, LocalValue,
