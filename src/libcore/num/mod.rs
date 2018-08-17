@@ -1891,7 +1891,7 @@ $EndFeature, "
         /// ```
         /// #![feature(int_to_from_bytes)]
         ///
-        /// let bytes = 0x12345678i32.to_be_bytes();
+        /// let bytes = 0x12_34_56_78_i32.to_be_bytes();
         /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
         /// ```
         #[unstable(feature = "int_to_from_bytes", issue = "52963")]
@@ -1908,7 +1908,7 @@ $EndFeature, "
         /// ```
         /// #![feature(int_to_from_bytes)]
         ///
-        /// let bytes = 0x12345678i32.to_le_bytes();
+        /// let bytes =  0x12_34_56_78_i32.to_le_bytes();
         /// assert_eq!(bytes, [0x78, 0x56, 0x34, 0x12]);
         /// ```
         #[unstable(feature = "int_to_from_bytes", issue = "52963")]
@@ -3576,7 +3576,7 @@ $EndFeature, "
         /// ```
         /// #![feature(int_to_from_bytes)]
         ///
-        /// let bytes = 0x12345678i32.to_be_bytes();
+        /// let bytes =  0x12_34_56_78_i32.to_be_bytes();
         /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
         /// ```
         #[unstable(feature = "int_to_from_bytes", issue = "52963")]
@@ -3593,7 +3593,7 @@ $EndFeature, "
         /// ```
         /// #![feature(int_to_from_bytes)]
         ///
-        /// let bytes = 0x12345678i32.to_le_bytes();
+        /// let bytes =  0x12_34_56_78_i32.to_le_bytes();
         /// assert_eq!(bytes, [0x78, 0x56, 0x34, 0x12]);
         /// ```
         #[unstable(feature = "int_to_from_bytes", issue = "52963")]
