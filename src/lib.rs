@@ -46,15 +46,6 @@ macro_rules! unimpl {
     };
 }
 
-macro_rules! each_module {
-    ($cx:expr, |$p:pat| $res:expr) => {
-        ModuleTup {
-            jit: $cx.jit.as_mut().map(|$p| $res),
-            faerie: $cx.faerie.as_mut().map(|$p| $res),
-        }
-    };
-}
-
 mod abi;
 mod analyze;
 mod base;
@@ -77,7 +68,7 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable, TypeVariants,
     };
-    pub use rustc_data_structures::{fx::FxHashMap, indexed_vec::Idx, sync::Lrc};
+    pub use rustc_data_structures::{fx::{FxHashSet, FxHashMap}, indexed_vec::Idx, sync::Lrc};
     pub use rustc_mir::monomorphize::{collector, MonoItem};
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::codemap::DUMMY_SP;
@@ -108,11 +99,10 @@ mod prelude {
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub struct CodegenCx<'a, 'tcx: 'a> {
+pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'static> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub jit: Option<(ConstantCx, &'a mut Module<SimpleJITBackend>)>,
-    pub faerie: Option<(ConstantCx, &'a mut Module<FaerieBackend>)>,
-    pub defined_functions: Vec<FuncId>,
+    pub module: &'a mut Module<B>,
+    pub ccx: ConstantCx,
 
     // Cache
     pub context: Context,
@@ -223,88 +213,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
             .unwrap()
             .finish(flags);
-        let (mut jit_module, mut faerie_module): (
-            Option<Module<SimpleJITBackend>>,
-            Option<Module<FaerieBackend>>,
-        ) = if std::env::var("SHOULD_RUN").is_ok() {
-            (Some(Module::new(SimpleJITBuilder::new())), None)
-        } else {
-            (
-                None,
-                Some(Module::new(
-                    FaerieBuilder::new(
-                        isa,
-                        "some_file.o".to_string(),
-                        FaerieTrapCollection::Disabled,
-                        FaerieBuilder::default_libcall_names(),
-                    ).unwrap(),
-                )),
-            )
-        };
 
-        let defined_functions = {
-            use std::io::Write;
-            let mut cx = CodegenCx {
-                tcx,
-                jit: jit_module.as_mut().map(|m| (ConstantCx::default(), m)),
-                faerie: faerie_module.as_mut().map(|m| (ConstantCx::default(), m)),
-                defined_functions: Vec::new(),
+        let mono_items =
+            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
+                .0;
+        
+        // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
+        save_incremental(tcx);
+        tcx.sess.warn("Saved incremental data");
 
-                context: Context::new(),
-            };
+        if std::env::var("SHOULD_RUN").is_ok() {
+            let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
 
-            let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
+            codegen_mono_items(tcx, &mut jit_module, &mono_items);
 
-            let before = ::std::time::Instant::now();
-            let mono_items =
-                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
-                    .0;
+            tcx.sess.abort_if_errors();
+            tcx.sess.warn("Compiled everything");
 
-            // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
-            save_incremental(tcx);
-            tcx.sess.warn("Saved incremental data");
-
-            for mono_item in mono_items {
-                let cx = &mut cx;
-                let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
-                    base::trans_mono_item(cx, mono_item);
-                }));
-                if let Err(err) = res {
-                    match err.downcast::<NonFatal>() {
-                        Ok(non_fatal) => {
-                            writeln!(log, "{}", &non_fatal.0);
-                            tcx.sess.err(&non_fatal.0)
-                        }
-                        Err(err) => ::std::panic::resume_unwind(err),
-                    }
-                }
-            }
-
-            match cx {
-                CodegenCx {
-                    tcx,
-                    jit,
-                    faerie,
-                    defined_functions: _,
-                    context: _,
-                } => {
-                    jit.map(|jit| jit.0.finalize(tcx, jit.1));
-                    faerie.map(|faerie| faerie.0.finalize(tcx, faerie.1));
-                }
-            }
-
-            let after = ::std::time::Instant::now();
-            println!("time: {:?}", after - before);
-
-            cx.defined_functions
-        };
-
-        tcx.sess.abort_if_errors();
-
-        tcx.sess.warn("Compiled everything");
-
-        // TODO: this doesn't work most of the time
-        if let Some(mut jit_module) = jit_module {
             tcx.sess.warn("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
             let start_wrapper = tcx.lang_items().start_fn().expect("no start lang item");
 
@@ -314,14 +239,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .declare_function(&name, Linkage::Import, &sig)
                 .unwrap();
 
-            for func_id in defined_functions {
-                if func_id != called_func_id {
-                    jit_module.finalize_function(func_id);
-                }
-            }
+            let finalized_function: *const u8 = jit_module.finalize_function(called_func_id);
+            jit_module.finalize_all();
             tcx.sess.warn("Finalized everything");
 
-            let finalized_function: *const u8 = jit_module.finalize_function(called_func_id);
             let f: extern "C" fn(*const u8, isize, *const *const u8) -> isize =
                 unsafe { ::std::mem::transmute(finalized_function) };
             let res = f(0 as *const u8, 0, 0 as *const _);
@@ -329,18 +250,32 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             jit_module.finish();
             ::std::process::exit(0);
-        } else if should_codegen(tcx.sess) {
-            faerie_module.as_mut().map(|m| m.finalize_all());
+        } else {
+            let mut faerie_module: Module<FaerieBackend> = Module::new(
+                    FaerieBuilder::new(
+                        isa,
+                        "some_file.o".to_string(),
+                        FaerieTrapCollection::Disabled,
+                        FaerieBuilder::default_libcall_names(),
+                    ).unwrap());
+            
+            codegen_mono_items(tcx, &mut faerie_module, &mono_items);
 
-            tcx.sess.warn("Finalized everything");
+            tcx.sess.abort_if_errors();
+            tcx.sess.warn("Compiled everything");
+
+            if should_codegen(tcx.sess) {
+                faerie_module.finalize_all();
+                tcx.sess.warn("Finalized everything");
+            }
+
+            return Box::new(OngoingCodegen {
+                product: faerie_module.finish(),
+                metadata: metadata.raw_data,
+                crate_name: tcx.crate_name(LOCAL_CRATE),
+                crate_hash: tcx.crate_hash(LOCAL_CRATE),
+            });
         }
-
-        Box::new(OngoingCodegen {
-            product: faerie_module.unwrap().finish(),
-            metadata: metadata.raw_data,
-            crate_name: tcx.crate_name(LOCAL_CRATE),
-            crate_hash: tcx.crate_hash(LOCAL_CRATE),
-        })
     }
 
     fn join_codegen_and_link(
@@ -403,6 +338,43 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
         Ok(())
     }
+}
+
+fn codegen_mono_items<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<impl Backend + 'static>, mono_items: &FxHashSet<MonoItem<'tcx>>) {
+    use std::io::Write;
+
+    let mut cx = CodegenCx {
+        tcx,
+        module,
+        ccx: ConstantCx::default(),
+
+        context: Context::new(),
+    };
+
+    let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
+
+    let before = ::std::time::Instant::now();
+
+    for mono_item in mono_items {
+        let cx = &mut cx;
+        let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
+            base::trans_mono_item(cx, *mono_item);
+        }));
+        if let Err(err) = res {
+            match err.downcast::<NonFatal>() {
+                Ok(non_fatal) => {
+                    writeln!(log, "{}", &non_fatal.0);
+                    tcx.sess.err(&non_fatal.0)
+                }
+                Err(err) => ::std::panic::resume_unwind(err),
+            }
+        }
+    }
+
+    cx.ccx.finalize(tcx, cx.module);
+
+    let after = ::std::time::Instant::now();
+    println!("time: {:?}", after - before);
 }
 
 fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

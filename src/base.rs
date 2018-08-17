@@ -9,7 +9,7 @@ impl Drop for PrintOnPanic {
     }
 }
 
-pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: MonoItem<'tcx>) {
+pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, impl Backend>, mono_item: MonoItem<'tcx>) {
     let tcx = cx.tcx;
     let context = &mut cx.context;
 
@@ -26,10 +26,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: Mo
                 ::std::fs::write(mir_file_name, mir.into_inner()).unwrap();
                 let _print_guard = PrintOnPanic(format!("{:?}", inst));
 
-                let res = each_module!(cx, |(ccx, m)| trans_fn(tcx, *m, ccx, context, inst));
-                if let Some(func_id) = res.jit {
-                    cx.defined_functions.push(func_id);
-                };
+                trans_fn(tcx, cx.module, &mut cx.ccx, context, inst);
             }
             Instance {
                 def: InstanceDef::DropGlue(_, _),
@@ -38,9 +35,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, mono_item: Mo
             inst => unimpl!("Unimplemented instance {:?}", inst),
         },
         MonoItem::Static(def_id) => {
-            each_module!(cx, |(ccx, _m)| {
-                crate::constant::codegen_static(ccx, def_id);
-            });
+            crate::constant::codegen_static(&mut cx.ccx, def_id);
         }
         MonoItem::GlobalAsm(node_id) => cx
             .tcx
@@ -55,7 +50,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     constants: &mut crate::constant::ConstantCx,
     context: &mut Context,
     instance: Instance<'tcx>,
-) -> FuncId {
+) {
     // Step 1. Get mir
     let mir = tcx.optimized_mir(instance.def_id());
 
@@ -119,8 +114,6 @@ fn trans_fn<'a, 'tcx: 'a>(
         module.define_function(func_id, context).unwrap();
         context.clear();
     }
-
-    func_id
 }
 
 fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Function) {
