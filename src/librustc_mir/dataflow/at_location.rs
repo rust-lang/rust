@@ -12,7 +12,7 @@
 //! locations.
 
 use rustc::mir::{BasicBlock, Location};
-use rustc_data_structures::indexed_set::{IdxSetBuf, Iter};
+use rustc_data_structures::indexed_set::{HybridIdxSetBuf, IdxSetBuf, Iter};
 use rustc_data_structures::indexed_vec::Idx;
 
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
@@ -68,8 +68,8 @@ where
 {
     base_results: DataflowResults<BD>,
     curr_state: IdxSetBuf<BD::Idx>,
-    stmt_gen: IdxSetBuf<BD::Idx>,
-    stmt_kill: IdxSetBuf<BD::Idx>,
+    stmt_gen: HybridIdxSetBuf<BD::Idx>,
+    stmt_kill: HybridIdxSetBuf<BD::Idx>,
 }
 
 impl<BD> FlowAtLocation<BD>
@@ -97,8 +97,8 @@ where
     pub fn new(results: DataflowResults<BD>) -> Self {
         let bits_per_block = results.sets().bits_per_block();
         let curr_state = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_gen = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_kill = IdxSetBuf::new_empty(bits_per_block);
+        let stmt_gen = HybridIdxSetBuf::new_empty(bits_per_block);
+        let stmt_kill = HybridIdxSetBuf::new_empty(bits_per_block);
         FlowAtLocation {
             base_results: results,
             curr_state: curr_state,
@@ -129,8 +129,8 @@ where
         F: FnOnce(Iter<BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
-        curr_state.union(&self.stmt_gen);
-        curr_state.subtract(&self.stmt_kill);
+        curr_state.union_hybrid(&self.stmt_gen);
+        curr_state.subtract_hybrid(&self.stmt_kill);
         f(curr_state.iter());
     }
 }
@@ -193,8 +193,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     }
 
     fn apply_local_effect(&mut self, _loc: Location) {
-        self.curr_state.union(&self.stmt_gen);
-        self.curr_state.subtract(&self.stmt_kill);
+        self.curr_state.union_hybrid(&self.stmt_gen);
+        self.curr_state.subtract_hybrid(&self.stmt_kill);
     }
 }
 

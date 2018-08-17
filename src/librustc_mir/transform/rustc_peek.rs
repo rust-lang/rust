@@ -138,9 +138,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
-    let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
-    let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
+    let mut on_entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
+    let mut gen_set = results.0.sets.gen_set_for(bb.index()).clone();
+    let mut kill_set = results.0.sets.kill_set_for(bb.index()).clone();
 
     // Emulate effect of all statements in the block up to (but not
     // including) the borrow within `peek_arg_place`. Do *not* include
@@ -148,9 +148,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
-    let mut sets = dataflow::BlockSets { on_entry: &mut entry,
-                                      gen_set: &mut gen,
-                                      kill_set: &mut kill };
+    let mut sets = dataflow::BlockSets { on_entry: &mut on_entry,
+                                         gen_set: &mut gen_set,
+                                         kill_set: &mut kill_set };
 
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
@@ -203,14 +203,14 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);
         // reset GEN and KILL sets before emulating their effect.
-        for e in sets.gen_set.words_mut() { *e = 0; }
-        for e in sets.kill_set.words_mut() { *e = 0; }
+        sets.gen_set.clear();
+        sets.kill_set.clear();
         results.0.operator.before_statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
         results.0.operator.statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
-        sets.on_entry.union(sets.gen_set);
-        sets.on_entry.subtract(sets.kill_set);
+        sets.on_entry.union_hybrid(sets.gen_set);
+        sets.on_entry.subtract_hybrid(sets.kill_set);
     }
 
     results.0.operator.before_terminator_effect(
