@@ -195,7 +195,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.memory.check_align(ptr, ptr_align)?;
 
         if mplace.layout.size.bytes() == 0 {
-            return Ok(Some(Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits: 0, size: 0 }))));
+            return Ok(Some(Value::Scalar(Scalar::zst().into())));
         }
 
         let ptr = ptr.to_ptr()?;
@@ -228,7 +228,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// in a `Value`, not on which data is stored there currently.
     pub(super) fn try_read_value(
         &self,
-        src : OpTy<'tcx>,
+        src: OpTy<'tcx>,
     ) -> EvalResult<'tcx, Result<Value, MemPlace>> {
         Ok(match src.try_as_mplace() {
             Ok(mplace) => {
@@ -253,7 +253,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Read a scalar from a place
-    pub fn read_scalar(&self, op : OpTy<'tcx>) -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_scalar(&self, op: OpTy<'tcx>) -> EvalResult<'tcx, ScalarMaybeUndef> {
         match *self.read_value(op)? {
             Value::ScalarPair(..) => bug!("got ScalarPair for type: {:?}", op.layout.ty),
             Value::Scalar(val) => Ok(val),

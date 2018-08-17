@@ -403,7 +403,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Just a convenience function, but used quite a bit.
     pub fn place_field(
         &mut self,
-        base : PlaceTy<'tcx>,
+        base: PlaceTy<'tcx>,
         field: u64,
     ) -> EvalResult<'tcx, PlaceTy<'tcx>> {
         // FIXME: We could try to be smarter and avoid allocation for fields that span the
@@ -414,7 +414,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     pub fn place_downcast(
         &mut self,
-        base : PlaceTy<'tcx>,
+        base: PlaceTy<'tcx>,
         variant: usize,
     ) -> EvalResult<'tcx, PlaceTy<'tcx>> {
         // Downcast just changes the layout
@@ -515,7 +515,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn write_value(
         &mut self,
         src_val: Value,
-        dest : PlaceTy<'tcx>,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("write_value: {:?} <- {:?}", *dest, src_val);
         // See if we can avoid an allocation. This is the counterpart to `try_read_value`,

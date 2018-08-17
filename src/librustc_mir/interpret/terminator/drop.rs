@@ -2,7 +2,7 @@ use rustc::mir::BasicBlock;
 use rustc::ty::{self, layout::LayoutOf};
 use syntax::source_map::Span;
 
-use rustc::mir::interpret::{EvalResult};
+use rustc::mir::interpret::EvalResult;
 use interpret::{Machine, EvalContext, PlaceTy, PlaceExtra, OpTy, Operand};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
