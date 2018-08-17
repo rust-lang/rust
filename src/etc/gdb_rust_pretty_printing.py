@@ -130,6 +130,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_BTREESET:
         return RustStdBTreeSetPrinter(val)
 
+    if type_kind == rustpp.TYPE_KIND_STD_BTREEMAP:
+        return RustStdBTreeMapPrinter(val)
+
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
 
@@ -325,6 +328,32 @@ class RustStdBTreeSetPrinter(object):
             yield (str(index), gdb_ptr[index])
 
 
+class RustStdBTreeMapPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "map"
+
+    def to_string(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i)" % length))
+
+    def children(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
+        keys = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        keys_ptr = keys.get_wrapped_value()
+        vals = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(4)
+        vals_ptr = vals.get_wrapped_value()
+        for index in xrange(length):
+            yield (str(index), keys_ptr[index])
+            yield (str(index), vals_ptr[index])
+
+
 class RustStdStringPrinter(object):
     def __init__(self, val):
         self.__val = val
@@ -337,6 +366,7 @@ class RustStdStringPrinter(object):
 
     def display_hint(self):
         return "string"
+
 
 class RustOsStringPrinter(object):
     def __init__(self, val):
