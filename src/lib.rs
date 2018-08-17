@@ -113,6 +113,7 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'static> {
 }
 
 pub struct ModuleTup<T> {
+    #[allow(dead_code)]
     jit: Option<T>,
     #[allow(dead_code)]
     faerie: Option<T>,
@@ -234,21 +235,27 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.warn("Compiled everything");
 
             tcx.sess.warn("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
-            let start_wrapper = tcx.lang_items().start_fn().expect("no start lang item");
 
-            let (name, sig) =
-                crate::abi::get_function_name_and_sig(tcx, Instance::mono(tcx, start_wrapper));
-            let called_func_id = jit_module
-                .declare_function(&name, Linkage::Import, &sig)
+            let sig = Signature {
+                params: vec![
+                    AbiParam::new(types::I64 /*usize*/),
+                    AbiParam::new(types::I64 /* *const _*/),
+                ],
+                returns: vec![AbiParam::new(types::I64 /*isize*/)],
+                call_conv: CallConv::SystemV,
+                argument_bytes: None,
+            };
+            let main_func_id = jit_module
+                .declare_function("main", Linkage::Import, &sig)
                 .unwrap();
 
-            let finalized_function: *const u8 = jit_module.finalize_function(called_func_id);
+            let finalized_main: *const u8 = jit_module.finalize_function(main_func_id);
             jit_module.finalize_all();
             tcx.sess.warn("Finalized everything");
 
-            let f: extern "C" fn(*const u8, isize, *const *const u8) -> isize =
-                unsafe { ::std::mem::transmute(finalized_function) };
-            let res = f(0 as *const u8, 0, 0 as *const _);
+            let f: extern "C" fn(isize, *const *const u8) -> isize =
+                unsafe { ::std::mem::transmute(finalized_main) };
+            let res = f(0, 0 as *const _);
             tcx.sess.warn(&format!("main returned {}", res));
 
             jit_module.finish();
@@ -379,6 +386,8 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         }
     }
 
+    maybe_create_entry_wrapper(&mut cx);
+
     cx.ccx.finalize(tcx, cx.module);
 
     let after = ::std::time::Instant::now();
@@ -395,4 +404,106 @@ fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
     Box::new(CraneliftCodegenBackend)
+}
+
+/// Create the `main` function which will initialize the rust runtime and call
+/// users main function.
+fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
+    use rustc::middle::lang_items::StartFnLangItem;
+    use rustc::session::config::EntryFnType;
+
+    let tcx = cx.tcx;
+
+    let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
+        Some((id, _, entry_ty)) => (
+            tcx.hir.local_def_id(id),
+            match entry_ty {
+                EntryFnType::Main => true,
+                EntryFnType::Start => false,
+            },
+        ),
+        None => return,
+    };
+
+    create_entry_fn(tcx, cx.module, main_def_id, use_start_lang_item);;
+
+    fn create_entry_fn<'a, 'tcx: 'a>(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        m: &mut Module<impl Backend + 'static>,
+        rust_main_def_id: DefId,
+        use_start_lang_item: bool,
+    ) {
+        let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
+        // Given that `main()` has no arguments,
+        // then its return type cannot have
+        // late-bound regions, since late-bound
+        // regions must appear in the argument
+        // listing.
+        let main_ret_ty = tcx.erase_regions(&main_ret_ty.no_late_bound_regions().unwrap());
+
+        let cmain_sig = Signature {
+            params: vec![
+                AbiParam::new(types::I64 /*usize*/),
+                AbiParam::new(types::I64 /* *const _*/),
+            ],
+            returns: vec![AbiParam::new(types::I64 /*isize*/)],
+            call_conv: CallConv::SystemV,
+            argument_bytes: None,
+        };
+
+        let cmain_func_id = m
+            .declare_function("main", Linkage::Export, &cmain_sig)
+            .unwrap();
+
+        let instance = Instance::mono(tcx, rust_main_def_id);
+
+        let (main_name, main_sig) = get_function_name_and_sig(tcx, instance);
+
+        let main_func_id = m
+            .declare_function(&main_name, Linkage::Import, &main_sig)
+            .unwrap();
+
+        let mut ctx = Context::new();
+        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone());
+        {
+            let mut func_ctx = FunctionBuilderContext::new();
+            let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+
+            let ebb = bcx.create_ebb();
+            bcx.switch_to_block(ebb);
+            let arg_argc = bcx.append_ebb_param(ebb, types::I64 /*usize*/);
+            let arg_argv = bcx.append_ebb_param(ebb, types::I64 /* *const _*/);
+
+            let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
+
+            let call_inst = if use_start_lang_item {
+                let start_def_id = tcx.require_lang_item(StartFnLangItem);
+                let start_instance = Instance::resolve(
+                    tcx,
+                    ParamEnv::reveal_all(),
+                    start_def_id,
+                    tcx.intern_substs(&[main_ret_ty.into()]),
+                ).unwrap();
+
+                let (start_name, start_sig) = get_function_name_and_sig(tcx, start_instance);
+                let start_func_id = m
+                    .declare_function(&start_name, Linkage::Import, &start_sig)
+                    .unwrap();
+
+                let main_val = bcx.ins().func_addr(types::I64, main_func_ref);
+
+                let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
+                bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
+            } else {
+                // using user-defined start fn
+                bcx.ins().call(main_func_ref, &[arg_argc, arg_argv])
+            };
+
+            let result = bcx.inst_results(call_inst)[0];
+            bcx.ins().return_(&[result]);
+            bcx.seal_all_blocks();
+            bcx.finalize();
+        }
+        m.define_function(cmain_func_id, &mut ctx).unwrap();
+    }
 }
