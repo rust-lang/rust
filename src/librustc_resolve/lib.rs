@@ -80,7 +80,7 @@ use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, MacroBinding};
+use macros::{InvocationData, LegacyBinding};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -3529,7 +3529,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
                 self.resolve_lexical_macro_path_segment(ident, ns, record_used, record_used,
-                                                        false, path_span).map(MacroBinding::binding)
+                                                        false, path_span).map(|(b, _)| b)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };

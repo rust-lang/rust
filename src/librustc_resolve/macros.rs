@@ -43,6 +43,9 @@ use std::cell::Cell;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
 
+crate struct FromPrelude(bool);
+crate struct FromExpansion(bool);
+
 #[derive(Clone)]
 pub struct InvocationData<'a> {
     pub module: Cell<Module<'a>>,
@@ -80,43 +83,18 @@ pub struct LegacyBinding<'a> {
     pub span: Span,
 }
 
+impl<'a> LegacyBinding<'a> {
+    fn def(&self) -> Def {
+        Def::Macro(self.def_id, MacroKind::Bang)
+    }
+}
+
 pub struct ProcMacError {
     crate_name: Symbol,
     name: Symbol,
     module: ast::NodeId,
     use_span: Span,
     warn_msg: &'static str,
-}
-
-#[derive(Copy, Clone)]
-pub enum MacroBinding<'a> {
-    Legacy(&'a LegacyBinding<'a>),
-    Global(&'a NameBinding<'a>),
-    Modern(&'a NameBinding<'a>),
-}
-
-impl<'a> MacroBinding<'a> {
-    pub fn span(self) -> Span {
-        match self {
-            MacroBinding::Legacy(binding) => binding.span,
-            MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding.span,
-        }
-    }
-
-    pub fn binding(self) -> &'a NameBinding<'a> {
-        match self {
-            MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding,
-            MacroBinding::Legacy(_) => panic!("unexpected MacroBinding::Legacy"),
-        }
-    }
-
-    pub fn def_ignoring_ambiguity(self) -> Def {
-        match self {
-            MacroBinding::Legacy(binding) => Def::Macro(binding.def_id, MacroKind::Bang),
-            MacroBinding::Global(binding) | MacroBinding::Modern(binding) =>
-                binding.def_ignoring_ambiguity(),
-        }
-    }
 }
 
 impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
@@ -498,12 +476,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
-        let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
-            Ok(Def::Macro(binding.def_id, MacroKind::Bang))
+        let result = if let Some((legacy_binding, _)) = legacy_resolution {
+            Ok(legacy_binding.def())
         } else {
             match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, force,
                                                           kind == MacroKind::Attr, span) {
-                Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
+                Ok((binding, _)) => Ok(binding.def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
                 Err(Determinacy::Determined) => {
                     self.found_unresolved_macro = true;
@@ -556,14 +534,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     // (e.g. `foo` in `foo::bar!(); or `foo!();`).
     // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
     // expansion and import resolution (perhaps they can be merged in the future).
-    pub fn resolve_lexical_macro_path_segment(&mut self,
-                                              mut ident: Ident,
-                                              ns: Namespace,
-                                              record_used: bool,
-                                              force: bool,
-                                              is_attr: bool,
-                                              path_span: Span)
-                                              -> Result<MacroBinding<'a>, Determinacy> {
+    crate fn resolve_lexical_macro_path_segment(
+        &mut self,
+        mut ident: Ident,
+        ns: Namespace,
+        record_used: bool,
+        force: bool,
+        is_attr: bool,
+        path_span: Span
+    ) -> Result<(&'a NameBinding<'a>, FromPrelude), Determinacy> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
         //    built into the language or standard library. This way we can add new names into the
@@ -603,7 +582,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         //     m::mac!();
         // }
         // This includes names from globs and from macro expansions.
-        let mut potentially_ambiguous_result: Option<MacroBinding> = None;
+        let mut potentially_ambiguous_result: Option<(&NameBinding, FromPrelude)> = None;
 
         enum WhereToResolve<'a> {
             Module(Module<'a>),
@@ -631,11 +610,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         path_span,
                     );
                     self.current_module = orig_current_module;
-                    binding.map(MacroBinding::Modern)
+                    binding.map(|binding| (binding, FromPrelude(false)))
                 }
                 WhereToResolve::MacroPrelude => {
                     match self.macro_prelude.get(&ident.name).cloned() {
-                        Some(binding) => Ok(MacroBinding::Global(binding)),
+                        Some(binding) => Ok((binding, FromPrelude(true))),
                         None => Err(Determinacy::Determined),
                     }
                 }
@@ -647,7 +626,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, ident.span, Mark::root())
                                        .to_name_binding(self.arenas);
-                        Ok(MacroBinding::Global(binding))
+                        Ok((binding, FromPrelude(true)))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -670,7 +649,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                         let binding = (crate_root, ty::Visibility::Public,
                                        ident.span, Mark::root()).to_name_binding(self.arenas);
-                        Ok(MacroBinding::Global(binding))
+                        Ok((binding, FromPrelude(true)))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -679,7 +658,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if use_prelude && is_known_tool(ident.name) {
                         let binding = (Def::ToolMod, ty::Visibility::Public,
                                        ident.span, Mark::root()).to_name_binding(self.arenas);
-                        Ok(MacroBinding::Global(binding))
+                        Ok((binding, FromPrelude(true)))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -696,7 +675,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 false,
                                 path_span,
                             ) {
-                                result = Ok(MacroBinding::Global(binding));
+                                result = Ok((binding, FromPrelude(true)));
                             }
                         }
                     }
@@ -707,7 +686,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         let binding = (Def::PrimTy(prim_ty), ty::Visibility::Public,
                                        ident.span, Mark::root()).to_name_binding(self.arenas);
-                        Ok(MacroBinding::Global(binding))
+                        Ok((binding, FromPrelude(true)))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -746,18 +725,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         return Ok(result);
                     }
 
-                    let binding = result.binding();
-
                     // Found a solution that is ambiguous with a previously found solution.
                     // Push an ambiguity error for later reporting and
                     // return something for better recovery.
                     if let Some(previous_result) = potentially_ambiguous_result {
-                        if binding.def() != previous_result.binding().def() {
+                        if result.0.def() != previous_result.0.def() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
                                 name: ident.name,
-                                b1: previous_result.binding(),
-                                b2: binding,
+                                b1: previous_result.0,
+                                b2: result.0,
                                 lexical: true,
                             });
                             return Ok(previous_result);
@@ -767,7 +744,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     // Found a solution that's not an ambiguity yet, but is "suspicious" and
                     // can participate in ambiguities later on.
                     // Remember it and go search for other solutions in outer scopes.
-                    if binding.is_glob_import() || binding.expansion != Mark::root() {
+                    if result.0.is_glob_import() || result.0.expansion != Mark::root() {
                         potentially_ambiguous_result = Some(result);
 
                         continue_search!();
@@ -797,20 +774,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let binding = (Def::NonMacroAttr(NonMacroAttrKind::Custom),
                            ty::Visibility::Public, ident.span, Mark::root())
                            .to_name_binding(self.arenas);
-            Ok(MacroBinding::Global(binding))
+            Ok((binding, FromPrelude(true)))
         } else {
             Err(determinacy)
         }
     }
 
-    pub fn resolve_legacy_scope(&mut self,
-                                mut scope: &'a Cell<LegacyScope<'a>>,
-                                ident: Ident,
-                                record_used: bool)
-                                -> Option<MacroBinding<'a>> {
+    crate fn resolve_legacy_scope(&mut self,
+                                  mut scope: &'a Cell<LegacyScope<'a>>,
+                                  ident: Ident,
+                                  record_used: bool)
+                                  -> Option<(&'a LegacyBinding<'a>, FromExpansion)> {
         let ident = ident.modern();
         let mut relative_depth: u32 = 0;
-        let mut binding = None;
         loop {
             match scope.get() {
                 LegacyScope::Empty => break,
@@ -835,23 +811,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         if record_used && relative_depth > 0 {
                             self.disallowed_shadowing.push(potential_binding);
                         }
-                        binding = Some(potential_binding);
-                        break
+                        return Some((potential_binding, FromExpansion(relative_depth > 0)));
                     }
                     scope = &potential_binding.parent;
                 }
             };
         }
 
-        let binding = if let Some(binding) = binding {
-            MacroBinding::Legacy(binding)
-        } else if let Some(binding) = self.macro_prelude.get(&ident.name).cloned() {
-            MacroBinding::Global(binding)
-        } else {
-            return None;
-        };
-
-        Some(binding)
+        None
     }
 
     pub fn finalize_current_module_macro_resolutions(&mut self) {
@@ -873,10 +840,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, true,
                                                                      kind == MacroKind::Attr, span);
 
-            let check_consistency = |this: &Self, binding: MacroBinding| {
+            let check_consistency = |this: &Self, new_def: Def| {
                 if let Some(def) = def {
                     if this.ambiguity_errors.is_empty() && this.disallowed_shadowing.is_empty() &&
-                       binding.def_ignoring_ambiguity() != def {
+                       new_def != def && new_def != Def::Err {
                         // Make sure compilation does not succeed if preferred macro resolution
                         // has changed after the macro had been expanded. In theory all such
                         // situations should be reported as ambiguity errors, so this is span-bug.
@@ -895,17 +862,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             match (legacy_resolution, resolution) {
-                (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
-                    if legacy_binding.def_id != binding.def_ignoring_ambiguity().def_id() {
-                        let msg1 = format!("`{}` could refer to the macro defined here", ident);
-                        let msg2 =
-                            format!("`{}` could also refer to the macro imported here", ident);
-                        self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
-                            .span_note(legacy_binding.span, &msg1)
-                            .span_note(binding.span, &msg2)
-                            .emit();
-                    }
-                },
                 (None, Err(_)) => {
                     assert!(def.is_none());
                     let bang = if kind == MacroKind::Bang { "!" } else { "" };
@@ -915,26 +871,32 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
-                (Some(MacroBinding::Modern(_)), _) | (_, Ok(MacroBinding::Legacy(_))) => {
-                    span_bug!(span, "impossible macro resolution result");
+                (Some((legacy_binding, _)), Ok((binding, FromPrelude(false)))) |
+                (Some((legacy_binding, FromExpansion(true))), Ok((binding, FromPrelude(true)))) => {
+                    if legacy_binding.def() != binding.def_ignoring_ambiguity() {
+                        let msg1 = format!("`{}` could refer to the macro defined here", ident);
+                        let msg2 =
+                            format!("`{}` could also refer to the macro imported here", ident);
+                        self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
+                            .span_note(legacy_binding.span, &msg1)
+                            .span_note(binding.span, &msg2)
+                            .emit();
+                    }
+                },
+                // OK, non-macro-expanded legacy wins over macro prelude even if defs are different
+                (Some((legacy_binding, FromExpansion(false))), Ok((_, FromPrelude(true)))) |
+                // OK, unambiguous resolution
+                (Some((legacy_binding, _)), Err(_)) => {
+                    check_consistency(self, legacy_binding.def());
                 }
                 // OK, unambiguous resolution
-                (Some(binding), Err(_)) | (None, Ok(binding)) |
-                // OK, legacy wins over global even if their definitions are different
-                (Some(binding @ MacroBinding::Legacy(_)), Ok(MacroBinding::Global(_))) |
-                // OK, modern wins over global even if their definitions are different
-                (Some(MacroBinding::Global(_)), Ok(binding @ MacroBinding::Modern(_))) => {
-                    check_consistency(self, binding);
-                }
-                (Some(MacroBinding::Global(binding1)), Ok(MacroBinding::Global(binding2))) => {
-                    if binding1.def() != binding2.def() {
-                        span_bug!(span, "mismatch between same global macro resolutions");
+                (None, Ok((binding, FromPrelude(from_prelude)))) => {
+                    check_consistency(self, binding.def_ignoring_ambiguity());
+                    if from_prelude {
+                        self.record_use(ident, MacroNS, binding, span);
+                        self.err_if_macro_use_proc_macro(ident.name, span, binding);
                     }
-                    check_consistency(self, MacroBinding::Global(binding1));
-
-                    self.record_use(ident, MacroNS, binding1, span);
-                    self.err_if_macro_use_proc_macro(ident.name, span, binding1);
-                },
+                }
             };
         }
     }
@@ -1056,7 +1018,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     /// Error if `ext` is a Macros 1.1 procedural macro being imported by `#[macro_use]`
     fn err_if_macro_use_proc_macro(&mut self, name: Name, use_span: Span,
                                    binding: &NameBinding<'a>) {
-        let krate = binding.def().def_id().krate;
+        let krate = match binding.def() {
+            Def::NonMacroAttr(..) | Def::Err => return,
+            Def::Macro(def_id, _) => def_id.krate,
+            _ => unreachable!(),
+        };
 
         // Plugin-based syntax extensions are exempt from this check
         if krate == BUILTIN_MACROS_CRATE { return; }

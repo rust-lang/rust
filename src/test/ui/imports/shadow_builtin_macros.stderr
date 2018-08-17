@@ -1,13 +1,18 @@
-error: `panic` is already in scope
+error: `panic` is ambiguous
+  --> $DIR/shadow_builtin_macros.rs:43:5
+   |
+LL |     panic!(); //~ ERROR `panic` is ambiguous
+   |     ^^^^^
+   |
+note: `panic` could refer to the macro defined here
   --> $DIR/shadow_builtin_macros.rs:40:9
    |
-LL |         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
+LL |         macro_rules! panic { () => {} }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     } }
 LL |     m!();
    |     ----- in this macro invocation
-   |
-   = note: macro-expanded `macro_rules!`s may not shadow existing macros (see RFC 1560)
+note: `panic` could also refer to the macro imported here
 
 error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:25:14
