@@ -1727,16 +1727,6 @@ impl_stable_hash_for!(struct Static<'tcx> {
     ty
 });
 
-/// The `Projection` data structure defines things of the form `B.x`
-/// or `*B` or `B[index]`. Note that it is parameterized because it is
-/// shared between `Constant` and `Place`. See the aliases
-/// `PlaceProjection` etc below.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct Projection<'tcx, B, V, T> {
-    pub base: B,
-    pub elem: ProjectionElem<'tcx, V, T>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V, T> {
     Deref,
@@ -1774,10 +1764,6 @@ pub enum ProjectionElem<'tcx, V, T> {
     /// just introduce it always, or always for enums.
     Downcast(&'tcx AdtDef, usize),
 }
-
-/// Alias for projections as they appear in places, where the base is a place
-/// and the index is a local.
-pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
@@ -2947,26 +2933,6 @@ impl<'tcx, V, T> TypeFoldable<'tcx> for ProjectionElem<'tcx, V, T>
             Index(ref v) => v.visit_with(visitor),
             _ => false,
         }
-    }
-}
-
-impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<'tcx, B, V, T>
-where
-    B: TypeFoldable<'tcx>,
-    V: TypeFoldable<'tcx>,
-    T: TypeFoldable<'tcx>,
-{
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-
-        let base = self.base.fold_with(folder);
-        let elem = self.elem.fold_with(folder);
-        Projection { base, elem }
-    }
-
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
-
-        self.base.visit_with(visitor) ||
-            self.elem.visit_with(visitor)
     }
 }
 

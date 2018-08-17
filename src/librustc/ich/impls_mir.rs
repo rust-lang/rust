@@ -309,37 +309,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::PlaceBase<'gcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>>
-for mir::Place<'tcx>
-{
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
-        self.base.hash_stable(hcx, hasher);
-        self.elems.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'gcx, B, V, T> HashStable<StableHashingContext<'a>>
-for mir::Projection<'gcx, B, V, T>
-    where B: HashStable<StableHashingContext<'a>>,
-          V: HashStable<StableHashingContext<'a>>,
-          T: HashStable<StableHashingContext<'a>>
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let mir::Projection {
-            ref base,
-            ref elem,
-        } = *self;
-
-        base.hash_stable(hcx, hasher);
-        elem.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct mir::Place<'tcx> { base, elems} );
 
 impl<'a, 'gcx, V, T> HashStable<StableHashingContext<'a>>
 for mir::ProjectionElem<'gcx, V, T>
