@@ -38,6 +38,12 @@ impl Deref for SmolStr {
     }
 }
 
+impl PartialEq<SmolStr> for SmolStr {
+    fn eq(&self, other: &SmolStr) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
 impl PartialEq<str> for SmolStr {
     fn eq(&self, other: &str) -> bool {
         self.as_str() == other
@@ -98,6 +104,12 @@ impl fmt::Display for SmolStr {
     }
 }
 
+impl From<String> for SmolStr {
+    fn from(text: String) -> Self {
+        SmolStr(Repr::new_heap(text))
+    }
+}
+
 impl<'a> From<&'a str> for SmolStr {
     fn from(text: &'a str) -> Self {
         Self::new(text)
@@ -118,7 +130,7 @@ enum Repr {
 }
 
 impl Repr {
-    fn new(text: &str) -> Repr {
+    fn new(text: &str) -> Self {
         let len = text.len();
         if len <= INLINE_CAP {
             let mut buf = [0; INLINE_CAP];
@@ -138,7 +150,10 @@ impl Repr {
             return Repr::Inline { len: WS_TAG, buf };
         }
 
-        Repr::Heap(text.to_string().into_boxed_str().into())
+        Self::new_heap(text.to_string())
+    }
+    fn new_heap(text: String) -> Self {
+        Repr::Heap(text.into_boxed_str().into())
     }
 
     fn as_str(&self) -> &str {
