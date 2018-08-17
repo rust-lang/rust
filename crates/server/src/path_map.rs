@@ -1,4 +1,4 @@
-use std::path::{PathBuf, Path};
+use std::path::{PathBuf, Path, Component};
 use im;
 use libanalysis::{FileId};
 
@@ -36,6 +36,7 @@ impl PathMap {
 
     pub fn resolve(&self, id: FileId, relpath: &Path) -> Option<FileId> {
         let path = self.get_path(id).join(relpath);
+        let path = normalize(&path);
         self.get_id(&path)
     }
 
@@ -50,3 +51,47 @@ impl PathMap {
         id
     }
 }
+
+fn normalize(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_resolve() {
+        let mut m = PathMap::new();
+        let id1 = m.get_or_insert(PathBuf::from("/foo"));
+        let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"));
+        assert_eq!(
+            m.resolve(id1, &PathBuf::from("bar.rs")),
+            Some(id2),
+        )
+    }
+}
+

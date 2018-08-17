@@ -118,3 +118,12 @@ impl <R: TreeRoot> ImplItem<R> {
         (first, second)
     }
 }
+
+impl <R: TreeRoot> Module<R> {
+    pub fn has_semi(&self) -> bool {
+        match self.syntax_ref().last_child() {
+            None => false,
+            Some(node) => node.kind() == SEMI,
+        }
+    }
+}

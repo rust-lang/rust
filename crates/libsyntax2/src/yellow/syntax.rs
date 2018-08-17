@@ -89,7 +89,15 @@ impl<R: TreeRoot> SyntaxNode<R> {
     }
 
     pub fn first_child(&self) -> Option<SyntaxNode<R>> {
-        self.children().next()
+        let red = self.red().get_child(0)?;
+        Some(SyntaxNode { root: self.root.clone(), red })
+    }
+
+    pub fn last_child(&self) -> Option<SyntaxNode<R>> {
+        let n = self.red().n_children();
+        let n = n.checked_sub(1)?;
+        let red = self.red().get_child(n)?;
+        Some(SyntaxNode { root: self.root.clone(), red })
     }
 
     pub fn next_sibling(&self) -> Option<SyntaxNode<R>> {

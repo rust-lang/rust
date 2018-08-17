@@ -16,7 +16,7 @@ use rayon::prelude::*;
 
 use std::{
     fmt,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering::SeqCst},
@@ -26,8 +26,9 @@ use std::{
 };
 
 use libsyntax2::{
-    TextUnit,
-    ast::{self, AstNode},
+    TextUnit, TextRange, SyntaxRoot,
+    ast::{self, AstNode, NameOwner},
+    SyntaxKind::*,
 };
 use libeditor::{LineIndex, FileSymbol, find_node};
 
@@ -119,33 +120,58 @@ impl World {
         Ok(index.clone())
     }
 
-    pub fn world_symbols<'a>(&'a self, mut query: Query) -> impl Iterator<Item=(FileId, &'a FileSymbol)> + 'a {
+    pub fn world_symbols(&self, mut query: Query) -> Vec<(FileId, FileSymbol)> {
         self.reindex();
         self.data.file_map.iter()
             .flat_map(move |(id, data)| {
                 let symbols = data.symbols();
                 query.process(symbols).into_iter().map(move |s| (*id, s))
             })
+            .collect()
     }
 
-    pub fn approximately_resolve_symbol<'a>(
-        &'a self,
+    pub fn approximately_resolve_symbol(
+        &self,
         id: FileId,
         offset: TextUnit,
-    ) -> Result<Vec<(FileId, &'a FileSymbol)>> {
+    ) -> Result<Vec<(FileId, FileSymbol)>> {
         let file = self.file_syntax(id)?;
-        let syntax = file.syntax();
-        let syntax = syntax.as_ref();
-        let name_ref = find_node::<ast::NameRef<_>>(syntax, offset);
-        let name = match name_ref {
-            None => return Ok(vec![]),
-            Some(name_ref) => name_ref.text(),
-        };
+        let syntax = file.syntax_ref();
+        if let Some(name_ref) = find_node::<ast::NameRef<_>>(syntax, offset) {
+            return Ok(self.index_resolve(name_ref));
+        }
+        if let Some(name) = find_node::<ast::Name<_>>(syntax, offset) {
+            if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
+                if module.has_semi() {
+                    return Ok(self.resolve_module(id, module));
+                }
+            }
+        }
+        Ok(vec![])
+    }
 
+    fn index_resolve(&self, name_ref: ast::NameRef<&SyntaxRoot>) -> Vec<(FileId, FileSymbol)> {
+        let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        Ok(self.world_symbols(query).collect())
+        self.world_symbols(query)
+    }
+
+    fn resolve_module(&self, id: FileId, module: ast::Module<&SyntaxRoot>) -> Vec<(FileId, FileSymbol)> {
+        let name = match module.name() {
+            Some(name) => name.text(),
+            None => return Vec::new(),
+        };
+        let id = match self.resolve_relative_path(id, &PathBuf::from(format!("../{}.rs", name))) {
+            Some(id) => id,
+            None => return Vec::new(),
+        };
+        vec![(id, FileSymbol {
+            name: name.clone(),
+            node_range: TextRange::offset_len(0.into(), 0.into()),
+            kind: MODULE,
+        })]
     }
 
     fn resolve_relative_path(&self, id: FileId, path: &Path) -> Option<FileId> {

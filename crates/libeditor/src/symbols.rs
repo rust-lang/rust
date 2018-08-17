@@ -9,7 +9,7 @@ use libsyntax2::{
 };
 use TextRange;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructureNode {
     pub parent: Option<usize>,
     pub label: String,
@@ -18,7 +18,7 @@ pub struct StructureNode {
     pub kind: SyntaxKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileSymbol {
     pub name: SmolStr,
     pub node_range: TextRange,

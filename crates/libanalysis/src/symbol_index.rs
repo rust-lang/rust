@@ -62,10 +62,10 @@ impl Query {
         self.limit = limit
     }
 
-    pub(crate) fn process<'a>(
+    pub(crate) fn process(
         &mut self,
-        file: &'a FileSymbols,
-    ) -> Vec<&'a FileSymbol> {
+        file: &FileSymbols,
+    ) -> Vec<FileSymbol> {
         fn is_type(kind: SyntaxKind) -> bool {
             match kind {
                 STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
@@ -87,7 +87,7 @@ impl Query {
             if self.exact && symbol.name != self.query {
                 continue;
             }
-            res.push(symbol);
+            res.push(symbol.clone());
             self.limit -= 1;
         }
         res
