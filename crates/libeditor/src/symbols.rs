@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 use libsyntax2::{
-    SyntaxKind, SyntaxNodeRef, AstNode, RefRoot,
+    SyntaxKind, SyntaxNodeRef, AstNode, ParsedFile,
     ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},
@@ -25,14 +25,14 @@ pub struct FileSymbol {
     pub kind: SyntaxKind,
 }
 
-pub fn file_symbols(file: &ast::File) -> Vec<FileSymbol> {
-    preorder(file.syntax_ref())
+pub fn file_symbols(file: &ParsedFile) -> Vec<FileSymbol> {
+    preorder(file.syntax())
         .filter_map(to_symbol)
         .collect()
 }
 
 fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
-    fn decl<'a, N: NameOwner<RefRoot<'a>>>(node: N) -> Option<FileSymbol> {
+    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<FileSymbol> {
         let name = node.name()?;
         Some(FileSymbol {
             name: name.text(),
@@ -41,23 +41,23 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         })
     }
     visitor()
-        .visit(decl::<ast::FnDef<_>>)
-        .visit(decl::<ast::StructDef<_>>)
-        .visit(decl::<ast::EnumDef<_>>)
-        .visit(decl::<ast::TraitDef<_>>)
-        .visit(decl::<ast::Module<_>>)
-        .visit(decl::<ast::TypeDef<_>>)
-        .visit(decl::<ast::ConstDef<_>>)
-        .visit(decl::<ast::StaticDef<_>>)
+        .visit(decl::<ast::FnDef>)
+        .visit(decl::<ast::StructDef>)
+        .visit(decl::<ast::EnumDef>)
+        .visit(decl::<ast::TraitDef>)
+        .visit(decl::<ast::Module>)
+        .visit(decl::<ast::TypeDef>)
+        .visit(decl::<ast::ConstDef>)
+        .visit(decl::<ast::StaticDef>)
         .accept(node)?
 }
 
 
-pub fn file_structure(file: &ast::File) -> Vec<StructureNode> {
+pub fn file_structure(file: &ParsedFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
-    for event in walk(file.syntax_ref()) {
+    for event in walk(file.syntax()) {
         match event {
             WalkEvent::Enter(node) => {
                 match structure_node(node) {
@@ -80,7 +80,7 @@ pub fn file_structure(file: &ast::File) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
-    fn decl<'a, N: NameOwner<RefRoot<'a>>>(node: N) -> Option<StructureNode> {
+    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<StructureNode> {
         let name = node.name()?;
         Some(StructureNode {
             parent: None,
@@ -92,16 +92,16 @@ fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
     }
 
     visitor()
-        .visit(decl::<ast::FnDef<_>>)
-        .visit(decl::<ast::StructDef<_>>)
-        .visit(decl::<ast::NamedField<_>>)
-        .visit(decl::<ast::EnumDef<_>>)
-        .visit(decl::<ast::TraitDef<_>>)
-        .visit(decl::<ast::Module<_>>)
-        .visit(decl::<ast::TypeDef<_>>)
-        .visit(decl::<ast::ConstDef<_>>)
-        .visit(decl::<ast::StaticDef<_>>)
-        .visit(|im: ast::ImplItem<_>| {
+        .visit(decl::<ast::FnDef>)
+        .visit(decl::<ast::StructDef>)
+        .visit(decl::<ast::NamedField>)
+        .visit(decl::<ast::EnumDef>)
+        .visit(decl::<ast::TraitDef>)
+        .visit(decl::<ast::Module>)
+        .visit(decl::<ast::TypeDef>)
+        .visit(decl::<ast::ConstDef>)
+        .visit(decl::<ast::StaticDef>)
+        .visit(|im: ast::ImplItem| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();
             let label = match target_trait {

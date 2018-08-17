@@ -26,8 +26,8 @@ use std::{
 };
 
 use libsyntax2::{
-    TextUnit, TextRange, RefRoot,
-    ast::{self, AstNode, NameOwner},
+    TextUnit, TextRange,
+    ast::{self, AstNode, NameOwner, ParsedFile},
     SyntaxKind::*,
 };
 use libeditor::{LineIndex, FileSymbol, find_node};
@@ -109,7 +109,7 @@ impl WorldState {
 
 
 impl World {
-    pub fn file_syntax(&self, file_id: FileId) -> Result<ast::File> {
+    pub fn file_syntax(&self, file_id: FileId) -> Result<ParsedFile> {
         let data = self.file_data(file_id)?;
         Ok(data.syntax().clone())
     }
@@ -137,11 +137,11 @@ impl World {
         offset: TextUnit,
     ) -> Result<Vec<(FileId, FileSymbol)>> {
         let file = self.file_syntax(id)?;
-        let syntax = file.syntax_ref();
-        if let Some(name_ref) = find_node::<ast::NameRef<_>>(syntax, offset) {
+        let syntax = file.syntax();
+        if let Some(name_ref) = find_node::<ast::NameRef>(syntax, offset) {
             return Ok(self.index_resolve(name_ref));
         }
-        if let Some(name) = find_node::<ast::Name<_>>(syntax, offset) {
+        if let Some(name) = find_node::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     return Ok(self.resolve_module(id, module));
@@ -151,7 +151,7 @@ impl World {
         Ok(vec![])
     }
 
-    fn index_resolve(&self, name_ref: ast::NameRef<RefRoot>) -> Vec<(FileId, FileSymbol)> {
+    fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
@@ -159,7 +159,7 @@ impl World {
         self.world_symbols(query)
     }
 
-    fn resolve_module(&self, id: FileId, module: ast::Module<RefRoot>) -> Vec<(FileId, FileSymbol)> {
+    fn resolve_module(&self, id: FileId, module: ast::Module) -> Vec<(FileId, FileSymbol)> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),
@@ -220,7 +220,7 @@ struct WorldData {
 struct FileData {
     text: String,
     symbols: OnceCell<FileSymbols>,
-    syntax: OnceCell<ast::File>,
+    syntax: OnceCell<ParsedFile>,
     lines: OnceCell<LineIndex>,
 }
 
@@ -234,14 +234,14 @@ impl FileData {
         }
     }
 
-    fn syntax(&self) -> &ast::File {
+    fn syntax(&self) -> &ParsedFile {
         self.syntax
-            .get_or_init(|| ast::File::parse(&self.text))
+            .get_or_init(|| ParsedFile::parse(&self.text))
     }
 
-    fn syntax_transient(&self) -> ast::File {
+    fn syntax_transient(&self) -> ParsedFile {
         self.syntax.get().map(|s| s.clone())
-            .unwrap_or_else(|| ast::File::parse(&self.text))
+            .unwrap_or_else(|| ParsedFile::parse(&self.text))
     }
 
     fn symbols(&self) -> &FileSymbols {

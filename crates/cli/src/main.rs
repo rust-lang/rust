@@ -10,7 +10,7 @@ use std::{
 };
 use clap::{App, Arg, SubCommand};
 use tools::collect_tests;
-use libeditor::{File, syntax_tree, file_structure};
+use libeditor::{ParsedFile, syntax_tree, file_structure};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -68,7 +68,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<File> {
+fn file() -> Result<ParsedFile> {
     let text = read_stdin()?;
     Ok(libeditor::parse(&text))
 }

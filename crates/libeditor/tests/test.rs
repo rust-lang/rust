@@ -5,7 +5,7 @@ extern crate assert_eq_text;
 
 use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
-    File, TextUnit, TextRange, ActionResult, CursorPosition,
+    ParsedFile, TextUnit, TextRange, ActionResult, CursorPosition,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, matching_brace,
 };
@@ -146,11 +146,11 @@ fn test_matching_brace() {
     );
 }
 
-fn file(text: &str) -> File {
-    File::parse(text)
+fn file(text: &str) -> ParsedFile {
+    ParsedFile::parse(text)
 }
 
-fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
+fn check_action<F: Fn(&ParsedFile, TextUnit) -> Option<ActionResult>>(
     before: &str,
     after: &str,
     f: F,

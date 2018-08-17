@@ -15,7 +15,7 @@ use libsyntax2::{
     algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };
-pub use libsyntax2::{File, TextRange, TextUnit};
+pub use libsyntax2::{ParsedFile, TextRange, TextUnit};
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
@@ -51,18 +51,18 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub fn parse(text: &str) -> ast::File {
-    ast::File::parse(text)
+pub fn parse(text: &str) -> ast::ParsedFile {
+    ast::ParsedFile::parse(text)
 }
 
-pub fn matching_brace(file: &ast::File, offset: TextUnit) -> Option<TextUnit> {
+pub fn matching_brace(file: &ast::ParsedFile, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
         L_CURLY, R_CURLY,
         L_BRACK, R_BRACK,
         L_PAREN, R_PAREN,
         L_ANGLE, R_ANGLE,
     ];
-    let (brace_node, brace_idx) = find_leaf_at_offset(file.syntax_ref(), offset)
+    let (brace_node, brace_idx) = find_leaf_at_offset(file.syntax(), offset)
         .filter_map(|node| {
             let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
             Some((node, idx))
@@ -75,9 +75,9 @@ pub fn matching_brace(file: &ast::File, offset: TextUnit) -> Option<TextUnit> {
     Some(matching_node.range().start())
 }
 
-pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {
+pub fn highlight(file: &ast::ParsedFile) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
-    for node in walk::preorder(file.syntax_ref()) {
+    for node in walk::preorder(file.syntax()) {
         let tag = match node.kind() {
             ERROR => "error",
             COMMENT | DOC_COMMENT => "comment",
@@ -98,10 +98,10 @@ pub fn highlight(file: &ast::File) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn diagnostics(file: &ast::File) -> Vec<Diagnostic> {
+pub fn diagnostics(file: &ast::ParsedFile) -> Vec<Diagnostic> {
     let mut res = Vec::new();
 
-    for node in walk::preorder(file.syntax_ref()) {
+    for node in walk::preorder(file.syntax()) {
         if node.kind() == ERROR {
             res.push(Diagnostic {
                 range: node.range(),
@@ -116,12 +116,12 @@ pub fn diagnostics(file: &ast::File) -> Vec<Diagnostic> {
     res
 }
 
-pub fn syntax_tree(file: &ast::File) -> String {
-    ::libsyntax2::utils::dump_tree(&file.syntax())
+pub fn syntax_tree(file: &ast::ParsedFile) -> String {
+    ::libsyntax2::utils::dump_tree(file.syntax())
 }
 
-pub fn runnables(file: &ast::File) -> Vec<Runnable> {
-    file
+pub fn runnables(file: &ast::ParsedFile) -> Vec<Runnable> {
+    file.ast()
         .functions()
         .filter_map(|f| {
             let name = f.name()?.text();

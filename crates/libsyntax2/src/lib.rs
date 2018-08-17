@@ -41,7 +41,7 @@ mod yellow;
 pub mod utils;
 
 pub use {
-    ast::{AstNode, File},
+    ast::{AstNode, ParsedFile},
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     text_unit::{TextRange, TextUnit},

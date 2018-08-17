@@ -4,22 +4,19 @@ use itertools::Itertools;
 use smol_str::SmolStr;
 
 use {
-    SyntaxNode, SyntaxNodeRef, OwnedRoot, TreeRoot, SyntaxError,
+    SyntaxNode, SyntaxNodeRef, TreeRoot, SyntaxError,
     SyntaxKind::*,
 };
 pub use self::generated::*;
 
-pub trait AstNode<R: TreeRoot> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self>
+pub trait AstNode<'a>: Clone + Copy {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self>
         where Self: Sized;
-    fn syntax(&self) -> &SyntaxNode<R>;
-    fn syntax_ref<'a>(&'a self) -> SyntaxNodeRef<'a> where R: 'a {
-        self.syntax().as_ref()
-    }
+    fn syntax(self) -> SyntaxNodeRef<'a>;
 }
 
-pub trait NameOwner<R: TreeRoot>: AstNode<R> {
-    fn name(&self) -> Option<Name<R>> {
+pub trait NameOwner<'a>: AstNode<'a> {
+    fn name(self) -> Option<Name<'a>> {
         self.syntax()
             .children()
             .filter_map(Name::cast)
@@ -27,27 +24,37 @@ pub trait NameOwner<R: TreeRoot>: AstNode<R> {
     }
 }
 
-pub trait AttrsOwner<R: TreeRoot>: AstNode<R> {
-    fn attrs<'a>(&'a self) -> Box<Iterator<Item=Attr<R>> + 'a> where R: 'a {
+pub trait AttrsOwner<'a>: AstNode<'a> {
+    fn attrs(&self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
         let it = self.syntax().children()
             .filter_map(Attr::cast);
         Box::new(it)
     }
 }
 
-impl File<OwnedRoot> {
-    pub fn parse(text: &str) -> Self {
-        File::cast(::parse(text)).unwrap()
-    }
+#[derive(Clone, Debug)]
+pub struct ParsedFile {
+    root: SyntaxNode
 }
 
-impl<R: TreeRoot> File<R> {
+impl ParsedFile {
+    pub fn parse(text: &str) -> Self {
+        let root = ::parse(text);
+        ParsedFile { root }
+    }
+    pub fn ast(&self) -> File {
+        File::cast(self.syntax()).unwrap()
+    }
+    pub fn syntax(&self) -> SyntaxNodeRef {
+        self.root.as_ref()
+    }
     pub fn errors(&self) -> Vec<SyntaxError> {
         self.syntax().root.syntax_root().errors.clone()
     }
+
 }
 
-impl<R: TreeRoot> FnDef<R> {
+impl<'a> FnDef<'a> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs()
             .filter_map(|x| x.as_atom())
@@ -55,7 +62,7 @@ impl<R: TreeRoot> FnDef<R> {
     }
 }
 
-impl<R: TreeRoot> Attr<R> {
+impl<'a> Attr<'a> {
     pub fn as_atom(&self) -> Option<SmolStr> {
         let tt = self.value()?;
         let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
@@ -66,7 +73,7 @@ impl<R: TreeRoot> Attr<R> {
         }
     }
 
-    pub fn as_call(&self) -> Option<(SmolStr, TokenTree<R>)> {
+    pub fn as_call(&self) -> Option<(SmolStr, TokenTree<'a>)> {
         let tt = self.value()?;
         let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
         let args = TokenTree::cast(args)?;
@@ -78,7 +85,7 @@ impl<R: TreeRoot> Attr<R> {
     }
 }
 
-impl<R: TreeRoot> Name<R> {
+impl<'a> Name<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()
             .unwrap();
@@ -86,7 +93,7 @@ impl<R: TreeRoot> Name<R> {
     }
 }
 
-impl<R: TreeRoot> NameRef<R> {
+impl<'a> NameRef<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()
             .unwrap();
@@ -94,22 +101,22 @@ impl<R: TreeRoot> NameRef<R> {
     }
 }
 
-impl <R: TreeRoot> ImplItem<R> {
-    pub fn target_type(&self) -> Option<TypeRef<R>> {
+impl<'a> ImplItem<'a> {
+    pub fn target_type(&self) -> Option<TypeRef<'a>> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<TypeRef<R>> {
+    pub fn target_trait(&self) -> Option<TypeRef<'a>> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(&self) -> (Option<TypeRef<R>>, Option<TypeRef<R>>) {
+    fn target(&self) -> (Option<TypeRef<'a>>, Option<TypeRef<'a>>) {
         let mut types = self.syntax().children().filter_map(TypeRef::cast);
         let first = types.next();
         let second = types.next();
@@ -117,9 +124,9 @@ impl <R: TreeRoot> ImplItem<R> {
     }
 }
 
-impl <R: TreeRoot> Module<R> {
+impl<'a> Module<'a> {
     pub fn has_semi(&self) -> bool {
-        match self.syntax_ref().last_child() {
+        match self.syntax().last_child() {
             None => false,
             Some(node) => node.kind() == SEMI,
         }

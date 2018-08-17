@@ -1,21 +1,20 @@
-use std::sync::Arc;
 use {
     ast,
-    SyntaxNode, SyntaxRoot, TreeRoot, AstNode,
+    SyntaxNodeRef, AstNode,
     SyntaxKind::*,
 };
 {% for node, methods in ast %}
 // {{ node }}
 {%- if methods.enum %}
 #[derive(Debug, Clone, Copy)]
-pub enum {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
+pub enum {{ node }}<'a> {
 {%- for kind in methods.enum %}
-    {{ kind }}({{ kind }}<R>),
+    {{ kind }}({{ kind }}<'a>),
 {%- endfor %}
 }
 
-impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for {{ node }}<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
 {%- for kind in methods.enum %}
             {{ kind | SCREAM }} => Some({{ node }}::{{ kind }}({{ kind }} { syntax })),
@@ -23,7 +22,7 @@ impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> {
+    fn syntax(self) -> SyntaxNodeRef<'a> {
         match self {
 {%- for kind in methods.enum %}
             {{ node }}::{{ kind }}(inner) => inner.syntax(),
@@ -33,32 +32,32 @@ impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
 }
 {% else %}
 #[derive(Debug, Clone, Copy)]
-pub struct {{ node }}<R: TreeRoot = Arc<SyntaxRoot>> {
-    syntax: SyntaxNode<R>,
+pub struct {{ node }}<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for {{ node }}<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for {{ node }}<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             {{ node | SCREAM }} => Some({{ node }} { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 {% endif %}
 {% if methods.traits -%}
 {%- for t in methods.traits -%}
-impl<R: TreeRoot> ast::{{ t }}<R> for {{ node }}<R> {}
+impl<'a> ast::{{ t }}<'a> for {{ node }}<'a> {}
 {% endfor -%}
 {%- endif -%}
 
-impl<R: TreeRoot> {{ node }}<R> {
+impl<'a> {{ node }}<'a> {
 {%- if methods.collections -%}
 {%- for m in methods.collections -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
-    pub fn {{ method_name }}<'a>(&'a self) -> impl Iterator<Item = {{ ChildName }}<R>> + 'a {
+    pub fn {{ method_name }}(self) -> impl Iterator<Item = {{ ChildName }}<'a>> + 'a {
         self.syntax()
             .children()
             .filter_map({{ ChildName }}::cast)
@@ -70,7 +69,7 @@ impl<R: TreeRoot> {{ node }}<R> {
 {%- for m in methods.options -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
-    pub fn {{ method_name }}(&self) -> Option<{{ ChildName }}<R>> {
+    pub fn {{ method_name }}(self) -> Option<{{ ChildName }}<'a>> {
         self.syntax()
             .children()
             .filter_map({{ ChildName }}::cast)

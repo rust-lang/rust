@@ -21,7 +21,7 @@ fn lexer_tests() {
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
         let file = libsyntax2::parse(text);
-        libsyntax2::utils::dump_tree(&file)
+        libsyntax2::utils::dump_tree(file.as_ref())
     })
 }
 

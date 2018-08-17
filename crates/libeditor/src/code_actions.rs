@@ -1,8 +1,8 @@
-use {TextUnit, File, EditBuilder, Edit};
+use {TextUnit, EditBuilder, Edit};
 use libsyntax2::{
-    ast::{self, AstNode, AttrsOwner},
+    ast::{self, AstNode, AttrsOwner, ParsedFile},
     SyntaxKind::COMMA,
-    SyntaxNodeRef, RefRoot,
+    SyntaxNodeRef,
     algo::{
         Direction, siblings,
         find_leaf_at_offset, ancestors,
@@ -19,9 +19,8 @@ pub enum CursorPosition {
     Offset(TextUnit),
 }
 
-pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn flip_comma<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let syntax = file.syntax();
-    let syntax = syntax.as_ref();
 
     let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
     let left = non_trivia_sibling(comma, Direction::Backward)?;
@@ -37,8 +36,8 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
     })
 }
 
-pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
-    let nominal = find_node::<ast::NominalDef<_>>(file.syntax_ref(), offset)?;
+pub fn add_derive<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+    let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
     Some(move || {
         let derive_attr = nominal
             .attrs()
@@ -70,7 +69,7 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
         .find(|node| !node.kind().is_trivia())
 }
 
-pub fn find_node<'a, N: AstNode<RefRoot<'a>>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
+pub fn find_node<'a, N: AstNode<'a>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
     let leaves = find_leaf_at_offset(syntax, offset);
     let leaf = leaves.clone()
         .find(|leaf| !leaf.kind().is_trivia())

@@ -1,45 +1,45 @@
 use {
     ast,
-    SyntaxNode, OwnedRoot, TreeRoot, AstNode,
+    SyntaxNodeRef, AstNode,
     SyntaxKind::*,
 };
 
 // ArrayType
 #[derive(Debug, Clone, Copy)]
-pub struct ArrayType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ArrayType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ArrayType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ArrayType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             ARRAY_TYPE => Some(ArrayType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ArrayType<R> {}
+impl<'a> ArrayType<'a> {}
 
 // Attr
 #[derive(Debug, Clone, Copy)]
-pub struct Attr<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct Attr<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Attr<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for Attr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             ATTR => Some(Attr { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> Attr<R> {
-    pub fn value(&self) -> Option<TokenTree<R>> {
+impl<'a> Attr<'a> {
+    pub fn value(self) -> Option<TokenTree<'a>> {
         self.syntax()
             .children()
             .filter_map(TokenTree::cast)
@@ -49,80 +49,80 @@ impl<R: TreeRoot> Attr<R> {
 
 // ConstDef
 #[derive(Debug, Clone, Copy)]
-pub struct ConstDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ConstDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ConstDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ConstDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             CONST_DEF => Some(ConstDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for ConstDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for ConstDef<R> {}
-impl<R: TreeRoot> ConstDef<R> {}
+impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
+impl<'a> ConstDef<'a> {}
 
 // DynTraitType
 #[derive(Debug, Clone, Copy)]
-pub struct DynTraitType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct DynTraitType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for DynTraitType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for DynTraitType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             DYN_TRAIT_TYPE => Some(DynTraitType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> DynTraitType<R> {}
+impl<'a> DynTraitType<'a> {}
 
 // EnumDef
 #[derive(Debug, Clone, Copy)]
-pub struct EnumDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct EnumDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for EnumDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for EnumDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             ENUM_DEF => Some(EnumDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for EnumDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for EnumDef<R> {}
-impl<R: TreeRoot> EnumDef<R> {}
+impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
+impl<'a> EnumDef<'a> {}
 
 // File
 #[derive(Debug, Clone, Copy)]
-pub struct File<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct File<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for File<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for File<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             FILE => Some(File { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> File<R> {
-    pub fn functions<'a>(&'a self) -> impl Iterator<Item = FnDef<R>> + 'a {
+impl<'a> File<'a> {
+    pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
         self.syntax()
             .children()
             .filter_map(FnDef::cast)
@@ -131,206 +131,206 @@ impl<R: TreeRoot> File<R> {
 
 // FnDef
 #[derive(Debug, Clone, Copy)]
-pub struct FnDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct FnDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for FnDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for FnDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             FN_DEF => Some(FnDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for FnDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for FnDef<R> {}
-impl<R: TreeRoot> FnDef<R> {}
+impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
+impl<'a> FnDef<'a> {}
 
 // FnPointerType
 #[derive(Debug, Clone, Copy)]
-pub struct FnPointerType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct FnPointerType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for FnPointerType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for FnPointerType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             FN_POINTER_TYPE => Some(FnPointerType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> FnPointerType<R> {}
+impl<'a> FnPointerType<'a> {}
 
 // ForType
 #[derive(Debug, Clone, Copy)]
-pub struct ForType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ForType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ForType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ForType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             FOR_TYPE => Some(ForType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ForType<R> {}
+impl<'a> ForType<'a> {}
 
 // ImplItem
 #[derive(Debug, Clone, Copy)]
-pub struct ImplItem<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ImplItem<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ImplItem<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ImplItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             IMPL_ITEM => Some(ImplItem { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ImplItem<R> {}
+impl<'a> ImplItem<'a> {}
 
 // ImplTraitType
 #[derive(Debug, Clone, Copy)]
-pub struct ImplTraitType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ImplTraitType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ImplTraitType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ImplTraitType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             IMPL_TRAIT_TYPE => Some(ImplTraitType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ImplTraitType<R> {}
+impl<'a> ImplTraitType<'a> {}
 
 // Module
 #[derive(Debug, Clone, Copy)]
-pub struct Module<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct Module<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Module<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for Module<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             MODULE => Some(Module { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for Module<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for Module<R> {}
-impl<R: TreeRoot> Module<R> {}
+impl<'a> ast::NameOwner<'a> for Module<'a> {}
+impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
+impl<'a> Module<'a> {}
 
 // Name
 #[derive(Debug, Clone, Copy)]
-pub struct Name<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct Name<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for Name<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for Name<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             NAME => Some(Name { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> Name<R> {}
+impl<'a> Name<'a> {}
 
 // NameRef
 #[derive(Debug, Clone, Copy)]
-pub struct NameRef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct NameRef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for NameRef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for NameRef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             NAME_REF => Some(NameRef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> NameRef<R> {}
+impl<'a> NameRef<'a> {}
 
 // NamedField
 #[derive(Debug, Clone, Copy)]
-pub struct NamedField<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct NamedField<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for NamedField<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for NamedField<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             NAMED_FIELD => Some(NamedField { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for NamedField<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for NamedField<R> {}
-impl<R: TreeRoot> NamedField<R> {}
+impl<'a> ast::NameOwner<'a> for NamedField<'a> {}
+impl<'a> ast::AttrsOwner<'a> for NamedField<'a> {}
+impl<'a> NamedField<'a> {}
 
 // NeverType
 #[derive(Debug, Clone, Copy)]
-pub struct NeverType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct NeverType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for NeverType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for NeverType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             NEVER_TYPE => Some(NeverType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> NeverType<R> {}
+impl<'a> NeverType<'a> {}
 
 // NominalDef
 #[derive(Debug, Clone, Copy)]
-pub enum NominalDef<R: TreeRoot = OwnedRoot> {
-    StructDef(StructDef<R>),
-    EnumDef(EnumDef<R>),
+pub enum NominalDef<'a> {
+    StructDef(StructDef<'a>),
+    EnumDef(EnumDef<'a>),
 }
 
-impl<R: TreeRoot> AstNode<R> for NominalDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for NominalDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             STRUCT_DEF => Some(NominalDef::StructDef(StructDef { syntax })),
             ENUM_DEF => Some(NominalDef::EnumDef(EnumDef { syntax })),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> {
+    fn syntax(self) -> SyntaxNodeRef<'a> {
         match self {
             NominalDef::StructDef(inner) => inner.syntax(),
             NominalDef::EnumDef(inner) => inner.syntax(),
@@ -338,157 +338,157 @@ impl<R: TreeRoot> AstNode<R> for NominalDef<R> {
     }
 }
 
-impl<R: TreeRoot> ast::AttrsOwner<R> for NominalDef<R> {}
-impl<R: TreeRoot> NominalDef<R> {}
+impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
+impl<'a> NominalDef<'a> {}
 
 // ParenType
 #[derive(Debug, Clone, Copy)]
-pub struct ParenType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ParenType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ParenType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ParenType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             PAREN_TYPE => Some(ParenType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ParenType<R> {}
+impl<'a> ParenType<'a> {}
 
 // PathType
 #[derive(Debug, Clone, Copy)]
-pub struct PathType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct PathType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for PathType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for PathType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             PATH_TYPE => Some(PathType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> PathType<R> {}
+impl<'a> PathType<'a> {}
 
 // PlaceholderType
 #[derive(Debug, Clone, Copy)]
-pub struct PlaceholderType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct PlaceholderType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for PlaceholderType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for PlaceholderType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             PLACEHOLDER_TYPE => Some(PlaceholderType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> PlaceholderType<R> {}
+impl<'a> PlaceholderType<'a> {}
 
 // PointerType
 #[derive(Debug, Clone, Copy)]
-pub struct PointerType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct PointerType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for PointerType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for PointerType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             POINTER_TYPE => Some(PointerType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> PointerType<R> {}
+impl<'a> PointerType<'a> {}
 
 // ReferenceType
 #[derive(Debug, Clone, Copy)]
-pub struct ReferenceType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct ReferenceType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for ReferenceType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for ReferenceType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             REFERENCE_TYPE => Some(ReferenceType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ReferenceType<R> {}
+impl<'a> ReferenceType<'a> {}
 
 // SliceType
 #[derive(Debug, Clone, Copy)]
-pub struct SliceType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct SliceType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for SliceType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for SliceType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             SLICE_TYPE => Some(SliceType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> SliceType<R> {}
+impl<'a> SliceType<'a> {}
 
 // StaticDef
 #[derive(Debug, Clone, Copy)]
-pub struct StaticDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct StaticDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for StaticDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for StaticDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             STATIC_DEF => Some(StaticDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for StaticDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for StaticDef<R> {}
-impl<R: TreeRoot> StaticDef<R> {}
+impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
+impl<'a> StaticDef<'a> {}
 
 // StructDef
 #[derive(Debug, Clone, Copy)]
-pub struct StructDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct StructDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for StructDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for StructDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             STRUCT_DEF => Some(StructDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for StructDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for StructDef<R> {}
-impl<R: TreeRoot> StructDef<R> {
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = NamedField<R>> + 'a {
+impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
+impl<'a> StructDef<'a> {
+    pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
         self.syntax()
             .children()
             .filter_map(NamedField::cast)
@@ -497,100 +497,100 @@ impl<R: TreeRoot> StructDef<R> {
 
 // TokenTree
 #[derive(Debug, Clone, Copy)]
-pub struct TokenTree<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct TokenTree<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for TokenTree<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for TokenTree<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             TOKEN_TREE => Some(TokenTree { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> TokenTree<R> {}
+impl<'a> TokenTree<'a> {}
 
 // TraitDef
 #[derive(Debug, Clone, Copy)]
-pub struct TraitDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct TraitDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for TraitDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for TraitDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             TRAIT_DEF => Some(TraitDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for TraitDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for TraitDef<R> {}
-impl<R: TreeRoot> TraitDef<R> {}
+impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
+impl<'a> TraitDef<'a> {}
 
 // TupleType
 #[derive(Debug, Clone, Copy)]
-pub struct TupleType<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct TupleType<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for TupleType<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for TupleType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             TUPLE_TYPE => Some(TupleType { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> TupleType<R> {}
+impl<'a> TupleType<'a> {}
 
 // TypeDef
 #[derive(Debug, Clone, Copy)]
-pub struct TypeDef<R: TreeRoot = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+pub struct TypeDef<'a> {
+    syntax: SyntaxNodeRef<'a>,
 }
 
-impl<R: TreeRoot> AstNode<R> for TypeDef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for TypeDef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             TYPE_DEF => Some(TypeDef { syntax }),
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> { &self.syntax }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<R: TreeRoot> ast::NameOwner<R> for TypeDef<R> {}
-impl<R: TreeRoot> ast::AttrsOwner<R> for TypeDef<R> {}
-impl<R: TreeRoot> TypeDef<R> {}
+impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
+impl<'a> TypeDef<'a> {}
 
 // TypeRef
 #[derive(Debug, Clone, Copy)]
-pub enum TypeRef<R: TreeRoot = OwnedRoot> {
-    ParenType(ParenType<R>),
-    TupleType(TupleType<R>),
-    NeverType(NeverType<R>),
-    PathType(PathType<R>),
-    PointerType(PointerType<R>),
-    ArrayType(ArrayType<R>),
-    SliceType(SliceType<R>),
-    ReferenceType(ReferenceType<R>),
-    PlaceholderType(PlaceholderType<R>),
-    FnPointerType(FnPointerType<R>),
-    ForType(ForType<R>),
-    ImplTraitType(ImplTraitType<R>),
-    DynTraitType(DynTraitType<R>),
+pub enum TypeRef<'a> {
+    ParenType(ParenType<'a>),
+    TupleType(TupleType<'a>),
+    NeverType(NeverType<'a>),
+    PathType(PathType<'a>),
+    PointerType(PointerType<'a>),
+    ArrayType(ArrayType<'a>),
+    SliceType(SliceType<'a>),
+    ReferenceType(ReferenceType<'a>),
+    PlaceholderType(PlaceholderType<'a>),
+    FnPointerType(FnPointerType<'a>),
+    ForType(ForType<'a>),
+    ImplTraitType(ImplTraitType<'a>),
+    DynTraitType(DynTraitType<'a>),
 }
 
-impl<R: TreeRoot> AstNode<R> for TypeRef<R> {
-    fn cast(syntax: SyntaxNode<R>) -> Option<Self> {
+impl<'a> AstNode<'a> for TypeRef<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
             PAREN_TYPE => Some(TypeRef::ParenType(ParenType { syntax })),
             TUPLE_TYPE => Some(TypeRef::TupleType(TupleType { syntax })),
@@ -608,7 +608,7 @@ impl<R: TreeRoot> AstNode<R> for TypeRef<R> {
             _ => None,
         }
     }
-    fn syntax(&self) -> &SyntaxNode<R> {
+    fn syntax(self) -> SyntaxNodeRef<'a> {
         match self {
             TypeRef::ParenType(inner) => inner.syntax(),
             TypeRef::TupleType(inner) => inner.syntax(),
@@ -627,5 +627,5 @@ impl<R: TreeRoot> AstNode<R> for TypeRef<R> {
     }
 }
 
-impl<R: TreeRoot> TypeRef<R> {}
+impl<'a> TypeRef<'a> {}
 

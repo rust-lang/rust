@@ -71,12 +71,16 @@ impl<R: TreeRoot> SyntaxNode<R> {
         self.red().green().text()
     }
 
-    pub fn children<'a>(&'a self) -> impl Iterator<Item = SyntaxNode<R>> + 'a {
-        let red = self.red();
-        let n_children = red.n_children();
-        (0..n_children).map(move |i| SyntaxNode {
-            root: self.root.clone(),
-            red: red.get_child(i).unwrap(),
+    pub fn children(&self) -> impl Iterator<Item = SyntaxNode<R>> {
+        let red = self.red;
+        let n_children = self.red().n_children();
+        let root = self.root.clone();
+        (0..n_children).map(move |i| {
+            let red = unsafe { red.get(&root) };
+            SyntaxNode {
+                root: root.clone(),
+                red: red.get_child(i).unwrap(),
+            }
         })
     }
 
