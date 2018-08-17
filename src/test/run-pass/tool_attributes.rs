@@ -10,7 +10,6 @@
 
 // Scoped attributes should not trigger an unused attributes lint.
 
-#![feature(tool_attributes)]
 #![deny(unused_attributes)]
 
 fn main() {

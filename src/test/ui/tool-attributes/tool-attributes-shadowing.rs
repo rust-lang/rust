@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes, proc_macro_path_invoc)]
-
 mod rustfmt {}
 
 #[rustfmt::skip] //~ ERROR failed to resolve. Could not find `skip` in `rustfmt`

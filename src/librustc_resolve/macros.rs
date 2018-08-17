@@ -367,17 +367,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let def = def?;
 
-        if path.segments.len() > 1 {
-            if kind != MacroKind::Bang {
-                if def != Def::NonMacroAttr(NonMacroAttrKind::Tool) &&
-                   !self.session.features_untracked().proc_macro_path_invoc {
-                    let msg = format!("non-ident {} paths are unstable", kind.descr());
-                    emit_feature_err(&self.session.parse_sess, "proc_macro_path_invoc",
-                                     path.span, GateIssue::Language, &msg);
-                }
-            }
-        }
-
         match def {
             Def::Macro(def_id, macro_kind) => {
                 self.unused_macros.remove(&def_id);
@@ -390,10 +379,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             Def::NonMacroAttr(attr_kind) => {
                 if kind == MacroKind::Attr {
                     let features = self.session.features_untracked();
-                    if attr_kind == NonMacroAttrKind::Tool && !features.tool_attributes {
-                        feature_err(&self.session.parse_sess, "tool_attributes", path.span,
-                                    GateIssue::Language, "tool attributes are unstable").emit();
-                    }
                     if attr_kind == NonMacroAttrKind::Custom {
                         assert!(path.segments.len() == 1);
                         let name = path.segments[0].ident.name.as_str();
