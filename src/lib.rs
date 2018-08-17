@@ -68,7 +68,11 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable, TypeVariants,
     };
-    pub use rustc_data_structures::{fx::{FxHashSet, FxHashMap}, indexed_vec::Idx, sync::Lrc};
+    pub use rustc_data_structures::{
+        fx::{FxHashMap, FxHashSet},
+        indexed_vec::Idx,
+        sync::Lrc,
+    };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::codemap::DUMMY_SP;
@@ -215,9 +219,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .finish(flags);
 
         let mono_items =
-            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
-                .0;
-        
+            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0;
+
         // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
         save_incremental(tcx);
         tcx.sess.warn("Saved incremental data");
@@ -252,13 +255,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
             ::std::process::exit(0);
         } else {
             let mut faerie_module: Module<FaerieBackend> = Module::new(
-                    FaerieBuilder::new(
-                        isa,
-                        "some_file.o".to_string(),
-                        FaerieTrapCollection::Disabled,
-                        FaerieBuilder::default_libcall_names(),
-                    ).unwrap());
-            
+                FaerieBuilder::new(
+                    isa,
+                    "some_file.o".to_string(),
+                    FaerieTrapCollection::Disabled,
+                    FaerieBuilder::default_libcall_names(),
+                ).unwrap(),
+            );
+
             codegen_mono_items(tcx, &mut faerie_module, &mono_items);
 
             tcx.sess.abort_if_errors();
@@ -340,7 +344,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 }
 
-fn codegen_mono_items<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<impl Backend + 'static>, mono_items: &FxHashSet<MonoItem<'tcx>>) {
+fn codegen_mono_items<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<impl Backend + 'static>,
+    mono_items: &FxHashSet<MonoItem<'tcx>>,
+) {
     use std::io::Write;
 
     let mut cx = CodegenCx {

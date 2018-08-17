@@ -9,7 +9,10 @@ impl Drop for PrintOnPanic {
     }
 }
 
-pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, impl Backend>, mono_item: MonoItem<'tcx>) {
+pub fn trans_mono_item<'a, 'tcx: 'a>(
+    cx: &mut CodegenCx<'a, 'tcx, impl Backend>,
+    mono_item: MonoItem<'tcx>,
+) {
     let tcx = cx.tcx;
     let context = &mut cx.context;
 
