@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, CrateLint, Module, ModuleOrUniformRoot, PerNS};
-use Namespace::{self, TypeNS, MacroNS, ValueNS};
+use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
@@ -34,6 +34,8 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeMap;
+use std::fmt::Write;
 use std::{mem, ptr};
 
 /// Contains data for specific types of import directives.
@@ -615,6 +617,17 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             self.finalize_resolutions_in(module);
         }
 
+        #[derive(Default)]
+        struct UniformPathsCanaryResult {
+            module_scope: Option<Span>,
+            block_scopes: Vec<Span>,
+        }
+        // Collect all tripped `uniform_paths` canaries separately.
+        let mut uniform_paths_canaries: BTreeMap<
+            (Span, NodeId),
+            (Name, PerNS<UniformPathsCanaryResult>),
+        > = BTreeMap::new();
+
         let mut errors = false;
         let mut seen_spans = FxHashSet();
         for i in 0 .. self.determined_imports.len() {
@@ -624,49 +637,37 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // For a `#![feature(uniform_paths)]` `use self::x as _` canary,
             // failure is ignored, while success may cause an ambiguity error.
             if import.is_uniform_paths_canary {
-                let (name, result) = match import.subclass {
-                    SingleImport { source, ref result, .. } => {
-                        let type_ns = result[TypeNS].get().ok();
-                        let value_ns = result[ValueNS].get().ok();
-                        (source.name, type_ns.or(value_ns))
-                    }
-                    _ => bug!(),
-                };
-
                 if error.is_some() {
                     continue;
                 }
 
-                let is_explicit_self =
+                let (name, result) = match import.subclass {
+                    SingleImport { source, ref result, .. } => (source.name, result),
+                    _ => bug!(),
+                };
+
+                let has_explicit_self =
                     import.module_path.len() > 0 &&
                     import.module_path[0].name == keywords::SelfValue.name();
-                let extern_crate_exists = self.extern_prelude.contains(&name);
 
-                // A successful `self::x` is ambiguous with an `x` external crate.
-                if is_explicit_self && !extern_crate_exists {
-                    continue;
-                }
+                let (prev_name, canary_results) =
+                    uniform_paths_canaries.entry((import.span, import.id))
+                        .or_insert((name, PerNS::default()));
 
-                errors = true;
+                // All the canaries with the same `id` should have the same `name`.
+                assert_eq!(*prev_name, name);
 
-                let msg = format!("import from `{}` is ambiguous", name);
-                let mut err = self.session.struct_span_err(import.span, &msg);
-                if extern_crate_exists {
-                    err.span_label(import.span,
-                        format!("could refer to external crate `::{}`", name));
-                }
-                if let Some(result) = result {
-                    if is_explicit_self {
-                        err.span_label(result.span,
-                            format!("could also refer to `self::{}`", name));
-                    } else {
-                        err.span_label(result.span,
-                            format!("shadowed by block-scoped `{}`", name));
+                self.per_ns(|_, ns| {
+                    if let Some(result) = result[ns].get().ok() {
+                        if has_explicit_self {
+                            // There should only be one `self::x` (module-scoped) canary.
+                            assert_eq!(canary_results[ns].module_scope, None);
+                            canary_results[ns].module_scope = Some(result.span);
+                        } else {
+                            canary_results[ns].block_scopes.push(result.span);
+                        }
                     }
-                }
-                err.help(&format!("write `::{0}` or `self::{0}` explicitly instead", name));
-                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
-                err.emit();
+                });
             } else if let Some((span, err)) = error {
                 errors = true;
 
@@ -692,6 +693,66 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     seen_spans.insert(span);
                 }
             }
+        }
+
+        for ((span, _), (name, results)) in uniform_paths_canaries {
+            self.per_ns(|this, ns| {
+                let results = &results[ns];
+
+                let has_external_crate =
+                    ns == TypeNS && this.extern_prelude.contains(&name);
+
+                // An ambiguity requires more than one possible resolution.
+                let possible_resultions =
+                    (has_external_crate as usize) +
+                    (results.module_scope.is_some() as usize) +
+                    (!results.block_scopes.is_empty() as usize);
+                if possible_resultions <= 1 {
+                    return;
+                }
+
+                errors = true;
+
+                // Special-case the error when `self::x` finds its own `use x;`.
+                if has_external_crate &&
+                   results.module_scope == Some(span) &&
+                   results.block_scopes.is_empty() {
+                    let msg = format!("`{}` import is redundant", name);
+                    this.session.struct_span_err(span, &msg)
+                        .span_label(span,
+                            format!("refers to external crate `::{}`", name))
+                        .span_label(span,
+                            format!("defines `self::{}`, shadowing itself", name))
+                        .help(&format!("remove or write `::{}` explicitly instead", name))
+                        .note("relative `use` paths enabled by `#![feature(uniform_paths)]`")
+                        .emit();
+                    return;
+                }
+
+                let msg = format!("`{}` import is ambiguous", name);
+                let mut err = this.session.struct_span_err(span, &msg);
+                let mut suggestion_choices = String::new();
+                if has_external_crate {
+                    write!(suggestion_choices, "`::{}`", name);
+                    err.span_label(span,
+                        format!("can refer to external crate `::{}`", name));
+                }
+                if let Some(span) = results.module_scope {
+                    if !suggestion_choices.is_empty() {
+                        suggestion_choices.push_str(" or ");
+                    }
+                    write!(suggestion_choices, "`self::{}`", name);
+                    err.span_label(span,
+                        format!("can refer to `self::{}`", name));
+                }
+                for &span in &results.block_scopes {
+                    err.span_label(span,
+                        format!("shadowed by block-scoped `{}`", name));
+                }
+                err.help(&format!("write {} explicitly instead", suggestion_choices));
+                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                err.emit();
+            });
         }
 
         // Report unresolved imports only if no hard error was already reported

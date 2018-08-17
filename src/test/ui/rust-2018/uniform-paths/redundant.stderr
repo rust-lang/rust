@@ -1,0 +1,14 @@
+error: `std` import is redundant
+  --> $DIR/redundant.rs:15:5
+   |
+LL | use std;
+   |     ^^^
+   |     |
+   |     refers to external crate `::std`
+   |     defines `self::std`, shadowing itself
+   |
+   = help: remove or write `::std` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: aborting due to previous error
+

@@ -15,7 +15,7 @@
 // This test is similar to `ambiguity.rs`, but with macros defining local items.
 
 use std::io;
-//~^ ERROR import from `std` is ambiguous
+//~^ ERROR `std` import is ambiguous
 
 macro_rules! m {
     () => {
