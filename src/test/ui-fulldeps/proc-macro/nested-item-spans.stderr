@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/nested-item-spans.rs:22:22
+  --> $DIR/nested-item-spans.rs:20:22
    |
 LL |         let x: u32 = "x"; //~ ERROR: mismatched types
    |                      ^^^ expected u32, found reference
@@ -8,7 +8,7 @@ LL |         let x: u32 = "x"; //~ ERROR: mismatched types
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/nested-item-spans.rs:31:22
+  --> $DIR/nested-item-spans.rs:29:22
    |
 LL |         let x: u32 = "x"; //~ ERROR: mismatched types
    |                      ^^^ expected u32, found reference

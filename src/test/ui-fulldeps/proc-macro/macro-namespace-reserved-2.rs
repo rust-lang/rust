@@ -10,7 +10,6 @@
 
 // no-prefer-dynamic
 
-#![feature(use_extern_macros)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

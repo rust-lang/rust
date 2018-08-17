@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros, extern_prelude)]
+#![feature(extern_prelude)]
 
 mod m {
     fn check() {

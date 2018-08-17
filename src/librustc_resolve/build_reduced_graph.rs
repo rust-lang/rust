@@ -833,19 +833,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                     -> bool {
         let allow_shadowing = expansion == Mark::root();
         let legacy_imports = self.legacy_macro_imports(&item.attrs);
-        let mut used = legacy_imports != LegacyMacroImports::default();
+        let used = legacy_imports != LegacyMacroImports::default();
 
         // `#[macro_use]` is only allowed at the crate root.
         if self.current_module.parent.is_some() && used {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
-        } else if !self.use_extern_macros && !used &&
-                  self.cstore.dep_kind_untracked(module.def_id().unwrap().krate)
-                      .macros_only() {
-            let msg = "proc macro crates and `#[no_link]` crates have no effect without \
-                       `#[macro_use]`";
-            self.session.span_warn(item.span, msg);
-            used = true; // Avoid the normal unused extern crate warning
         }
 
         let (graph_root, arenas) = (self.graph_root, self.arenas);

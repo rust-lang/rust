@@ -12,7 +12,6 @@
 // ignore-stage1
 
 #![allow(warnings)]
-#![feature(use_extern_macros)]
 
 extern crate attr_args;
 use attr_args::{attr_with_args, identity};

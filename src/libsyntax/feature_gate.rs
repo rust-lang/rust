@@ -81,17 +81,6 @@ macro_rules! declare_features {
             {
                 $(f(stringify!($feature), self.$feature);)+
             }
-
-            pub fn use_extern_macros(&self) -> bool {
-                // A number of "advanced" macro features enable
-                // macro modularization (`use_extern_macros`) implicitly.
-                self.use_extern_macros || self.decl_macro ||
-                self.tool_attributes || self.custom_attribute ||
-                self.macros_in_extern || self.proc_macro_path_invoc ||
-                self.proc_macro_mod || self.proc_macro_expr ||
-                self.proc_macro_non_items || self.proc_macro_gen ||
-                self.stmt_expr_attributes || self.unrestricted_attribute_tokens
-            }
         }
     };
 
@@ -307,8 +296,6 @@ declare_features! (
 
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406), None),
-
-    (active, use_extern_macros, "1.15.0", Some(35896), Some(Edition::Edition2018)),
 
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", Some(38788), None),
@@ -535,7 +522,7 @@ declare_features! (
     (removed, advanced_slice_patterns, "1.0.0", Some(23121), None,
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
-     Some("subsumed by `#![feature(use_extern_macros)]` and `pub use`")),
+     Some("subsumed by `pub use`")),
 );
 
 declare_features! (
@@ -652,6 +639,9 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
+    // Allows importing and reexporting macros with `use`,
+    // enables macro modularization in general.
+    (accepted, use_extern_macros, "1.30.0", Some(35896), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

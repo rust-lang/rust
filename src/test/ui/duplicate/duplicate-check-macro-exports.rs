@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
-
 pub use std::panic;
 
 #[macro_export]

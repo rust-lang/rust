@@ -10,7 +10,7 @@
 
 // compile-pass
 
-#![feature(use_extern_macros, extern_prelude)]
+#![feature(extern_prelude)]
 
 mod m {
     fn check() {

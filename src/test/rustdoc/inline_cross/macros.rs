@@ -12,7 +12,6 @@
 // build-aux-docs
 
 #![feature(macro_test)]
-#![feature(use_extern_macros)]
 
 #![crate_name = "foo"]
 

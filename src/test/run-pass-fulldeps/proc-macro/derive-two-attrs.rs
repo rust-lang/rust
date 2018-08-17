@@ -10,8 +10,6 @@
 
 // aux-build:derive-two-attrs.rs
 
-#![feature(use_extern_macros)]
-
 extern crate derive_two_attrs as foo;
 
 use foo::A;

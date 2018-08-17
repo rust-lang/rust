@@ -1,51 +1,51 @@
 error: `m` is ambiguous
-  --> $DIR/macros.rs:50:5
+  --> $DIR/macros.rs:48:5
    |
 LL |     m!(); //~ ERROR ambiguous
    |     ^
    |
 note: `m` could refer to the macro defined here
-  --> $DIR/macros.rs:48:5
+  --> $DIR/macros.rs:46:5
    |
 LL |     macro_rules! m { () => {} }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `m` could also refer to the macro imported here
-  --> $DIR/macros.rs:49:9
+  --> $DIR/macros.rs:47:9
    |
 LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^
 
 error[E0659]: `m` is ambiguous
-  --> $DIR/macros.rs:28:5
+  --> $DIR/macros.rs:26:5
    |
 LL |     m! { //~ ERROR ambiguous
    |     ^
    |
 note: `m` could refer to the name imported here
-  --> $DIR/macros.rs:29:13
+  --> $DIR/macros.rs:27:13
    |
 LL |         use foo::m;
    |             ^^^^^^
 note: `m` could also refer to the name imported here
-  --> $DIR/macros.rs:27:9
+  --> $DIR/macros.rs:25:9
    |
 LL |     use two_macros::*;
    |         ^^^^^^^^^^^^^
    = note: macro-expanded macro imports do not shadow
 
 error[E0659]: `m` is ambiguous
-  --> $DIR/macros.rs:41:9
+  --> $DIR/macros.rs:39:9
    |
 LL |         m! { //~ ERROR ambiguous
    |         ^
    |
 note: `m` could refer to the name imported here
-  --> $DIR/macros.rs:42:17
+  --> $DIR/macros.rs:40:17
    |
 LL |             use two_macros::n as m;
    |                 ^^^^^^^^^^^^^^^^^^
 note: `m` could also refer to the name imported here
-  --> $DIR/macros.rs:34:9
+  --> $DIR/macros.rs:32:9
    |
 LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^

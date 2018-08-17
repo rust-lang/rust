@@ -13,7 +13,6 @@
 // compile-pass
 
 #![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
 
 #[macro_use] //~ WARN should be replaced at use sites with a `use` statement
 extern crate macro_use_warned_against;

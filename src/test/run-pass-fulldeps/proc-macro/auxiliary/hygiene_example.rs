@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
-
 extern crate hygiene_example_codegen;
 
 pub use hygiene_example_codegen::hello;

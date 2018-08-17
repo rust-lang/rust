@@ -10,8 +10,6 @@
 
 // aux-build:nested-item-spans.rs
 
-#![feature(use_extern_macros)]
-
 extern crate nested_item_spans;
 
 use nested_item_spans::foo;

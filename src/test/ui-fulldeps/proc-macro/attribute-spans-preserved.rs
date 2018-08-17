@@ -10,8 +10,6 @@
 
 // aux-build:attribute-spans-preserved.rs
 
-#![feature(use_extern_macros)]
-
 extern crate attribute_spans_preserved as foo;
 
 use foo::foo;

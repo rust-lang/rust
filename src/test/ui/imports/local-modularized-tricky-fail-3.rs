@@ -10,8 +10,6 @@
 
 // Crate-local macro expanded `macro_export` macros cannot be accessed with module-relative paths.
 
-#![feature(use_extern_macros)]
-
 macro_rules! define_exported { () => {
     #[macro_export]
     macro_rules! exported {

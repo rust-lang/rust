@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
 #![allow(duplicate_macro_exports)]
 
 #[macro_export]
