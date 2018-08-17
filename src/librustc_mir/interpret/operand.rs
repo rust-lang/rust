@@ -41,6 +41,7 @@ impl<'tcx> Value {
         Value::ScalarPair(val.into(), Scalar::Ptr(vtable).into())
     }
 
+    #[inline]
     pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef {
         match self {
             Value::Scalar(val) => val,
@@ -48,11 +49,14 @@ impl<'tcx> Value {
         }
     }
 
+    #[inline]
     pub fn to_scalar(self) -> EvalResult<'tcx, Scalar> {
         self.to_scalar_or_undef().not_undef()
     }
 
     /// Convert the value into a pointer (or a pointer-sized integer).
+    /// Throws away the second half of a ScalarPair!
+    #[inline]
     pub fn to_scalar_ptr(self) -> EvalResult<'tcx, Scalar> {
         match self {
             Value::Scalar(ptr) |
@@ -89,6 +93,7 @@ pub struct ValTy<'tcx> {
 
 impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
     type Target = Value;
+    #[inline(always)]
     fn deref(&self) -> &Value {
         &self.value
     }
@@ -141,12 +146,14 @@ pub struct OpTy<'tcx> {
 
 impl<'tcx> ::std::ops::Deref for OpTy<'tcx> {
     type Target = Operand;
+    #[inline(always)]
     fn deref(&self) -> &Operand {
         &self.op
     }
 }
 
 impl<'tcx> From<MPlaceTy<'tcx>> for OpTy<'tcx> {
+    #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx>) -> Self {
         OpTy {
             op: Operand::Indirect(*mplace),
@@ -156,6 +163,7 @@ impl<'tcx> From<MPlaceTy<'tcx>> for OpTy<'tcx> {
 }
 
 impl<'tcx> From<ValTy<'tcx>> for OpTy<'tcx> {
+    #[inline(always)]
     fn from(val: ValTy<'tcx>) -> Self {
         OpTy {
             op: Operand::Immediate(val.value),
@@ -192,14 +200,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             return Ok(None);
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
-        self.memory.check_align(ptr, ptr_align)?;
 
         if mplace.layout.size.bytes() == 0 {
+            // Not all ZSTs have a layout we would handle below, so just short-circuit them
+            // all here.
+            self.memory.check_align(ptr, ptr_align)?;
             return Ok(Some(Value::Scalar(Scalar::zst().into())));
         }
 
         let ptr = ptr.to_ptr()?;
-
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory.read_scalar(ptr, ptr_align, mplace.layout.size)?;
@@ -264,7 +273,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // This decides which types we will use the Immediate optimization for, and hence should
         // match what `try_read_value` and `eval_place_to_op` support.
         if layout.is_zst() {
-            return Ok(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
+            return Ok(Operand::Immediate(Value::Scalar(Scalar::zst().into())));
         }
 
         Ok(match layout.abi {

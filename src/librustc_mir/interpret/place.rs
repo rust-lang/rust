@@ -54,6 +54,7 @@ pub struct PlaceTy<'tcx> {
 
 impl<'tcx> ::std::ops::Deref for PlaceTy<'tcx> {
     type Target = Place;
+    #[inline(always)]
     fn deref(&self) -> &Place {
         &self.place
     }
@@ -68,12 +69,14 @@ pub struct MPlaceTy<'tcx> {
 
 impl<'tcx> ::std::ops::Deref for MPlaceTy<'tcx> {
     type Target = MemPlace;
+    #[inline(always)]
     fn deref(&self) -> &MemPlace {
         &self.mplace
     }
 }
 
 impl<'tcx> From<MPlaceTy<'tcx>> for PlaceTy<'tcx> {
+    #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx>) -> Self {
         PlaceTy {
             place: Place::Ptr(mplace.mplace),
@@ -160,6 +163,7 @@ impl<'tcx> PartialEq for MPlaceTy<'tcx> {
 impl<'tcx> Eq for MPlaceTy<'tcx> {}
 
 impl<'tcx> OpTy<'tcx> {
+    #[inline(always)]
     pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx>, Value> {
         match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
@@ -167,7 +171,7 @@ impl<'tcx> OpTy<'tcx> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn to_mem_place(self) -> MPlaceTy<'tcx> {
         self.try_as_mplace().unwrap()
     }
@@ -309,6 +313,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
 
         Ok(MPlaceTy { mplace: MemPlace { ptr, align, extra }, layout: field_layout })
+    }
+
+    // Iterates over all fields of an array. Much more efficient than doing the
+    // same by repeatedly calling `mplace_array`.
+    pub fn mplace_array_fields(
+        &self,
+        base: MPlaceTy<'tcx>,
+    ) -> EvalResult<'tcx, impl Iterator<Item=EvalResult<'tcx, MPlaceTy<'tcx>>> + 'a> {
+        let len = base.len();
+        let stride = match base.layout.fields {
+            layout::FieldPlacement::Array { stride, .. } => stride,
+            _ => bug!("mplace_array_fields: expected an array layout"),
+        };
+        let layout = base.layout.field(self, 0)?;
+        let dl = &self.tcx.data_layout;
+        Ok((0..len).map(move |i| {
+            let ptr = base.ptr.ptr_offset(i * stride, dl)?;
+            Ok(MPlaceTy {
+                mplace: MemPlace { ptr, align: base.align, extra: PlaceExtra::None },
+                layout
+            })
+        }))
     }
 
     pub fn mplace_subslice(
@@ -545,14 +571,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         value: Value,
         dest: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        assert_eq!(dest.extra, PlaceExtra::None);
+        let (ptr, ptr_align) = dest.to_scalar_ptr_align();
         // Note that it is really important that the type here is the right one, and matches the type things are read at.
         // In case `src_val` is a `ScalarPair`, we don't do any magic here to handle padding properly, which is only
         // correct if we never look at this data with the wrong type.
+
+        // Nothing to do for ZSTs, other than checking alignment
+        if dest.layout.size.bytes() == 0 {
+            self.memory.check_align(ptr, ptr_align)?;
+            return Ok(());
+        }
+
+        let ptr = ptr.to_ptr()?;
         match value {
             Value::Scalar(scalar) => {
                 self.memory.write_scalar(
-                    dest.ptr, dest.align, scalar, dest.layout.size, dest.layout.align
+                    ptr, ptr_align.min(dest.layout.align), scalar, dest.layout.size
                 )
             }
             Value::ScalarPair(a_val, b_val) => {
@@ -562,12 +596,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let (a_align, b_align) = (a.align(&self), b.align(&self));
-                let a_ptr = dest.ptr;
                 let b_offset = a_size.abi_align(b_align);
-                let b_ptr = a_ptr.ptr_offset(b_offset, &self)?.into();
+                let b_ptr = ptr.offset(b_offset, &self)?.into();
 
-                self.memory.write_scalar(a_ptr, dest.align, a_val, a_size, a_align)?;
-                self.memory.write_scalar(b_ptr, dest.align, b_val, b_size, b_align)
+                self.memory.write_scalar(ptr, ptr_align.min(a_align), a_val, a_size)?;
+                self.memory.write_scalar(b_ptr, ptr_align.min(b_align), b_val, b_size)
             }
         }
     }
@@ -608,6 +641,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         let mplace = match place.place {
             Place::Local { frame, local } => {
+                // FIXME: Consider not doing anything for a ZST, and just returning
+                // a fake pointer?
+
                 // We need the layout of the local.  We can NOT use the layout we got,
                 // that might e.g. be a downcast variant!
                 let local_layout = self.layout_of_local(frame, local)?;
@@ -707,6 +743,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Every place can be read from, so we can turm them into an operand
+    #[inline(always)]
     pub fn place_to_op(&self, place: PlaceTy<'tcx>) -> EvalResult<'tcx, OpTy<'tcx>> {
         let op = match place.place {
             Place::Ptr(mplace) => {

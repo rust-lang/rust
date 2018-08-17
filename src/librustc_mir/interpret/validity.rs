@@ -124,7 +124,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    /// This function checks the memory where `ptr` points to.
+    /// This function checks the memory where `dest` points to.  The place must be sized
+    /// (i.e., dest.extra == PlaceExtra::None).
     /// It will error if the bits at the destination do not match the ones described by the layout.
     pub fn validate_mplace(
         &self,
@@ -205,11 +206,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
                 Ok(())
             },
-            layout::FieldPlacement::Array { count, .. } => {
-                for i in 0..count {
+            layout::FieldPlacement::Array { .. } => {
+                for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
+                    let field = field?;
                     let mut path = path.clone();
                     self.dump_field_name(&mut path, dest.layout.ty, i as usize, variant).unwrap();
-                    let field = self.mplace_field(dest, i)?;
                     self.validate_mplace(field, path, seen, todo)?;
                 }
                 Ok(())

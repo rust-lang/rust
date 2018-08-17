@@ -494,6 +494,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Byte accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    /// This checks alignment!
     fn get_bytes_unchecked(
         &self,
         ptr: Pointer,
@@ -514,6 +515,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(&alloc.bytes[offset..offset + size.bytes() as usize])
     }
 
+    /// This checks alignment!
     fn get_bytes_unchecked_mut(
         &mut self,
         ptr: Pointer,
@@ -551,7 +553,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0);
         self.clear_relocations(ptr, size)?;
-        self.mark_definedness(ptr.into(), size, true)?;
+        self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
@@ -749,9 +751,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Read a *non-ZST* scalar
     pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
+        // get_bytes_unchecked tests alignment
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
@@ -784,16 +788,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
+    /// Write a *non-ZST* scalar
     pub fn write_scalar(
         &mut self,
-        ptr: Scalar,
+        ptr: Pointer,
         ptr_align: Align,
         val: ScalarMaybeUndef,
         type_size: Size,
-        type_align: Align,
     ) -> EvalResult<'tcx> {
         let endianness = self.endianness();
-        self.check_align(ptr, ptr_align)?;
 
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
@@ -806,12 +809,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bits { size: 0, .. } => {
-                // nothing to do for ZSTs
-                assert_eq!(type_size.bytes(), 0);
-                return Ok(());
-            }
-
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, type_size.bytes());
                 assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
@@ -820,10 +817,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             },
         };
 
-        let ptr = ptr.to_ptr()?;
-
         {
-            let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(type_align))?;
+            // get_bytes_mut checks alignment
+            let dst = self.get_bytes_mut(ptr, type_size, ptr_align)?;
             write_target_uint(endianness, dst, bytes).unwrap();
         }
 
@@ -843,7 +839,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, ptr_align)
+        self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
     }
 
     fn int_align(&self, size: Size) -> Align {
@@ -959,14 +955,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: Scalar,
+        ptr: Pointer,
         size: Size,
         new_state: bool,
     ) -> EvalResult<'tcx> {
         if size.bytes() == 0 {
             return Ok(());
         }
-        let ptr = ptr.to_ptr()?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(
             ptr.offset,
