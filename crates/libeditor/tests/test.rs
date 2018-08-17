@@ -1,11 +1,8 @@
 extern crate libeditor;
 extern crate libsyntax2;
-extern crate itertools;
 #[macro_use]
 extern crate assert_eq_text;
 
-use std::fmt;
-use itertools::Itertools;
 use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
     File, TextUnit, TextRange, ActionResult, CursorPosition,
@@ -116,6 +113,11 @@ fn test_add_derive() {
     check_action(
         "struct Foo { a: i32, <|>}",
         "#[derive(<|>)]\nstruct Foo { a: i32, }",
+        |file, off| add_derive(file, off).map(|f| f()),
+    );
+    check_action(
+        "struct Foo { <|> a: i32, }",
+        "#[derive(<|>)]\nstruct Foo {  a: i32, }",
         |file, off| add_derive(file, off).map(|f| f()),
     );
     check_action(

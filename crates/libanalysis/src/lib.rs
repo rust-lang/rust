@@ -40,6 +40,7 @@ const INDEXING_THRESHOLD: usize = 128;
 
 pub type FileResolver = dyn Fn(FileId, &Path) -> Option<FileId> + Send + Sync;
 
+#[derive(Debug)]
 pub struct WorldState {
     data: Arc<WorldData>
 }

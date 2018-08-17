@@ -27,15 +27,14 @@ mod conv;
 mod main_loop;
 mod vfs;
 mod path_map;
+mod server_world;
 
 use threadpool::ThreadPool;
 use crossbeam_channel::bounded;
 use flexi_logger::{Logger, Duplicate};
-use libanalysis::WorldState;
 
 use ::{
     io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
-    path_map::PathMap,
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -116,7 +115,6 @@ enum Task {
 
 fn initialized(io: &mut Io) -> Result<()> {
     {
-        let mut world = WorldState::new();
         let mut pool = ThreadPool::new(4);
         let (task_sender, task_receiver) = bounded::<Task>(16);
         let (fs_events_receiver, watcher) = vfs::watch(vec![
@@ -125,7 +123,6 @@ fn initialized(io: &mut Io) -> Result<()> {
         info!("lifecycle: handshake finished, server ready to serve requests");
         let res = main_loop::main_loop(
             io,
-            &mut world,
             &mut pool,
             task_sender,
             task_receiver.clone(),

@@ -60,12 +60,16 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
         let doc = event.document
         if (doc.languageId != "rust") return
-        // We need to order this after LS updates, but there's no API for that.
-        // Hence, good old setTimeout.
-        setTimeout(() => {
+        afterLs(() => {
             textDocumentContentProvider.eventEmitter.fire(uris.syntaxTree)
-        }, 10)
+        })
     }, null, context.subscriptions)
+}
+
+// We need to order this after LS updates, but there's no API for that.
+// Hence, good old setTimeout.
+function afterLs(f) {
+    setTimeout(f, 10)
 }
 
 export function deactivate(): Thenable<void> {
@@ -118,7 +122,9 @@ function startServer() {
                 if (editor == null) return
                 if (!editor.selection.isEmpty) return
                 let position = client.protocol2CodeConverter.asPosition(params)
-                editor.selection = new vscode.Selection(position, position);
+                afterLs(() => {
+                    editor.selection = new vscode.Selection(position, position)
+                })
             }
         )
     })

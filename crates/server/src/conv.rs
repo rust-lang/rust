@@ -6,7 +6,10 @@ use libeditor::{LineIndex, LineCol, Edit, AtomEdit};
 use libsyntax2::{SyntaxKind, TextUnit, TextRange};
 use libanalysis::FileId;
 
-use {Result, PathMap};
+use {
+    Result,
+    server_world::ServerWorld,
+};
 
 pub trait Conv {
     type Output;
@@ -126,57 +129,52 @@ impl<T: ConvWith> ConvWith for Option<T> {
 }
 
 impl<'a> TryConvWith for &'a Url {
-    type Ctx = PathMap;
+    type Ctx = ServerWorld;
     type Output = FileId;
-    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
-        let path = self.to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", self))?;
-        path_map.get_id(&path).ok_or_else(|| format_err!("unknown file: {}", path.display()))
+    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+        world.uri_to_file_id(self)
     }
 }
 
 impl TryConvWith for FileId {
-    type Ctx = PathMap;
+    type Ctx = ServerWorld;
     type Output = Url;
-    fn try_conv_with(self, path_map: &PathMap) -> Result<Url> {
-        let path = path_map.get_path(self);
-        let url = Url::from_file_path(path)
-            .map_err(|()| format_err!("can't convert path to url: {}", path.display()))?;
-        Ok(url)
+    fn try_conv_with(self, world: &ServerWorld) -> Result<Url> {
+        world.file_id_to_uri(self)
     }
 }
 
 impl<'a> TryConvWith for &'a TextDocumentItem {
-    type Ctx = PathMap;
+    type Ctx = ServerWorld;
     type Output = FileId;
-    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
-        self.uri.try_conv_with(path_map)
+    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+        self.uri.try_conv_with(world)
     }
 }
 
 impl<'a> TryConvWith for &'a VersionedTextDocumentIdentifier {
-    type Ctx = PathMap;
+    type Ctx = ServerWorld;
     type Output = FileId;
-    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
-        self.uri.try_conv_with(path_map)
+    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+        self.uri.try_conv_with(world)
     }
 }
 
 impl<'a> TryConvWith for &'a TextDocumentIdentifier {
-    type Ctx = PathMap;
+    type Ctx = ServerWorld;
     type Output = FileId;
-    fn try_conv_with(self, path_map: &PathMap) -> Result<FileId> {
-        self.uri.try_conv_with(path_map)
+    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+        world.uri_to_file_id(&self.uri)
     }
 }
 
 pub fn to_location(
     file_id: FileId,
     range: TextRange,
-    path_map: &PathMap,
+    world: &ServerWorld,
     line_index: &LineIndex,
 ) -> Result<Location> {
-        let url = file_id.try_conv_with(path_map)?;
+        let url = file_id.try_conv_with(world)?;
         let loc = Location::new(
             url,
             range.conv_with(line_index),

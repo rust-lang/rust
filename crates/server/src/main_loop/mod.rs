@@ -1,21 +1,20 @@
 mod handlers;
 
 use std::{
-    collections::{HashSet, HashMap},
+    collections::{HashSet},
 };
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::Url;
-use libanalysis::{World, WorldState, FileId};
 use serde_json::to_value;
 
 use {
     req, dispatch,
-    Task, Result, PathMap,
+    Task, Result,
     io::{Io, RawMsg, RawRequest, RawNotification},
-    vfs::{FileEvent, FileEventKind},
-    conv::TryConvWith,
+    vfs::FileEvent,
+    server_world::{ServerWorldState, ServerWorld},
     main_loop::handlers::{
         handle_syntax_tree,
         handle_extend_selection,
@@ -32,17 +31,16 @@ use {
 
 pub(super) fn main_loop(
     io: &mut Io,
-    world: &mut WorldState,
     pool: &mut ThreadPool,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     fs_events_receiver: Receiver<Vec<FileEvent>>,
 ) -> Result<()> {
     info!("server initialized, serving requests");
+    let mut state = ServerWorldState::new();
+
     let mut next_request_id = 0;
     let mut pending_requests: HashSet<u64> = HashSet::new();
-    let mut path_map = PathMap::new();
-    let mut mem_map: HashMap<FileId, Option<String>> = HashMap::new();
     let mut fs_events_receiver = Some(&fs_events_receiver);
     loop {
         enum Event {
@@ -91,37 +89,17 @@ pub(super) fn main_loop(
             }
             Event::Fs(events) => {
                 trace!("fs change, {} events", events.len());
-                let changes = events.into_iter()
-                    .map(|event| {
-                        let text = match event.kind {
-                            FileEventKind::Add(text) => Some(text),
-                            FileEventKind::Remove => None,
-                        };
-                        (event.path, text)
-                    })
-                    .map(|(path, text)| {
-                        (path_map.get_or_insert(path), text)
-                    })
-                    .filter_map(|(id, text)| {
-                        if mem_map.contains_key(&id) {
-                            mem_map.insert(id, text);
-                            None
-                        } else {
-                            Some((id, text))
-                        }
-                    });
-
-                world.change_files(changes);
+                state.apply_fs_changes(events);
             }
             Event::Msg(msg) => {
                 match msg {
                     RawMsg::Request(req) => {
-                        if !on_request(io, world, &path_map, pool, &task_sender, req)? {
+                        if !on_request(io, &state, pool, &task_sender, req)? {
                             return Ok(());
                         }
                     }
                     RawMsg::Notification(not) => {
-                        on_notification(io, world, &mut path_map, pool, &task_sender, not, &mut mem_map)?
+                        on_notification(io, &mut state, pool, &task_sender, not)?
                     }
                     RawMsg::Response(resp) => {
                         if !pending_requests.remove(&resp.id) {
@@ -136,45 +114,40 @@ pub(super) fn main_loop(
 
 fn on_request(
     io: &mut Io,
-    world: &WorldState,
-    path_map: &PathMap,
+    world: &ServerWorldState,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     req: RawRequest,
 ) -> Result<bool> {
     let mut req = Some(req);
     handle_request_on_threadpool::<req::SyntaxTree>(
-        &mut req, pool, path_map, world, sender, handle_syntax_tree,
+        &mut req, pool, world, sender, handle_syntax_tree,
     )?;
     handle_request_on_threadpool::<req::ExtendSelection>(
-        &mut req, pool, path_map, world, sender, handle_extend_selection,
+        &mut req, pool, world, sender, handle_extend_selection,
     )?;
     handle_request_on_threadpool::<req::FindMatchingBrace>(
-        &mut req, pool, path_map, world, sender, handle_find_matching_brace,
+        &mut req, pool, world, sender, handle_find_matching_brace,
     )?;
     handle_request_on_threadpool::<req::DocumentSymbolRequest>(
-        &mut req, pool, path_map, world, sender, handle_document_symbol,
+        &mut req, pool, world, sender, handle_document_symbol,
     )?;
     handle_request_on_threadpool::<req::CodeActionRequest>(
-        &mut req, pool, path_map, world, sender, handle_code_action,
+        &mut req, pool, world, sender, handle_code_action,
     )?;
     handle_request_on_threadpool::<req::WorkspaceSymbol>(
-        &mut req, pool, path_map, world, sender, handle_workspace_symbol,
+        &mut req, pool, world, sender, handle_workspace_symbol,
     )?;
     handle_request_on_threadpool::<req::GotoDefinition>(
-        &mut req, pool, path_map, world, sender, handle_goto_definition,
+        &mut req, pool, world, sender, handle_goto_definition,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));
 
-        let world = world.snapshot({
-            let pm = path_map.clone();
-            move |id, path| pm.resolve(id, path)
-        });
-        let path_map = path_map.clone();
+        let world = world.snapshot();
         let sender = sender.clone();
         pool.execute(move || {
-            let (edit, cursor) = match handle_execute_command(world, path_map, params) {
+            let (edit, cursor) = match handle_execute_command(world, params) {
                 Ok(res) => res,
                 Err(e) => return sender.send(Task::Die(e)),
             };
@@ -221,60 +194,48 @@ fn on_request(
 
 fn on_notification(
     io: &mut Io,
-    world: &mut WorldState,
-    path_map: &mut PathMap,
+    state: &mut ServerWorldState,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     not: RawNotification,
-    mem_map: &mut HashMap<FileId, Option<String>>,
 ) -> Result<()> {
     let mut not = Some(not);
     dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
         let uri = params.text_document.uri;
         let path = uri.to_file_path()
             .map_err(|()| format_err!("invalid uri: {}", uri))?;
-        let file_id = path_map.get_or_insert(path);
-        mem_map.insert(file_id, None);
-        world.change_file(file_id, Some(params.text_document.text));
+        state.add_mem_file(path, params.text_document.text);
         update_file_notifications_on_threadpool(
             pool,
-            world.snapshot({
-                let pm = path_map.clone();
-                move |id, path| pm.resolve(id, path)
-            }),
-            path_map.clone(),
+            state.snapshot(),
             sender.clone(),
             uri,
         );
         Ok(())
     })?;
     dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
-        let file_id = params.text_document.try_conv_with(path_map)?;
+        let uri = params.text_document.uri;
+        let path = uri.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", uri))?;
         let text = params.content_changes.pop()
             .ok_or_else(|| format_err!("empty changes"))?
             .text;
-        world.change_file(file_id, Some(text));
+        state.change_mem_file(path.as_path(), text)?;
         update_file_notifications_on_threadpool(
             pool,
-            world.snapshot({
-                let pm = path_map.clone();
-                move |id, path| pm.resolve(id, path)
-            }),
-            path_map.clone(),
+            state.snapshot(),
             sender.clone(),
-            params.text_document.uri,
+            uri,
         );
         Ok(())
     })?;
     dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
-        let file_id = params.text_document.try_conv_with(path_map)?;
-        let text = match mem_map.remove(&file_id) {
-            Some(text) => text,
-            None => bail!("unmatched close notification"),
-        };
-        world.change_file(file_id, text);
+        let uri = params.text_document.uri;
+        let path = uri.to_file_path()
+            .map_err(|()| format_err!("invalid uri: {}", uri))?;
+        state.remove_mem_file(path.as_path())?;
         let not = req::PublishDiagnosticsParams {
-            uri: params.text_document.uri,
+            uri,
             diagnostics: Vec::new(),
         };
         let not = dispatch::send_notification::<req::PublishDiagnostics>(not);
@@ -291,21 +252,16 @@ fn on_notification(
 fn handle_request_on_threadpool<R: req::ClientRequest>(
     req: &mut Option<RawRequest>,
     pool: &ThreadPool,
-    path_map: &PathMap,
-    world: &WorldState,
+    world: &ServerWorldState,
     sender: &Sender<Task>,
-    f: fn(World, PathMap, R::Params) -> Result<R::Result>,
+    f: fn(ServerWorld, R::Params) -> Result<R::Result>,
 ) -> Result<()>
 {
     dispatch::handle_request::<R, _>(req, |params, resp| {
-        let world = world.snapshot({
-            let pm = path_map.clone();
-            move |id, path| pm.resolve(id, path)
-        });
-        let path_map = path_map.clone();
+        let world = world.snapshot();
         let sender = sender.clone();
         pool.execute(move || {
-            let res = f(world, path_map, params);
+            let res = f(world, params);
             let task = match resp.into_response(res) {
                 Ok(resp) => Task::Respond(resp),
                 Err(e) => Task::Die(e),
@@ -318,13 +274,12 @@ fn handle_request_on_threadpool<R: req::ClientRequest>(
 
 fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
-    world: World,
-    path_map: PathMap,
+    world: ServerWorld,
     sender: Sender<Task>,
     uri: Url,
 ) {
     pool.execute(move || {
-        match publish_diagnostics(world.clone(), path_map.clone(), uri.clone()) {
+        match publish_diagnostics(world.clone(), uri.clone()) {
             Err(e) => {
                 error!("failed to compute diagnostics: {:?}", e)
             }
@@ -333,7 +288,7 @@ fn update_file_notifications_on_threadpool(
                 sender.send(Task::Notify(not));
             }
         }
-        match publish_decorations(world, path_map.clone(), uri) {
+        match publish_decorations(world, uri) {
             Err(e) => {
                 error!("failed to compute decorations: {:?}", e)
             }
