@@ -1,7 +1,7 @@
 use rustc::ty::layout::{Size, HasDataLayout};
+use rustc::mir::interpret::sign_extend;
 
 use super::{Scalar, ScalarMaybeUndef, EvalResult};
-use rustc_mir::interpret::sign_extend;
 
 pub trait ScalarExt {
     fn null(size: Size) -> Self;
