@@ -12,3 +12,6 @@ rayon = "1.0.2"
 fst = { git = "https://github.com/matklad/fst", branch = "subsequence"}
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
+
+[dev-dependencies]
+assert_eq_text = { path = "../assert_eq_text" }

@@ -6,6 +6,7 @@ extern crate assert_eq_text;
 
 use std::fmt;
 use itertools::Itertools;
+use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
     File, TextUnit, TextRange, ActionResult, CursorPosition,
     highlight, runnables, extend_selection, file_structure,
@@ -33,7 +34,7 @@ fn main() {}
     println!("Hello, {}!", 92);
 "#);
     let hls = highlight(&file);
-    dbg_eq(
+    assert_eq_dbg(
         r#"[HighlightedRange { range: [1; 11), tag: "comment" },
             HighlightedRange { range: [12; 14), tag: "keyword" },
             HighlightedRange { range: [15; 19), tag: "function" },
@@ -57,7 +58,7 @@ fn test_foo() {}
 fn test_foo() {}
 "#);
     let runnables = runnables(&file);
-    dbg_eq(
+    assert_eq_dbg(
         r#"[Runnable { range: [1; 13), kind: Bin },
             Runnable { range: [15; 39), kind: Test { name: "test_foo" } },
             Runnable { range: [41; 75), kind: Test { name: "test_foo" } }]"#,
@@ -86,7 +87,7 @@ impl E {}
 impl fmt::Debug for E {}
 "#);
     let symbols = file_structure(&file);
-    dbg_eq(
+    assert_eq_dbg(
         r#"[StructureNode { parent: None, label: "Foo", navigation_range: [8; 11), node_range: [1; 26), kind: STRUCT_DEF },
             StructureNode { parent: Some(0), label: "x", navigation_range: [18; 19), node_range: [18; 24), kind: NAMED_FIELD },
             StructureNode { parent: None, label: "m", navigation_range: [32; 33), node_range: [28; 53), kind: MODULE },
@@ -145,12 +146,6 @@ fn test_matching_brace() {
 
 fn file(text: &str) -> File {
     File::parse(text)
-}
-
-fn dbg_eq(expected: &str, actual: &impl fmt::Debug) {
-    let actual = format!("{:?}", actual);
-    let expected = expected.lines().map(|l| l.trim()).join(" ");
-    assert_eq!(expected, actual);
 }
 
 fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(

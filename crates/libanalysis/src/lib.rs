@@ -163,15 +163,21 @@ impl World {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let id = match self.resolve_relative_path(id, &PathBuf::from(format!("../{}.rs", name))) {
-            Some(id) => id,
-            None => return Vec::new(),
-        };
-        vec![(id, FileSymbol {
-            name: name.clone(),
-            node_range: TextRange::offset_len(0.into(), 0.into()),
-            kind: MODULE,
-        })]
+        let paths = &[
+            PathBuf::from(format!("../{}.rs", name)),
+            PathBuf::from(format!("../{}/mod.rs", name)),
+        ];
+        paths.iter()
+            .filter_map(|path| self.resolve_relative_path(id, path))
+            .map(|id| {
+                let symbol = FileSymbol {
+                    name: name.clone(),
+                    node_range: TextRange::offset_len(0.into(), 0.into()),
+                    kind: MODULE,
+                };
+                (id, symbol)
+            })
+            .collect()
     }
 
     fn resolve_relative_path(&self, id: FileId, path: &Path) -> Option<FileId> {
