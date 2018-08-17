@@ -1840,17 +1840,6 @@ impl<'a, 'tcx> Place<'tcx> {
         })
     }
 
-    pub fn elem(
-        self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        elem: PlaceElem<'tcx>,
-    ) -> Self {
-        Place {
-            base: self.base,
-            elems: tcx.intern_place_elems(&[elem]),
-        }
-    }
-
     pub fn local(local: Local) -> Self {
        Place {
            base: PlaceBase::Local(local),
@@ -1872,6 +1861,19 @@ impl<'a, 'tcx> Place<'tcx> {
         Place {
             base: PlaceBase::Promoted(box (promoted, ty)),
             elems: Slice::empty(),
+        }
+    }
+
+    fn elem(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        elem: PlaceElem<'tcx>,
+    ) -> Self {
+        Place {
+            base: self.base,
+            elems: tcx.mk_place_elems(
+                self.elems.iter().cloned().chain(iter::once(elem))
+            ),
         }
     }
 }
