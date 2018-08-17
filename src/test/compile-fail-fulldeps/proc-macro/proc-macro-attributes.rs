@@ -17,11 +17,11 @@
 extern crate derive_b;
 
 #[derive(B)]
-#[B]
-#[C] //~ ERROR: The attribute `C` is currently unknown to the compiler
+#[B] //~ ERROR `B` is a derive mode
+#[C]
 #[B(D)]
 #[B(E = "foo")]
-#[B(arbitrary tokens)] //~ ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `tokens`
+#[B(arbitrary tokens)]
 struct B;
 
 fn main() {}

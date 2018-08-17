@@ -20,5 +20,4 @@ mod foo {
 
 fn main() {
    bar!();
-   //~^ ERROR cannot find macro `bar!`
 }
