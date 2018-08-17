@@ -9,20 +9,18 @@
 // except according to those terms.
 
 use array_vec::ArrayVec;
-use std::borrow::{Borrow, BorrowMut, ToOwned};
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::{Deref, DerefMut, Range};
 use std::slice;
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
 use rustc_serialize;
 
-/// Represents a set (or packed family of sets), of some element type
-/// E, where each E is identified by some unique index type `T`.
+/// Represents a set of some element type E, where each E is identified by some
+/// unique index type `T`.
 ///
 /// In other words, `T` is the type used to index into the bitvector
 /// this type uses to represent the set of object it holds.
@@ -33,6 +31,9 @@ pub struct IdxSetBuf<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: Vec<Word>,
 }
+
+// FIXME: temporary
+pub type IdxSet<T> = IdxSetBuf<T>;
 
 impl<T: Idx> Clone for IdxSetBuf<T> {
     fn clone(&self) -> Self {
@@ -59,51 +60,9 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
     }
 }
 
-
-// pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
-// around `&mut IdxSet<T>` or `&IdxSet<T>`.
-
-/// Represents a set (or packed family of sets), of some element type
-/// E, where each E is identified by some unique index type `T`.
-///
-/// In other words, `T` is the type used to index into the bitslice
-/// this type uses to represent the set of object it holds.
-#[repr(transparent)]
-pub struct IdxSet<T: Idx> {
-    _pd: PhantomData<fn(&T)>,
-    bits: [Word],
-}
-
-impl<T: Idx> Borrow<IdxSet<T>> for IdxSetBuf<T> {
-    fn borrow(&self) -> &IdxSet<T> {
-        &*self
-    }
-}
-
-impl<T: Idx> BorrowMut<IdxSet<T>> for IdxSetBuf<T> {
-    fn borrow_mut(&mut self) -> &mut IdxSet<T> {
-        &mut *self
-    }
-}
-
-impl<T: Idx> ToOwned for IdxSet<T> {
-    type Owned = IdxSetBuf<T>;
-    fn to_owned(&self) -> Self::Owned {
-        IdxSet::to_owned(self)
-    }
-}
-
 const BITS_PER_WORD: usize = mem::size_of::<Word>() * 8;
 
 impl<T: Idx> fmt::Debug for IdxSetBuf<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        w.debug_list()
-         .entries(self.iter())
-         .finish()
-    }
-}
-
-impl<T: Idx> fmt::Debug for IdxSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         w.debug_list()
          .entries(self.iter())
@@ -130,38 +89,6 @@ impl<T: Idx> IdxSetBuf<T> {
     /// Creates set holding no elements.
     pub fn new_empty(universe_size: usize) -> Self {
         Self::new(0, universe_size)
-    }
-}
-
-impl<T: Idx> IdxSet<T> {
-    unsafe fn from_slice(s: &[Word]) -> &Self {
-        &*(s as *const [Word] as *const Self)
-    }
-
-    unsafe fn from_slice_mut(s: &mut [Word]) -> &mut Self {
-        &mut *(s as *mut [Word] as *mut Self)
-    }
-}
-
-impl<T: Idx> Deref for IdxSetBuf<T> {
-    type Target = IdxSet<T>;
-    fn deref(&self) -> &IdxSet<T> {
-        unsafe { IdxSet::from_slice(&self.bits) }
-    }
-}
-
-impl<T: Idx> DerefMut for IdxSetBuf<T> {
-    fn deref_mut(&mut self) -> &mut IdxSet<T> {
-        unsafe { IdxSet::from_slice_mut(&mut self.bits) }
-    }
-}
-
-impl<T: Idx> IdxSet<T> {
-    pub fn to_owned(&self) -> IdxSetBuf<T> {
-        IdxSetBuf {
-            _pd: Default::default(),
-            bits: self.bits.to_owned(),
-        }
     }
 
     /// Duplicates as a hybrid set.
@@ -217,16 +144,6 @@ impl<T: Idx> IdxSet<T> {
     /// Adds `elem` to the set `self`; returns true iff this changed `self`.
     pub fn add(&mut self, elem: &T) -> bool {
         self.bits.set_bit(elem.index())
-    }
-
-    pub fn range(&self, elems: &Range<T>) -> &Self {
-        let elems = elems.start.index()..elems.end.index();
-        unsafe { Self::from_slice(&self.bits[elems]) }
-    }
-
-    pub fn range_mut(&mut self, elems: &Range<T>) -> &mut Self {
-        let elems = elems.start.index()..elems.end.index();
-        unsafe { Self::from_slice_mut(&mut self.bits[elems]) }
     }
 
     /// Returns true iff set `self` contains `elem`.
