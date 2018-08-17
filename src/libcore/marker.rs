@@ -610,10 +610,10 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// Instead it can be used to prevent moves through the type system,
 /// by controlling the behavior of special pointer types like [`PinMut`],
-/// which "pin" the type in place by not allowing it to be moved out via mutable references.
+/// which "pin" the type in place by not allowing it to be moved out of them.
 ///
 /// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out of said pointers, with functions such as [`replace`].
+/// which then allows it to move out with functions such as [`replace`].
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -623,6 +623,8 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// let mut string = "this".to_string();
 /// let mut pinned_string = PinMut::new(&mut string);
+///
+/// // dereferencing the pointer mutably is only possible because String implements Unpin
 /// replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
