@@ -38,7 +38,7 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::Local;
 use rustc::mir::*;
 use rustc::ty::{item_path, TyCtxt};
-use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
@@ -47,7 +47,7 @@ use std::path::{Path, PathBuf};
 use transform::MirSource;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
-pub type LiveVarSet<V> = IdxSetBuf<V>;
+pub type LiveVarSet<V> = IdxSet<V>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks. You can use `simulate_block` to obtain the

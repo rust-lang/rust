@@ -27,7 +27,7 @@ use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 use rustc_errors::{Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::small_vec::SmallVec;
 
@@ -166,7 +166,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         _ => Some(tcx.hir.body_owned_by(id)),
     };
 
-    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+    let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
