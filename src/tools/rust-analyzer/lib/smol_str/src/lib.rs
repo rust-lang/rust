@@ -98,6 +98,12 @@ impl fmt::Display for SmolStr {
     }
 }
 
+impl<'a> From<&'a str> for SmolStr {
+    fn from(text: &'a str) -> Self {
+        Self::new(text)
+    }
+}
+
 const INLINE_CAP: usize = 22;
 const WS_TAG: u8 = (INLINE_CAP + 1) as u8;
 const N_NEWLINES: usize = 32;
