@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use {SyntaxNodeRef, AstNode, SyntaxRoot};
+use {SyntaxNodeRef, AstNode, RefRoot};
 
 
 pub fn visitor<'a, T>() -> impl Visitor<'a, Output=T> {
@@ -10,7 +10,7 @@ pub trait Visitor<'a>: Sized {
     type Output;
     fn accept(self, node: SyntaxNodeRef<'a>) -> Option<Self::Output>;
     fn visit<N, F>(self, f: F) -> Vis<Self, N, F>
-        where N: AstNode<&'a SyntaxRoot>,
+        where N: AstNode<RefRoot<'a>>,
               F: FnOnce(N) -> Self::Output,
     {
         Vis { inner: self, f, ph: PhantomData }
@@ -40,7 +40,7 @@ pub struct Vis<V, N, F> {
 impl<'a, V, N, F> Visitor<'a> for Vis<V, N, F>
     where
         V: Visitor<'a>,
-        N: AstNode<&'a SyntaxRoot>,
+        N: AstNode<RefRoot<'a>>,
         F: FnOnce(N) -> <V as Visitor<'a>>::Output,
 {
     type Output = <V as Visitor<'a>>::Output;

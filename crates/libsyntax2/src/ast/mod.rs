@@ -1,12 +1,10 @@
 mod generated;
 
-use std::sync::Arc;
-
 use itertools::Itertools;
 use smol_str::SmolStr;
 
 use {
-    SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot, SyntaxError,
+    SyntaxNode, SyntaxNodeRef, OwnedRoot, TreeRoot, SyntaxError,
     SyntaxKind::*,
 };
 pub use self::generated::*;
@@ -37,7 +35,7 @@ pub trait AttrsOwner<R: TreeRoot>: AstNode<R> {
     }
 }
 
-impl File<Arc<SyntaxRoot>> {
+impl File<OwnedRoot> {
     pub fn parse(text: &str) -> Self {
         File::cast(::parse(text)).unwrap()
     }
@@ -45,7 +43,7 @@ impl File<Arc<SyntaxRoot>> {
 
 impl<R: TreeRoot> File<R> {
     pub fn errors(&self) -> Vec<SyntaxError> {
-        self.syntax().root.errors.clone()
+        self.syntax().root.syntax_root().errors.clone()
     }
 }
 

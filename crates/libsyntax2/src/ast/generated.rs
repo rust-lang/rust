@@ -1,13 +1,12 @@
-use std::sync::Arc;
 use {
     ast,
-    SyntaxNode, SyntaxRoot, TreeRoot, AstNode,
+    SyntaxNode, OwnedRoot, TreeRoot, AstNode,
     SyntaxKind::*,
 };
 
 // ArrayType
 #[derive(Debug, Clone, Copy)]
-pub struct ArrayType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ArrayType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -25,7 +24,7 @@ impl<R: TreeRoot> ArrayType<R> {}
 
 // Attr
 #[derive(Debug, Clone, Copy)]
-pub struct Attr<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct Attr<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -50,7 +49,7 @@ impl<R: TreeRoot> Attr<R> {
 
 // ConstDef
 #[derive(Debug, Clone, Copy)]
-pub struct ConstDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ConstDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -70,7 +69,7 @@ impl<R: TreeRoot> ConstDef<R> {}
 
 // DynTraitType
 #[derive(Debug, Clone, Copy)]
-pub struct DynTraitType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct DynTraitType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -88,7 +87,7 @@ impl<R: TreeRoot> DynTraitType<R> {}
 
 // EnumDef
 #[derive(Debug, Clone, Copy)]
-pub struct EnumDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct EnumDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -108,7 +107,7 @@ impl<R: TreeRoot> EnumDef<R> {}
 
 // File
 #[derive(Debug, Clone, Copy)]
-pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct File<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -132,7 +131,7 @@ impl<R: TreeRoot> File<R> {
 
 // FnDef
 #[derive(Debug, Clone, Copy)]
-pub struct FnDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct FnDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -152,7 +151,7 @@ impl<R: TreeRoot> FnDef<R> {}
 
 // FnPointerType
 #[derive(Debug, Clone, Copy)]
-pub struct FnPointerType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct FnPointerType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -170,7 +169,7 @@ impl<R: TreeRoot> FnPointerType<R> {}
 
 // ForType
 #[derive(Debug, Clone, Copy)]
-pub struct ForType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ForType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -188,7 +187,7 @@ impl<R: TreeRoot> ForType<R> {}
 
 // ImplItem
 #[derive(Debug, Clone, Copy)]
-pub struct ImplItem<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ImplItem<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -206,7 +205,7 @@ impl<R: TreeRoot> ImplItem<R> {}
 
 // ImplTraitType
 #[derive(Debug, Clone, Copy)]
-pub struct ImplTraitType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ImplTraitType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -224,7 +223,7 @@ impl<R: TreeRoot> ImplTraitType<R> {}
 
 // Module
 #[derive(Debug, Clone, Copy)]
-pub struct Module<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct Module<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -244,7 +243,7 @@ impl<R: TreeRoot> Module<R> {}
 
 // Name
 #[derive(Debug, Clone, Copy)]
-pub struct Name<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct Name<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -262,7 +261,7 @@ impl<R: TreeRoot> Name<R> {}
 
 // NameRef
 #[derive(Debug, Clone, Copy)]
-pub struct NameRef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct NameRef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -280,7 +279,7 @@ impl<R: TreeRoot> NameRef<R> {}
 
 // NamedField
 #[derive(Debug, Clone, Copy)]
-pub struct NamedField<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct NamedField<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -300,7 +299,7 @@ impl<R: TreeRoot> NamedField<R> {}
 
 // NeverType
 #[derive(Debug, Clone, Copy)]
-pub struct NeverType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct NeverType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -318,7 +317,7 @@ impl<R: TreeRoot> NeverType<R> {}
 
 // NominalDef
 #[derive(Debug, Clone, Copy)]
-pub enum NominalDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub enum NominalDef<R: TreeRoot = OwnedRoot> {
     StructDef(StructDef<R>),
     EnumDef(EnumDef<R>),
 }
@@ -344,7 +343,7 @@ impl<R: TreeRoot> NominalDef<R> {}
 
 // ParenType
 #[derive(Debug, Clone, Copy)]
-pub struct ParenType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ParenType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -362,7 +361,7 @@ impl<R: TreeRoot> ParenType<R> {}
 
 // PathType
 #[derive(Debug, Clone, Copy)]
-pub struct PathType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct PathType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -380,7 +379,7 @@ impl<R: TreeRoot> PathType<R> {}
 
 // PlaceholderType
 #[derive(Debug, Clone, Copy)]
-pub struct PlaceholderType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct PlaceholderType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -398,7 +397,7 @@ impl<R: TreeRoot> PlaceholderType<R> {}
 
 // PointerType
 #[derive(Debug, Clone, Copy)]
-pub struct PointerType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct PointerType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -416,7 +415,7 @@ impl<R: TreeRoot> PointerType<R> {}
 
 // ReferenceType
 #[derive(Debug, Clone, Copy)]
-pub struct ReferenceType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct ReferenceType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -434,7 +433,7 @@ impl<R: TreeRoot> ReferenceType<R> {}
 
 // SliceType
 #[derive(Debug, Clone, Copy)]
-pub struct SliceType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct SliceType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -452,7 +451,7 @@ impl<R: TreeRoot> SliceType<R> {}
 
 // StaticDef
 #[derive(Debug, Clone, Copy)]
-pub struct StaticDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct StaticDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -472,7 +471,7 @@ impl<R: TreeRoot> StaticDef<R> {}
 
 // StructDef
 #[derive(Debug, Clone, Copy)]
-pub struct StructDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct StructDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -498,7 +497,7 @@ impl<R: TreeRoot> StructDef<R> {
 
 // TokenTree
 #[derive(Debug, Clone, Copy)]
-pub struct TokenTree<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TokenTree<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -516,7 +515,7 @@ impl<R: TreeRoot> TokenTree<R> {}
 
 // TraitDef
 #[derive(Debug, Clone, Copy)]
-pub struct TraitDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TraitDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -536,7 +535,7 @@ impl<R: TreeRoot> TraitDef<R> {}
 
 // TupleType
 #[derive(Debug, Clone, Copy)]
-pub struct TupleType<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TupleType<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -554,7 +553,7 @@ impl<R: TreeRoot> TupleType<R> {}
 
 // TypeDef
 #[derive(Debug, Clone, Copy)]
-pub struct TypeDef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct TypeDef<R: TreeRoot = OwnedRoot> {
     syntax: SyntaxNode<R>,
 }
 
@@ -574,7 +573,7 @@ impl<R: TreeRoot> TypeDef<R> {}
 
 // TypeRef
 #[derive(Debug, Clone, Copy)]
-pub enum TypeRef<R: TreeRoot = Arc<SyntaxRoot>> {
+pub enum TypeRef<R: TreeRoot = OwnedRoot> {
     ParenType(ParenType<R>),
     TupleType(TupleType<R>),
     NeverType(NeverType<R>),

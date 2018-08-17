@@ -3,14 +3,14 @@ use std::{fmt, sync::Arc};
 use smol_str::SmolStr;
 
 use {
-    yellow::{RedNode, TreeRoot, SyntaxRoot, RedPtr},
+    yellow::{RedNode, TreeRoot, SyntaxRoot, RedPtr, RefRoot, OwnedRoot},
     SyntaxKind::{self, *},
     TextRange, TextUnit,
 };
 
 
 #[derive(Clone, Copy)]
-pub struct SyntaxNode<R: TreeRoot = Arc<SyntaxRoot>> {
+pub struct SyntaxNode<R: TreeRoot = OwnedRoot> {
     pub(crate) root: R,
     // Guaranteed to not dangle, because `root` holds a
     // strong reference to red's ancestor
@@ -28,7 +28,7 @@ impl<R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
 
 impl<R: TreeRoot> Eq for SyntaxNode<R> {}
 
-pub type SyntaxNodeRef<'a> = SyntaxNode<&'a SyntaxRoot>;
+pub type SyntaxNodeRef<'a> = SyntaxNode<RefRoot<'a>>;
 
 #[test]
 fn syntax_node_ref_is_copy() {
@@ -42,18 +42,18 @@ pub struct SyntaxError {
     pub offset: TextUnit,
 }
 
-impl SyntaxNode<Arc<SyntaxRoot>> {
+impl SyntaxNode<OwnedRoot> {
     pub(crate) fn new_owned(root: SyntaxRoot) -> Self {
-        let root = Arc::new(root);
-        let red = RedPtr::new(&root.red);
+        let root = OwnedRoot(Arc::new(root));
+        let red = RedPtr::new(&root.syntax_root().red);
         SyntaxNode { root, red }
     }
 }
 
 impl<R: TreeRoot> SyntaxNode<R> {
-    pub fn as_ref<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
+    pub fn as_ref<'a>(&'a self) -> SyntaxNode<RefRoot<'a>> {
         SyntaxNode {
-            root: &*self.root,
+            root: self.root.borrowed(),
             red: self.red,
         }
     }

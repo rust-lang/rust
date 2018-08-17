@@ -26,7 +26,7 @@ use std::{
 };
 
 use libsyntax2::{
-    TextUnit, TextRange, SyntaxRoot,
+    TextUnit, TextRange, RefRoot,
     ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
 };
@@ -151,7 +151,7 @@ impl World {
         Ok(vec![])
     }
 
-    fn index_resolve(&self, name_ref: ast::NameRef<&SyntaxRoot>) -> Vec<(FileId, FileSymbol)> {
+    fn index_resolve(&self, name_ref: ast::NameRef<RefRoot>) -> Vec<(FileId, FileSymbol)> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
@@ -159,7 +159,7 @@ impl World {
         self.world_symbols(query)
     }
 
-    fn resolve_module(&self, id: FileId, module: ast::Module<&SyntaxRoot>) -> Vec<(FileId, FileSymbol)> {
+    fn resolve_module(&self, id: FileId, module: ast::Module<RefRoot>) -> Vec<(FileId, FileSymbol)> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),

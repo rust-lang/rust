@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 use libsyntax2::{
-    SyntaxKind, SyntaxNodeRef, SyntaxRoot, AstNode,
+    SyntaxKind, SyntaxNodeRef, AstNode, RefRoot,
     ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},
@@ -32,7 +32,7 @@ pub fn file_symbols(file: &ast::File) -> Vec<FileSymbol> {
 }
 
 fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
-    fn decl<'a, N: NameOwner<&'a SyntaxRoot>>(node: N) -> Option<FileSymbol> {
+    fn decl<'a, N: NameOwner<RefRoot<'a>>>(node: N) -> Option<FileSymbol> {
         let name = node.name()?;
         Some(FileSymbol {
             name: name.text(),
@@ -80,7 +80,7 @@ pub fn file_structure(file: &ast::File) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
-    fn decl<'a, N: NameOwner<&'a SyntaxRoot>>(node: N) -> Option<StructureNode> {
+    fn decl<'a, N: NameOwner<RefRoot<'a>>>(node: N) -> Option<StructureNode> {
         let name = node.name()?;
         Some(StructureNode {
             parent: None,

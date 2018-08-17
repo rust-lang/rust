@@ -1,13 +1,13 @@
 use std::fmt::Write;
 use {
     algo::walk::{walk, WalkEvent},
-    SyntaxNode,
+    SyntaxNode, TreeRoot,
 };
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: &SyntaxNode) -> String {
     let syntax = syntax.as_ref();
-    let mut errors: Vec<_> = syntax.root.errors.iter().cloned().collect();
+    let mut errors: Vec<_> = syntax.root.syntax_root().errors.iter().cloned().collect();
     errors.sort_by_key(|e| e.offset);
     let mut err_pos = 0;
     let mut level = 0;

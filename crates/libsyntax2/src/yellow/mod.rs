@@ -4,7 +4,6 @@ mod red;
 mod syntax;
 
 use std::{
-    ops::Deref,
     sync::Arc,
     ptr,
 };
@@ -15,17 +14,48 @@ pub(crate) use self::{
     red::RedNode,
 };
 
-pub trait TreeRoot: Deref<Target=SyntaxRoot> + Clone + Send + Sync {}
-
 #[derive(Debug)]
 pub struct SyntaxRoot {
     red: RedNode,
     pub(crate) errors: Vec<SyntaxError>,
 }
 
-impl TreeRoot for Arc<SyntaxRoot> {}
+pub trait TreeRoot: Clone + Send + Sync {
+    fn borrowed(&self) -> RefRoot;
+    fn owned(&self) -> OwnedRoot;
 
-impl<'a> TreeRoot for &'a SyntaxRoot {}
+    #[doc(hidden)]
+    fn syntax_root(&self) -> &SyntaxRoot;
+}
+#[derive(Clone, Debug)]
+pub struct OwnedRoot(Arc<SyntaxRoot>);
+#[derive(Clone, Copy, Debug)]
+pub struct RefRoot<'a>(&'a OwnedRoot); // TODO: shared_from_this instead of double indirection
+
+impl TreeRoot for OwnedRoot {
+    fn borrowed(&self) -> RefRoot {
+        RefRoot(&self)
+    }
+    fn owned(&self) -> OwnedRoot {
+        self.clone()
+    }
+
+    fn syntax_root(&self) -> &SyntaxRoot {
+        &*self.0
+    }
+}
+
+impl<'a> TreeRoot for RefRoot<'a> {
+    fn borrowed(&self) -> RefRoot {
+        *self
+    }
+    fn owned(&self) -> OwnedRoot {
+        self.0.clone()
+    }
+    fn syntax_root(&self) -> &SyntaxRoot {
+        self.0.syntax_root()
+    }
+}
 
 impl SyntaxRoot {
     pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SyntaxRoot {

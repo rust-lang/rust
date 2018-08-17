@@ -2,8 +2,7 @@ use {TextUnit, File, EditBuilder, Edit};
 use libsyntax2::{
     ast::{self, AstNode, AttrsOwner},
     SyntaxKind::COMMA,
-    SyntaxNodeRef,
-    SyntaxRoot,
+    SyntaxNodeRef, RefRoot,
     algo::{
         Direction, siblings,
         find_leaf_at_offset, ancestors,
@@ -71,7 +70,7 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
         .find(|node| !node.kind().is_trivia())
 }
 
-pub fn find_node<'a, N: AstNode<&'a SyntaxRoot>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
+pub fn find_node<'a, N: AstNode<RefRoot<'a>>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
     let leaves = find_leaf_at_offset(syntax, offset);
     let leaf = leaves.clone()
         .find(|leaf| !leaf.kind().is_trivia())
