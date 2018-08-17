@@ -51,9 +51,16 @@ impl SyntaxNode<OwnedRoot> {
 }
 
 impl<R: TreeRoot> SyntaxNode<R> {
-    pub fn as_ref<'a>(&'a self) -> SyntaxNode<RefRoot<'a>> {
+    pub fn borrowed<'a>(&'a self) -> SyntaxNodeRef<'a> {
         SyntaxNode {
             root: self.root.borrowed(),
+            red: self.red,
+        }
+    }
+
+    pub fn owned<'a>(&'a self) -> SyntaxNode {
+        SyntaxNode {
+            root: self.root.owned(),
             red: self.red,
         }
     }

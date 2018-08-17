@@ -46,7 +46,7 @@ impl ParsedFile {
         File::cast(self.syntax()).unwrap()
     }
     pub fn syntax(&self) -> SyntaxNodeRef {
-        self.root.as_ref()
+        self.root.borrowed()
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
         self.syntax().root.syntax_root().errors.clone()

@@ -6,7 +6,7 @@ use libsyntax2::{
 
 pub fn extend_selection(file: &ParsedFile, range: TextRange) -> Option<TextRange> {
     let syntax = file.syntax();
-    extend(syntax.as_ref(), range)
+    extend(syntax.borrowed(), range)
 }
 
 pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
