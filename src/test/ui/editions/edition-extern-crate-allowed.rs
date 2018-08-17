@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:edition-extern-crate-allowed.rs
-// compile-flags: --edition 2015
+// edition:2015
 // compile-pass
 
 #![warn(rust_2018_idioms)]

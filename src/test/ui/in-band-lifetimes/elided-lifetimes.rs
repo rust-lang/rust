@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-rustfix
-// compile-flags: --edition 2018
+// edition:2018
 
 #![allow(unused)]
 #![deny(elided_lifetimes_in_paths)]

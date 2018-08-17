@@ -14,7 +14,7 @@
 
 // revisions: ast zflags edition
 //[zflags]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
-//[edition]compile-flags: --edition 2018
+//[edition]edition:2018
 
 // run-pass
 

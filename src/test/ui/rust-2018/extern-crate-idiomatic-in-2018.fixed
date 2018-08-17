@@ -10,12 +10,11 @@
 
 // aux-build:edition-lint-paths.rs
 // run-rustfix
-// compile-flags:--edition 2018
+// edition:2018
 
 // The "normal case". Ideally we would remove the `extern crate` here,
 // but we don't.
 
-#![feature(rust_2018_preview)]
 #![deny(rust_2018_idioms)]
 #![allow(dead_code)]
 
