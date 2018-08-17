@@ -19,7 +19,6 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
 use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
-use rustc::middle::cstore::CrateStore;
 use syntax::ast::{self, Name, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
@@ -108,14 +107,6 @@ pub struct ParentScope<'a> {
     crate expansion: Mark,
     crate legacy: LegacyScope<'a>,
     crate derives: Vec<ast::Path>,
-}
-
-pub struct ProcMacError {
-    crate_name: Symbol,
-    name: Symbol,
-    module: ast::NodeId,
-    use_span: Span,
-    warn_msg: &'static str,
 }
 
 // Macro namespace is separated into two sub-namespaces, one for bang macros and
@@ -980,7 +971,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     check_consistency(self, binding.def_ignoring_ambiguity());
                     if from_prelude {
                         self.record_use(ident, MacroNS, binding);
-                        self.err_if_macro_use_proc_macro(ident.name, span, binding);
                     }
                 }
             };
@@ -1129,69 +1119,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.unused_macros.insert(def_id);
             }
             self.define(module, ident, MacroNS, (def, vis, item.span, expansion));
-        }
-    }
-
-    /// Error if `ext` is a Macros 1.1 procedural macro being imported by `#[macro_use]`
-    fn err_if_macro_use_proc_macro(&mut self, name: Name, use_span: Span,
-                                   binding: &NameBinding<'a>) {
-        let krate = match binding.def() {
-            Def::NonMacroAttr(..) | Def::Err => return,
-            Def::Macro(def_id, _) => def_id.krate,
-            _ => unreachable!(),
-        };
-
-        // Plugin-based syntax extensions are exempt from this check
-        if krate == CrateNum::BuiltinMacros { return; }
-
-        let ext = binding.get_macro(self);
-
-        match *ext {
-            // If `ext` is a procedural macro, check if we've already warned about it
-            SyntaxExtension::AttrProcMacro(..) | SyntaxExtension::ProcMacro { .. } =>
-                if !self.warned_proc_macros.insert(name) { return; },
-            _ => return,
-        }
-
-        let warn_msg = match *ext {
-            SyntaxExtension::AttrProcMacro(..) =>
-                "attribute procedural macros cannot be imported with `#[macro_use]`",
-            SyntaxExtension::ProcMacro { .. } =>
-                "procedural macros cannot be imported with `#[macro_use]`",
-            _ => return,
-        };
-
-        let def_id = self.current_module.normal_ancestor_id;
-        let node_id = self.definitions.as_local_node_id(def_id).unwrap();
-
-        self.proc_mac_errors.push(ProcMacError {
-            crate_name: self.cstore.crate_name_untracked(krate),
-            name,
-            module: node_id,
-            use_span,
-            warn_msg,
-        });
-    }
-
-    pub fn report_proc_macro_import(&mut self, krate: &ast::Crate) {
-        for err in self.proc_mac_errors.drain(..) {
-            let (span, found_use) = ::UsePlacementFinder::check(krate, err.module);
-
-            if let Some(span) = span {
-                let found_use = if found_use { "" } else { "\n" };
-                self.session.struct_span_err(err.use_span, err.warn_msg)
-                    .span_suggestion_with_applicability(
-                        span,
-                        "instead, import the procedural macro like any other item",
-                        format!("use {}::{};{}", err.crate_name, err.name, found_use),
-                        Applicability::MachineApplicable
-                    ).emit();
-            } else {
-                self.session.struct_span_err(err.use_span, err.warn_msg)
-                    .help(&format!("instead, import the procedural macro like any other item: \
-                                    `use {}::{};`", err.crate_name, err.name))
-                    .emit();
-            }
         }
     }
 
