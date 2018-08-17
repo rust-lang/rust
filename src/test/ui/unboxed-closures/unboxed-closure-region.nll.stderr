@@ -4,12 +4,11 @@ error[E0597]: `x` does not live long enough
 LL |         || x //~ ERROR `x` does not live long enough
    |         -- ^ borrowed value does not live long enough
    |         |
-   |         capture occurs here
+   |         value captured here
 LL |     };
-   |     - borrowed value only lives until here
+   |     - `x` dropped here while still borrowed
 LL |     _f;
-LL | }
-   | - borrowed value needs to live until here
+   |     -- borrow later used here
 
 error: aborting due to previous error
 

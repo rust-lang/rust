@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
-// compile-pass
+fn main() {
+    let mut v = vec!["hello", "this", "is", "a", "test"];
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
+    let v2 = Vec::new();
 
-extern crate std as foo;
-extern crate core;
+    v.into_iter().map(|s|s.to_owned()).collect::<Vec<_>>();
 
-mod another {
-    extern crate std as foo;
-    extern crate std;
+    let mut a = String::new();
+    for i in v {
+        a = *i.to_string();
+        //~^ ERROR mismatched types
+        //~| NOTE expected struct `std::string::String`, found str
+        //~| NOTE expected type
+        v2.push(a);
+    }
 }
-
-fn main() {}

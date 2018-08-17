@@ -9,19 +9,9 @@
 // except according to those terms.
 
 // edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
 // compile-pass
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
-
-extern crate std as foo;
-extern crate core;
-
-mod another {
-    extern crate std as foo;
-    extern crate std;
-}
+#![feature(rust_2018_preview)]
+//~^ WARN the feature `rust_2018_preview` is included in the Rust 2018 edition
 
 fn main() {}

@@ -8,20 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
+// Regression test for #48697
+
 // compile-pass
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
+#![feature(nll)]
 
-extern crate std as foo;
-extern crate core;
-
-mod another {
-    extern crate std as foo;
-    extern crate std;
+fn foo(x: &i32) -> &i32 {
+    let z = 4;
+    let f = &|y| y;
+    let k = f(&z);
+    f(x)
 }
 
 fn main() {}

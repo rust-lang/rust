@@ -11,7 +11,7 @@
 // Feature gate test for macro_at_most_once_rep under 2018 edition.
 
 // gate-test-macro_at_most_once_rep
-// compile-flags: --edition=2018
+// edition:2018
 
 macro_rules! foo {
     ($(a)?) => {}

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:suggestions-not-always-applicable.rs
-// compile-flags: --edition 2015
+// edition:2015
 // run-rustfix
 // rustfix-only-machine-applicable
 // compile-pass

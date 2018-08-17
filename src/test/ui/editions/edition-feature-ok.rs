@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--edition 2018
 // compile-pass
 
 #![feature(rust_2018_preview)]

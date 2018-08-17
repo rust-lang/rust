@@ -20,7 +20,7 @@
 
 // revisions: zflag edition
 // [zflag]compile-flags: -Z borrowck=migrate
-// [edition]compile-flags: --edition 2018
+// [edition]edition:2018
 
 #![feature(nll)]
 

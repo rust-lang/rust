@@ -1,5 +1,5 @@
 error[E0500]: closure requires unique access to `x` but it is already borrowed
-  --> $DIR/borrowck-closures-unique.rs:34:14
+  --> $DIR/borrowck-closures-unique.rs:36:14
    |
 LL |     let c1 = || get(x);
    |              --     - previous borrow occurs due to use of `x` in closure
@@ -9,11 +9,12 @@ LL |     let c2 = || set(x); //~ ERROR closure requires unique access to `x`
    |              ^^     - borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
+LL |     c1;
 LL | }
    | - borrow ends here
 
 error[E0500]: closure requires unique access to `x` but it is already borrowed
-  --> $DIR/borrowck-closures-unique.rs:39:14
+  --> $DIR/borrowck-closures-unique.rs:42:14
    |
 LL |     let c1 = || get(x);
    |              --     - previous borrow occurs due to use of `x` in closure
@@ -23,11 +24,12 @@ LL |     let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique acce
    |              ^^       - borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
+LL |     c1;
 LL | }
    | - borrow ends here
 
 error[E0524]: two closures require unique access to `x` at the same time
-  --> $DIR/borrowck-closures-unique.rs:44:14
+  --> $DIR/borrowck-closures-unique.rs:48:14
    |
 LL |     let c1 = || set(x);
    |              --     - previous borrow occurs due to use of `x` in closure
@@ -37,11 +39,22 @@ LL |     let c2 = || set(x); //~ ERROR two closures require unique access to `x`
    |              ^^     - borrow occurs due to use of `x` in closure
    |              |
    |              second closure is constructed here
+LL |     c1;
 LL | }
    | - borrow from first closure ends here
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/borrowck-closures-unique.rs:48:14
+  --> $DIR/borrowck-closures-unique.rs:57:14
+   |
+LL |     let c1 = |y: &'static mut isize| x = y; //~ ERROR closure cannot assign to immutable argument
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow mutably
+help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
+   |
+LL |     x //~ ERROR closure cannot assign to immutable argument
+   |     ^
+
+error[E0595]: closure cannot assign to immutable argument `x`
+  --> $DIR/borrowck-closures-unique.rs:62:14
    |
 LL |     let c1 = || x = panic!(); //~ ERROR closure cannot assign to immutable argument
    |              ^^ cannot borrow mutably
@@ -50,7 +63,7 @@ help: consider removing the `&mut`, as it is an immutable binding to a mutable r
 LL |     x //~ ERROR closure cannot assign to immutable argument
    |     ^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors occurred: E0500, E0524, E0595.
 For more information about an error, try `rustc --explain E0500`.

@@ -3459,33 +3459,37 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
             let name = ident.name;
 
-            if i == 0 && ns == TypeNS && name == keywords::SelfValue.name() {
-                let mut ctxt = ident.span.ctxt().modern();
-                module = Some(ModuleOrUniformRoot::Module(
-                    self.resolve_self(&mut ctxt, self.current_module)));
-                continue
-            } else if allow_super && ns == TypeNS && name == keywords::Super.name() {
-                let mut ctxt = ident.span.ctxt().modern();
-                let self_module_parent = match i {
-                    0 => self.resolve_self(&mut ctxt, self.current_module).parent,
-                    _ => match module {
-                        Some(ModuleOrUniformRoot::Module(module)) => module.parent,
-                        _ => None,
-                    },
-                };
-                if let Some(parent) = self_module_parent {
-                    module = Some(ModuleOrUniformRoot::Module(
-                        self.resolve_self(&mut ctxt, parent)));
-                    continue
-                } else {
+            allow_super &= ns == TypeNS &&
+                (name == keywords::SelfValue.name() ||
+                 name == keywords::Super.name());
+
+            if ns == TypeNS {
+                if allow_super && name == keywords::Super.name() {
+                    let mut ctxt = ident.span.ctxt().modern();
+                    let self_module = match i {
+                        0 => Some(self.resolve_self(&mut ctxt, self.current_module)),
+                        _ => match module {
+                            Some(ModuleOrUniformRoot::Module(module)) => Some(module),
+                            _ => None,
+                        },
+                    };
+                    if let Some(self_module) = self_module {
+                        if let Some(parent) = self_module.parent {
+                            module = Some(ModuleOrUniformRoot::Module(
+                                self.resolve_self(&mut ctxt, parent)));
+                            continue;
+                        }
+                    }
                     let msg = "There are too many initial `super`s.".to_string();
                     return PathResult::Failed(ident.span, msg, false);
                 }
-            }
-            allow_super = false;
-
-            if ns == TypeNS {
                 if i == 0 {
+                    if name == keywords::SelfValue.name() {
+                        let mut ctxt = ident.span.ctxt().modern();
+                        module = Some(ModuleOrUniformRoot::Module(
+                            self.resolve_self(&mut ctxt, self.current_module)));
+                        continue;
+                    }
                     if name == keywords::Extern.name() ||
                        name == keywords::CrateRoot.name() &&
                        self.session.features_untracked().extern_absolute_paths &&
@@ -3493,30 +3497,19 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         module = Some(ModuleOrUniformRoot::UniformRoot(name));
                         continue;
                     }
-                }
-                if (i == 0 && name == keywords::CrateRoot.name()) ||
-                   (i == 0 && name == keywords::Crate.name()) ||
-                   (i == 0 && name == keywords::DollarCrate.name()) ||
-                   (i == 1 && name == keywords::Crate.name() &&
-                              path[0].name == keywords::CrateRoot.name()) {
-                    // `::a::b`, `crate::a::b`, `::crate::a::b` or `$crate::a::b`
-                    module = Some(ModuleOrUniformRoot::Module(
-                        self.resolve_crate_root(ident)));
-                    continue
+                    if name == keywords::CrateRoot.name() ||
+                       name == keywords::Crate.name() ||
+                       name == keywords::DollarCrate.name() {
+                        // `::a::b`, `crate::a::b` or `$crate::a::b`
+                        module = Some(ModuleOrUniformRoot::Module(
+                            self.resolve_crate_root(ident)));
+                        continue;
+                    }
                 }
             }
 
             // Report special messages for path segment keywords in wrong positions.
-            if name == keywords::CrateRoot.name() && i != 0 ||
-               name == keywords::DollarCrate.name() && i != 0 ||
-               name == keywords::SelfValue.name() && i != 0 ||
-               name == keywords::SelfType.name() && i != 0 ||
-               name == keywords::Super.name() && i != 0 ||
-               name == keywords::Extern.name() && i != 0 ||
-               // we allow crate::foo and ::crate::foo but nothing else
-               name == keywords::Crate.name() && i > 1 &&
-                    path[0].name != keywords::CrateRoot.name() ||
-               name == keywords::Crate.name() && path.len() == 1 {
+            if ident.is_path_segment_keyword() && i != 0 {
                 let name_str = if name == keywords::CrateRoot.name() {
                     "crate root".to_string()
                 } else {

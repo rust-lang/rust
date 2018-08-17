@@ -12,7 +12,7 @@ The `extern_absolute_paths` feature enables mode allowing to refer to names from
 `::my_crate::a::b` will resolve to path `a::b` in crate `my_crate`.
 
 `feature(crate_in_paths)` can be used in `feature(extern_absolute_paths)` mode for referring
-to absolute paths in the local crate (`::crate::a::b`).
+to absolute paths in the local crate (`crate::a::b`).
 
 `feature(extern_in_paths)` provides the same effect by using keyword `extern` to refer to
 paths from other crates (`extern::my_crate::a::b`).

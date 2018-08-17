@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
+
 
 fn main() {
     let mut my_stuff = std::collections::HashMap::new();
@@ -16,4 +16,5 @@ fn main() {
 
     let mut it = my_stuff.iter();
     my_stuff.insert(1, 43); //~ ERROR cannot borrow
+    it;
 }
