@@ -4250,7 +4250,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
         let not_local_module = crate_name != keywords::Crate.ident();
-        worklist.push((start_module, Vec::new(), not_local_module));
+        worklist.push((start_module, Vec::<ast::PathSegment>::new(), not_local_module));
 
         while let Some((in_module,
                         path_segments,
@@ -4273,10 +4273,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         if self.session.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-
-                            segms.insert(
-                                0, ast::PathSegment::from_ident(crate_name)
-                            );
+                            let first_segment_ident = segms[0].ident;
+                            if first_segment_ident.name != "std" {
+                                segms.insert(
+                                    0, ast::PathSegment::from_ident(crate_name)
+                                );
+                            }
                         }
 
                         segms.push(ast::PathSegment::from_ident(ident));
