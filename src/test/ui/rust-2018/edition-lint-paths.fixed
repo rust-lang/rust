@@ -68,7 +68,7 @@ fn main() {
     //~^ ERROR absolute
     //~| WARN this was previously accepted
     let x = bar::Bar;
-    let x = ::crate::bar::Bar;
+    let x = crate::bar::Bar;
     let x = self::bar::Bar;
     foo::test();
 
