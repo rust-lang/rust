@@ -318,7 +318,7 @@ impl Command {
         };
 
         let fd = if let Some(program) = program {
-            t!(cvt(syscall::open(program.as_os_str().as_bytes(), syscall::O_RDONLY)))
+            t!(cvt(syscall::open(program.as_os_str().as_bytes(), syscall::O_RDONLY | syscall::O_CLOEXEC)))
         } else {
             return io::Error::from_raw_os_error(syscall::ENOENT);
         };
@@ -341,6 +341,7 @@ impl Command {
         }
 
         if let Err(err) = syscall::fexec(fd, &args, &vars) {
+            let _ = syscall::close(fd);
             io::Error::from_raw_os_error(err.errno as i32)
         } else {
             panic!("return from exec without err");
