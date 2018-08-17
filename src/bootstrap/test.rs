@@ -975,9 +975,19 @@ impl Step for Compiletest {
             builder.ensure(compile::Rustc { compiler, target });
         }
 
-        if builder.no_std(target) != Some(true) {
+        if builder.no_std(target) == Some(true) {
+            // the `test` doesn't compile for no-std targets
+            builder.ensure(compile::Std { compiler, target });
+        } else {
             builder.ensure(compile::Test { compiler, target });
         }
+
+        if builder.no_std(target) == Some(true) {
+            // for no_std run-make (e.g. thumb*),
+            // we need a host compiler which is called by cargo.
+            builder.ensure(compile::Std { compiler, target: compiler.host });
+        }
+
         builder.ensure(native::TestHelpers { target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
