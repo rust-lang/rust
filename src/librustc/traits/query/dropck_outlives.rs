@@ -242,16 +242,14 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
             .all(|t| trivial_dropck_outlives(tcx, t)),
 
         ty::TyAdt(def, _) => {
-            if def.is_union() {
-                // Unions never have a dtor.
-                true
-            } else if Some(def.did) == tcx.lang_items().manually_drop() {
+            if Some(def.did) == tcx.lang_items().manually_drop() {
                 // `ManuallyDrop` never has a dtor.
                 true
             } else {
                 // Other types might. Moreover, PhantomData doesn't
                 // have a dtor, but it is considered to own its
-                // content, so it is non-trivial.
+                // content, so it is non-trivial. Unions can have `impl Drop`,
+                // and hence are non-trivial as well.
                 false
             }
         }
