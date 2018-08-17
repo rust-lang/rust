@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 #![feature(box_syntax)]
+
+
 
 fn borrow(_v: &isize) {}
 
@@ -35,30 +35,37 @@ fn local_recs() {
 
 fn aliased_imm() {
     let mut v: Box<_> = box 3;
-    let _w = &v;
+    let w = &v;
     borrow(&*v);
+    w.use_ref();
 }
 
 fn aliased_mut() {
     let mut v: Box<_> = box 3;
-    let _w = &mut v;
+    let w = &mut v;
     borrow(&*v); //~ ERROR cannot borrow `*v`
+    w.use_mut();
 }
 
 fn aliased_other() {
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
-    let _x = &mut w;
+    let x = &mut w;
     borrow(&*v);
+    x.use_mut();
 }
 
 fn aliased_other_reassign() {
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
-    let mut _x = &mut w;
-    _x = &mut v;
+    let mut x = &mut w;
+    x = &mut v;
     borrow(&*v); //~ ERROR cannot borrow `*v`
+    x.use_mut();
 }
 
 fn main() {
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

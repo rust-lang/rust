@@ -6,8 +6,7 @@ LL |     let y = x.f1();
 LL |     x.f2(); //~ ERROR cannot borrow `*x` as mutable
    |     ^ second mutable borrow occurs here
 LL |     y.use_ref();
-LL | }
-   | - first borrow ends here
+   |     - borrow later used here
 
 error: aborting due to previous error
 

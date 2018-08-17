@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // Check that `&mut` objects cannot be borrowed twice, just like
 // other `&mut` pointers.
+
+
 
 trait Foo {
     fn f1(&mut self) -> &();
@@ -19,8 +19,12 @@ trait Foo {
 }
 
 fn test(x: &mut Foo) {
-    let _y = x.f1();
+    let y = x.f1();
     x.f2(); //~ ERROR cannot borrow `*x` as mutable
+    y.use_ref();
 }
 
 fn main() {}
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // Test method calls with self as an argument cannot subvert borrow checking.
+
+
 
 struct Foo;
 
@@ -23,8 +23,13 @@ fn main() {
     let mut x = Foo;
     let y = &mut x;
     Foo::bar(&x); //~ERROR cannot borrow `x`
+    y.use_mut();
 
     let mut x = Foo;
     let y = &mut x;
     Foo::baz(&mut x); //~ERROR cannot borrow `x`
+    y.use_mut();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

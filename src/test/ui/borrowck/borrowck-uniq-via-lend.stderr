@@ -1,20 +1,22 @@
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-uniq-via-lend.rs:45:13
+  --> $DIR/borrowck-uniq-via-lend.rs:46:13
    |
-LL |     let _w = &mut v;
-   |                   - mutable borrow occurs here
+LL |     let w = &mut v;
+   |                  - mutable borrow occurs here
 LL |     borrow(&*v); //~ ERROR cannot borrow `*v`
    |             ^^ immutable borrow occurs here
+LL |     w.use_mut();
 LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-uniq-via-lend.rs:60:13
+  --> $DIR/borrowck-uniq-via-lend.rs:63:13
    |
-LL |     _x = &mut v;
-   |               - mutable borrow occurs here
+LL |     x = &mut v;
+   |              - mutable borrow occurs here
 LL |     borrow(&*v); //~ ERROR cannot borrow `*v`
    |             ^^ immutable borrow occurs here
+LL |     x.use_mut();
 LL | }
    | - mutable borrow ends here
 

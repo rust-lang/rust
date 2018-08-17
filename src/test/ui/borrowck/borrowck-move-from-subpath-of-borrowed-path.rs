@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // verify that an error is raised when trying to move out of a
 // borrowed path.
+
+
 
 #![feature(box_syntax)]
 
@@ -20,4 +20,8 @@ fn main() {
     let b = &a;
 
     let z = *a; //~ ERROR: cannot move out of `*a` because it is borrowed
+    b.use_ref();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }
