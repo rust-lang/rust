@@ -59,8 +59,7 @@ fn inferred_outlives_of<'a, 'tcx>(
                             ty::Predicate::TypeOutlives(p) => p.to_string(),
 
                             err => bug!("unexpected predicate {:?}", err),
-                        })
-                        .collect();
+                        }).collect();
                     pred.sort();
 
                     let span = tcx.def_span(item_def_id);
@@ -117,11 +116,9 @@ fn inferred_outlives_crate<'tcx>(
                             ty::Binder::bind(ty::OutlivesPredicate(region1, region2)),
                         ),
                     },
-                )
-                .collect();
+                ).collect();
             (def_id, Lrc::new(vec))
-        })
-        .collect();
+        }).collect();
 
     let empty_predicate = Lrc::new(Vec::new());
 
