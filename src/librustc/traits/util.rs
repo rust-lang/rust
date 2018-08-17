@@ -239,6 +239,10 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
 impl<'cx, 'gcx, 'tcx> Iterator for Elaborator<'cx, 'gcx, 'tcx> {
     type Item = ty::Predicate<'tcx>;
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.stack.len(), None)
+    }
+
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
         // Extract next item from top-most stack frame, if any.
         let next_predicate = match self.stack.pop() {
