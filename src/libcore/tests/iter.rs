@@ -1036,6 +1036,15 @@ fn test_iterator_sum() {
 }
 
 #[test]
+fn test_iterator_sum_nonempty() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[..0].iter().cloned().sum_nonempty::<i32>(), None);
+    assert_eq!(v[1..2].iter().cloned().sum_nonempty::<i32>(), Some(1));
+    assert_eq!(v[1..3].iter().cloned().sum_nonempty::<i32>(), Some(3));
+    assert_eq!(v.iter().cloned().sum_nonempty::<i32>(), Some(55));
+}
+
+#[test]
 fn test_iterator_sum_result() {
     let v: &[Result<i32, ()>] = &[Ok(1), Ok(2), Ok(3), Ok(4)];
     assert_eq!(v.iter().cloned().sum::<Result<i32, _>>(), Ok(10));
@@ -1049,6 +1058,15 @@ fn test_iterator_product() {
     assert_eq!(v[..4].iter().cloned().product::<i32>(), 0);
     assert_eq!(v[1..5].iter().cloned().product::<i32>(), 24);
     assert_eq!(v[..0].iter().cloned().product::<i32>(), 1);
+}
+
+#[test]
+fn test_iterator_product_nonempty() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[..0].iter().cloned().product_nonempty::<i32>(), None);
+    assert_eq!(v[..1].iter().cloned().product_nonempty::<i32>(), Some(0));
+    assert_eq!(v[1..3].iter().cloned().product_nonempty::<i32>(), Some(2));
+    assert_eq!(v[1..5].iter().cloned().product_nonempty::<i32>(), Some(24));
 }
 
 #[test]
