@@ -29,6 +29,7 @@ use super::ModuleCodegen;
 use super::ModuleKind;
 
 use abi;
+use back::lto;
 use back::write::{self, OngoingCodegen};
 use llvm::{self, TypeKind, get_param};
 use metadata;
@@ -1311,6 +1312,25 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Default => llvm::Visibility::Default,
         Visibility::Hidden => llvm::Visibility::Hidden,
         Visibility::Protected => llvm::Visibility::Protected,
+    }
+}
+
+#[allow(unused)]
+fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
+    let path = rustc_incremental::in_incr_comp_dir_sess(
+        sess,
+        lto::THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME
+    );
+    if !path.exists() {
+        return lto::ThinLTOImports::new();
+    }
+    match lto::ThinLTOImports::load_from_file(&path) {
+        Ok(imports) => imports,
+        Err(e) => {
+            let msg = format!("Error while trying to load ThinLTO import data \
+                               for incremental compilation: {}", e);
+            sess.fatal(&msg)
+        }
     }
 }
 
