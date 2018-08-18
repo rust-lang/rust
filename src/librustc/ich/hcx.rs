@@ -12,7 +12,7 @@ use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
-use ich::{self, CachingCodemapView, Fingerprint};
+use ich::{self, CachingSourceMapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
 use mir::interpret::AllocId;
@@ -57,9 +57,9 @@ pub struct StableHashingContext<'a> {
     node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
-    // CachingCodemapView, so we initialize it lazily.
+    // CachingSourceMapView, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
-    caching_source_map: Option<CachingCodemapView<'a>>,
+    caching_source_map: Option<CachingSourceMapView<'a>>,
 
     pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
 }
@@ -169,13 +169,13 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn source_map(&mut self) -> &mut CachingCodemapView<'a> {
+    pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
             Some(ref mut cm) => {
                 cm
             }
             ref mut none => {
-                *none = Some(CachingCodemapView::new(self.raw_source_map));
+                *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
             }
         }

@@ -14,7 +14,7 @@ use hir;
 use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
                   RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
-use ich::{CachingCodemapView, Fingerprint};
+use ich::{CachingSourceMapView, Fingerprint};
 use mir::{self, interpret};
 use mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_data_structures::fx::FxHashMap;
@@ -196,7 +196,7 @@ impl<'sess> OnDiskCache<'sess> {
                 expn_info_shorthands: FxHashMap(),
                 interpret_allocs: FxHashMap(),
                 interpret_allocs_inverse: Vec::new(),
-                source_map: CachingCodemapView::new(tcx.sess.source_map()),
+                source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
             };
 
@@ -770,7 +770,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
-    source_map: CachingCodemapView<'tcx>,
+    source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
 }
 
