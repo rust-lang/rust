@@ -1622,13 +1622,13 @@ fn validate_const<'a, 'tcx>(
         let layout = ecx.layout_of(constant.ty)?;
         let place = ecx.allocate_op(OpTy { op, layout })?.into();
 
-        let mut todo = vec![(place, String::new())];
+        let mut todo = vec![(place, Vec::new())];
         let mut seen = FxHashSet();
         seen.insert(place);
-        while let Some((place, path)) = todo.pop() {
+        while let Some((place, mut path)) = todo.pop() {
             ecx.validate_mplace(
                 place,
-                path,
+                &mut path,
                 &mut seen,
                 &mut todo,
             )?;
