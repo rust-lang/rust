@@ -13,11 +13,11 @@ enum PassMode {
 }
 
 impl PassMode {
-    fn get_param_ty(self, _fx: &FunctionCx<impl Backend>) -> Type {
+    fn get_param_ty(self, fx: &FunctionCx<impl Backend>) -> Type {
         match self {
             PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByVal(cton_type) => cton_type,
-            PassMode::ByRef => types::I64,
+            PassMode::ByRef => fx.module.pointer_type(),
         }
     }
 }
@@ -74,7 +74,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         .filter_map(|ty| match get_pass_mode(tcx, sig.abi, ty, false) {
             PassMode::ByVal(cton_ty) => Some(cton_ty),
             PassMode::NoPass => unimplemented!("pass mode nopass"),
-            PassMode::ByRef => Some(types::I64),
+            PassMode::ByRef => Some(pointer_ty(tcx)),
         });
 
     let (params, returns) = match get_pass_mode(tcx, sig.abi, output, true) {
@@ -85,7 +85,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         ),
         PassMode::ByRef => {
             (
-                Some(types::I64).into_iter() // First param is place to put return val
+                Some(pointer_ty(tcx)).into_iter() // First param is place to put return val
                     .chain(inputs)
                     .map(AbiParam::new)
                     .collect(),
@@ -224,7 +224,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
         } else {
-            CValue::ByRef(self.bcx.ins().iconst(types::I64, 0), return_layout)
+            CValue::ByRef(self.bcx.ins().iconst(self.module.pointer_type(), 0), return_layout)
         }
     }
 
@@ -253,7 +253,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     let ret_param = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByVal(_) => None,
-        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, types::I64)),
+        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.module.pointer_type())),
     };
 
     enum ArgKind {
@@ -305,7 +305,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     match output_pass_mode {
         PassMode::NoPass => {
-            let null = fx.bcx.ins().iconst(types::I64, 0);
+            let null = fx.bcx.ins().iconst(fx.module.pointer_type(), 0);
             //unimplemented!("pass mode nopass");
             fx.local_map.insert(
                 RETURN_PLACE,
@@ -457,7 +457,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         PassMode::NoPass => None,
         PassMode::ByRef => match destination {
             Some((place, _)) => Some(place.expect_addr()),
-            None => Some(fx.bcx.ins().iconst(types::I64, 0)),
+            None => Some(fx.bcx.ins().iconst(fx.module.pointer_type(), 0)),
         },
         PassMode::ByVal(_) => None,
     };
@@ -570,7 +570,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "copy" | "copy_nonoverlapping" => {
                     let elem_ty = substs.type_at(0);
                     let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
-                    let elem_size = fx.bcx.ins().iconst(types::I64, elem_size as i64);
+                    let elem_size = fx.bcx.ins().iconst(fx.module.pointer_type(), elem_size as i64);
                     assert_eq!(args.len(), 3);
                     let src = args[0];
                     let dst = args[1];

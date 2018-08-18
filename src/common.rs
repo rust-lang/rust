@@ -10,6 +10,15 @@ pub fn mir_var(loc: Local) -> Variable {
     Variable::with_u32(loc.index() as u32)
 }
 
+pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
+    match tcx.data_layout.pointer_size.bits() {
+        16 => types::I16,
+        32 => types::I32,
+        64 => types::I64,
+        bits => bug!("ptr_sized_integer: unknown pointer bit size {}", bits),
+    }
+}
+
 pub fn cton_type_from_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
@@ -22,7 +31,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             UintTy::U32 => types::I32,
             UintTy::U64 => types::I64,
             UintTy::U128 => unimpl!("u128"),
-            UintTy::Usize => types::I64,
+            UintTy::Usize => pointer_ty(tcx),
         },
         TypeVariants::TyInt(size) => match size {
             IntTy::I8 => types::I8,
@@ -30,17 +39,17 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             IntTy::I32 => types::I32,
             IntTy::I64 => types::I64,
             IntTy::I128 => unimpl!("i128"),
-            IntTy::Isize => types::I64,
+            IntTy::Isize => pointer_ty(tcx)
         },
         TypeVariants::TyChar => types::I32,
         TypeVariants::TyFloat(size) => match size {
             FloatTy::F32 => types::F32,
             FloatTy::F64 => types::F64,
         },
-        TypeVariants::TyFnPtr(_) => types::I64,
+        TypeVariants::TyFnPtr(_) => pointer_ty(tcx),
         TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
             if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
-                types::I64
+                pointer_ty(tcx)
             } else {
                 return None;
             }
@@ -59,7 +68,7 @@ fn codegen_field<'a, 'tcx: 'a>(
     let field_offset = layout.fields.offset(field.index());
     let field_ty = layout.field(&*fx, field.index());
     if field_offset.bytes() > 0 {
-        let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+        let field_offset = fx.bcx.ins().iconst(fx.module.pointer_type(), field_offset.bytes() as i64);
         (fx.bcx.ins().iadd(base, field_offset), field_ty)
     } else {
         (base, field_ty)
@@ -93,7 +102,7 @@ impl<'tcx> CValue<'tcx> {
                     offset: None,
                 });
                 fx.bcx.ins().stack_store(value, stack_slot, 0);
-                fx.bcx.ins().stack_addr(types::I64, stack_slot, 0)
+                fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0)
             }
         }
     }
@@ -179,7 +188,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             size: layout.size.bytes() as u32,
             offset: None,
         });
-        CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0), layout)
+        CPlace::Addr(fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0), layout)
     }
 
     pub fn from_stack_slot(
@@ -188,7 +197,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
-        CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0), layout)
+        CPlace::Addr(fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0), layout)
     }
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
@@ -249,7 +258,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                         let byte = fx
                             .bcx
                             .ins()
-                            .load(types::I64, MemFlags::new(), from.0, offset);
+                            .load(fx.module.pointer_type(), MemFlags::new(), from.0, offset);
                         fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                         offset += 8;
                     }
@@ -299,7 +308,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 let size = fx
                     .bcx
                     .ins()
-                    .iconst(types::I64, elem_layout.size.bytes() as i64);
+                    .iconst(fx.module.pointer_type(), elem_layout.size.bytes() as i64);
                 let offset = fx.bcx.ins().imul(size, index);
                 CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
             }

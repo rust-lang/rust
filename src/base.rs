@@ -477,7 +477,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Repeat(operand, times) => {
                     let operand = trans_operand(fx, operand);
                     for i in 0..*times {
-                        let index = fx.bcx.ins().iconst(types::I64, i as i64);
+                        let index = fx.bcx.ins().iconst(fx.module.pointer_type(), i as i64);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
                     }
@@ -498,7 +498,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     AggregateKind::Array(_ty) => {
                         for (i, operand) in operands.into_iter().enumerate() {
                             let operand = trans_operand(fx, operand);
-                            let index = fx.bcx.ins().iconst(types::I64, i as i64);
+                            let index = fx.bcx.ins().iconst(fx.module.pointer_type(), i as i64);
                             let to = lval.place_index(fx, index);
                             to.write_cvalue(fx, operand);
                         }

@@ -228,6 +228,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         if std::env::var("SHOULD_RUN").is_ok() {
             let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+            assert_eq!(pointer_ty(tcx), jit_module.pointer_type());
 
             codegen_mono_items(tcx, &mut jit_module, &mono_items);
 
@@ -238,10 +239,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             let sig = Signature {
                 params: vec![
-                    AbiParam::new(types::I64 /*usize*/),
-                    AbiParam::new(types::I64 /* *const _*/),
+                    AbiParam::new(jit_module.pointer_type()),
+                    AbiParam::new(jit_module.pointer_type()),
                 ],
-                returns: vec![AbiParam::new(types::I64 /*isize*/)],
+                returns: vec![AbiParam::new(jit_module.pointer_type() /*isize*/)],
                 call_conv: CallConv::SystemV,
                 argument_bytes: None,
             };
@@ -269,6 +270,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     FaerieBuilder::default_libcall_names(),
                 ).unwrap(),
             );
+            assert_eq!(pointer_ty(tcx), faerie_module.pointer_type());
 
             codegen_mono_items(tcx, &mut faerie_module, &mono_items);
 
@@ -443,10 +445,10 @@ fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
 
         let cmain_sig = Signature {
             params: vec![
-                AbiParam::new(types::I64 /*usize*/),
-                AbiParam::new(types::I64 /* *const _*/),
+                AbiParam::new(m.pointer_type()),
+                AbiParam::new(m.pointer_type()),
             ],
-            returns: vec![AbiParam::new(types::I64 /*isize*/)],
+            returns: vec![AbiParam::new(m.pointer_type() /*isize*/)],
             call_conv: CallConv::SystemV,
             argument_bytes: None,
         };
@@ -471,8 +473,8 @@ fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
 
             let ebb = bcx.create_ebb();
             bcx.switch_to_block(ebb);
-            let arg_argc = bcx.append_ebb_param(ebb, types::I64 /*usize*/);
-            let arg_argv = bcx.append_ebb_param(ebb, types::I64 /* *const _*/);
+            let arg_argc = bcx.append_ebb_param(ebb, m.pointer_type());
+            let arg_argv = bcx.append_ebb_param(ebb, m.pointer_type());
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
@@ -490,7 +492,7 @@ fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
                     .declare_function(&start_name, Linkage::Import, &start_sig)
                     .unwrap();
 
-                let main_val = bcx.ins().func_addr(types::I64, main_func_ref);
+                let main_val = bcx.ins().func_addr(m.pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
                 bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
