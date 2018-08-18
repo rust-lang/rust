@@ -617,7 +617,7 @@ impl<'a> Context<'a> {
                         }
                     }
                     Err(err) => {
-                        info!("no metadata found: {}", err);
+                        warn!("no metadata found: {}", err);
                         continue;
                     }
                 };
