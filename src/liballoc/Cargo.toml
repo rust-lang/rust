@@ -23,3 +23,8 @@ path = "../liballoc/tests/lib.rs"
 [[bench]]
 name = "collectionsbenches"
 path = "../liballoc/benches/lib.rs"
+
+[[bench]]
+name = "vec_deque_append_bench"
+path = "../liballoc/benches/vec_deque_append.rs"
+harness = false
