@@ -111,32 +111,6 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub stmt: usize,
 }
 
-impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
-
-impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        let Frame {
-            mir: _,
-            instance,
-            span: _,
-            return_to_block,
-            return_place,
-            locals,
-            block,
-            stmt,
-        } = self;
-
-        // Some of these are constant during evaluation, but are included
-        // anyways for correctness.
-        *instance == other.instance
-            && *return_to_block == other.return_to_block
-            && *return_place == other.return_place
-            && *locals == other.locals
-            && *block == other.block
-            && *stmt == other.stmt
-    }
-}
-
 impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
     fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher<W>) {
         let Frame {

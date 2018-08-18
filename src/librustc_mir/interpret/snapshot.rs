@@ -11,7 +11,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Machine, Operand, MemPlace, Place, PlaceExtra, Value};
+use super::{Frame, Memory, Machine, Operand, MemPlace, Place, Value};
 
 trait SnapshotContext<'a> {
     type To;
@@ -22,6 +22,20 @@ trait SnapshotContext<'a> {
 trait Snapshot<'a, Ctx: SnapshotContext<'a>> {
     type Item;
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item;
+}
+
+impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
+    where Ctx: SnapshotContext<'a>,
+          T: Snapshot<'a, Ctx>
+{
+    type Item = Option<<T as Snapshot<'a, Ctx>>::Item>;
+
+    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
+        match self {
+            Some(x) => Some(x.snapshot(ctx)),
+            None => None,
+        }
+    }
 }
 
 #[derive(Eq, PartialEq)]
@@ -124,22 +138,6 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
-type PlaceExtraSnapshot<'a> = PlaceExtra<AllocIdSnapshot<'a>>;
-
-impl<'a, Ctx> Snapshot<'a, Ctx> for PlaceExtra
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = PlaceExtraSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            PlaceExtra::Vtable(p) => PlaceExtra::Vtable(p.snapshot(ctx)),
-            PlaceExtra::Length(l) => PlaceExtra::Length(*l),
-            PlaceExtra::None => PlaceExtra::None,
-        }
-    }
-}
-
 type ValueSnapshot<'a> = Value<AllocIdSnapshot<'a>>;
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Value
@@ -203,7 +201,7 @@ struct AllocationSnapshot<'a> {
     relocations: RelocationsSnapshot<'a>,
     undef_mask: &'a UndefMask,
     align: &'a Align,
-    runtime_mutability: &'a Mutability,
+    mutability: &'a Mutability,
 }
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
@@ -212,20 +210,20 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     type Item = AllocationSnapshot<'a>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Allocation { bytes, relocations, undef_mask, align, runtime_mutability } = self;
+        let Allocation { bytes, relocations, undef_mask, align, mutability } = self;
 
         AllocationSnapshot {
             bytes,
             undef_mask,
             align,
-            runtime_mutability,
+            mutability,
             relocations: relocations.snapshot(ctx),
         }
     }
 }
 
 #[derive(Eq, PartialEq)]
-struct FrameSnapshot<'a, 'tcx> {
+struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
@@ -269,6 +267,15 @@ struct MemorySnapshot<'a, 'mir: 'a, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx> + 'a
     data: &'a M::MemoryData,
 }
 
+impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    fn snapshot<'b: 'a>(&'b self) -> MemorySnapshot<'b, 'mir, 'tcx, M> {
+        let Memory { data, .. } = self;
+        MemorySnapshot { data }
+    }
+}
+
 impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
@@ -280,7 +287,6 @@ impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
 }
 
 /// The virtual machine state during const-evaluation at a given point in time.
-#[derive(Eq, PartialEq)]
 pub struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     machine: M,
     memory: Memory<'a, 'mir, 'tcx, M>,
@@ -296,6 +302,11 @@ impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
             memory: memory.clone(),
             stack: stack.into(),
         }
+    }
+
+    fn snapshot<'b: 'a>(&'b self) -> (&'b M, MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>) {
+        let EvalSnapshot{ machine, memory, stack } = self;
+        (&machine, memory.snapshot(), stack.iter().map(|frame| frame.snapshot(memory)).collect())
     }
 }
 
@@ -317,5 +328,17 @@ impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>> for EvalSnapsho
     fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
         let EvalSnapshot{ machine, memory, stack } = self;
         (machine, &memory.data, stack).hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Eq for EvalSnapshot<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{}
+
+impl<'a, 'mir, 'tcx, M> PartialEq for EvalSnapshot<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.snapshot() == other.snapshot()
     }
 }
