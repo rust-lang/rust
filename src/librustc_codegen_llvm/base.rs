@@ -29,7 +29,6 @@ use super::ModuleCodegen;
 use super::ModuleKind;
 
 use abi;
-use back::link;
 use back::write::{self, OngoingCodegen};
 use llvm::{self, TypeKind, get_param};
 use metadata;
@@ -42,7 +41,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::query::Providers;
 use rustc::dep_graph::{DepNode, DepConstructor};
-use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
+use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::util::profiling::ProfileCategory;
@@ -608,8 +607,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 }
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                            llvm_module: &ModuleLlvm,
-                            link_meta: &LinkMeta)
+                            llvm_module: &ModuleLlvm)
                             -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
@@ -641,7 +639,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         return EncodedMetadata::new();
     }
 
-    let metadata = tcx.encode_metadata(link_meta);
+    let metadata = tcx.encode_metadata();
     if kind == MetadataKind::Uncompressed {
         return metadata;
     }
@@ -719,8 +717,6 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.sess.fatal("this compiler's LLVM does not support PGO");
     }
 
-    let crate_hash = tcx.crate_hash(LOCAL_CRATE);
-    let link_meta = link::build_link_meta(crate_hash);
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Codegen the metadata.
@@ -732,7 +728,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                              .to_string();
     let metadata_llvm_module = ModuleLlvm::new(tcx.sess, &metadata_cgu_name);
     let metadata = time(tcx.sess, "write metadata", || {
-        write_metadata(tcx, &metadata_llvm_module, &link_meta)
+        write_metadata(tcx, &metadata_llvm_module)
     });
     tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
 
@@ -754,7 +750,6 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let ongoing_codegen = write::start_async_codegen(
             tcx,
             time_graph.clone(),
-            link_meta,
             metadata,
             rx,
             1);
@@ -789,7 +784,6 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ongoing_codegen = write::start_async_codegen(
         tcx,
         time_graph.clone(),
-        link_meta,
         metadata,
         rx,
         codegen_units.len());

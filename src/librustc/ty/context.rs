@@ -26,7 +26,7 @@ use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
-use middle::cstore::{CrateStoreDyn, LinkMeta};
+use middle::cstore::CrateStoreDyn;
 use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -1491,10 +1491,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    pub fn encode_metadata(self, link_meta: &LinkMeta)
+    pub fn encode_metadata(self)
         -> EncodedMetadata
     {
-        self.cstore.encode_metadata(self, link_meta)
+        self.cstore.encode_metadata(self)
     }
 }
 

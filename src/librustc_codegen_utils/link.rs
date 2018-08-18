@@ -10,8 +10,6 @@
 
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
-use rustc::middle::cstore::LinkMeta;
-use rustc_data_structures::svh::Svh;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
 use syntax_pos::Span;
@@ -48,14 +46,6 @@ fn is_writeable(p: &Path) -> bool {
         Err(..) => true,
         Ok(m) => !m.permissions().readonly()
     }
-}
-
-pub fn build_link_meta(crate_hash: Svh) -> LinkMeta {
-    let r = LinkMeta {
-        crate_hash,
-    };
-    info!("{:?}", r);
-    return r;
 }
 
 pub fn find_crate_name(sess: Option<&Session>,

@@ -17,7 +17,6 @@ use schema;
 
 use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
-                            LinkMeta,
                             EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
@@ -567,11 +566,10 @@ impl CrateStore for cstore::CStore {
     }
 
     fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                  -> EncodedMetadata
     {
-        encoder::encode_metadata(tcx, link_meta)
+        encoder::encode_metadata(tcx)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]
