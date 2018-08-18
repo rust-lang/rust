@@ -1099,26 +1099,26 @@ impl<'a, 'tcx> CrateMetadata {
     ///
     /// The import algorithm works analogous to how AST items are inlined from an
     /// external crate's metadata:
-    /// For every FileMap in the external codemap an 'inline' copy is created in the
+    /// For every SourceFile in the external codemap an 'inline' copy is created in the
     /// local codemap. The correspondence relation between external and local
-    /// FileMaps is recorded in the `ImportedFileMap` objects returned from this
+    /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
     /// function. When an item from an external crate is later inlined into this
     /// crate, this correspondence information is used to translate the span
     /// information of the inlined item so that it refers the correct positions in
     /// the local codemap (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
     ///
-    /// The import algorithm in the function below will reuse FileMaps already
-    /// existing in the local codemap. For example, even if the FileMap of some
+    /// The import algorithm in the function below will reuse SourceFiles already
+    /// existing in the local codemap. For example, even if the SourceFile of some
     /// source file of libstd gets imported many times, there will only ever be
-    /// one FileMap object for the corresponding file in the local codemap.
+    /// one SourceFile object for the corresponding file in the local codemap.
     ///
-    /// Note that imported FileMaps do not actually contain the source code of the
+    /// Note that imported SourceFiles do not actually contain the source code of the
     /// file they represent, just information about length, line breaks, and
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
     pub fn imported_filemaps(&'a self,
                              local_codemap: &codemap::SourceMap)
-                             -> ReadGuard<'a, Vec<cstore::ImportedFileMap>> {
+                             -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
         {
             let filemaps = self.codemap_import_info.borrow();
             if !filemaps.is_empty() {
@@ -1137,9 +1137,9 @@ impl<'a, 'tcx> CrateMetadata {
         let external_codemap = self.root.codemap.decode(self);
 
         let imported_filemaps = external_codemap.map(|filemap_to_import| {
-            // We can't reuse an existing FileMap, so allocate a new one
+            // We can't reuse an existing SourceFile, so allocate a new one
             // containing the information we need.
-            let syntax_pos::FileMap { name,
+            let syntax_pos::SourceFile { name,
                                       name_was_remapped,
                                       src_hash,
                                       start_pos,
@@ -1156,7 +1156,7 @@ impl<'a, 'tcx> CrateMetadata {
             // position into frame of reference local to file.
             // `SourceMap::new_imported_filemap()` will then translate those
             // coordinates to their new global frame of reference when the
-            // offset of the FileMap is known.
+            // offset of the SourceFile is known.
             for pos in &mut lines {
                 *pos = *pos - start_pos;
             }
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> CrateMetadata {
                    local_version.name, start_pos, end_pos,
                    local_version.start_pos, local_version.end_pos);
 
-            cstore::ImportedFileMap {
+            cstore::ImportedSourceFile {
                 original_start_pos: start_pos,
                 original_end_pos: end_pos,
                 translated_filemap: local_version,

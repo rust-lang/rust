@@ -42,7 +42,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::symbol::keywords;
-use syntax_pos::{self, hygiene, FileName, FileMap, Span};
+use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -62,7 +62,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
-    filemap_cache: Lrc<FileMap>,
+    filemap_cache: Lrc<SourceFile>,
 }
 
 macro_rules! encoder_methods {
@@ -337,7 +337,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(definitions.def_path_table())
     }
 
-    fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {
+    fn encode_codemap(&mut self) -> LazySeq<syntax_pos::SourceFile> {
         let codemap = self.tcx.sess.codemap();
         let all_filemaps = codemap.files();
 
@@ -350,7 +350,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 !filemap.is_imported()
             })
             .map(|filemap| {
-                // When exporting FileMaps, we expand all paths to absolute
+                // When exporting SourceFiles, we expand all paths to absolute
                 // paths because any relative paths are potentially relative to
                 // a wrong directory.
                 // However, if a path has been modified via
@@ -361,7 +361,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     FileName::Real(ref name) => {
                         if filemap.name_was_remapped ||
                         (name.is_relative() && working_dir_was_remapped) {
-                            // This path of this FileMap has been modified by
+                            // This path of this SourceFile has been modified by
                             // path-remapping, so we use it verbatim (and avoid cloning
                             // the whole map in the process).
                             filemap.clone()

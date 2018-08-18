@@ -55,7 +55,7 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Loc, FileLinesResult, SourceFile, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Applicability {
@@ -120,7 +120,7 @@ pub trait SourceMapper {
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool;
+    fn ensure_filemap_source_present(&self, file_map: Lrc<SourceFile>) -> bool;
     fn doctest_offset_line(&self, line: usize) -> usize;
 }
 

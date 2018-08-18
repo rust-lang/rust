@@ -14,7 +14,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use codemap::{SourceMap, FilePathMapping};
-use syntax_pos::{Span, FileMap, FileName, MultiSpan};
+use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -203,7 +203,7 @@ crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a filemap and config, return a parser
-fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
+fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<SourceFile>) -> Parser {
     let end_pos = filemap.end_pos;
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
@@ -226,7 +226,7 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
 fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Lrc<FileMap> {
+                   -> Lrc<SourceFile> {
     match sess.codemap().load_file(path) {
         Ok(filemap) => filemap,
         Err(e) => {
@@ -240,7 +240,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<SourceFile>, override_span: Option<Span>)
                          -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap, override_span);
     srdr.real_token();

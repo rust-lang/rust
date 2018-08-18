@@ -1745,7 +1745,7 @@ pub fn create_global_var_metadata(
 pub fn extend_scope_to_file(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
-    file: &syntax_pos::FileMap,
+    file: &syntax_pos::SourceFile,
     defining_crate: CrateNum,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, &file.name, defining_crate);

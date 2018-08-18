@@ -41,15 +41,15 @@ pub use rustc_data_structures::sync::MetadataRef;
 
 pub struct MetadataBlob(pub MetadataRef);
 
-/// Holds information about a syntax_pos::FileMap imported from another crate.
+/// Holds information about a syntax_pos::SourceFile imported from another crate.
 /// See `imported_filemaps()` for more information.
-pub struct ImportedFileMap {
-    /// This FileMap's byte-offset within the codemap of its original crate
+pub struct ImportedSourceFile {
+    /// This SourceFile's byte-offset within the codemap of its original crate
     pub original_start_pos: syntax_pos::BytePos,
-    /// The end of this FileMap within the codemap of its original crate
+    /// The end of this SourceFile within the codemap of its original crate
     pub original_end_pos: syntax_pos::BytePos,
-    /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Lrc<syntax_pos::FileMap>,
+    /// The imported SourceFile's representation within the local codemap
+    pub translated_filemap: Lrc<syntax_pos::SourceFile>,
 }
 
 pub struct CrateMetadata {
@@ -64,7 +64,7 @@ pub struct CrateMetadata {
     pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
     pub dependencies: Lock<Vec<CrateNum>>,
-    pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
+    pub codemap_import_info: RwLock<Vec<ImportedSourceFile>>,
 
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     pub alloc_decoding_state: AllocDecodingState,

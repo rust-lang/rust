@@ -21,7 +21,7 @@ use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::symbol::{InternedString, LocalInternedString};
 use syntax::tokenstream;
-use syntax_pos::FileMap;
+use syntax_pos::SourceFile;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
@@ -427,11 +427,11 @@ impl_stable_hash_for!(enum ::syntax_pos::FileName {
     Custom(s)
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for FileMap {
+impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let FileMap {
+        let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
             name_was_remapped,

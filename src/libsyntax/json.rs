@@ -340,7 +340,7 @@ impl DiagnosticSpan {
 }
 
 impl DiagnosticSpanLine {
-    fn line_from_filemap(fm: &syntax_pos::FileMap,
+    fn line_from_filemap(fm: &syntax_pos::SourceFile,
                          index: usize,
                          h_start: usize,
                          h_end: usize)

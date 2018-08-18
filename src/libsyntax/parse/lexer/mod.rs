@@ -49,7 +49,7 @@ pub struct StringReader<'a> {
     pub pos: BytePos,
     /// The current character (which has been read from self.pos)
     pub ch: Option<char>,
-    pub filemap: Lrc<syntax_pos::FileMap>,
+    pub filemap: Lrc<syntax_pos::SourceFile>,
     /// Stop reading src at this index.
     pub end_src_index: usize,
     // cached:
@@ -180,7 +180,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>, override_span: Option<Span>)
+    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
         -> Self
     {
         let mut sr = StringReader::new_raw_internal(sess, filemap, override_span);
@@ -189,7 +189,7 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
+    fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>,
         override_span: Option<Span>) -> Self
     {
         if filemap.src.is_none() {
@@ -221,7 +221,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>, override_span: Option<Span>)
+    pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
         -> Self
     {
         let mut sr = StringReader::new_raw(sess, filemap, override_span);
@@ -468,7 +468,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Advance the StringReader by one character. If a newline is
-    /// discovered, add it to the FileMap's list of line start offsets.
+    /// discovered, add it to the SourceFile's list of line start offsets.
     crate fn bump(&mut self) {
         let next_src_index = self.src_index(self.next_pos);
         if next_src_index < self.end_src_index {

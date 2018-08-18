@@ -27,7 +27,7 @@ use session::{CrateDisambiguator, Session};
 use std::mem;
 use syntax::ast::NodeId;
 use syntax::codemap::{SourceMap, StableFilemapId};
-use syntax_pos::{BytePos, Span, DUMMY_SP, FileMap};
+use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
@@ -63,10 +63,10 @@ pub struct OnDiskCache<'sess> {
     cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
 
     codemap: &'sess SourceMap,
-    file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
-    file_index_to_file: Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
+    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
     synthetic_expansion_infos: Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
@@ -83,7 +83,7 @@ pub struct OnDiskCache<'sess> {
 // This type is used only for (de-)serialization.
 #[derive(RustcEncodable, RustcDecodable)]
 struct Footer {
-    file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableFilemapId>,
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
@@ -96,7 +96,7 @@ type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnostics = Vec<Diagnostic>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-struct FileMapIndex(u32);
+struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, RustcEncodable, RustcDecodable)]
 struct AbsoluteBytePos(u32);
@@ -173,14 +173,14 @@ impl<'sess> OnDiskCache<'sess> {
      {
         // Serializing the DepGraph should not modify it:
         tcx.dep_graph.with_ignore(|| {
-            // Allocate FileMapIndices
+            // Allocate SourceFileIndices
             let (file_to_file_index, file_index_to_stable_id) = {
                 let mut file_to_file_index = FxHashMap();
                 let mut file_index_to_stable_id = FxHashMap();
 
                 for (index, file) in tcx.sess.codemap().files().iter().enumerate() {
-                    let index = FileMapIndex(index as u32);
-                    let file_ptr: *const FileMap = &**file as *const _;
+                    let index = SourceFileIndex(index as u32);
+                    let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);
                     file_index_to_stable_id.insert(index, StableFilemapId::new(&file));
                 }
@@ -478,13 +478,13 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     codemap: &'x SourceMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
-    file_index_to_file: &'x Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
-    file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
+    file_index_to_file: &'x Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_stable_id: &'x FxHashMap<SourceFileIndex, StableFilemapId>,
     alloc_decoding_session: AllocDecodingSession<'x>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
-    fn file_index_to_file(&self, index: FileMapIndex) -> Lrc<FileMap> {
+    fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
         let CacheDecoder {
             ref file_index_to_file,
             ref file_index_to_stable_id,
@@ -495,7 +495,7 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
         file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
             codemap.filemap_by_stable_id(stable_id)
-                   .expect("Failed to lookup FileMap in new context.")
+                   .expect("Failed to lookup SourceFile in new context.")
         }).clone()
     }
 }
@@ -617,7 +617,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
             debug_assert_eq!(tag, TAG_VALID_SPAN);
         }
 
-        let file_lo_index = FileMapIndex::decode(self)?;
+        let file_lo_index = SourceFileIndex::decode(self)?;
         let line_lo = usize::decode(self)?;
         let col_lo = BytePos::decode(self)?;
         let len = BytePos::decode(self)?;
@@ -771,14 +771,14 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
     codemap: CachingCodemapView<'tcx>,
-    file_to_file_index: FxHashMap<*const FileMap, FileMapIndex>,
+    file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
 }
 
 impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
-    fn filemap_index(&mut self, filemap: Lrc<FileMap>) -> FileMapIndex {
-        self.file_to_file_index[&(&*filemap as *const FileMap)]
+    fn filemap_index(&mut self, filemap: Lrc<SourceFile>) -> SourceFileIndex {
+        self.file_to_file_index[&(&*filemap as *const SourceFile)]
     }
 
     /// Encode something with additional information that allows to do some

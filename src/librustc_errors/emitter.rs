@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use syntax_pos::{FileMap, Span, MultiSpan};
+use syntax_pos::{SourceFile, Span, MultiSpan};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
@@ -127,7 +127,7 @@ pub struct EmitterWriter {
 }
 
 struct FileWithAnnotatedLines {
-    file: Lrc<FileMap>,
+    file: Lrc<SourceFile>,
     lines: Vec<Line>,
     multiline_depth: usize,
 }
@@ -177,7 +177,7 @@ impl EmitterWriter {
 
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Lrc<FileMap>,
+                                  file: Lrc<SourceFile>,
                                   line_index: usize,
                                   ann: Annotation) {
 
@@ -307,7 +307,7 @@ impl EmitterWriter {
 
     fn render_source_line(&self,
                           buffer: &mut StyledBuffer,
-                          file: Lrc<FileMap>,
+                          file: Lrc<SourceFile>,
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {

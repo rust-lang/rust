@@ -603,7 +603,7 @@ impl Clean<Item> for doctree::Module {
                 // mod foo { ... }
                 self.where_outer
             } else {
-                // mod foo; (and a separate FileMap for the contents)
+                // mod foo; (and a separate SourceFile for the contents)
                 self.where_inner
             }
         };

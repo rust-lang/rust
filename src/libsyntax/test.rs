@@ -20,7 +20,7 @@ use std::slice;
 use std::mem;
 use std::vec;
 use attr::{self, HasAttrs};
-use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
+use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
 use codemap::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned};
 use errors;

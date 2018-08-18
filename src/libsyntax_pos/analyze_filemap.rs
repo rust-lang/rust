@@ -12,7 +12,7 @@ use unicode_width::UnicodeWidthChar;
 use super::*;
 
 /// Find all newlines, multi-byte characters, and non-narrow characters in a
-/// FileMap.
+/// SourceFile.
 ///
 /// This function will use an SSE2 enhanced implementation if hardware support
 /// is detected at runtime.

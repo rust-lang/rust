@@ -309,7 +309,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
     // offsets into the SourceMap). Instead, we hash the (file name, line, column)
-    // triple, which stays the same even if the containing FileMap has moved
+    // triple, which stays the same even if the containing SourceFile has moved
     // within the SourceMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.

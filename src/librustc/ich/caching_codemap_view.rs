@@ -10,7 +10,7 @@
 
 use rustc_data_structures::sync::Lrc;
 use syntax::codemap::SourceMap;
-use syntax_pos::{BytePos, FileMap};
+use syntax_pos::{BytePos, SourceFile};
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -18,7 +18,7 @@ struct CacheEntry {
     line_number: usize,
     line_start: BytePos,
     line_end: BytePos,
-    file: Lrc<FileMap>,
+    file: Lrc<SourceFile>,
     file_index: usize,
 }
 
@@ -51,7 +51,7 @@ impl<'cm> CachingCodemapView<'cm> {
 
     pub fn byte_pos_to_line_and_col(&mut self,
                                     pos: BytePos)
-                                    -> Option<(Lrc<FileMap>, usize, BytePos)> {
+                                    -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines

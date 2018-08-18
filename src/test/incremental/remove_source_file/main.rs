@@ -13,7 +13,7 @@
 
 // revisions:cfail1 cfail2
 
-// Note that we specify -g so that the FileMaps actually get referenced by the
+// Note that we specify -g so that the SourceFiles actually get referenced by the
 // incr. comp. cache:
 // compile-flags: -Z query-dep-graph -g
 // compile-pass

@@ -163,7 +163,7 @@ impl FileName {
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
 /// are *absolute* positions from the beginning of the codemap, not positions
-/// relative to FileMaps. Methods on the SourceMap can be used to relate spans back
+/// relative to SourceFiles. Methods on the SourceMap can be used to relate spans back
 /// to the original source.
 /// You must be careful if the span crosses more than one file - you will not be
 /// able to use many of the functions on spans in codemap and you cannot assume
@@ -675,7 +675,7 @@ impl From<Vec<Span>> for MultiSpan {
 
 pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
 
-/// Identifies an offset of a multi-byte character in a FileMap
+/// Identifies an offset of a multi-byte character in a SourceFile
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq, Debug)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the SourceMap
@@ -684,7 +684,7 @@ pub struct MultiByteChar {
     pub bytes: u8,
 }
 
-/// Identifies an offset of a non-narrow character in a FileMap
+/// Identifies an offset of a non-narrow character in a SourceFile
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq, Debug)]
 pub enum NonNarrowChar {
     /// Represents a zero-width character
@@ -748,7 +748,7 @@ impl Sub<BytePos> for NonNarrowChar {
     }
 }
 
-/// The state of the lazy external source loading mechanism of a FileMap.
+/// The state of the lazy external source loading mechanism of a SourceFile.
 #[derive(PartialEq, Eq, Clone)]
 pub enum ExternalSource {
     /// The external source has been loaded already.
@@ -757,7 +757,7 @@ pub enum ExternalSource {
     AbsentOk,
     /// A failed attempt has been made to load the external source.
     AbsentErr,
-    /// No external source has to be loaded, since the FileMap represents a local crate.
+    /// No external source has to be loaded, since the SourceFile represents a local crate.
     Unneeded,
 }
 
@@ -779,7 +779,7 @@ impl ExternalSource {
 
 /// A single source in the SourceMap.
 #[derive(Clone)]
-pub struct FileMap {
+pub struct SourceFile {
     /// The name of the file that the source came from, source that doesn't
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
@@ -787,9 +787,9 @@ pub struct FileMap {
     /// True if the `name` field above has been modified by --remap-path-prefix
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
-    /// Set to `None` if the FileMap was imported from an external crate.
+    /// Set to `None` if the SourceFile was imported from an external crate.
     pub unmapped_path: Option<FileName>,
-    /// Indicates which crate this FileMap was imported from.
+    /// Indicates which crate this SourceFile was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
     pub src: Option<Lrc<String>>,
@@ -812,9 +812,9 @@ pub struct FileMap {
     pub name_hash: u128,
 }
 
-impl Encodable for FileMap {
+impl Encodable for SourceFile {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 8, |s| {
+        s.emit_struct("SourceFile", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
@@ -879,10 +879,10 @@ impl Encodable for FileMap {
     }
 }
 
-impl Decodable for FileMap {
-    fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
+impl Decodable for SourceFile {
+    fn decode<D: Decoder>(d: &mut D) -> Result<SourceFile, D::Error> {
 
-        d.read_struct("FileMap", 8, |d| {
+        d.read_struct("SourceFile", 8, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
@@ -925,7 +925,7 @@ impl Decodable for FileMap {
                 d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
             let name_hash: u128 =
                 d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
-            Ok(FileMap {
+            Ok(SourceFile {
                 name,
                 name_was_remapped,
                 unmapped_path: None,
@@ -947,18 +947,18 @@ impl Decodable for FileMap {
     }
 }
 
-impl fmt::Debug for FileMap {
+impl fmt::Debug for SourceFile {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "FileMap({})", self.name)
+        write!(fmt, "SourceFile({})", self.name)
     }
 }
 
-impl FileMap {
+impl SourceFile {
     pub fn new(name: FileName,
                name_was_remapped: bool,
                unmapped_path: FileName,
                mut src: String,
-               start_pos: BytePos) -> FileMap {
+               start_pos: BytePos) -> SourceFile {
         remove_bom(&mut src);
 
         let src_hash = {
@@ -976,7 +976,7 @@ impl FileMap {
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_filemap::analyze_filemap(&src[..], start_pos);
 
-        FileMap {
+        SourceFile {
             name,
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
@@ -1081,7 +1081,7 @@ impl FileMap {
     }
 
     /// Find the line containing the given position. The return value is the
-    /// index into the `lines` array of this FileMap, not the 1-based line
+    /// index into the `lines` array of this SourceFile, not the 1-based line
     /// number. If the filemap is empty or the position is located before the
     /// first line, None is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
@@ -1226,14 +1226,14 @@ impl Sub for CharPos {
 }
 
 // _____________________________________________________________________________
-// Loc, LocWithOpt, FileMapAndLine, FileMapAndBytePos
+// Loc, LocWithOpt, SourceFileAndLine, SourceFileAndBytePos
 //
 
 /// A source code location used for error reporting
 #[derive(Debug, Clone)]
 pub struct Loc {
     /// Information about the original source
-    pub file: Lrc<FileMap>,
+    pub file: Lrc<SourceFile>,
     /// The (1-based) line number
     pub line: usize,
     /// The (0-based) column offset
@@ -1250,14 +1250,14 @@ pub struct LocWithOpt {
     pub filename: FileName,
     pub line: usize,
     pub col: CharPos,
-    pub file: Option<Lrc<FileMap>>,
+    pub file: Option<Lrc<SourceFile>>,
 }
 
 // used to be structural records. Better names, anyone?
 #[derive(Debug)]
-pub struct FileMapAndLine { pub fm: Lrc<FileMap>, pub line: usize }
+pub struct SourceFileAndLine { pub fm: Lrc<SourceFile>, pub line: usize }
 #[derive(Debug)]
-pub struct FileMapAndBytePos { pub fm: Lrc<FileMap>, pub pos: BytePos }
+pub struct SourceFileAndBytePos { pub fm: Lrc<SourceFile>, pub pos: BytePos }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineInfo {
@@ -1272,7 +1272,7 @@ pub struct LineInfo {
 }
 
 pub struct FileLines {
-    pub file: Lrc<FileMap>,
+    pub file: Lrc<SourceFile>,
     pub lines: Vec<LineInfo>
 }
 

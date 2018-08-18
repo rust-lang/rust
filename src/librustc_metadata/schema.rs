@@ -204,7 +204,7 @@ pub struct CrateRoot {
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<NativeLibrary>,
     pub foreign_modules: LazySeq<ForeignModule>,
-    pub codemap: LazySeq<syntax_pos::FileMap>,
+    pub codemap: LazySeq<syntax_pos::SourceFile>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: EncodedExportedSymbols,

@@ -12,7 +12,7 @@
 //! from integer byte positions to the original source code location. Each bit
 //! of source parsed during crate parsing (typically files, in-memory strings,
 //! or various bits of macro expansion) cover a continuous range of bytes in the
-//! SourceMap and are represented by FileMaps. Byte positions are stored in
+//! SourceMap and are represented by SourceFiles. Byte positions are stored in
 //! `spans` and used pervasively in the compiler. They are absolute positions
 //! within the SourceMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
@@ -62,7 +62,7 @@ pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
 }
 
 // _____________________________________________________________________________
-// FileMap, MultiByteChar, FileName, FileLines
+// SourceFile, MultiByteChar, FileName, FileLines
 //
 
 /// An abstraction over the fs operations used by the Parser.
@@ -102,14 +102,14 @@ impl FileLoader for RealFileLoader {
     }
 }
 
-// This is a FileMap identifier that is used to correlate FileMaps between
+// This is a SourceFile identifier that is used to correlate SourceFiles between
 // subsequent compilation sessions (which is something we need to do during
 // incremental compilation).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct StableFilemapId(u128);
 
 impl StableFilemapId {
-    pub fn new(filemap: &FileMap) -> StableFilemapId {
+    pub fn new(filemap: &SourceFile) -> StableFilemapId {
         let mut hasher = StableHasher::new();
 
         filemap.name.hash(&mut hasher);
@@ -125,15 +125,15 @@ impl StableFilemapId {
 //
 
 pub(super) struct SourceMapFiles {
-    pub(super) file_maps: Vec<Lrc<FileMap>>,
-    stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<FileMap>>
+    pub(super) file_maps: Vec<Lrc<SourceFile>>,
+    stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<SourceFile>>
 }
 
 pub struct SourceMap {
     pub(super) files: Lock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
-    // --remap-path-prefix to all FileMaps allocated within this SourceMap.
+    // --remap-path-prefix to all SourceFiles allocated within this SourceMap.
     path_mapping: FilePathMapping,
     /// In case we are in a doctest, replace all file names with the PathBuf,
     /// and add the given offsets to the line info
@@ -184,7 +184,7 @@ impl SourceMap {
         self.file_loader.file_exists(path)
     }
 
-    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<FileMap>> {
+    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
         let filename = if let Some((ref name, _)) = self.doctest_offset {
             name.clone()
@@ -194,11 +194,11 @@ impl SourceMap {
         Ok(self.new_filemap(filename, src))
     }
 
-    pub fn files(&self) -> LockGuard<Vec<Lrc<FileMap>>> {
+    pub fn files(&self) -> LockGuard<Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.file_maps)
     }
 
-    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<FileMap>> {
+    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<SourceFile>> {
         self.files.borrow().stable_id_to_filemap.get(&stable_id).map(|fm| fm.clone())
     }
 
@@ -212,8 +212,8 @@ impl SourceMap {
     }
 
     /// Creates a new filemap.
-    /// This does not ensure that only one FileMap exists per file name.
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
+    /// This does not ensure that only one SourceFile exists per file name.
+    pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         // The path is used to determine the directory for loading submodules and
@@ -230,7 +230,7 @@ impl SourceMap {
             },
             other => (other, false),
         };
-        let filemap = Lrc::new(FileMap::new(
+        let filemap = Lrc::new(SourceFile::new(
             filename,
             was_remapped,
             unmapped_path,
@@ -246,7 +246,7 @@ impl SourceMap {
         filemap
     }
 
-    /// Allocates a new FileMap representing a source file from an external
+    /// Allocates a new SourceFile representing a source file from an external
     /// crate. The source code of such an "imported filemap" is not available,
     /// but we still know enough to generate accurate debuginfo location
     /// information for things inlined from other crates.
@@ -260,7 +260,7 @@ impl SourceMap {
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>,
                                 mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
-                                -> Lrc<FileMap> {
+                                -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         let end_pos = Pos::from_usize(start_pos + source_len);
@@ -278,7 +278,7 @@ impl SourceMap {
             *swc = *swc + start_pos;
         }
 
-        let filemap = Lrc::new(FileMap {
+        let filemap = Lrc::new(SourceFile {
             name: filename,
             name_was_remapped,
             unmapped_path: None,
@@ -326,7 +326,7 @@ impl SourceMap {
     pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         let chpos = self.bytepos_to_file_charpos(pos);
         match self.lookup_line(pos) {
-            Ok(FileMapAndLine { fm: f, line: a }) => {
+            Ok(SourceFileAndLine { fm: f, line: a }) => {
                 let line = a + 1; // Line numbers start at 1
                 let linebpos = f.lines[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
@@ -386,13 +386,13 @@ impl SourceMap {
     }
 
     // If the relevant filemap is empty, we don't return a line number.
-    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Lrc<FileMap>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
         let idx = self.lookup_filemap_idx(pos);
 
         let f = (*self.files.borrow().file_maps)[idx].clone();
 
         match f.lookup_line(pos) {
-            Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
+            Some(line) => Ok(SourceFileAndLine { fm: f, line: line }),
             None => Err(f)
         }
     }
@@ -463,7 +463,7 @@ impl SourceMap {
 
     pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
-            .expect("SourceMap::span_to_unmapped_path called for imported FileMap?")
+            .expect("SourceMap::span_to_unmapped_path called for imported SourceFile?")
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -798,7 +798,7 @@ impl SourceMap {
         }
     }
 
-    pub fn get_filemap(&self, filename: &FileName) -> Option<Lrc<FileMap>> {
+    pub fn get_filemap(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
         for fm in self.files.borrow().file_maps.iter() {
             if *filename == fm.name {
                 return Some(fm.clone());
@@ -807,12 +807,12 @@ impl SourceMap {
         None
     }
 
-    /// For a global BytePos compute the local offset within the containing FileMap
-    pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
+    /// For a global BytePos compute the local offset within the containing SourceFile
+    pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
         let fm = (*self.files.borrow().file_maps)[idx].clone();
         let offset = bpos - fm.start_pos;
-        FileMapAndBytePos {fm: fm, pos: offset}
+        SourceFileAndBytePos {fm: fm, pos: offset}
     }
 
     /// Converts an absolute BytePos to a CharPos relative to the filemap.
@@ -820,7 +820,7 @@ impl SourceMap {
         let idx = self.lookup_filemap_idx(bpos);
         let map = &(*self.files.borrow().file_maps)[idx];
 
-        // The number of extra bytes due to multibyte chars in the FileMap
+        // The number of extra bytes due to multibyte chars in the SourceFile
         let mut total_extra_bytes = 0;
 
         for mbc in map.multibyte_chars.iter() {
@@ -966,7 +966,7 @@ impl SourceMapper for SourceMap {
         }
         sp
     }
-    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool {
+    fn ensure_filemap_source_present(&self, file_map: Lrc<SourceFile>) -> bool {
         file_map.add_external_src(
             || match file_map.name {
                 FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
@@ -1192,7 +1192,7 @@ mod tests {
     /// `substring` in `source_text`.
     trait SourceMapExtension {
         fn span_substr(&self,
-                    file: &Lrc<FileMap>,
+                    file: &Lrc<SourceFile>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
@@ -1201,7 +1201,7 @@ mod tests {
 
     impl SourceMapExtension for SourceMap {
         fn span_substr(&self,
-                    file: &Lrc<FileMap>,
+                    file: &Lrc<SourceFile>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
