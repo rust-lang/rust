@@ -55,7 +55,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     instance: Instance<'tcx>,
 ) {
     // Step 1. Get mir
-    let mir = tcx.optimized_mir(instance.def_id());
+    let mir = tcx.instance_mir(instance.def);
 
     // Step 2. Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance);
