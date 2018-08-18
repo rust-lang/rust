@@ -498,7 +498,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
-                let key_ptr = self.read_scalar(args[0])?.not_undef()?;
+                let key_ptr = self.read_scalar(args[0])?.to_ptr()?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor = match self.read_scalar(args[1])?.not_undef()? {
@@ -525,7 +525,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     key_layout.align,
                     Scalar::from_uint(key, key_layout.size).into(),
                     key_layout.size,
-                    key_layout.align,
                 )?;
 
                 // Return success (0)

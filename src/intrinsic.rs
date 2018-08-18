@@ -295,21 +295,23 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "init" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
-                match dest.layout.abi {
-                    layout::Abi::Scalar(ref s) => {
-                        let x = Scalar::null(s.value.size(&self));
-                        self.write_value(Value::Scalar(x.into()), dest)?;
-                    }
-                    layout::Abi::ScalarPair(ref s1, ref s2) => {
-                        let x = Scalar::null(s1.value.size(&self));
-                        let y = Scalar::null(s2.value.size(&self));
-                        self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
-                    }
-                    _ => {
-                        // Do it in memory
-                        let mplace = self.force_allocation(dest)?;
-                        assert_eq!(mplace.extra, PlaceExtra::None);
-                        self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
+                if !dest.layout.is_zst() { // notzhing to do for ZST
+                    match dest.layout.abi {
+                        layout::Abi::Scalar(ref s) => {
+                            let x = Scalar::null(s.value.size(&self));
+                            self.write_value(Value::Scalar(x.into()), dest)?;
+                        }
+                        layout::Abi::ScalarPair(ref s1, ref s2) => {
+                            let x = Scalar::null(s1.value.size(&self));
+                            let y = Scalar::null(s2.value.size(&self));
+                            self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
+                        }
+                        _ => {
+                            // Do it in memory
+                            let mplace = self.force_allocation(dest)?;
+                            assert_eq!(mplace.extra, PlaceExtra::None);
+                            self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
+                        }
                     }
                 }
             }
@@ -571,20 +573,22 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "uninit" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
-                match dest.layout.abi {
-                    layout::Abi::Scalar(..) => {
-                        let x = ScalarMaybeUndef::Undef;
-                        self.write_value(Value::Scalar(x), dest)?;
-                    }
-                    layout::Abi::ScalarPair(..) => {
-                        let x = ScalarMaybeUndef::Undef;
-                        self.write_value(Value::ScalarPair(x, x), dest)?;
-                    }
-                    _ => {
-                        // Do it in memory
-                        let mplace = self.force_allocation(dest)?;
-                        assert_eq!(mplace.extra, PlaceExtra::None);
-                        self.memory.mark_definedness(mplace.ptr, dest.layout.size, false)?;
+                if !dest.layout.is_zst() { // nothing to do for ZST
+                    match dest.layout.abi {
+                        layout::Abi::Scalar(..) => {
+                            let x = ScalarMaybeUndef::Undef;
+                            self.write_value(Value::Scalar(x), dest)?;
+                        }
+                        layout::Abi::ScalarPair(..) => {
+                            let x = ScalarMaybeUndef::Undef;
+                            self.write_value(Value::ScalarPair(x, x), dest)?;
+                        }
+                        _ => {
+                            // Do it in memory
+                            let mplace = self.force_allocation(dest)?;
+                            assert_eq!(mplace.extra, PlaceExtra::None);
+                            self.memory.mark_definedness(mplace.ptr.to_ptr()?, dest.layout.size, false)?;
+                        }
                     }
                 }
             }
