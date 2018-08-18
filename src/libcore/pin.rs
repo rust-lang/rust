@@ -29,7 +29,7 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 ///
 /// See the [`pin` module] documentation for furthur explanation on pinning.
 ///
-/// [`Unpin`]: ../marker/trait.Unpin.html
+/// [`Unpin`]: ../../core/marker/trait.Unpin.html
 /// [`pin` module]: ../../alloc/pin/index.html
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
