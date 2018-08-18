@@ -12,6 +12,7 @@
 
 use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
+use rustc::util::nodemap::FxHashMap;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
@@ -21,7 +22,6 @@ use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
 
-use std::collections::HashMap;
 use std::borrow::ToOwned;
 
 /// Structure used to register plugins.
@@ -53,7 +53,7 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
-    pub lint_groups: HashMap<&'static str, Vec<LintId>>,
+    pub lint_groups: FxHashMap<&'static str, Vec<LintId>>,
 
     #[doc(hidden)]
     pub llvm_passes: Vec<String>,
@@ -74,7 +74,7 @@ impl<'a> Registry<'a> {
             syntax_exts: vec![],
             early_lint_passes: vec![],
             late_lint_passes: vec![],
-            lint_groups: HashMap::new(),
+            lint_groups: FxHashMap::default(),
             llvm_passes: vec![],
             attributes: vec![],
             whitelisted_custom_derives: Vec::new(),
