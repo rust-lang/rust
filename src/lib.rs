@@ -215,7 +215,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
         let flags = settings::Flags::new(flags_builder);
-        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
+        let isa = cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
             .unwrap()
             .finish(flags);
 
