@@ -20,24 +20,11 @@ in isolation with `./x.py test src/tools/tidy`.
 
 ### Copyright notice
 
-All files must begin with the following copyright notice:
-
-```rust
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-```
-
-The year at the top is not meaningful: copyright protections are in
-fact automatic from the moment of authorship. We do not typically edit
-the years on existing files. When creating a new file, you can use the
-current year if you like, but you don't have to.
+Some existing files begin with a copyright and license notice. Please omit this
+notice for new files licensed under the standard terms (dual MIT/Apache-2.0).
+For existing files, the year at the top is not meaningful: copyright
+protections are in fact automatic from the moment of authorship. We do not
+typically edit the years on existing files.
 
 ## Line length
 

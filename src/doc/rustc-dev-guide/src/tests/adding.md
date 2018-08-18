@@ -101,10 +101,6 @@ this test. For example, this test uses the `// compile-flags` command
 to specify a custom flag to give to rustc when the test is compiled:
 
 ```rust,ignore
-// Copyright 2017 The Rust Project Developers. blah blah blah.
-// ...
-// except according to those terms.
-
 // Test the behavior of `0 - 1` when overflow checks are disabled.
 
 // compile-flags: -Coverflow-checks=off
