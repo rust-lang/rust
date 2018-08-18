@@ -17,7 +17,9 @@ use std::{fmt, ops::Deref, sync::Arc};
 pub struct SmolStr(Repr);
 
 impl SmolStr {
-    pub fn new(text: &str) -> SmolStr {
+    pub fn new<T>(text: T) -> SmolStr
+        where T: Into<String> + AsRef<str>
+    {
         SmolStr(Repr::new(text))
     }
 
@@ -35,6 +37,12 @@ impl Deref for SmolStr {
 
     fn deref(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl PartialEq<SmolStr> for SmolStr {
+    fn eq(&self, other: &SmolStr) -> bool {
+        self.as_str() == other.as_str()
     }
 }
 
@@ -98,8 +106,10 @@ impl fmt::Display for SmolStr {
     }
 }
 
-impl<'a> From<&'a str> for SmolStr {
-    fn from(text: &'a str) -> Self {
+impl<T> From<T> for SmolStr
+    where T: Into<String> + AsRef<str>
+{
+    fn from(text: T) -> Self {
         Self::new(text)
     }
 }
@@ -118,27 +128,33 @@ enum Repr {
 }
 
 impl Repr {
-    fn new(text: &str) -> Repr {
-        let len = text.len();
-        if len <= INLINE_CAP {
-            let mut buf = [0; INLINE_CAP];
-            buf[..len].copy_from_slice(text.as_bytes());
-            return Repr::Inline {
-                len: len as u8,
-                buf,
-            };
+    fn new<T>(text: T) -> Self
+        where T: Into<String> + AsRef<str>
+    {
+        {
+            let text = text.as_ref();
+
+            let len = text.len();
+            if len <= INLINE_CAP {
+                let mut buf = [0; INLINE_CAP];
+                buf[..len].copy_from_slice(text.as_bytes());
+                return Repr::Inline {
+                    len: len as u8,
+                    buf,
+                };
+            }
+
+            let newlines = text.bytes().take_while(|&b| b == b'\n').count();
+            let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
+            if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
+                let mut buf = [0; INLINE_CAP];
+                buf[0] = newlines as u8;
+                buf[1] = spaces as u8;
+                return Repr::Inline { len: WS_TAG, buf };
+            }
         }
 
-        let newlines = text.bytes().take_while(|&b| b == b'\n').count();
-        let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
-        if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
-            let mut buf = [0; INLINE_CAP];
-            buf[0] = newlines as u8;
-            buf[1] = spaces as u8;
-            return Repr::Inline { len: WS_TAG, buf };
-        }
-
-        Repr::Heap(text.to_string().into_boxed_str().into())
+        Repr::Heap(text.into().into_boxed_str().into())
     }
 
     fn as_str(&self) -> &str {
