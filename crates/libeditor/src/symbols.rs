@@ -1,6 +1,5 @@
-use smol_str::SmolStr;
 use libsyntax2::{
-    SyntaxKind, SyntaxNodeRef, AstNode, ParsedFile,
+    SyntaxKind, SyntaxNodeRef, AstNode, ParsedFile, SmolStr,
     ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},

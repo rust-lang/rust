@@ -26,7 +26,7 @@ use std::{
 };
 
 use libsyntax2::{
-    TextUnit, TextRange,
+    TextUnit, TextRange, SmolStr,
     ast::{self, AstNode, NameOwner, ParsedFile},
     SyntaxKind::*,
 };
@@ -144,7 +144,21 @@ impl World {
         if let Some(name) = find_node::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    return Ok(self.resolve_module(id, module));
+                    let file_ids = self.resolve_module(id, module);
+
+                    let res = file_ids.into_iter().map(|id| {
+                        let name = module.name()
+                            .map(|n| n.text())
+                            .unwrap_or_else(|| SmolStr::new(""));
+                        let symbol = FileSymbol {
+                            name,
+                            node_range: TextRange::offset_len(0.into(), 0.into()),
+                            kind: MODULE,
+                        };
+                        (id, symbol)
+                    }).collect();
+
+                    return Ok(res);
                 }
             }
         }
@@ -159,7 +173,7 @@ impl World {
         self.world_symbols(query)
     }
 
-    fn resolve_module(&self, id: FileId, module: ast::Module) -> Vec<(FileId, FileSymbol)> {
+    fn resolve_module(&self, id: FileId, module: ast::Module) -> Vec<FileId> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),
@@ -170,14 +184,6 @@ impl World {
         ];
         paths.iter()
             .filter_map(|path| self.resolve_relative_path(id, path))
-            .map(|id| {
-                let symbol = FileSymbol {
-                    name: name.clone(),
-                    node_range: TextRange::offset_len(0.into(), 0.into()),
-                    kind: MODULE,
-                };
-                (id, symbol)
-            })
             .collect()
     }
 

@@ -41,10 +41,11 @@ mod yellow;
 pub mod utils;
 
 pub use {
+    text_unit::{TextRange, TextUnit},
+    smol_str::SmolStr,
     ast::{AstNode, ParsedFile},
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
-    text_unit::{TextRange, TextUnit},
     yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError},
 };
 
