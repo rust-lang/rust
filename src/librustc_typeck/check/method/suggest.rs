@@ -132,7 +132,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         };
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
-                            err.span_note(self.tcx.sess.source_map().def_span(note_span), &note_str);
+                            err.span_note(self.tcx.sess.source_map().def_span(note_span),
+                                          &note_str);
                         } else {
                             err.note(&note_str);
                         }

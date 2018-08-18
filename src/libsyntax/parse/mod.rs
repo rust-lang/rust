@@ -240,8 +240,9 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a source_file, produce a sequence of token-trees
-pub fn source_file_to_stream(sess: &ParseSess, source_file: Lrc<SourceFile>, override_span: Option<Span>)
-                         -> TokenStream {
+pub fn source_file_to_stream(sess: &ParseSess,
+                             source_file: Lrc<SourceFile>,
+                             override_span: Option<Span>) -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, source_file, override_span);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())

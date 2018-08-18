@@ -195,7 +195,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
-                        let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span, ':');
+                        let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span,
+                                                                                 ':');
                         err.span_suggestion_short_with_applicability(
                             subspan,
                             "remove this",

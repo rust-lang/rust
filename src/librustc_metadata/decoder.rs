@@ -349,8 +349,10 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         debug_assert!(hi >= source_file.original_start_pos &&
                       hi <= source_file.original_end_pos);
 
-        let lo = (lo + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
-        let hi = (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
+        let lo = (lo + source_file.translated_source_file.start_pos)
+                 - source_file.original_start_pos;
+        let hi = (hi + source_file.translated_source_file.start_pos)
+                 - source_file.original_start_pos;
 
         Ok(Span::new(lo, hi, NO_EXPANSION))
     }

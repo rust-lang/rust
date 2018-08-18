@@ -241,7 +241,8 @@ impl SourceMap {
         let mut files = self.files.borrow_mut();
 
         files.file_maps.push(source_file.clone());
-        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file), source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file),
+                                              source_file.clone());
 
         source_file
     }
@@ -297,7 +298,8 @@ impl SourceMap {
         let mut files = self.files.borrow_mut();
 
         files.file_maps.push(source_file.clone());
-        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file), source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file),
+                                              source_file.clone());
 
         source_file
     }

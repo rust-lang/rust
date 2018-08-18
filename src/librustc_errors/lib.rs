@@ -55,7 +55,14 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos, Loc, FileLinesResult, SourceFile, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::{BytePos,
+                 Loc,
+                 FileLinesResult,
+                 SourceFile,
+                 FileName,
+                 MultiSpan,
+                 Span,
+                 NO_EXPANSION};
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Applicability {
