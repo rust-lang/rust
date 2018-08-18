@@ -126,7 +126,9 @@ impl<T: ?Sized> Box<T> {
         Box(Unique::new_unchecked(raw))
     }
 
-    /// Consumes the `Box`, returning the wrapped raw pointer.
+    /// Consumes the `Box`, returning a wrapped raw pointer.
+    ///
+    /// The pointer will be properly aligned and non-null.
     ///
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
