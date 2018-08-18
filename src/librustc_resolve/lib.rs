@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(not(stage0), feature(nll))]
@@ -2175,14 +2175,26 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         debug!("(resolving item) resolving {}", name);
 
         match item.node {
-            ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
-            ItemKind::Existential(_, ref generics) |
-            ItemKind::Struct(_, ref generics) |
-            ItemKind::Union(_, ref generics) |
-            ItemKind::Fn(_, _, ref generics, _) => {
+            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Existential(_, ref generics) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
-                                         |this| visit::walk_item(this, item));
+                                             |this| visit::walk_item(this, item));
+            }
+
+            ItemKind::Enum(_, ref generics) |
+            ItemKind::Struct(_, ref generics) |
+            ItemKind::Union(_, ref generics) => {
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                    let item_def_id = this.definitions.local_def_id(item.id);
+                    if this.session.features_untracked().self_in_typedefs {
+                        this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                            visit::walk_item(this, item);
+                        });
+                    } else {
+                        visit::walk_item(this, item);
+                    }
+                });
             }
 
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
@@ -2470,13 +2482,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let item_def_id = this.definitions.local_def_id(item_id);
                     this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
-                            // Resolve type arguments in trait path
+                            // Resolve type arguments in the trait path.
                             visit::walk_trait_ref(this, trait_ref);
                         }
                         // Resolve the self type.
                         this.visit_ty(self_type);
                         // Resolve the type parameters.
                         this.visit_generics(generics);
+                        // Resolve the items within the impl.
                         this.with_current_self_type(self_type, |this| {
                             for impl_item in impl_items {
                                 this.resolve_visibility(&impl_item.vis);
@@ -2491,8 +2504,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
-                                                                ValueNS,
-                                                                impl_item.span,
+                                                                  ValueNS,
+                                                                  impl_item.span,
                                                 |n, s| ConstNotMemberOfTrait(n, s));
                                             this.with_constant_rib(|this|
                                                 visit::walk_impl_item(this, impl_item)
@@ -2502,8 +2515,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                             // If this is a trait impl, ensure the method
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
-                                                                ValueNS,
-                                                                impl_item.span,
+                                                                  ValueNS,
+                                                                  impl_item.span,
                                                 |n, s| MethodNotMemberOfTrait(n, s));
 
                                             visit::walk_impl_item(this, impl_item);
@@ -2512,8 +2525,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                             // If this is a trait impl, ensure the type
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
-                                                                TypeNS,
-                                                                impl_item.span,
+                                                                  TypeNS,
+                                                                  impl_item.span,
                                                 |n, s| TypeNotMemberOfTrait(n, s));
 
                                             this.visit_ty(ty);
@@ -2522,8 +2535,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                             // If this is a trait impl, ensure the type
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
-                                                                TypeNS,
-                                                                impl_item.span,
+                                                                  TypeNS,
+                                                                  impl_item.span,
                                                 |n, s| TypeNotMemberOfTrait(n, s));
 
                                             for bound in bounds {
@@ -2948,7 +2961,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
                 err.code(DiagnosticId::Error("E0411".into()));
-                err.span_label(span, "`Self` is only available in traits and impls");
+                let available_in = if this.session.features_untracked().self_in_typedefs {
+                    "impls, traits, and type definitions"
+                } else {
+                    "traits and impls"
+                };
+                err.span_label(span, format!("`Self` is only available in {}", available_in));
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
