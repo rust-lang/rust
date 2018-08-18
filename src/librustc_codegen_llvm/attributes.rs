@@ -11,7 +11,7 @@
 
 use std::ffi::CString;
 
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
@@ -134,10 +134,36 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(id);
+pub fn from_fn_attrs(
+    cx: &CodegenCx<'ll, '_>,
+    llfn: &'ll Value,
+    id: Option<DefId>,
+) {
+    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
+        .unwrap_or(CodegenFnAttrs::new());
 
     inline(llfn, codegen_fn_attrs.inline);
+
+    // The `uwtable` attribute according to LLVM is:
+    //
+    //     This attribute indicates that the ABI being targeted requires that an
+    //     unwind table entry be produced for this function even if we can show
+    //     that no exceptions passes by it. This is normally the case for the
+    //     ELF x86-64 abi, but it can be disabled for some compilation units.
+    //
+    // Typically when we're compiling with `-C panic=abort` (which implies this
+    // `no_landing_pads` check) we don't need `uwtable` because we can't
+    // generate any exceptions! On Windows, however, exceptions include other
+    // events such as illegal instructions, segfaults, etc. This means that on
+    // Windows we end up still needing the `uwtable` attribute even if the `-C
+    // panic=abort` flag is passed.
+    //
+    // You can also find more info on why Windows is whitelisted here in:
+    //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
+    if !cx.sess().no_landing_pads() ||
+       cx.sess().target.target.options.requires_uwtable {
+        attributes::emit_uwtable(llfn, true);
+    }
 
     set_frame_pointer_elimination(cx, llfn);
     set_probestack(cx, llfn);
@@ -162,7 +188,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
     // *in Rust code* may unwind. Foreign items like `extern "C" {
     // fn foo(); }` are assumed not to unwind **unless** they have
     // a `#[unwind]` attribute.
-    } else if !cx.tcx.is_foreign_item(id) {
+    } else if id.map(|id| !cx.tcx.is_foreign_item(id)).unwrap_or(false) {
         Some(true)
     } else {
         None
@@ -208,14 +234,16 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
     // Note that currently the `wasm-import-module` doesn't do anything, but
     // eventually LLVM 7 should read this and ferry the appropriate import
     // module to the output file.
-    if cx.tcx.sess.target.target.arch == "wasm32" {
-        if let Some(module) = wasm_import_module(cx.tcx, id) {
-            llvm::AddFunctionAttrStringValue(
-                llfn,
-                llvm::AttributePlace::Function,
-                const_cstr!("wasm-import-module"),
-                &module,
-            );
+    if let Some(id) = id {
+        if cx.tcx.sess.target.target.arch == "wasm32" {
+            if let Some(module) = wasm_import_module(cx.tcx, id) {
+                llvm::AddFunctionAttrStringValue(
+                    llfn,
+                    llvm::AttributePlace::Function,
+                    const_cstr!("wasm-import-module"),
+                    &module,
+                );
+            }
         }
     }
 }

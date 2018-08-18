@@ -10,6 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use attributes;
 use intrinsics::{self, Intrinsic};
 use llvm::{self, TypeKind};
 use abi::{Abi, FnType, LlvmType, PassMode};
@@ -944,6 +945,7 @@ fn gen_fn<'ll, 'tcx>(
         Abi::Rust
     )));
     let llfn = declare::define_internal_fn(cx, name, rust_fn_ty);
+    attributes::from_fn_attrs(cx, llfn, None);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn
