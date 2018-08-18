@@ -133,10 +133,15 @@ fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -
         .unwrap()
 }
 
-fn data_id_for_static<B: Backend>(tcx: TyCtxt, module: &mut Module<B>, def_id: DefId) -> DataId {
+fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<B>, def_id: DefId) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
+    let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
+        true
+    } else {
+        !tcx.type_of(def_id).is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+    };
     module
-        .declare_data(&*symbol_name, Linkage::Export, false)
+        .declare_data(&*symbol_name, Linkage::Export, is_mutable)
         .unwrap()
 }
 
