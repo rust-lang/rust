@@ -147,7 +147,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
 
                 Some(Data::DefData(Def {
-                    kind: DefKind::Function,
+                    kind: DefKind::ForeignFunction,
                     id: id_from_node_id(item.id, self),
                     span: self.span_from_span(sub_span.unwrap()),
                     name: item.ident.to_string(),
@@ -170,7 +170,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let span = self.span_from_span(sub_span.unwrap());
 
                 Some(Data::DefData(Def {
-                    kind: DefKind::Static,
+                    kind: DefKind::ForeignStatic,
                     id,
                     span,
                     name: item.ident.to_string(),
