@@ -19,7 +19,7 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        lifetime `'min` defined here
 ...
 LL |     v //~ ERROR mismatched types
-   |     ^ return requires that `'min` must outlive `'max`
+   |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: unsatisfied lifetime constraints
   --> $DIR/variance-use-invariant-struct-1.rs:29:5
@@ -30,7 +30,7 @@ LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |        lifetime `'min` defined here
 ...
 LL |     v //~ ERROR mismatched types
-   |     ^ return requires that `'min` must outlive `'max`
+   |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: aborting due to 2 previous errors
 

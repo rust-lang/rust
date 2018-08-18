@@ -12,7 +12,7 @@ LL | fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
    |        |
    |        lifetime `'a` defined here
 LL |     g1.get()
-   |     ^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |     ^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: aborting due to previous error
 

@@ -2,7 +2,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/issue-48238.rs:21:13
    |
 LL |     move || use_val(&orig); //~ ERROR
-   |     ------- ^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |     ------- ^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
    |     |     |
    |     |     return type of closure is &'2 u8
    |     lifetime `'1` represents this closure's body

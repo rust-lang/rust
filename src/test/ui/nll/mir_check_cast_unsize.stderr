@@ -15,7 +15,7 @@ LL | |     //~^ ERROR unsatisfied lifetime constraints
 LL | |     x
 LL | |     //~^ WARNING not reporting region error due to nll
 LL | | }
-   | |_^ return requires that `'a` must outlive `'static`
+   | |_^ returning this value requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

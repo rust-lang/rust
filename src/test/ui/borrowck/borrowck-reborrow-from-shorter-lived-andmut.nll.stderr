@@ -5,14 +5,14 @@ LL |     S { pointer: &mut *p.pointer }
    |                  ^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:18
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:5
    |
 LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
    |                      -- -- lifetime `'b` defined here
    |                      |
    |                      lifetime `'a` defined here
 LL |     S { pointer: &mut *p.pointer }
-   |                  ^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: aborting due to previous error
 

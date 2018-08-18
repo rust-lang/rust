@@ -18,7 +18,7 @@ LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |              |
    |              lifetime `'a` defined here
 LL |    let a = bar(foo, y); //[krisskross]~ ERROR E0623
-   |            ^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |            ^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
 
 error: unsatisfied lifetime constraints
   --> $DIR/project-fn-ret-invariant.rs:64:12
@@ -29,7 +29,7 @@ LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |              lifetime `'a` defined here
 LL |    let a = bar(foo, y); //[krisskross]~ ERROR E0623
 LL |    let b = bar(foo, x);
-   |            ^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |            ^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
 
 error: aborting due to 2 previous errors
 

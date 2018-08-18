@@ -18,7 +18,7 @@ LL | |     // for<'a,'b,'c>fn(&'a (SomeTrait+'c)) -> &'b (SomeTrait+'a)
 ...  |
 LL | |         //~| ERROR cannot infer
 LL | | }
-   | |_^ return requires that `'a` must outlive `'b`
+   | |_^ returning this value requires that `'a` must outlive `'b`
 
 error: aborting due to previous error
 

@@ -587,7 +587,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.extract_type_name(&return_ty)
         });
 
-                let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
 
         let (return_span, mir_description) = if let hir::ExprKind::Closure(_, _, _, span, gen_move)
             = tcx.hir.expect_expr(mir_node_id).node

@@ -16,7 +16,7 @@ LL |       fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
 LL | |         let ref mut x = self.0;
 LL | |         x //~ ERROR mismatched types
 LL | |     }
-   | |_____^ requires that `'a` must outlive `'b`
+   | |_____^ returning this value requires that `'a` must outlive `'b`
 
 error: aborting due to previous error
 

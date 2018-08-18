@@ -9,7 +9,7 @@ LL |       || {
 LL | /         || {
 LL | |             let _y = &mut x;
 LL | |         }
-   | |_________^ requires that `'1` must outlive `'2`
+   | |_________^ returning this value requires that `'1` must outlive `'2`
    |
    = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 

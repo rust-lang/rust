@@ -11,12 +11,12 @@ LL |     thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the 
    |     ^^^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/issue-3154.rs:16:15
+  --> $DIR/issue-3154.rs:16:5
    |
 LL | fn thing<'a,Q>(x: &Q) -> thing<'a,Q> {
    |                   -- help: add explicit lifetime `'a` to the type of `x`: `&'a Q`
 LL |     thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the type of `x` [E0621]
-   |               ^ lifetime `'a` required
+   |     ^^^^^^^^^^^^^ lifetime `'a` required
 
 error: aborting due to previous error
 

@@ -13,7 +13,7 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        lifetime `'min` defined here
 ...
 LL |     v //~ ERROR mismatched types
-   |     ^ return requires that `'min` must outlive `'max`
+   |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: aborting due to previous error
 

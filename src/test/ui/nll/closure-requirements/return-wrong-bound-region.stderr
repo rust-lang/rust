@@ -19,7 +19,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/return-wrong-bound-region.rs:21:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
-   |                 -  -  ^ closure was supposed to return data with lifetime `'1` but it is returning data with lifetime `'2`
+   |                 -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
    |                 |  |
    |                 |  has type `&'1 i32`
    |                 has type `&'2 i32`
