@@ -23,19 +23,16 @@ display the contents of local variables!"
     echo "***"
 fi
 
-# Create a tempfile containing the LLDB script we want to execute on startup
-TMPFILE=`mktemp /tmp/rust-lldb-commands.XXXXXX`
-
-# Make sure to delete the tempfile no matter what
-trap "rm -f $TMPFILE; exit" INT TERM EXIT
-
 # Find out where to look for the pretty printer Python module
 RUSTC_SYSROOT=`rustc --print sysroot`
 
-# Write the LLDB script to the tempfile
-echo "command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_rust_formatters.py\"" >> $TMPFILE
-echo "type summary add --no-value --python-function lldb_rust_formatters.print_val -x \".*\" --category Rust" >> $TMPFILE
-echo "type category enable Rust" >> $TMPFILE
+# Prepare commands that will be loaded before any file on the command line has been loaded
+script_import="command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_rust_formatters.py\""
+category_definition="type summary add --no-value --python-function lldb_rust_formatters.print_val -x \".*\" --category Rust"
+category_enable="type category enable Rust"
 
-# Call LLDB with the script added to the argument list
-lldb --source-before-file="$TMPFILE" "$@"
+# Call LLDB with the commands added to the argument list
+lldb --one-line-before-file="$script_import" \
+    --one-line-before-file="$category_definition" \
+    --one-line-before-file="$category_enable" \
+    "$@"
