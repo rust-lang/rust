@@ -451,7 +451,10 @@ impl<'a> Context<'a> {
         let rlib_prefix = format!("lib{}{}", self.crate_name, extra_prefix);
         let staticlib_prefix = format!("{}{}{}", staticpair.0, self.crate_name, extra_prefix);
 
-        let mut candidates = FxHashMap();
+        let mut candidates: FxHashMap<
+            _,
+            (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>),
+        > = FxHashMap();
         let mut staticlibs = vec![];
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -493,8 +496,7 @@ impl<'a> Context<'a> {
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
-            let slot = candidates.entry(hash_str)
-                .or_insert_with(|| (FxHashMap(), FxHashMap(), FxHashMap()));
+            let slot = candidates.entry(hash_str).or_default();
             let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
             fs::canonicalize(path)
                 .map(|p| {

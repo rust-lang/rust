@@ -2174,7 +2174,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    let mut externs = BTreeMap::new();
+    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = match parts.next() {
@@ -2191,7 +2191,7 @@ pub fn build_session_options_and_crate_config(
 
         externs
             .entry(name.to_string())
-            .or_insert_with(BTreeSet::new)
+            .or_default()
             .insert(location.to_string());
     }
 

@@ -33,12 +33,12 @@ impl TestGraph {
         for &(source, target) in edges {
             graph.num_nodes = max(graph.num_nodes, source + 1);
             graph.num_nodes = max(graph.num_nodes, target + 1);
-            graph.successors.entry(source).or_insert(vec![]).push(target);
-            graph.predecessors.entry(target).or_insert(vec![]).push(source);
+            graph.successors.entry(source).or_default().push(target);
+            graph.predecessors.entry(target).or_default().push(source);
         }
         for node in 0..graph.num_nodes {
-            graph.successors.entry(node).or_insert(vec![]);
-            graph.predecessors.entry(node).or_insert(vec![]);
+            graph.successors.entry(node).or_default();
+            graph.predecessors.entry(node).or_default();
         }
         graph
     }

@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .borrow_mut()
                             .adjustments_mut()
                             .entry(rhs_expr.hir_id)
-                            .or_insert(vec![])
+                            .or_default()
                             .push(autoref);
                     }
                 }

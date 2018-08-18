@@ -65,7 +65,7 @@ impl<'a, 'b, 'd> UnusedImportCheckVisitor<'a, 'b, 'd> {
                 // Check later.
                 return;
             }
-            self.unused_imports.entry(item_id).or_insert_with(NodeMap).insert(id, span);
+            self.unused_imports.entry(item_id).or_default().insert(id, span);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
@@ -112,7 +112,7 @@ impl<'a, 'b, 'cl> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'cl> {
             if items.len() == 0 {
                 self.unused_imports
                     .entry(self.base_id)
-                    .or_insert_with(NodeMap)
+                    .or_default()
                     .insert(id, span);
             }
         } else {

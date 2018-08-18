@@ -528,7 +528,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
         if let Some(parent) = scope_data.parent_scope {
             scope_tree
                 .entry(parent)
-                .or_insert(vec![])
+                .or_default()
                 .push(SourceScope::new(index));
         } else {
             // Only the argument scope has no parent, because it's the root.

@@ -391,37 +391,33 @@ fn resolve_lifetimes<'tcx>(
 
     let named_region_map = krate(tcx);
 
-    let mut defs = FxHashMap();
+    let mut rl = ResolveLifetimes {
+        defs: FxHashMap(),
+        late_bound: FxHashMap(),
+        object_lifetime_defaults: FxHashMap(),
+    };
+
     for (k, v) in named_region_map.defs {
         let hir_id = tcx.hir.node_to_hir_id(k);
-        let map = defs.entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Lrc::new(FxHashMap()));
+        let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id, v);
     }
-    let mut late_bound = FxHashMap();
     for k in named_region_map.late_bound {
         let hir_id = tcx.hir.node_to_hir_id(k);
-        let map = late_bound
-            .entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Lrc::new(FxHashSet()));
+        let map = rl.late_bound.entry(hir_id.owner_local_def_id()).or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id);
     }
-    let mut object_lifetime_defaults = FxHashMap();
     for (k, v) in named_region_map.object_lifetime_defaults {
         let hir_id = tcx.hir.node_to_hir_id(k);
-        let map = object_lifetime_defaults
+        let map = rl.object_lifetime_defaults
             .entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Lrc::new(FxHashMap()));
+            .or_default();
         Lrc::get_mut(map)
             .unwrap()
             .insert(hir_id.local_id, Lrc::new(v));
     }
 
-    Lrc::new(ResolveLifetimes {
-        defs,
-        late_bound,
-        object_lifetime_defaults,
-    })
+    Lrc::new(rl)
 }
 
 fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {

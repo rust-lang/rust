@@ -2334,7 +2334,7 @@ impl<'a> LoweringContext<'a> {
         // FIXME: This could probably be done with less rightward drift. Also looks like two control
         //        paths where report_error is called are also the only paths that advance to after
         //        the match statement, so the error reporting could probably just be moved there.
-        let mut add_bounds = NodeMap();
+        let mut add_bounds: NodeMap<Vec<_>> = NodeMap();
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
@@ -2364,7 +2364,7 @@ impl<'a> LoweringContext<'a> {
                                                 GenericParamKind::Type { .. } => {
                                                     if node_id == param.id {
                                                         add_bounds.entry(param.id)
-                                                            .or_insert(Vec::new())
+                                                            .or_default()
                                                             .push(bound.clone());
                                                         continue 'next_bound;
                                                     }
@@ -2730,7 +2730,7 @@ impl<'a> LoweringContext<'a> {
 
                         if let Some(ref trait_ref) = trait_ref {
                             if let Def::Trait(def_id) = trait_ref.path.def {
-                                this.trait_impls.entry(def_id).or_insert(vec![]).push(id);
+                                this.trait_impls.entry(def_id).or_default().push(id);
                             }
                         }
 

@@ -513,26 +513,26 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     {
                         let deps1 = vid_map
                             .entry(RegionTarget::RegionVid(r1))
-                            .or_insert_with(|| Default::default());
+                            .or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(r2));
                     }
 
                     let deps2 = vid_map
                         .entry(RegionTarget::RegionVid(r2))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps2.smaller.insert(RegionTarget::RegionVid(r1));
                 }
                 &Constraint::RegSubVar(region, vid) => {
                     {
                         let deps1 = vid_map
                             .entry(RegionTarget::Region(region))
-                            .or_insert_with(|| Default::default());
+                            .or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(vid));
                     }
 
                     let deps2 = vid_map
                         .entry(RegionTarget::RegionVid(vid))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps2.smaller.insert(RegionTarget::Region(region));
                 }
                 &Constraint::VarSubReg(vid, region) => {
@@ -542,13 +542,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     {
                         let deps1 = vid_map
                             .entry(RegionTarget::Region(r1))
-                            .or_insert_with(|| Default::default());
+                            .or_default();
                         deps1.larger.insert(RegionTarget::Region(r2));
                     }
 
                     let deps2 = vid_map
                         .entry(RegionTarget::Region(r2))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps2.smaller.insert(RegionTarget::Region(r1));
                 }
             }

@@ -44,7 +44,7 @@ struct UnusedMutCx<'a, 'tcx: 'a> {
 impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
     fn check_unused_mut_pat(&self, pats: &[P<hir::Pat>]) {
         let tcx = self.bccx.tcx;
-        let mut mutables = FxHashMap();
+        let mut mutables: FxHashMap<_, Vec<_>> = FxHashMap();
         for p in pats {
             p.each_binding(|_, hir_id, span, ident| {
                 // Skip anything that looks like `_foo`
@@ -60,7 +60,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                         _ => return,
                     }
 
-                    mutables.entry(ident.name).or_insert(Vec::new()).push((hir_id, span));
+                    mutables.entry(ident.name).or_default().push((hir_id, span));
                 } else {
                     tcx.sess.delay_span_bug(span, "missing binding mode");
                 }

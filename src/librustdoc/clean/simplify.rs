@@ -34,7 +34,7 @@ use core::DocContext;
 
 pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
-    let mut params = BTreeMap::new();
+    let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
@@ -43,7 +43,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
         match clause {
             WP::BoundPredicate { ty, bounds } => {
                 match ty {
-                    clean::Generic(s) => params.entry(s).or_insert(Vec::new())
+                    clean::Generic(s) => params.entry(s).or_default()
                                                .extend(bounds),
                     t => tybounds.push((t, ty_bounds(bounds))),
                 }

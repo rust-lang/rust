@@ -299,7 +299,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 
     let cnums = tcx.all_crate_nums(LOCAL_CRATE);
 
-    let mut instances = DefIdMap();
+    let mut instances: DefIdMap<FxHashMap<_, _>> = DefIdMap();
 
     let cnum_stable_ids: IndexVec<CrateNum, Fingerprint> = {
         let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO,
@@ -318,8 +318,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
     for &cnum in cnums.iter() {
         for &(ref exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
             if let &ExportedSymbol::Generic(def_id, substs) = exported_symbol {
-                let substs_map = instances.entry(def_id)
-                                          .or_insert_with(|| FxHashMap());
+                let substs_map = instances.entry(def_id).or_default();
 
                 match substs_map.entry(substs) {
                     Occupied(mut e) => {

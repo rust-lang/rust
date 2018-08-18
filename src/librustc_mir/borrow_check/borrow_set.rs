@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
                             self.activation_map
                                 .entry(location)
-                                .or_insert(Vec::new())
+                                .or_default()
                                 .push(borrow_index);
                             TwoPhaseActivation::ActivatedAt(location)
                         }

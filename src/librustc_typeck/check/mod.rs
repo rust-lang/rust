@@ -2005,7 +2005,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        closure_def_id: DefId,
                                        r: DeferredCallResolution<'gcx, 'tcx>) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
-        deferred_call_resolutions.entry(closure_def_id).or_insert(vec![]).push(r);
+        deferred_call_resolutions.entry(closure_def_id).or_default().push(r);
     }
 
     fn remove_deferred_call_resolutions(&self,

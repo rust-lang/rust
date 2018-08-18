@@ -183,7 +183,7 @@ impl Step for ToolBuild {
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
                 let prev_artifacts = artifacts
                     .entry(target)
-                    .or_insert_with(Default::default);
+                    .or_default();
                 if let Some(prev) = prev_artifacts.get(&*id) {
                     if prev.1 != val.1 {
                         duplicates.push((
