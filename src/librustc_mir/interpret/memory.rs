@@ -1,3 +1,11 @@
+//! The memory subsystem.
+//!
+//! Generally, we use `Pointer` to denote memory addresses. However, some operations
+//! have a "size"-like parameter, and they take `Scalar` for the address because
+//! if the size is 0, then the pointer can also be a (properly aligned, non-NULL)
+//! integer.  It is crucial that these operations call `check_align` *before*
+//! short-circuiting the empty case!
+
 use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ptr;
@@ -15,6 +23,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 use syntax::ast::Mutability;
 
 use super::{EvalContext, Machine};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -256,7 +265,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.tcx.data_layout.endian
     }
 
-    /// Check that the pointer is aligned AND non-NULL.
+    /// Check that the pointer is aligned AND non-NULL. This supports scalars
+    /// for the benefit of other parts of miri that need to check alignment even for ZST.
     pub fn check_align(&self, ptr: Scalar, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
@@ -632,10 +642,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         length: u64,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
-        // Empty accesses don't need to be valid pointers, but they should still be aligned
-        self.check_align(src, src_align)?;
-        self.check_align(dest, dest_align)?;
         if size.bytes() == 0 {
+            // Nothing to do for ZST, other than checking alignment and non-NULLness.
+            self.check_align(src, src_align)?;
+            self.check_align(dest, dest_align)?;
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -661,6 +671,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_relocations
         };
 
+        // This also checks alignment.
         let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
@@ -718,8 +729,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn read_bytes(&self, ptr: Scalar, size: Size) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if size.bytes() == 0 {
+            self.check_align(ptr, align)?;
             return Ok(&[]);
         }
         self.get_bytes(ptr.to_ptr()?, size, align)
@@ -728,8 +739,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_bytes(&mut self, ptr: Scalar, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if src.is_empty() {
+            self.check_align(ptr, align)?;
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, Size::from_bytes(src.len() as u64), align)?;
@@ -740,8 +751,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_repeat(&mut self, ptr: Scalar, val: u8, count: Size) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if count.bytes() == 0 {
+            self.check_align(ptr, align)?;
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, align)?;
