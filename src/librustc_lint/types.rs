@@ -300,7 +300,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn get_bin_hex_repr(cx: &LateContext, lit: &ast::Lit) -> Option<String> {
-            let src = cx.sess().codemap().span_to_snippet(lit.span).ok()?;
+            let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
             let firstch = src.chars().next()?;
 
             if firstch == '0' {

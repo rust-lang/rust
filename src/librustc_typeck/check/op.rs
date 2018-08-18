@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(()) => {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
-                    let codemap = self.tcx.sess.codemap();
+                    let codemap = self.tcx.sess.source_map();
                     match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(self.tcx.sess, expr.span, E0368,
@@ -420,7 +420,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut errors::DiagnosticBuilder,
         is_assign: bool,
     ) -> bool {
-        let codemap = self.tcx.sess.codemap();
+        let codemap = self.tcx.sess.source_map();
         let msg = "`to_owned()` can be used to create an owned `String` \
                    from a string reference. String concatenation \
                    appends the string on the right to the string \

@@ -60,7 +60,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                             }) => name.to_string(),
                             _ => "'_".to_owned(),
                         };
-                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(return_sp) {
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(return_sp) {
                             err.span_suggestion(
                                 return_sp,
                                 &format!(

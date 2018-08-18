@@ -95,7 +95,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
         use rls_span::{Column, Row};
 
-        let cm = self.tcx.sess.codemap();
+        let cm = self.tcx.sess.source_map();
         let start = cm.lookup_char_pos(span.lo());
         let end = cm.lookup_char_pos(span.hi());
 
@@ -122,7 +122,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
-            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
+            let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
                 // https://github.com/nrc/rls-data/issues/7
@@ -268,7 +268,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ItemKind::Mod(ref m) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
-                let cm = self.tcx.sess.codemap();
+                let cm = self.tcx.sess.source_map();
                 let filename = cm.span_to_filename(m.inner);
 
                 let sub_span = self.span_utils

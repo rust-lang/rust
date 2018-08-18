@@ -1368,7 +1368,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
         let qualname = format!("::{}", self.tcx.node_path_str(id));
 
-        let cm = self.tcx.sess.codemap();
+        let cm = self.tcx.sess.source_map();
         let filename = cm.span_to_filename(span);
         let data_id = ::id_from_node_id(id, &self.save_ctxt);
         let children = m.items

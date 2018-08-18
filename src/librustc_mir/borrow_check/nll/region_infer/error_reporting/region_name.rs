@@ -189,7 +189,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         name: &InternedString,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
-        let cm = tcx.sess.codemap();
+        let cm = tcx.sess.source_map();
 
         let scope = error_region.free_region_binding_scope(tcx);
         let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
@@ -383,7 +383,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         let region_name = self.synthesize_region_name(counter);
 
                         // Just grab the first character, the `&`.
-                        let codemap = tcx.sess.codemap();
+                        let codemap = tcx.sess.source_map();
                         let ampersand_span = codemap.start_point(hir_ty.span);
 
                         diag.span_label(
@@ -593,7 +593,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             = tcx.hir.expect_expr(mir_node_id).node
         {
             (
-                tcx.sess.codemap().end_point(span),
+                tcx.sess.source_map().end_point(span),
                 if gen_move.is_some() { " of generator" } else { " of closure" }
             )
         } else {

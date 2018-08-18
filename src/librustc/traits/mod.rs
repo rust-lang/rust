@@ -142,7 +142,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplMethodObligation { .. } |
             ObligationCauseCode::MainFunctionType |
             ObligationCauseCode::StartFunctionType => {
-                tcx.sess.codemap().def_span(self.span)
+                tcx.sess.source_map().def_span(self.span)
             }
             _ => self.span,
         }

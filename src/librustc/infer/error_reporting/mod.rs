@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         region: ty::Region<'tcx>,
     ) -> (String, Option<Span>) {
-        let cm = self.sess.codemap();
+        let cm = self.sess.source_map();
 
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn explain_span(self, heading: &str, span: Span) -> (String, Option<Span>) {
-        let lo = self.sess.codemap().lookup_char_pos_adj(span.lo());
+        let lo = self.sess.source_map().lookup_char_pos_adj(span.lo());
         (
             format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
             Some(span),
@@ -502,14 +502,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arm with an incompatible type";
-                    if self.tcx.sess.codemap().is_multiline(arm_span) {
+                    if self.tcx.sess.source_map().is_multiline(arm_span) {
                         err.span_note(arm_span, msg);
                     } else {
                         err.span_label(arm_span, msg);
                     }
                 },
                 hir::MatchSource::TryDesugar => { // Issue #51632
-                    if let Ok(try_snippet) = self.tcx.sess.codemap().span_to_snippet(arm_span) {
+                    if let Ok(try_snippet) = self.tcx.sess.source_map().span_to_snippet(arm_span) {
                         err.span_suggestion_with_applicability(
                             arm_span,
                             "try wrapping with a success variant",
@@ -520,7 +520,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 _ => {
                     let msg = "match arm with an incompatible type";
-                    if self.tcx.sess.codemap().is_multiline(arm_span) {
+                    if self.tcx.sess.source_map().is_multiline(arm_span) {
                         err.span_note(arm_span, msg);
                     } else {
                         err.span_label(arm_span, msg);
@@ -1136,8 +1136,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let sp = if has_bounds {
                                 sp.to(self.tcx
                                     .sess
-                                    .codemap()
-                                    .next_point(self.tcx.sess.codemap().next_point(sp)))
+                                    .source_map()
+                                    .next_point(self.tcx.sess.source_map().next_point(sp)))
                             } else {
                                 sp
                             };

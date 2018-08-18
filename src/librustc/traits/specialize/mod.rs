@@ -344,7 +344,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                         }),
                     if used_to_be_allowed { " (E0119)" } else { "" }
                 );
-                let impl_span = tcx.sess.codemap().def_span(
+                let impl_span = tcx.sess.source_map().def_span(
                     tcx.span_of_impl(impl_def_id).unwrap()
                 );
                 let mut err = if used_to_be_allowed {
@@ -363,7 +363,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {
-                        err.span_label(tcx.sess.codemap().def_span(span),
+                        err.span_label(tcx.sess.source_map().def_span(span),
                                        "first implementation here".to_string());
                         err.span_label(impl_span,
                                        format!("conflicting implementation{}",

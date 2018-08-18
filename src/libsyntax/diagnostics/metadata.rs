@@ -45,7 +45,7 @@ pub struct ErrorLocation {
 impl ErrorLocation {
     /// Create an error location from a span.
     pub fn from_span(ecx: &ExtCtxt, sp: Span) -> ErrorLocation {
-        let loc = ecx.codemap().lookup_char_pos_adj(sp.lo());
+        let loc = ecx.source_map().lookup_char_pos_adj(sp.lo());
         ErrorLocation {
             filename: loc.filename,
             line: loc.line

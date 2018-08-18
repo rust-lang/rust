@@ -252,7 +252,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 match (&values.found.sty, &values.expected.sty) { // Issue #53280
                     (ty::TyInfer(ty::IntVar(_)), ty::TyFloat(_)) => {
-                        if let Ok(snippet) = self.sess.codemap().span_to_snippet(sp) {
+                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
                             if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                                 db.span_suggestion_with_applicability(
                                     sp,

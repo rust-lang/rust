@@ -371,7 +371,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
 {
     let mut src = String::new();
     srdr.read_to_string(&mut src).unwrap();
-    let cm = SourceMap::new(sess.codemap().path_mapping().clone());
+    let cm = SourceMap::new(sess.source_map().path_mapping().clone());
     let source_file = cm.new_source_file(path, src);
     let mut rdr = lexer::StringReader::new_raw(sess, source_file, None);
 

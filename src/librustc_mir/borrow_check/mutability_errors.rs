@@ -268,7 +268,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // a local variable, then just suggest the user remove it.
             Place::Local(_)
                 if {
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         snippet.starts_with("&mut ")
                     } else {
                         false
@@ -406,7 +406,7 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
     local_decl: &mir::LocalDecl<'tcx>,
 ) -> (Span, String) {
     let sp = local_decl.source_info.span;
-    (sp, match tcx.sess.codemap().span_to_snippet(sp) {
+    (sp, match tcx.sess.source_map().span_to_snippet(sp) {
         Ok(snippet) => {
             let lt_pos = snippet.find('\'');
             if let Some(lt_pos) = lt_pos {
@@ -444,7 +444,7 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     let locations = mir.find_assignments(local);
     if locations.len() > 0 {
         let assignment_rhs_span = mir.source_info(locations[0]).span;
-        if let Ok(src) = tcx.sess.codemap().span_to_snippet(assignment_rhs_span) {
+        if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) = (
                 src.starts_with("&'"),
                 src.find(|c: char| -> bool { c.is_whitespace() }),
@@ -469,7 +469,7 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
         None => local_decl.source_info.span,
     };
 
-    if let Ok(src) = tcx.sess.codemap().span_to_snippet(highlight_span) {
+    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
         if let (true, Some(ws_pos)) = (
             src.starts_with("&'"),
             src.find(|c: char| -> bool { c.is_whitespace() }),

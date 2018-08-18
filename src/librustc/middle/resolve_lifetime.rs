@@ -2457,7 +2457,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             "insert_lifetime: {} resolved to {:?} span={:?}",
             self.tcx.hir.node_to_string(lifetime_ref.id),
             def,
-            self.tcx.sess.codemap().span_to_string(lifetime_ref.span)
+            self.tcx.sess.source_map().span_to_string(lifetime_ref.span)
         );
         self.map.defs.insert(lifetime_ref.id, def);
 

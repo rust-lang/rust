@@ -47,7 +47,7 @@ impl<'a> SpanUtils<'a> {
     }
 
     pub fn snippet(&self, span: Span) -> String {
-        match self.sess.codemap().span_to_snippet(span) {
+        match self.sess.source_map().span_to_snippet(span) {
             Ok(s) => s,
             Err(_) => String::new(),
         }
@@ -151,7 +151,7 @@ impl<'a> SpanUtils<'a> {
         }
         #[cfg(debug_assertions)] {
             if angle_count != 0 || bracket_count != 0 {
-                let loc = self.sess.codemap().lookup_char_pos(span.lo());
+                let loc = self.sess.source_map().lookup_char_pos(span.lo());
                 span_bug!(
                     span,
                     "Mis-counted brackets when breaking path? Parsing '{}' \
@@ -278,7 +278,7 @@ impl<'a> SpanUtils<'a> {
 
         //If the span comes from a fake source_file, filter it.
         if !self.sess
-            .codemap()
+            .source_map()
             .lookup_char_pos(parent.lo())
             .file
             .is_real_file()

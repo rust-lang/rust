@@ -267,7 +267,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
-            directory: match self.cx.codemap().span_to_unmapped_path(krate.span) {
+            directory: match self.cx.source_map().span_to_unmapped_path(krate.span) {
                 FileName::Real(path) => path,
                 other => PathBuf::from(other.to_string()),
             },
@@ -1355,7 +1355,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         module.directory.push(&*item.ident.as_str());
                     }
                 } else {
-                    let path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);
+                    let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
                     let mut path = match path {
                         FileName::Real(path) => path,
                         other => PathBuf::from(other.to_string()),
@@ -1563,7 +1563,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             // Add this input file to the code map to make it available as
                             // dependency information
-                            self.cx.codemap().new_source_file(filename.into(), src);
+                            self.cx.source_map().new_source_file(filename.into(), src);
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(

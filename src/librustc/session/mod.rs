@@ -484,8 +484,8 @@ impl Session {
         );
     }
 
-    pub fn codemap<'a>(&'a self) -> &'a source_map::SourceMap {
-        self.parse_sess.codemap()
+    pub fn source_map<'a>(&'a self) -> &'a source_map::SourceMap {
+        self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
         self.opts.debugging_opts.verbose

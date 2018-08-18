@@ -72,7 +72,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
                 self.code(),
             )
         };
-        if let Ok(snippet) = self.sess.codemap().span_to_snippet(self.span) {
+        if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
             err.span_suggestion(self.span,
                                 &format!("cast the value to `{}`", self.cast_ty),
                                 format!("{} as {}", snippet, self.cast_ty));

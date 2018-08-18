@@ -166,7 +166,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
-            let cm = self.cx.sess().codemap();
+            let cm = self.cx.sess().source_map();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
             Some(debuginfo::extend_scope_to_file(self.cx,
                                             scope_metadata.unwrap(),

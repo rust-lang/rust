@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  checked_ty: Ty<'tcx>,
                  expected: Ty<'tcx>)
                  -> Option<(Span, &'static str, String)> {
-        let cm = self.sess().codemap();
+        let cm = self.sess().source_map();
         // Use the callsite's span if this is a macro call. #41858
         let sp = cm.call_span_if_macro(expr.span);
         if !cm.span_to_filename(sp).is_real() {
@@ -405,7 +405,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
 
-        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
             let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
             let cast_suggestion = format!("{}{}{} as {}",
                                           if needs_paren { "(" } else { "" },

@@ -36,7 +36,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.codemap().lookup_char_pos(topmost.lo());
+    let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
     base::MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
 }
@@ -47,7 +47,7 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.codemap().lookup_char_pos(topmost.lo());
+    let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
     base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1))
 }
@@ -70,7 +70,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.codemap().lookup_char_pos(topmost.lo());
+    let loc = cx.source_map().lookup_char_pos(topmost.lo());
     base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name.to_string())))
 }
 
@@ -154,7 +154,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
 
             // Add this input file to the code map to make it available as
             // dependency information
-            cx.codemap().new_source_file(file.into(), src);
+            cx.source_map().new_source_file(file.into(), src);
 
             base::MacEager::expr(cx.expr_str(sp, interned_src))
         }
@@ -184,7 +184,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Ok(..) => {
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
-            cx.codemap().new_source_file(file.into(), "".to_string());
+            cx.source_map().new_source_file(file.into(), "".to_string());
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }
@@ -199,7 +199,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: String) -> PathBuf 
     // after macro expansion (that is, they are unhygienic).
     if !arg.is_absolute() {
         let callsite = sp.source_callsite();
-        let mut path = match cx.codemap().span_to_unmapped_path(callsite) {
+        let mut path = match cx.source_map().span_to_unmapped_path(callsite) {
             FileName::Real(path) => path,
             other => panic!("cannot resolve relative path in non-file source `{}`", other),
         };

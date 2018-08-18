@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         debug!("visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
                owner_id,
-               self.tcx.sess.codemap().span_to_string(body.value.span),
+               self.tcx.sess.source_map().span_to_string(body.value.span),
                body_id,
                self.cx.parent);
 

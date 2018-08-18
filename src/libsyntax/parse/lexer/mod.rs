@@ -234,8 +234,8 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.codemap().lookup_byte_offset(span.lo());
-        let end = sess.codemap().lookup_byte_offset(span.hi());
+        let begin = sess.source_map().lookup_byte_offset(span.lo());
+        let end = sess.source_map().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
         if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {

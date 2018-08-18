@@ -40,7 +40,7 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let impl_m_span = tcx.sess.codemap().def_span(impl_m_span);
+    let impl_m_span = tcx.sess.source_map().def_span(impl_m_span);
 
     if let Err(ErrorReported) = compare_self_type(tcx,
                                                   impl_m,
@@ -319,7 +319,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             trait_m.ident);
             if let TypeError::Mutability = terr {
                 if let Some(trait_err_span) = trait_err_span {
-                    if let Ok(trait_err_str) = tcx.sess.codemap().span_to_snippet(trait_err_span) {
+                    if let Ok(trait_err_str) = tcx.sess.source_map().span_to_snippet(trait_err_span) {
                         diag.span_suggestion(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
@@ -386,7 +386,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
-        let def_span = tcx.sess.codemap().def_span(span);
+        let def_span = tcx.sess.source_map().def_span(span);
         let span = tcx.hir.get_generics_span(impl_m.def_id).unwrap_or(def_span);
         let mut err = struct_span_err!(
             tcx.sess,
@@ -397,7 +397,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         );
         err.span_label(span, "lifetimes do not match method in trait");
         if let Some(sp) = tcx.hir.span_if_local(trait_m.def_id) {
-            let def_sp = tcx.sess.codemap().def_span(sp);
+            let def_sp = tcx.sess.source_map().def_span(sp);
             let sp = tcx.hir.get_generics_span(trait_m.def_id).unwrap_or(def_sp);
             err.span_label(sp, "lifetimes in impl do not match this method in trait");
         }
@@ -770,7 +770,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // as another generic argument
                         let new_name = tcx
                             .sess
-                            .codemap()
+                            .source_map()
                             .span_to_snippet(trait_span)
                             .ok()?;
                         let trait_m = tcx.hir.as_local_node_id(trait_m.def_id)?;
@@ -783,7 +783,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // and the opening paren of the argument list
                         let new_generics_span = tcx
                             .sess
-                            .codemap()
+                            .source_map()
                             .generate_fn_name_span(impl_span)?
                             .shrink_to_hi();
                         // in case there are generics, just replace them
@@ -794,7 +794,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // replace with the generics from the trait
                         let new_generics = tcx
                             .sess
-                            .codemap()
+                            .source_map()
                             .span_to_snippet(trait_m.generics.span)
                             .ok()?;
 
@@ -865,7 +865,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let bounds = bounds.first()?.span().to(bounds.last()?.span());
                         let bounds = tcx
                             .sess
-                            .codemap()
+                            .source_map()
                             .span_to_snippet(bounds)
                             .ok()?;
 

@@ -86,7 +86,7 @@ impl ParseSess {
         }
     }
 
-    pub fn codemap(&self) -> &SourceMap {
+    pub fn source_map(&self) -> &SourceMap {
         &self.code_map
     }
 
@@ -171,13 +171,13 @@ crate fn parse_stmt_from_source_str(name: FileName, source: String, sess: &Parse
 pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
                                     override_span: Option<Span>)
                                     -> TokenStream {
-    source_file_to_stream(sess, sess.codemap().new_source_file(name, source), override_span)
+    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
                                       -> Parser {
-    let mut parser = source_file_to_parser(sess, sess.codemap().new_source_file(name, source));
+    let mut parser = source_file_to_parser(sess, sess.source_map().new_source_file(name, source));
     parser.recurse_into_file_modules = false;
     parser
 }
@@ -227,7 +227,7 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 /// add the path to the session's codemap and return the new source_file.
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                    -> Lrc<SourceFile> {
-    match sess.codemap().load_file(path) {
+    match sess.source_map().load_file(path) {
         Ok(source_file) => source_file,
         Err(e) => {
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
@@ -969,7 +969,7 @@ mod tests {
 
             let span = tts.iter().rev().next().unwrap().span();
 
-            match sess.codemap().span_to_snippet(span) {
+            match sess.source_map().span_to_snippet(span) {
                 Ok(s) => assert_eq!(&s[..], "{ body }"),
                 Err(_) => panic!("could not get snippet"),
             }

@@ -764,7 +764,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
-        let loc = self.codemap().lookup_char_pos(span.lo());
+        let loc = self.source_map().lookup_char_pos(span.lo());
         let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name.to_string()));
         let expr_line = self.expr_u32(span, loc.line as u32);
         let expr_col = self.expr_u32(span, loc.col.to_usize() as u32 + 1);

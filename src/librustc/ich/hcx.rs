@@ -101,7 +101,7 @@ impl<'a> StableHashingContext<'a> {
             definitions,
             cstore,
             caching_codemap: None,
-            raw_codemap: sess.codemap(),
+            raw_codemap: sess.source_map(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
@@ -169,7 +169,7 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn codemap(&mut self) -> &mut CachingCodemapView<'a> {
+    pub fn source_map(&mut self) -> &mut CachingCodemapView<'a> {
         match self.caching_codemap {
             Some(ref mut cm) => {
                 cm
@@ -340,7 +340,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
-        let (file_lo, line_lo, col_lo) = match hcx.codemap()
+        let (file_lo, line_lo, col_lo) = match hcx.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {

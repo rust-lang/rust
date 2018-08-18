@@ -33,7 +33,7 @@ pub fn suggest_ref_mut<'cx, 'gcx, 'tcx>(
     tcx: ty::TyCtxt<'cx, 'gcx, 'tcx>,
     binding_span: Span,
 ) -> Option<(String)> {
-    let hi_src = tcx.sess.codemap().span_to_snippet(binding_span).unwrap();
+    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).unwrap();
     if hi_src.starts_with("ref")
         && hi_src["ref".len()..].starts_with(Pattern_White_Space)
     {

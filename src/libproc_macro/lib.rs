@@ -1186,7 +1186,7 @@ pub mod __internal {
     use super::{TokenStream, LexError, Span};
 
     pub fn lookup_char_pos(pos: BytePos) -> Loc {
-        with_sess(|sess, _| sess.codemap().lookup_char_pos(pos))
+        with_sess(|sess, _| sess.source_map().lookup_char_pos(pos))
     }
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {

@@ -195,7 +195,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            "can't use type parameters from outer function");
             err.span_label(span, "use of type variable from outer function");
 
-            let cm = resolver.session.codemap();
+            let cm = resolver.session.source_map();
             match outer_def {
                 Def::SelfTy(_, maybe_impl_defid) => {
                     if let Some(impl_span) = maybe_impl_defid.map_or(None,
@@ -3085,7 +3085,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // parser issue where a struct literal is being used on an expression
                             // where a brace being opened means a block is being started. Look
                             // ahead for the next text to see if `span` is followed by a `{`.
-                            let cm = this.session.codemap();
+                            let cm = this.session.source_map();
                             let mut sp = span;
                             loop {
                                 sp = cm.next_point(sp);
@@ -3212,7 +3212,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                   err: &mut DiagnosticBuilder,
                                   base_span: Span) {
         debug!("type_ascription_suggetion {:?}", base_span);
-        let cm = self.session.codemap();
+        let cm = self.session.source_map();
         debug!("self.current_type_ascription {:?}", self.current_type_ascription);
         if let Some(sp) = self.current_type_ascription.last() {
             let mut sp = *sp;
@@ -4527,7 +4527,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             false => "defined",
         };
 
-        let (name, span) = (ident.name, self.session.codemap().def_span(new_binding.span));
+        let (name, span) = (ident.name, self.session.source_map().def_span(new_binding.span));
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {
@@ -4566,7 +4566,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
         if !old_binding.span.is_dummy() {
-            err.span_label(self.session.codemap().def_span(old_binding.span),
+            err.span_label(self.session.source_map().def_span(old_binding.span),
                            format!("previous {} of the {} `{}` here", old_noun, old_kind, name));
         }
 
@@ -4578,7 +4578,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 old_binding
             };
 
-            let cm = self.session.codemap();
+            let cm = self.session.source_map();
             let rename_msg = "You can use `as` to change the binding name of the import";
 
             if let (Ok(snippet), false) = (cm.span_to_snippet(binding.span),

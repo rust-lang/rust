@@ -915,7 +915,7 @@ pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate 
 
 fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, FileName) {
     let src_name = driver::source_name(input);
-    let src = sess.codemap()
+    let src = sess.source_map()
         .get_source_file(&src_name)
         .unwrap()
         .src
@@ -954,7 +954,7 @@ pub fn print_after_parsing(sess: &Session,
         s.call_with_pp_support(sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                pprust::print_crate(sess.codemap(),
+                pprust::print_crate(sess.source_map(),
                                     &sess.parse_sess,
                                     krate,
                                     src_name,
@@ -1011,7 +1011,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support(sess, Some(hir_map), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
-                    pprust::print_crate(sess.codemap(),
+                    pprust::print_crate(sess.source_map(),
                                         &sess.parse_sess,
                                         krate,
                                         src_name,
@@ -1035,7 +1035,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
-                    pprust_hir::print_crate(sess.codemap(),
+                    pprust_hir::print_crate(sess.source_map(),
                                             &sess.parse_sess,
                                             krate,
                                             src_name,
@@ -1076,7 +1076,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
-                    let mut pp_state = pprust_hir::State::new_from_input(sess.codemap(),
+                    let mut pp_state = pprust_hir::State::new_from_input(sess.source_map(),
                                                                          &sess.parse_sess,
                                                                          src_name,
                                                                          &mut rdr,

@@ -3621,7 +3621,7 @@ impl<'a> LoweringContext<'a> {
                     let tail = block.expr.take().map_or_else(
                         || {
                             let LoweredNodeId { node_id, hir_id } = this.next_id();
-                            let span = this.sess.codemap().end_point(unstable_span);
+                            let span = this.sess.source_map().end_point(unstable_span);
                             hir::Expr {
                                 id: node_id,
                                 span,

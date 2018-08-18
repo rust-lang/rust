@@ -350,7 +350,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(mut err) = err {
                                 if is_arg {
                                     if let PatKind::Binding(..) = inner.node {
-                                        if let Ok(snippet) = tcx.sess.codemap()
+                                        if let Ok(snippet) = tcx.sess.source_map()
                                                                      .span_to_snippet(pat.span)
                                         {
                                             err.help(&format!("did you mean `{}: &{}`?",

@@ -332,7 +332,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.tcx.sess.codemap().span_to_snippet(span).unwrap();
+        let snippet = self.tcx.sess.source_map().span_to_snippet(span).unwrap();
         match error {
             GroupedMoveError::MovesFromPlace {
                 mut binds_to,
@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }))
             ) = bind_to.is_user_variable {
                 let pat_snippet = self
-                    .tcx.sess.codemap()
+                    .tcx.sess.source_map()
                     .span_to_snippet(pat_span)
                     .unwrap();
                 if pat_snippet.starts_with('&') {

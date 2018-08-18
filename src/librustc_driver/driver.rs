@@ -695,7 +695,7 @@ pub fn phase_1_parse_input<'a>(
     if sess.opts.debugging_opts.input_stats {
         println!(
             "Lines of code:             {}",
-            sess.codemap().count_lines()
+            sess.source_map().count_lines()
         );
         println!("Pre-expansion node count:  {}", count_nodes(&krate));
     }
@@ -1462,7 +1462,7 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
     let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let files: Vec<String> = sess.codemap()
+        let files: Vec<String> = sess.source_map()
             .files()
             .iter()
             .filter(|fmap| fmap.is_real_file())

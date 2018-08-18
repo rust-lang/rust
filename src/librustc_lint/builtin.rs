@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let condition_span = cx.tcx.sess.codemap().def_span(e.span);
+                        let condition_span = cx.tcx.sess.source_map().def_span(e.span);
                         let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
                         err.span_suggestion_short_with_applicability(
                             condition_span,
@@ -195,7 +195,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
-                        let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
+                        let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span, ':');
                         err.span_suggestion_short_with_applicability(
                             subspan,
                             "remove this",
@@ -367,7 +367,7 @@ impl MissingDoc {
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
-                         cx.tcx.sess.codemap().def_span(sp),
+                         cx.tcx.sess.source_map().def_span(sp),
                          &format!("missing documentation for {}", desc));
         }
     }
@@ -651,7 +651,7 @@ impl EarlyLintPass for AnonymousParameters {
                             if ident.name == keywords::Invalid.name() {
                                 let ty_snip = cx
                                     .sess
-                                    .codemap()
+                                    .source_map()
                                     .span_to_snippet(arg.ty.span);
 
                                 let (ty_snip, appl) = if let Ok(snip) = ty_snip {
@@ -958,7 +958,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // no break */ }`) shouldn't be linted unless it actually
         // recurs.
         if !reached_exit_without_self_call && !self_call_spans.is_empty() {
-            let sp = cx.tcx.sess.codemap().def_span(sp);
+            let sp = cx.tcx.sess.source_map().def_span(sp);
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
                                              "function cannot return without recurring");
@@ -1278,7 +1278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
 
                     // account for "pub const" (#45562)
-                    let start = cx.tcx.sess.codemap().span_to_snippet(it.span)
+                    let start = cx.tcx.sess.source_map().span_to_snippet(it.span)
                         .map(|snippet| snippet.find("const").unwrap_or(0))
                         .unwrap_or(0) as u32;
                     // `const` is 5 chars
@@ -1440,7 +1440,7 @@ impl UnreachablePub {
                 if span.ctxt().outer().expn_info().is_some() {
                     applicability = Applicability::MaybeIncorrect;
                 }
-                let def_span = cx.tcx.sess.codemap().def_span(span);
+                let def_span = cx.tcx.sess.source_map().def_span(span);
                 let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
                                                   &format!("unreachable `pub` {}", what));
                 let replacement = if cx.tcx.features().crate_visibility_modifier {

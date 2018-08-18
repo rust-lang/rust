@@ -551,7 +551,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Trait(..) |
-                hir::ItemKind::Impl(..) => self.tcx.sess.codemap().def_span(item.span),
+                hir::ItemKind::Impl(..) => self.tcx.sess.source_map().def_span(item.span),
                 _ => item.span,
             };
             let participle = match item.node {
@@ -612,7 +612,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
             }
             hir::ImplItemKind::Method(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
-                    let span = self.tcx.sess.codemap().def_span(impl_item.span);
+                    let span = self.tcx.sess.source_map().def_span(impl_item.span);
                     self.warn_dead_code(impl_item.id, span, impl_item.ident.name, "method", "used");
                 }
                 self.visit_nested_body(body_id)

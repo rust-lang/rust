@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'gcx>| {
-            self.sess.codemap().def_span(query.default_span(self, span))
+            self.sess.source_map().def_span(query.default_span(self, span))
         };
 
         // Disable naming impls with types in this path, since that
@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  i,
                                  query.info.query.name(),
                                  query.info.query.describe(icx.tcx)));
-                    db.set_span(icx.tcx.sess.codemap().def_span(query.info.span));
+                    db.set_span(icx.tcx.sess.source_map().def_span(query.info.span));
                     icx.tcx.sess.diagnostic().force_print_db(db);
 
                     current_query = query.parent.clone();

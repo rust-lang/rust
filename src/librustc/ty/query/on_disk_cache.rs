@@ -140,7 +140,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: footer.prev_cnums,
             cnum_map: Once::new(),
-            codemap: sess.codemap(),
+            codemap: sess.source_map(),
             current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
@@ -178,7 +178,7 @@ impl<'sess> OnDiskCache<'sess> {
                 let mut file_to_file_index = FxHashMap();
                 let mut file_index_to_stable_id = FxHashMap();
 
-                for (index, file) in tcx.sess.codemap().files().iter().enumerate() {
+                for (index, file) in tcx.sess.source_map().files().iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
                     let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);
@@ -196,7 +196,7 @@ impl<'sess> OnDiskCache<'sess> {
                 expn_info_shorthands: FxHashMap(),
                 interpret_allocs: FxHashMap(),
                 interpret_allocs_inverse: Vec::new(),
-                codemap: CachingCodemapView::new(tcx.sess.codemap()),
+                codemap: CachingCodemapView::new(tcx.sess.source_map()),
                 file_to_file_index,
             };
 

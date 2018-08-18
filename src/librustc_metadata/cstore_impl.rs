@@ -463,7 +463,7 @@ impl cstore::CStore {
         let (name, def) = data.get_macro(id.index);
         let source_name = FileName::Macros(name.to_string());
 
-        let source_file = sess.parse_sess.codemap().new_source_file(source_name, def.body);
+        let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
         let body = source_file_to_stream(&sess.parse_sess, source_file, None);
 

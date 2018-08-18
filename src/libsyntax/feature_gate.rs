@@ -1556,7 +1556,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if !name.as_str().is_ascii() {
             gate_feature_post!(&self,
                                non_ascii_idents,
-                               self.context.parse_sess.codemap().def_span(sp),
+                               self.context.parse_sess.source_map().def_span(sp),
                                "non-ascii idents are not fully supported.");
         }
     }

@@ -1818,7 +1818,7 @@ pub mod tls {
     /// in librustc otherwise
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
-            write!(f, "{}", tcx.sess.codemap().span_to_string(span))
+            write!(f, "{}", tcx.sess.source_map().span_to_string(span))
         })
     }
 

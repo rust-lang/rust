@@ -1202,7 +1202,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         let cmdline_args = sess.opts.dep_tracking_hash();
         collector.finalize_and_compute_crate_hash(crate_disambiguator,
                                                   cstore,
-                                                  sess.codemap(),
+                                                  sess.source_map(),
                                                   cmdline_args)
     };
 

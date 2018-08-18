@@ -420,7 +420,7 @@ impl BuiltinLintDiagnostics {
         match self {
             BuiltinLintDiagnostics::Normal => (),
             BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
+                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                     Ok(ref s) if is_global => (format!("dyn ({})", s),
                                                Applicability::MachineApplicable),
                     Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
@@ -429,7 +429,7 @@ impl BuiltinLintDiagnostics {
                 db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
             }
             BuiltinLintDiagnostics::AbsPathWithModule(span) => {
-                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
+                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                     Ok(ref s) => {
                         // FIXME(Manishearth) ideally the emitting code
                         // can tell us whether or not this is global
@@ -462,7 +462,7 @@ impl BuiltinLintDiagnostics {
                     // When possible, prefer a suggestion that replaces the whole
                     // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
                     // at a point (which makes for an ugly/confusing label)
-                    if let Ok(snippet) = sess.codemap().span_to_snippet(path_span) {
+                    if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
                         // But our spans can get out of whack due to macros; if the place we think
                         // we want to insert `'_` isn't even within the path expression's span, we
                         // should bail out of making any suggestion rather than panicking on a

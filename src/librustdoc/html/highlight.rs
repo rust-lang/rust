@@ -33,7 +33,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
                                 tooltip: Option<(&str, &str)>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_source_file(FileName::Custom("stdin".to_string()), src.to_string());
+    let fm = sess.source_map().new_source_file(FileName::Custom("stdin".to_string()), src.to_string());
 
     let mut out = Vec::new();
     if let Some((tooltip, class)) = tooltip {
@@ -43,7 +43,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
     }
     write_header(class, &mut out).unwrap();
 
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
+    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.source_map());
     if classifier.write_source(&mut out).is_err() {
         return format!("<pre>{}</pre>", src);
     }

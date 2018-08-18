@@ -157,7 +157,7 @@ enum LiveNodeKind {
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
-    let cm = tcx.sess.codemap();
+    let cm = tcx.sess.source_map();
     match lnk {
         FreeVarNode(s) => {
             format!("Free var node [{}]", cm.span_to_string(s))

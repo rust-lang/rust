@@ -314,7 +314,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             bug!("Cannot decode Span without Session.")
         };
 
-        let imported_source_files = self.cdata().imported_source_files(&sess.codemap());
+        let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
         let source_file = {
             // Optimize for the case that most spans within a translated item
             // originate from the same source_file.

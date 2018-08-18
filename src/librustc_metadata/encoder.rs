@@ -158,7 +158,7 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         debug_assert!(span.lo <= span.hi);
 
         if !self.source_file_cache.contains(span.lo) {
-            let codemap = self.tcx.sess.codemap();
+            let codemap = self.tcx.sess.source_map();
             let source_file_index = codemap.lookup_source_file_idx(span.lo);
             self.source_file_cache = codemap.files()[source_file_index].clone();
         }
@@ -337,8 +337,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(definitions.def_path_table())
     }
 
-    fn encode_codemap(&mut self) -> LazySeq<syntax_pos::SourceFile> {
-        let codemap = self.tcx.sess.codemap();
+    fn encode_source_map(&mut self) -> LazySeq<syntax_pos::SourceFile> {
+        let codemap = self.tcx.sess.source_map();
         let all_source_files = codemap.files();
 
         let (working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir.clone();
@@ -420,7 +420,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode codemap
         i = self.position();
-        let codemap = self.encode_codemap();
+        let codemap = self.encode_source_map();
         let codemap_bytes = self.position() - i;
 
         // Encode DefPathTable
@@ -1842,7 +1842,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
-            source_file_cache: tcx.sess.codemap().files()[0].clone(),
+            source_file_cache: tcx.sess.source_map().files()[0].clone(),
             interpret_allocs: Default::default(),
             interpret_allocs_inverse: Default::default(),
         };

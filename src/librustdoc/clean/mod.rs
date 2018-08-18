@@ -239,7 +239,7 @@ impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext) -> ExternalCrate {
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
         let krate_span = cx.tcx.def_span(root);
-        let krate_src = cx.sess().codemap().span_to_filename(krate_span);
+        let krate_src = cx.sess().source_map().span_to_filename(krate_span);
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.
@@ -596,7 +596,7 @@ impl Clean<Item> for doctree::Module {
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
         let whence = {
-            let cm = cx.sess().codemap();
+            let cm = cx.sess().source_map();
             let outer = cm.lookup_char_pos(self.where_outer.lo());
             let inner = cm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
@@ -3015,7 +3015,7 @@ impl Clean<Span> for syntax_pos::Span {
             return Span::empty();
         }
 
-        let cm = cx.sess().codemap();
+        let cm = cx.sess().source_map();
         let filename = cm.span_to_filename(*self);
         let lo = cm.lookup_char_pos(self.lo());
         let hi = cm.lookup_char_pos(self.hi());
@@ -3620,7 +3620,7 @@ pub trait ToSource {
 impl ToSource for syntax_pos::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
-        let sn = match cx.sess().codemap().span_to_snippet(*self) {
+        let sn = match cx.sess().source_map().span_to_snippet(*self) {
             Ok(x) => x.to_string(),
             Err(_) => "".to_string()
         };

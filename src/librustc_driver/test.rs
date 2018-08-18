@@ -162,7 +162,7 @@ fn test_env_with_pool<F>(
                              &arenas,
                              resolutions,
                              hir_map,
-                             OnDiskCache::new_empty(sess.codemap()),
+                             OnDiskCache::new_empty(sess.source_map()),
                              "test_crate",
                              tx,
                              &outputs,
