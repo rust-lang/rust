@@ -1117,7 +1117,7 @@ impl<'a, 'tcx> CrateMetadata {
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
     pub fn imported_filemaps(&'a self,
-                             local_codemap: &codemap::CodeMap)
+                             local_codemap: &codemap::SourceMap)
                              -> ReadGuard<'a, Vec<cstore::ImportedFileMap>> {
         {
             let filemaps = self.codemap_import_info.borrow();
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> CrateMetadata {
 
             // Translate line-start positions and multibyte character
             // position into frame of reference local to file.
-            // `CodeMap::new_imported_filemap()` will then translate those
+            // `SourceMap::new_imported_filemap()` will then translate those
             // coordinates to their new global frame of reference when the
             // offset of the FileMap is known.
             for pos in &mut lines {

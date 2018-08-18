@@ -13,7 +13,7 @@
 use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use codemap::{CodeMap, FilePathMapping};
+use codemap::{SourceMap, FilePathMapping};
 use syntax_pos::{Span, FileMap, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
@@ -57,13 +57,13 @@ pub struct ParseSess {
     pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
-    code_map: Lrc<CodeMap>,
+    code_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
 }
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Lrc::new(CodeMap::new(file_path_mapping));
+        let cm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
@@ -71,7 +71,7 @@ impl ParseSess {
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<SourceMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -86,7 +86,7 @@ impl ParseSess {
         }
     }
 
-    pub fn codemap(&self) -> &CodeMap {
+    pub fn codemap(&self) -> &SourceMap {
         &self.code_map
     }
 

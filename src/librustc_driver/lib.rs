@@ -107,7 +107,7 @@ use std::sync::{Once, ONCE_INIT};
 use std::thread;
 
 use syntax::ast;
-use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
+use syntax::codemap::{SourceMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
@@ -522,7 +522,7 @@ fn run_compiler_with_pool<'a>(
     };
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let codemap = Lrc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
+    let codemap = Lrc::new(SourceMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );

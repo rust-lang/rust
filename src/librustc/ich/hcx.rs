@@ -25,7 +25,7 @@ use std::cell::RefCell;
 
 use syntax::ast;
 
-use syntax::codemap::CodeMap;
+use syntax::codemap::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
@@ -58,7 +58,7 @@ pub struct StableHashingContext<'a> {
 
     // Very often, we are hashing something that does not need the
     // CachingCodemapView, so we initialize it lazily.
-    raw_codemap: &'a CodeMap,
+    raw_codemap: &'a SourceMap,
     caching_codemap: Option<CachingCodemapView<'a>>,
 
     pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
@@ -308,9 +308,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
-    // offsets into the CodeMap). Instead, we hash the (file name, line, column)
+    // offsets into the SourceMap). Instead, we hash the (file name, line, column)
     // triple, which stays the same even if the containing FileMap has moved
-    // within the CodeMap.
+    // within the SourceMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
     // Also, hashing filenames is expensive so we avoid doing it twice when the

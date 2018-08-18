@@ -12,7 +12,7 @@ pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use codemap::{self, CodeMap, Spanned, respan};
+use codemap::{self, SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -836,7 +836,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
         parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect())
     }
-    pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
+    pub fn codemap(&self) -> &'a SourceMap { self.parse_sess.codemap() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {

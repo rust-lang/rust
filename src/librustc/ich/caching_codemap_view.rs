@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap::CodeMap;
+use syntax::codemap::SourceMap;
 use syntax_pos::{BytePos, FileMap};
 
 #[derive(Clone)]
@@ -24,13 +24,13 @@ struct CacheEntry {
 
 #[derive(Clone)]
 pub struct CachingCodemapView<'cm> {
-    codemap: &'cm CodeMap,
+    codemap: &'cm SourceMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
 }
 
 impl<'cm> CachingCodemapView<'cm> {
-    pub fn new(codemap: &'cm CodeMap) -> CachingCodemapView<'cm> {
+    pub fn new(codemap: &'cm SourceMap) -> CachingCodemapView<'cm> {
         let files = codemap.files();
         let first_file = files[0].clone();
         let entry = CacheEntry {

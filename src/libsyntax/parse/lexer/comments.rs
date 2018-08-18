@@ -11,7 +11,7 @@
 pub use self::CommentStyle::*;
 
 use ast;
-use codemap::CodeMap;
+use codemap::SourceMap;
 use syntax_pos::{BytePos, CharPos, Pos, FileName};
 use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
@@ -371,7 +371,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
 {
     let mut src = String::new();
     srdr.read_to_string(&mut src).unwrap();
-    let cm = CodeMap::new(sess.codemap().path_mapping().clone());
+    let cm = SourceMap::new(sess.codemap().path_mapping().clone());
     let filemap = cm.new_filemap(path, src);
     let mut rdr = lexer::StringReader::new_raw(sess, filemap, None);
 

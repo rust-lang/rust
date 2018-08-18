@@ -19,10 +19,10 @@
 
 // FIXME spec the JSON output properly.
 
-use codemap::{CodeMap, FilePathMapping};
+use codemap::{SourceMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -36,14 +36,14 @@ use rustc_serialize::json::{as_json, as_pretty_json};
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    cm: Lrc<dyn CodeMapper + sync::Send + sync::Sync>,
+    cm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Lrc<CodeMap>,
+                  code_map: Lrc<SourceMap>,
                   pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
@@ -56,13 +56,13 @@ impl JsonEmitter {
 
     pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Lrc::new(CodeMap::new(file_path_mapping)),
+        JsonEmitter::stderr(None, Lrc::new(SourceMap::new(file_path_mapping)),
                             pretty)
     }
 
     pub fn new(dst: Box<dyn Write + Send>,
                registry: Option<Registry>,
-               code_map: Lrc<CodeMap>,
+               code_map: Lrc<SourceMap>,
                pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst,

@@ -16,7 +16,7 @@ use ast::{SelfKind, GenericBound, TraitBoundModifier};
 use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
-use codemap::{self, CodeMap, Spanned};
+use codemap::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
 use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
@@ -57,7 +57,7 @@ impl PpAnn for NoAnn {}
 
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
-    cm: Option<&'a CodeMap>,
+    cm: Option<&'a SourceMap>,
     comments: Option<Vec<comments::Comment> >,
     literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
@@ -84,7 +84,7 @@ pub const DEFAULT_COLUMNS: usize = 78;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments and literals to
 /// copy forward.
-pub fn print_crate<'a>(cm: &'a CodeMap,
+pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &ast::Crate,
                        filename: FileName,
@@ -118,7 +118,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 }
 
 impl<'a> State<'a> {
-    pub fn new_from_input(cm: &'a CodeMap,
+    pub fn new_from_input(cm: &'a SourceMap,
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
@@ -138,7 +138,7 @@ impl<'a> State<'a> {
             if is_expanded { None } else { Some(lits) })
     }
 
-    pub fn new(cm: &'a CodeMap,
+    pub fn new(cm: &'a SourceMap,
                out: Box<dyn Write+'a>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,

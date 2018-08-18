@@ -258,9 +258,9 @@ impl DocAccessLevels for AccessLevels<DefId> {
 
 /// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
 ///
-/// If the given `error_format` is `ErrorOutputType::Json` and no `CodeMap` is given, a new one
+/// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
-pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::CodeMap>>)
+pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::SourceMap>>)
     -> errors::Handler
 {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
@@ -277,7 +277,7 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
         ),
         ErrorOutputType::Json(pretty) => {
             let codemap = codemap.unwrap_or_else(
-                || Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping())));
+                || Lrc::new(codemap::SourceMap::new(sessopts.file_path_mapping())));
             Box::new(
                 JsonEmitter::stderr(
                     None,
@@ -387,7 +387,7 @@ pub fn run_core(search_paths: SearchPaths,
         ..Options::default()
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
-        let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
+        let codemap = Lrc::new(codemap::SourceMap::new(sessopts.file_path_mapping()));
         let diagnostic_handler = new_handler(error_format, Some(codemap.clone()));
 
         let mut sess = session::build_session_(

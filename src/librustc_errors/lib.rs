@@ -111,9 +111,9 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-pub type CodeMapperDyn = dyn CodeMapper + sync::Send + sync::Sync;
+pub type SourceMapperDyn = dyn SourceMapper + sync::Send + sync::Sync;
 
-pub trait CodeMapper {
+pub trait SourceMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
@@ -126,7 +126,7 @@ pub trait CodeMapper {
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapperDyn)
+    pub fn splice_lines(&self, cm: &SourceMapperDyn)
                         -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
@@ -321,7 +321,7 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Lrc<CodeMapperDyn>>)
+                            cm: Option<Lrc<SourceMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -334,7 +334,7 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Lrc<CodeMapperDyn>>,
+                                      cm: Option<Lrc<SourceMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));

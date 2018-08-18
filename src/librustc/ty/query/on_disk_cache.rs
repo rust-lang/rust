@@ -26,7 +26,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
 use session::{CrateDisambiguator, Session};
 use std::mem;
 use syntax::ast::NodeId;
-use syntax::codemap::{CodeMap, StableFilemapId};
+use syntax::codemap::{SourceMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, FileMap};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
@@ -62,7 +62,7 @@ pub struct OnDiskCache<'sess> {
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
 
-    codemap: &'sess CodeMap,
+    codemap: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
@@ -149,7 +149,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn new_empty(codemap: &'sess CodeMap) -> OnDiskCache<'sess> {
+    pub fn new_empty(codemap: &'sess SourceMap) -> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: Vec::new(),
             file_index_to_stable_id: FxHashMap(),
@@ -475,7 +475,7 @@ impl<'sess> OnDiskCache<'sess> {
 struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     opaque: opaque::Decoder<'x>,
-    codemap: &'x CodeMap,
+    codemap: &'x SourceMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,

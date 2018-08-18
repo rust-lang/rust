@@ -21,7 +21,7 @@ use rustc::hir::map::{NodeItem, NodeExpr};
 use rustc::hir::{Item, ItemKind, print};
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
-use errors::{DiagnosticBuilder, CodeMapper};
+use errors::{DiagnosticBuilder, SourceMapper};
 
 use super::method::probe;
 

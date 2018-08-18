@@ -18,7 +18,7 @@ use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
-use syntax::codemap::CodeMap;
+use syntax::codemap::SourceMap;
 use syntax_pos::Span;
 
 use ich::StableHashingContext;
@@ -122,7 +122,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn finalize_and_compute_crate_hash(mut self,
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &dyn CrateStore,
-                                                  codemap: &CodeMap,
+                                                  codemap: &SourceMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
         self

@@ -484,7 +484,7 @@ impl Session {
         );
     }
 
-    pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
+    pub fn codemap<'a>(&'a self) -> &'a codemap::SourceMap {
         self.parse_sess.codemap()
     }
     pub fn verbose(&self) -> bool {
@@ -984,7 +984,7 @@ pub fn build_session(
         sopts,
         local_crate_source_file,
         registry,
-        Lrc::new(codemap::CodeMap::new(file_path_mapping)),
+        Lrc::new(codemap::SourceMap::new(file_path_mapping)),
         None,
     )
 }
@@ -993,7 +993,7 @@ pub fn build_session_with_codemap(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
-    codemap: Lrc<codemap::CodeMap>,
+    codemap: Lrc<codemap::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1070,7 +1070,7 @@ pub fn build_session_(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
-    codemap: Lrc<codemap::CodeMap>,
+    codemap: Lrc<codemap::SourceMap>,
 ) -> Session {
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = match Target::search(&host_triple) {

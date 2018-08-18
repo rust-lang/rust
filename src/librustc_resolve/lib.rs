@@ -49,7 +49,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax::codemap::CodeMap;
+use syntax::codemap::SourceMap;
 use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -415,7 +415,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
 /// Attention: The method used is very fragile since it essentially duplicates the work of the
 /// parser. If you need to use this function or something similar, please consider updating the
 /// codemap functions and this function to something more robust.
-fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
+fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = cm.span_until_char(impl_span, '<');
     let impl_span = cm.span_until_whitespace(impl_span);
     impl_span

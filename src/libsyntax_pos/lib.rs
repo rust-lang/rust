@@ -163,7 +163,7 @@ impl FileName {
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
 /// are *absolute* positions from the beginning of the codemap, not positions
-/// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
+/// relative to FileMaps. Methods on the SourceMap can be used to relate spans back
 /// to the original source.
 /// You must be careful if the span crosses more than one file - you will not be
 /// able to use many of the functions on spans in codemap and you cannot assume
@@ -678,7 +678,7 @@ pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
 /// Identifies an offset of a multi-byte character in a FileMap
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq, Debug)]
 pub struct MultiByteChar {
-    /// The absolute offset of the character in the CodeMap
+    /// The absolute offset of the character in the SourceMap
     pub pos: BytePos,
     /// The number of bytes, >=2
     pub bytes: u8,
@@ -705,7 +705,7 @@ impl NonNarrowChar {
         }
     }
 
-    /// Returns the absolute offset of the character in the CodeMap
+    /// Returns the absolute offset of the character in the SourceMap
     pub fn pos(&self) -> BytePos {
         match *self {
             NonNarrowChar::ZeroWidth(p) |
@@ -777,7 +777,7 @@ impl ExternalSource {
     }
 }
 
-/// A single source in the CodeMap.
+/// A single source in the SourceMap.
 #[derive(Clone)]
 pub struct FileMap {
     /// The name of the file that the source came from, source that doesn't
@@ -798,9 +798,9 @@ pub struct FileMap {
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
     pub external_src: Lock<ExternalSource>,
-    /// The start position of this source in the CodeMap
+    /// The start position of this source in the SourceMap
     pub start_pos: BytePos,
-    /// The end position of this source in the CodeMap
+    /// The end position of this source in the SourceMap
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code
     pub lines: Vec<BytePos>,
@@ -1141,7 +1141,7 @@ pub trait Pos {
 pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
-/// is not equivalent to a character offset. The CodeMap will convert BytePos
+/// is not equivalent to a character offset. The SourceMap will convert BytePos
 /// values to CharPos values as necessary.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct CharPos(pub usize);

@@ -12,7 +12,7 @@ use self::Destination::*;
 
 use syntax_pos::{FileMap, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapperDyn, DiagnosticId};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -120,7 +120,7 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    cm: Option<Lrc<CodeMapperDyn>>,
+    cm: Option<Lrc<SourceMapperDyn>>,
     short_message: bool,
     teach: bool,
     ui_testing: bool,
@@ -134,7 +134,7 @@ struct FileWithAnnotatedLines {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Lrc<CodeMapperDyn>>,
+                  code_map: Option<Lrc<SourceMapperDyn>>,
                   short_message: bool,
                   teach: bool)
                   -> EmitterWriter {
@@ -149,7 +149,7 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<dyn Write + Send>,
-               code_map: Option<Lrc<CodeMapperDyn>>,
+               code_map: Option<Lrc<SourceMapperDyn>>,
                short_message: bool,
                teach: bool)
                -> EmitterWriter {

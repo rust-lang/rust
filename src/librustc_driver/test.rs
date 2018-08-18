@@ -32,7 +32,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use syntax;
 use syntax::ast;
 use rustc_target::spec::abi::Abi;
-use syntax::codemap::{CodeMap, FilePathMapping, FileName};
+use syntax::codemap::{SourceMap, FilePathMapping, FileName};
 use errors;
 use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
@@ -121,7 +121,7 @@ fn test_env_with_pool<F>(
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
-                                       Lrc::new(CodeMap::new(FilePathMapping::empty())));
+                                       Lrc::new(SourceMap::new(FilePathMapping::empty())));
     let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {

@@ -21,7 +21,7 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::{CodeMap, FilePathMapping};
+use syntax::codemap::{SourceMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
@@ -60,7 +60,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
 /// each span of text in sequence.
 struct Classifier<'a> {
     lexer: lexer::StringReader<'a>,
-    codemap: &'a CodeMap,
+    codemap: &'a SourceMap,
 
     // State of the classifier.
     in_attribute: bool,
@@ -145,7 +145,7 @@ impl<U: Write> Writer for U {
 }
 
 impl<'a> Classifier<'a> {
-    fn new(lexer: lexer::StringReader<'a>, codemap: &'a CodeMap) -> Classifier<'a> {
+    fn new(lexer: lexer::StringReader<'a>, codemap: &'a SourceMap) -> Classifier<'a> {
         Classifier {
             lexer,
             codemap,

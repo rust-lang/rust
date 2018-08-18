@@ -33,7 +33,7 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::ast;
-use syntax::codemap::CodeMap;
+use syntax::codemap::SourceMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::with_globals;
@@ -86,7 +86,7 @@ pub fn run(input_path: &Path,
         ..config::Options::default()
     };
     driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(CodeMap::new(sessopts.file_path_mapping()));
+        let codemap = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let handler =
             errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                             true, false,
@@ -205,7 +205,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     // never wrap the test in `fn main() { ... }`
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
     // FIXME(#44940): if doctests ever support path remapping, then this filename
-    // needs to be the result of CodeMap::span_to_unmapped_path
+    // needs to be the result of SourceMap::span_to_unmapped_path
     let input = config::Input::Str {
         name: filename.to_owned(),
         input: test.to_owned(),
@@ -262,7 +262,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(CodeMap::new_doctest(
+        let codemap = Lrc::new(SourceMap::new_doctest(
             sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
         ));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
@@ -500,7 +500,7 @@ pub struct Collector {
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
     position: Span,
-    codemap: Option<Lrc<CodeMap>>,
+    codemap: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
     edition: Edition,
@@ -509,7 +509,7 @@ pub struct Collector {
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
-               maybe_sysroot: Option<PathBuf>, codemap: Option<Lrc<CodeMap>>,
+               maybe_sysroot: Option<PathBuf>, codemap: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {
         Collector {
             tests: Vec::new(),

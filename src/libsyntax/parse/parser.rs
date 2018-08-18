@@ -42,7 +42,7 @@ use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
-use codemap::{self, CodeMap, Spanned, respan};
+use codemap::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
@@ -6322,7 +6322,7 @@ impl<'a> Parser<'a> {
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
-        codemap: &CodeMap) -> ModulePath
+        codemap: &SourceMap) -> ModulePath
     {
         // If we're in a foo.rs file instead of a mod.rs file,
         // we need to look for submodules in

@@ -10,7 +10,7 @@
 
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use codemap::{CodeMap, FilePathMapping};
+use codemap::{SourceMap, FilePathMapping};
 use errors::{Applicability, FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
@@ -622,7 +622,7 @@ impl<'a> StringReader<'a> {
 
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
-                let cmap = CodeMap::new(FilePathMapping::empty());
+                let cmap = SourceMap::new(FilePathMapping::empty());
                 cmap.files.borrow_mut().file_maps.push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
@@ -1827,7 +1827,7 @@ mod tests {
     use ast::{Ident, CrateConfig};
     use symbol::Symbol;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use codemap::CodeMap;
+    use codemap::SourceMap;
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;
@@ -1837,7 +1837,7 @@ mod tests {
     use diagnostics::plugin::ErrorMap;
     use rustc_data_structures::sync::Lock;
     use with_globals;
-    fn mk_sess(cm: Lrc<CodeMap>) -> ParseSess {
+    fn mk_sess(cm: Lrc<SourceMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(cm.clone()),
                                                           false,
@@ -1857,7 +1857,7 @@ mod tests {
     }
 
     // open a string reader for the given string
-    fn setup<'a>(cm: &CodeMap,
+    fn setup<'a>(cm: &SourceMap,
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
@@ -1868,7 +1868,7 @@ mod tests {
     #[test]
     fn t1() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             let mut string_reader = setup(&cm,
                                         &sh,
@@ -1916,7 +1916,7 @@ mod tests {
     #[test]
     fn doublecolonparsing() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             check_tokenization(setup(&cm, &sh, "a b".to_string()),
                             vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
@@ -1926,7 +1926,7 @@ mod tests {
     #[test]
     fn dcparsing_2() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             check_tokenization(setup(&cm, &sh, "a::b".to_string()),
                             vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
@@ -1936,7 +1936,7 @@ mod tests {
     #[test]
     fn dcparsing_3() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             check_tokenization(setup(&cm, &sh, "a ::b".to_string()),
                             vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
@@ -1946,7 +1946,7 @@ mod tests {
     #[test]
     fn dcparsing_4() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             check_tokenization(setup(&cm, &sh, "a:: b".to_string()),
                             vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
@@ -1956,7 +1956,7 @@ mod tests {
     #[test]
     fn character_a() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             assert_eq!(setup(&cm, &sh, "'a'".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern("a")), None));
@@ -1966,7 +1966,7 @@ mod tests {
     #[test]
     fn character_space() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             assert_eq!(setup(&cm, &sh, "' '".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern(" ")), None));
@@ -1976,7 +1976,7 @@ mod tests {
     #[test]
     fn character_escaped() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             assert_eq!(setup(&cm, &sh, "'\\n'".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern("\\n")), None));
@@ -1986,7 +1986,7 @@ mod tests {
     #[test]
     fn lifetime_name() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             assert_eq!(setup(&cm, &sh, "'abc".to_string()).next_token().tok,
                     token::Lifetime(Ident::from_str("'abc")));
@@ -1996,7 +1996,7 @@ mod tests {
     #[test]
     fn raw_string() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                         .next_token()
@@ -2008,7 +2008,7 @@ mod tests {
     #[test]
     fn literal_suffixes() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
@@ -2054,7 +2054,7 @@ mod tests {
     #[test]
     fn nested_block_comments() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             let mut lexer = setup(&cm, &sh, "/* /* */ */'a'".to_string());
             match lexer.next_token().tok {
@@ -2069,7 +2069,7 @@ mod tests {
     #[test]
     fn crlf_comments() {
         with_globals(|| {
-            let cm = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(cm.clone());
             let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
             let comment = lexer.next_token();

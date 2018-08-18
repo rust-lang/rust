@@ -22,7 +22,7 @@ use std::vec;
 use attr::{self, HasAttrs};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 
-use codemap::{self, CodeMap, ExpnInfo, MacroAttribute, dummy_spanned};
+use codemap::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned};
 use errors;
 use config;
 use entry::{self, EntryPointType};

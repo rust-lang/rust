@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The CodeMap tracks all the source code used within a single crate, mapping
+//! The SourceMap tracks all the source code used within a single crate, mapping
 //! from integer byte positions to the original source code location. Each bit
 //! of source parsed during crate parsing (typically files, in-memory strings,
 //! or various bits of macro expansion) cover a continuous range of bytes in the
-//! CodeMap and are represented by FileMaps. Byte positions are stored in
+//! SourceMap and are represented by FileMaps. Byte positions are stored in
 //! `spans` and used pervasively in the compiler. They are absolute positions
-//! within the CodeMap, which upon request can be converted to line and column
+//! within the SourceMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
 
@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
 use std::io::{self, Read};
-use errors::CodeMapper;
+use errors::SourceMapper;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -121,29 +121,29 @@ impl StableFilemapId {
 }
 
 // _____________________________________________________________________________
-// CodeMap
+// SourceMap
 //
 
-pub(super) struct CodeMapFiles {
+pub(super) struct SourceMapFiles {
     pub(super) file_maps: Vec<Lrc<FileMap>>,
     stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<FileMap>>
 }
 
-pub struct CodeMap {
-    pub(super) files: Lock<CodeMapFiles>,
+pub struct SourceMap {
+    pub(super) files: Lock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
-    // --remap-path-prefix to all FileMaps allocated within this CodeMap.
+    // --remap-path-prefix to all FileMaps allocated within this SourceMap.
     path_mapping: FilePathMapping,
     /// In case we are in a doctest, replace all file names with the PathBuf,
     /// and add the given offsets to the line info
     doctest_offset: Option<(FileName, isize)>,
 }
 
-impl CodeMap {
-    pub fn new(path_mapping: FilePathMapping) -> CodeMap {
-        CodeMap {
-            files: Lock::new(CodeMapFiles {
+impl SourceMap {
+    pub fn new(path_mapping: FilePathMapping) -> SourceMap {
+        SourceMap {
+            files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
                 stable_id_to_filemap: FxHashMap(),
             }),
@@ -154,19 +154,19 @@ impl CodeMap {
     }
 
     pub fn new_doctest(path_mapping: FilePathMapping,
-                       file: FileName, line: isize) -> CodeMap {
-        CodeMap {
+                       file: FileName, line: isize) -> SourceMap {
+        SourceMap {
             doctest_offset: Some((file, line)),
-            ..CodeMap::new(path_mapping)
+            ..SourceMap::new(path_mapping)
         }
 
     }
 
     pub fn with_file_loader(file_loader: Box<dyn FileLoader + Sync + Send>,
                             path_mapping: FilePathMapping)
-                            -> CodeMap {
-        CodeMap {
-            files: Lock::new(CodeMapFiles {
+                            -> SourceMap {
+        SourceMap {
+            files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
                 stable_id_to_filemap: FxHashMap(),
             }),
@@ -463,7 +463,7 @@ impl CodeMap {
 
     pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
-            .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
+            .expect("SourceMap::span_to_unmapped_path called for imported FileMap?")
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -941,7 +941,7 @@ impl CodeMap {
     }
 }
 
-impl CodeMapper for CodeMap {
+impl SourceMapper for SourceMap {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         self.lookup_char_pos(pos)
     }
@@ -1023,8 +1023,8 @@ mod tests {
     use super::*;
     use rustc_data_structures::sync::Lrc;
 
-    fn init_code_map() -> CodeMap {
-        let cm = CodeMap::new(FilePathMapping::empty());
+    fn init_code_map() -> SourceMap {
+        let cm = SourceMap::new(FilePathMapping::empty());
         cm.new_filemap(PathBuf::from("blork.rs").into(),
                        "first line.\nsecond line".to_string());
         cm.new_filemap(PathBuf::from("empty.rs").into(),
@@ -1080,8 +1080,8 @@ mod tests {
         assert_eq!(loc2.col, CharPos(0));
     }
 
-    fn init_code_map_mbc() -> CodeMap {
-        let cm = CodeMap::new(FilePathMapping::empty());
+    fn init_code_map_mbc() -> SourceMap {
+        let cm = SourceMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
         cm.new_filemap(PathBuf::from("blork.rs").into(),
                        "fir€st €€€€ line.\nsecond line".to_string());
@@ -1135,7 +1135,7 @@ mod tests {
     /// lines in the middle of a file.
     #[test]
     fn span_to_snippet_and_lines_spanning_multiple_lines() {
-        let cm = CodeMap::new(FilePathMapping::empty());
+        let cm = SourceMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
         cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
@@ -1177,7 +1177,7 @@ mod tests {
     /// Test failing to merge two spans on different lines
     #[test]
     fn span_merging_fail() {
-        let cm = CodeMap::new(FilePathMapping::empty());
+        let cm = SourceMap::new(FilePathMapping::empty());
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
@@ -1190,7 +1190,7 @@ mod tests {
 
     /// Returns the span corresponding to the `n`th occurrence of
     /// `substring` in `source_text`.
-    trait CodeMapExtension {
+    trait SourceMapExtension {
         fn span_substr(&self,
                     file: &Lrc<FileMap>,
                     source_text: &str,
@@ -1199,7 +1199,7 @@ mod tests {
                     -> Span;
     }
 
-    impl CodeMapExtension for CodeMap {
+    impl SourceMapExtension for SourceMap {
         fn span_substr(&self,
                     file: &Lrc<FileMap>,
                     source_text: &str,

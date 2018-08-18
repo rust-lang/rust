@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::codemap::{CodeMap, Spanned};
+use syntax::codemap::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
@@ -85,7 +85,7 @@ impl PpAnn for hir::Crate {
 
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
-    cm: Option<&'a CodeMap>,
+    cm: Option<&'a SourceMap>,
     comments: Option<Vec<comments::Comment>>,
     literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
@@ -129,7 +129,7 @@ pub const default_columns: usize = 78;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments and literals to
 /// copy forward.
-pub fn print_crate<'a>(cm: &'a CodeMap,
+pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
@@ -149,7 +149,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 }
 
 impl<'a> State<'a> {
-    pub fn new_from_input(cm: &'a CodeMap,
+    pub fn new_from_input(cm: &'a SourceMap,
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
@@ -173,7 +173,7 @@ impl<'a> State<'a> {
                    })
     }
 
-    pub fn new(cm: &'a CodeMap,
+    pub fn new(cm: &'a SourceMap,
                out: Box<dyn Write + 'a>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
