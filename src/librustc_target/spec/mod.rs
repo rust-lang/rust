@@ -433,6 +433,9 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<String>,
 
+    /// LLD flavor
+    pub lld_flavor: LldFlavor,
+
     /// Linker arguments that are passed *before* any user-defined libraries.
     pub pre_link_args: LinkArgs, // ... unconditionally
     pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
@@ -650,6 +653,7 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
+            lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
             pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
