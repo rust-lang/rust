@@ -15,14 +15,23 @@ pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char
 }
 
 pub(crate) fn scan_char(ptr: &mut Ptr) {
-    if ptr.bump().is_none() {
-        return; // TODO: error reporting is upper in the stack
+    loop {
+        if ptr.next_is('\\') {
+            ptr.bump();
+            if ptr.next_is('\\') || ptr.next_is('\'') {
+                ptr.bump();
+            }
+            continue;
+        }
+        if ptr.next_is('\'') {
+            ptr.bump();
+            return;
+        }
+        if ptr.next_is('\n') {
+            break;
+        }
+        ptr.bump();
     }
-    scan_char_or_byte(ptr);
-    if !ptr.next_is('\'') {
-        return; // TODO: error reporting
-    }
-    ptr.bump();
 }
 
 pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
@@ -110,9 +119,4 @@ fn scan_raw_byte_string(ptr: &mut Ptr) {
             return;
         }
     }
-}
-
-fn scan_char_or_byte(ptr: &mut Ptr) {
-    //FIXME: deal with escape sequencies
-    ptr.bump();
 }
