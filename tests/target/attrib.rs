@@ -21,9 +21,6 @@
 
 // Another comment
 
-#[invalid attribute]
-fn foo() {}
-
 /// Blah blah blah.
 /// Blah blah blah.
 /// Blah blah blah.
