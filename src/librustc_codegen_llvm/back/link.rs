@@ -655,7 +655,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         return ret;
     }
 
-    sess.fatal("Not enough information provided to determine how to invoke the linker");
+    bug!("Not enough information provided to determine how to invoke the linker");
 }
 
 // Create a dynamic library or executable
