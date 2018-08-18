@@ -18,7 +18,7 @@ use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
-use syntax::codemap::SourceMap;
+use syntax::source_map::SourceMap;
 use syntax_pos::Span;
 
 use ich::StableHashingContext;

@@ -42,7 +42,7 @@ use lint::builtin::parser::QUESTION_MARK_MACRO_SEP;
 use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
-use syntax::codemap::{MultiSpan, ExpnFormat};
+use syntax::source_map::{MultiSpan, ExpnFormat};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;

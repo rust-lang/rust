@@ -40,7 +40,7 @@ use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
 use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
 

@@ -21,7 +21,7 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::{SourceMap, FilePathMapping};
+use syntax::source_map::{SourceMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;

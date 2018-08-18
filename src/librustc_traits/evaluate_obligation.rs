@@ -13,7 +13,7 @@ use rustc::traits::{EvaluationResult, Obligation, ObligationCause,
 use rustc::traits::query::CanonicalPredicateGoal;
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 
 crate fn provide(p: &mut Providers) {
     *p = Providers {

@@ -13,7 +13,7 @@ use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use infer::InferCtxt;
 use infer::type_variable::TypeVariableOrigin;
 use ty::{self, Ty, TyInfer, TyVar};
-use syntax::codemap::CompilerDesugaringKind;
+use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 

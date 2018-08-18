@@ -25,7 +25,7 @@ use syntax::{ast, attr};
 use syntax::errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::Span;
-use syntax::codemap;
+use syntax::source_map;
 
 use rustc::hir;
 
@@ -208,7 +208,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            codemap::respan(binop.span,
+            source_map::respan(binop.span,
                             match binop.node {
                                 hir::BinOpKind::Lt => hir::BinOpKind::Gt,
                                 hir::BinOpKind::Le => hir::BinOpKind::Ge,

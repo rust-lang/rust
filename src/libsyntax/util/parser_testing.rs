@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Ident};
-use codemap::FilePathMapping;
+use source_map::FilePathMapping;
 use parse::{ParseSess, PResult, source_file_to_stream};
 use parse::{lexer, new_parser_from_source_str};
 use parse::parser::Parser;

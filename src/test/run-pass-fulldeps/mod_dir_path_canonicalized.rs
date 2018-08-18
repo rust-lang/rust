@@ -16,7 +16,7 @@
 extern crate syntax;
 
 use std::path::Path;
-use syntax::codemap::FilePathMapping;
+use syntax::source_map::FilePathMapping;
 use syntax::parse::{self, ParseSess};
 
 #[path = "mod_dir_simple/test.rs"]

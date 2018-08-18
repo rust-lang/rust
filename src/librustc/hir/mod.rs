@@ -24,7 +24,7 @@ use util::nodemap::{NodeMap, FxHashSet};
 use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
-use syntax::codemap::{self, Spanned};
+use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
@@ -1100,7 +1100,7 @@ pub type Stmt = Spanned<StmtKind>;
 impl fmt::Debug for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Sadness.
-        let spanned = codemap::dummy_spanned(self.clone());
+        let spanned = source_map::dummy_spanned(self.clone());
         write!(f,
                "stmt({}: {})",
                spanned.node.id(),

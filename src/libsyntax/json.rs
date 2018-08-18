@@ -19,7 +19,7 @@
 
 // FIXME spec the JSON output properly.
 
-use codemap::{SourceMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};

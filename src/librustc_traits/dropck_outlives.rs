@@ -18,7 +18,7 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers) {
     *p = Providers {

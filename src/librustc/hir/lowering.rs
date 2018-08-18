@@ -68,7 +68,7 @@ use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::codemap::{self, respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream::{Delimited, TokenStream, TokenTree};
@@ -614,14 +614,14 @@ impl<'a> LoweringContext<'a> {
 
     fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span {
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(codemap::ExpnInfo {
+        mark.set_expn_info(source_map::ExpnInfo {
             call_site: span,
             def_site: Some(span),
-            format: codemap::CompilerDesugaring(reason),
+            format: source_map::CompilerDesugaring(reason),
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: codemap::hygiene::default_edition(),
+            edition: source_map::hygiene::default_edition(),
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }

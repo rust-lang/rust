@@ -1,6 +1,6 @@
 use rustc::mir::BasicBlock;
 use rustc::ty::{self, Ty};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use rustc::mir::interpret::{EvalResult, Value};
 use interpret::{Machine, ValTy, EvalContext, Place, PlaceExtra};

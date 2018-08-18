@@ -21,7 +21,7 @@
 use ast::*;
 use ast;
 use syntax_pos::Span;
-use codemap::{Spanned, respan};
+use source_map::{Spanned, respan};
 use parse::token::{self, Token};
 use ptr::P;
 use OneVector;

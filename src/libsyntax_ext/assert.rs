@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use syntax::ast::*;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;

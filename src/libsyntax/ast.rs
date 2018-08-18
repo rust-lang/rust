@@ -16,7 +16,7 @@ pub use symbol::{Ident, Symbol as Name};
 pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
-use codemap::{dummy_spanned, respan, Spanned};
+use source_map::{dummy_spanned, respan, Spanned};
 use rustc_target::spec::abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;

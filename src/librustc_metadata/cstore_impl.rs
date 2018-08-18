@@ -38,7 +38,7 @@ use std::sync::Arc;
 
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
+use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
 use syntax::symbol::Symbol;
@@ -487,7 +487,7 @@ impl cstore::CStore {
                 tokens: body.into(),
                 legacy: def.legacy,
             }),
-            vis: codemap::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             tokens: None,
         })
     }

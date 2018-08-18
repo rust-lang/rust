@@ -73,7 +73,7 @@ use std::sync::Arc;
 use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
-use syntax::codemap::MultiSpan;
+use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};

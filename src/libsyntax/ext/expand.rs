@@ -11,7 +11,7 @@
 use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
-use codemap::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
+use source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
 use config::{is_test_or_bench, StripUnconfigured};
 use errors::{Applicability, FatalError};
 use ext::base::*;

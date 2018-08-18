@@ -10,7 +10,7 @@
 
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use codemap::{SourceMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use errors::{Applicability, FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
@@ -1827,7 +1827,7 @@ mod tests {
     use ast::{Ident, CrateConfig};
     use symbol::Symbol;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use codemap::SourceMap;
+    use source_map::SourceMap;
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;

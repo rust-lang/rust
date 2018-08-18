@@ -16,7 +16,7 @@ use edition::Edition;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use codemap::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
+use source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use ptr::P;
 use tokenstream::TokenStream;
 

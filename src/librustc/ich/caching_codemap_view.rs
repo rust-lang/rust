@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap::SourceMap;
+use syntax::source_map::SourceMap;
 use syntax_pos::{BytePos, SourceFile};
 
 #[derive(Clone)]

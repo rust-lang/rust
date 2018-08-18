@@ -22,7 +22,7 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::codemap::{FileName, FilePathMapping};
+use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
 use syntax::parse;

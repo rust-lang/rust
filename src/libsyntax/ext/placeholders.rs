@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, NodeId};
-use codemap::{DUMMY_SP, dummy_spanned};
+use source_map::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{AstFragment, AstFragmentKind};
 use ext::hygiene::Mark;

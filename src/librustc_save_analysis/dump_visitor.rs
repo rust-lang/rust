@@ -41,7 +41,7 @@ use syntax::print::pprust::{
     ty_to_string
 };
 use syntax::ptr::P;
-use syntax::codemap::{Spanned, DUMMY_SP, respan};
+use syntax::source_map::{Spanned, DUMMY_SP, respan};
 use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};

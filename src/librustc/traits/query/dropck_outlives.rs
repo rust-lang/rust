@@ -12,7 +12,7 @@ use infer::at::At;
 use infer::InferOk;
 use rustc_data_structures::small_vec::SmallVec;
 use std::iter::FromIterator;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use ty::subst::Kind;
 use ty::{self, Ty, TyCtxt};
 

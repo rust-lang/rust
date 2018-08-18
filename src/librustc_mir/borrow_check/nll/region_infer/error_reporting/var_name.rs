@@ -13,7 +13,7 @@ use borrow_check::nll::ToRegionVid;
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 
 impl<'tcx> RegionInferenceContext<'tcx> {

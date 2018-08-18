@@ -56,7 +56,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
-use syntax::codemap::FileName;
+use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;

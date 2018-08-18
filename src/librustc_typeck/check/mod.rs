@@ -122,7 +122,7 @@ use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::original_sp;
+use syntax::source_map::original_sp;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, LocalInternedString, keywords};

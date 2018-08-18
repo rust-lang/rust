@@ -15,7 +15,7 @@
 extern crate syntax;
 extern crate syntax_pos;
 
-use syntax::codemap::FilePathMapping;
+use syntax::source_map::FilePathMapping;
 use syntax::print::pprust::*;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;

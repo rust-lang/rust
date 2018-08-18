@@ -24,7 +24,7 @@ use middle::privacy;
 use ty::{self, TyCtxt};
 use util::nodemap::FxHashSet;
 
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 use syntax::attr;
 use syntax_pos;
 
@@ -115,7 +115,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, def: Def,
-                                  pats: &[codemap::Spanned<hir::FieldPat>]) {
+                                  pats: &[source_map::Spanned<hir::FieldPat>]) {
         let variant = match self.tables.node_id_to_type(lhs.hir_id).sty {
             ty::TyAdt(adt, _) => adt.variant_of_def(def),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")

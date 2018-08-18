@@ -15,7 +15,7 @@ use std::mem;
 
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax_pos::{self, Span};
 
 use rustc::hir::map as hir_map;

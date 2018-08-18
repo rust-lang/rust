@@ -29,7 +29,7 @@ use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc::ty;
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

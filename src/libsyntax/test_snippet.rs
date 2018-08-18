@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::{SourceMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;

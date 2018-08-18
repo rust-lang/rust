@@ -39,7 +39,7 @@ use std::u32;
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
-use syntax::codemap;
+use syntax::source_map;
 use syntax::symbol::InternedString;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
@@ -1117,7 +1117,7 @@ impl<'a, 'tcx> CrateMetadata {
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
     pub fn imported_source_files(&'a self,
-                             local_codemap: &codemap::SourceMap)
+                             local_codemap: &source_map::SourceMap)
                              -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
         {
             let source_files = self.codemap_import_info.borrow();

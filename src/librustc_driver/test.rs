@@ -32,7 +32,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use syntax;
 use syntax::ast;
 use rustc_target::spec::abi::Abi;
-use syntax::codemap::{SourceMap, FilePathMapping, FileName};
+use syntax::source_map::{SourceMap, FilePathMapping, FileName};
 use errors;
 use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};

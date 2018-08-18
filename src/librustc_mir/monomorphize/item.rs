@@ -26,7 +26,7 @@ use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
 use syntax_pos::symbol::Symbol;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 pub use rustc::mir::mono::MonoItem;
 
 /// Describes how a monomorphization will be instantiated in object files.

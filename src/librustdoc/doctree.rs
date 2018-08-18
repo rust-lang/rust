@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax_pos::{self, Span};
 
 use rustc::hir;

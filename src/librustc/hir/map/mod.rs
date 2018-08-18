@@ -24,7 +24,7 @@ use middle::cstore::CrateStore;
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 

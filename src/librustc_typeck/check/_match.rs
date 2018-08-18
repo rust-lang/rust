@@ -22,7 +22,7 @@ use util::nodemap::FxHashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 use syntax::ast;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::ptr::P;
 use syntax_pos::Span;
 

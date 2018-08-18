@@ -29,7 +29,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use codemap::Spanned;
+use source_map::Spanned;
 use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler};

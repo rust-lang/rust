@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::codemap::{SourceMap, Spanned};
+use syntax::source_map::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};

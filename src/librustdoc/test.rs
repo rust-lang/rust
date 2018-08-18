@@ -33,7 +33,7 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::ast;
-use syntax::codemap::SourceMap;
+use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::with_globals;

@@ -15,7 +15,7 @@ use traits::query::Fallible;
 use infer::canonical::query_result;
 use infer::canonical::QueryRegionConstraint;
 use std::rc::Rc;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 use traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 pub struct CustomTypeOp<F, G> {

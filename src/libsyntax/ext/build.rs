@@ -12,7 +12,7 @@ use rustc_target::spec::abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use syntax_pos::{Pos, Span, DUMMY_SP};
-use codemap::{dummy_spanned, respan, Spanned};
+use source_map::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
 use symbol::{Symbol, keywords};

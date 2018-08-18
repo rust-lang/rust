@@ -10,7 +10,7 @@
 
 use attr::HasAttrs;
 use ast;
-use codemap::{hygiene, ExpnInfo, ExpnFormat};
+use source_map::{hygiene, ExpnInfo, ExpnFormat};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use parse::parser::PathStyle;

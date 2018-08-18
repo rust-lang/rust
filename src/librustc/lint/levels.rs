@@ -21,7 +21,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
 use session::Session;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::MultiSpan;
+use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
 use syntax::symbol::Symbol;
 use util::nodemap::FxHashMap;

@@ -18,7 +18,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use lint::{LintPass, LateLintPass, LintArray};
 use session::Session;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,

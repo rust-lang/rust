@@ -45,7 +45,7 @@ use rustc::util::nodemap::FxHashSet;
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};

@@ -19,7 +19,7 @@ use getopts;
 use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{Externs, CodegenOptions};
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::edition::Edition;
 

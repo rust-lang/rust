@@ -22,7 +22,7 @@ use std::vec;
 use attr::{self, HasAttrs};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
-use codemap::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned};
+use source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned};
 use errors;
 use config;
 use entry::{self, EntryPointType};
@@ -616,8 +616,8 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     (item, reexport)
 }
 
-fn nospan<T>(t: T) -> codemap::Spanned<T> {
-    codemap::Spanned { node: t, span: DUMMY_SP }
+fn nospan<T>(t: T) -> source_map::Spanned<T> {
+    source_map::Spanned { node: t, span: DUMMY_SP }
 }
 
 fn path_node(ids: Vec<Ident>) -> ast::Path {

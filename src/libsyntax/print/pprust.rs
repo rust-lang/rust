@@ -16,7 +16,7 @@ use ast::{SelfKind, GenericBound, TraitBoundModifier};
 use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
-use codemap::{self, SourceMap, Spanned};
+use source_map::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
 use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
@@ -380,7 +380,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl, header, Some(name),
-                   generics, &codemap::dummy_spanned(ast::VisibilityKind::Inherited))?;
+                   generics, &source_map::dummy_spanned(ast::VisibilityKind::Inherited))?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -1606,7 +1606,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     ty,
                     default.as_ref().map(|expr| &**expr),
-                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                    &source_map::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
@@ -1617,7 +1617,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     &ti.generics,
                     sig,
-                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                    &source_map::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
@@ -3085,7 +3085,7 @@ impl<'a> State<'a> {
                       ast::FnHeader { unsafety, abi, ..ast::FnHeader::default() },
                       name,
                       &generics,
-                      &codemap::dummy_spanned(ast::VisibilityKind::Inherited))?;
+                      &source_map::dummy_spanned(ast::VisibilityKind::Inherited))?;
         self.end()
     }
 
@@ -3185,7 +3185,7 @@ mod tests {
     use super::*;
 
     use ast;
-    use codemap;
+    use source_map;
     use syntax_pos;
     use with_globals;
 
@@ -3205,7 +3205,7 @@ mod tests {
                     &decl,
                     ast::FnHeader {
                         unsafety: ast::Unsafety::Normal,
-                        constness: codemap::dummy_spanned(ast::Constness::NotConst),
+                        constness: source_map::dummy_spanned(ast::Constness::NotConst),
                         asyncness: ast::IsAsync::NotAsync,
                         abi: Abi::Rust,
                     },
@@ -3222,7 +3222,7 @@ mod tests {
         with_globals(|| {
             let ident = ast::Ident::from_str("principal_skinner");
 
-            let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
+            let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
                 ident,
                 attrs: Vec::new(),
                 // making this up as I go.... ?

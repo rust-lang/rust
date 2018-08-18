@@ -13,7 +13,7 @@
 use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use codemap::{SourceMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;

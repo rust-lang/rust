@@ -56,14 +56,14 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
-use syntax::codemap::MacroAttribute;
+use syntax::source_map::MacroAttribute;
 use syntax_pos::*;
 
 use json_dumper::JsonDumper;

@@ -49,7 +49,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax::codemap::SourceMap;
+use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;

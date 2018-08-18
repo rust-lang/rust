@@ -21,7 +21,7 @@ pub use self::Visibility::{Public, Inherited};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
-use syntax::codemap::{dummy_spanned, Spanned};
+use syntax::source_map::{dummy_spanned, Spanned};
 use syntax::ptr::P;
 use syntax::symbol::keywords::{self, Keyword};
 use syntax::symbol::InternedString;

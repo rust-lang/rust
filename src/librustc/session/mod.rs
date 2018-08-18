@@ -35,7 +35,7 @@ use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 use util::profiling::SelfProfiler;
@@ -484,7 +484,7 @@ impl Session {
         );
     }
 
-    pub fn codemap<'a>(&'a self) -> &'a codemap::SourceMap {
+    pub fn codemap<'a>(&'a self) -> &'a source_map::SourceMap {
         self.parse_sess.codemap()
     }
     pub fn verbose(&self) -> bool {
@@ -984,7 +984,7 @@ pub fn build_session(
         sopts,
         local_crate_source_file,
         registry,
-        Lrc::new(codemap::SourceMap::new(file_path_mapping)),
+        Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         None,
     )
 }
@@ -993,7 +993,7 @@ pub fn build_session_with_codemap(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
-    codemap: Lrc<codemap::SourceMap>,
+    codemap: Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1070,7 +1070,7 @@ pub fn build_session_(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
-    codemap: Lrc<codemap::SourceMap>,
+    codemap: Lrc<source_map::SourceMap>,
 ) -> Session {
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = match Target::search(&host_triple) {

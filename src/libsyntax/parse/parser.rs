@@ -42,7 +42,7 @@ use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
-use codemap::{self, SourceMap, Spanned, respan};
+use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
@@ -1879,7 +1879,7 @@ impl<'a> Parser<'a> {
             let lit = self.parse_lit_token()?;
             lit
         };
-        Ok(codemap::Spanned { node: lit, span: lo.to(self.prev_span) })
+        Ok(source_map::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
 
     /// matches '-' lit | lit (cf. ast_validation::AstValidator::check_expr_within_pat)
@@ -2185,7 +2185,7 @@ impl<'a> Parser<'a> {
     pub fn mk_mac_expr(&mut self, span: Span, m: Mac_, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ExprKind::Mac(codemap::Spanned {node: m, span: span}),
+            node: ExprKind::Mac(source_map::Spanned {node: m, span: span}),
             span,
             attrs,
         })
@@ -3074,7 +3074,7 @@ impl<'a> Parser<'a> {
                 AssocOp::Equal | AssocOp::Less | AssocOp::LessEqual | AssocOp::NotEqual |
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
-                    let binary = self.mk_binary(codemap::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary, ThinVec::new())
                 }
                 AssocOp::Assign =>
@@ -3094,7 +3094,7 @@ impl<'a> Parser<'a> {
                         token::Shl =>     BinOpKind::Shl,
                         token::Shr =>     BinOpKind::Shr,
                     };
-                    let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr, ThinVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
@@ -3736,7 +3736,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         attrs: Vec<Attribute>
-    ) -> PResult<'a, codemap::Spanned<ast::FieldPat>> {
+    ) -> PResult<'a, source_map::Spanned<ast::FieldPat>> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
@@ -3779,7 +3779,7 @@ impl<'a> Parser<'a> {
             (subpat, fieldname, true)
         };
 
-        Ok(codemap::Spanned {
+        Ok(source_map::Spanned {
             span: lo.to(hi),
             node: ast::FieldPat {
                 ident: fieldname,
@@ -3791,7 +3791,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the fields of a struct-like pattern
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<source_map::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
@@ -4518,7 +4518,7 @@ impl<'a> Parser<'a> {
             }
         } else if let Some(macro_def) = self.eat_macro_def(
             &attrs,
-            &codemap::respan(lo, VisibilityKind::Inherited),
+            &source_map::respan(lo, VisibilityKind::Inherited),
             lo,
         )? {
             Stmt {
@@ -5398,7 +5398,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = codemap::respan(eself_lo.to(eself_hi), eself);
+        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
         Ok(Some(Arg::from_self(eself, eself_ident)))
     }
 

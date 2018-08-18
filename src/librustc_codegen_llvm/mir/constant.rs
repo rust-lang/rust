@@ -25,7 +25,7 @@ use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use syntax::ast::Mutability;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use value::Value;
 
 use super::super::callee;

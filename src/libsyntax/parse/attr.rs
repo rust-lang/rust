@@ -10,7 +10,7 @@
 
 use attr;
 use ast;
-use codemap::respan;
+use source_map::respan;
 use parse::{SeqSep, PResult};
 use parse::token::{self, Nonterminal, DelimToken};
 use parse::parser::{Parser, TokenType, PathStyle};

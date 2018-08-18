@@ -32,7 +32,7 @@ use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,

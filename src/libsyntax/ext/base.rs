@@ -12,7 +12,7 @@ pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use codemap::{self, SourceMap, Spanned, respan};
+use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -481,7 +481,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
+            node: ast::ExprKind::Lit(P(source_map::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
             attrs: ThinVec::new(),
         })

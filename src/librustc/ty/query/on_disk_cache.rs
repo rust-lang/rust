@@ -26,7 +26,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
 use session::{CrateDisambiguator, Session};
 use std::mem;
 use syntax::ast::NodeId;
-use syntax::codemap::{SourceMap, StableFilemapId};
+use syntax::source_map::{SourceMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
