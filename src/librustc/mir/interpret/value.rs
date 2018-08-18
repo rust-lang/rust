@@ -148,7 +148,8 @@ impl<'tcx> Scalar {
 
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         match self {
-            Scalar::Bits {..} => err!(ReadBytesAsPointer),
+            Scalar::Bits { bits: 0, .. } => err!(InvalidNullPointerUsage),
+            Scalar::Bits { .. } => err!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),
         }
     }
