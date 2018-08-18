@@ -68,6 +68,10 @@ pub fn unwind_backtrace(frames: &mut [Frame])
 extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
                    arg: *mut libc::c_void) -> uw::_Unwind_Reason_Code {
     let cx = unsafe { &mut *(arg as *mut Context) };
+    if cx.idx >= cx.frames.len() {
+        return uw::_URC_NORMAL_STOP;
+    }
+
     let mut ip_before_insn = 0;
     let mut ip = unsafe {
         uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut libc::c_void
@@ -94,14 +98,12 @@ extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
         unsafe { uw::_Unwind_FindEnclosingFunction(ip) }
     };
 
-    if cx.idx < cx.frames.len() {
-        cx.frames[cx.idx] = Frame {
-            symbol_addr: symaddr as *mut u8,
-            exact_position: ip as *mut u8,
-            inline_context: 0,
-        };
-        cx.idx += 1;
-    }
+    cx.frames[cx.idx] = Frame {
+        symbol_addr: symaddr as *mut u8,
+        exact_position: ip as *mut u8,
+        inline_context: 0,
+    };
+    cx.idx += 1;
 
     uw::_URC_NO_REASON
 }
