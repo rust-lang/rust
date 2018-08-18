@@ -21,7 +21,7 @@ use ptr::P;
 use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's `is_internal` check.
+/// call to source_map's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
 fn ignored_span(sp: Span) -> Span {
     let mark = Mark::fresh(Mark::root());

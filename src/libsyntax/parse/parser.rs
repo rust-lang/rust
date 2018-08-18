@@ -6322,7 +6322,7 @@ impl<'a> Parser<'a> {
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
-        codemap: &SourceMap) -> ModulePath
+        source_map: &SourceMap) -> ModulePath
     {
         // If we're in a foo.rs file instead of a mod.rs file,
         // we need to look for submodules in
@@ -6342,8 +6342,8 @@ impl<'a> Parser<'a> {
                                          relative_prefix, mod_name, path::MAIN_SEPARATOR);
         let default_path = dir_path.join(&default_path_str);
         let secondary_path = dir_path.join(&secondary_path_str);
-        let default_exists = codemap.file_exists(&default_path);
-        let secondary_exists = codemap.file_exists(&secondary_path);
+        let default_exists = source_map.file_exists(&default_path);
+        let secondary_exists = source_map.file_exists(&secondary_path);
 
         let result = match (default_exists, secondary_exists) {
             (true, false) => Ok(ModulePathSuccess {

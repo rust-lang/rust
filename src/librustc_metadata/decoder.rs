@@ -1094,49 +1094,49 @@ impl<'a, 'tcx> CrateMetadata {
         self.def_path_table.def_path_hash(index)
     }
 
-    /// Imports the codemap from an external crate into the codemap of the crate
+    /// Imports the source_map from an external crate into the source_map of the crate
     /// currently being compiled (the "local crate").
     ///
     /// The import algorithm works analogous to how AST items are inlined from an
     /// external crate's metadata:
-    /// For every SourceFile in the external codemap an 'inline' copy is created in the
-    /// local codemap. The correspondence relation between external and local
+    /// For every SourceFile in the external source_map an 'inline' copy is created in the
+    /// local source_map. The correspondence relation between external and local
     /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
     /// function. When an item from an external crate is later inlined into this
     /// crate, this correspondence information is used to translate the span
     /// information of the inlined item so that it refers the correct positions in
-    /// the local codemap (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
+    /// the local source_map (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
     ///
     /// The import algorithm in the function below will reuse SourceFiles already
-    /// existing in the local codemap. For example, even if the SourceFile of some
+    /// existing in the local source_map. For example, even if the SourceFile of some
     /// source file of libstd gets imported many times, there will only ever be
-    /// one SourceFile object for the corresponding file in the local codemap.
+    /// one SourceFile object for the corresponding file in the local source_map.
     ///
     /// Note that imported SourceFiles do not actually contain the source code of the
     /// file they represent, just information about length, line breaks, and
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
     pub fn imported_source_files(&'a self,
-                             local_codemap: &source_map::SourceMap)
+                             local_source_map: &source_map::SourceMap)
                              -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
         {
-            let source_files = self.codemap_import_info.borrow();
+            let source_files = self.source_map_import_info.borrow();
             if !source_files.is_empty() {
                 return source_files;
             }
         }
 
-        // Lock the codemap_import_info to ensure this only happens once
-        let mut codemap_import_info = self.codemap_import_info.borrow_mut();
+        // Lock the source_map_import_info to ensure this only happens once
+        let mut source_map_import_info = self.source_map_import_info.borrow_mut();
 
-        if !codemap_import_info.is_empty() {
-            drop(codemap_import_info);
-            return self.codemap_import_info.borrow();
+        if !source_map_import_info.is_empty() {
+            drop(source_map_import_info);
+            return self.source_map_import_info.borrow();
         }
 
-        let external_codemap = self.root.codemap.decode(self);
+        let external_source_map = self.root.source_map.decode(self);
 
-        let imported_source_files = external_codemap.map(|source_file_to_import| {
+        let imported_source_files = external_source_map.map(|source_file_to_import| {
             // We can't reuse an existing SourceFile, so allocate a new one
             // containing the information we need.
             let syntax_pos::SourceFile { name,
@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> CrateMetadata {
                 *swc = *swc - start_pos;
             }
 
-            let local_version = local_codemap.new_imported_source_file(name,
+            let local_version = local_source_map.new_imported_source_file(name,
                                                                    name_was_remapped,
                                                                    self.cnum.as_u32(),
                                                                    src_hash,
@@ -1189,10 +1189,10 @@ impl<'a, 'tcx> CrateMetadata {
             }
         }).collect();
 
-        *codemap_import_info = imported_source_files;
-        drop(codemap_import_info);
+        *source_map_import_info = imported_source_files;
+        drop(source_map_import_info);
 
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-        self.codemap_import_info.borrow()
+        self.source_map_import_info.borrow()
     }
 }

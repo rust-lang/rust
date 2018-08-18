@@ -58,8 +58,8 @@ pub struct StableHashingContext<'a> {
 
     // Very often, we are hashing something that does not need the
     // CachingCodemapView, so we initialize it lazily.
-    raw_codemap: &'a SourceMap,
-    caching_codemap: Option<CachingCodemapView<'a>>,
+    raw_source_map: &'a SourceMap,
+    caching_source_map: Option<CachingCodemapView<'a>>,
 
     pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
 }
@@ -100,8 +100,8 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver(krate),
             definitions,
             cstore,
-            caching_codemap: None,
-            raw_codemap: sess.source_map(),
+            caching_source_map: None,
+            raw_source_map: sess.source_map(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
@@ -170,12 +170,12 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingCodemapView<'a> {
-        match self.caching_codemap {
+        match self.caching_source_map {
             Some(ref mut cm) => {
                 cm
             }
             ref mut none => {
-                *none = Some(CachingCodemapView::new(self.raw_codemap));
+                *none = Some(CachingCodemapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
             }
         }

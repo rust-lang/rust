@@ -324,7 +324,7 @@ fn generate_test_harness(sess: &ParseSess,
 }
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's `is_internal` check.
+/// call to source_map's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     sp.with_ctxt(cx.ctxt)

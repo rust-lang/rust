@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This test makes sure that it doesn't make a difference in which order we are
-// adding source files to the codemap. The order affects the BytePos values of
+// adding source files to the source_map. The order affects the BytePos values of
 // the spans and this test makes sure that we handle them correctly by hashing
 // file:line:column instead of raw byte offset.
 

@@ -62,7 +62,7 @@ pub struct OnDiskCache<'sess> {
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
 
-    codemap: &'sess SourceMap,
+    source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
@@ -140,7 +140,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: footer.prev_cnums,
             cnum_map: Once::new(),
-            codemap: sess.source_map(),
+            source_map: sess.source_map(),
             current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
@@ -149,14 +149,14 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn new_empty(codemap: &'sess SourceMap) -> OnDiskCache<'sess> {
+    pub fn new_empty(source_map: &'sess SourceMap) -> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: Vec::new(),
             file_index_to_stable_id: FxHashMap(),
             file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: vec![],
             cnum_map: Once::new(),
-            codemap,
+            source_map,
             current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
@@ -196,7 +196,7 @@ impl<'sess> OnDiskCache<'sess> {
                 expn_info_shorthands: FxHashMap(),
                 interpret_allocs: FxHashMap(),
                 interpret_allocs_inverse: Vec::new(),
-                codemap: CachingCodemapView::new(tcx.sess.source_map()),
+                source_map: CachingCodemapView::new(tcx.sess.source_map()),
                 file_to_file_index,
             };
 
@@ -413,7 +413,7 @@ impl<'sess> OnDiskCache<'sess> {
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
-            codemap: self.codemap,
+            source_map: self.source_map,
             cnum_map: self.cnum_map.get(),
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
@@ -475,7 +475,7 @@ impl<'sess> OnDiskCache<'sess> {
 struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     opaque: opaque::Decoder<'x>,
-    codemap: &'x SourceMap,
+    source_map: &'x SourceMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
@@ -488,13 +488,13 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
         let CacheDecoder {
             ref file_index_to_file,
             ref file_index_to_stable_id,
-            ref codemap,
+            ref source_map,
             ..
         } = *self;
 
         file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
-            codemap.source_file_by_stable_id(stable_id)
+            source_map.source_file_by_stable_id(stable_id)
                    .expect("Failed to lookup SourceFile in new context.")
         }).clone()
     }
@@ -770,7 +770,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
-    codemap: CachingCodemapView<'tcx>,
+    source_map: CachingCodemapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
 }
 
@@ -836,7 +836,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
             return TAG_INVALID_SPAN.encode(self);
         }
 
-        let (file_lo, line_lo, col_lo) = match self.codemap
+        let (file_lo, line_lo, col_lo) = match self.source_map
                                                    .byte_pos_to_line_and_col(span_data.lo) {
             Some(pos) => pos,
             None => {

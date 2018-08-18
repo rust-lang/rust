@@ -189,7 +189,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
 }
 
 /// Given a session, a crate config, a path, and a span, add
-/// the file at the given path to the codemap, and return a parser.
+/// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
 crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
@@ -224,7 +224,7 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 // base abstractions
 
 /// Given a session and a path and an optional span (for error reporting),
-/// add the path to the session's codemap and return the new source_file.
+/// add the path to the session's source_map and return the new source_file.
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                    -> Lrc<SourceFile> {
     match sess.source_map().load_file(path) {

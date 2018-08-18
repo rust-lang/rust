@@ -86,14 +86,14 @@ pub fn run(input_path: &Path,
         ..config::Options::default()
     };
     driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
+        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let handler =
             errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                             true, false,
-                                            Some(codemap.clone()));
+                                            Some(source_map.clone()));
 
         let mut sess = session::build_session_(
-            sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
+            sessopts, Some(input_path.to_owned()), handler, source_map.clone(),
         );
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
@@ -133,7 +133,7 @@ pub fn run(input_path: &Path,
             false,
             opts,
             maybe_sysroot,
-            Some(codemap),
+            Some(source_map),
              None,
             linker,
             edition
@@ -262,11 +262,11 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(SourceMap::new_doctest(
+        let source_map = Lrc::new(SourceMap::new_doctest(
             sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
         ));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                        Some(codemap.clone()),
+                                                        Some(source_map.clone()),
                                                         false,
                                                         false);
 
@@ -274,7 +274,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
         let mut sess = session::build_session_(
-            sessopts, None, diagnostic_handler, codemap,
+            sessopts, None, diagnostic_handler, source_map,
         );
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
@@ -500,7 +500,7 @@ pub struct Collector {
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
     position: Span,
-    codemap: Option<Lrc<SourceMap>>,
+    source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
     edition: Edition,
@@ -509,7 +509,7 @@ pub struct Collector {
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
-               maybe_sysroot: Option<PathBuf>, codemap: Option<Lrc<SourceMap>>,
+               maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {
         Collector {
             tests: Vec::new(),
@@ -523,7 +523,7 @@ impl Collector {
             opts,
             maybe_sysroot,
             position: DUMMY_SP,
-            codemap,
+            source_map,
             filename,
             linker,
             edition,
@@ -589,9 +589,9 @@ impl Collector {
     }
 
     pub fn get_line(&self) -> usize {
-        if let Some(ref codemap) = self.codemap {
+        if let Some(ref source_map) = self.source_map {
             let line = self.position.lo().to_usize();
-            let line = codemap.lookup_char_pos(BytePos(line as u32)).line;
+            let line = source_map.lookup_char_pos(BytePos(line as u32)).line;
             if line > 0 { line - 1 } else { line }
         } else {
             0
@@ -603,8 +603,8 @@ impl Collector {
     }
 
     fn get_filename(&self) -> FileName {
-        if let Some(ref codemap) = self.codemap {
-            let filename = codemap.span_to_filename(self.position);
+        if let Some(ref source_map) = self.source_map {
+            let filename = source_map.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
                 if let Ok(cur_dir) = env::current_dir() {
                     if let Ok(path) = filename.strip_prefix(&cur_dir) {

@@ -44,11 +44,11 @@ pub struct MetadataBlob(pub MetadataRef);
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
 /// See `imported_source_files()` for more information.
 pub struct ImportedSourceFile {
-    /// This SourceFile's byte-offset within the codemap of its original crate
+    /// This SourceFile's byte-offset within the source_map of its original crate
     pub original_start_pos: syntax_pos::BytePos,
-    /// The end of this SourceFile within the codemap of its original crate
+    /// The end of this SourceFile within the source_map of its original crate
     pub original_end_pos: syntax_pos::BytePos,
-    /// The imported SourceFile's representation within the local codemap
+    /// The imported SourceFile's representation within the local source_map
     pub translated_source_file: Lrc<syntax_pos::SourceFile>,
 }
 
@@ -64,7 +64,7 @@ pub struct CrateMetadata {
     pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
     pub dependencies: Lock<Vec<CrateNum>>,
-    pub codemap_import_info: RwLock<Vec<ImportedSourceFile>>,
+    pub source_map_import_info: RwLock<Vec<ImportedSourceFile>>,
 
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     pub alloc_decoding_state: AllocDecodingState,

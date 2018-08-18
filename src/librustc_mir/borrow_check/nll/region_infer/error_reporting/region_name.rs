@@ -383,8 +383,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         let region_name = self.synthesize_region_name(counter);
 
                         // Just grab the first character, the `&`.
-                        let codemap = tcx.sess.source_map();
-                        let ampersand_span = codemap.start_point(hir_ty.span);
+                        let source_map = tcx.sess.source_map();
+                        let ampersand_span = source_map.start_point(hir_ty.span);
 
                         diag.span_label(
                             ampersand_span,

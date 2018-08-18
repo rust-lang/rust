@@ -24,14 +24,14 @@ struct CacheEntry {
 
 #[derive(Clone)]
 pub struct CachingCodemapView<'cm> {
-    codemap: &'cm SourceMap,
+    source_map: &'cm SourceMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
 }
 
 impl<'cm> CachingCodemapView<'cm> {
-    pub fn new(codemap: &'cm SourceMap) -> CachingCodemapView<'cm> {
-        let files = codemap.files();
+    pub fn new(source_map: &'cm SourceMap) -> CachingCodemapView<'cm> {
+        let files = source_map.files();
         let first_file = files[0].clone();
         let entry = CacheEntry {
             time_stamp: 0,
@@ -43,7 +43,7 @@ impl<'cm> CachingCodemapView<'cm> {
         };
 
         CachingCodemapView {
-            codemap,
+            source_map,
             line_cache: [entry.clone(), entry.clone(), entry.clone()],
             time_stamp: 0,
         }
@@ -78,9 +78,9 @@ impl<'cm> CachingCodemapView<'cm> {
         // If the entry doesn't point to the correct file, fix it up
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
             let file_valid;
-            if self.codemap.files().len() > 0 {
-                let file_index = self.codemap.lookup_source_file_idx(pos);
-                let file = self.codemap.files()[file_index].clone();
+            if self.source_map.files().len() > 0 {
+                let file_index = self.source_map.lookup_source_file_idx(pos);
+                let file = self.source_map.files()[file_index].clone();
 
                 if pos >= file.start_pos && pos < file.end_pos {
                     cache_entry.file = file;

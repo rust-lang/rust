@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
                 _: intravisit::FnKind<'tcx>,
                 _: &'tcx hir::FnDecl,
                 _: &'tcx hir::Body,
-                span: codemap::Span,
+                span: source_map::Span,
                 id: ast::NodeId) {
 
         let item = match cx.tcx.hir.get(id) {

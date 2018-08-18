@@ -158,9 +158,9 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         debug_assert!(span.lo <= span.hi);
 
         if !self.source_file_cache.contains(span.lo) {
-            let codemap = self.tcx.sess.source_map();
-            let source_file_index = codemap.lookup_source_file_idx(span.lo);
-            self.source_file_cache = codemap.files()[source_file_index].clone();
+            let source_map = self.tcx.sess.source_map();
+            let source_file_index = source_map.lookup_source_file_idx(span.lo);
+            self.source_file_cache = source_map.files()[source_file_index].clone();
         }
 
         if !self.source_file_cache.contains(span.hi) {
@@ -338,8 +338,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_source_map(&mut self) -> LazySeq<syntax_pos::SourceFile> {
-        let codemap = self.tcx.sess.source_map();
-        let all_source_files = codemap.files();
+        let source_map = self.tcx.sess.source_map();
+        let all_source_files = source_map.files();
 
         let (working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir.clone();
 
@@ -418,10 +418,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             IsolatedEncoder::encode_foreign_modules,
             ());
 
-        // Encode codemap
+        // Encode source_map
         i = self.position();
-        let codemap = self.encode_source_map();
-        let codemap_bytes = self.position() - i;
+        let source_map = self.encode_source_map();
+        let source_map_bytes = self.position() - i;
 
         // Encode DefPathTable
         i = self.position();
@@ -523,7 +523,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items_missing,
             native_libraries,
             foreign_modules,
-            codemap,
+            source_map,
             def_path_table,
             impls,
             exported_symbols,
@@ -546,7 +546,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("     lib feature bytes: {}", lib_feature_bytes);
             println!("       lang item bytes: {}", lang_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
-            println!("         codemap bytes: {}", codemap_bytes);
+            println!("         source_map bytes: {}", source_map_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);

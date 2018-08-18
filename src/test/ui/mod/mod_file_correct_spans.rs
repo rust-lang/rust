@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Testing that the codemap is maintained correctly when parsing mods from external files
+// Testing that the source_map is maintained correctly when parsing mods from external files
 
 mod mod_file_aux;
 

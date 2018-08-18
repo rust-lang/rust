@@ -60,7 +60,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
 /// each span of text in sequence.
 struct Classifier<'a> {
     lexer: lexer::StringReader<'a>,
-    codemap: &'a SourceMap,
+    source_map: &'a SourceMap,
 
     // State of the classifier.
     in_attribute: bool,
@@ -145,10 +145,10 @@ impl<U: Write> Writer for U {
 }
 
 impl<'a> Classifier<'a> {
-    fn new(lexer: lexer::StringReader<'a>, codemap: &'a SourceMap) -> Classifier<'a> {
+    fn new(lexer: lexer::StringReader<'a>, source_map: &'a SourceMap) -> Classifier<'a> {
         Classifier {
             lexer,
-            codemap,
+            source_map,
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
@@ -338,9 +338,9 @@ impl<'a> Classifier<'a> {
         out.string(Escape(&self.snip(tas.sp)), klass)
     }
 
-    // Helper function to get a snippet from the codemap.
+    // Helper function to get a snippet from the source_map.
     fn snip(&self, sp: Span) -> String {
-        self.codemap.span_to_snippet(sp).unwrap()
+        self.source_map.span_to_snippet(sp).unwrap()
     }
 }
 

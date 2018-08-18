@@ -206,7 +206,7 @@ impl SourceMap {
         match self.files.borrow().file_maps.last() {
             None => 0,
             // Add one so there is some space between files. This lets us distinguish
-            // positions in the codemap, even in the presence of zero-length files.
+            // positions in the source_map, even in the presence of zero-length files.
             Some(last) => last.end_pos.to_usize() + 1,
         }
     }
@@ -895,7 +895,7 @@ impl SourceMap {
     ///
     /// Attention: The method used is very fragile since it essentially duplicates the work of the
     /// parser. If you need to use this function or something similar, please consider updating the
-    /// codemap functions and this function to something more robust.
+    /// source_map functions and this function to something more robust.
     pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
         // Try to extend the span to the previous "fn" keyword to retrieve the function
         // signature

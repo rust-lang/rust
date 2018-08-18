@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(()) => {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
-                    let codemap = self.tcx.sess.source_map();
+                    let source_map = self.tcx.sess.source_map();
                     match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(self.tcx.sess, expr.span, E0368,
@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                               Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
-                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                                         while let TyRef(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
@@ -343,7 +343,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                               Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
-                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                                         while let TyRef(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
@@ -420,7 +420,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut errors::DiagnosticBuilder,
         is_assign: bool,
     ) -> bool {
-        let codemap = self.tcx.sess.source_map();
+        let source_map = self.tcx.sess.source_map();
         let msg = "`to_owned()` can be used to create an owned `String` \
                    from a string reference. String concatenation \
                    appends the string on the right to the string \
@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !is_assign {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
-                    match codemap.span_to_snippet(lhs_expr.span) {
+                    match source_map.span_to_snippet(lhs_expr.span) {
                         Ok(lstring) => err.span_suggestion(lhs_expr.span,
                                                            msg,
                                                            format!("{}.to_owned()", lstring)),
@@ -448,8 +448,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match (
-                    codemap.span_to_snippet(lhs_expr.span),
-                    codemap.span_to_snippet(rhs_expr.span),
+                    source_map.span_to_snippet(lhs_expr.span),
+                    source_map.span_to_snippet(rhs_expr.span),
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {

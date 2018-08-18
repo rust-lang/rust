@@ -122,7 +122,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn finalize_and_compute_crate_hash(mut self,
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &dyn CrateStore,
-                                                  codemap: &SourceMap,
+                                                  source_map: &SourceMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
         self
@@ -155,7 +155,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // If we included the full mapping in the SVH, we could only have
         // reproducible builds by compiling from the same directory. So we just
         // hash the result of the mapping instead of the mapping itself.
-        let mut source_file_names: Vec<_> = codemap
+        let mut source_file_names: Vec<_> = source_map
             .files()
             .iter()
             .filter(|source_file| CrateNum::from_u32(source_file.crate_of_origin) == LOCAL_CRATE)

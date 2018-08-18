@@ -43,9 +43,9 @@ impl Default for TokenAndSpan {
 
 pub struct StringReader<'a> {
     pub sess: &'a ParseSess,
-    /// The absolute offset within the codemap of the next character to read
+    /// The absolute offset within the source_map of the next character to read
     pub next_pos: BytePos,
-    /// The absolute offset within the codemap of the current character
+    /// The absolute offset within the source_map of the current character
     pub pos: BytePos,
     /// The current character (which has been read from self.pos)
     pub ch: Option<char>,

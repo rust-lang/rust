@@ -162,11 +162,11 @@ impl FileName {
 }
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
-/// are *absolute* positions from the beginning of the codemap, not positions
+/// are *absolute* positions from the beginning of the source_map, not positions
 /// relative to SourceFiles. Methods on the SourceMap can be used to relate spans back
 /// to the original source.
 /// You must be careful if the span crosses more than one file - you will not be
-/// able to use many of the functions on spans in codemap and you cannot assume
+/// able to use many of the functions on spans in source_map and you cannot assume
 /// that the length of the span = hi - lo; there may be space in the BytePos
 /// range between files.
 ///
