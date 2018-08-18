@@ -269,6 +269,16 @@ struct MemorySnapshot<'a, 'mir: 'a, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx> + 'a
     data: &'a M::MemoryData,
 }
 
+impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    type To = Allocation;
+    type From = AllocId;
+    fn resolve(&'b self, id: &Self::From) -> Option<&'b Self::To> {
+        self.get(*id).ok()
+    }
+}
+
 /// The virtual machine state during const-evaluation at a given point in time.
 #[derive(Eq, PartialEq)]
 pub struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
