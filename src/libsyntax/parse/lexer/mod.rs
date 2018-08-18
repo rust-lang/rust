@@ -49,7 +49,7 @@ pub struct StringReader<'a> {
     pub pos: BytePos,
     /// The current character (which has been read from self.pos)
     pub ch: Option<char>,
-    pub filemap: Lrc<syntax_pos::SourceFile>,
+    pub source_file: Lrc<syntax_pos::SourceFile>,
     /// Stop reading src at this index.
     pub end_src_index: usize,
     // cached:
@@ -58,7 +58,7 @@ pub struct StringReader<'a> {
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
-    // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
+    // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
     src: Lrc<String>,
     /// Stack of open delimiters and their spans. Used for error message.
     token: token::Token,
@@ -180,31 +180,31 @@ impl<'a> StringReader<'a> {
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
-    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
+    fn new_raw(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
         -> Self
     {
-        let mut sr = StringReader::new_raw_internal(sess, filemap, override_span);
+        let mut sr = StringReader::new_raw_internal(sess, source_file, override_span);
         sr.bump();
 
         sr
     }
 
-    fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>,
+    fn new_raw_internal(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>,
         override_span: Option<Span>) -> Self
     {
-        if filemap.src.is_none() {
-            sess.span_diagnostic.bug(&format!("Cannot lex filemap without source: {}",
-                                              filemap.name));
+        if source_file.src.is_none() {
+            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
+                                              source_file.name));
         }
 
-        let src = (*filemap.src.as_ref().unwrap()).clone();
+        let src = (*source_file.src.as_ref().unwrap()).clone();
 
         StringReader {
             sess,
-            next_pos: filemap.start_pos,
-            pos: filemap.start_pos,
+            next_pos: source_file.start_pos,
+            pos: source_file.start_pos,
             ch: Some('\n'),
-            filemap,
+            source_file,
             end_src_index: src.len(),
             // dummy values; not read
             peek_tok: token::Eof,
@@ -221,10 +221,10 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
+    pub fn new(sess: &'a ParseSess, source_file: Lrc<syntax_pos::SourceFile>, override_span: Option<Span>)
         -> Self
     {
-        let mut sr = StringReader::new_raw(sess, filemap, override_span);
+        let mut sr = StringReader::new_raw(sess, source_file, override_span);
         if sr.advance_token().is_err() {
             sr.emit_fatal_errors();
             FatalError.raise();
@@ -364,8 +364,8 @@ impl<'a> StringReader<'a> {
                 if self.is_eof() {
                     self.peek_tok = token::Eof;
                     let (real, raw) = self.mk_sp_and_raw(
-                        self.filemap.end_pos,
-                        self.filemap.end_pos,
+                        self.source_file.end_pos,
+                        self.source_file.end_pos,
                     );
                     self.peek_span = real;
                     self.peek_span_src_raw = raw;
@@ -384,7 +384,7 @@ impl<'a> StringReader<'a> {
 
     #[inline]
     fn src_index(&self, pos: BytePos) -> usize {
-        (pos - self.filemap.start_pos).to_usize()
+        (pos - self.source_file.start_pos).to_usize()
     }
 
     /// Calls `f` with a string slice of the source text spanning from `start`
@@ -623,7 +623,7 @@ impl<'a> StringReader<'a> {
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
                 let cmap = SourceMap::new(FilePathMapping::empty());
-                cmap.files.borrow_mut().file_maps.push(self.filemap.clone());
+                cmap.files.borrow_mut().file_maps.push(self.source_file.clone());
                 let loc = cmap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
@@ -1861,7 +1861,7 @@ mod tests {
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_filemap(PathBuf::from("zebra.rs").into(), teststr);
+        let fm = cm.new_source_file(PathBuf::from("zebra.rs").into(), teststr);
         StringReader::new(sess, fm, None)
     }
 

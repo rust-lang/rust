@@ -494,7 +494,7 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
 
         file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
-            codemap.filemap_by_stable_id(stable_id)
+            codemap.source_file_by_stable_id(stable_id)
                    .expect("Failed to lookup SourceFile in new context.")
         }).clone()
     }
@@ -777,8 +777,8 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
 impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
-    fn filemap_index(&mut self, filemap: Lrc<SourceFile>) -> SourceFileIndex {
-        self.file_to_file_index[&(&*filemap as *const SourceFile)]
+    fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
+        self.file_to_file_index[&(&*source_file as *const SourceFile)]
     }
 
     /// Encode something with additional information that allows to do some
@@ -850,10 +850,10 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
 
         let len = span_data.hi - span_data.lo;
 
-        let filemap_index = self.filemap_index(file_lo);
+        let source_file_index = self.source_file_index(file_lo);
 
         TAG_VALID_SPAN.encode(self)?;
-        filemap_index.encode(self)?;
+        source_file_index.encode(self)?;
         line_lo.encode(self)?;
         col_lo.encode(self)?;
         len.encode(self)?;

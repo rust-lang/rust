@@ -40,7 +40,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
 use syntax::edition::Edition;
-use syntax::parse::filemap_to_stream;
+use syntax::parse::source_file_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -463,9 +463,9 @@ impl cstore::CStore {
         let (name, def) = data.get_macro(id.index);
         let source_name = FileName::Macros(name.to_string());
 
-        let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
-        let local_span = Span::new(filemap.start_pos, filemap.end_pos, NO_EXPANSION);
-        let body = filemap_to_stream(&sess.parse_sess, filemap, None);
+        let source_file = sess.parse_sess.codemap().new_source_file(source_name, def.body);
+        let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
+        let body = source_file_to_stream(&sess.parse_sess, source_file, None);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);

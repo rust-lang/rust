@@ -62,7 +62,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
-    filemap_cache: Lrc<SourceFile>,
+    source_file_cache: Lrc<SourceFile>,
 }
 
 macro_rules! encoder_methods {
@@ -157,13 +157,13 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !self.filemap_cache.contains(span.lo) {
+        if !self.source_file_cache.contains(span.lo) {
             let codemap = self.tcx.sess.codemap();
-            let filemap_index = codemap.lookup_filemap_idx(span.lo);
-            self.filemap_cache = codemap.files()[filemap_index].clone();
+            let source_file_index = codemap.lookup_source_file_idx(span.lo);
+            self.source_file_cache = codemap.files()[source_file_index].clone();
         }
 
-        if !self.filemap_cache.contains(span.hi) {
+        if !self.source_file_cache.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_INVALID_SPAN.encode(self)
@@ -339,17 +339,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::SourceFile> {
         let codemap = self.tcx.sess.codemap();
-        let all_filemaps = codemap.files();
+        let all_source_files = codemap.files();
 
         let (working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir.clone();
 
-        let adapted = all_filemaps.iter()
-            .filter(|filemap| {
-                // No need to re-export imported filemaps, as any downstream
+        let adapted = all_source_files.iter()
+            .filter(|source_file| {
+                // No need to re-export imported source_files, as any downstream
                 // crate will import them from their original source.
-                !filemap.is_imported()
+                !source_file.is_imported()
             })
-            .map(|filemap| {
+            .map(|source_file| {
                 // When exporting SourceFiles, we expand all paths to absolute
                 // paths because any relative paths are potentially relative to
                 // a wrong directory.
@@ -357,16 +357,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // `--remap-path-prefix` we assume the user has already set
                 // things up the way they want and don't touch the path values
                 // anymore.
-                match filemap.name {
+                match source_file.name {
                     FileName::Real(ref name) => {
-                        if filemap.name_was_remapped ||
+                        if source_file.name_was_remapped ||
                         (name.is_relative() && working_dir_was_remapped) {
                             // This path of this SourceFile has been modified by
                             // path-remapping, so we use it verbatim (and avoid cloning
                             // the whole map in the process).
-                            filemap.clone()
+                            source_file.clone()
                         } else {
-                            let mut adapted = (**filemap).clone();
+                            let mut adapted = (**source_file).clone();
                             adapted.name = Path::new(&working_dir).join(name).into();
                             adapted.name_hash = {
                                 let mut hasher: StableHasher<u128> = StableHasher::new();
@@ -377,7 +377,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         }
                     },
                     // expanded code, not from a file
-                    _ => filemap.clone(),
+                    _ => source_file.clone(),
                 }
             })
             .collect::<Vec<_>>();
@@ -1842,7 +1842,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
-            filemap_cache: tcx.sess.codemap().files()[0].clone(),
+            source_file_cache: tcx.sess.codemap().files()[0].clone(),
             interpret_allocs: Default::default(),
             interpret_allocs_inverse: Default::default(),
         };

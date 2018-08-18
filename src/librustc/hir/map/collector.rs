@@ -158,8 +158,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let mut source_file_names: Vec<_> = codemap
             .files()
             .iter()
-            .filter(|filemap| CrateNum::from_u32(filemap.crate_of_origin) == LOCAL_CRATE)
-            .map(|filemap| filemap.name_hash)
+            .filter(|source_file| CrateNum::from_u32(source_file.crate_of_origin) == LOCAL_CRATE)
+            .map(|source_file| source_file.name_hash)
             .collect();
 
         source_file_names.sort_unstable();

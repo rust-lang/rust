@@ -63,7 +63,7 @@ pub fn expand_column_gated(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
 }
 
 /// file!(): expands to the current filename */
-/// The filemap (`loc.file`) contains a bunch more information we could spit
+/// The source_file (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
 pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                    -> Box<dyn base::MacResult+'static> {
@@ -154,7 +154,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
 
             // Add this input file to the code map to make it available as
             // dependency information
-            cx.codemap().new_filemap(file.into(), src);
+            cx.codemap().new_source_file(file.into(), src);
 
             base::MacEager::expr(cx.expr_str(sp, interned_src))
         }
@@ -184,7 +184,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Ok(..) => {
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
-            cx.codemap().new_filemap(file.into(), "".to_string());
+            cx.codemap().new_source_file(file.into(), "".to_string());
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }

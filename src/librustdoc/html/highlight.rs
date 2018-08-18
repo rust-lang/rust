@@ -33,7 +33,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
                                 tooltip: Option<(&str, &str)>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(FileName::Custom("stdin".to_string()), src.to_string());
+    let fm = sess.codemap().new_source_file(FileName::Custom("stdin".to_string()), src.to_string());
 
     let mut out = Vec::new();
     if let Some((tooltip, class)) = tooltip {

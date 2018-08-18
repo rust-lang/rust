@@ -109,12 +109,12 @@ impl FileLoader for RealFileLoader {
 pub struct StableFilemapId(u128);
 
 impl StableFilemapId {
-    pub fn new(filemap: &SourceFile) -> StableFilemapId {
+    pub fn new(source_file: &SourceFile) -> StableFilemapId {
         let mut hasher = StableHasher::new();
 
-        filemap.name.hash(&mut hasher);
-        filemap.name_was_remapped.hash(&mut hasher);
-        filemap.unmapped_path.hash(&mut hasher);
+        source_file.name.hash(&mut hasher);
+        source_file.name_was_remapped.hash(&mut hasher);
+        source_file.unmapped_path.hash(&mut hasher);
 
         StableFilemapId(hasher.finish())
     }
@@ -126,7 +126,7 @@ impl StableFilemapId {
 
 pub(super) struct SourceMapFiles {
     pub(super) file_maps: Vec<Lrc<SourceFile>>,
-    stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<SourceFile>>
+    stable_id_to_source_file: FxHashMap<StableFilemapId, Lrc<SourceFile>>
 }
 
 pub struct SourceMap {
@@ -145,7 +145,7 @@ impl SourceMap {
         SourceMap {
             files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_filemap: FxHashMap(),
+                stable_id_to_source_file: FxHashMap(),
             }),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
@@ -168,7 +168,7 @@ impl SourceMap {
         SourceMap {
             files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_filemap: FxHashMap(),
+                stable_id_to_source_file: FxHashMap(),
             }),
             file_loader: file_loader,
             path_mapping,
@@ -191,15 +191,15 @@ impl SourceMap {
         } else {
             path.to_owned().into()
         };
-        Ok(self.new_filemap(filename, src))
+        Ok(self.new_source_file(filename, src))
     }
 
     pub fn files(&self) -> LockGuard<Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.file_maps)
     }
 
-    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<SourceFile>> {
-        self.files.borrow().stable_id_to_filemap.get(&stable_id).map(|fm| fm.clone())
+    pub fn source_file_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<SourceFile>> {
+        self.files.borrow().stable_id_to_source_file.get(&stable_id).map(|fm| fm.clone())
     }
 
     fn next_start_pos(&self) -> usize {
@@ -211,9 +211,9 @@ impl SourceMap {
         }
     }
 
-    /// Creates a new filemap.
+    /// Creates a new source_file.
     /// This does not ensure that only one SourceFile exists per file name.
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
+    pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         // The path is used to determine the directory for loading submodules and
@@ -230,7 +230,7 @@ impl SourceMap {
             },
             other => (other, false),
         };
-        let filemap = Lrc::new(SourceFile::new(
+        let source_file = Lrc::new(SourceFile::new(
             filename,
             was_remapped,
             unmapped_path,
@@ -240,17 +240,17 @@ impl SourceMap {
 
         let mut files = self.files.borrow_mut();
 
-        files.file_maps.push(filemap.clone());
-        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file), source_file.clone());
 
-        filemap
+        source_file
     }
 
     /// Allocates a new SourceFile representing a source file from an external
-    /// crate. The source code of such an "imported filemap" is not available,
+    /// crate. The source code of such an "imported source_file" is not available,
     /// but we still know enough to generate accurate debuginfo location
     /// information for things inlined from other crates.
-    pub fn new_imported_filemap(&self,
+    pub fn new_imported_source_file(&self,
                                 filename: FileName,
                                 name_was_remapped: bool,
                                 crate_of_origin: u32,
@@ -278,7 +278,7 @@ impl SourceMap {
             *swc = *swc + start_pos;
         }
 
-        let filemap = Lrc::new(SourceFile {
+        let source_file = Lrc::new(SourceFile {
             name: filename,
             name_was_remapped,
             unmapped_path: None,
@@ -296,10 +296,10 @@ impl SourceMap {
 
         let mut files = self.files.borrow_mut();
 
-        files.file_maps.push(filemap.clone());
-        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file), source_file.clone());
 
-        filemap
+        source_file
     }
 
     pub fn mk_substr_filename(&self, sp: Span) -> String {
@@ -385,9 +385,9 @@ impl SourceMap {
         }
     }
 
-    // If the relevant filemap is empty, we don't return a line number.
+    // If the relevant source_file is empty, we don't return a line number.
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
-        let idx = self.lookup_filemap_idx(pos);
+        let idx = self.lookup_source_file_idx(pos);
 
         let f = (*self.files.borrow().file_maps)[idx].clone();
 
@@ -541,7 +541,7 @@ impl SourceMap {
                       local_end.fm.start_pos)
             }));
         } else {
-            self.ensure_filemap_source_present(local_begin.fm.clone());
+            self.ensure_source_file_source_present(local_begin.fm.clone());
 
             let start_index = local_begin.pos.to_usize();
             let end_index = local_end.pos.to_usize();
@@ -798,7 +798,7 @@ impl SourceMap {
         }
     }
 
-    pub fn get_filemap(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
+    pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
         for fm in self.files.borrow().file_maps.iter() {
             if *filename == fm.name {
                 return Some(fm.clone());
@@ -809,15 +809,15 @@ impl SourceMap {
 
     /// For a global BytePos compute the local offset within the containing SourceFile
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
-        let idx = self.lookup_filemap_idx(bpos);
+        let idx = self.lookup_source_file_idx(bpos);
         let fm = (*self.files.borrow().file_maps)[idx].clone();
         let offset = bpos - fm.start_pos;
         SourceFileAndBytePos {fm: fm, pos: offset}
     }
 
-    /// Converts an absolute BytePos to a CharPos relative to the filemap.
+    /// Converts an absolute BytePos to a CharPos relative to the source_file.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
-        let idx = self.lookup_filemap_idx(bpos);
+        let idx = self.lookup_source_file_idx(bpos);
         let map = &(*self.files.borrow().file_maps)[idx];
 
         // The number of extra bytes due to multibyte chars in the SourceFile
@@ -841,13 +841,13 @@ impl SourceMap {
         CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
     }
 
-    // Return the index of the filemap (in self.files) which contains pos.
-    pub fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
+    // Return the index of the source_file (in self.files) which contains pos.
+    pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
         let files = &files.file_maps;
         let count = files.len();
 
-        // Binary search for the filemap.
+        // Binary search for the source_file.
         let mut a = 0;
         let mut b = count;
         while b - a > 1 {
@@ -966,7 +966,7 @@ impl SourceMapper for SourceMap {
         }
         sp
     }
-    fn ensure_filemap_source_present(&self, file_map: Lrc<SourceFile>) -> bool {
+    fn ensure_source_file_source_present(&self, file_map: Lrc<SourceFile>) -> bool {
         file_map.add_external_src(
             || match file_map.name {
                 FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
@@ -1025,11 +1025,11 @@ mod tests {
 
     fn init_code_map() -> SourceMap {
         let cm = SourceMap::new(FilePathMapping::empty());
-        cm.new_filemap(PathBuf::from("blork.rs").into(),
+        cm.new_source_file(PathBuf::from("blork.rs").into(),
                        "first line.\nsecond line".to_string());
-        cm.new_filemap(PathBuf::from("empty.rs").into(),
+        cm.new_source_file(PathBuf::from("empty.rs").into(),
                        "".to_string());
-        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+        cm.new_source_file(PathBuf::from("blork2.rs").into(),
                        "first line.\nsecond line".to_string());
         cm
     }
@@ -1066,7 +1066,7 @@ mod tests {
 
     #[test]
     fn t5() {
-        // Test zero-length filemaps.
+        // Test zero-length source_files.
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
@@ -1083,9 +1083,9 @@ mod tests {
     fn init_code_map_mbc() -> SourceMap {
         let cm = SourceMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
-        cm.new_filemap(PathBuf::from("blork.rs").into(),
+        cm.new_source_file(PathBuf::from("blork.rs").into(),
                        "fir€st €€€€ line.\nsecond line".to_string());
-        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+        cm.new_source_file(PathBuf::from("blork2.rs").into(),
                        "first line€€.\n€ second line".to_string());
         cm
     }
@@ -1110,7 +1110,7 @@ mod tests {
 
     #[test]
     fn t7() {
-        // Test span_to_lines for a span ending at the end of filemap
+        // Test span_to_lines for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let file_lines = cm.span_to_lines(span).unwrap();
@@ -1138,7 +1138,7 @@ mod tests {
         let cm = SourceMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
+        cm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -1156,7 +1156,7 @@ mod tests {
 
     #[test]
     fn t8() {
-        // Test span_to_snippet for a span ending at the end of filemap
+        // Test span_to_snippet for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let snippet = cm.span_to_snippet(span);
@@ -1166,7 +1166,7 @@ mod tests {
 
     #[test]
     fn t9() {
-        // Test span_to_str for a span ending at the end of filemap
+        // Test span_to_str for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let sstr =  cm.span_to_string(span);
@@ -1181,7 +1181,7 @@ mod tests {
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
+        cm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 

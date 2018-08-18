@@ -42,14 +42,14 @@ pub use rustc_data_structures::sync::MetadataRef;
 pub struct MetadataBlob(pub MetadataRef);
 
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
-/// See `imported_filemaps()` for more information.
+/// See `imported_source_files()` for more information.
 pub struct ImportedSourceFile {
     /// This SourceFile's byte-offset within the codemap of its original crate
     pub original_start_pos: syntax_pos::BytePos,
     /// The end of this SourceFile within the codemap of its original crate
     pub original_end_pos: syntax_pos::BytePos,
     /// The imported SourceFile's representation within the local codemap
-    pub translated_filemap: Lrc<syntax_pos::SourceFile>,
+    pub translated_source_file: Lrc<syntax_pos::SourceFile>,
 }
 
 pub struct CrateMetadata {

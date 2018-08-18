@@ -916,7 +916,7 @@ pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate 
 fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, FileName) {
     let src_name = driver::source_name(input);
     let src = sess.codemap()
-        .get_filemap(&src_name)
+        .get_source_file(&src_name)
         .unwrap()
         .src
         .as_ref()

@@ -79,7 +79,7 @@ impl<'cm> CachingCodemapView<'cm> {
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
             let file_valid;
             if self.codemap.files().len() > 0 {
-                let file_index = self.codemap.lookup_filemap_idx(pos);
+                let file_index = self.codemap.lookup_source_file_idx(pos);
                 let file = self.codemap.files()[file_index].clone();
 
                 if pos >= file.start_pos && pos < file.end_pos {

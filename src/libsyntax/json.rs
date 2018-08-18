@@ -340,7 +340,7 @@ impl DiagnosticSpan {
 }
 
 impl DiagnosticSpanLine {
-    fn line_from_filemap(fm: &syntax_pos::SourceFile,
+    fn line_from_source_file(fm: &syntax_pos::SourceFile,
                          index: usize,
                          h_start: usize,
                          h_end: usize)
@@ -362,7 +362,7 @@ impl DiagnosticSpanLine {
                  lines.lines
                       .iter()
                       .map(|line| {
-                          DiagnosticSpanLine::line_from_filemap(fm,
+                          DiagnosticSpanLine::line_from_source_file(fm,
                                                                 line.line_index,
                                                                 line.start_col.0 + 1,
                                                                 line.end_col.0 + 1)

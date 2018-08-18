@@ -16,27 +16,27 @@ use super::*;
 ///
 /// This function will use an SSE2 enhanced implementation if hardware support
 /// is detected at runtime.
-pub fn analyze_filemap(
+pub fn analyze_source_file(
     src: &str,
-    filemap_start_pos: BytePos)
+    source_file_start_pos: BytePos)
     -> (Vec<BytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>)
 {
-    let mut lines = vec![filemap_start_pos];
+    let mut lines = vec![source_file_start_pos];
     let mut multi_byte_chars = vec![];
     let mut non_narrow_chars = vec![];
 
     // Calls the right implementation, depending on hardware support available.
-    analyze_filemap_dispatch(src,
-                             filemap_start_pos,
+    analyze_source_file_dispatch(src,
+                             source_file_start_pos,
                              &mut lines,
                              &mut multi_byte_chars,
                              &mut non_narrow_chars);
 
     // The code above optimistically registers a new line *after* each \n
-    // it encounters. If that point is already outside the filemap, remove
+    // it encounters. If that point is already outside the source_file, remove
     // it again.
     if let Some(&last_line_start) = lines.last() {
-        let file_map_end = filemap_start_pos + BytePos::from_usize(src.len());
+        let file_map_end = source_file_start_pos + BytePos::from_usize(src.len());
         assert!(file_map_end >= last_line_start);
         if last_line_start == file_map_end {
             lines.pop();
@@ -49,23 +49,23 @@ pub fn analyze_filemap(
 cfg_if! {
     if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
                  not(stage0)))] {
-        fn analyze_filemap_dispatch(src: &str,
-                                    filemap_start_pos: BytePos,
+        fn analyze_source_file_dispatch(src: &str,
+                                    source_file_start_pos: BytePos,
                                     lines: &mut Vec<BytePos>,
                                     multi_byte_chars: &mut Vec<MultiByteChar>,
                                     non_narrow_chars: &mut Vec<NonNarrowChar>) {
             if is_x86_feature_detected!("sse2") {
                 unsafe {
-                    analyze_filemap_sse2(src,
-                                         filemap_start_pos,
+                    analyze_source_file_sse2(src,
+                                         source_file_start_pos,
                                          lines,
                                          multi_byte_chars,
                                          non_narrow_chars);
                 }
             } else {
-                analyze_filemap_generic(src,
+                analyze_source_file_generic(src,
                                         src.len(),
-                                        filemap_start_pos,
+                                        source_file_start_pos,
                                         lines,
                                         multi_byte_chars,
                                         non_narrow_chars);
@@ -78,7 +78,7 @@ cfg_if! {
         /// function falls back to the generic implementation. Otherwise it uses
         /// SSE2 intrinsics to quickly find all newlines.
         #[target_feature(enable = "sse2")]
-        unsafe fn analyze_filemap_sse2(src: &str,
+        unsafe fn analyze_source_file_sse2(src: &str,
                                        output_offset: BytePos,
                                        lines: &mut Vec<BytePos>,
                                        multi_byte_chars: &mut Vec<MultiByteChar>,
@@ -169,7 +169,7 @@ cfg_if! {
                 // The slow path.
                 // There are control chars in here, fallback to generic decoding.
                 let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
-                intra_chunk_offset = analyze_filemap_generic(
+                intra_chunk_offset = analyze_source_file_generic(
                     &src[scan_start .. ],
                     CHUNK_SIZE - intra_chunk_offset,
                     BytePos::from_usize(scan_start) + output_offset,
@@ -182,7 +182,7 @@ cfg_if! {
             // There might still be a tail left to analyze
             let tail_start = chunk_count * CHUNK_SIZE + intra_chunk_offset;
             if tail_start < src.len() {
-                analyze_filemap_generic(&src[tail_start as usize ..],
+                analyze_source_file_generic(&src[tail_start as usize ..],
                                         src.len() - tail_start,
                                         output_offset + BytePos::from_usize(tail_start),
                                         lines,
@@ -193,14 +193,14 @@ cfg_if! {
     } else {
 
         // The target (or compiler version) does not support SSE2 ...
-        fn analyze_filemap_dispatch(src: &str,
-                                    filemap_start_pos: BytePos,
+        fn analyze_source_file_dispatch(src: &str,
+                                    source_file_start_pos: BytePos,
                                     lines: &mut Vec<BytePos>,
                                     multi_byte_chars: &mut Vec<MultiByteChar>,
                                     non_narrow_chars: &mut Vec<NonNarrowChar>) {
-            analyze_filemap_generic(src,
+            analyze_source_file_generic(src,
                                     src.len(),
-                                    filemap_start_pos,
+                                    source_file_start_pos,
                                     lines,
                                     multi_byte_chars,
                                     non_narrow_chars);
@@ -211,7 +211,7 @@ cfg_if! {
 // `scan_len` determines the number of bytes in `src` to scan. Note that the
 // function can read past `scan_len` if a multi-byte character start within the
 // range but extends past it. The overflow is returned by the function.
-fn analyze_filemap_generic(src: &str,
+fn analyze_source_file_generic(src: &str,
                            scan_len: usize,
                            output_offset: BytePos,
                            lines: &mut Vec<BytePos>,
@@ -288,7 +288,7 @@ fn analyze_filemap_generic(src: &str,
 macro_rules! test {
     (case: $test_name:ident,
      text: $text:expr,
-     filemap_start_pos: $filemap_start_pos:expr,
+     source_file_start_pos: $source_file_start_pos:expr,
      lines: $lines:expr,
      multi_byte_chars: $multi_byte_chars:expr,
      non_narrow_chars: $non_narrow_chars:expr,) => (
@@ -297,7 +297,7 @@ macro_rules! test {
     fn $test_name() {
 
         let (lines, multi_byte_chars, non_narrow_chars) =
-            analyze_filemap($text, BytePos($filemap_start_pos));
+            analyze_source_file($text, BytePos($source_file_start_pos));
 
         let expected_lines: Vec<BytePos> = $lines
             .into_iter()
@@ -330,7 +330,7 @@ macro_rules! test {
 test!(
     case: empty_text,
     text: "",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![],
@@ -339,7 +339,7 @@ test!(
 test!(
     case: newlines_short,
     text: "a\nc",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0, 2],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![],
@@ -348,7 +348,7 @@ test!(
 test!(
     case: newlines_long,
     text: "012345678\nabcdef012345678\na",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0, 10, 26],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![],
@@ -357,7 +357,7 @@ test!(
 test!(
     case: newline_and_multi_byte_char_in_same_chunk,
     text: "01234β789\nbcdef0123456789abcdef",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0, 11],
     multi_byte_chars: vec![(5, 2)],
     non_narrow_chars: vec![],
@@ -366,7 +366,7 @@ test!(
 test!(
     case: newline_and_control_char_in_same_chunk,
     text: "01234\u{07}6789\nbcdef0123456789abcdef",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0, 11],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![(5, 0)],
@@ -375,7 +375,7 @@ test!(
 test!(
     case: multi_byte_char_short,
     text: "aβc",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![(1, 2)],
     non_narrow_chars: vec![],
@@ -384,7 +384,7 @@ test!(
 test!(
     case: multi_byte_char_long,
     text: "0123456789abcΔf012345β",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![(13, 2), (22, 2)],
     non_narrow_chars: vec![],
@@ -393,7 +393,7 @@ test!(
 test!(
     case: multi_byte_char_across_chunk_boundary,
     text: "0123456789abcdeΔ123456789abcdef01234",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![(15, 2)],
     non_narrow_chars: vec![],
@@ -402,7 +402,7 @@ test!(
 test!(
     case: multi_byte_char_across_chunk_boundary_tail,
     text: "0123456789abcdeΔ....",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![(15, 2)],
     non_narrow_chars: vec![],
@@ -411,7 +411,7 @@ test!(
 test!(
     case: non_narrow_short,
     text: "0\t2",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![(1, 4)],
@@ -420,7 +420,7 @@ test!(
 test!(
     case: non_narrow_long,
     text: "01\t3456789abcdef01234567\u{07}9",
-    filemap_start_pos: 0,
+    source_file_start_pos: 0,
     lines: vec![0],
     multi_byte_chars: vec![],
     non_narrow_chars: vec![(2, 4), (24, 0)],
@@ -429,7 +429,7 @@ test!(
 test!(
     case: output_offset_all,
     text: "01\t345\n789abcΔf01234567\u{07}9\nbcΔf",
-    filemap_start_pos: 1000,
+    source_file_start_pos: 1000,
     lines: vec![0 + 1000, 7 + 1000, 27 + 1000],
     multi_byte_chars: vec![(13 + 1000, 2), (29 + 1000, 2)],
     non_narrow_chars: vec![(2 + 1000, 4), (24 + 1000, 0)],

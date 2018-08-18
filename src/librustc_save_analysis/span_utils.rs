@@ -276,7 +276,7 @@ impl<'a> SpanUtils<'a> {
             None => return true,
         };
 
-        //If the span comes from a fake filemap, filter it.
+        //If the span comes from a fake source_file, filter it.
         if !self.sess
             .codemap()
             .lookup_char_pos(parent.lo())

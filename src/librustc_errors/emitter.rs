@@ -1021,7 +1021,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if !cm.ensure_filemap_source_present(annotated_file.file.clone()) {
+            if !cm.ensure_source_file_source_present(annotated_file.file.clone()) {
                 continue;
             }
 

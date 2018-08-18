@@ -63,7 +63,7 @@ pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
 
-mod analyze_filemap;
+mod analyze_source_file;
 
 pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
@@ -974,7 +974,7 @@ impl SourceFile {
         let end_pos = start_pos.to_usize() + src.len();
 
         let (lines, multibyte_chars, non_narrow_chars) =
-            analyze_filemap::analyze_filemap(&src[..], start_pos);
+            analyze_source_file::analyze_source_file(&src[..], start_pos);
 
         SourceFile {
             name,
@@ -1082,7 +1082,7 @@ impl SourceFile {
 
     /// Find the line containing the given position. The return value is the
     /// index into the `lines` array of this SourceFile, not the 1-based line
-    /// number. If the filemap is empty or the position is located before the
+    /// number. If the source_file is empty or the position is located before the
     /// first line, None is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
         if self.lines.len() == 0 {

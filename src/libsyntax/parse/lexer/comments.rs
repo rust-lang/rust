@@ -247,11 +247,11 @@ fn read_block_comment(rdr: &mut StringReader,
     let mut lines: Vec<String> = Vec::new();
 
     // Count the number of chars since the start of the line by rescanning.
-    let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos(rdr.pos));
+    let mut src_index = rdr.src_index(rdr.source_file.line_begin_pos(rdr.pos));
     let end_src_index = rdr.src_index(rdr.pos);
     assert!(src_index <= end_src_index,
         "src_index={}, end_src_index={}, line_begin_pos={}",
-        src_index, end_src_index, rdr.filemap.line_begin_pos(rdr.pos).to_u32());
+        src_index, end_src_index, rdr.source_file.line_begin_pos(rdr.pos).to_u32());
     let mut n = 0;
 
     while src_index < end_src_index {
@@ -372,8 +372,8 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
     let mut src = String::new();
     srdr.read_to_string(&mut src).unwrap();
     let cm = SourceMap::new(sess.codemap().path_mapping().clone());
-    let filemap = cm.new_filemap(path, src);
-    let mut rdr = lexer::StringReader::new_raw(sess, filemap, None);
+    let source_file = cm.new_source_file(path, src);
+    let mut rdr = lexer::StringReader::new_raw(sess, source_file, None);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut literals: Vec<Literal> = Vec::new();

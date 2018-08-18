@@ -1563,7 +1563,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             // Add this input file to the code map to make it available as
                             // dependency information
-                            self.cx.codemap().new_filemap(filename.into(), src);
+                            self.cx.codemap().new_source_file(filename.into(), src);
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
