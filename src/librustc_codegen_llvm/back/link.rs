@@ -606,7 +606,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             // only the linker flavor is known; use the default linker for the selected flavor
             (None, Some(flavor)) => Some((PathBuf::from(match flavor {
                 LinkerFlavor::Em  => if cfg!(windows) { "emcc.bat" } else { "emcc" },
-                LinkerFlavor::Gcc => "gcc",
+                LinkerFlavor::Gcc => "cc",
                 LinkerFlavor::Ld => "ld",
                 LinkerFlavor::Msvc => "link.exe",
                 LinkerFlavor::Lld(_) => "lld",
