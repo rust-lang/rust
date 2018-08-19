@@ -28,9 +28,6 @@ pub use ops::{Drop, Fn, FnMut, FnOnce};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use mem::drop;
-#[unstable(feature = "convert_id_prelude", issue = "0")]
-#[doc(no_inline)]
-pub use convert::id;
 
 // Re-exported types and traits
 #[stable(feature = "core_prelude", since = "1.4.0")]
