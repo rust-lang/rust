@@ -301,11 +301,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, pat_ty);
                 if self.has_errors.get() {
                     let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
-                    let element_tys = tcx.mk_type_list(element_tys_iter);
                     for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                         self.check_pat_walk(elem, &tcx.types.err, def_bm, true);
                     }
-                    tcx.mk_ty(ty::TyTuple(element_tys))
+                    tcx.mk_tup(element_tys_iter)
                 } else {
                     for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                         self.check_pat_walk(elem, &element_tys[i], def_bm, true);
