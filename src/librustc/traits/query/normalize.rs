@@ -12,15 +12,15 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_projection_ty` query when it encounters projections.
 
-use infer::{InferCtxt, InferOk};
 use infer::at::At;
-use mir::interpret::{GlobalId, ConstValue};
+use infer::{InferCtxt, InferOk};
+use mir::interpret::{ConstValue, GlobalId};
 use rustc_data_structures::small_vec::SmallVec;
-use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use traits::project::Normalized;
-use ty::{self, Ty, TyCtxt};
+use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::{Subst, Substs};
+use ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
@@ -121,9 +121,36 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            bug!("infinite recursion generic_ty: {:#?}, substs: {:#?}, \
-                                  concrete_ty: {:#?}, ty: {:#?}", generic_ty, substs, concrete_ty,
-                                  ty);
+                            // The type in question can only be inferred in terms of itself. This
+                            // is likely a user code issue, not a compiler issue. Thus, we will
+                            // induce a cycle error by calling the parent query again on the type.
+                            //
+                            // FIXME: Perhaps a better solution would be to have fold_ty()
+                            // itself be a query. Then, a type fold cycle would be detected
+                            // and reported more naturally as part of the query system, rather
+                            // than forcing it here.
+                            //
+                            // FIXME: Need a better span than just one pointing to the type def.
+                            // Should point to a defining use of the type that results in this
+                            // un-normalizable state.
+                            if let Some(param_env_lifted) =
+                                self.tcx().lift_to_global(&self.param_env)
+                            {
+                                if let Some(ty_lifted) = self.tcx().lift_to_global(&concrete_ty) {
+                                    let span = self.tcx().def_span(def_id);
+                                    self.tcx()
+                                        .global_tcx()
+                                        .at(span)
+                                        .normalize_ty_after_erasing_regions(
+                                            param_env_lifted.and(ty_lifted),
+                                        );
+                                    self.tcx().sess.abort_if_errors();
+                                }
+                            }
+                            // If a cycle error can't be emitted, indicate a NoSolution error
+                            // and let the caller handle it.
+                            self.error = true;
+                            return concrete_ty;
                         }
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.anon_depth -= 1;
@@ -149,8 +176,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 let mut orig_values = SmallVec::new();
-                let c_data =
-                    self.infcx.canonicalize_query(&self.param_env.and(*data), &mut orig_values);
+                let c_data = self.infcx
+                    .canonicalize_query(&self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match gcx.normalize_projection_ty(c_data) {
