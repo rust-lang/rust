@@ -38,6 +38,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
+use errors::Applicability;
 
 use std::cell::Cell;
 use std::mem;
@@ -1000,9 +1001,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion(span, "you could try the macro", suggestion.to_string());
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "you could try the macro",
+                        suggestion.to_string(),
+                        Applicability::MaybeIncorrect
+                    );
                 } else {
-                    err.span_suggestion(span, "try", suggestion.to_string());
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "try",
+                        suggestion.to_string(),
+                        Applicability::MaybeIncorrect
+                    );
                 }
             } else {
                 err.help("have you added the `#[macro_use]` on the module/import?");
@@ -1123,10 +1134,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             if let Some(span) = span {
                 let found_use = if found_use { "" } else { "\n" };
                 self.session.struct_span_err(err.use_span, err.warn_msg)
-                    .span_suggestion(
+                    .span_suggestion_with_applicability(
                         span,
                         "instead, import the procedural macro like any other item",
                         format!("use {}::{};{}", err.crate_name, err.name, found_use),
+                        Applicability::MachineApplicable
                     ).emit();
             } else {
                 self.session.struct_span_err(err.use_span, err.warn_msg)

@@ -22,6 +22,7 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use errors::Applicability;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -791,10 +792,11 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 0 => "{}".to_string(),
                 _ => format!("{}{{}}", "{} ".repeat(args.len())),
             };
-            err.span_suggestion(
+            err.span_suggestion_with_applicability(
                 fmt_sp.shrink_to_lo(),
                 "you might be missing a string literal to format with",
                 format!("\"{}\", ", sugg_fmt),
+                Applicability::MaybeIncorrect,
             );
             err.emit();
             return DummyResult::raw_expr(sp);

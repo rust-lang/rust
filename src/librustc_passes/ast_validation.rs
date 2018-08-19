@@ -25,6 +25,7 @@ use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 use errors;
+use errors::Applicability;
 
 struct AstValidator<'a> {
     session: &'a Session,
@@ -185,11 +186,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 );
                 match val.node {
                     ExprKind::Lit(ref v) if v.node.is_numeric() => {
-                        err.span_suggestion(
+                        err.span_suggestion_with_applicability(
                             place.span.between(val.span),
                             "if you meant to write a comparison against a negative value, add a \
                              space in between `<` and `-`",
                             "< -".to_string(),
+                            Applicability::MaybeIncorrect
                         );
                     }
                     _ => {}
