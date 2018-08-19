@@ -1,13 +1,14 @@
 error[E0597]: `pointer` does not live long enough
   --> $DIR/wf-method-late-bound-regions.rs:30:19
    |
-30 |         f2.xmute(&pointer)
+LL |         f2.xmute(&pointer)
    |                   ^^^^^^^ borrowed value does not live long enough
-31 |     };
+LL |     };
    |     - `pointer` dropped here while still borrowed
 ...
-34 | }
+LL | }
    | - borrowed value needs to live until here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

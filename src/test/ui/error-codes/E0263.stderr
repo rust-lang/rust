@@ -1,0 +1,11 @@
+error[E0263]: lifetime name `'a` declared twice in the same scope
+  --> $DIR/E0263.rs:11:16
+   |
+LL | fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
+   |        --      ^^ declared twice
+   |        |
+   |        previous declaration here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0263`.

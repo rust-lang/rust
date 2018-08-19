@@ -1,0 +1,26 @@
+error: unused attribute
+  --> $DIR/lint-unknown-attr.rs:19:1
+   |
+LL | #[dance] mod a {} //~ ERROR unused attribute
+   | ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-unknown-attr.rs:15:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/lint-unknown-attr.rs:21:1
+   |
+LL | #[dance] fn main() {} //~ ERROR unused attribute
+   | ^^^^^^^^
+
+error: unused attribute
+  --> $DIR/lint-unknown-attr.rs:17:1
+   |
+LL | #![mutable_doc] //~ ERROR unused attribute
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,7 +1,7 @@
 error[E0423]: expected value, found struct `Handle`
   --> $DIR/issue-39226.rs:20:17
    |
-20 |         handle: Handle
+LL |         handle: Handle
    |                 ^^^^^^
    |                 |
    |                 did you mean `handle`?
@@ -9,3 +9,4 @@ error[E0423]: expected value, found struct `Handle`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0423`.

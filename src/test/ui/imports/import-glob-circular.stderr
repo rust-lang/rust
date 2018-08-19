@@ -1,0 +1,14 @@
+error[E0425]: cannot find function `f1066` in this scope
+  --> $DIR/import-glob-circular.rs:26:17
+   |
+LL |     fn test() { f1066(); } //~ ERROR cannot find function `f1066` in this scope
+   |                 ^^^^^ not found in this scope
+
+error[E0601]: `main` function not found in crate `import_glob_circular`
+   |
+   = note: consider adding a `main` function to `$DIR/import-glob-circular.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0425, E0601.
+For more information about an error, try `rustc --explain E0425`.

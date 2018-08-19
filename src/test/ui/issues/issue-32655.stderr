@@ -1,0 +1,22 @@
+error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
+  --> $DIR/issue-32655.rs:16:9
+   |
+LL |         #[derive_Clone] //~ ERROR attributes of the form
+   |         ^^^^^^^^^^^^^^^
+...
+LL | foo!();
+   | ------- in this macro invocation
+   |
+   = help: add #![feature(custom_derive)] to the crate attributes to enable
+
+error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
+  --> $DIR/issue-32655.rs:28:5
+   |
+LL |     #[derive_Clone] //~ ERROR attributes of the form
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_derive)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

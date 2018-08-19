@@ -11,9 +11,11 @@
 //! See docs in build/expr/mod.rs
 
 use build::{BlockAnd, BlockAndExtension, Builder};
+use build::ForGuard::{OutsideGuard, RefWithinGuard};
 use build::expr::category::Category;
 use hair::*;
 use rustc::mir::*;
+use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -73,7 +75,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                            Operand::Copy(Place::Local(idx)),
                                                            Operand::Copy(len.clone())));
 
-                let msg = AssertMessage::BoundsCheck {
+                let msg = BoundsCheck {
                     len: Operand::Move(len),
                     index: Operand::Copy(Place::Local(idx))
                 };
@@ -85,8 +87,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Place::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
-                let index = this.var_indices[&id];
-                block.and(Place::Local(index))
+                let place = if this.is_bound_var_in_guard(id) &&
+                    this.hir.tcx().all_pat_vars_are_implicit_refs_within_guards()
+                {
+                    let index = this.var_local_id(id, RefWithinGuard);
+                    Place::Local(index).deref()
+                } else {
+                    let index = this.var_local_id(id, OutsideGuard);
+                    Place::Local(index)
+                };
+                block.and(place)
             }
             ExprKind::StaticRef { id } => {
                 block.and(Place::Static(Box::new(Static { def_id: id, ty: expr.ty })))

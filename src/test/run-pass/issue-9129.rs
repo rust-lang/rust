@@ -10,7 +10,6 @@
 
 // ignore-pretty unreported
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 pub trait bomb { fn boom(&self, _: Ident); }

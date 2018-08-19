@@ -1,0 +1,57 @@
+warning: Trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:29:1
+   |
+LL | / fn underspecified_bound() -> u8
+LL | | where
+LL | |     B: A
+LL | | {
+LL | |     B::get_x()
+LL | | }
+   | |_^
+   |
+   = note: #[warn(trivial_bounds)] on by default
+
+warning: Trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:36:1
+   |
+LL | / fn inconsistent_bound() -> i32
+LL | | where
+LL | |     B: A<X = i32>
+LL | | {
+LL | |     B::get_x()
+LL | | }
+   | |_^
+
+warning: Trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:43:1
+   |
+LL | / fn redundant_bound() -> u8
+LL | | where
+LL | |     B: A<X = u8>
+LL | | {
+LL | |     B::get_x()
+LL | | }
+   | |_^
+
+warning: Trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:50:1
+   |
+LL | / fn inconsistent_dup_bound() -> i32
+LL | | where
+LL | |     B: A<X = i32> + A
+LL | | {
+LL | |     B::get_x()
+LL | | }
+   | |_^
+
+warning: Trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:57:1
+   |
+LL | / fn redundant_dup_bound() -> u8
+LL | | where
+LL | |     B: A<X = u8> + A
+LL | | {
+LL | |     B::get_x()
+LL | | }
+   | |_^
+

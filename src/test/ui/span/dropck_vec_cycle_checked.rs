@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z nll-subminimal-causes
+// (Work around rust-lang/rust#49998 by opting into nll-subminimal-causes.)
+
 // Reject mixing cyclic structure and Drop when using Vec.
 //
 // (Compare against compile-fail/dropck_arr_cycle_checked.rs)

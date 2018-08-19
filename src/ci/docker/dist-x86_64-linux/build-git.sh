@@ -12,7 +12,7 @@
 set -ex
 source shared.sh
 
-curl https://www.kernel.org/pub/software/scm/git/git-2.10.0.tar.gz | tar xzf -
+curl -L https://www.kernel.org/pub/software/scm/git/git-2.10.0.tar.gz | tar xzf -
 
 cd git-2.10.0
 make configure

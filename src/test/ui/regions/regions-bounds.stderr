@@ -1,0 +1,41 @@
+error[E0308]: mismatched types
+  --> $DIR/regions-bounds.rs:19:12
+   |
+LL |     return e; //~ ERROR mismatched types
+   |            ^ lifetime mismatch
+   |
+   = note: expected type `an_enum<'b>`
+              found type `an_enum<'a>`
+note: the lifetime 'a as defined on the function body at 18:10...
+  --> $DIR/regions-bounds.rs:18:10
+   |
+LL | fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
+   |          ^^
+note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 18:13
+  --> $DIR/regions-bounds.rs:18:13
+   |
+LL | fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
+   |             ^^
+
+error[E0308]: mismatched types
+  --> $DIR/regions-bounds.rs:23:12
+   |
+LL |     return e; //~ ERROR mismatched types
+   |            ^ lifetime mismatch
+   |
+   = note: expected type `a_class<'b>`
+              found type `a_class<'a>`
+note: the lifetime 'a as defined on the function body at 22:10...
+  --> $DIR/regions-bounds.rs:22:10
+   |
+LL | fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
+   |          ^^
+note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 22:13
+  --> $DIR/regions-bounds.rs:22:13
+   |
+LL | fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
+   |             ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

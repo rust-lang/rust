@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `b`
+  --> $DIR/borrowck-consume-upcast-box.rs:20:13
+   |
+LL |     consume(b);
+   |             - value moved here
+LL |     consume(b); //~ ERROR use of moved value
+   |             ^ value used here after move
+   |
+   = note: move occurs because `b` has type `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

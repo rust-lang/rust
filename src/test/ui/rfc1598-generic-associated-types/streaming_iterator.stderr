@@ -1,20 +1,39 @@
-error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:27:41
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/streaming_iterator.rs:11:12
    |
-27 |     bar: <T as StreamingIterator>::Item<'static>,
-   |                                         ^^^^^^^ lifetime parameter not allowed on this type
-
-error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:35:64
-   |
-35 | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
-   |                                                                ^^ lifetime parameter not allowed on this type
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:21:48
+  --> $DIR/streaming_iterator.rs:28:41
    |
-21 |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
-   |                                                ^^ lifetime parameter not allowed on this type
+LL |     bar: <T as StreamingIterator>::Item<'static>,
+   |                                         ^^^^^^^ lifetime parameter not allowed
 
-error: aborting due to 3 previous errors
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:36:64
+   |
+LL | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
+   |                                                                ^^ lifetime parameter not allowed
 
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:22:48
+   |
+LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
+   |                                                ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:48:37
+   |
+LL |     type Item<'a> = (usize, I::Item<'a>);
+   |                                     ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:50:48
+   |
+LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
+   |                                                ^^ lifetime parameter not allowed
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0110`.

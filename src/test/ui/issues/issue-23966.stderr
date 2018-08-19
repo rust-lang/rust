@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): std::ops::FnMut<(_, char)>` is not satisfied
+  --> $DIR/issue-23966.rs:12:16
+   |
+LL |     "".chars().fold(|_, _| (), ());
+   |                ^^^^ the trait `std::ops::FnMut<(_, char)>` is not implemented for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

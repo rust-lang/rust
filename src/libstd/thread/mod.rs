@@ -191,7 +191,7 @@ use time::Duration;
 #[macro_use] mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, LocalKeyState, AccessError};
+pub use self::local::{LocalKey, AccessError};
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -202,6 +202,9 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 // where fast TLS was not available; end-user code is compiled with fast TLS
 // where available, but both are needed.
 
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
+#[cfg(target_arch = "wasm32")]
+#[doc(hidden)] pub use self::local::statik::Key as __StaticLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
 #[doc(hidden)] pub use self::local::fast::Key as __FastLocalKeyInner;
@@ -652,7 +655,7 @@ pub fn panicking() -> bool {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup.
@@ -676,7 +679,7 @@ pub fn sleep_ms(ms: u32) {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup. Platforms which do not support
@@ -728,7 +731,8 @@ const NOTIFIED: usize = 2;
 ///   specifying a maximum time to block the thread for.
 ///
 /// * The [`unpark`] method on a [`Thread`] atomically makes the token available
-///   if it wasn't already.
+///   if it wasn't already. Because the token is initially absent, [`unpark`]
+///   followed by [`park`] will result in the second call returning immediately.
 ///
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
 /// locked and unlocked using `park` and `unpark`.
@@ -763,6 +767,8 @@ const NOTIFIED: usize = 2;
 /// // Let some time pass for the thread to be spawned.
 /// thread::sleep(Duration::from_millis(10));
 ///
+/// // There is no race condition here, if `unpark`
+/// // happens first, `park` will return immediately.
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -793,7 +799,10 @@ pub fn park() {
     let mut m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park state"),
     }
     loop {
@@ -837,7 +846,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// See the [park documentation][park] for more details.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
@@ -879,7 +888,10 @@ pub fn park_timeout(dur: Duration) {
     let m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park_timeout state"),
     }
 
@@ -928,23 +940,22 @@ pub struct ThreadId(u64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
+        // We never call `GUARD.init()`, so it is UB to attempt to
+        // acquire this mutex reentrantly!
         static GUARD: mutex::Mutex = mutex::Mutex::new();
         static mut COUNTER: u64 = 0;
 
         unsafe {
-            GUARD.lock();
+            let _guard = GUARD.lock();
 
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == ::u64::MAX {
-                GUARD.unlock();
                 panic!("failed to generate unique thread ID: bitspace exhausted");
             }
 
             let id = COUNTER;
             COUNTER += 1;
-
-            GUARD.unlock();
 
             ThreadId(id)
         }
@@ -1169,7 +1180,7 @@ impl fmt::Debug for Thread {
 ///
 /// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
+pub type Result<T> = ::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the child thread
 // and the parent thread. Memory is shared through the `Arc` within and there's
@@ -1269,6 +1280,11 @@ impl<T> JoinInner<T> {
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
+
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Send for JoinHandle<T> {}
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Sync for JoinHandle<T> {}
 
 impl<T> JoinHandle<T> {
     /// Extracts a handle to the underlying thread.
@@ -1432,7 +1448,7 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<Fn() + Send>) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<dyn Fn() + Send>) {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
@@ -1479,7 +1495,7 @@ mod tests {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Box<Fn() + Send> {
+        fn child_no(x: u32) -> Box<dyn Fn() + Send> {
             return Box::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1)());
@@ -1525,10 +1541,10 @@ mod tests {
     #[test]
     fn test_try_panic_message_any() {
         match thread::spawn(move|| {
-            panic!(box 413u16 as Box<Any + Send>);
+            panic!(box 413u16 as Box<dyn Any + Send>);
         }).join() {
             Err(e) => {
-                type T = Box<Any + Send>;
+                type T = Box<dyn Any + Send>;
                 assert!(e.is::<T>());
                 let any = e.downcast::<T>().unwrap();
                 assert!(any.is::<u16>());

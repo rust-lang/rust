@@ -1,27 +1,26 @@
 error[E0599]: no method named `f9` found for type `usize` in the current scope
   --> $DIR/issue-7575.rs:74:18
    |
-74 |     u.f8(42) + u.f9(342) + m.fff(42)
-   |                  ^^
+LL |     u.f8(42) + u.f9(342) + m.fff(42)
+   |                  ^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-   = help: try with `usize::f9`
 note: candidate #1 is defined in the trait `CtxtFn`
   --> $DIR/issue-7575.rs:16:5
    |
-16 |     fn f9(_: usize) -> usize;
+LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
   --> $DIR/issue-7575.rs:20:5
    |
-20 |     fn f9(_: usize) -> usize;
+LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
   --> $DIR/issue-7575.rs:29:5
    |
-29 |     fn f9(_: usize) -> usize;
+LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `UnusedTrait::f9(u, 342)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -33,32 +32,33 @@ note: candidate #3 is defined in the trait `UnusedTrait`
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
   --> $DIR/issue-7575.rs:74:30
    |
-48 | struct Myisize(isize);
+LL | struct Myisize(isize);
    | ---------------------- method `fff` not found for this
 ...
-74 |     u.f8(42) + u.f9(342) + m.fff(42)
-   |                              ^^^
+LL |     u.f8(42) + u.f9(342) + m.fff(42)
+   |                            --^^^
+   |                            | |
+   |                            | this is an associated function, not a method
+   |                            help: use associated function syntax instead: `Myisize::fff`
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-   = help: try with `Myisize::fff`
-note: candidate #1 is defined in an impl for the type `Myisize`
+note: the candidate is defined in an impl for the type `Myisize`
   --> $DIR/issue-7575.rs:51:5
    |
-51 |     fn fff(i: isize) -> isize {
+LL |     fn fff(i: isize) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `is_str` found for type `T` in the current scope
   --> $DIR/issue-7575.rs:82:7
    |
-82 |     t.is_str()
-   |       ^^^^^^
+LL |     t.is_str()
+   |       ^^^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-   = help: try with `T::is_str`
-note: candidate #1 is defined in the trait `ManyImplTrait`
+note: the candidate is defined in the trait `ManyImplTrait`
   --> $DIR/issue-7575.rs:57:5
    |
-57 |     fn is_str() -> bool {
+LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -67,3 +67,4 @@ note: candidate #1 is defined in the trait `ManyImplTrait`
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0599`.

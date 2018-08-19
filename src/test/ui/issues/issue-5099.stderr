@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/issue-5099.rs:12:31
+   |
+LL | trait B < A > { fn a() -> A { this.a } } //~ ERROR cannot find value `this` in this scope
+   |                               ^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

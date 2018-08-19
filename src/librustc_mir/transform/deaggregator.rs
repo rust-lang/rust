@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,118 +18,74 @@ pub struct Deaggregator;
 impl MirPass for Deaggregator {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let node_path = tcx.item_path_str(source.def_id);
-        debug!("running on: {:?}", node_path);
-        // we only run when mir_opt_level > 2
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 2 {
-            return;
-        }
-
-        // Don't run on constant MIR, because trans might not be able to
-        // evaluate the modified MIR.
-        // FIXME(eddyb) Remove check after miri is merged.
-        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
-        match (tcx.hir.body_owner_kind(id), source.promoted) {
-            (hir::BodyOwnerKind::Fn, None) => {},
-            _ => return
-        }
-        // In fact, we might not want to trigger in other cases.
-        // Ex: when we could use SROA.  See issue #35259
-
-        for bb in mir.basic_blocks_mut() {
-            let mut curr: usize = 0;
-            while let Some(idx) = get_aggregate_statement_index(curr, &bb.statements) {
-                // do the replacement
-                debug!("removing statement {:?}", idx);
-                let src_info = bb.statements[idx].source_info;
-                let suffix_stmts = bb.statements.split_off(idx+1);
-                let orig_stmt = bb.statements.pop().unwrap();
-                let (lhs, rhs) = match orig_stmt.kind {
-                    StatementKind::Assign(ref lhs, ref rhs) => (lhs, rhs),
-                    _ => span_bug!(src_info.span, "expected assign, not {:?}", orig_stmt),
-                };
-                let (agg_kind, operands) = match rhs {
-                    &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
-                    _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
-                };
-                let (adt_def, variant, substs) = match **agg_kind {
-                    AggregateKind::Adt(adt_def, variant, substs, None)
-                        => (adt_def, variant, substs),
-                    _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
-                };
-                let n = bb.statements.len();
-                bb.statements.reserve(n + operands.len() + suffix_stmts.len());
-                for (i, op) in operands.iter().enumerate() {
-                    let ref variant_def = adt_def.variants[variant];
-                    let ty = variant_def.fields[i].ty(tcx, substs);
-                    let rhs = Rvalue::Use(op.clone());
-
-                    let lhs_cast = if adt_def.is_enum() {
-                        Place::Projection(Box::new(PlaceProjection {
-                            base: lhs.clone(),
-                            elem: ProjectionElem::Downcast(adt_def, variant),
-                        }))
+        let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
+        let local_decls = &*local_decls;
+        for bb in basic_blocks {
+            bb.expand_statements(|stmt| {
+                // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
+                if let StatementKind::Assign(_, ref rhs) = stmt.kind {
+                    if let Rvalue::Aggregate(ref kind, _) = *rhs {
+                        // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
+                        if let AggregateKind::Array(_) = **kind {
+                            return None;
+                        }
                     } else {
-                        lhs.clone()
-                    };
-
-                    let lhs_proj = Place::Projection(Box::new(PlaceProjection {
-                        base: lhs_cast,
-                        elem: ProjectionElem::Field(Field::new(i), ty),
-                    }));
-                    let new_statement = Statement {
-                        source_info: src_info,
-                        kind: StatementKind::Assign(lhs_proj, rhs),
-                    };
-                    debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
-                    bb.statements.push(new_statement);
+                        return None;
+                    }
+                } else {
+                    return None;
                 }
 
-                // if the aggregate was an enum, we need to set the discriminant
-                if adt_def.is_enum() {
-                    let set_discriminant = Statement {
-                        kind: StatementKind::SetDiscriminant {
-                            place: lhs.clone(),
-                            variant_index: variant,
-                        },
-                        source_info: src_info,
-                    };
-                    bb.statements.push(set_discriminant);
+                let stmt = stmt.replace_nop();
+                let source_info = stmt.source_info;
+                let (mut lhs, kind, operands) = match stmt.kind {
+                    StatementKind::Assign(lhs, Rvalue::Aggregate(kind, operands))
+                        => (lhs, kind, operands),
+                    _ => bug!()
                 };
 
-                curr = bb.statements.len();
-                bb.statements.extend(suffix_stmts);
-            }
+                let mut set_discriminant = None;
+                let active_field_index = match *kind {
+                    AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                        if adt_def.is_enum() {
+                            set_discriminant = Some(Statement {
+                                kind: StatementKind::SetDiscriminant {
+                                    place: lhs.clone(),
+                                    variant_index,
+                                },
+                                source_info,
+                            });
+                            lhs = lhs.downcast(adt_def, variant_index);
+                        }
+                        active_field_index
+                    }
+                    _ => None
+                };
+
+                Some(operands.into_iter().enumerate().map(move |(i, op)| {
+                    let lhs_field = if let AggregateKind::Array(_) = *kind {
+                        // FIXME(eddyb) `offset` should be u64.
+                        let offset = i as u32;
+                        assert_eq!(offset as usize, i);
+                        lhs.clone().elem(ProjectionElem::ConstantIndex {
+                            offset,
+                            // FIXME(eddyb) `min_length` doesn't appear to be used.
+                            min_length: offset + 1,
+                            from_end: false
+                        })
+                    } else {
+                        let ty = op.ty(local_decls, tcx);
+                        let field = Field::new(active_field_index.unwrap_or(i));
+                        lhs.clone().field(field, ty)
+                    };
+                    Statement {
+                        source_info,
+                        kind: StatementKind::Assign(lhs_field, Rvalue::Use(op)),
+                    }
+                }).chain(set_discriminant))
+            });
         }
     }
-}
-
-fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
-                                         statements: &Vec<Statement<'tcx>>)
-                                         -> Option<usize> {
-    for i in start..statements.len() {
-        let ref statement = statements[i];
-        let rhs = match statement.kind {
-            StatementKind::Assign(_, ref rhs) => rhs,
-            _ => continue,
-        };
-        let (kind, operands) = match rhs {
-            &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),
-            _ => continue,
-        };
-        let (adt_def, variant) = match **kind {
-            AggregateKind::Adt(adt_def, variant, _, None) => (adt_def, variant),
-            _ => continue,
-        };
-        if operands.len() == 0 {
-            // don't deaggregate ()
-            continue;
-        }
-        debug!("getting variant {:?}", variant);
-        debug!("for adt_def {:?}", adt_def);
-        return Some(i);
-    };
-    None
 }

@@ -1,0 +1,18 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-in-obj-type-static.rs:24:5
+   |
+LL | struct Foo<T> {
+   |            - help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     // needs T: 'static
+LL |     x: Object<&'static T> //~ ERROR E0310
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...so that the reference type `&'static T` does not outlive the data it points at
+  --> $DIR/wf-in-obj-type-static.rs:24:5
+   |
+LL |     x: Object<&'static T> //~ ERROR E0310
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

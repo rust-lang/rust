@@ -23,6 +23,8 @@
 // tend to be absent in simple code, so subtle breakage in them can
 // leave a quite hard-to-find trail of destruction.
 
+// ignore-tidy-linelength
+
 fn main() {
     let nodrop_x = false;
     let nodrop_y;
@@ -46,6 +48,7 @@ fn main() {
 //         _2 = move _3;
 //         StorageDead(_3);
 //         StorageLive(_4);
+//         UserAssertTy(Canonical { variables: [], value: std::option::Option<std::boxed::Box<u32>> }, _4);
 //         _4 = std::option::Option<std::boxed::Box<u32>>::None;
 //         StorageLive(_5);
 //         StorageLive(_6);

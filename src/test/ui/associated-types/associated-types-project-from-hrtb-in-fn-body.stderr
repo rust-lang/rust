@@ -1,0 +1,14 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:32:40
+   |
+LL |     x: <I as Foo<&'a isize>>::A,
+   |                  --------- these two types are declared with different lifetimes...
+LL |     y: <I as Foo<&'b isize>>::A,
+   |                  ---------
+...
+LL |     let z: I::A = if cond { x } else { y };
+   |                                        ^ ...but data from `x` flows into `y` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

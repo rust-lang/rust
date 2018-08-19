@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // This file illustrates how padding is handled: alignment
 // requirements can lead to the introduction of padding, either before
@@ -18,8 +18,6 @@
 // It avoids using u64/i64 because on some targets that is only 4-byte
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
-#![feature(attr_literals)]
-#![feature(repr_align)]
 #![feature(start)]
 #![allow(dead_code)]
 

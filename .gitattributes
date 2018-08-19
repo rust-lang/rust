@@ -4,7 +4,8 @@
 *.cpp rust
 *.h rust
 *.rs rust
+*.fixed linguist-language=Rust
 src/etc/installer/gfx/* binary
 *.woff binary
 src/vendor/** -text
-Cargo.lock -merge
+Cargo.lock -merge linguist-generated=false

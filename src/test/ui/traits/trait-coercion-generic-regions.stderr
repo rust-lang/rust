@@ -1,0 +1,14 @@
+error[E0597]: `person` does not live long enough
+  --> $DIR/trait-coercion-generic-regions.rs:27:25
+   |
+LL |     let person: &str = &person;  //~ ERROR `person` does not live long enough
+   |                         ^^^^^^ borrowed value does not live long enough
+LL |     let s: Box<Trait<&'static str>> = Box::new(Struct { person: person });
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -21,7 +21,9 @@ use thread::JoinHandle;
 #[allow(deprecated)]
 pub type RawPthread = pthread_t;
 
-/// Unix-specific extensions to `std::thread::JoinHandle`
+/// Unix-specific extensions to [`thread::JoinHandle`].
+///
+/// [`thread::JoinHandle`]: ../../../../std/thread/struct.JoinHandle.html
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 pub trait JoinHandleExt {
     /// Extracts the raw pthread_t without taking ownership

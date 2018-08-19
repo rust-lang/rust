@@ -63,10 +63,9 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(rustc_diagnostic_macros)]
-#![feature(staged_api)]
 
 #[macro_use] extern crate syntax;
 
@@ -82,5 +81,4 @@ pub mod registry;
 pub mod load;
 pub mod build;
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_plugin, DIAGNOSTICS }

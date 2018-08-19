@@ -1,17 +1,16 @@
 error[E0599]: no method named `is_empty` found for type `Foo` in the current scope
   --> $DIR/method-suggestion-no-duplication.rs:19:15
    |
-14 | struct Foo;
+LL | struct Foo;
    | ----------- method `is_empty` not found for this
 ...
-19 |     foo(|s| s.is_empty());
+LL |     foo(|s| s.is_empty());
    |               ^^^^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `is_empty`, perhaps you need to implement one of them:
+   = note: the following trait defines an item `is_empty`, perhaps you need to implement it:
            candidate #1: `std::iter::ExactSizeIterator`
-           candidate #2: `core::slice::SliceExt`
-           candidate #3: `core::str::StrExt`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

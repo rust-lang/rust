@@ -1,0 +1,8 @@
+error: arguments to macro_use are not allowed here
+  --> $DIR/module-macro_use-arguments.rs:11:1
+   |
+LL | #[macro_use(foo, bar)] //~ ERROR arguments to macro_use are not allowed here
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

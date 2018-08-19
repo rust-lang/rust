@@ -1,0 +1,30 @@
+error[E0268]: `break` outside of loop
+  --> $DIR/issue-43162.rs:13:5
+   |
+LL |     break true; //~ ERROR E0268
+   |     ^^^^^^^^^^ cannot break outside of a loop
+
+error[E0268]: `break` outside of loop
+  --> $DIR/issue-43162.rs:17:5
+   |
+LL |     break {}; //~ ERROR E0268
+   |     ^^^^^^^^ cannot break outside of a loop
+
+error[E0308]: mismatched types
+  --> $DIR/issue-43162.rs:11:18
+   |
+LL |   fn foo() -> bool {
+   |  __________________^
+LL | |     //~^ ERROR E0308
+LL | |     break true; //~ ERROR E0268
+   | |               - help: consider removing this semicolon
+LL | | }
+   | |_^ expected bool, found ()
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0268, E0308.
+For more information about an error, try `rustc --explain E0268`.

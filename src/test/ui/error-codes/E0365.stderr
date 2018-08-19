@@ -1,0 +1,11 @@
+error[E0365]: `foo` is private, and cannot be re-exported
+  --> $DIR/E0365.rs:15:9
+   |
+LL | pub use foo as foo2;
+   |         ^^^^^^^^^^^ re-export of private `foo`
+   |
+   = note: consider declaring type or module `foo` with `pub`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0365`.

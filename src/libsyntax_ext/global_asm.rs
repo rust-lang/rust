@@ -14,11 +14,14 @@
 /// "file-scoped", or "module-level" assembly. These synonyms
 /// all correspond to LLVM's module-level inline assembly instruction.
 ///
-/// For example, `global_asm!("some assembly here")` translates to
+/// For example, `global_asm!("some assembly here")` codegens to
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
+use rustc_data_structures::small_vec::OneVector;
+
 use syntax::ast;
+use syntax::codemap::respan;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
@@ -27,13 +30,11 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use syntax::tokenstream;
 
-use syntax::util::small_vector::SmallVector;
-
 pub const MACRO: &'static str = "global_asm";
 
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
-                              tts: &[tokenstream::TokenTree]) -> Box<base::MacResult + 'cx> {
+                              tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_global_asm() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        MACRO,
@@ -51,7 +52,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         None => return DummyResult::any(sp),
     };
 
-    MacEager::items(SmallVector::one(P(ast::Item {
+    MacEager::items(OneVector::one(P(ast::Item {
         ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -59,7 +60,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
             asm,
             ctxt: cx.backtrace(),
         })),
-        vis: ast::Visibility::Inherited,
+        vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
         span: sp,
         tokens: None,
     })))

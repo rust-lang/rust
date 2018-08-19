@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `(T1(()), V2(_))` not covered
+  --> $DIR/issue-15129.rs:22:11
+   |
+LL |     match (T::T1(()), V::V2(true)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `(T1(()), V2(_))` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

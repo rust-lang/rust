@@ -31,11 +31,11 @@ pub trait Foo {
 // @has - '//*[@class="sidebar-title"][@href="#fields"]' 'Fields'
 // @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f"]' 'f'
 // @has - '//*[@class="sidebar-links"]/a[@href="#structfield.u"]' 'u'
-// @!has - '//*[@class="sidebar-links"]/a' 'w'
+// @!has - '//*[@class="sidebar-links"]/a' 'waza'
 pub struct Bar {
     pub f: u32,
     pub u: u32,
-    w: u32,
+    waza: u32,
 }
 
 // @has foo/enum.En.html
@@ -51,9 +51,9 @@ pub enum En {
 // @has - '//*[@class="sidebar-title"][@href="#fields"]' 'Fields'
 // @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f1"]' 'f1'
 // @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f2"]' 'f2'
-// @!has - '//*[@class="sidebar-links"]/a' 'w'
+// @!has - '//*[@class="sidebar-links"]/a' 'waza'
 pub union MyUnion {
     pub f1: u32,
     pub f2: f32,
-    w: u32,
+    waza: u32,
 }

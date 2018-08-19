@@ -1,0 +1,12 @@
+error[E0597]: `b` does not live long enough
+  --> $DIR/ref-escapes-but-not-over-yield.rs:24:13
+   |
+LL |         a = &b;
+   |             ^^ borrowed value does not live long enough
+LL |         //~^ ERROR `b` does not live long enough
+LL |     };
+   |     - `b` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

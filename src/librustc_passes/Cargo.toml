@@ -11,8 +11,8 @@ crate-type = ["dylib"]
 [dependencies]
 log = "0.4"
 rustc = { path = "../librustc" }
-rustc_const_eval = { path = "../librustc_const_eval" }
-rustc_const_math = { path = "../librustc_const_math" }
+rustc_mir = { path = "../librustc_mir"}
+rustc_data_structures = { path = "../librustc_data_structures" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_errors = { path = "../librustc_errors" }

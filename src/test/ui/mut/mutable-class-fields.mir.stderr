@@ -1,0 +1,14 @@
+error[E0384]: cannot assign twice to immutable variable `nyan`
+  --> $DIR/mutable-class-fields.rs:28:3
+   |
+LL |   let nyan : cat = cat(52, 99);
+   |       ----
+   |       |
+   |       first assignment to `nyan`
+   |       consider changing this to `mut nyan`
+LL |   nyan.how_hungry = 0; //[ast]~ ERROR cannot assign
+   |   ^^^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0384`.

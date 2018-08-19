@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    format!();
-    format!("" 1);
-    format!("", 1 1);
+    format!(); //~ ERROR requires at least a format string argument
+    format!("" 1); //~ ERROR expected token: `,`
+    format!("", 1 1); //~ ERROR expected token: `,`
 }

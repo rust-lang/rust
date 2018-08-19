@@ -1,0 +1,16 @@
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:15:11
+   |
+LL | fn foo(_: Zero())
+   |           ^^^^^^ expected no type arguments
+
+error[E0220]: associated type `Output` not found for `Zero`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:15:15
+   |
+LL | fn foo(_: Zero())
+   |               ^^ associated type `Output` not found
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0220, E0244.
+For more information about an error, try `rustc --explain E0220`.

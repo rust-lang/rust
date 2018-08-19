@@ -49,14 +49,14 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 /// // Type inference lets us omit an explicit type signature (which
-/// // would be `HashSet<&str>` in this example).
+/// // would be `HashSet<String>` in this example).
 /// let mut books = HashSet::new();
 ///
 /// // Add some books.
-/// books.insert("A Dance With Dragons");
-/// books.insert("To Kill a Mockingbird");
-/// books.insert("The Odyssey");
-/// books.insert("The Great Gatsby");
+/// books.insert("A Dance With Dragons".to_string());
+/// books.insert("To Kill a Mockingbird".to_string());
+/// books.insert("The Odyssey".to_string());
+/// books.insert("The Great Gatsby".to_string());
 ///
 /// // Check for a specific one.
 /// if !books.contains("The Winds of Winter") {
@@ -80,17 +80,17 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 /// #[derive(Hash, Eq, PartialEq, Debug)]
-/// struct Viking<'a> {
-///     name: &'a str,
+/// struct Viking {
+///     name: String,
 ///     power: usize,
 /// }
 ///
 /// let mut vikings = HashSet::new();
 ///
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Olaf", power: 4 });
-/// vikings.insert(Viking { name: "Harald", power: 8 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Olaf".to_string(), power: 4 });
+/// vikings.insert(Viking { name: "Harald".to_string(), power: 8 });
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
@@ -104,7 +104,7 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// use std::collections::HashSet;
 ///
 /// fn main() {
-///     let viking_names: HashSet<&str> =
+///     let viking_names: HashSet<&'static str> =
 ///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 ///     // use the values stored in the set
 /// }
@@ -290,6 +290,34 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.map.shrink_to_fit()
+    }
+
+    /// Shrinks the capacity of the set with a lower limit. It will drop
+    /// down no lower than the supplied limit while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shrink_to)]
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::with_capacity(100);
+    /// set.insert(1);
+    /// set.insert(2);
+    /// assert!(set.capacity() >= 100);
+    /// set.shrink_to(10);
+    /// assert!(set.capacity() >= 10);
+    /// set.shrink_to(0);
+    /// assert!(set.capacity() >= 2);
+    /// ```
+    #[inline]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.map.shrink_to(min_capacity)
     }
 
     /// An iterator visiting all elements in arbitrary order.
@@ -724,7 +752,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
+    /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
@@ -1097,7 +1125,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1124,7 +1152,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<K> FusedIterator for IntoIter<K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1155,7 +1183,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1208,7 +1236,7 @@ impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1244,7 +1272,7 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Difference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1283,7 +1311,7 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1307,7 +1335,7 @@ impl<'a, T, S> Clone for Union<'a, T, S> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Union<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1745,7 +1773,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<isize> = xs.iter().cloned().collect();
+        let mut set: HashSet<i32> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));

@@ -1,0 +1,13 @@
+error: recursion limit reached while expanding the macro `prob1`
+  --> $DIR/issue-16098.rs:17:18
+   |
+LL |             $n + prob1!($n - 1); //~ ERROR recursion limit reached while expanding the macro `prob1`
+   |                  ^^^^^^^^^^^^^^
+...
+LL |     println!("Problem 1: {}", prob1!(1000));
+   |                               ------------ in this macro invocation
+   |
+   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+
+error: aborting due to previous error
+

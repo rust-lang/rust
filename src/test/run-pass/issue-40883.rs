@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // check that we don't have linear stack usage with multiple calls to `push`
-// min-llvm-version 4.0
 
 #![feature(test)]
 

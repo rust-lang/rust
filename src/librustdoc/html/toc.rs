@@ -157,7 +157,7 @@ impl TocBuilder {
                 sec_number.push_str("0.");
             }
             let number = toc.count_entries_with_level(level);
-            sec_number.push_str(&format!("{}", number + 1))
+            sec_number.push_str(&(number + 1).to_string())
         }
 
         self.chain.push(TocEntry {

@@ -24,7 +24,7 @@ macro_rules! fake_field_stmt {
 
 macro_rules! fake_anon_field_stmt {
      () => {
-          (1).0 //~ ERROR no field
+          (1).0 //~ ERROR doesn't have fields
      }
 }
 
@@ -42,19 +42,19 @@ macro_rules! fake_field_expr {
 
 macro_rules! fake_anon_field_expr {
      () => {
-          (1).0 //~ ERROR no field
+          (1).0 //~ ERROR doesn't have fields
      }
 }
 
 macro_rules! real_method_stmt {
      () => {
-          2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+          2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
      }
 }
 
 macro_rules! real_method_expr {
      () => {
-          2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+          2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
      }
 }
 

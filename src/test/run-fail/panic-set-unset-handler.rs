@@ -10,8 +10,6 @@
 
 // error-pattern:thread 'main' panicked at 'foobar'
 
-#![feature(panic_handler)]
-
 use std::panic;
 
 fn main() {

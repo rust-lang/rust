@@ -1,0 +1,13 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-access-to-field.rs:21:12
+   |
+LL |     consume(x.into_iter().next().unwrap());
+   |             - value moved here
+LL |     touch(&x[0]); //~ ERROR use of moved value: `x`
+   |            ^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

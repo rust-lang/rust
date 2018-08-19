@@ -381,6 +381,39 @@ impl fmt::Debug for ChildStderr {
 ///
 /// let hello = output.stdout;
 /// ```
+///
+/// `Command` can be reused to spawn multiple processes. The builder methods
+/// change the command without needing to immediately spawn the process.
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// let mut echo_hello = Command::new("sh");
+/// echo_hello.arg("-c")
+///           .arg("echo hello");
+/// let hello_1 = echo_hello.output().expect("failed to execute process");
+/// let hello_2 = echo_hello.output().expect("failed to execute process");
+/// ```
+///
+/// Similarly, you can call builder methods after spawning a process and then
+/// spawn a new process with the modified settings.
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// let mut list_dir = Command::new("ls");
+///
+/// // Execute `ls` in the current directory of the program.
+/// list_dir.status().expect("process failed to execute");
+///
+/// println!("");
+///
+/// // Change `ls` to execute in the root directory.
+/// list_dir.current_dir("/");
+///
+/// // And then execute `ls` again but in the root directory.
+/// list_dir.status().expect("process failed to execute");
+/// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
     inner: imp::Command,
@@ -813,13 +846,13 @@ impl fmt::Debug for Output {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 
         let stdout_utf8 = str::from_utf8(&self.stdout);
-        let stdout_debug: &fmt::Debug = match stdout_utf8 {
+        let stdout_debug: &dyn fmt::Debug = match stdout_utf8 {
             Ok(ref str) => str,
             Err(_) => &self.stdout
         };
 
         let stderr_utf8 = str::from_utf8(&self.stderr);
-        let stderr_debug: &fmt::Debug = match stderr_utf8 {
+        let stderr_debug: &dyn fmt::Debug = match stderr_utf8 {
             Ok(ref str) => str,
             Err(_) => &self.stderr
         };
@@ -1080,9 +1113,54 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+/// This type represents the status code a process can return to its
+/// parent under normal termination.
+///
+/// Numeric values used in this type don't have portable meanings, and
+/// different platforms may mask different amounts of them.
+///
+/// For the platform's canonical successful and unsuccessful codes, see
+/// the [`SUCCESS`] and [`FAILURE`] associated items.
+///
+/// [`SUCCESS`]: #associatedconstant.SUCCESS
+/// [`FAILURE`]: #associatedconstant.FAILURE
+///
+/// **Warning**: While various forms of this were discussed in [RFC #1937],
+/// it was ultimately cut from that RFC, and thus this type is more subject
+/// to change even than the usual unstable item churn.
+///
+/// [RFC #1937]: https://github.com/rust-lang/rfcs/pull/1937
+#[derive(Clone, Copy, Debug)]
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+pub struct ExitCode(imp::ExitCode);
+
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+impl ExitCode {
+    /// The canonical ExitCode for successful termination on this platform.
+    ///
+    /// Note that a `()`-returning `main` implicitly results in a successful
+    /// termination, so there's no need to return this from `main` unless
+    /// you're also returning other possible codes.
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    pub const SUCCESS: ExitCode = ExitCode(imp::ExitCode::SUCCESS);
+
+    /// The canonical ExitCode for unsuccessful termination on this platform.
+    ///
+    /// If you're only returning this and `SUCCESS` from `main`, consider
+    /// instead returning `Err(_)` and `Ok(())` respectively, which will
+    /// return the same codes (but will also `eprintln!` the error).
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+}
+
 impl Child {
-    /// Forces the child to exit. This is equivalent to sending a
-    /// SIGKILL on unix platforms.
+    /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
+    /// error is returned.
+    ///
+    /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function,
+    /// especially the [`Other`] kind might change to more specific kinds in the future.
+    ///
+    /// This is equivalent to sending a SIGKILL on Unix platforms.
     ///
     /// # Examples
     ///
@@ -1098,6 +1176,10 @@ impl Child {
     ///     println!("yes command didn't start");
     /// }
     /// ```
+    ///
+    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
+    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
+    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
@@ -1380,16 +1462,72 @@ pub fn abort() -> ! {
 /// Basic usage:
 ///
 /// ```no_run
-/// #![feature(getpid)]
 /// use std::process;
 ///
 /// println!("My pid is {}", process::id());
 /// ```
 ///
 ///
-#[unstable(feature = "getpid", issue = "44971", reason = "recently added")]
+#[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
     ::sys::os::getpid()
+}
+
+/// A trait for implementing arbitrary return types in the `main` function.
+///
+/// The c-main function only supports to return integers as return type.
+/// So, every type implementing the `Termination` trait has to be converted
+/// to an integer.
+///
+/// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
+/// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
+#[cfg_attr(not(test), lang = "termination")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[rustc_on_unimplemented(
+  message="`main` has invalid return type `{Self}`",
+  label="`main` can only return types that implement `{Termination}`")]
+pub trait Termination {
+    /// Is called to get the representation of the value as status code.
+    /// This status code is returned to the operating system.
+    fn report(self) -> i32;
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl Termination for () {
+    #[inline]
+    fn report(self) -> i32 { ExitCode::SUCCESS.report() }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl<E: fmt::Debug> Termination for Result<(), E> {
+    fn report(self) -> i32 {
+        match self {
+            Ok(()) => ().report(),
+            Err(err) => Err::<!, _>(err).report(),
+        }
+    }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl Termination for ! {
+    fn report(self) -> i32 { self }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl<E: fmt::Debug> Termination for Result<!, E> {
+    fn report(self) -> i32 {
+        let Err(err) = self;
+        eprintln!("Error: {:?}", err);
+        ExitCode::FAILURE.report()
+    }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl Termination for ExitCode {
+    #[inline]
+    fn report(self) -> i32 {
+        self.0.as_i32()
+    }
 }
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
@@ -1842,5 +1980,11 @@ mod tests {
             }
         }
         assert!(events > 0);
+    }
+
+    #[test]
+    fn test_command_implements_send() {
+        fn take_send_type<T: Send>(_: T) {}
+        take_send_type(Command::new(""))
     }
 }

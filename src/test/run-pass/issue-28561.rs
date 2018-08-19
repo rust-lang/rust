@@ -45,7 +45,7 @@ struct Array<T> {
     f32: [T; 32],
 }
 
-// FIXME(#7622): merge with `Array` once `[T; N]: Clone` where `T: Clone`
+// FIXME(#44580): merge with `Array` once `[T; N]: Clone` where `T: Clone`
 #[derive(Clone, Copy)]
 struct CopyArray<T: Copy> {
     f00: [T; 00],

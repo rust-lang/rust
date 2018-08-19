@@ -1,0 +1,16 @@
+warning: not reporting region error due to nll
+  --> $DIR/project-fn-ret-contravariant.rs:48:8
+   |
+LL |    bar(foo, x) //[transmute]~ ERROR E0495
+   |        ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/project-fn-ret-contravariant.rs:48:4
+   |
+LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
+   |        -- lifetime `'a` defined here
+LL |    bar(foo, x) //[transmute]~ ERROR E0495
+   |    ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

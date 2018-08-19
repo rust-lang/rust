@@ -1,0 +1,14 @@
+error: function `BOGUS` should have a snake case name such as `bogus`
+  --> $DIR/enable-unstable-lib-feature.rs:22:1
+   |
+LL | pub fn BOGUS() { } //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/enable-unstable-lib-feature.rs:16:9
+   |
+LL | #![deny(non_snake_case)] // To trigger a hard error
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

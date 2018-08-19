@@ -9,15 +9,11 @@
 // except according to those terms.
 
 // revisions: normal nll
-//[nll] compile-flags: -Znll -Zborrowck=mir
+//[nll] compile-flags:-Zborrowck=mir
 
-#![feature(conservative_impl_trait,
-           universal_impl_trait,
-           fn_traits,
+#![feature(fn_traits,
            step_trait,
            unboxed_closures,
-           copy_closures,
-           clone_closures
 )]
 
 //! Derived from: <https://raw.githubusercontent.com/quickfur/dcal/master/dcal.d>.

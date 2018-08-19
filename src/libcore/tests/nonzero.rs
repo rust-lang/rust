@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::nonzero::NonZero;
+use core::num::NonZeroU32;
 use core::option::Option;
 use core::option::Option::{Some, None};
 use std::mem::size_of;
@@ -16,28 +16,28 @@ use std::mem::size_of;
 #[test]
 fn test_create_nonzero_instance() {
     let _a = unsafe {
-        NonZero::new_unchecked(21)
+        NonZeroU32::new_unchecked(21)
     };
 }
 
 #[test]
 fn test_size_nonzero_in_option() {
-    assert_eq!(size_of::<NonZero<u32>>(), size_of::<Option<NonZero<u32>>>());
+    assert_eq!(size_of::<NonZeroU32>(), size_of::<Option<NonZeroU32>>());
 }
 
 #[test]
 fn test_match_on_nonzero_option() {
     let a = Some(unsafe {
-        NonZero::new_unchecked(42)
+        NonZeroU32::new_unchecked(42)
     });
     match a {
         Some(val) => assert_eq!(val.get(), 42),
-        None => panic!("unexpected None while matching on Some(NonZero(_))")
+        None => panic!("unexpected None while matching on Some(NonZeroU32(_))")
     }
 
-    match unsafe { Some(NonZero::new_unchecked(43)) } {
+    match unsafe { Some(NonZeroU32::new_unchecked(43)) } {
         Some(val) => assert_eq!(val.get(), 43),
-        None => panic!("unexpected None while matching on Some(NonZero(_))")
+        None => panic!("unexpected None while matching on Some(NonZeroU32(_))")
     }
 }
 
@@ -96,5 +96,28 @@ fn test_match_option_string() {
     match Some(five) {
         Some(s) => assert_eq!(s, "Five"),
         None => panic!("unexpected None while matching on Some(String { ... })")
+    }
+}
+
+mod atom {
+    use core::num::NonZeroU32;
+
+    #[derive(PartialEq, Eq)]
+    pub struct Atom {
+        index: NonZeroU32, // private
+    }
+    pub const FOO_ATOM: Atom = Atom { index: unsafe { NonZeroU32::new_unchecked(7) } };
+}
+
+macro_rules! atom {
+    ("foo") => { atom::FOO_ATOM }
+}
+
+#[test]
+fn test_match_nonzero_const_pattern() {
+    match atom!("foo") {
+        // Using as a pattern is supported by the compiler:
+        atom!("foo") => {}
+        _ => panic!("Expected the const item as a pattern to match.")
     }
 }

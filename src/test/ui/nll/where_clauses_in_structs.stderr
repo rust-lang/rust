@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/where_clauses_in_structs.rs:23:5
+   |
+LL |     Foo { x, y };
+   |     ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/where_clauses_in_structs.rs:23:11
+   |
+LL | fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     Foo { x, y };
+   |           ^ requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

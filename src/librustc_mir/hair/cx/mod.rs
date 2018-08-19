@@ -16,8 +16,6 @@
 
 use hair::*;
 
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
-use rustc_const_eval::ConstContext;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
@@ -25,13 +23,13 @@ use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
-use syntax::ast;
+use rustc::ty::subst::{Kind, Substs};
+use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
-use rustc_const_math::{ConstInt, ConstUsize};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
+use hair::pattern::parse_float;
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -44,7 +42,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Identity `Substs` for use with const-evaluation.
     pub identity_substs: &'gcx Substs<'gcx>,
 
-    pub region_scope_tree: Rc<region::ScopeTree>,
+    pub region_scope_tree: Lrc<region::ScopeTree>,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
@@ -78,7 +76,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
-        // the settings for the crate they are translated in.
+        // the settings for the crate they are codegened in.
         let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
         // Respect -C overflow-checks.
@@ -114,18 +112,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.types.usize
     }
 
-    pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        match ConstUsize::new(value, self.tcx.sess.target.usize_ty) {
-            Ok(val) => {
-                Literal::Value {
-                    value: self.tcx.mk_const(ty::Const {
-                        val: ConstVal::Integral(ConstInt::Usize(val)),
-                        ty: self.tcx.types.usize
-                    })
-                }
-            }
-            Err(_) => bug!("usize literal out of range for target"),
-        }
+    pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_usize(self.tcx, value)
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
@@ -136,33 +124,80 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.mk_nil()
     }
 
-    pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Bool(true),
-                ty: self.tcx.types.bool
-            })
-        }
+    pub fn true_literal(&mut self) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_bool(self.tcx, true)
     }
 
-    pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Bool(false),
-                ty: self.tcx.types.bool
-            })
-        }
+    pub fn false_literal(&mut self) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_bool(self.tcx, false)
     }
 
-    pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        let tcx = self.tcx.global_tcx();
-        let const_cx = ConstContext::new(tcx,
-                                         self.param_env.and(self.identity_substs),
-                                         self.tables());
-        match const_cx.eval(tcx.hir.expect_expr(e.id)) {
-            Ok(value) => Literal::Value { value },
-            Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
-        }
+    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
+    pub fn const_eval_literal(
+        &mut self,
+        lit: &'tcx ast::LitKind,
+        ty: Ty<'tcx>,
+        sp: Span,
+        neg: bool,
+    ) -> &'tcx ty::Const<'tcx> {
+        trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
+
+        let parse_float = |num, fty| -> ConstValue<'tcx> {
+            parse_float(num, fty, neg).unwrap_or_else(|_| {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
+            })
+        };
+
+        let trunc = |n| {
+            let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
+            let width = self.tcx.layout_of(param_ty).unwrap().size;
+            trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
+            let shift = 128 - width.bits();
+            let result = (n << shift) >> shift;
+            trace!("trunc result: {}", result);
+            ConstValue::Scalar(Scalar::Bits {
+                bits: result,
+                size: width.bytes() as u8,
+            })
+        };
+
+        use rustc::mir::interpret::*;
+        let lit = match *lit {
+            LitKind::Str(ref s, _) => {
+                let s = s.as_str();
+                let id = self.tcx.allocate_bytes(s.as_bytes());
+                let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, self.tcx);
+                ConstValue::from_byval_value(value).unwrap()
+            },
+            LitKind::ByteStr(ref data) => {
+                let id = self.tcx.allocate_bytes(data);
+                ConstValue::Scalar(Scalar::Ptr(id.into()))
+            },
+            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
+                bits: n as u128,
+                size: 1,
+            }),
+            LitKind::Int(n, _) if neg => {
+                let n = n as i128;
+                let n = n.overflowing_neg().0;
+                trunc(n as u128)
+            },
+            LitKind::Int(n, _) => trunc(n),
+            LitKind::Float(n, fty) => {
+                parse_float(n, fty)
+            }
+            LitKind::FloatUnsuffixed(n) => {
+                let fty = match ty.sty {
+                    ty::TyFloat(fty) => fty,
+                    _ => bug!()
+                };
+                parse_float(n, fty)
+            }
+            LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
+            LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
+        };
+        ty::Const::from_const_value(self.tcx, lit, ty)
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
@@ -177,36 +212,19 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                           p)
     }
 
-    pub fn fatal_const_eval_err(&mut self,
-        err: &ConstEvalErr<'tcx>,
-        primary_span: Span,
-        primary_kind: &str)
-        -> !
-    {
-        err.report(self.tcx, primary_span, primary_kind);
-        self.tcx.sess.abort_if_errors();
-        unreachable!()
-    }
-
     pub fn trait_method(&mut self,
                         trait_def_id: DefId,
                         method_name: &str,
                         self_ty: Ty<'tcx>,
-                        params: &[Ty<'tcx>])
-                        -> (Ty<'tcx>, Literal<'tcx>) {
+                        params: &[Kind<'tcx>])
+                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
         let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
-            if item.kind == ty::AssociatedKind::Method && item.name == method_name {
+            if item.kind == ty::AssociatedKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty,
-                        Literal::Value {
-                            value: self.tcx.mk_const(ty::Const {
-                                val: ConstVal::Function(item.def_id, substs),
-                                ty: method_ty
-                            }),
-                        });
+                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
             }
         }
 

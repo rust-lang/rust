@@ -28,14 +28,14 @@ mod n
     use crate as root;
     pub fn check() {
         assert_eq!(f(), 1);
-        assert_eq!(::crate::m::g(), 2);
+        assert_eq!(crate::m::g(), 2);
         assert_eq!(root::m::h(), 3);
     }
 }
 
 fn main() {
     assert_eq!(f(), 1);
-    assert_eq!(::crate::m::g(), 2);
+    assert_eq!(crate::m::g(), 2);
     assert_eq!(root::m::h(), 3);
     n::check();
 }

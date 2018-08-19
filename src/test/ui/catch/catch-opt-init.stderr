@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `cfg_res`
+  --> $DIR/catch-opt-init.rs:23:16
+   |
+LL |     assert_eq!(cfg_res, 5); //~ ERROR use of possibly uninitialized variable
+   |                ^^^^^^^ use of possibly uninitialized `cfg_res`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

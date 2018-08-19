@@ -17,7 +17,7 @@ use syntax_pos;
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                               sp: syntax_pos::Span,
                               tts: &[tokenstream::TokenTree])
-                              -> Box<base::MacResult + 'cx> {
+                              -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_log_syntax() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "log_syntax",

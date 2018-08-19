@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/move-into-dead-array-2.rs:24:5
+   |
+LL |     drop(a);
+   |          - value moved here
+LL |     a[i] = d(); //~ ERROR use of moved value: `a`
+   |     ^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `a` has type `[D; 4]`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

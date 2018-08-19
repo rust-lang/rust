@@ -1,0 +1,12 @@
+{
+    "pre-link-args": {"gcc": ["-m64"]},
+    "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
+    "linker-flavor": "gcc",
+    "llvm-target": "x86_64-unknown-linux-gnu",
+    "target-endian": "little",
+    "target-pointer-width": "64",
+    "target-c-int-width": "32",
+    "arch": "x86_64",
+    "os": "linux",
+    "morestack": false
+}

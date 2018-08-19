@@ -40,3 +40,5 @@ mod proc_macro_derive2 {
     #[proc_macro_derive = "2500"] impl S { }
     //~^ ERROR the `#[proc_macro_derive]` attribute may only be used on bare functions
 }
+
+fn main() {}

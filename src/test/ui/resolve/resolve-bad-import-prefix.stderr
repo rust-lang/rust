@@ -1,0 +1,24 @@
+error[E0577]: expected module or enum, found struct `S`
+  --> $DIR/resolve-bad-import-prefix.rs:20:5
+   |
+LL | use S::{}; //~ ERROR expected module or enum, found struct `S`
+   |     -^^^^
+   |     |
+   |     did you mean `E`?
+
+error[E0577]: expected module or enum, found trait `Tr`
+  --> $DIR/resolve-bad-import-prefix.rs:21:5
+   |
+LL | use Tr::{}; //~ ERROR expected module or enum, found trait `Tr`
+   |     ^^^^^^ not a module or enum
+
+error[E0578]: cannot find module or enum `Nonexistent` in the crate root
+  --> $DIR/resolve-bad-import-prefix.rs:22:5
+   |
+LL | use Nonexistent::{}; //~ ERROR cannot find module or enum `Nonexistent` in the crate root
+   |     ^^^^^^^^^^^ not found in the crate root
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0577, E0578.
+For more information about an error, try `rustc --explain E0577`.

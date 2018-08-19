@@ -240,7 +240,7 @@ fn test_collect() {
     assert!(v == None);
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Option<()>>; 3] =
+    let mut functions: [Box<dyn Fn() -> Option<()>>; 3] =
         [box || Some(()), box || None, box || panic!()];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
@@ -296,4 +296,36 @@ fn test_try() {
         Ok(val)
     }
     assert_eq!(try_option_err(), Err(NoneError));
+}
+
+#[test]
+fn test_option_deref() {
+    // Some: &Option<T: Deref>::Some(T) -> Option<&T::Deref::Target>::Some(&*T)
+    let ref_option = &Some(&42);
+    assert_eq!(ref_option.deref(), Some(&42));
+
+    let ref_option = &Some(String::from("a result"));
+    assert_eq!(ref_option.deref(), Some("a result"));
+
+    let ref_option = &Some(vec![1, 2, 3, 4, 5]);
+    assert_eq!(ref_option.deref(), Some(&[1, 2, 3, 4, 5][..]));
+
+    // None: &Option<T: Deref>>::None -> None
+    let ref_option: &Option<&i32> = &None;
+    assert_eq!(ref_option.deref(), None);
+}
+
+#[test]
+fn test_replace() {
+    let mut x = Some(2);
+    let old = x.replace(5);
+
+    assert_eq!(x, Some(5));
+    assert_eq!(old, Some(2));
+
+    let mut x = None;
+    let old = x.replace(3);
+
+    assert_eq!(x, Some(3));
+    assert_eq!(old, None);
 }

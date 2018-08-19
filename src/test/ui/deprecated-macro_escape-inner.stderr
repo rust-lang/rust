@@ -1,8 +1,0 @@
-warning: macro_escape is a deprecated synonym for macro_use
-  --> $DIR/deprecated-macro_escape-inner.rs:14:5
-   |
-14 |     #![macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: consider an outer attribute, #[macro_use] mod ...
-

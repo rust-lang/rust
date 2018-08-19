@@ -1,8 +1,10 @@
 error: compilation successful
   --> $DIR/issue-43106-gating-of-deprecated.rs:29:1
    |
-29 | / fn main() { //~ ERROR compilation successful
-30 | |     println!("Hello World");
-31 | | }
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     println!("Hello World");
+LL | | }
    | |_^
+
+error: aborting due to previous error
 

@@ -145,6 +145,43 @@ fn test_iterator_chain_find() {
 }
 
 #[test]
+fn test_zip_nth() {
+    let xs = [0, 1, 2, 4, 5];
+    let ys = [10, 11, 12];
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth(0), Some((&0, &10)));
+    assert_eq!(it.nth(1), Some((&2, &12)));
+    assert_eq!(it.nth(0), None);
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth(3), None);
+
+    let mut it = ys.iter().zip(&xs);
+    assert_eq!(it.nth(3), None);
+}
+
+#[test]
+fn test_zip_nth_side_effects() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let value = [1, 2, 3, 4, 5, 6].iter().cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }))
+        .skip(1)
+        .nth(3);
+    assert_eq!(value, Some((50, 6000)));
+    assert_eq!(a, vec![1, 2, 3, 4, 5]);
+    assert_eq!(b, vec![200, 300, 400, 500, 600]);
+}
+
+#[test]
 fn test_iterator_step_by() {
     // Identity
     let mut it = (0..).step_by(1).take(3);
@@ -159,6 +196,68 @@ fn test_iterator_step_by() {
     assert_eq!(it.next(), Some(6));
     assert_eq!(it.next(), Some(9));
     assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_iterator_step_by_nth() {
+    let mut it = (0..16).step_by(5);
+    assert_eq!(it.nth(0), Some(0));
+    assert_eq!(it.nth(0), Some(5));
+    assert_eq!(it.nth(0), Some(10));
+    assert_eq!(it.nth(0), Some(15));
+    assert_eq!(it.nth(0), None);
+
+    let it = (0..18).step_by(5);
+    assert_eq!(it.clone().nth(0), Some(0));
+    assert_eq!(it.clone().nth(1), Some(5));
+    assert_eq!(it.clone().nth(2), Some(10));
+    assert_eq!(it.clone().nth(3), Some(15));
+    assert_eq!(it.clone().nth(4), None);
+    assert_eq!(it.clone().nth(42), None);
+}
+
+#[test]
+fn test_iterator_step_by_nth_overflow() {
+    #[cfg(target_pointer_width = "8")]
+    type Bigger = u16;
+    #[cfg(target_pointer_width = "16")]
+    type Bigger = u32;
+    #[cfg(target_pointer_width = "32")]
+    type Bigger = u64;
+    #[cfg(target_pointer_width = "64")]
+    type Bigger = u128;
+
+    #[derive(Clone)]
+    struct Test(Bigger);
+    impl<'a> Iterator for &'a mut Test {
+        type Item = i32;
+        fn next(&mut self) -> Option<Self::Item> { Some(21) }
+        fn nth(&mut self, n: usize) -> Option<Self::Item> {
+            self.0 += n as Bigger + 1;
+            Some(42)
+        }
+    }
+
+    let mut it = Test(0);
+    let root = usize::MAX >> (::std::mem::size_of::<usize>() * 8 / 2);
+    let n = root + 20;
+    (&mut it).step_by(n).nth(n);
+    assert_eq!(it.0, n as Bigger * n as Bigger);
+
+    // large step
+    let mut it = Test(0);
+    (&mut it).step_by(usize::MAX).nth(5);
+    assert_eq!(it.0, (usize::MAX as Bigger) * 5);
+
+    // n + 1 overflows
+    let mut it = Test(0);
+    (&mut it).step_by(2).nth(usize::MAX);
+    assert_eq!(it.0, (usize::MAX as Bigger) * 2);
+
+    // n + 1 overflows
+    let mut it = Test(0);
+    (&mut it).step_by(1).nth(usize::MAX);
+    assert_eq!(it.0, (usize::MAX as Bigger) * 1);
 }
 
 #[test]
@@ -813,6 +912,44 @@ fn test_iterator_flat_map_fold() {
 }
 
 #[test]
+fn test_iterator_flatten() {
+    let xs = [0, 3, 6];
+    let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let it = xs.iter().map(|&x| (x..).step_by(1).take(3)).flatten();
+    let mut i = 0;
+    for x in it {
+        assert_eq!(x, ys[i]);
+        i += 1;
+    }
+    assert_eq!(i, ys.len());
+}
+
+/// Test `Flatten::fold` with items already picked off the front and back,
+/// to make sure all parts of the `Flatten` are folded correctly.
+#[test]
+fn test_iterator_flatten_fold() {
+    let xs = [0, 3, 6];
+    let ys = [1, 2, 3, 4, 5, 6, 7];
+    let mut it = xs.iter().map(|&x| x..x+3).flatten();
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
+    let i = it.fold(0, |i, x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let mut it = xs.iter().map(|&x| x..x+3).flatten();
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
+    let i = it.rfold(ys.len(), |i, x| {
+        assert_eq!(x, ys[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
+}
+
+#[test]
 fn test_inspect() {
     let xs = [1, 2, 3, 4];
     let mut n = 0;
@@ -1007,6 +1144,33 @@ fn test_find() {
     assert_eq!(*v.iter().find(|&&x| x & 1 == 0).unwrap(), 14);
     assert_eq!(*v.iter().find(|&&x| x % 3 == 0).unwrap(), 3);
     assert!(v.iter().find(|&&x| x % 12 == 0).is_none());
+}
+
+#[test]
+fn test_find_map() {
+    let xs: &[isize] = &[];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[3, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[4, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(2));
+    let xs: &[isize] = &[3, 6];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(3));
+
+    let xs: &[isize] = &[1, 2, 3, 4, 5, 6, 7];
+    let mut iter = xs.iter();
+    assert_eq!(iter.find_map(half_if_even), Some(1));
+    assert_eq!(iter.find_map(half_if_even), Some(2));
+    assert_eq!(iter.find_map(half_if_even), Some(3));
+    assert_eq!(iter.next(), Some(&7));
+
+    fn half_if_even(x: &isize) -> Option<isize> {
+        if x % 2 == 0 {
+            Some(x / 2)
+        } else {
+            None
+        }
+    }
 }
 
 #[test]
@@ -1226,6 +1390,23 @@ fn test_double_ended_flat_map() {
 }
 
 #[test]
+fn test_double_ended_flatten() {
+    let u = [0,1];
+    let v = [5,6,7,8];
+    let mut it = u.iter().map(|x| &v[*x..v.len()]).flatten();
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(),      &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(),      &6);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
+    assert_eq!(it.next(),      None);
+    assert_eq!(it.next_back(), None);
+}
+
+#[test]
 fn test_double_ended_range() {
     assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
     for _ in (10..0).rev() {
@@ -1261,23 +1442,84 @@ fn test_range() {
 }
 
 #[test]
+fn test_range_exhaustion() {
+    let mut r = 10..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 10..10);
+
+    let mut r = 10..12;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r.next(), Some(11));
+    assert!(r.is_empty());
+    assert_eq!(r, 12..12);
+    assert_eq!(r.next(), None);
+
+    let mut r = 10..12;
+    assert_eq!(r.next_back(), Some(11));
+    assert_eq!(r.next_back(), Some(10));
+    assert!(r.is_empty());
+    assert_eq!(r, 10..10);
+    assert_eq!(r.next_back(), None);
+
+    let mut r = 100..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 100..10);
+}
+
+#[test]
 fn test_range_inclusive_exhaustion() {
     let mut r = 10..=10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
+
+    let mut r = 10..=12;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r.next(), Some(11));
+    assert_eq!(r.next(), Some(12));
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+
+    let mut r = 10..=12;
+    assert_eq!(r.next_back(), Some(12));
+    assert_eq!(r.next_back(), Some(11));
+    assert_eq!(r.next_back(), Some(10));
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
+    let mut r = 100..=10;
+    assert_eq!(r.next(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 100..=10);
+
+    let mut r = 100..=10;
+    assert_eq!(r.next_back(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 100..=10);
 }
 
 #[test]
@@ -1309,6 +1551,29 @@ fn test_range_from_nth() {
     assert_eq!(r, 16..);
     assert_eq!(r.nth(10), Some(26));
     assert_eq!(r, 27..);
+
+    assert_eq!((0..).size_hint(), (usize::MAX, None));
+}
+
+fn is_trusted_len<I: TrustedLen>(_: I) {}
+
+#[test]
+fn test_range_from_take() {
+    let mut it = (0..).take(3);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), Some(1));
+    assert_eq!(it.next(), Some(2));
+    assert_eq!(it.next(), None);
+    is_trusted_len((0..).take(3));
+    assert_eq!((0..).take(3).size_hint(), (3, Some(3)));
+    assert_eq!((0..).take(0).size_hint(), (0, Some(0)));
+    assert_eq!((0..).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_range_from_take_collect() {
+    let v: Vec<_> = (0..).take(3).collect();
+    assert_eq!(v, vec![0, 1, 2]);
 }
 
 #[test]
@@ -1324,9 +1589,10 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.nth(2), Some(15));
     assert_eq!(r, 16..=20);
     assert_eq!(r.is_empty(), false);
+    assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1..=0);  // We may not want to document/promise this detail
+    assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
 #[test]
@@ -1350,6 +1616,14 @@ fn test_range_step() {
     assert_eq!((i8::MIN..i8::MAX).step_by(-(i8::MIN as i32) as usize).size_hint(), (2, Some(2)));
     assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
     assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_range_inclusive_step() {
+    assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
+    assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
+    assert_eq!((200..=255u8).step_by(10).collect::<Vec<_>>(), [200, 210, 220, 230, 240, 250]);
+    assert_eq!((250..=255u8).step_by(1).collect::<Vec<_>>(), [250, 251, 252, 253, 254, 255]);
 }
 
 #[test]
@@ -1398,11 +1672,84 @@ fn test_range_inclusive_min() {
 }
 
 #[test]
+fn test_range_inclusive_folds() {
+    assert_eq!((1..=10).sum::<i32>(), 55);
+    assert_eq!((1..=10).rev().sum::<i32>(), 55);
+
+    let mut it = 40..=50;
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it, 44..=50);
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it, 44..=47);
+
+    let mut it = 10..=20;
+    assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(165));
+    assert!(it.is_empty());
+
+    let mut it = 10..=20;
+    assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(165));
+    assert!(it.is_empty());
+}
+
+#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
+    assert_eq!(repeat(42).size_hint(), (usize::MAX, None));
+}
+
+#[test]
+fn test_repeat_take() {
+    let mut it = repeat(42).take(3);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), None);
+    is_trusted_len(repeat(42).take(3));
+    assert_eq!(repeat(42).take(3).size_hint(), (3, Some(3)));
+    assert_eq!(repeat(42).take(0).size_hint(), (0, Some(0)));
+    assert_eq!(repeat(42).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_repeat_take_collect() {
+    let v: Vec<_> = repeat(42).take(3).collect();
+    assert_eq!(v, vec![42, 42, 42]);
+}
+
+#[test]
+fn test_repeat_with() {
+    #[derive(PartialEq, Debug)]
+    struct NotClone(usize);
+    let mut it = repeat_with(|| NotClone(42));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(repeat_with(|| NotClone(42)).size_hint(), (usize::MAX, None));
+}
+
+#[test]
+fn test_repeat_with_take() {
+    let mut it = repeat_with(|| 42).take(3);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), None);
+    is_trusted_len(repeat_with(|| 42).take(3));
+    assert_eq!(repeat_with(|| 42).take(3).size_hint(), (3, Some(3)));
+    assert_eq!(repeat_with(|| 42).take(0).size_hint(), (0, Some(0)));
+    assert_eq!(repeat_with(|| 42).take(usize::MAX).size_hint(),
+               (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_repeat_with_take_collect() {
+    let mut curr = 1;
+    let v: Vec<_> = repeat_with(|| { let tmp = curr; curr *= 2; tmp })
+                      .take(5).collect();
+    assert_eq!(v, vec![1, 2, 4, 8, 16]);
 }
 
 #[test]
@@ -1745,4 +2092,55 @@ fn test_flat_map_try_folds() {
     assert_eq!(iter.next(), Some(17));
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(35));
+}
+
+#[test]
+fn test_flatten_try_folds() {
+    let f = &|acc, x| i32::checked_add(acc*2/3, x);
+    let mr = &|x| (5*x)..(5*x + 5);
+    assert_eq!((0..10).map(mr).flatten().try_fold(7, f), (0..50).try_fold(7, f));
+    assert_eq!((0..10).map(mr).flatten().try_rfold(7, f), (0..50).try_rfold(7, f));
+    let mut iter = (0..10).map(mr).flatten();
+    iter.next(); iter.next_back(); // have front and back iters in progress
+    assert_eq!(iter.try_rfold(7, f), (1..49).try_rfold(7, f));
+
+    let mut iter = (0..10).map(|x| (4*x)..(4*x + 4)).flatten();
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(17));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(35));
+}
+
+#[test]
+fn test_functor_laws() {
+    // identity:
+    fn identity<T>(x: T) -> T { x }
+    assert_eq!((0..10).map(identity).sum::<usize>(), (0..10).sum());
+
+    // composition:
+    fn f(x: usize) -> usize { x + 3 }
+    fn g(x: usize) -> usize { x * 2 }
+    fn h(x: usize) -> usize { g(f(x)) }
+    assert_eq!((0..10).map(f).map(g).sum::<usize>(), (0..10).map(h).sum());
+}
+
+#[test]
+fn test_monad_laws_left_identity() {
+    fn f(x: usize) -> impl Iterator<Item = usize> {
+        (0..10).map(move |y| x * y)
+    }
+    assert_eq!(once(42).flat_map(f.clone()).sum::<usize>(), f(42).sum());
+}
+
+#[test]
+fn test_monad_laws_right_identity() {
+    assert_eq!((0..10).flat_map(|x| once(x)).sum::<usize>(), (0..10).sum());
+}
+
+#[test]
+fn test_monad_laws_associativity() {
+    fn f(x: usize) -> impl Iterator<Item = usize> { 0..x }
+    fn g(x: usize) -> impl Iterator<Item = usize> { (0..x).rev() }
+    assert_eq!((0..10).flat_map(f).flat_map(g).sum::<usize>(),
+                (0..10).flat_map(|x| f(x).flat_map(g)).sum::<usize>());
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unix-specific extensions to primitives in the `std::process` module.
+//! Redox-specific extensions to primitives in the `std::process` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -18,7 +18,9 @@ use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
-/// Unix-specific extensions to the `std::process::Command` builder
+/// Redox-specific extensions to the [`process::Command`] builder,
+///
+/// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait CommandExt {
     /// Sets the child process's user id. This translates to a
@@ -107,7 +109,9 @@ impl CommandExt for process::Command {
     }
 }
 
-/// Unix-specific extensions to `std::process::ExitStatus`
+/// Redox-specific extensions to [`process::ExitStatus`].
+///
+/// [`process::ExitStatus`]: ../../../../std/process/struct.ExitStatus.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of

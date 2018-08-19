@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `S: std::ops::Fn<(isize,)>` is not satisfied
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:38:13
+   |
+LL |     let x = call_it(&S, 22);
+   |             ^^^^^^^ the trait `std::ops::Fn<(isize,)>` is not implemented for `S`
+   |
+note: required by `call_it`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:33:1
+   |
+LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

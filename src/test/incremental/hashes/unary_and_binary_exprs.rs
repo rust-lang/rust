@@ -16,7 +16,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// must-compile-successfully
+// compile-pass
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -404,9 +404,9 @@ pub fn value_cast(a: u32) -> i32 {
 
 
 
-// Change l-value in assignment ------------------------------------------------
+// Change place in assignment --------------------------------------------------
 #[cfg(cfail1)]
-pub fn lvalue() -> i32 {
+pub fn place() -> i32 {
     let mut x = 10;
     let mut y = 11;
     x = 9;
@@ -416,7 +416,7 @@ pub fn lvalue() -> i32 {
 #[cfg(not(cfail1))]
 #[rustc_clean(except="HirBody,MirOptimized,MirValidated", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-pub fn lvalue() -> i32 {
+pub fn place() -> i32 {
     let mut x = 10;
     let mut y = 11;
     y = 9;

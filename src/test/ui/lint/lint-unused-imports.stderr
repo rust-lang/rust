@@ -1,0 +1,56 @@
+error: unused import: `use std::fmt::{};`
+  --> $DIR/lint-unused-imports.rs:18:1
+   |
+LL | use std::fmt::{};
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-unused-imports.rs:11:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused imports: `None`, `Some`
+  --> $DIR/lint-unused-imports.rs:22:27
+   |
+LL | use std::option::Option::{Some, None};
+   |                           ^^^^  ^^^^
+
+error: unused import: `test::A`
+  --> $DIR/lint-unused-imports.rs:25:5
+   |
+LL | use test::A;       //~ ERROR unused import: `test::A`
+   |     ^^^^^^^
+
+error: unused import: `bar`
+  --> $DIR/lint-unused-imports.rs:34:18
+   |
+LL | use test2::{foo, bar}; //~ ERROR unused import: `bar`
+   |                  ^^^
+
+error: unused import: `foo::Square`
+  --> $DIR/lint-unused-imports.rs:62:13
+   |
+LL |         use foo::Square; //~ ERROR unused import: `foo::Square`
+   |             ^^^^^^^^^^^
+
+error: unused import: `self::g`
+  --> $DIR/lint-unused-imports.rs:78:9
+   |
+LL |     use self::g; //~ ERROR unused import: `self::g`
+   |         ^^^^^^^
+
+error: unused import: `test2::foo`
+  --> $DIR/lint-unused-imports.rs:87:9
+   |
+LL |     use test2::foo; //~ ERROR unused import: `test2::foo`
+   |         ^^^^^^^^^^
+
+error: unused import: `test::B2`
+  --> $DIR/lint-unused-imports.rs:30:5
+   |
+LL | use test::B2; //~ ERROR unused import: `test::B2`
+   |     ^^^^^^^^
+
+error: aborting due to 8 previous errors
+

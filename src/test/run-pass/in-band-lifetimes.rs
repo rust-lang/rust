@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(in_band_lifetimes, universal_impl_trait, conservative_impl_trait)]
+#![feature(in_band_lifetimes)]
 
 fn foo(x: &'x u8) -> &'x u8 { x }
 fn foo2(x: &'a u8, y: &u8) -> &'a u8 { x }

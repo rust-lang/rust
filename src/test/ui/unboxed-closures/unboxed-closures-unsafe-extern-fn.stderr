@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `for<'r> for<'s> unsafe fn(&'s isize) -> isize {square}: std::ops::Fn<(&'r isize,)>` is not satisfied
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:22:13
+   |
+LL |     let x = call_it(&square, 22);
+   |             ^^^^^^^ the trait `for<'r> std::ops::Fn<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   |
+note: required by `call_it`
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:17:1
+   |
+LL | fn call_it<F:Fn(&isize)->isize>(_: &F, _: isize) -> isize { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'r> for<'s> unsafe fn(&'s isize) -> isize {square}: std::ops::FnMut<(&'r isize,)>` is not satisfied
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:27:13
+   |
+LL |     let y = call_it_mut(&mut square, 22);
+   |             ^^^^^^^^^^^ the trait `for<'r> std::ops::FnMut<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   |
+note: required by `call_it_mut`
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:18:1
+   |
+LL | fn call_it_mut<F:FnMut(&isize)->isize>(_: &mut F, _: isize) -> isize { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'r> for<'s> unsafe fn(&'s isize) -> isize {square}: std::ops::FnOnce<(&'r isize,)>` is not satisfied
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:32:13
+   |
+LL |     let z = call_it_once(square, 22);
+   |             ^^^^^^^^^^^^ the trait `for<'r> std::ops::FnOnce<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   |
+note: required by `call_it_once`
+  --> $DIR/unboxed-closures-unsafe-extern-fn.rs:19:1
+   |
+LL | fn call_it_once<F:FnOnce(&isize)->isize>(_: F, _: isize) -> isize { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

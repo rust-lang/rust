@@ -9,20 +9,30 @@
 // except according to those terms.
 
 #![feature(generic_associated_types)]
+//~^ WARNING the feature `generic_associated_types` is incomplete
 
-//FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
-//follow-up PR
+use std::ops::Deref;
+
+// FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
+// follow-up PR.
 
 trait Foo {
     type Bar<'a, 'b>;
 }
 
 trait Baz {
-    type Quux<'a>;
+    type Quux<'a>: Foo;
+
+    // This weird type tests that we can use universal function call syntax to access the Item on
+    type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+    //~| ERROR lifetime parameters are not allowed on this type [E0110]
 }
 
 impl<T> Baz for T where T: Foo {
-    type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
+    type Quux<'a> = T;
+
+    type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static>;
     //~^ ERROR lifetime parameters are not allowed on this type [E0110]
 }
 

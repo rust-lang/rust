@@ -1,0 +1,11 @@
+error[E0391]: cycle detected when computing the supertraits of `Expr`
+  --> $DIR/issue-22673.rs:11:1
+   |
+LL | trait Expr : PartialEq<Self::Item> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which again requires computing the supertraits of `Expr`, completing the cycle
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

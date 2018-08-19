@@ -1,0 +1,16 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/method-ambig-two-traits-cross-crate.rs:21:21
+   |
+LL | fn main() { 1_usize.me(); } //~ ERROR E0034
+   |                     ^^ multiple `me` found
+   |
+note: candidate #1 is defined in an impl of the trait `me2` for the type `usize`
+  --> $DIR/method-ambig-two-traits-cross-crate.rs:20:22
+   |
+LL | impl me2 for usize { fn me(&self) -> usize { *self } }
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+   = note: candidate #2 is defined in an impl of the trait `ambig_impl_2_lib::me` for the type `usize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0034`.

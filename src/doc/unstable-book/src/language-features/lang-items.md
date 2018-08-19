@@ -19,6 +19,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 #![feature(lang_items, box_syntax, start, libc, core_intrinsics)]
 #![no_std]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 extern crate libc;
 
@@ -37,28 +38,23 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     p
 }
 
-#[lang = "exchange_free"]
-unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
+#[lang = "box_free"]
+unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     libc::free(ptr as *mut libc::c_void)
 }
 
-#[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
-    deallocate(ptr as *mut u8, ::core::mem::size_of_val(&*ptr), ::core::mem::align_of_val(&*ptr));
-}
-
 #[start]
-fn main(argc: isize, argv: *const *const u8) -> isize {
-    let x = box 1;
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    let _x = box 1;
 
     0
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
-#[lang = "panic_fmt"] extern fn rust_begin_panic() -> ! { unsafe { intrinsics::abort() } }
-# #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
-# #[no_mangle] pub extern fn rust_eh_register_frames () {}
-# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
+#[lang = "panic_impl"] extern fn rust_begin_panic(info: &PanicInfo) -> ! { unsafe { intrinsics::abort() } }
+#[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+#[no_mangle] pub extern fn rust_eh_register_frames () {}
+#[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
@@ -80,7 +76,7 @@ Other features provided by lang items include:
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
 `Box` then there is no need to define functions for `exchange_malloc`
-and `exchange_free`. `rustc` will emit an error when an item is needed
+and `box_free`. `rustc` will emit an error when an item is needed
 but not found in the current crate or any that it depends on.
 
 Most lang items are defined by `libcore`, but if you're trying to build
@@ -115,6 +111,7 @@ in the same format as C:
 #![feature(start)]
 #![no_std]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -139,12 +136,9 @@ pub extern fn rust_eh_personality() {
 pub extern fn rust_eh_unwind_resume() {
 }
 
-#[lang = "panic_fmt"]
+#[lang = "panic_impl"]
 #[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32,
-                               _column: u32) -> ! {
+pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
     unsafe { intrinsics::abort() }
 }
 ```
@@ -160,6 +154,7 @@ compiler's name mangling too:
 #![no_std]
 #![no_main]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -184,12 +179,9 @@ pub extern fn rust_eh_personality() {
 pub extern fn rust_eh_unwind_resume() {
 }
 
-#[lang = "panic_fmt"]
+#[lang = "panic_impl"]
 #[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32,
-                               _column: u32) -> ! {
+pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
     unsafe { intrinsics::abort() }
 }
 ```
@@ -220,7 +212,7 @@ called. The language item's name is `eh_personality`.
 
 The second function, `rust_begin_panic`, is also used by the failure mechanisms of the
 compiler. When a panic happens, this controls the message that's displayed on
-the screen. While the language item's name is `panic_fmt`, the symbol name is
+the screen. While the language item's name is `panic_impl`, the symbol name is
 `rust_begin_panic`.
 
 A third function, `rust_eh_unwind_resume`, is also needed if the `custom_unwind_resume`
@@ -248,7 +240,7 @@ the source code.
   - `usize`: `libcore/num/mod.rs`
   - `f32`: `libstd/f32.rs`
   - `f64`: `libstd/f64.rs`
-  - `char`: `libstd_unicode/char.rs`
+  - `char`: `libcore/char.rs`
   - `slice`: `liballoc/slice.rs`
   - `str`: `liballoc/str.rs`
   - `const_ptr`: `libcore/ptr.rs`
@@ -264,8 +256,8 @@ the source code.
   - `msvc_try_filter`: `libpanic_unwind/seh.rs` (SEH)
   - `panic`: `libcore/panicking.rs`
   - `panic_bounds_check`: `libcore/panicking.rs`
-  - `panic_fmt`: `libcore/panicking.rs`
-  - `panic_fmt`: `libstd/panicking.rs`
+  - `panic_impl`: `libcore/panicking.rs`
+  - `panic_impl`: `libstd/panicking.rs`
 - Allocations
   - `owned_box`: `liballoc/boxed.rs`
   - `exchange_malloc`: `liballoc/heap.rs`

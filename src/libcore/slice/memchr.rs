@@ -39,21 +39,10 @@ fn repeat_byte(b: u8) -> usize {
     (b as usize) << 8 | b as usize
 }
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(not(target_pointer_width = "16"))]
 #[inline]
 fn repeat_byte(b: u8) -> usize {
-    let mut rep = (b as usize) << 8 | b as usize;
-    rep = rep << 16 | rep;
-    rep
-}
-
-#[cfg(target_pointer_width = "64")]
-#[inline]
-fn repeat_byte(b: u8) -> usize {
-    let mut rep = (b as usize) << 8 | b as usize;
-    rep = rep << 16 | rep;
-    rep = rep << 32 | rep;
-    rep
+    (b as usize) * (::usize::MAX / 255)
 }
 
 /// Return the first index matching the byte `x` in `text`.
@@ -111,27 +100,30 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // - the first remaining bytes, < 2 word size
     let len = text.len();
     let ptr = text.as_ptr();
-    let usize_bytes = mem::size_of::<usize>();
+    type Chunk = usize;
 
-    // search to an aligned boundary
-    let end_align = (ptr as usize + len) & (usize_bytes - 1);
-    let mut offset;
-    if end_align > 0 {
-        offset = if end_align >= len { 0 } else { len - end_align };
-        if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
-            return Some(offset + index);
-        }
-    } else {
-        offset = len;
+    let (min_aligned_offset, max_aligned_offset) = {
+        // We call this just to obtain the length of the prefix and suffix.
+        // In the middle we always process two chunks at once.
+        let (prefix, _, suffix) = unsafe { text.align_to::<(Chunk, Chunk)>() };
+        (prefix.len(), len - suffix.len())
+    };
+
+    let mut offset = max_aligned_offset;
+    if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
+        return Some(offset + index);
     }
 
-    // search the body of the text
+    // search the body of the text, make sure we don't cross min_aligned_offset.
+    // offset is always aligned, so just testing `>` is sufficient and avoids possible
+    // overflow.
     let repeated_x = repeat_byte(x);
+    let chunk_bytes = mem::size_of::<Chunk>();
 
-    while offset >= 2 * usize_bytes {
+    while offset > min_aligned_offset {
         unsafe {
-            let u = *(ptr.offset(offset as isize - 2 * usize_bytes as isize) as *const usize);
-            let v = *(ptr.offset(offset as isize - usize_bytes as isize) as *const usize);
+            let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
+            let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
 
             // break if there is a matching byte
             let zu = contains_zero_byte(u ^ repeated_x);
@@ -140,91 +132,9 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
                 break;
             }
         }
-        offset -= 2 * usize_bytes;
+        offset -= 2 * chunk_bytes;
     }
 
     // find the byte before the point the body loop stopped
     text[..offset].iter().rposition(|elt| *elt == x)
-}
-
-// test fallback implementations on all platforms
-#[test]
-fn matches_one() {
-    assert_eq!(Some(0), memchr(b'a', b"a"));
-}
-
-#[test]
-fn matches_begin() {
-    assert_eq!(Some(0), memchr(b'a', b"aaaa"));
-}
-
-#[test]
-fn matches_end() {
-    assert_eq!(Some(4), memchr(b'z', b"aaaaz"));
-}
-
-#[test]
-fn matches_nul() {
-    assert_eq!(Some(4), memchr(b'\x00', b"aaaa\x00"));
-}
-
-#[test]
-fn matches_past_nul() {
-    assert_eq!(Some(5), memchr(b'z', b"aaaa\x00z"));
-}
-
-#[test]
-fn no_match_empty() {
-    assert_eq!(None, memchr(b'a', b""));
-}
-
-#[test]
-fn no_match() {
-    assert_eq!(None, memchr(b'a', b"xyz"));
-}
-
-#[test]
-fn matches_one_reversed() {
-    assert_eq!(Some(0), memrchr(b'a', b"a"));
-}
-
-#[test]
-fn matches_begin_reversed() {
-    assert_eq!(Some(3), memrchr(b'a', b"aaaa"));
-}
-
-#[test]
-fn matches_end_reversed() {
-    assert_eq!(Some(0), memrchr(b'z', b"zaaaa"));
-}
-
-#[test]
-fn matches_nul_reversed() {
-    assert_eq!(Some(4), memrchr(b'\x00', b"aaaa\x00"));
-}
-
-#[test]
-fn matches_past_nul_reversed() {
-    assert_eq!(Some(0), memrchr(b'z', b"z\x00aaaa"));
-}
-
-#[test]
-fn no_match_empty_reversed() {
-    assert_eq!(None, memrchr(b'a', b""));
-}
-
-#[test]
-fn no_match_reversed() {
-    assert_eq!(None, memrchr(b'a', b"xyz"));
-}
-
-#[test]
-fn each_alignment_reversed() {
-    let mut data = [1u8; 64];
-    let needle = 2;
-    let pos = 40;
-    data[pos] = needle;
-    for start in 0..16 {
-        assert_eq!(Some(pos - start), memrchr(needle, &data[start..]));
-    }
 }

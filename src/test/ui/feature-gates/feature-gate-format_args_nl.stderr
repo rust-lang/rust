@@ -1,0 +1,11 @@
+error[E0658]: `format_args_nl` is only for internal language use and is subject to change
+  --> $DIR/feature-gate-format_args_nl.rs:12:5
+   |
+LL |     format_args_nl!(""); //~ ERROR `format_args_nl` is only for internal language use
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(format_args_nl)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

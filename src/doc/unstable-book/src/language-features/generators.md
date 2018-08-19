@@ -36,11 +36,11 @@ fn main() {
         return "foo"
     };
 
-    match generator.resume() {
+    match unsafe { generator.resume() } {
         GeneratorState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
-    match generator.resume() {
+    match unsafe { generator.resume() } {
         GeneratorState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
@@ -69,9 +69,9 @@ fn main() {
     };
 
     println!("1");
-    generator.resume();
+    unsafe { generator.resume() };
     println!("3");
-    generator.resume();
+    unsafe { generator.resume() };
     println!("5");
 }
 ```
@@ -92,7 +92,7 @@ The `Generator` trait in `std::ops` currently looks like:
 pub trait Generator {
     type Yield;
     type Return;
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
 }
 ```
 
@@ -139,11 +139,11 @@ closure-like semantics. Namely:
   types and such.
 
 * Traits like `Send` and `Sync` are automatically implemented for a `Generator`
-  depending on the captured variables of the environment. Unlike closures though
+  depending on the captured variables of the environment. Unlike closures,
   generators also depend on variables live across suspension points. This means
   that although the ambient environment may be `Send` or `Sync`, the generator
   itself may not be due to internal variables live across `yield` points being
-  not-`Send` or not-`Sync`. Note, though, that generators, like closures, do
+  not-`Send` or not-`Sync`. Note that generators, like closures, do
   not implement traits like `Copy` or `Clone` automatically.
 
 * Whenever a generator is dropped it will drop all captured environment
@@ -155,7 +155,7 @@ lifted at a future date, the design is ongoing!
 
 ### Generators as state machines
 
-In the compiler generators are currently compiled as state machines. Each
+In the compiler, generators are currently compiled as state machines. Each
 `yield` expression will correspond to a different state that stores all live
 variables over that suspension point. Resumption of a generator will dispatch on
 the current state and then execute internally until a `yield` is reached, at
@@ -175,8 +175,8 @@ fn main() {
         return ret
     };
 
-    generator.resume();
-    generator.resume();
+    unsafe { generator.resume() };
+    unsafe { generator.resume() };
 }
 ```
 
@@ -200,7 +200,7 @@ fn main() {
             type Yield = i32;
             type Return = &'static str;
 
-            fn resume(&mut self) -> GeneratorState<i32, &'static str> {
+            unsafe fn resume(&mut self) -> GeneratorState<i32, &'static str> {
                 use std::mem;
                 match mem::replace(self, __Generator::Done) {
                     __Generator::Start(s) => {
@@ -223,8 +223,8 @@ fn main() {
         __Generator::Start(ret)
     };
 
-    generator.resume();
-    generator.resume();
+    unsafe { generator.resume() };
+    unsafe { generator.resume() };
 }
 ```
 

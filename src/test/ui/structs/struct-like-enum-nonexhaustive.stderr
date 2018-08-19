@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `B { x: Some(_) }` not covered
+  --> $DIR/struct-like-enum-nonexhaustive.rs:18:11
+   |
+LL |     match x {   //~ ERROR non-exhaustive patterns
+   |           ^ pattern `B { x: Some(_) }` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

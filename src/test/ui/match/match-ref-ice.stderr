@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/match-ref-ice.rs:23:9
+   |
+LL |         [1, 2, 3] => (), //~ ERROR unreachable pattern
+   |         ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-ref-ice.rs:11:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

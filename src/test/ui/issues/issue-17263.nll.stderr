@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/issue-17263.rs:15:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let mut x: Box<_> = box Foo { a: 1, b: 2 };
+LL | |     let (a, b) = (&mut x.a, &mut x.b);
+LL | |     //~^ ERROR cannot borrow `x` (via `x.b`) as mutable more than once at a time
+...  |
+LL | |     //~^ ERROR cannot borrow `foo` (via `foo.b`) as immutable
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

@@ -1,26 +1,33 @@
-error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:46:21
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/pointer_family.rs:11:12
    |
-46 |     bar: P::Pointer<String>,
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/pointer_family.rs:47:21
+   |
+LL |     bar: P::Pointer<String>,
    |                     ^^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:21:42
+  --> $DIR/pointer_family.rs:22:42
    |
-21 |     fn new<T>(value: T) -> Self::Pointer<T>;
+LL |     fn new<T>(value: T) -> Self::Pointer<T>;
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:29:42
+  --> $DIR/pointer_family.rs:30:42
    |
-29 |     fn new<T>(value: T) -> Self::Pointer<T> {
+LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:39:42
+  --> $DIR/pointer_family.rs:40:42
    |
-39 |     fn new<T>(value: T) -> Self::Pointer<T> {
+LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0109`.

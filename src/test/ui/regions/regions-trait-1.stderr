@@ -1,0 +1,24 @@
+error[E0308]: method not compatible with trait
+  --> $DIR/regions-trait-1.rs:26:5
+   |
+LL |     fn get_ctxt(&self) -> &'a ctxt { //~ ERROR method not compatible with trait
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `fn(&has_ctxt<'a>) -> &ctxt`
+              found type `fn(&has_ctxt<'a>) -> &'a ctxt`
+note: the lifetime 'a as defined on the impl at 22:6...
+  --> $DIR/regions-trait-1.rs:22:6
+   |
+LL | impl<'a> get_ctxt for has_ctxt<'a> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime #1 defined on the method body at 26:5
+  --> $DIR/regions-trait-1.rs:26:5
+   |
+LL | /     fn get_ctxt(&self) -> &'a ctxt { //~ ERROR method not compatible with trait
+LL | |         self.c
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

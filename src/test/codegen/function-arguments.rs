@@ -10,6 +10,7 @@
 
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
+// min-llvm-version 6.0
 
 #![crate_type = "lib"]
 #![feature(custom_attribute)]
@@ -52,16 +53,14 @@ pub fn named_borrow<'r>(_: &'r i32) {
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(i16* dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* noalias dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
-// ... except that there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* dereferenceable(4) %arg0)
+// CHECK: @mutable_borrow(i32* noalias dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
-// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
 }
@@ -103,9 +102,8 @@ pub fn helper(_: usize) {
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice([0 x i8]* nonnull %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @mutable_slice([0 x i8]* noalias nonnull %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
-// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
 }
@@ -122,20 +120,38 @@ pub fn unsafe_slice(_: &[UnsafeInner]) {
 pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow(%"core::ops::drop::Drop"* nonnull %arg0.0, {}* noalias nonnull readonly %arg0.1)
+// CHECK: @trait_borrow({}* nonnull %arg0.0, [4 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}) %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box(%"core::ops::drop::Drop"* noalias nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_box({}* noalias nonnull, [4 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}))
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
+}
+
+// CHECK: { i8*, i8* } @trait_option(i8* noalias %x.0, i8* %x.1)
+#[no_mangle]
+pub fn trait_option(x: Option<Box<Drop>>) -> Option<Box<Drop>> {
+  x
 }
 
 // CHECK: { [0 x i16]*, [[USIZE]] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
+  x
+}
+
+// CHECK: { i16, i16 } @enum_id_1(i16 %x.0, i16 %x.1)
+#[no_mangle]
+pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
+  x
+}
+
+// CHECK: { i8, i8 } @enum_id_2(i1 zeroext %x.0, i8 %x.1)
+#[no_mangle]
+pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
 }
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_nested_groups)]
-
 mod a {
     pub enum B {}
 
@@ -24,7 +22,11 @@ mod a {
     }
 }
 
+// Test every possible part of the syntax
 use a::{B, d::{self, *, g::H}};
+
+// Test a more common use case
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 fn main() {
     let _: B;
@@ -32,4 +34,7 @@ fn main() {
     let _: F;
     let _: H;
     let _: d::g::I;
+
+    let _: Arc<AtomicBool>;
+    let _: Ordering;
 }

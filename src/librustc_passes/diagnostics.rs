@@ -31,23 +31,6 @@ const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
 */
-E0030: r##"
-When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
-requiring the start of the range to be less than or equal to the end of the
-range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 ... 1 => {}
-    // This range is empty, and the compiler can tell.
-    1000 ... 5 => {}
-}
-```
-"##,
 
 E0130: r##"
 You declared a pattern as an argument in a foreign function declaration.
@@ -126,22 +109,6 @@ impl !Enterprise for Foo { }
 ```
 
 Please note that negative impls are only allowed for auto traits.
-"##,
-
-E0265: r##"
-This error indicates that a static or constant references itself.
-All statics and constants need to resolve to a value in an acyclic manner.
-
-For example, neither of the following can be sensibly compiled:
-
-```compile_fail,E0265
-const X: u32 = X;
-```
-
-```compile_fail,E0265
-const X: u32 = Y;
-const Y: u32 = X;
-```
 "##,
 
 E0267: r##"
@@ -244,24 +211,6 @@ impl Foo for Bar {
 "##,
 
 
-E0579: r##"
-When matching against an exclusive range, the compiler verifies that the range
-is non-empty. Exclusive range patterns include the start point but not the end
-point, so this is equivalent to requiring the start of the range to be less
-than the end of the range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
-}
-```
-"##,
-
 E0590: r##"
 `break` or `continue` must include a label when used in the condition of a
 `while` loop.
@@ -310,6 +259,65 @@ let result = loop { // ok!
     i += 1;
 };
 ```
+"##,
+
+E0642: r##"
+Trait methods currently cannot take patterns as arguments.
+
+Example of erroneous code:
+
+```compile_fail,E0642
+trait Foo {
+    fn foo((x, y): (i32, i32)); // error: patterns aren't allowed
+                                //        in trait methods
+}
+```
+
+You can instead use a single name for the argument:
+
+```
+trait Foo {
+    fn foo(x_and_y: (i32, i32)); // ok!
+}
+```
+"##,
+
+E0695: r##"
+A `break` statement without a label appeared inside a labeled block.
+
+Example of erroneous code:
+
+```compile_fail,E0695
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break;
+    }
+}
+```
+
+Make sure to always label the `break`:
+
+```
+# #![feature(label_break_value)]
+'l: loop {
+    'a: {
+        break 'l;
+    }
+}
+```
+
+Or if you want to `break` the labeled block:
+
+```
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break 'a;
+    }
+    break;
+}
+```
 "##
 }
 
@@ -319,5 +327,8 @@ register_diagnostics! {
     E0561, // patterns aren't allowed in function pointer types
     E0567, // auto traits can not have generic parameters
     E0568, // auto traits can not have super traits
-    E0642, // patterns aren't allowed in methods without bodies
+    E0666, // nested `impl Trait` is illegal
+    E0667, // `impl Trait` in projections
+    E0696, // `continue` pointing to a labeled block
+    E0706, // `async fn` in trait
 }

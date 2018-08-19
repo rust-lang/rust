@@ -13,7 +13,10 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-#![deny(warnings)]
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 use std::fs;
 
@@ -46,14 +49,17 @@ pub mod features;
 pub mod cargo;
 pub mod pal;
 pub mod deps;
+pub mod extdeps;
+pub mod ui_tests;
 pub mod unstable_book;
+pub mod libcoretest;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/binaryen",
         "src/dlmalloc",
         "src/jemalloc",
         "src/llvm",
+        "src/llvm-emscripten",
         "src/libbacktrace",
         "src/libcompiler_builtins",
         "src/librustc_data_structures/owning_ref",
@@ -62,34 +68,41 @@ fn filter_dirs(path: &Path) -> bool {
         "src/vendor",
         "src/rt/hoedown",
         "src/tools/cargo",
+        "src/tools/clang",
         "src/tools/rls",
         "src/tools/clippy",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
         "src/tools/miri",
+        "src/tools/lld",
+        "src/tools/lldb",
         "src/librustc/mir/interpret",
         "src/librustc_mir/interpret",
+        "src/target",
+        "src/stdsimd",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
 
-fn walk_many(paths: &[&Path], skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
+fn walk_many(paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Path)) {
     for path in paths {
         walk(path, skip, f);
     }
 }
 
-fn walk(path: &Path, skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
-    for entry in t!(fs::read_dir(path), path) {
-        let entry = t!(entry);
-        let kind = t!(entry.file_type());
-        let path = entry.path();
-        if kind.is_dir() {
-            if !skip(&path) {
-                walk(&path, skip, f);
+fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Path)) {
+    if let Ok(dir) = fs::read_dir(path) {
+        for entry in dir {
+            let entry = t!(entry);
+            let kind = t!(entry.file_type());
+            let path = entry.path();
+            if kind.is_dir() {
+                if !skip(&path) {
+                    walk(&path, skip, f);
+                }
+            } else {
+                f(&path);
             }
-        } else {
-            f(&path);
         }
     }
 }

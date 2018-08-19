@@ -1,0 +1,26 @@
+error: union contains a field with possibly non-trivial drop code, drop code of union fields is ignored when dropping the union
+  --> $DIR/union-with-drop-fields-lint.rs:20:5
+   |
+LL |     a: String, //~ ERROR union contains a field with possibly non-trivial drop code
+   |     ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/union-with-drop-fields-lint.rs:13:9
+   |
+LL | #![deny(unions_with_drop_fields)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: union contains a field with possibly non-trivial drop code, drop code of union fields is ignored when dropping the union
+  --> $DIR/union-with-drop-fields-lint.rs:28:5
+   |
+LL |     a: S, //~ ERROR union contains a field with possibly non-trivial drop code
+   |     ^^^^
+
+error: union contains a field with possibly non-trivial drop code, drop code of union fields is ignored when dropping the union
+  --> $DIR/union-with-drop-fields-lint.rs:33:5
+   |
+LL |     a: T, //~ ERROR union contains a field with possibly non-trivial drop code
+   |     ^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,16 @@
+error[E0601]: `main` function not found in crate `issue_43784_associated_type`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-43784-associated-type.rs`
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/issue-43784-associated-type.rs:23:9
+   |
+LL | impl<T> Complete for T { //~ ERROR the trait bound `T: std::marker::Copy` is not satisfied
+   |         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0277, E0601.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,50 +1,51 @@
-error[E0277]: the trait bound `{integer}: std::ops::Add<std::option::Option<{integer}>>` is not satisfied
+error[E0277]: cannot add `std::option::Option<{integer}>` to `{integer}`
   --> $DIR/binops.rs:12:7
    |
-12 |     1 + Some(1); //~ ERROR is not satisfied
+LL |     1 + Some(1); //~ ERROR cannot add `std::option::Option<{integer}>` to `{integer}`
    |       ^ no implementation for `{integer} + std::option::Option<{integer}>`
    |
    = help: the trait `std::ops::Add<std::option::Option<{integer}>>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `usize: std::ops::Sub<std::option::Option<{integer}>>` is not satisfied
+error[E0277]: cannot subtract `std::option::Option<{integer}>` from `usize`
   --> $DIR/binops.rs:13:16
    |
-13 |     2 as usize - Some(1); //~ ERROR is not satisfied
+LL |     2 as usize - Some(1); //~ ERROR cannot subtract `std::option::Option<{integer}>` from `usize`
    |                ^ no implementation for `usize - std::option::Option<{integer}>`
    |
    = help: the trait `std::ops::Sub<std::option::Option<{integer}>>` is not implemented for `usize`
 
-error[E0277]: the trait bound `{integer}: std::ops::Mul<()>` is not satisfied
+error[E0277]: cannot multiply `()` to `{integer}`
   --> $DIR/binops.rs:14:7
    |
-14 |     3 * (); //~ ERROR is not satisfied
+LL |     3 * (); //~ ERROR cannot multiply `()` to `{integer}`
    |       ^ no implementation for `{integer} * ()`
    |
    = help: the trait `std::ops::Mul<()>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::ops::Div<&str>` is not satisfied
+error[E0277]: cannot divide `{integer}` by `&str`
   --> $DIR/binops.rs:15:7
    |
-15 |     4 / ""; //~ ERROR is not satisfied
+LL |     4 / ""; //~ ERROR cannot divide `{integer}` by `&str`
    |       ^ no implementation for `{integer} / &str`
    |
    = help: the trait `std::ops::Div<&str>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::cmp::PartialOrd<std::string::String>` is not satisfied
+error[E0277]: can't compare `{integer}` with `std::string::String`
   --> $DIR/binops.rs:16:7
    |
-16 |     5 < String::new(); //~ ERROR is not satisfied
-   |       ^ can't compare `{integer}` with `std::string::String`
+LL |     5 < String::new(); //~ ERROR can't compare `{integer}` with `std::string::String`
+   |       ^ no implementation for `{integer} < std::string::String` and `{integer} > std::string::String`
    |
    = help: the trait `std::cmp::PartialOrd<std::string::String>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not satisfied
+error[E0277]: can't compare `{integer}` with `std::result::Result<{integer}, _>`
   --> $DIR/binops.rs:17:7
    |
-17 |     6 == Ok(1); //~ ERROR is not satisfied
-   |       ^^ can't compare `{integer}` with `std::result::Result<{integer}, _>`
+LL |     6 == Ok(1); //~ ERROR can't compare `{integer}` with `std::result::Result<{integer}, _>`
+   |       ^^ no implementation for `{integer} == std::result::Result<{integer}, _>`
    |
    = help: the trait `std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not implemented for `{integer}`
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

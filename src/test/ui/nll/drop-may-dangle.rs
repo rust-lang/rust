@@ -12,12 +12,11 @@
 // in the type of `p` includes the points after `&v[0]` up to (but not
 // including) the call to `use_x`. The `else` branch is not included.
 
-// compile-flags:-Znll -Zborrowck=mir
-// must-compile-successfully
+// compile-flags:-Zborrowck=mir
+// compile-pass
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]
-#![feature(generic_param_attrs)]
 
 fn use_x(_: usize) -> bool { true }
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iter;
 use core::num::dec2flt::parse::{Decimal, parse_decimal};
 use core::num::dec2flt::parse::ParseResult::{Valid, Invalid};
 
@@ -46,7 +45,7 @@ fn valid() {
     assert_eq!(parse_decimal("1.e300"), Valid(Decimal::new(b"1", b"", 300)));
     assert_eq!(parse_decimal(".1e300"), Valid(Decimal::new(b"", b"1", 300)));
     assert_eq!(parse_decimal("101e-33"), Valid(Decimal::new(b"101", b"", -33)));
-    let zeros: String = iter::repeat('0').take(25).collect();
+    let zeros = "0".repeat(25);
     let s = format!("1.5e{}", zeros);
     assert_eq!(parse_decimal(&s), Valid(Decimal::new(b"1", b"5", 0)));
 }

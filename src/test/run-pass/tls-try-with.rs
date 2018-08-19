@@ -10,7 +10,7 @@
 
 // ignore-emscripten no threads support
 
-#![feature(thread_local_state)]
+#![feature(thread_local_try_with)]
 
 use std::thread;
 

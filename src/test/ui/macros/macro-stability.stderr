@@ -1,0 +1,11 @@
+error[E0658]: macro unstable_macro! is unstable
+  --> $DIR/macro-stability.rs:21:5
+   |
+LL |     unstable_macro!(); //~ ERROR: macro unstable_macro! is unstable
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_macros)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

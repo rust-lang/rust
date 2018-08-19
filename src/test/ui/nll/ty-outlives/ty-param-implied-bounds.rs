@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
+// compile-flags:-Zborrowck=mir -Zverbose
+// compile-pass
 
 // Test that we assume that universal types like `T` outlive the
 // function body.

@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#![feature(plugin, custom_attribute)]
+#![feature(plugin, rustc_attrs)]
 #![plugin(macro_crate_test)]
 
 #[macro_use]
@@ -20,27 +20,27 @@ extern crate macro_crate_test;
 
 // The duplicate macro will create a copy of the item with the given identifier.
 
-#[duplicate(MyCopy)]
+#[rustc_duplicate(MyCopy)]
 struct MyStruct {
     number: i32
 }
 
 trait TestTrait {
-    #[duplicate(TestType2)]
+    #[rustc_duplicate(TestType2)]
     type TestType;
 
-    #[duplicate(required_fn2)]
+    #[rustc_duplicate(required_fn2)]
     fn required_fn(&self);
 
-    #[duplicate(provided_fn2)]
+    #[rustc_duplicate(provided_fn2)]
     fn provided_fn(&self) { }
 }
 
 impl TestTrait for MyStruct {
-    #[duplicate(TestType2)]
+    #[rustc_duplicate(TestType2)]
     type TestType = f64;
 
-    #[duplicate(required_fn2)]
+    #[rustc_duplicate(required_fn2)]
     fn required_fn(&self) { }
 }
 

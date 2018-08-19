@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `std::convert::AsRef<Q>` for type `std::boxed::Box<Q>`:
   --> $DIR/conflict-with-std.rs:17:1
    |
-17 | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
+LL | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
@@ -11,7 +11,7 @@ error[E0119]: conflicting implementations of trait `std::convert::AsRef<Q>` for 
 error[E0119]: conflicting implementations of trait `std::convert::From<S>` for type `S`:
   --> $DIR/conflict-with-std.rs:24:1
    |
-24 | impl From<S> for S { //~ ERROR conflicting implementations
+LL | impl From<S> for S { //~ ERROR conflicting implementations
    | ^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
@@ -20,7 +20,7 @@ error[E0119]: conflicting implementations of trait `std::convert::From<S>` for t
 error[E0119]: conflicting implementations of trait `std::convert::TryFrom<X>` for type `X`:
   --> $DIR/conflict-with-std.rs:31:1
    |
-31 | impl TryFrom<X> for X { //~ ERROR conflicting implementations
+LL | impl TryFrom<X> for X { //~ ERROR conflicting implementations
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
@@ -29,3 +29,4 @@ error[E0119]: conflicting implementations of trait `std::convert::TryFrom<X>` fo
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0119`.

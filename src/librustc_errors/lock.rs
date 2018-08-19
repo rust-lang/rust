@@ -23,7 +23,7 @@ use std::any::Any;
 
 #[cfg(windows)]
 #[allow(bad_style)]
-pub fn acquire_global_lock(name: &str) -> Box<Any> {
+pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;
 
@@ -110,6 +110,6 @@ pub fn acquire_global_lock(name: &str) -> Box<Any> {
 }
 
 #[cfg(unix)]
-pub fn acquire_global_lock(_name: &str) -> Box<Any> {
+pub fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
     Box::new(())
 }

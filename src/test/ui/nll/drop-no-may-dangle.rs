@@ -13,11 +13,10 @@
 // because of destructor. (Note that the stderr also identifies this
 // destructor in the error message.)
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause
+// compile-flags:-Zborrowck=mir
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]
-#![feature(generic_param_attrs)]
 
 fn use_x(_: usize) -> bool { true }
 

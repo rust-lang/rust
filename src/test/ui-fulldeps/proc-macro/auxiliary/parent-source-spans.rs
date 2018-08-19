@@ -9,17 +9,18 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-#![feature(proc_macro)]
+
+#![feature(proc_macro_diagnostic, proc_macro_span)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenTree, TokenNode, Span};
+use proc_macro::{TokenStream, TokenTree, Span};
 
 fn lit_span(tt: TokenTree) -> (Span, String) {
-    use TokenNode::*;
-    match tt.kind {
-        Literal(..) | Group(..) => (tt.span, tt.to_string().trim().into()),
+    match tt {
+        TokenTree::Literal(..) |
+        TokenTree::Group(..) => (tt.span(), tt.to_string().trim().into()),
         _ => panic!("expected a literal in token tree, got: {:?}", tt)
     }
 }

@@ -1,0 +1,12 @@
+error: compilation successful
+  --> $DIR/lookup-ignores-private.rs:40:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     let s = foo::S::default();
+LL | |     let _: bool = s.x;
+LL | |     let _: bool = s.f();
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

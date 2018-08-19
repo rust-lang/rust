@@ -1,0 +1,9 @@
+error[E0697]: closures cannot be static
+  --> $DIR/static-closures.rs:12:5
+   |
+LL |     static || {};
+   |     ^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0697`.

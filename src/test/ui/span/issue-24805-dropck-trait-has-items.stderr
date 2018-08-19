@@ -1,9 +1,9 @@
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:47:27
    |
-47 |     _d = D_HasSelfMethod(&d1);
+LL |     _d = D_HasSelfMethod(&d1);
    |                           ^^ borrowed value does not live long enough
-48 | }
+LL | }
    | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -11,9 +11,9 @@ error[E0597]: `d1` does not live long enough
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:53:34
    |
-53 |     _d = D_HasMethodWithSelfArg(&d1);
+LL |     _d = D_HasMethodWithSelfArg(&d1);
    |                                  ^^ borrowed value does not live long enough
-54 | }
+LL | }
    | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -21,12 +21,13 @@ error[E0597]: `d1` does not live long enough
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:59:21
    |
-59 |     _d = D_HasType(&d1);
+LL |     _d = D_HasType(&d1);
    |                     ^^ borrowed value does not live long enough
-60 | }
+LL | }
    | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

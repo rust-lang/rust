@@ -1,0 +1,14 @@
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:13:27
+   |
+LL |         #[cfg_attr(all(), unknown)] //~ ERROR `unknown` is currently unknown
+   |                           ^^^^^^^^
+...
+LL | foo!();
+   | ------- in this macro invocation
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

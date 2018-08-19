@@ -1,10 +1,11 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn-body-nll-feature.rs:31:5
+  --> $DIR/ty-param-fn-body-nll-feature.rs:30:5
    |
-31 |     outlives(cell, t)
+LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0309`.

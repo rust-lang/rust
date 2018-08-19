@@ -1,0 +1,20 @@
+warning: Trait bound std::vec::Vec<str>: std::fmt::Debug does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-well-formed.rs:17:1
+   |
+LL | / pub fn foo() where Vec<str>: Debug, str: Copy {
+LL | |     let x = vec![*"1"];
+LL | |     println!("{:?}", x);
+LL | | }
+   | |_^
+   |
+   = note: #[warn(trivial_bounds)] on by default
+
+warning: Trait bound str: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-well-formed.rs:17:1
+   |
+LL | / pub fn foo() where Vec<str>: Debug, str: Copy {
+LL | |     let x = vec![*"1"];
+LL | |     println!("{:?}", x);
+LL | | }
+   | |_^
+

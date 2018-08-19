@@ -19,4 +19,3 @@ macro_rules! negative {
 fn main() {
       negative!(1 as i32);
 }
-

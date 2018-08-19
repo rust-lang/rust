@@ -1,0 +1,12 @@
+error[E0384]: cannot assign twice to immutable variable `v`
+  --> $DIR/liveness-assign-imm-local-in-loop.rs:18:9
+   |
+LL |     let v: isize;
+   |         - consider changing this to `mut v`
+...
+LL |         v = 1; //[ast]~ ERROR cannot assign twice to immutable variable
+   |         ^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0384`.

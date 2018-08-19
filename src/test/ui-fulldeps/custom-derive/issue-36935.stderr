@@ -1,8 +1,10 @@
 error: proc-macro derive panicked
-  --> $DIR/issue-36935.rs:18:15
+  --> $DIR/issue-36935.rs:16:15
    |
-18 | #[derive(Foo, Bar)] //~ ERROR proc-macro derive panicked
+LL | #[derive(Foo, Bar)] //~ ERROR proc-macro derive panicked
    |               ^^^
    |
    = help: message: lolnope
+
+error: aborting due to previous error
 

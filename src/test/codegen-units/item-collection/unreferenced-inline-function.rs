@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=lazy
+// compile-flags:-Zprint-mono-items=lazy
 
-// NB: We do not expect *any* translation item to be generated here.
+// NB: We do not expect *any* monomorphization to be generated here.
 
 #![deny(dead_code)]
 #![crate_type = "rlib"]
@@ -20,4 +20,3 @@
 pub fn foo() -> bool {
     [1, 2] == [3, 4]
 }
-

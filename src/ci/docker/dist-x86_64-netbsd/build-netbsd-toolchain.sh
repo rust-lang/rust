@@ -54,7 +54,7 @@ cd usr/src
 # The options, in order, do the following
 # * this is an unprivileged build
 # * output to a predictable location
-# * disable various uneeded stuff
+# * disable various unneeded stuff
 MKUNPRIVED=yes TOOLDIR=/x-tools/x86_64-unknown-netbsd \
 MKSHARE=no MKDOC=no MKHTML=no MKINFO=no MKKMOD=no MKLINT=no MKMAN=no MKNLS=no MKPROFILE=no \
 hide_output ./build.sh -j10 -m amd64 tools

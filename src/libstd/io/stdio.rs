@@ -17,11 +17,11 @@ use io::{self, Initializer, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use thread::{LocalKey, LocalKeyState};
+use thread::LocalKey;
 
 /// Stdout used by print! and println! macros
 thread_local! {
-    static LOCAL_STDOUT: RefCell<Option<Box<Write + Send>>> = {
+    static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
@@ -171,38 +171,39 @@ pub struct StdinLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
-/// let mut buffer = String::new();
-/// io::stdin().read_to_string(&mut buffer)?;
-/// # Ok(buffer)
-/// # }
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     io::stdin().read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
-/// let mut buffer = String::new();
-/// let stdin = io::stdin();
-/// let mut handle = stdin.lock();
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     let stdin = io::stdin();
+///     let mut handle = stdin.lock();
 ///
-/// handle.read_to_string(&mut buffer)?;
-/// # Ok(buffer)
-/// # }
+///     handle.read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new(stdin_init);
+    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = unsafe { Lazy::new(stdin_init) };
     return Stdin {
         inner: INSTANCE.get().expect("cannot access stdin during shutdown"),
     };
 
     fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
+        // This must not reentrantly access `INSTANCE`
         let stdin = match stdin_raw() {
             Ok(stdin) => Maybe::Real(stdin),
             _ => Maybe::Fake
@@ -225,17 +226,17 @@ impl Stdin {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::{self, Read};
     ///
-    /// # fn foo() -> io::Result<String> {
-    /// let mut buffer = String::new();
-    /// let stdin = io::stdin();
-    /// let mut handle = stdin.lock();
+    /// fn main() -> io::Result<()> {
+    ///     let mut buffer = String::new();
+    ///     let stdin = io::stdin();
+    ///     let mut handle = stdin.lock();
     ///
-    /// handle.read_to_string(&mut buffer)?;
-    /// # Ok(buffer)
-    /// # }
+    ///     handle.read_to_string(&mut buffer)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
@@ -369,39 +370,40 @@ pub struct StdoutLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// io::stdout().write(b"hello world")?;
+/// fn main() -> io::Result<()> {
+///     io::stdout().write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// let stdout = io::stdout();
-/// let mut handle = stdout.lock();
+/// fn main() -> io::Result<()> {
+///     let stdout = io::stdout();
+///     let mut handle = stdout.lock();
 ///
-/// handle.write(b"hello world")?;
+///     handle.write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>
-        = Lazy::new(stdout_init);
+        = unsafe { Lazy::new(stdout_init) };
     return Stdout {
         inner: INSTANCE.get().expect("cannot access stdout during shutdown"),
     };
 
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
+        // This must not reentrantly access `INSTANCE`
         let stdout = match stdout_raw() {
             Ok(stdout) => Maybe::Real(stdout),
             _ => Maybe::Fake,
@@ -419,17 +421,17 @@ impl Stdout {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::{self, Write};
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let stdout = io::stdout();
-    /// let mut handle = stdout.lock();
+    /// fn main() -> io::Result<()> {
+    ///     let stdout = io::stdout();
+    ///     let mut handle = stdout.lock();
     ///
-    /// handle.write(b"hello world")?;
+    ///     handle.write(b"hello world")?;
     ///
-    /// # Ok(())
-    /// # }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
@@ -505,38 +507,40 @@ pub struct StderrLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// io::stderr().write(b"hello world")?;
+/// fn main() -> io::Result<()> {
+///     io::stderr().write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// let stderr = io::stderr();
-/// let mut handle = stderr.lock();
+/// fn main() -> io::Result<()> {
+///     let stderr = io::stderr();
+///     let mut handle = stderr.lock();
 ///
-/// handle.write(b"hello world")?;
+///     handle.write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new(stderr_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> =
+        unsafe { Lazy::new(stderr_init) };
     return Stderr {
         inner: INSTANCE.get().expect("cannot access stderr during shutdown"),
     };
 
     fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
+        // This must not reentrantly access `INSTANCE`
         let stderr = match stderr_raw() {
             Ok(stderr) => Maybe::Real(stderr),
             _ => Maybe::Fake,
@@ -624,7 +628,7 @@ impl<'a> fmt::Debug for StderrLock<'a> {
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
-pub fn set_panic(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
+pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use panicking::LOCAL_STDERR;
     use mem;
     LOCAL_STDERR.with(move |slot| {
@@ -648,7 +652,7 @@ pub fn set_panic(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
-pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
+pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use mem;
     LOCAL_STDOUT.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
@@ -663,29 +667,31 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
 ///
 /// This function is used to print error messages, so it takes extra
 /// care to avoid causing a panic when `local_stream` is unusable.
-/// For instance, if the TLS key for the local stream is uninitialized
-/// or already destroyed, or if the local stream is locked by another
+/// For instance, if the TLS key for the local stream is
+/// already destroyed, or if the local stream is locked by another
 /// thread, it will just fall back to the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
-fn print_to<T>(args: fmt::Arguments,
-               local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
-               global_s: fn() -> T,
-               label: &str) where T: Write {
-    let result = match local_s.state() {
-        LocalKeyState::Uninitialized |
-        LocalKeyState::Destroyed => global_s().write_fmt(args),
-        LocalKeyState::Valid => {
-            local_s.with(|s| {
-                if let Ok(mut borrowed) = s.try_borrow_mut() {
-                    if let Some(w) = borrowed.as_mut() {
-                        return w.write_fmt(args);
-                    }
-                }
-                global_s().write_fmt(args)
-            })
+fn print_to<T>(
+    args: fmt::Arguments,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
+    global_s: fn() -> T,
+    label: &str,
+)
+where
+    T: Write,
+{
+    let result = local_s.try_with(|s| {
+        if let Ok(mut borrowed) = s.try_borrow_mut() {
+            if let Some(w) = borrowed.as_mut() {
+                return w.write_fmt(args);
+            }
         }
-    };
+        global_s().write_fmt(args)
+    }).unwrap_or_else(|_| {
+        global_s().write_fmt(args)
+    });
+
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);
     }
@@ -710,8 +716,30 @@ pub fn _eprint(args: fmt::Arguments) {
 
 #[cfg(test)]
 mod tests {
+    use panic::{UnwindSafe, RefUnwindSafe};
     use thread;
     use super::*;
+
+    #[test]
+    fn stdout_unwind_safe() {
+        assert_unwind_safe::<Stdout>();
+    }
+    #[test]
+    fn stdoutlock_unwind_safe() {
+        assert_unwind_safe::<StdoutLock>();
+        assert_unwind_safe::<StdoutLock<'static>>();
+    }
+    #[test]
+    fn stderr_unwind_safe() {
+        assert_unwind_safe::<Stderr>();
+    }
+    #[test]
+    fn stderrlock_unwind_safe() {
+        assert_unwind_safe::<StderrLock>();
+        assert_unwind_safe::<StderrLock<'static>>();
+    }
+
+    fn assert_unwind_safe<T: UnwindSafe + RefUnwindSafe>() {}
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]

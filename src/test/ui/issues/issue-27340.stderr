@@ -1,0 +1,12 @@
+error[E0204]: the trait `Copy` may not be implemented for this type
+  --> $DIR/issue-27340.rs:12:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+LL | //~^ ERROR the trait `Copy` may not be implemented for this type
+LL | struct Bar(Foo);
+   |            --- this field does not implement `Copy`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0204`.

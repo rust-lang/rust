@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions:lexical nll
+#![cfg_attr(nll, feature(nll))]
+
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(generators, generator_trait, untagged_unions, slice_patterns, advanced_slice_patterns)]
+#![feature(generators, generator_trait, untagged_unions)]
+#![feature(slice_patterns)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::Generator;
@@ -175,7 +179,7 @@ fn generator(a: &Allocator, run_count: usize) {
          );
     };
     for _ in 0..run_count {
-        gen.resume();
+        unsafe { gen.resume(); }
     }
 }
 
@@ -220,6 +224,43 @@ fn slice_pattern_one_of(a: &Allocator, i: usize) {
         3 => { let [_, _, _, a] = array; a }
         _ => panic!("unmatched"),
     };
+}
+
+fn subslice_pattern_from_end(a: &Allocator, arg: bool) {
+    let a = [a.alloc(), a.alloc(), a.alloc()];
+    if arg {
+        let[.., _x, _] = a;
+    } else {
+        let[_, _y..] = a;
+    }
+}
+
+fn subslice_pattern_from_end_with_drop(a: &Allocator, arg: bool, arg2: bool) {
+    let a = [a.alloc(), a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+    if arg2 {
+        drop(a);
+        return;
+    }
+
+    if arg {
+        let[.., _x, _] = a;
+    } else {
+        let[_, _y..] = a;
+    }
+}
+
+fn slice_pattern_reassign(a: &Allocator) {
+    let mut ar = [a.alloc(), a.alloc()];
+    let[_, _x] = ar;
+    ar = [a.alloc(), a.alloc()];
+    let[.., _y] = ar;
+}
+
+fn subslice_pattern_reassign(a: &Allocator) {
+    let mut ar = [a.alloc(), a.alloc(), a.alloc()];
+    let[_, _, _x] = ar;
+    ar = [a.alloc(), a.alloc(), a.alloc()];
+    let[_, _y..] = ar;
 }
 
 fn run_test<F>(mut f: F)
@@ -299,6 +340,15 @@ fn main() {
     run_test(|a| slice_pattern_one_of(a, 1));
     run_test(|a| slice_pattern_one_of(a, 2));
     run_test(|a| slice_pattern_one_of(a, 3));
+
+    run_test(|a| subslice_pattern_from_end(a, true));
+    run_test(|a| subslice_pattern_from_end(a, false));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, true, true));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, true, false));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, false, true));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, false, false));
+    run_test(|a| slice_pattern_reassign(a));
+    run_test(|a| subslice_pattern_reassign(a));
 
     run_test_nopanic(|a| union1(a));
 }

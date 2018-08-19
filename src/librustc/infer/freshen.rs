@@ -114,9 +114,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 self.tcx().types.re_erased
             }
 
+            ty::ReCanonical(..) |
             ty::ReClosureBound(..) => {
                 bug!(
-                    "encountered unexpected ReClosureBound: {:?}",
+                    "encountered unexpected region: {:?}",
                     r,
                 );
             }
@@ -133,7 +134,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
 
         match t.sty {
             ty::TyInfer(ty::TyVar(v)) => {
-                let opt_ty = self.infcx.type_variables.borrow_mut().probe(v);
+                let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
                 self.freshen(
                     opt_ty,
                     ty::TyVar(v),
@@ -143,7 +144,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::IntVar(v)) => {
                 self.freshen(
                     self.infcx.int_unification_table.borrow_mut()
-                                                    .probe(v)
+                                                    .probe_value(v)
                                                     .map(|v| v.to_type(tcx)),
                     ty::IntVar(v),
                     ty::FreshIntTy)
@@ -152,7 +153,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::FloatVar(v)) => {
                 self.freshen(
                     self.infcx.float_unification_table.borrow_mut()
-                                                      .probe(v)
+                                                      .probe_value(v)
                                                       .map(|v| v.to_type(tcx)),
                     ty::FloatVar(v),
                     ty::FreshFloatTy)
@@ -169,6 +170,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 }
                 t
             }
+
+            ty::TyInfer(ty::CanonicalTy(..)) =>
+                bug!("encountered canonical ty during freshening"),
 
             ty::TyGenerator(..) |
             ty::TyBool |
@@ -192,6 +196,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyForeign(..) |
             ty::TyParam(..) |
             ty::TyClosure(..) |
+            ty::TyGeneratorWitness(..) |
             ty::TyAnon(..) => {
                 t.super_fold_with(self)
             }

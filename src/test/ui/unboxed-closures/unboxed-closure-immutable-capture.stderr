@@ -1,0 +1,69 @@
+error[E0595]: closure cannot assign to immutable local variable `x`
+  --> $DIR/unboxed-closure-immutable-capture.rs:23:5
+   |
+LL |     let x = 0;
+   |         - consider changing this to `mut x`
+...
+LL |     || x = 1; //~ ERROR cannot assign
+   |     ^^ cannot borrow mutably
+
+error[E0595]: closure cannot assign to immutable local variable `x`
+  --> $DIR/unboxed-closure-immutable-capture.rs:25:5
+   |
+LL |     let x = 0;
+   |         - consider changing this to `mut x`
+...
+LL |     || set(&mut x); //~ ERROR cannot assign
+   |     ^^ cannot borrow mutably
+
+error[E0595]: closure cannot assign to immutable local variable `x`
+  --> $DIR/unboxed-closure-immutable-capture.rs:26:5
+   |
+LL |     let x = 0;
+   |         - consider changing this to `mut x`
+...
+LL |     || x = 1; //~ ERROR cannot assign
+   |     ^^ cannot borrow mutably
+
+error[E0595]: closure cannot assign to immutable local variable `x`
+  --> $DIR/unboxed-closure-immutable-capture.rs:28:5
+   |
+LL |     let x = 0;
+   |         - consider changing this to `mut x`
+...
+LL |     || set(&mut x); //~ ERROR cannot assign
+   |     ^^ cannot borrow mutably
+
+error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-immutable-capture.rs:19:13
+   |
+LL |     let x = 0;
+   |         - help: consider making `x` mutable: `mut x`
+LL |     move || x = 1; //~ ERROR cannot assign
+   |             ^^^^^
+
+error[E0596]: cannot borrow captured outer variable in an `FnMut` closure as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:20:22
+   |
+LL |     move || set(&mut x); //~ ERROR cannot borrow
+   |                      ^
+
+error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-immutable-capture.rs:21:13
+   |
+LL |     let x = 0;
+   |         - help: consider making `x` mutable: `mut x`
+...
+LL |     move || x = 1; //~ ERROR cannot assign
+   |             ^^^^^
+
+error[E0596]: cannot borrow captured outer variable in an `FnMut` closure as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:22:22
+   |
+LL |     move || set(&mut x); //~ ERROR cannot borrow
+   |                      ^
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0594, E0595, E0596.
+For more information about an error, try `rustc --explain E0594`.

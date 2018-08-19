@@ -18,22 +18,20 @@ use super::unify_key;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::unify::{self, UnificationTable};
+use rustc_data_structures::unify as ut;
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::ReStatic;
-use ty::{BrFresh, ReLateBound, ReSkolemized, ReVar};
+use ty::{BrFresh, ReLateBound, ReVar};
 
 use std::collections::BTreeMap;
-use std::fmt;
-use std::mem;
-use std::u32;
+use std::{cmp, fmt, mem, u32};
 
 mod taint;
 
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
+    var_infos: IndexVec<RegionVid, RegionVariableInfo>,
 
     data: RegionConstraintData<'tcx>,
 
@@ -46,9 +44,6 @@ pub struct RegionConstraintCollector<'tcx> {
     /// is designated as their GLB (edges R3 <= R1 and R3 <= R2
     /// exist). This prevents us from making many such regions.
     glbs: CombineMap<'tcx>,
-
-    /// Number of skolemized variables currently active.
-    skolemization_count: u32,
 
     /// Global counter used during the GLB algorithm to create unique
     /// names for fresh bound regions
@@ -73,16 +68,20 @@ pub struct RegionConstraintCollector<'tcx> {
     /// is iterating to a fixed point, because otherwise we sometimes
     /// would wind up with a fresh stream of region variables that
     /// have been equated but appear distinct.
-    unification_table: UnificationTable<ty::RegionVid>,
+    unification_table: ut::UnificationTable<ut::InPlace<ty::RegionVid>>,
+
+    /// a flag set to true when we perform any unifications; this is used
+    /// to micro-optimize `take_and_reset_data`
+    any_unifications: bool,
 }
 
-pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
+pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 
 /// The full set of region constraints gathered up by the collector.
 /// Describes constraints between the region variables and other
 /// regions, as well as other conditions that must be verified, or
 /// assumptions that can be made.
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
@@ -142,7 +141,7 @@ pub enum Constraint<'tcx> {
 /// outlive `RS`. Therefore verify that `R <= RS[i]` for some
 /// `i`. Inference variables may be involved (but this verification
 /// step doesn't influence inference).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Verify<'tcx> {
     pub kind: GenericKind<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
@@ -159,7 +158,7 @@ pub enum GenericKind<'tcx> {
 /// When we introduce a verification step, we wish to test that a
 /// particular region (let's call it `'min`) meets some bound.
 /// The bound is described the by the following grammar:
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
     /// B = exists {R} --> some 'r in {R} must outlive 'min
     ///
@@ -230,10 +229,16 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
+#[derive(Debug, Clone, Copy)]
+pub struct RegionVariableInfo {
+    pub origin: RegionVariableOrigin,
+    pub universe: ty::UniverseIndex,
+}
+
 pub struct RegionSnapshot {
     length: usize,
-    region_snapshot: unify::Snapshot<ty::RegionVid>,
-    skolemization_count: u32,
+    region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
+    any_unifications: bool,
 }
 
 /// When working with skolemized regions, we often wish to find all of
@@ -273,27 +278,31 @@ impl TaintDirections {
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> RegionConstraintCollector<'tcx> {
         RegionConstraintCollector {
-            var_origins: VarOrigins::default(),
+            var_infos: VarInfos::default(),
             data: RegionConstraintData::default(),
             lubs: FxHashMap(),
             glbs: FxHashMap(),
-            skolemization_count: 0,
             bound_count: 0,
             undo_log: Vec::new(),
-            unification_table: UnificationTable::new(),
+            unification_table: ut::UnificationTable::new(),
+            any_unifications: false,
         }
     }
 
-    pub fn var_origins(&self) -> &VarOrigins {
-        &self.var_origins
+    pub fn num_region_vars(&self) -> usize {
+        self.var_infos.len()
+    }
+
+    pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
+        &self.data
     }
 
     /// Once all the constraints have been gathered, extract out the final data.
     ///
     /// Not legal during a snapshot.
-    pub fn into_origins_and_data(self) -> (VarOrigins, RegionConstraintData<'tcx>) {
+    pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
         assert!(!self.in_snapshot());
-        (self.var_origins, self.data)
+        (self.var_infos, self.data)
     }
 
     /// Takes (and clears) the current set of constraints. Note that
@@ -315,17 +324,15 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // should think carefully about whether it needs to be cleared
         // or updated in some way.
         let RegionConstraintCollector {
-            var_origins,
+            var_infos: _,
             data,
             lubs,
             glbs,
-            skolemization_count,
             bound_count: _,
             undo_log: _,
             unification_table,
+            any_unifications,
         } = self;
-
-        assert_eq!(*skolemization_count, 0);
 
         // Clear the tables of (lubs, glbs), so that we will create
         // fresh regions if we do a LUB operation. As it happens,
@@ -338,12 +345,16 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // un-unified" state. Note that when we unify `a` and `b`, we
         // also insert `a <= b` and a `b <= a` edges, so the
         // `RegionConstraintData` contains the relationship here.
-        *unification_table = UnificationTable::new();
-        for vid in var_origins.indices() {
-            unification_table.new_key(unify_key::RegionVidKey { min_vid: vid });
+        if *any_unifications {
+            unification_table.reset_unifications(|vid| unify_key::RegionVidKey { min_vid: vid });
+            *any_unifications = false;
         }
 
         mem::replace(data, RegionConstraintData::default())
+    }
+
+    pub fn data(&self) -> &RegionConstraintData<'tcx> {
+        &self.data
     }
 
     fn in_snapshot(&self) -> bool {
@@ -357,7 +368,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         RegionSnapshot {
             length,
             region_snapshot: self.unification_table.snapshot(),
-            skolemization_count: self.skolemization_count,
+            any_unifications: self.any_unifications,
         }
     }
 
@@ -365,12 +376,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         debug!("RegionConstraintCollector: commit({})", snapshot.length);
         assert!(self.undo_log.len() > snapshot.length);
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-        assert!(
-            self.skolemization_count == snapshot.skolemization_count,
-            "failed to pop skolemized regions: {} now vs {} at start",
-            self.skolemization_count,
-            snapshot.skolemization_count
-        );
 
         if snapshot.length == 0 {
             self.undo_log.truncate(0);
@@ -390,8 +395,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
         let c = self.undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
-        self.skolemization_count = snapshot.skolemization_count;
         self.unification_table.rollback_to(snapshot.region_snapshot);
+        self.any_unifications = snapshot.any_unifications;
     }
 
     fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
@@ -403,8 +408,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 // nothing to do here
             }
             AddVar(vid) => {
-                self.var_origins.pop().unwrap();
-                assert_eq!(self.var_origins.len(), vid.index() as usize);
+                self.var_infos.pop().unwrap();
+                assert_eq!(self.var_infos.len(), vid.index() as usize);
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
@@ -425,8 +430,13 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
-        let vid = self.var_origins.push(origin.clone());
+    pub fn new_region_var(&mut self,
+                          universe: ty::UniverseIndex,
+                          origin: RegionVariableOrigin) -> RegionVid {
+        let vid = self.var_infos.push(RegionVariableInfo {
+            origin,
+            universe,
+        });
 
         let u_vid = self.unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
@@ -442,42 +452,14 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         return vid;
     }
 
-    /// Returns the origin for the given variable.
-    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_origins[vid].clone()
+    /// Returns the universe for the given variable.
+    pub fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
+        self.var_infos[vid].universe
     }
 
-    /// Creates a new skolemized region. Skolemized regions are fresh
-    /// regions used when performing higher-ranked computations. They
-    /// must be used in a very particular way and are never supposed
-    /// to "escape" out into error messages or the code at large.
-    ///
-    /// The idea is to always create a snapshot. Skolemized regions
-    /// can be created in the context of this snapshot, but before the
-    /// snapshot is committed or rolled back, they must be popped
-    /// (using `pop_skolemized_regions`), so that their numbers can be
-    /// recycled. Normally you don't have to think about this: you use
-    /// the APIs in `higher_ranked/mod.rs`, such as
-    /// `skolemize_late_bound_regions` and `plug_leaks`, which will
-    /// guide you on this path (ensure that the `SkolemizationMap` is
-    /// consumed and you are good).  There are also somewhat extensive
-    /// comments in `higher_ranked/README.md`.
-    ///
-    /// The `snapshot` argument to this function is not really used;
-    /// it's just there to make it explicit which snapshot bounds the
-    /// skolemized region that results. It should always be the top-most snapshot.
-    pub fn push_skolemized(
-        &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        br: ty::BoundRegion,
-        snapshot: &RegionSnapshot,
-    ) -> Region<'tcx> {
-        assert!(self.in_snapshot());
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-
-        let sc = self.skolemization_count;
-        self.skolemization_count = sc + 1;
-        tcx.mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
+    /// Returns the origin for the given variable.
+    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+        self.var_infos[vid].origin
     }
 
     /// Removes all the edges to/from the skolemized regions that are
@@ -486,7 +468,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// created in that time.
     pub fn pop_skolemized(
         &mut self,
-        _tcx: TyCtxt<'_, '_, 'tcx>,
+        skolemization_count: ty::UniverseIndex,
         skols: &FxHashSet<ty::Region<'tcx>>,
         snapshot: &RegionSnapshot,
     ) {
@@ -495,36 +477,28 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
-            self.skolemization_count as usize >= skols.len(),
+            skolemization_count.as_usize() >= skols.len(),
             "popping more skolemized variables than actually exist, \
-             sc now = {}, skols.len = {}",
-            self.skolemization_count,
+             sc now = {:?}, skols.len = {:?}",
+            skolemization_count,
             skols.len()
         );
 
-        let last_to_pop = self.skolemization_count;
-        let first_to_pop = last_to_pop - (skols.len() as u32);
+        let last_to_pop = skolemization_count.subuniverse();
+        let first_to_pop = ty::UniverseIndex::from(last_to_pop.as_u32() - skols.len() as u32);
 
-        assert!(
-            first_to_pop >= snapshot.skolemization_count,
-            "popping more regions than snapshot contains, \
-             sc now = {}, sc then = {}, skols.len = {}",
-            self.skolemization_count,
-            snapshot.skolemization_count,
-            skols.len()
-        );
         debug_assert! {
             skols.iter()
                  .all(|&k| match *k {
-                     ty::ReSkolemized(index, _) =>
-                         index.index >= first_to_pop &&
-                         index.index < last_to_pop,
+                     ty::ReSkolemized(universe, _) =>
+                         universe >= first_to_pop &&
+                         universe < last_to_pop,
                      _ =>
                          false
                  }),
-            "invalid skolemization keys or keys out of range ({}..{}): {:?}",
-            snapshot.skolemization_count,
-            self.skolemization_count,
+            "invalid skolemization keys or keys out of range ({:?}..{:?}): {:?}",
+            first_to_pop,
+            last_to_pop,
             skols
         }
 
@@ -541,7 +515,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             self.rollback_undo_entry(undo_entry);
         }
 
-        self.skolemization_count = snapshot.skolemization_count;
         return;
 
         fn kill_constraint<'tcx>(
@@ -662,6 +635,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
             if let (ty::ReVar(sub), ty::ReVar(sup)) = (*sub, *sup) {
                 self.unification_table.union(sub, sup);
+                self.any_unifications = true;
             }
         }
     }
@@ -772,7 +746,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         rid: RegionVid,
     ) -> ty::Region<'tcx> {
-        let vid = self.unification_table.find_value(rid).min_vid;
+        let vid = self.unification_table.probe_value(rid).min_vid;
         tcx.mk_region(ty::ReVar(vid))
     }
 
@@ -795,7 +769,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         if let Some(&c) = self.combine_map(t).get(&vars) {
             return tcx.mk_region(ReVar(c));
         }
-        let c = self.new_region_var(MiscVariable(origin.span()));
+        let a_universe = self.universe(a);
+        let b_universe = self.universe(b);
+        let c_universe = cmp::max(a_universe, b_universe);
+        let c = self.new_region_var(c_universe, MiscVariable(origin.span()));
         self.combine_map(t).insert(vars, c);
         if self.in_snapshot() {
             self.undo_log.push(AddCombination(t, vars));
@@ -809,6 +786,24 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
         debug!("combine_vars() c={:?}", c);
         new_r
+    }
+
+    fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+        match *region {
+            ty::ReScope(..) |
+            ty::ReStatic |
+            ty::ReEmpty |
+            ty::ReErased |
+            ty::ReFree(..) |
+            ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReSkolemized(universe, _) => universe,
+            ty::ReClosureBound(vid) |
+            ty::ReVar(vid) => self.var_universe(vid),
+            ty::ReLateBound(..) =>
+                bug!("universe(): encountered bound region {:?}", region),
+            ty::ReCanonical(..) =>
+                bug!("region_universe(): encountered canonical region {:?}", region),
+        }
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
@@ -855,12 +850,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
 impl fmt::Debug for RegionSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "RegionSnapshot(length={},skolemization={})",
-            self.length,
-            self.skolemization_count
-        )
+        write!(f, "RegionSnapshot(length={})", self.length)
     }
 }
 
@@ -892,7 +882,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
-    fn for_each_region(&self, f: &mut FnMut(ty::Region<'tcx>)) {
+    fn for_each_region(&self, f: &mut dyn FnMut(ty::Region<'tcx>)) {
         match self {
             &VerifyBound::AnyRegion(ref rs) | &VerifyBound::AllRegions(ref rs) => for &r in rs {
                 f(r);

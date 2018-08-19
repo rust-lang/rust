@@ -1,30 +1,31 @@
-warning: not reporting region error due to -Znll
-  --> $DIR/ty-param-fn.rs:22:5
+warning: not reporting region error due to nll
+  --> $DIR/ty-param-fn.rs:21:5
    |
-22 |     x
+LL |     x
    |     ^
 
-warning: not reporting region error due to -Znll
-  --> $DIR/ty-param-fn.rs:38:5
+warning: not reporting region error due to nll
+  --> $DIR/ty-param-fn.rs:37:5
    |
-38 |     x
+LL |     x
    |     ^
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:22:5
+  --> $DIR/ty-param-fn.rs:21:5
    |
-22 |     x
+LL |     x
    |     ^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:38:5
+  --> $DIR/ty-param-fn.rs:37:5
    |
-38 |     x
+LL |     x
    |     ^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0309`.

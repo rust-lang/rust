@@ -14,6 +14,9 @@
 
 use extern::xcrate::Z;
 
+type A = extern::xcrate::S;
+type B = for<'a> extern::xcrate::Tr<'a>;
+
 fn f() {
     use extern::xcrate;
     use extern::xcrate as ycrate;
@@ -28,4 +31,5 @@ fn main() {
     assert_eq!(format!("{:?}", s), "S");
     let z = Z;
     assert_eq!(format!("{:?}", z), "Z");
+    assert_eq!(A {}, extern::xcrate::S {});
 }

@@ -47,7 +47,10 @@ impl FileDesc {
     }
 
     pub fn duplicate(&self) -> io::Result<FileDesc> {
-        let new_fd = cvt(syscall::dup(self.fd, &[]))?;
+        self.duplicate_path(&[])
+    }
+    pub fn duplicate_path(&self, path: &[u8]) -> io::Result<FileDesc> {
+        let new_fd = cvt(syscall::dup(self.fd, path))?;
         Ok(FileDesc::new(new_fd))
     }
 

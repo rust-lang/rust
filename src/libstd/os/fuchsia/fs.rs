@@ -13,7 +13,9 @@
 use fs::Metadata;
 use sys_common::AsInner;
 
-/// OS-specific extension methods for `fs::Metadata`
+/// OS-specific extensions to [`fs::Metadata`].
+///
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext2", since = "1.8.0")]

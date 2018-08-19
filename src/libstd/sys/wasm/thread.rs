@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::boxed::FnBox;
+use boxed::FnBox;
 use ffi::CStr;
 use io;
 use sys::{unsupported, Void};
@@ -19,7 +19,7 @@ pub struct Thread(Void);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
-    pub unsafe fn new<'a>(_stack: usize, _p: Box<FnBox() + 'a>)
+    pub unsafe fn new<'a>(_stack: usize, _p: Box<dyn FnBox() + 'a>)
         -> io::Result<Thread>
     {
         unsupported()
@@ -43,6 +43,8 @@ impl Thread {
 }
 
 pub mod guard {
-    pub unsafe fn current() -> Option<usize> { None }
-    pub unsafe fn init() -> Option<usize> { None }
+    pub type Guard = !;
+    pub unsafe fn current() -> Option<Guard> { None }
+    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn deinit() {}
 }

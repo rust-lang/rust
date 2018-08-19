@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `i32: std::slice::SliceIndex<[i32]>` is not satisfied
   --> $DIR/slice-index.rs:21:5
    |
-21 |     x[1i32]; //~ ERROR E0277
+LL |     x[1i32]; //~ ERROR E0277
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `i32`
@@ -10,7 +10,7 @@ error[E0277]: the trait bound `i32: std::slice::SliceIndex<[i32]>` is not satisf
 error[E0277]: the trait bound `std::ops::RangeTo<i32>: std::slice::SliceIndex<[i32]>` is not satisfied
   --> $DIR/slice-index.rs:22:5
    |
-22 |     x[..1i32]; //~ ERROR E0277
+LL |     x[..1i32]; //~ ERROR E0277
    |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `std::ops::RangeTo<i32>`
@@ -18,3 +18,4 @@ error[E0277]: the trait bound `std::ops::RangeTo<i32>: std::slice::SliceIndex<[i
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

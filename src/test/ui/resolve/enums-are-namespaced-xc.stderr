@@ -1,32 +1,34 @@
 error[E0425]: cannot find value `A` in module `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:15:31
    |
-15 |     let _ = namespaced_enums::A;
+LL |     let _ = namespaced_enums::A;
    |                               ^ not found in `namespaced_enums`
 help: possible candidate is found in another module, you can import it into scope
    |
-14 | use namespaced_enums::Foo::A;
+LL | use namespaced_enums::Foo::A;
    |
 
 error[E0425]: cannot find function `B` in module `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:17:31
    |
-17 |     let _ = namespaced_enums::B(10);
+LL |     let _ = namespaced_enums::B(10);
    |                               ^ not found in `namespaced_enums`
 help: possible candidate is found in another module, you can import it into scope
    |
-14 | use namespaced_enums::Foo::B;
+LL | use namespaced_enums::Foo::B;
    |
 
 error[E0422]: cannot find struct, variant or union type `C` in module `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:19:31
    |
-19 |     let _ = namespaced_enums::C { a: 10 };
+LL |     let _ = namespaced_enums::C { a: 10 };
    |                               ^ not found in `namespaced_enums`
 help: possible candidate is found in another module, you can import it into scope
    |
-14 | use namespaced_enums::Foo::C;
+LL | use namespaced_enums::Foo::C;
    |
 
 error: aborting due to 3 previous errors
 
+Some errors occurred: E0422, E0425.
+For more information about an error, try `rustc --explain E0422`.

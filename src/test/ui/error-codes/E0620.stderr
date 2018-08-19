@@ -1,0 +1,15 @@
+error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
+  --> $DIR/E0620.rs:12:16
+   |
+LL |     let _foo = &[1_usize, 2] as [usize]; //~ ERROR E0620
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using an implicit coercion to `&[usize]` instead
+  --> $DIR/E0620.rs:12:16
+   |
+LL |     let _foo = &[1_usize, 2] as [usize]; //~ ERROR E0620
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0620`.

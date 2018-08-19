@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // This file illustrates two things:
 //

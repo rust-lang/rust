@@ -10,8 +10,8 @@ Copyrights in the Rust project are retained by their contributors. No
 copyright assignment is required to contribute to the Rust project.
 
 Some files include explicit copyright notices and/or license notices.
-For full authorship information, see AUTHORS.txt and the version control
-history.
+For full authorship information, see the version control history or
+https://thanks.rust-lang.org
 
 Except as otherwise noted (below and/or in individual files), Rust is
 licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
@@ -191,28 +191,6 @@ their own copyright notices and license terms:
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
-
-* Hoedown, the markdown parser, under src/rt/hoedown, is
-  licensed as follows.
-
-    Copyright (c) 2008, Natacha Porté
-    Copyright (c) 2011, Vicent Martí
-    Copyright (c) 2013, Devin Torres and the Hoedown authors
-
-    Permission to use, copy, modify, and distribute this
-    software for any purpose with or without fee is hereby
-    granted, provided that the above copyright notice and
-    this permission notice appear in all copies.
-
-    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR
-    DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE
-    INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-    FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-    SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR
-    ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA
-    OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
-    OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 * libbacktrace, under src/libbacktrace:
 

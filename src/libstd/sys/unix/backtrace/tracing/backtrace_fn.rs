@@ -38,6 +38,7 @@ pub fn unwind_backtrace(frames: &mut [Frame])
         *to = Frame {
             exact_position: *from as *mut u8,
             symbol_addr: *from as *mut u8,
+            inline_context: 0,
         };
     }
     Ok((nb_frames as usize, BacktraceContext))

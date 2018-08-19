@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Module for inferring the variance of type and lifetime
-//! parameters. See README.md for details.
+//! Module for inferring the variance of type and lifetime parameters. See the [rustc guide]
+//! chapter for more info.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/variance.html
 
 use arena;
-use rustc::dep_graph::DepKind;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
-use rustc::ty::maps::Providers;
-use std::rc::Rc;
+use rustc::ty::query::Providers;
+use rustc_data_structures::sync::Lrc;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -44,16 +45,16 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                             -> Rc<CrateVariancesMap> {
+                             -> Lrc<CrateVariancesMap> {
     assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::new();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
-    Rc::new(solve::solve_constraints(constraints_cx))
+    Lrc::new(solve::solve_constraints(constraints_cx))
 }
 
 fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
-                            -> Rc<Vec<ty::Variance>> {
+                            -> Lrc<Vec<ty::Variance>> {
     let id = tcx.hir.as_local_node_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.
@@ -61,10 +62,10 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
     };
     match tcx.hir.get(id) {
         hir::map::NodeItem(item) => match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) |
-            hir::ItemFn(..) => {}
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) |
+            hir::ItemKind::Fn(..) => {}
 
             _ => unsupported()
         },
@@ -82,7 +83,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
         },
 
         hir::map::NodeForeignItem(item) => match item.node {
-            hir::ForeignItemFn(..) => {}
+            hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()
         },
@@ -95,9 +96,6 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
     // Everything else must be inferred.
 
     let crate_map = tcx.crate_variances(LOCAL_CRATE);
-    let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-    tcx.dep_graph.read(dep_node);
-
     crate_map.variances.get(&item_def_id)
                        .unwrap_or(&crate_map.empty_variance)
                        .clone()

@@ -1,0 +1,14 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/issue-43250.rs:19:8
+   |
+LL |     m!(y);
+   |        ^
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/issue-43250.rs:21:8
+   |
+LL |     m!(C);
+   |        ^
+
+error: aborting due to 2 previous errors
+

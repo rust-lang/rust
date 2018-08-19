@@ -48,7 +48,6 @@ impl<T> RawArray<T> {
 /// # Safety
 ///
 /// The specified range must be valid for reading and writing.
-/// The type `T` must have non-zero size.
 ///
 /// # Algorithm
 ///
@@ -73,6 +72,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
     loop {
         let delta = cmp::min(left, right);
         if delta <= RawArray::<T>::cap() {
+            // We will always hit this immediately for ZST.
             break;
         }
 

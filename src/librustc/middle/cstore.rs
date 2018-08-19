@@ -22,28 +22,21 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use hir;
-use hir::def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey, DefPathTable};
-use hir::svh::Svh;
-use ich;
+use hir::map::definitions::{DefKey, DefPathTable};
+use rustc_data_structures::svh::Svh;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
-use util::nodemap::NodeSet;
 
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
-use rustc_data_structures::owning_ref::ErasedBoxRef;
 use syntax::ast;
-use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use rustc_back::target::Target;
+use rustc_target::spec::Target;
+use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -129,38 +122,51 @@ pub enum NativeLibraryKind {
     NativeUnknown,
 }
 
-#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
-    pub name: Symbol,
+    pub name: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
-    pub foreign_items: Vec<DefId>,
+    pub foreign_module: Option<DefId>,
+    pub wasm_import_module: Option<Symbol>,
 }
 
-pub enum LoadedMacro {
-    MacroDef(ast::Item),
-    ProcMacro(Rc<SyntaxExtension>),
+#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+pub struct ForeignModule {
+    pub foreign_items: Vec<DefId>,
+    pub def_id: DefId,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct ExternCrate {
-    /// def_id of an `extern crate` in the current crate that caused
-    /// this crate to be loaded; note that there could be multiple
-    /// such ids
-    pub def_id: DefId,
+    pub src: ExternCrateSource,
 
     /// span of the extern crate that caused this to be loaded
     pub span: Span,
+
+    /// Number of links to reach the extern;
+    /// used to select the extern with the shortest path
+    pub path_len: usize,
 
     /// If true, then this crate is the crate named by the extern
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
     pub direct: bool,
+}
 
-    /// Number of links to reach the extern crate `def_id`
-    /// declaration; used to select the extern crate with the shortest
-    /// path
-    pub path_len: usize,
+#[derive(Copy, Clone, Debug)]
+pub enum ExternCrateSource {
+    /// Crate is loaded by `extern crate`.
+    Extern(
+        /// def_id of the item in the current crate that caused
+        /// this crate to be loaded; note that there could be multiple
+        /// such ids
+        DefId,
+    ),
+    // Crate is loaded by `use`.
+    Use,
+    /// Crate is implicitly loaded by an absolute or an `extern::` path.
+    Path,
 }
 
 pub struct EncodedMetadata {
@@ -187,31 +193,11 @@ pub trait MetadataLoader {
     fn get_rlib_metadata(&self,
                          target: &Target,
                          filename: &Path)
-                         -> Result<ErasedBoxRef<[u8]>, String>;
+                         -> Result<MetadataRef, String>;
     fn get_dylib_metadata(&self,
                           target: &Target,
                           filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String>;
-}
-
-#[derive(Clone)]
-pub struct ExternConstBody<'tcx> {
-    pub body: &'tcx hir::Body,
-
-    // It would require a lot of infrastructure to enable stable-hashing Bodies
-    // from other crates, so we hash on export and just store the fingerprint
-    // with them.
-    pub fingerprint: ich::Fingerprint,
-}
-
-#[derive(Clone)]
-pub struct ExternBodyNestedBodies {
-    pub nested_bodies: Rc<BTreeMap<hir::BodyId, hir::Body>>,
-
-    // It would require a lot of infrastructure to enable stable-hashing Bodies
-    // from other crates, so we hash on export and just store the fingerprint
-    // with them.
-    pub fingerprint: ich::Fingerprint,
+                          -> Result<MetadataRef, String>;
 }
 
 /// A store of Rust crates, through with their metadata
@@ -225,30 +211,20 @@ pub struct ExternBodyNestedBodies {
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
-
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader;
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
-    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
-    fn export_macros_untracked(&self, cnum: CrateNum);
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
@@ -258,107 +234,12 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
-// FIXME: find a better place for this?
-pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let mut err_count = 0;
-    {
-        let mut say = |s: &str| {
-            match (sp, sess) {
-                (_, None) => bug!("{}", s),
-                (Some(sp), Some(sess)) => sess.span_err(sp, s),
-                (None, Some(sess)) => sess.err(s),
-            }
-            err_count += 1;
-        };
-        if s.is_empty() {
-            say("crate name must not be empty");
-        }
-        for c in s.chars() {
-            if c.is_alphanumeric() { continue }
-            if c == '_'  { continue }
-            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
-        }
-    }
-
-    if err_count > 0 {
-        sess.unwrap().abort_if_errors();
-    }
-}
-
-/// A dummy crate store that does not support any non-local crates,
-/// for test purposes.
-pub struct DummyCrateStore;
-
-#[allow(unused_variables)]
-impl CrateStore for DummyCrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
-        { bug!("crate_data_as_rc_any") }
-    // item info
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics
-        { bug!("item_generics_cloned") }
-
-    // trait/impl-item info
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
-        { bug!("associated_item_cloned") }
-
-    // crate metadata
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
-    fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        bug!("crate_disambiguator")
-    }
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
-
-    // resolve
-    fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
-    fn def_path(&self, def: DefId) -> hir_map::DefPath {
-        bug!("relative_def_path")
-    }
-    fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash {
-        bug!("def_path_hash")
-    }
-    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
-        bug!("def_path_table")
-    }
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
-        bug!("struct_field_names")
-    }
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
-        bug!("item_children")
-    }
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
-
-    fn crates_untracked(&self) -> Vec<CrateNum> { vec![] }
-
-    // utility functions
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
-                                 -> EncodedMetadata {
-        bug!("encode_metadata")
-    }
-    fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
-
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
-}
-
-pub trait CrateLoader {
-    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
-    fn postprocess(&mut self, krate: &ast::Crate);
-    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum;
-}
+pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 
 // This method is used when generating the command line to pass through to
 // system linker. The linker expects undefined symbols on the left of the
@@ -398,8 +279,8 @@ pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
         })
         .collect::<Vec<_>>();
     let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
-    Rc::make_mut(&mut ordering).reverse();
-    libs.sort_by_key(|&(a, _)| {
+    Lrc::make_mut(&mut ordering).reverse();
+    libs.sort_by_cached_key(|&(a, _)| {
         ordering.iter().position(|x| *x == a)
     });
     libs

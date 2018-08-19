@@ -199,6 +199,40 @@ fn test_24189() {
 
 //}}}
 
+//{{{ issue 50903 ==============================================================
+
+macro_rules! foo_50903 {
+    ($($lif:lifetime ,)* #) => {};
+}
+
+foo_50903!('a, 'b, #);
+foo_50903!('a, #);
+foo_50903!(#);
+
+//}}}
+
+//{{{ issue 51477 ==============================================================
+
+macro_rules! foo_51477 {
+    ($lifetime:lifetime) => {
+        "last token is lifetime"
+    };
+    ($other:tt) => {
+        "last token is other"
+    };
+    ($first:tt $($rest:tt)*) => {
+        foo_51477!($($rest)*)
+    };
+}
+
+fn test_51477() {
+    assert_eq!("last token is lifetime", foo_51477!('a));
+    assert_eq!("last token is other", foo_51477!(@));
+    assert_eq!("last token is lifetime", foo_51477!(@ {} 'a));
+}
+
+//}}}
+
 //{{{ some more tests ==========================================================
 
 macro_rules! test_block {
@@ -234,6 +268,14 @@ macro_rules! test_meta_block {
 
 test_meta_block!(windows {});
 
+macro_rules! test_lifetime {
+    (1. $($l:lifetime)* $($b:block)*) => {};
+    (2. $($b:block)* $($l:lifetime)*) => {};
+}
+
+test_lifetime!(1. 'a 'b {} {});
+test_lifetime!(2. {} {} 'a 'b);
+
 //}}}
 
 fn main() {
@@ -241,5 +283,6 @@ fn main() {
     test_40569();
     test_35650();
     test_24189();
+    test_51477();
 }
 

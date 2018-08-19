@@ -1,10 +1,11 @@
 error[E0583]: file not found for module `missing`
   --> $DIR/foo.rs:13:5
    |
-13 | mod missing;
+LL | mod missing;
    |     ^^^^^^^
    |
    = help: name the file either foo/missing.rs or foo/missing/mod.rs inside the directory "$DIR"
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0583`.

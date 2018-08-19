@@ -1,0 +1,21 @@
+error[E0659]: `std` is ambiguous
+  --> $DIR/macro-path-prelude-shadowing.rs:39:9
+   |
+LL |         std::panic!(); //~ ERROR `std` is ambiguous
+   |         ^^^^^^^^^^
+   |
+note: `std` could refer to the name imported here
+  --> $DIR/macro-path-prelude-shadowing.rs:37:9
+   |
+LL |     use m2::*; // glob-import user-defined `std`
+   |         ^^^^^
+note: `std` could also refer to the name defined here
+  --> $DIR/macro-path-prelude-shadowing.rs:39:9
+   |
+LL |         std::panic!(); //~ ERROR `std` is ambiguous
+   |         ^^^
+   = note: consider adding an explicit import of `std` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

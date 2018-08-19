@@ -10,16 +10,16 @@
 
 use bitvec::BitMatrix;
 use fx::FxHashMap;
+use sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use stable_hasher::{HashStable, StableHasher, StableHasherResult};
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
+pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
 
@@ -32,14 +32,14 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
 
     // This is a cached transitive closure derived from the edges.
     // Currently, we build it lazilly and just throw out any existing
-    // copy whenever a new edge is added. (The RefCell is to permit
+    // copy whenever a new edge is added. (The Lock is to permit
     // the lazy computation.) This is kind of silly, except for the
     // fact its size is tied to `self.elements.len()`, so I wanted to
     // wait before building it up to avoid reallocating as new edges
     // are added with new elements. Perhaps better would be to ask the
     // user for a batch of edges to minimize this effect, but I
     // already wrote the code this way. :P -nmatsakis
-    closure: RefCell<Option<BitMatrix>>,
+    closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -51,13 +51,13 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
+impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     pub fn new() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
             map: FxHashMap(),
             edges: vec![],
-            closure: RefCell::new(None),
+            closure: Lock::new(None),
         }
     }
 
@@ -72,21 +72,20 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     fn add_index(&mut self, a: T) -> Index {
         let &mut TransitiveRelation {
             ref mut elements,
-            ref closure,
+            ref mut closure,
             ref mut map,
             ..
         } = self;
 
-        map.entry(a.clone())
+        *map.entry(a.clone())
            .or_insert_with(|| {
                elements.push(a);
 
                // if we changed the dimensions, clear the cache
-               *closure.borrow_mut() = None;
+               *closure.get_mut() = None;
 
                Index(elements.len() - 1)
            })
-           .clone()
     }
 
     /// Applies the (partial) function to each edge and returns a new
@@ -98,14 +97,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     {
         let mut result = TransitiveRelation::new();
         for edge in &self.edges {
-            let r = f(&self.elements[edge.source.0]).and_then(|source| {
-                f(&self.elements[edge.target.0]).and_then(|target| {
-                    Some(result.add(source, target))
-                })
-            });
-            if r.is_none() {
-                return None;
-            }
+            result.add(f(&self.elements[edge.source.0])?, f(&self.elements[edge.target.0])?);
         }
         Some(result)
     }
@@ -122,7 +114,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
             self.edges.push(edge);
 
             // added an edge, clear the cache
-            *self.closure.borrow_mut() = None;
+            *self.closure.get_mut() = None;
         }
     }
 
@@ -354,7 +346,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     }
 
     fn with_closure<OP, R>(&self, op: OP) -> R
-        where OP: FnOnce(&BitMatrix) -> R
+        where OP: FnOnce(&BitMatrix<usize, usize>) -> R
     {
         let mut closure_cell = self.closure.borrow_mut();
         let mut closure = closure_cell.take();
@@ -366,13 +358,13 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
         result
     }
 
-    fn compute_closure(&self) -> BitMatrix {
+    fn compute_closure(&self) -> BitMatrix<usize, usize> {
         let mut matrix = BitMatrix::new(self.elements.len(),
                                         self.elements.len());
         let mut changed = true;
         while changed {
             changed = false;
-            for edge in self.edges.iter() {
+            for edge in &self.edges {
                 // add an edge from S -> T
                 changed |= matrix.add(edge.source.0, edge.target.0);
 
@@ -396,7 +388,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
 /// - Input: `[a, b, x]`. Output: `[a, x]`.
 /// - Input: `[b, a, x]`. Output: `[b, a, x]`.
 /// - Input: `[a, x, b, y]`. Output: `[a, x]`.
-fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
+fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix<usize, usize>) {
     let mut i = 0;
     while i < candidates.len() {
         let candidate_i = candidates[i];
@@ -443,7 +435,7 @@ impl<T> Decodable for TransitiveRelation<T>
                               .enumerate()
                               .map(|(index, elem)| (elem.clone(), Index(index)))
                               .collect();
-            Ok(TransitiveRelation { elements, edges, map, closure: RefCell::new(None) })
+            Ok(TransitiveRelation { elements, edges, map, closure: Lock::new(None) })
         })
     }
 }

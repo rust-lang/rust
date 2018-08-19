@@ -1,7 +1,7 @@
 error[E0512]: transmute called with types of different sizes
   --> $DIR/main.rs:26:5
    |
-26 |     transmute(x) //~ ERROR transmute called with types of different sizes
+LL |     transmute(x) //~ ERROR transmute called with types of different sizes
    |     ^^^^^^^^^
    |
    = note: source type: <C as TypeConstructor<'a>>::T (size can vary because of <C as TypeConstructor>::T)
@@ -10,7 +10,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/main.rs:30:17
    |
-30 |     let x: u8 = transmute(10u16); //~ ERROR transmute called with types of different sizes
+LL |     let x: u8 = transmute(10u16); //~ ERROR transmute called with types of different sizes
    |                 ^^^^^^^^^
    |
    = note: source type: u16 (16 bits)
@@ -19,7 +19,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/main.rs:34:17
    |
-34 |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
+LL |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
    |                 ^^^^^^^^^
    |
    = note: source type: &str ($STR bits)
@@ -28,7 +28,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/main.rs:39:18
    |
-39 |     let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
+LL |     let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
    |                  ^^^^^^^^^
    |
    = note: source type: i32 (32 bits)
@@ -36,3 +36,4 @@ error[E0512]: transmute called with types of different sizes
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0512`.

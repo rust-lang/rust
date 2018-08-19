@@ -1,7 +1,7 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:13:14
    |
-13 |     a.iter().map(|_: (u32, u32)| 45); //~ ERROR type mismatch
+LL |     a.iter().map(|_: (u32, u32)| 45); //~ ERROR type mismatch
    |              ^^^ ------------------ found signature of `fn((u32, u32)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
@@ -9,7 +9,7 @@ error[E0631]: type mismatch in closure arguments
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:14:14
    |
-14 |     a.iter().map(|_: &(u16, u16)| 45); //~ ERROR type mismatch
+LL |     a.iter().map(|_: &(u16, u16)| 45); //~ ERROR type mismatch
    |              ^^^ ------------------- found signature of `for<'r> fn(&'r (u16, u16)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
@@ -17,7 +17,7 @@ error[E0631]: type mismatch in closure arguments
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:15:14
    |
-15 |     a.iter().map(|_: (u16, u16)| 45); //~ ERROR type mismatch
+LL |     a.iter().map(|_: (u16, u16)| 45); //~ ERROR type mismatch
    |              ^^^ ------------------ found signature of `fn((u16, u16)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
@@ -25,21 +25,31 @@ error[E0631]: type mismatch in closure arguments
 error[E0631]: type mismatch in function arguments
   --> $DIR/closure-arg-type-mismatch.rs:20:5
    |
-20 |     baz(f); //~ ERROR type mismatch
+LL |     baz(f); //~ ERROR type mismatch
    |     ^^^
    |     |
    |     expected signature of `for<'r> fn(*mut &'r u32) -> _`
    |     found signature of `fn(*mut &'a u32) -> _`
    |
-   = note: required by `baz`
+note: required by `baz`
+  --> $DIR/closure-arg-type-mismatch.rs:18:1
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `for<'r> <fn(*mut &'a u32) as std::ops::FnOnce<(*mut &'r u32,)>>::Output == ()`
   --> $DIR/closure-arg-type-mismatch.rs:20:5
    |
-20 |     baz(f); //~ ERROR type mismatch
+LL |     baz(f); //~ ERROR type mismatch
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
    |
-   = note: required by `baz`
+note: required by `baz`
+  --> $DIR/closure-arg-type-mismatch.rs:18:1
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 
+Some errors occurred: E0271, E0631.
+For more information about an error, try `rustc --explain E0271`.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z emit-end-regions -Zborrowck=mir -Z nll -Znll-dump-cause
+//compile-flags: -Z emit-end-regions -Zborrowck=mir
 
 
 #![allow(warnings)]

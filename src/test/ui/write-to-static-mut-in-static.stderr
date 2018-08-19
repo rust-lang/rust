@@ -1,0 +1,19 @@
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/write-to-static-mut-in-static.rs:14:33
+   |
+LL | pub static mut B: () = unsafe { A = 1; };
+   |                                 ^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/write-to-static-mut-in-static.rs:17:34
+   |
+LL | pub static mut C: u32 = unsafe { C = 1; 0 };
+   |                                  ^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

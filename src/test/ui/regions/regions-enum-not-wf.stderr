@@ -1,0 +1,64 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:16:18
+   |
+LL | enum Ref1<'a, T> {
+   |               - help: consider adding an explicit lifetime bound `T: 'a`...
+LL |     Ref1Variant1(&'a T) //~ ERROR the parameter type `T` may not live long enough
+   |                  ^^^^^
+   |
+note: ...so that the reference type `&'a T` does not outlive the data it points at
+  --> $DIR/regions-enum-not-wf.rs:16:18
+   |
+LL |     Ref1Variant1(&'a T) //~ ERROR the parameter type `T` may not live long enough
+   |                  ^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:21:25
+   |
+LL | enum Ref2<'a, T> {
+   |               - help: consider adding an explicit lifetime bound `T: 'a`...
+LL |     Ref2Variant1,
+LL |     Ref2Variant2(isize, &'a T), //~ ERROR the parameter type `T` may not live long enough
+   |                         ^^^^^
+   |
+note: ...so that the reference type `&'a T` does not outlive the data it points at
+  --> $DIR/regions-enum-not-wf.rs:21:25
+   |
+LL |     Ref2Variant2(isize, &'a T), //~ ERROR the parameter type `T` may not live long enough
+   |                         ^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:29:32
+   |
+LL | enum RefIndirect<'a, T> {
+   |                      - help: consider adding an explicit lifetime bound `T: 'a`...
+LL |     RefIndirectVariant1(isize, RefOk<'a,T>)
+   |                                ^^^^^^^^^^^
+   |
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/regions-enum-not-wf.rs:29:32
+   |
+LL |     RefIndirectVariant1(isize, RefOk<'a,T>)
+   |                                ^^^^^^^^^^^
+
+error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
+  --> $DIR/regions-enum-not-wf.rs:34:23
+   |
+LL |     RefDoubleVariant1(&'a &'b T)
+   |                       ^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime 'a as defined on the enum at 33:16
+  --> $DIR/regions-enum-not-wf.rs:33:16
+   |
+LL | enum RefDouble<'a, 'b, T> {
+   |                ^^
+note: but the referenced data is only valid for the lifetime 'b as defined on the enum at 33:20
+  --> $DIR/regions-enum-not-wf.rs:33:20
+   |
+LL | enum RefDouble<'a, 'b, T> {
+   |                    ^^
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0309, E0491.
+For more information about an error, try `rustc --explain E0309`.

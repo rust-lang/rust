@@ -1,10 +1,11 @@
 error[E0609]: no field `zz` on type `Foo`
   --> $DIR/issue-36798_unknown_field.rs:17:7
    |
-17 |     f.zz; //~ ERROR no field
+LL |     f.zz; //~ ERROR no field
    |       ^^ unknown field
    |
    = note: available fields are: `bar`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0609`.

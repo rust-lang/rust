@@ -536,23 +536,21 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
         // Check whether we should use scientific notation.
         let scientific = if width == 0 {
             true
+        } else if exp >= 0 {
+            // 765e3 --> 765000
+            //              ^^^
+            // But we shouldn't make the number look more precise than it is.
+            exp as usize > width || digits + exp as usize > precision
         } else {
-            if exp >= 0 {
-                // 765e3 --> 765000
-                //              ^^^
-                // But we shouldn't make the number look more precise than it is.
-                exp as usize > width || digits + exp as usize > precision
+            // Power of the most significant digit.
+            let msd = exp + (digits - 1) as ExpInt;
+            if msd >= 0 {
+                // 765e-2 == 7.65
+                false
             } else {
-                // Power of the most significant digit.
-                let msd = exp + (digits - 1) as ExpInt;
-                if msd >= 0 {
-                    // 765e-2 == 7.65
-                    false
-                } else {
-                    // 765e-5 == 0.00765
-                    //           ^ ^^
-                    -msd as usize > width
-                }
+                // 765e-5 == 0.00765
+                //           ^ ^^
+                -msd as usize > width
             }
         };
 
@@ -702,7 +700,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         //   exponent = 1..10
         //   significand = 1..1
         IeeeFloat {
-            sig: [!0 & ((1 << S::PRECISION) - 1)],
+            sig: [(1 << S::PRECISION) - 1],
             exp: S::MAX_EXP,
             category: Category::Normal,
             sign: false,
@@ -1434,7 +1432,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         let max_change = S::MAX_EXP as i32 - (S::MIN_EXP as i32 - sig_bits) + 1;
 
         // Clamp to one past the range ends to let normalize handle overflow.
-        let exp_change = cmp::min(cmp::max(exp as i32, (-max_change - 1)), max_change);
+        let exp_change = cmp::min(cmp::max(exp as i32, -max_change - 1), max_change);
         self.exp = self.exp.saturating_add(exp_change as ExpInt);
         self = self.normalize(round, Loss::ExactlyZero).value;
         if self.is_nan() {
@@ -1507,10 +1505,11 @@ impl<S: Semantics, T: Semantics> FloatConvert<IeeeFloat<T>> for IeeeFloat<S> {
         }
 
         // If this is a truncation, perform the shift.
-        let mut loss = Loss::ExactlyZero;
-        if shift < 0 && (r.is_finite_non_zero() || r.category == Category::NaN) {
-            loss = sig::shift_right(&mut r.sig, &mut 0, -shift as usize);
-        }
+        let loss = if shift < 0 && (r.is_finite_non_zero() || r.category == Category::NaN) {
+            sig::shift_right(&mut r.sig, &mut 0, -shift as usize)
+        } else {
+            Loss::ExactlyZero
+        };
 
         // If this is an extension, perform the shift.
         if shift > 0 && (r.is_finite_non_zero() || r.category == Category::NaN) {
@@ -1738,27 +1737,25 @@ impl<S: Semantics> IeeeFloat<S> {
                 bit_pos -= 4;
                 if bit_pos >= 0 {
                     r.sig[0] |= (hex_value as Limb) << bit_pos;
-                } else {
-                    // If zero or one-half (the hexadecimal digit 8) are followed
-                    // by non-zero, they're a little more than zero or one-half.
-                    if let Some(ref mut loss) = loss {
-                        if hex_value != 0 {
-                            if *loss == Loss::ExactlyZero {
-                                *loss = Loss::LessThanHalf;
-                            }
-                            if *loss == Loss::ExactlyHalf {
-                                *loss = Loss::MoreThanHalf;
-                            }
+                // If zero or one-half (the hexadecimal digit 8) are followed
+                // by non-zero, they're a little more than zero or one-half.
+                } else if let Some(ref mut loss) = loss {
+                    if hex_value != 0 {
+                        if *loss == Loss::ExactlyZero {
+                            *loss = Loss::LessThanHalf;
                         }
-                    } else {
-                        loss = Some(match hex_value {
-                            0 => Loss::ExactlyZero,
-                            1...7 => Loss::LessThanHalf,
-                            8 => Loss::ExactlyHalf,
-                            9...15 => Loss::MoreThanHalf,
-                            _ => unreachable!(),
-                        });
+                        if *loss == Loss::ExactlyHalf {
+                            *loss = Loss::MoreThanHalf;
+                        }
                     }
+                } else {
+                    loss = Some(match hex_value {
+                        0 => Loss::ExactlyZero,
+                        1..=7 => Loss::LessThanHalf,
+                        8 => Loss::ExactlyHalf,
+                        9..=15 => Loss::MoreThanHalf,
+                        _ => unreachable!(),
+                    });
                 }
             } else if c == 'p' || c == 'P' {
                 if !any_digits {
@@ -2309,24 +2306,14 @@ mod sig {
 
     /// One, not zero, based LSB. That is, returns 0 for a zeroed significand.
     pub(super) fn olsb(limbs: &[Limb]) -> usize {
-        for i in 0..limbs.len() {
-            if limbs[i] != 0 {
-                return i * LIMB_BITS + limbs[i].trailing_zeros() as usize + 1;
-            }
-        }
-
-        0
+        limbs.iter().enumerate().find(|(_, &limb)| limb != 0).map_or(0,
+            |(i, limb)| i * LIMB_BITS + limb.trailing_zeros() as usize + 1)
     }
 
     /// One, not zero, based MSB. That is, returns 0 for a zeroed significand.
     pub(super) fn omsb(limbs: &[Limb]) -> usize {
-        for i in (0..limbs.len()).rev() {
-            if limbs[i] != 0 {
-                return (i + 1) * LIMB_BITS - limbs[i].leading_zeros() as usize;
-            }
-        }
-
-        0
+        limbs.iter().enumerate().rfind(|(_, &limb)| limb != 0).map_or(0,
+            |(i, limb)| (i + 1) * LIMB_BITS - limb.leading_zeros() as usize)
     }
 
     /// Comparison (unsigned) of two significands.
@@ -2378,7 +2365,7 @@ mod sig {
                     limb = dst[i - jump];
                     if shift > 0 {
                         limb <<= shift;
-                        if i >= jump + 1 {
+                        if i > jump {
                             limb |= dst[i - jump - 1] >> (LIMB_BITS - shift);
                         }
                     }
@@ -2448,7 +2435,7 @@ mod sig {
         let n = dst_limbs * LIMB_BITS - shift;
         if n < src_bits {
             let mask = (1 << (src_bits - n)) - 1;
-            dst[dst_limbs - 1] |= (src[dst_limbs] & mask) << n % LIMB_BITS;
+            dst[dst_limbs - 1] |= (src[dst_limbs] & mask) << (n % LIMB_BITS);
         } else if n > src_bits && src_bits % LIMB_BITS > 0 {
             dst[dst_limbs - 1] &= (1 << (src_bits % LIMB_BITS)) - 1;
         }

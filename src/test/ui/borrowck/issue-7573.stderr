@@ -1,0 +1,16 @@
+error: borrowed data cannot be stored outside of its closure
+  --> $DIR/issue-7573.rs:32:27
+   |
+LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
+   |                               - cannot infer an appropriate lifetime...
+LL |         //~^ NOTE cannot infer an appropriate lifetime
+LL |     let push_id = |installed_id: &CrateId| {
+   |         -------   ------------------------ borrowed data cannot outlive this closure
+   |         |
+   |         ...so that variable is valid at time of its declaration
+...
+LL |         lines_to_use.push(installed_id);
+   |                           ^^^^^^^^^^^^ cannot be stored outside of its closure
+
+error: aborting due to previous error
+

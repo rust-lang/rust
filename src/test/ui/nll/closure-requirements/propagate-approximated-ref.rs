@@ -22,7 +22,7 @@
 // Note: the use of `Cell` here is to introduce invariance. One less
 // variable.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -51,10 +51,10 @@ fn demand_y<'x, 'y>(_cell_x: &Cell<&'x u32>, _cell_y: &Cell<&'y u32>, _y: &'y u3
 #[rustc_regions]
 fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-        //~^ ERROR lifetime mismatch
+        //~^ ERROR unsatisfied lifetime constraints
 
         // Only works if 'x: 'y:
-        demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
+        demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
     });
 }
 

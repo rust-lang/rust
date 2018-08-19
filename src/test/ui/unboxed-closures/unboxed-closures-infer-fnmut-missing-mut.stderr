@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow immutable local variable `tick` as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-missing-mut.rs:17:5
+   |
+LL |     let tick = || counter += 1;
+   |         ---- consider changing this to `mut tick`
+LL |     tick(); //~ ERROR cannot borrow immutable local variable `tick` as mutable
+   |     ^^^^ cannot borrow mutably
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

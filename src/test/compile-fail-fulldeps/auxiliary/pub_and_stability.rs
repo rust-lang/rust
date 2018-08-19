@@ -36,16 +36,16 @@
 
 #![feature(staged_api)]
 
-#![stable(feature = "unit_test", since = "0.0.0")]
+#![stable(feature = "unit_test", since = "1.0.0")]
 
-#[stable(feature = "unit_test", since = "0.0.0")]
+#[stable(feature = "unit_test", since = "1.0.0")]
 pub use m::{Record, Trait, Tuple};
 
 mod m {
     #[derive(Default)]
-    #[stable(feature = "unit_test", since = "0.0.0")]
+    #[stable(feature = "unit_test", since = "1.0.0")]
     pub struct Record {
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         pub a_stable_pub: i32,
         #[unstable(feature = "unstable_declared", issue = "38412")]
         pub a_unstable_declared_pub: i32,
@@ -55,14 +55,14 @@ mod m {
         pub(crate) b_crate: i32,
         #[unstable(feature = "unstable_declared", issue = "38412")] // SILLY
         pub(in m) c_mod: i32,
-        #[stable(feature = "unit_test", since = "0.0.0")] // SILLY
+        #[stable(feature = "unit_test", since = "1.0.0")] // SILLY
         d_priv: i32
     }
 
     #[derive(Default)]
     #[stable(feature = "unit_test", since = "1.0.0")]
     pub struct Tuple(
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         pub i32,
         #[unstable(feature = "unstable_declared", issue = "38412")]
         pub i32,
@@ -84,11 +84,11 @@ mod m {
     }
 
 
-    #[stable(feature = "unit_test", since = "0.0.0")]
+    #[stable(feature = "unit_test", since = "1.0.0")]
     pub trait Trait {
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         type Type;
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         fn stable_trait_method(&self) -> Self::Type;
         #[unstable(feature = "unstable_undeclared", issue = "38412")]
         fn unstable_undeclared_trait_method(&self) -> Self::Type;
@@ -96,7 +96,7 @@ mod m {
         fn unstable_declared_trait_method(&self) -> Self::Type;
     }
 
-    #[stable(feature = "unit_test", since = "0.0.0")]
+    #[stable(feature = "unit_test", since = "1.0.0")]
     impl Trait for Record {
         type Type = i32;
         fn stable_trait_method(&self) -> i32 { self.d_priv }
@@ -104,7 +104,7 @@ mod m {
         fn unstable_declared_trait_method(&self) -> i32 { self.d_priv }
     }
 
-    #[stable(feature = "unit_test", since = "0.0.0")]
+    #[stable(feature = "unit_test", since = "1.0.0")]
     impl Trait for Tuple {
         type Type = i32;
         fn stable_trait_method(&self) -> i32 { self.3 }
@@ -117,14 +117,14 @@ mod m {
         pub fn unstable_undeclared(&self) -> i32 { self.d_priv }
         #[unstable(feature = "unstable_declared", issue = "38412")]
         pub fn unstable_declared(&self) -> i32 { self.d_priv }
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         pub fn stable(&self) -> i32 { self.d_priv }
 
         #[unstable(feature = "unstable_undeclared", issue = "38412")] // SILLY
         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
         #[unstable(feature = "unstable_declared", issue = "38412")] // SILLY
         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
-        #[stable(feature = "unit_test", since = "0.0.0")] // SILLY
+        #[stable(feature = "unit_test", since = "1.0.0")] // SILLY
         fn private(&self) -> i32 { self.d_priv }
     }
 
@@ -133,7 +133,7 @@ mod m {
         pub fn unstable_undeclared(&self) -> i32 { self.0 }
         #[unstable(feature = "unstable_declared", issue = "38412")]
         pub fn unstable_declared(&self) -> i32 { self.0 }
-        #[stable(feature = "unit_test", since = "0.0.0")]
+        #[stable(feature = "unit_test", since = "1.0.0")]
         pub fn stable(&self) -> i32 { self.0 }
 
         pub(crate) fn pub_crate(&self) -> i32 { self.0 }

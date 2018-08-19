@@ -1,0 +1,22 @@
+error[E0535]: invalid argument
+  --> $DIR/invalid-inline.rs:12:10
+   |
+LL | #[inline(please_no)] //~ ERROR invalid argument
+   |          ^^^^^^^^^
+
+error[E0534]: expected one argument
+  --> $DIR/invalid-inline.rs:16:1
+   |
+LL | #[inline(please,no)] //~ ERROR expected one argument
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0534]: expected one argument
+  --> $DIR/invalid-inline.rs:20:1
+   |
+LL | #[inline()] //~ ERROR expected one argument
+   | ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0534, E0535.
+For more information about an error, try `rustc --explain E0534`.

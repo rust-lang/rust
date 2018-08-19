@@ -1,0 +1,15 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/regions-var-type-out-of-scope.rs:19:14
+   |
+LL |         x = &id(3); //~ ERROR borrowed value does not live long enough
+   |              ^^^^^- temporary value only lives until here
+   |              |
+   |              temporary value does not live long enough
+LL |         assert_eq!(*x, 3);
+   |         ------------------ borrow later used here
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

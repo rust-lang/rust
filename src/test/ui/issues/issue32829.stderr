@@ -1,0 +1,94 @@
+error[E0658]: statements in constants are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:17:9
+   |
+LL |         5;
+   |         ^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue32829.rs:25:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+
+error[E0658]: statements in constants are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:25:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in constants are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:34:9
+   |
+LL |         valid();
+   |         ^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:42:9
+   |
+LL |         5;
+   |         ^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue32829.rs:50:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:50:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:59:9
+   |
+LL |         valid();
+   |         ^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:67:9
+   |
+LL |         5;
+   |         ^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue32829.rs:75:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:75:9
+   |
+LL |         invalid();
+   |         ^^^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/issue32829.rs:84:9
+   |
+LL |         valid();
+   |         ^^^^^^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error: aborting due to 12 previous errors
+
+Some errors occurred: E0015, E0658.
+For more information about an error, try `rustc --explain E0015`.

@@ -1,0 +1,9 @@
+error[E0532]: expected tuple struct/variant, found unit variant `color::no_color`
+  --> $DIR/match-pattern-field-mismatch-2.rs:22:11
+   |
+LL |           color::no_color(_) => { }
+   |           ^^^^^^^^^^^^^^^ not a tuple struct/variant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

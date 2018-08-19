@@ -17,6 +17,9 @@ pub fn main() {
     // that won't output for the above string concatenation
     let y = World::Hello + World::Goodbye;
     //~^ ERROR cannot be applied to type
+
+    let x = "Hello " + "World!".to_owned();
+    //~^ ERROR cannot be applied to type
 }
 
 enum World {

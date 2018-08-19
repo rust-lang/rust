@@ -1,20 +1,45 @@
-error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:20:47
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/iterable.rs:11:12
    |
-20 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
-   |                                               ^^ lifetime parameter not allowed on this type
-
-error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:25:48
-   |
-25 |     type Iter2<'a>: Deref<Target = <Self::Iter<'a> as Iterator>::Item>;
-   |                                                ^^ lifetime parameter not allowed on this type
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:28:41
+  --> $DIR/iterable.rs:21:47
    |
-28 |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
-   |                                         ^^ lifetime parameter not allowed on this type
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+   |                                               ^^ lifetime parameter not allowed
 
-error: aborting due to 3 previous errors
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:50:53
+   |
+LL | fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
+   |                                                     ^^ lifetime parameter not allowed
 
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:55:60
+   |
+LL | fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
+   |                                                            ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:24:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
+   |                                         ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:33:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
+   |                                         ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:44:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
+   |                                         ^^ lifetime parameter not allowed
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0110`.

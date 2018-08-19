@@ -20,7 +20,7 @@ use ty::{Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -41,6 +41,7 @@ pub struct TraitDef {
     pub def_path_hash: DefPathHash,
 }
 
+#[derive(Default)]
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self-type, for fast lookup.
@@ -142,53 +143,49 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> Rc<TraitImpls> {
-    let mut remote_impls = Vec::new();
+                                                -> Lrc<TraitImpls> {
+    let mut impls = TraitImpls::default();
 
-    // Traits defined in the current crate can't have impls in upstream
-    // crates, so we don't bother querying the cstore.
-    if !trait_id.is_local() {
-        for &cnum in tcx.crates().iter() {
-            let impls = tcx.implementations_of_trait((cnum, trait_id));
-            remote_impls.extend(impls.iter().cloned());
+    {
+        let mut add_impl = |impl_def_id| {
+            let impl_self_ty = tcx.type_of(impl_def_id);
+            if impl_def_id.is_local() && impl_self_ty.references_error() {
+                return;
+            }
+
+            if let Some(simplified_self_ty) =
+                fast_reject::simplify_type(tcx, impl_self_ty, false)
+            {
+                impls.non_blanket_impls
+                    .entry(simplified_self_ty)
+                    .or_default()
+                    .push(impl_def_id);
+            } else {
+                impls.blanket_impls.push(impl_def_id);
+            }
+        };
+
+        // Traits defined in the current crate can't have impls in upstream
+        // crates, so we don't bother querying the cstore.
+        if !trait_id.is_local() {
+            for &cnum in tcx.crates().iter() {
+                for &def_id in tcx.implementations_of_trait((cnum, trait_id)).iter() {
+                    add_impl(def_id);
+                }
+            }
+        }
+
+        for &node_id in tcx.hir.trait_impls(trait_id) {
+            add_impl(tcx.hir.local_def_id(node_id));
         }
     }
 
-    let mut blanket_impls = Vec::new();
-    let mut non_blanket_impls = FxHashMap();
-
-    let local_impls = tcx.hir
-                         .trait_impls(trait_id)
-                         .into_iter()
-                         .map(|&node_id| tcx.hir.local_def_id(node_id));
-
-     for impl_def_id in local_impls.chain(remote_impls.into_iter()) {
-        let impl_self_ty = tcx.type_of(impl_def_id);
-        if impl_def_id.is_local() && impl_self_ty.references_error() {
-            continue
-        }
-
-        if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, false)
-        {
-            non_blanket_impls
-                .entry(simplified_self_ty)
-                .or_insert(vec![])
-                .push(impl_def_id);
-        } else {
-            blanket_impls.push(impl_def_id);
-        }
-    }
-
-    Rc::new(TraitImpls {
-        blanket_impls: blanket_impls,
-        non_blanket_impls: non_blanket_impls,
-    })
+    Lrc::new(impls)
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for TraitImpls {
+impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let TraitImpls {
             ref blanket_impls,

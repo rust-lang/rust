@@ -11,8 +11,8 @@
 // Test that MIR borrowck and NLL analysis can handle constants of
 // arbitrary types without ICEs.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
+// compile-flags:-Zborrowck=mir
+// compile-pass
 
 const HI: &str = "hi";
 

@@ -19,7 +19,7 @@ enum Enum { //~ WARN enum is never used
     D,
 }
 
-struct Struct { //~ WARN struct is never used
+struct Struct { //~ WARN struct is never constructed
     a: usize,
     b: usize,
     c: usize,

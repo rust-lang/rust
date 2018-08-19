@@ -27,6 +27,8 @@ pub(super) struct AnonymousArgInfo<'tcx> {
     pub arg_ty: Ty<'tcx>,
     // the ty::BoundRegion corresponding to the anonymous region
     pub bound_region: ty::BoundRegion,
+    // arg_ty_span contains span of argument type
+    pub arg_ty_span : Span,
     // corresponds to id the argument is the first parameter
     // in the declaration
     pub is_first: bool,
@@ -74,12 +76,16 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         if let Some(node_id) = hir.as_local_node_id(id) {
             if let Some(body_id) = hir.maybe_body_owned_by(node_id) {
                 let body = hir.body(body_id);
+                let owner_id = hir.body_owner(body_id);
+                let fn_decl = hir.fn_decl(owner_id).unwrap();
                 if let Some(tables) = self.tables {
                     body.arguments
                         .iter()
                         .enumerate()
                         .filter_map(|(index, arg)| {
                             // May return None; sometimes the tables are not yet populated.
+                            let ty_hir_id = fn_decl.inputs[index].hir_id;
+                            let arg_ty_span = hir.span(hir.hir_to_node_id(ty_hir_id));
                             let ty = tables.node_id_to_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx.fold_regions(&ty, &mut false, |r, _| {
@@ -95,6 +101,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                                 Some(AnonymousArgInfo {
                                     arg: arg,
                                     arg_ty: new_arg_ty,
+                                    arg_ty_span : arg_ty_span,
                                     bound_region: bound_region,
                                     is_first: is_first,
                                 })
@@ -167,6 +174,23 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         }
         None
     }
+
+    pub(super) fn is_return_type_impl_trait(
+        &self,
+        scope_def_id: DefId,
+    ) -> bool {
+        let ret_ty = self.tcx.type_of(scope_def_id);
+        match ret_ty.sty {
+            ty::TyFnDef(_, _) => {
+                let sig = ret_ty.fn_sig(self.tcx);
+                let output = self.tcx.erase_late_bound_regions(&sig.output());
+                return output.is_impl_trait();
+            }
+            _ => {}
+        }
+        false
+    }
+
     // Here we check for the case where anonymous region
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to

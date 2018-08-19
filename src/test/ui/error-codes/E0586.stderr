@@ -1,0 +1,11 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/E0586.rs:13:22
+   |
+LL |     let x = &tmp[1..=]; //~ ERROR E0586
+   |                      ^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0586`.

@@ -23,8 +23,14 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
+#if LLVM_VERSION_GE(6, 0)
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/IR/IntrinsicInst.h"
+#else
+#include "llvm/Target/TargetSubtargetInfo.h"
+#endif
 
 #if LLVM_VERSION_GE(4, 0)
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
@@ -37,6 +43,10 @@
 #endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
+
+#if LLVM_VERSION_GE(4, 0)
+#define PGO_AVAILABLE
+#endif
 
 using namespace llvm;
 using namespace llvm::legacy;
@@ -161,6 +171,12 @@ bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
 #define SUBTARGET_MSP430
 #endif
 
+#ifdef LLVM_COMPONENT_RISCV
+#define SUBTARGET_RISCV SUBTARGET(RISCV)
+#else
+#define SUBTARGET_RISCV
+#endif
+
 #ifdef LLVM_COMPONENT_SPARC
 #define SUBTARGET_SPARC SUBTARGET(Sparc)
 #else
@@ -182,7 +198,8 @@ bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   SUBTARGET_SYSTEMZ                                                            \
   SUBTARGET_MSP430                                                             \
   SUBTARGET_SPARC                                                              \
-  SUBTARGET_HEXAGON
+  SUBTARGET_HEXAGON                                                            \
+  SUBTARGET_RISCV                                                              \
 
 #define SUBTARGET(x)                                                           \
   namespace llvm {                                                             \
@@ -195,35 +212,26 @@ GEN_SUBTARGETS
 
 extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
                                    const char *Feature) {
-#if LLVM_RUSTLLVM
+#if LLVM_VERSION_GE(6, 0)
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
-  const FeatureBitset &Bits = MCInfo->getFeatureBits();
-  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
-
-  for (auto &FeatureEntry : FeatTable)
-    if (!strcmp(FeatureEntry.Key, Feature))
-      return (Bits & FeatureEntry.Value) == FeatureEntry.Value;
-#endif
+  return MCInfo->checkFeatures(std::string("+") + Feature);
+#else
   return false;
+#endif
 }
 
 enum class LLVMRustCodeModel {
   Other,
-  Default,
-  JITDefault,
   Small,
   Kernel,
   Medium,
   Large,
+  None,
 };
 
 static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
-  case LLVMRustCodeModel::Default:
-    return CodeModel::Default;
-  case LLVMRustCodeModel::JITDefault:
-    return CodeModel::JITDefault;
   case LLVMRustCodeModel::Small:
     return CodeModel::Small;
   case LLVMRustCodeModel::Kernel:
@@ -358,9 +366,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections,
     bool TrapUnreachable,
-    bool Singlethread) {
+    bool Singlethread,
+    bool AsmComments) {
 
-  auto CM = fromRust(RustCM);
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
 
@@ -386,9 +394,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
+  Options.MCOptions.AsmVerbose = AsmComments;
+  Options.MCOptions.PreserveAsmComments = AsmComments;
 
   if (TrapUnreachable) {
-    // Tell LLVM to translate `unreachable` into an explicit trap instruction.
+    // Tell LLVM to codegen `unreachable` into an explicit trap instruction.
     // This limits the extent of possible undefined behavior in some cases, as
     // it prevents control flow from "falling through" into whatever code
     // happens to be laid out next in memory.
@@ -399,6 +409,13 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.ThreadModel = ThreadModel::Single;
   }
 
+#if LLVM_VERSION_GE(6, 0)
+  Optional<CodeModel::Model> CM;
+#else
+  CodeModel::Model CM = CodeModel::Model::Default;
+#endif
+  if (RustCM != LLVMRustCodeModel::None)
+    CM = fromRust(RustCM);
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
@@ -421,12 +438,31 @@ extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
-    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize) {
-  // Ignore mergefunc for now as enabling it causes crashes.
-  // unwrap(PMBR)->MergeFunctions = MergeFunctions;
+    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize, bool PrepareForThinLTO,
+    const char* PGOGenPath, const char* PGOUsePath) {
+#if LLVM_RUSTLLVM
+  unwrap(PMBR)->MergeFunctions = MergeFunctions;
+#endif
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
+#if LLVM_VERSION_GE(4, 0)
+  unwrap(PMBR)->PrepareForThinLTO = PrepareForThinLTO;
+#endif
+
+#ifdef PGO_AVAILABLE
+  if (PGOGenPath) {
+    assert(!PGOUsePath);
+    unwrap(PMBR)->EnablePGOInstrGen = true;
+    unwrap(PMBR)->PGOInstrGen = PGOGenPath;
+  }
+  if (PGOUsePath) {
+    assert(!PGOGenPath);
+    unwrap(PMBR)->PGOInstrUse = PGOUsePath;
+  }
+#else
+  assert(!PGOGenPath && !PGOUsePath && "Should've caught earlier");
+#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
@@ -519,7 +555,11 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
     return LLVMRustResult::Failure;
   }
 
+#if LLVM_VERSION_GE(7, 0)
+  unwrap(Target)->addPassesToEmitFile(*PM, OS, nullptr, FileType, false);
+#else
   unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
+#endif
   PM->run(*unwrap(M));
 
   // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
@@ -759,6 +799,15 @@ LLVMRustThinLTOAvailable() {
 #endif
 }
 
+extern "C" bool
+LLVMRustPGOAvailable() {
+#ifdef PGO_AVAILABLE
+  return true;
+#else
+  return false;
+#endif
+}
+
 #if LLVM_VERSION_GE(4, 0)
 
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
@@ -789,23 +838,6 @@ LLVMRustThinLTOAvailable() {
 // and various online resources about ThinLTO to make heads or tails of all
 // this.
 
-extern "C" bool
-LLVMRustWriteThinBitcodeToFile(LLVMPassManagerRef PMR,
-                               LLVMModuleRef M,
-                               const char *BcFile) {
-  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
-  std::error_code EC;
-  llvm::raw_fd_ostream bc(BcFile, EC, llvm::sys::fs::F_None);
-  if (EC) {
-    LLVMRustSetLastError(EC.message().c_str());
-    return false;
-  }
-  PM->add(createWriteThinLTOBitcodePass(bc));
-  PM->run(*unwrap(M));
-  delete PM;
-  return true;
-}
-
 // This is a shared data structure which *must* be threadsafe to share
 // read-only amongst threads. This also corresponds basically to the arguments
 // of the `ProcessThinLTOModule` function in the LLVM source.
@@ -829,6 +861,10 @@ struct LLVMRustThinLTOData {
   StringMap<FunctionImporter::ImportMapTy> ImportLists;
   StringMap<FunctionImporter::ExportSetTy> ExportLists;
   StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
+
+#if LLVM_VERSION_GE(7, 0)
+  LLVMRustThinLTOData() : Index(/* isPerformingAnalysis = */ false) {}
+#endif
 };
 
 // Just an argument to the `LLVMRustCreateThinLTOData` function below.
@@ -911,7 +947,14 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
 #if LLVM_VERSION_GE(5, 0)
+#if LLVM_VERSION_GE(7, 0)
+  auto deadIsPrevailing = [&](GlobalValue::GUID G) {
+    return PrevailingType::Unknown;
+  };
+  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
+#else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
+#endif
   ComputeCrossModuleImport(
     Ret->Index,
     Ret->ModuleToDefinedGVSummaries,
@@ -1034,11 +1077,40 @@ LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef
 extern "C" bool
 LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
+
   const auto &ImportList = Data->ImportLists.lookup(Mod.getModuleIdentifier());
   auto Loader = [&](StringRef Identifier) {
     const auto &Memory = Data->ModuleMap.lookup(Identifier);
     auto &Context = Mod.getContext();
-    return getLazyBitcodeModule(Memory, Context, true, true);
+    auto MOrErr = getLazyBitcodeModule(Memory, Context, true, true);
+
+    if (!MOrErr)
+      return MOrErr;
+
+    // The rest of this closure is a workaround for
+    // https://bugs.llvm.org/show_bug.cgi?id=38184 where during ThinLTO imports
+    // we accidentally import wasm custom sections into different modules,
+    // duplicating them by in the final output artifact.
+    //
+    // The issue is worked around here by manually removing the
+    // `wasm.custom_sections` named metadata node from any imported module. This
+    // we know isn't used by any optimization pass so there's no need for it to
+    // be imported.
+    //
+    // Note that the metadata is currently lazily loaded, so we materialize it
+    // here before looking up if there's metadata inside. The `FunctionImporter`
+    // will immediately materialize metadata anyway after an import, so this
+    // shouldn't be a perf hit.
+    if (Error Err = (*MOrErr)->materializeMetadata()) {
+      Expected<std::unique_ptr<Module>> Ret(std::move(Err));
+      return Ret;
+    }
+
+    auto *WasmCustomSections = (*MOrErr)->getNamedMetadata("wasm.custom_sections");
+    if (WasmCustomSections)
+      WasmCustomSections->eraseFromParent();
+
+    return MOrErr;
   };
   FunctionImporter Importer(Data->Index, Loader);
   Expected<bool> Result = Importer.importFunctions(Mod, ImportList);
@@ -1178,23 +1250,7 @@ LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   MD->addOperand(Unit);
 }
 
-extern "C" void
-LLVMRustThinLTORemoveAvailableExternally(LLVMModuleRef Mod) {
-  Module *M = unwrap(Mod);
-  for (Function &F : M->functions()) {
-    if (F.hasAvailableExternallyLinkage())
-      F.deleteBody();
-  }
-}
-
 #else
-
-extern "C" bool
-LLVMRustWriteThinBitcodeToFile(LLVMPassManagerRef PMR,
-                               LLVMModuleRef M,
-                               const char *BcFile) {
-  report_fatal_error("ThinLTO not available");
-}
 
 struct LLVMRustThinLTOData {
 };
@@ -1275,11 +1331,6 @@ LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
 
 extern "C" void
 LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" void
-LLVMRustThinLTORemoveAvailableExternally(LLVMModuleRef Mod) {
   report_fatal_error("ThinLTO not available");
 }
 

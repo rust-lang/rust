@@ -10,7 +10,7 @@
 
 use infer::{GenericKind, InferCtxt};
 use infer::outlives::free_region_map::FreeRegionMap;
-use infer::outlives::bounds::{self, OutlivesBound};
+use traits::query::outlives_bounds::{self, OutlivesBound};
 use ty::{self, Ty};
 
 use syntax::ast;
@@ -50,7 +50,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
             region_bound_pairs: vec![],
         };
 
-        env.add_outlives_bounds(None, bounds::explicit_outlives_bounds(param_env));
+        env.add_outlives_bounds(None, outlives_bounds::explicit_outlives_bounds(param_env));
 
         env
     }

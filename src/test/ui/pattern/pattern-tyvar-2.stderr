@@ -1,0 +1,11 @@
+error[E0369]: binary operation `*` cannot be applied to type `std::vec::Vec<isize>`
+  --> $DIR/pattern-tyvar-2.rs:14:69
+   |
+LL | fn foo(t: bar) -> isize { match t { bar::t1(_, Some(x)) => { return x * 3; } _ => { panic!(); } } }
+   |                                                                     ^^^^^
+   |
+   = note: an implementation of `std::ops::Mul` might be missing for `std::vec::Vec<isize>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

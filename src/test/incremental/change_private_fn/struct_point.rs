@@ -13,14 +13,14 @@
 
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 #![crate_type = "rlib"]
 
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]
 
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="cfail2")]
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="cfail2")]

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, generators, generator_trait)]
+#![feature(generators, generator_trait)]
 
 use std::ops::Generator;
 

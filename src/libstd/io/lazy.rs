@@ -15,15 +15,21 @@ use sys_common;
 use sys_common::mutex::Mutex;
 
 pub struct Lazy<T> {
+    // We never call `lock.init()`, so it is UB to attempt to acquire this mutex reentrantly!
     lock: Mutex,
     ptr: Cell<*mut Arc<T>>,
     init: fn() -> Arc<T>,
 }
 
+#[inline]
+const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
+
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T: Send + Sync + 'static> Lazy<T> {
-    pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
+    /// Safety: `init` must not call `get` on the variable that is being
+    /// initialized.
+    pub const unsafe fn new(init: fn() -> Arc<T>) -> Lazy<T> {
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),
@@ -33,32 +39,34 @@ impl<T: Send + Sync + 'static> Lazy<T> {
 
     pub fn get(&'static self) -> Option<Arc<T>> {
         unsafe {
-            self.lock.lock();
+            let _guard = self.lock.lock();
             let ptr = self.ptr.get();
-            let ret = if ptr.is_null() {
+            if ptr.is_null() {
                 Some(self.init())
-            } else if ptr as usize == 1 {
+            } else if ptr == done() {
                 None
             } else {
                 Some((*ptr).clone())
-            };
-            self.lock.unlock();
-            return ret
+            }
         }
     }
 
+    // Must only be called with `lock` held
     unsafe fn init(&'static self) -> Arc<T> {
         // If we successfully register an at exit handler, then we cache the
         // `Arc` allocation in our own internal box (it will get deallocated by
         // the at exit handler). Otherwise we just return the freshly allocated
         // `Arc`.
         let registered = sys_common::at_exit(move || {
-            self.lock.lock();
-            let ptr = self.ptr.get();
-            self.ptr.set(1 as *mut _);
-            self.lock.unlock();
+            let ptr = {
+                let _guard = self.lock.lock();
+                self.ptr.replace(done())
+            };
             drop(Box::from_raw(ptr))
         });
+        // This could reentrantly call `init` again, which is a problem
+        // because our `lock` allows reentrancy!
+        // That's why `new` is unsafe and requires the caller to ensure no reentrancy happens.
         let ret = (self.init)();
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));

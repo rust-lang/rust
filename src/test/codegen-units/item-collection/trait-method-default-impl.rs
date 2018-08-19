@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]
 #![feature(start)]
@@ -24,7 +24,7 @@ impl SomeTrait for i8 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeTrait[0]::foo[0]<i8>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeTrait[0]::foo[0]<i8>
 }
 
 trait SomeGenericTrait<T1> {
@@ -38,7 +38,7 @@ impl SomeGenericTrait<u64> for i32 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<i32, u64>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<i32, u64>
 }
 
 // Non-generic impl of generic trait
@@ -47,25 +47,25 @@ impl<T1> SomeGenericTrait<T1> for u32 {
     // since nothing is monomorphic here, nothing should be generated unless used somewhere.
 }
 
-//~ TRANS_ITEM fn trait_method_default_impl::start[0]
+//~ MONO_ITEM fn trait_method_default_impl::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, char>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, char>
     let _ = 1i8.bar('c');
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, &str>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, &str>
     let _ = 2i8.bar("&str");
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, char>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, char>
     0i32.bar(0u64, 'c');
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, &str>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, &str>
     0i32.bar(0u64, "&str");
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i8, &[char; 1]>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i8, &[char; 1]>
     0u32.bar(0i8, &['c']);
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i16, ()>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i16, ()>
     0u32.bar(0i16, ());
 
     0

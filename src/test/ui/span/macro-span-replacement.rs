@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![warn(unused)]
 
 macro_rules! m {
     ($a:tt $b:tt) => {
-        $b $a; //~ WARN struct is never used
+        $b $a; //~ WARN struct is never constructed
     }
 }
 

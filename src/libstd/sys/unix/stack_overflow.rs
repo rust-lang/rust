@@ -57,9 +57,6 @@ mod imp {
     use sys_common::thread_info;
 
 
-    // This is initialized in init() and only read from after
-    static mut PAGE_SIZE: usize = 0;
-
     #[cfg(any(target_os = "linux", target_os = "android"))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         #[repr(C)]
@@ -102,12 +99,12 @@ mod imp {
                                     _data: *mut libc::c_void) {
         use sys_common::util::report_overflow;
 
-        let guard = thread_info::stack_guard().unwrap_or(0);
+        let guard = thread_info::stack_guard().unwrap_or(0..0);
         let addr = siginfo_si_addr(info);
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
-        if guard != 0 && guard - PAGE_SIZE <= addr && addr < guard {
+        if guard.start <= addr && addr < guard.end {
             report_overflow();
             rtabort!("stack overflow");
         } else {
@@ -123,8 +120,6 @@ mod imp {
     static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();
 
     pub unsafe fn init() {
-        PAGE_SIZE = ::sys::os::page_size();
-
         let mut action: sigaction = mem::zeroed();
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;
         action.sa_sigaction = signal_handler as sighandler_t;

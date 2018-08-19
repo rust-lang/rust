@@ -27,14 +27,14 @@ use std::collections::BTreeMap;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 
-use clean::PathParameters as PP;
+use clean::GenericArgs as PP;
 use clean::WherePredicate as WP;
 use clean;
 use core::DocContext;
 
 pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
-    let mut params = BTreeMap::new();
+    let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
@@ -43,7 +43,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
         match clause {
             WP::BoundPredicate { ty, bounds } => {
                 match ty {
-                    clean::Generic(s) => params.entry(s).or_insert(Vec::new())
+                    clean::Generic(s) => params.entry(s).or_default()
                                                .extend(bounds),
                     t => tybounds.push((t, ty_bounds(bounds))),
                 }
@@ -83,8 +83,8 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
         };
         !bounds.iter_mut().any(|b| {
             let trait_ref = match *b {
-                clean::TraitBound(ref mut tr, _) => tr,
-                clean::RegionBound(..) => return false,
+                clean::GenericBound::TraitBound(ref mut tr, _) => tr,
+                clean::GenericBound::Outlives(..) => return false,
             };
             let (did, path) = match trait_ref.trait_ {
                 clean::ResolvedPath { did, ref mut path, ..} => (did, path),
@@ -96,8 +96,8 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
             if !trait_is_same_or_supertrait(cx, did, trait_did) {
                 return false
             }
-            let last = path.segments.last_mut().unwrap();
-            match last.params {
+            let last = path.segments.last_mut().expect("segments were empty");
+            match last.args {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {
                         name: name.clone(),
@@ -106,7 +106,9 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
                 }
                 PP::Parenthesized { ref mut output, .. } => {
                     assert!(output.is_none());
-                    *output = Some(rhs.clone());
+                    if *rhs != clean::Type::Tuple(Vec::new()) {
+                        *output = Some(rhs.clone());
+                    }
                 }
             };
             true
@@ -133,14 +135,19 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     clauses
 }
 
-pub fn ty_params(mut params: Vec<clean::TyParam>) -> Vec<clean::TyParam> {
+pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericParamDef> {
     for param in &mut params {
-        param.bounds = ty_bounds(mem::replace(&mut param.bounds, Vec::new()));
+        match param.kind {
+            clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
+                *bounds = ty_bounds(mem::replace(bounds, Vec::new()));
+            }
+            _ => panic!("expected only type parameters"),
+        }
     }
     params
 }
 
-fn ty_bounds(bounds: Vec<clean::TyParamBound>) -> Vec<clean::TyParamBound> {
+fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
     bounds
 }
 
@@ -152,7 +159,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
     let predicates = cx.tcx.super_predicates_of(child).predicates;
     predicates.iter().filter_map(|pred| {
         if let ty::Predicate::Trait(ref pred) = *pred {
-            if pred.0.trait_ref.self_ty().is_self() {
+            if pred.skip_binder().trait_ref.self_ty().is_self() {
                 Some(pred.def_id())
             } else {
                 None

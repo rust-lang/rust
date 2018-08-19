@@ -27,3 +27,5 @@ pub mod baz {
 struct Foo;
 impl T for Foo { }
 //~^ ERROR cannot find trait `T`
+
+fn main() {}

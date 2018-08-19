@@ -1,8 +1,9 @@
 error[E0423]: expected function, found struct variant `Foo::Variant`
   --> $DIR/issue-18252.rs:16:13
    |
-16 |     let f = Foo::Variant(42);
+LL |     let f = Foo::Variant(42);
    |             ^^^^^^^^^^^^ did you mean `Foo::Variant { /* fields */ }`?
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0423`.

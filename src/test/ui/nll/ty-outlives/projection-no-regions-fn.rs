@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 
 trait Anything { }
 
@@ -22,7 +21,7 @@ where
     T: Iterator,
 {
     Box::new(x.next())
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
@@ -38,7 +37,7 @@ where
     T: 'b + Iterator,
 {
     Box::new(x.next())
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 

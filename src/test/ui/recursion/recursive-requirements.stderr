@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `Foo: std::marker::Sync`
+  --> $DIR/recursive-requirements.rs:26:12
+   |
+LL |     let _: AssertSync<Foo> = unimplemented!(); //~ ERROR E0275
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+   = note: required because it appears within the type `std::marker::PhantomData<Foo>`
+   = note: required because it appears within the type `Bar`
+   = note: required because it appears within the type `std::marker::PhantomData<Bar>`
+   = note: required because it appears within the type `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

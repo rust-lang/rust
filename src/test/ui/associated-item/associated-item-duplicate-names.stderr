@@ -1,0 +1,19 @@
+error[E0201]: duplicate definitions with name `Ty`:
+  --> $DIR/associated-item-duplicate-names.rs:21:5
+   |
+LL |     type Ty = ();
+   |     ------------- previous definition of `Ty` here
+LL |     type Ty = usize; //~ ERROR duplicate definitions
+   |     ^^^^^^^^^^^^^^^^ duplicate definition
+
+error[E0201]: duplicate definitions with name `BAR`:
+  --> $DIR/associated-item-duplicate-names.rs:23:5
+   |
+LL |     const BAR: u32 = 7;
+   |     ------------------- previous definition of `BAR` here
+LL |     const BAR: u32 = 8; //~ ERROR duplicate definitions
+   |     ^^^^^^^^^^^^^^^^^^^ duplicate definition
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0201`.

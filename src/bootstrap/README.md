@@ -64,6 +64,10 @@ The script accepts commands, flags, and arguments to determine what to do:
   # execute tests in the standard library in stage0
   ./x.py test --stage 0 src/libstd
 
+  # execute tests in the core and standard library in stage0,
+  # without running doc tests (thus avoid depending on building the compiler)
+  ./x.py test --stage 0 --no-doc src/libcore src/libstd
+
   # execute all doc tests
   ./x.py test src/doc
   ```

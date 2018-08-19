@@ -38,7 +38,17 @@ impl DynamicLibrary {
         // run.
         match maybe_library {
             Err(err) => Err(err),
-            Ok(handle) => Ok(DynamicLibrary { handle: handle })
+            Ok(handle) => Ok(DynamicLibrary { handle })
+        }
+    }
+
+    /// Load a dynamic library into the global namespace (RTLD_GLOBAL on Unix)
+    /// and do it now (don't use RTLD_LAZY on Unix).
+    pub fn open_global_now(filename: &Path) -> Result<DynamicLibrary, String> {
+        let maybe_library = dl::open_global_now(filename.as_os_str());
+        match maybe_library {
+            Err(err) => Err(err),
+            Ok(handle) => Ok(DynamicLibrary { handle })
         }
     }
 
@@ -80,30 +90,29 @@ mod tests {
     use std::mem;
 
     #[test]
-    fn test_loading_cosine() {
+    fn test_loading_atoi() {
         if cfg!(windows) {
             return
         }
 
-        // The math library does not need to be loaded since it is already
-        // statically linked in
-        let libm = match DynamicLibrary::open(None) {
+        // The C library does not need to be loaded since it is already linked in
+        let lib = match DynamicLibrary::open(None) {
             Err(error) => panic!("Could not load self as module: {}", error),
-            Ok(libm) => libm
+            Ok(lib) => lib
         };
 
-        let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
-            match libm.symbol("cos") {
-                Err(error) => panic!("Could not load function cos: {}", error),
-                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine)
+        let atoi: extern fn(*const libc::c_char) -> libc::c_int = unsafe {
+            match lib.symbol("atoi") {
+                Err(error) => panic!("Could not load function atoi: {}", error),
+                Ok(atoi) => mem::transmute::<*mut u8, _>(atoi)
             }
         };
 
-        let argument = 0.0;
-        let expected_result = 1.0;
-        let result = cosine(argument);
+        let argument = CString::new("1383428980").unwrap();
+        let expected_result = 0x52757374;
+        let result = atoi(argument.as_ptr());
         if result != expected_result {
-            panic!("cos({}) != {} but equaled {} instead", argument,
+            panic!("atoi({:?}) != {} but equaled {} instead", argument,
                    expected_result, result)
         }
     }
@@ -145,15 +154,20 @@ mod dl {
         })
     }
 
-    const LAZY: libc::c_int = 1;
+    pub fn open_global_now(filename: &OsStr) -> Result<*mut u8, String> {
+        check_for_errors_in(|| unsafe {
+            let s = CString::new(filename.as_bytes()).unwrap();
+            libc::dlopen(s.as_ptr(), libc::RTLD_GLOBAL | libc::RTLD_NOW) as *mut u8
+        })
+    }
 
     unsafe fn open_external(filename: &OsStr) -> *mut u8 {
         let s = CString::new(filename.as_bytes()).unwrap();
-        libc::dlopen(s.as_ptr(), LAZY) as *mut u8
+        libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
     }
 
     unsafe fn open_internal() -> *mut u8 {
-        libc::dlopen(ptr::null(), LAZY) as *mut u8
+        libc::dlopen(ptr::null(), libc::RTLD_LAZY) as *mut u8
     }
 
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
@@ -222,6 +236,10 @@ mod dl {
         fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
         fn FreeLibrary(handle: HMODULE) -> BOOL;
+    }
+
+    pub fn open_global_now(filename: &OsStr) -> Result<*mut u8, String> {
+        open(Some(filename))
     }
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {

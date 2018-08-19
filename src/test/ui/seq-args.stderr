@@ -1,0 +1,15 @@
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/seq-args.rs:14:9
+   |
+LL | impl<T> seq<T> for Vec<T> { //~ ERROR wrong number of type arguments
+   |         ^^^^^^ expected no type arguments
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/seq-args.rs:17:6
+   |
+LL | impl seq<bool> for u32 { //~ ERROR wrong number of type arguments
+   |      ^^^^^^^^^ expected no type arguments
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0244`.

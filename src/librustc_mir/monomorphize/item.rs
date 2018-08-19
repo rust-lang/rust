@@ -18,44 +18,18 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
 use rustc::ty::subst::Substs;
 use syntax::ast;
-use syntax::attr::{self, InlineAttr};
+use syntax::attr::InlineAttr;
 use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
 use syntax_pos::symbol::Symbol;
+use syntax::codemap::Span;
 pub use rustc::mir::mono::MonoItem;
 
-pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Some(Appending),
-        "available_externally" => Some(AvailableExternally),
-        "common" => Some(Common),
-        "extern_weak" => Some(ExternalWeak),
-        "external" => Some(External),
-        "internal" => Some(Internal),
-        "linkonce" => Some(LinkOnceAny),
-        "linkonce_odr" => Some(LinkOnceODR),
-        "private" => Some(Private),
-        "weak" => Some(WeakAny),
-        "weak_odr" => Some(WeakODR),
-        _ => None,
-    }
-}
-
-/// Describes how a translation item will be instantiated in object files.
+/// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given MonoItem. It will have
@@ -63,11 +37,11 @@ pub enum InstantiationMode {
     GloballyShared {
         /// In some compilation scenarios we may decide to take functions that
         /// are typically `LocalCopy` and instead move them to `GloballyShared`
-        /// to avoid translating them a bunch of times. In this situation,
+        /// to avoid codegenning them a bunch of times. In this situation,
         /// however, our local copy may conflict with other crates also
         /// inlining the same function.
         ///
-        /// This flag indicates that this situation is occuring, and informs
+        /// This flag indicates that this situation is occurring, and informs
         /// symbol name calculation that some extra mangling is needed to
         /// avoid conflicts. Note that this may eventually go away entirely if
         /// ThinLTO enables us to *always* have a globally shared instance of a
@@ -96,14 +70,13 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
-            MonoItem::Static(node_id) => {
-                let def_id = tcx.hir.local_def_id(node_id);
+            MonoItem::Static(def_id) => {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             MonoItem::GlobalAsm(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
                 ty::SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_interned_str()
                 }
             }
         }
@@ -118,10 +91,13 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
+                let entry_def_id =
+                    tcx.sess.entry_fn.borrow().map(|(id, _, _)| tcx.hir.local_def_id(id));
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
-                    !instance.def.requires_local(tcx)
+                    !instance.def.requires_local(tcx) ||
+                    Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared  { may_conflict: false }
                 }
@@ -138,17 +114,14 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                let attrs = instance.def.attrs(tcx);
-                match attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs) {
+                match tcx.codegen_fn_attrs(instance.def_id()).inline {
                     InlineAttr::Always => InstantiationMode::LocalCopy,
                     _ => {
                         InstantiationMode::GloballyShared  { may_conflict: true }
                     }
                 }
             }
-            MonoItem::Static(..) => {
-                InstantiationMode::GloballyShared { may_conflict: false }
-            }
+            MonoItem::Static(..) |
             MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
@@ -158,36 +131,23 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
         let def_id = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => instance.def_id(),
-            MonoItem::Static(node_id) => tcx.hir.local_def_id(node_id),
+            MonoItem::Static(def_id) => def_id,
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let attributes = tcx.get_attrs(def_id);
-        if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
-            if let Some(linkage) = linkage_by_name(&name.as_str()) {
-                Some(linkage)
-            } else {
-                let span = tcx.hir.span_if_local(def_id);
-                if let Some(span) = span {
-                    tcx.sess.span_fatal(span, "invalid linkage specified")
-                } else {
-                    tcx.sess.fatal(&format!("invalid linkage specified: {}", name))
-                }
-            }
-        } else {
-            None
-        }
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+        codegen_fn_attrs.linkage
     }
 
     /// Returns whether this instance is instantiable - whether it has no unsatisfied
     /// predicates.
     ///
-    /// In order to translate an item, all of its predicates must hold, because
+    /// In order to codegen an item, all of its predicates must hold, because
     /// otherwise the item does not make sense. Type-checking ensures that
     /// the predicates of every item that is *used by* a valid item *do*
     /// hold, so we can rely on that.
     ///
-    /// However, we translate collector roots (reachable items) and functions
+    /// However, we codegen collector roots (reachable items) and functions
     /// in vtables when they are seen, even if they are not used, and so they
     /// might not be instantiable. For example, a programmer can define this
     /// public function:
@@ -196,7 +156,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     ///         <&mut () as Clone>::clone(&s);
     ///     }
     ///
-    /// That function can't be translated, because the method `<&mut () as Clone>::clone`
+    /// That function can't be codegened, because the method `<&mut () as Clone>::clone`
     /// does not exist. Luckily for us, that function can't ever be used,
     /// because that would require for `&'a mut (): Clone` to hold, so we
     /// can just not emit any code, or even a linker reference for it.
@@ -208,7 +168,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
-            MonoItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
+            MonoItem::Static(def_id) => (def_id, Substs::empty()),
             // global asm never has predicates
             MonoItem::GlobalAsm(..) => return true
         };
@@ -217,14 +177,11 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     }
 
     fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
-        let hir_map = &tcx.hir;
-
         return match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
-            MonoItem::Static(node_id) => {
-                let def_id = hir_map.local_def_id(node_id);
+            MonoItem::Static(def_id) => {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
@@ -244,6 +201,20 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             result
         }
     }
+
+    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self.as_mono_item() {
+            MonoItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            MonoItem::Static(def_id) => {
+                tcx.hir.as_local_node_id(def_id)
+            }
+            MonoItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
+    }
 }
 
 impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
@@ -256,7 +227,7 @@ impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 // MonoItem String Keys
 //=-----------------------------------------------------------------------------
 
-// The code below allows for producing a unique string key for a trans item.
+// The code below allows for producing a unique string key for a mono item.
 // These keys are used by the handwritten auto-tests, so they need to be
 // predictable and human-readable.
 //
@@ -308,7 +279,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);
             },
-            ty::TyTuple(component_types, _) => {
+            ty::TyTuple(component_types) => {
                 output.push('(');
                 for &component_type in component_types {
                     self.push_type_name(component_type, output);
@@ -329,7 +300,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 self.push_type_name(inner_type, output);
             },
-            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, inner_type, mutbl) => {
                 output.push('&');
                 if mutbl == hir::MutMutable {
                     output.push_str("mut ");
@@ -340,8 +311,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyArray(inner_type, len) => {
                 output.push('[');
                 self.push_type_name(inner_type, output);
-                write!(output, "; {}",
-                    len.val.to_const_int().unwrap().to_u64().unwrap()).unwrap();
+                write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
                 output.push(']');
             },
             ty::TySlice(inner_type) => {
@@ -366,7 +336,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 }
 
                 let abi = sig.abi();
-                if abi != ::syntax::abi::Abi::Rust {
+                if abi != ::rustc_target::spec::abi::Abi::Rust {
                     output.push_str("extern \"");
                     output.push_str(abi.name());
                     output.push_str("\" ");
@@ -374,7 +344,10 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
+                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {
@@ -400,17 +373,18 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     self.push_type_name(sig.output(), output);
                 }
             },
-            ty::TyGenerator(def_id, ref closure_substs, _) |
-            ty::TyClosure(def_id, ref closure_substs) => {
+            ty::TyGenerator(def_id, GeneratorSubsts { ref substs }, _) |
+            ty::TyClosure(def_id, ClosureSubsts { ref substs }) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
-                let substs = closure_substs.substs.truncate_to(self.tcx, generics);
+                let substs = substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }
             ty::TyError |
             ty::TyInfer(_) |
             ty::TyProjection(..) |
             ty::TyParam(_) |
+            ty::TyGeneratorWitness(_) |
             ty::TyAnon(..) => {
                 bug!("DefPathBasedNames: Trying to create type name for \
                                          unexpected type: {:?}", t);
@@ -465,7 +439,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
         for projection in projections {
             let projection = projection.skip_binder();
-            let name = &self.tcx.associated_item(projection.item_def_id).name.as_str();
+            let name = &self.tcx.associated_item(projection.item_def_id).ident.as_str();
             output.push_str(name);
             output.push_str("=");
             self.push_type_name(projection.ty, output);

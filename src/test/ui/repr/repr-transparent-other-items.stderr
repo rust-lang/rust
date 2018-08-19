@@ -1,0 +1,73 @@
+error[E0601]: `main` function not found in crate `repr_transparent_other_items`
+   |
+   = note: consider adding a `main` function to `$DIR/repr-transparent-other-items.rs`
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:13:8
+   |
+LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
+   |        ^^^^^^^^^^^
+LL | enum Void {}         //~| ERROR should be applied to struct
+   | ------------ not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:16:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / enum FieldlessEnum {
+LL | |     Foo,
+LL | |     Bar,
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:22:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / enum Enum {
+LL | |     Foo(String),
+LL | |     Bar(u32),
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:28:8
+   |
+LL |   #[repr(transparent)] //~ ERROR should be applied to struct
+   |          ^^^^^^^^^^^
+LL | / union Foo {
+LL | |     u: u32,
+LL | |     s: i32
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:34:8
+   |
+LL | #[repr(transparent)] //~ ERROR should be applied to struct
+   |        ^^^^^^^^^^^
+LL | fn cant_repr_this() {}
+   | ---------------------- not a struct
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/repr-transparent-other-items.rs:37:8
+   |
+LL | #[repr(transparent)] //~ ERROR should be applied to struct
+   |        ^^^^^^^^^^^
+LL | static CANT_REPR_THIS: u32 = 0;
+   | ------------------------------- not a struct
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/repr-transparent-other-items.rs:13:1
+   |
+LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | enum Void {}         //~| ERROR should be applied to struct
+   | ------------ zero-variant enum
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0084, E0517, E0601.
+For more information about an error, try `rustc --explain E0084`.

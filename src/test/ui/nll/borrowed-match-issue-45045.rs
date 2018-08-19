@@ -21,7 +21,7 @@ fn main() {
     let mut e = Xyz::A;
     let f = &mut e;
     let g = f;
-    match e {
+    match e { //~ cannot use `e` because it was mutably borrowed [E0503]
         Xyz::A => println!("a"),
         //~^ cannot use `e` because it was mutably borrowed [E0503]
         Xyz::B => println!("b"),

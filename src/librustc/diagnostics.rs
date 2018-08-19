@@ -14,19 +14,6 @@
 // Each message should start and end with a new line, and be wrapped to 80 characters.
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
-E0020: r##"
-This error indicates that an attempt was made to divide by zero (or take the
-remainder of a zero divisor) in a static or constant expression. Erroneous
-code example:
-
-```compile_fail
-#[deny(const_err)]
-
-const X: i32 = 42 / 0;
-// error: attempt to divide by zero in a constant expression
-```
-"##,
-
 E0038: r##"
 Trait objects like `Box<Trait>` can only be constructed when certain
 requirements are satisfied by the trait in question.
@@ -253,6 +240,28 @@ Adding a `Self: Sized` bound to these methods will generally make this compile.
 ```
 trait Foo {
     fn foo() -> u8 where Self: Sized;
+}
+```
+
+### The trait cannot contain associated constants
+
+Just like static functions, associated constants aren't stored on the method
+table. If the trait or any subtrait contain an associated constant, they cannot
+be made into an object.
+
+```compile_fail,E0038
+trait Foo {
+    const X: i32;
+}
+
+impl Foo {}
+```
+
+A simple workaround is to use a helper method instead:
+
+```
+trait Foo {
+    fn x(&self) -> i32;
 }
 ```
 
@@ -628,8 +637,8 @@ Erroneous code example:
 ```compile_fail,E0152
 #![feature(lang_items)]
 
-#[lang = "panic_fmt"]
-struct Foo; // error: duplicate lang item found: `panic_fmt`
+#[lang = "panic_impl"]
+struct Foo; // error: duplicate lang item found: `panic_impl`
 ```
 
 Lang items are already implemented in the standard library. Unless you are
@@ -815,7 +824,7 @@ A list of available external lang items is available in
 #![feature(lang_items)]
 
 extern "C" {
-    #[lang = "panic_fmt"] // ok!
+    #[lang = "panic_impl"] // ok!
     fn cake();
 }
 ```
@@ -876,65 +885,6 @@ foo(3_i8);
 // Here, we invoke `foo` with an `i8`, which does not satisfy
 // the constraint `<i8 as Trait>::AssociatedType=u32`, and
 // therefore the type-checker complains with this error code.
-```
-
-Here is a more subtle instance of the same problem, that can
-arise with for-loops in Rust:
-
-```compile_fail
-let vs: Vec<i32> = vec![1, 2, 3, 4];
-for v in &vs {
-    match v {
-        1 => {},
-        _ => {},
-    }
-}
-```
-
-The above fails because of an analogous type mismatch,
-though may be harder to see. Again, here are some
-explanatory comments for the same example:
-
-```compile_fail
-{
-    let vs = vec![1, 2, 3, 4];
-
-    // `for`-loops use a protocol based on the `Iterator`
-    // trait. Each item yielded in a `for` loop has the
-    // type `Iterator::Item` -- that is, `Item` is the
-    // associated type of the concrete iterator impl.
-    for v in &vs {
-//      ~    ~~~
-//      |     |
-//      |    We borrow `vs`, iterating over a sequence of
-//      |    *references* of type `&Elem` (where `Elem` is
-//      |    vector's element type). Thus, the associated
-//      |    type `Item` must be a reference `&`-type ...
-//      |
-//  ... and `v` has the type `Iterator::Item`, as dictated by
-//  the `for`-loop protocol ...
-
-        match v {
-            1 => {}
-//          ~
-//          |
-// ... but *here*, `v` is forced to have some integral type;
-// only types like `u8`,`i8`,`u16`,`i16`, et cetera can
-// match the pattern `1` ...
-
-            _ => {}
-        }
-
-// ... therefore, the compiler complains, because it sees
-// an attempt to solve the equations
-// `some integral-type` = type-of-`v`
-//                      = `Iterator::Item`
-//                      = `&Elem` (i.e. `some reference type`)
-//
-// which cannot possibly all be true.
-
-    }
-}
 ```
 
 To avoid those issues, you have to make the types match correctly.
@@ -1755,12 +1705,12 @@ The `main` function was incorrectly declared.
 Erroneous code example:
 
 ```compile_fail,E0580
-fn main() -> i32 { // error: main function has wrong type
-    0
+fn main(x: i32) { // error: main function has wrong type
+    println!("{}", x);
 }
 ```
 
-The `main` function prototype should never take arguments or return type.
+The `main` function prototype should never take arguments.
 Example:
 
 ```
@@ -1780,8 +1730,6 @@ allowed as function return types.
 Erroneous code example:
 
 ```compile_fail,E0562
-#![feature(conservative_impl_trait)]
-
 fn main() {
     let count_to_ten: impl Iterator<Item=usize> = 0..10;
     // error: `impl Trait` not allowed outside of function and inherent method
@@ -1795,8 +1743,6 @@ fn main() {
 Make sure `impl Trait` only appears in return-type position.
 
 ```
-#![feature(conservative_impl_trait)]
-
 fn count_to_n(n: usize) -> impl Iterator<Item=usize> {
     0..n
 }
@@ -1869,7 +1815,7 @@ is a function pointer, which is not zero-sized.
 This pattern should be rewritten. There are a few possible ways to do this:
 
 - change the original fn declaration to match the expected signature,
-  and do the cast in the fn body (the prefered option)
+  and do the cast in the fn body (the preferred option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:
 
     ```
@@ -1972,6 +1918,30 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
 ```
 "##,
 
+E0635: r##"
+The `#![feature]` attribute specified an unknown feature.
+
+Erroneous code example:
+
+```compile_fail,E0635
+#![feature(nonexistent_rust_feature)] // error: unknown feature
+```
+
+"##,
+
+E0636: r##"
+A `#![feature]` attribute was declared multiple times.
+
+Erroneous code example:
+
+```compile_fail,E0636
+#![allow(stable_features)]
+#![feature(rust1)]
+#![feature(rust1)] // error: the feature `rust1` has already been declared
+```
+
+"##,
+
 E0644: r##"
 A closure or generator was constructed that references its own type.
 
@@ -2003,7 +1973,136 @@ that refers to itself. That is permitting, since the closure would be
 invoking itself via a virtual call, and hence does not directly
 reference its own *type*.
 
-"##, }
+"##,
+
+E0692: r##"
+A `repr(transparent)` type was also annotated with other, incompatible
+representation hints.
+
+Erroneous code example:
+
+```compile_fail,E0692
+#[repr(transparent, C)] // error: incompatible representation hints
+struct Grams(f32);
+```
+
+A type annotated as `repr(transparent)` delegates all representation concerns to
+another type, so adding more representation hints is contradictory. Remove
+either the `transparent` hint or the other hints, like this:
+
+```
+#[repr(transparent)]
+struct Grams(f32);
+```
+
+Alternatively, move the other attributes to the contained type:
+
+```
+#[repr(C)]
+struct Foo {
+    x: i32,
+    // ...
+}
+
+#[repr(transparent)]
+struct FooWrapper(Foo);
+```
+
+Note that introducing another `struct` just to have a place for the other
+attributes may have unintended side effects on the representation:
+
+```
+#[repr(transparent)]
+struct Grams(f32);
+
+#[repr(C)]
+struct Float(f32);
+
+#[repr(transparent)]
+struct Grams2(Float); // this is not equivalent to `Grams` above
+```
+
+Here, `Grams2` is a not equivalent to `Grams` -- the former transparently wraps
+a (non-transparent) struct containing a single float, while `Grams` is a
+transparent wrapper around a float. This can make a difference for the ABI.
+"##,
+
+E0700: r##"
+The `impl Trait` return type captures lifetime parameters that do not
+appear within the `impl Trait` itself.
+
+Erroneous code example:
+
+```compile-fail,E0700
+use std::cell::Cell;
+
+trait Trait<'a> { }
+
+impl<'a, 'b> Trait<'b> for Cell<&'a u32> { }
+
+fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
+where 'x: 'y
+{
+    x
+}
+```
+
+Here, the function `foo` returns a value of type `Cell<&'x u32>`,
+which references the lifetime `'x`. However, the return type is
+declared as `impl Trait<'y>` -- this indicates that `foo` returns
+"some type that implements `Trait<'y>`", but it also indicates that
+the return type **only captures data referencing the lifetime `'y`**.
+In this case, though, we are referencing data with lifetime `'x`, so
+this function is in error.
+
+To fix this, you must reference the lifetime `'x` from the return
+type. For example, changing the return type to `impl Trait<'y> + 'x`
+would work:
+
+```
+use std::cell::Cell;
+
+trait Trait<'a> { }
+
+impl<'a,'b> Trait<'b> for Cell<&'a u32> { }
+
+fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + 'x
+where 'x: 'y
+{
+    x
+}
+```
+"##,
+
+E0701: r##"
+This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
+on something other than a struct or enum.
+
+Examples of erroneous code:
+
+```compile_fail,E0701
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive]
+trait Foo { }
+```
+"##,
+
+E0702: r##"
+This error indicates that a `#[non_exhaustive]` attribute had a value. The
+`#[non_exhaustive]` should be empty.
+
+Examples of erroneous code:
+
+```compile_fail,E0702
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive(anything)]
+struct Foo;
+```
+"##,
+
+}
 
 
 register_diagnostics! {
@@ -2056,4 +2155,12 @@ register_diagnostics! {
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
+
+    E0697, // closures cannot be static
+
+    E0707, // multiple elided lifetimes used in arguments of `async fn`
+    E0708, // `async` non-`move` closures with arguments are not currently supported
+    E0709, // multiple different lifetimes used in arguments of `async fn`
+    E0710, // an unknown tool name found in scoped lint
+    E0711, // a feature has been declared with conflicting stability attributes
 }

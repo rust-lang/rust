@@ -14,7 +14,6 @@
 // `x`.  The lexical checker makes this very painful. The NLL checker
 // does not.
 
-#![feature(match_default_bindings)]
 #![feature(nll)]
 
 use std::rc::Rc;

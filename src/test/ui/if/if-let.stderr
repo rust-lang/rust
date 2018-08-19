@@ -1,0 +1,39 @@
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:23:10
+   |
+LL |     foo!(a, 1, { //~ ERROR irrefutable if-let
+   |          ^ irrefutable pattern
+
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:26:10
+   |
+LL |     bar!(a, 1, { //~ ERROR irrefutable if-let
+   |          ^ irrefutable pattern
+
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:32:12
+   |
+LL |     if let a = 1 { //~ ERROR irrefutable if-let
+   |            ^ irrefutable pattern
+
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:36:12
+   |
+LL |     if let a = 1 { //~ ERROR irrefutable if-let
+   |            ^ irrefutable pattern
+
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:46:19
+   |
+LL |     } else if let a = 1 { //~ ERROR irrefutable if-let
+   |                   ^ irrefutable pattern
+
+error[E0162]: irrefutable if-let pattern
+  --> $DIR/if-let.rs:52:19
+   |
+LL |     } else if let a = 1 { //~ ERROR irrefutable if-let
+   |                   ^ irrefutable pattern
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0162`.

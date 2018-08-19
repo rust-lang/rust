@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex2a-push-one-existing-name-early-bound.rs:17:12
+   |
+LL |     x.push(y); //~ ERROR explicit lifetime required
+   |            ^
+
+error[E0282]: type annotations needed
+  --> $DIR/ex2a-push-one-existing-name-early-bound.rs:20:9
+   |
+LL | let x = baz;
+   |     -   ^^^ cannot infer type for `T`
+   |     |
+   |     consider giving `x` a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

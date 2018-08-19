@@ -1,7 +1,7 @@
 error[E0597]: `foo` does not live long enough
   --> $DIR/issue-40157.rs:12:53
    |
-12 |     {println!("{:?}", match { let foo = vec![1, 2]; foo.get(1) } { x => x });}
+LL |     {println!("{:?}", match { let foo = vec![1, 2]; foo.get(1) } { x => x });}
    |      -----------------------------------------------^^^----------------------
    |      |                                              |          |
    |      |                                              |          `foo` dropped here while still borrowed
@@ -12,3 +12,4 @@ error[E0597]: `foo` does not live long enough
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

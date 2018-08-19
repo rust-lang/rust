@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, specialization)]
+#![feature(specialization)]
 
 trait Foo: Copy + ToString {}
 
@@ -32,7 +32,7 @@ fn sum_to(n: u32) -> impl Foo {
         0
     } else {
         n + sum_to(n - 1)
-        //~^ ERROR the trait bound `u32: std::ops::Add<impl Foo>` is not satisfied
+        //~^ ERROR cannot add `impl Foo` to `u32`
     }
 }
 
@@ -50,23 +50,4 @@ impl Leak for i32 {
 }
 
 fn main() {
-    let _: u32 = hide(0_u32);
-    //~^ ERROR mismatched types
-    //~| expected type `u32`
-    //~| found type `impl Foo`
-    //~| expected u32, found anonymized type
-
-    let _: i32 = Leak::leak(hide(0_i32));
-    //~^ ERROR mismatched types
-    //~| expected type `i32`
-    //~| found type `<impl Foo as Leak>::T`
-    //~| expected i32, found associated type
-
-    let mut x = (hide(0_u32), hide(0_i32));
-    x = (x.1,
-    //~^ ERROR mismatched types
-    //~| expected u32, found i32
-         x.0);
-    //~^ ERROR mismatched types
-    //~| expected i32, found u32
 }

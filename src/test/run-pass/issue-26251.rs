@@ -12,9 +12,9 @@ fn main() {
     let x = 'a';
 
     let y = match x {
-        'a'...'b' if false => "one",
+        'a'..='b' if false => "one",
         'a' => "two",
-        'a'...'b' => "three",
+        'a'..='b' => "three",
         _ => panic!("what?"),
     };
 

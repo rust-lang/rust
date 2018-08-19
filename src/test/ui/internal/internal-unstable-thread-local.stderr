@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'function'
+  --> $DIR/internal-unstable-thread-local.rs:19:32
+   |
+LL | thread_local!(static BAR: () = internal_unstable::unstable()); //~ ERROR use of unstable
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(function)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

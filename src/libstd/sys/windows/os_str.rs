@@ -114,6 +114,11 @@ impl Buf {
     }
 
     #[inline]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.inner.shrink_to(min_capacity)
+    }
+
+    #[inline]
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }

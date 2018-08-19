@@ -1,0 +1,6 @@
+error: cannot prefer dynamic linking when performing LTO
+
+note: only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
+
+error: aborting due to previous error
+

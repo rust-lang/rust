@@ -1,0 +1,27 @@
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/variance-issue-20533.rs:38:14
+   |
+LL |         let x = foo(&a);
+   |                      - borrow of `a` occurs here
+LL |         drop(a); //~ ERROR cannot move out of `a`
+   |              ^ move out of `a` occurs here
+
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/variance-issue-20533.rs:44:14
+   |
+LL |         let x = bar(&a);
+   |                      - borrow of `a` occurs here
+LL |         drop(a); //~ ERROR cannot move out of `a`
+   |              ^ move out of `a` occurs here
+
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/variance-issue-20533.rs:50:14
+   |
+LL |         let x = baz(&a);
+   |                      - borrow of `a` occurs here
+LL |         drop(a); //~ ERROR cannot move out of `a`
+   |              ^ move out of `a` occurs here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

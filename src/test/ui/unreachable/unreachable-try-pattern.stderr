@@ -1,0 +1,43 @@
+warning: unreachable expression
+  --> $DIR/unreachable-try-pattern.rs:29:36
+   |
+LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
+   |                                    ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-try-pattern.rs:13:9
+   |
+LL | #![warn(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+  --> $DIR/unreachable-try-pattern.rs:29:24
+   |
+LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
+   |                        ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-try-pattern.rs:14:9
+   |
+LL | #![warn(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+  --> $DIR/unreachable-try-pattern.rs:40:40
+   |
+LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
+   |                                        ^^^^^^
+
+error: compilation successful
+  --> $DIR/unreachable-try-pattern.rs:46:1
+   |
+LL | / fn main() { //~ ERROR: compilation successful
+LL | |     let _ = bar(Err(123));
+LL | |     let _ = foo(Err(123));
+LL | |     let _ = qux(Ok(123));
+LL | |     let _ = vom(Ok(123));
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

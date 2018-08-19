@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/trait-privacy.rs:35:1
+   |
+LL | fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

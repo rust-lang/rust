@@ -1,0 +1,9 @@
+error[E0243]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/E0243.rs:12:17
+   |
+LL | struct Bar { x: Foo }
+   |                 ^^^ expected 1 type argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0243`.

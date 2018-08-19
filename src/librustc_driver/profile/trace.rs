@@ -10,7 +10,7 @@
 
 use super::*;
 use syntax_pos::SpanData;
-use rustc::ty::maps::QueryMsg;
+use rustc::util::common::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
 use std::collections::hash_map::HashMap;
@@ -62,7 +62,7 @@ pub fn html_of_effect(eff: &Effect) -> (String, String) {
     match *eff {
         Effect::TimeBegin(ref msg) => {
             (msg.clone(),
-             format!("time-begin"))
+             "time-begin".to_string())
         },
         Effect::TaskBegin(ref key) => {
             let cons = cons_of_key(key);
@@ -91,23 +91,23 @@ fn html_of_duration(_start: &Instant, dur: &Duration) -> (String, String) {
 
 fn html_of_fraction(frac: f64) -> (String, String) {
     let css = {
-        if       frac > 0.50  { format!("frac-50") }
-        else if  frac > 0.40  { format!("frac-40") }
-        else if  frac > 0.30  { format!("frac-30") }
-        else if  frac > 0.20  { format!("frac-20") }
-        else if  frac > 0.10  { format!("frac-10") }
-        else if  frac > 0.05  { format!("frac-05") }
-        else if  frac > 0.02  { format!("frac-02") }
-        else if  frac > 0.01  { format!("frac-01") }
-        else if  frac > 0.001 { format!("frac-001") }
-        else                  { format!("frac-0") }
+        if       frac > 0.50  { "frac-50".to_string() }
+        else if  frac > 0.40  { "frac-40".to_string() }
+        else if  frac > 0.30  { "frac-30".to_string() }
+        else if  frac > 0.20  { "frac-20".to_string() }
+        else if  frac > 0.10  { "frac-10".to_string() }
+        else if  frac > 0.05  { "frac-05".to_string() }
+        else if  frac > 0.02  { "frac-02".to_string() }
+        else if  frac > 0.01  { "frac-01".to_string() }
+        else if  frac > 0.001 { "frac-001".to_string() }
+        else                  { "frac-0".to_string() }
     };
     let percent = frac * 100.0;
     if percent > 0.1 { (format!("{:.1}%", percent), css) }
-    else { (format!("< 0.1%", ), css) }
+    else { ("< 0.1%".to_string(), css) }
 }
 
-fn total_duration(traces: &Vec<Rec>) -> Duration {
+fn total_duration(traces: &[Rec]) -> Duration {
     let mut sum : Duration = Duration::new(0,0);
     for t in traces.iter() {
         sum += t.dur_total;
@@ -123,7 +123,7 @@ fn duration_div(nom: Duration, den: Duration) -> f64 {
     to_nanos(nom) as f64 / to_nanos(den) as f64
 }
 
-fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: usize) {
+fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usize) {
     for t in traces {
         let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
         let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.dur_total);
@@ -149,7 +149,7 @@ fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: 
     }
 }
 
-fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec>) {
+fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &[Rec]) {
     for t in traces.iter() {
         match t.effect {
             Effect::TimeBegin(ref msg) => {
@@ -202,14 +202,12 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
 
 pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetric>) {
     use rustc::util::common::duration_to_secs_str;
-    use std::cmp::Ordering;
+    use std::cmp::Reverse;
 
-    let mut data = vec![];
-    for (ref cons, ref qm) in counts.iter() {
-        data.push((cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone()));
-    };
-    data.sort_by(|&(_,_,_,self1),&(_,_,_,self2)|
-                 if self1 > self2 { Ordering::Less } else { Ordering::Greater } );
+    let mut data = counts.iter().map(|(ref cons, ref qm)|
+        (cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone())
+    ).collect::<Vec<_>>();
+    data.sort_by_key(|k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
         write!(count_file, "{}, {}, {}, {}\n",
                cons, count,
@@ -219,8 +217,9 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
     }
 }
 
-pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &Vec<Rec>) {
-    let mut counts : HashMap<String,QueryMetric> = HashMap::new();
+pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &[Rec]) {
+    let capacity = traces.iter().fold(0, |acc, t| acc + 1 + t.extent.len());
+    let mut counts : HashMap<String, QueryMetric> = HashMap::with_capacity(capacity);
     compute_counts_rec(&mut counts, traces);
     write_counts(counts_file, &mut counts);
 

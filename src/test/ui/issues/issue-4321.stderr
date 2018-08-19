@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `(true, false)` not covered
+  --> $DIR/issue-4321.rs:13:31
+   |
+LL |     println!("foo {:}", match tup { //~ ERROR non-exhaustive patterns: `(true, false)` not covered
+   |                               ^^^ pattern `(true, false)` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

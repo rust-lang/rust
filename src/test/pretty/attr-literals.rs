@@ -18,6 +18,6 @@ fn main() {
     #[align = 8]
     fn f() { }
 
-    #[vec(1, 2, 3)]
+    #[vector(1, 2, 3)]
     fn g() { }
 }

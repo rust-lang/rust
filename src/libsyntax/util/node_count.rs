@@ -27,9 +27,9 @@ impl NodeCounter {
 }
 
 impl<'ast> Visitor<'ast> for NodeCounter {
-    fn visit_ident(&mut self, span: Span, ident: Ident) {
+    fn visit_ident(&mut self, ident: Ident) {
         self.count += 1;
-        walk_ident(self, span, ident);
+        walk_ident(self, ident);
     }
     fn visit_mod(&mut self, m: &Mod, _s: Span, _a: &[Attribute], _n: NodeId) {
         self.count += 1;
@@ -95,9 +95,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_trait_ref(self, t)
     }
-    fn visit_ty_param_bound(&mut self, bounds: &TyParamBound) {
+    fn visit_param_bound(&mut self, bounds: &GenericBound) {
         self.count += 1;
-        walk_ty_param_bound(self, bounds)
+        walk_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef, m: &TraitBoundModifier) {
         self.count += 1;
@@ -137,9 +137,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_use_tree(self, use_tree, id)
     }
-    fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &PathParameters) {
+    fn visit_generic_args(&mut self, path_span: Span, generic_args: &GenericArgs) {
         self.count += 1;
-        walk_path_parameters(self, path_span, path_parameters)
+        walk_generic_args(self, path_span, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &TypeBinding) {
         self.count += 1;

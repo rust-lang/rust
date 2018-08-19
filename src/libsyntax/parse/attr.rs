@@ -11,13 +11,12 @@
 use attr;
 use ast;
 use codemap::respan;
-use parse::common::SeqSep;
-use parse::PResult;
-use parse::token::{self, Nonterminal};
+use parse::{SeqSep, PResult};
+use parse::token::{self, Nonterminal, DelimToken};
 use parse::parser::{Parser, TokenType, PathStyle};
-use tokenstream::TokenStream;
+use tokenstream::{TokenStream, TokenTree};
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
     Permitted,
     NotPermitted { reason: &'a str },
@@ -28,7 +27,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute 
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
-    pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -90,12 +89,12 @@ impl<'a> Parser<'a> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
-        let (span, path, tokens, mut style) = match self.token {
+        let (span, path, tokens, style) = match self.token {
             token::Pound => {
                 let lo = self.span;
                 self.bump();
 
-                if inner_parse_policy == InnerAttributeParsePolicy::Permitted {
+                if let InnerAttributeParsePolicy::Permitted = inner_parse_policy {
                     self.expected_tokens.push(TokenType::Token(token::Not));
                 }
                 let style = if self.token == token::Not {
@@ -117,7 +116,7 @@ impl<'a> Parser<'a> {
                 };
 
                 self.expect(&token::OpenDelim(token::Bracket))?;
-                let (path, tokens) = self.parse_path_and_tokens()?;
+                let (path, tokens) = self.parse_meta_item_unrestricted()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 let hi = self.prev_span;
 
@@ -129,15 +128,6 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if inner_parse_policy == InnerAttributeParsePolicy::Permitted &&
-           self.token == token::Semi {
-            self.bump();
-            self.span_warn(span,
-                           "this inner attribute syntax is deprecated. The new syntax is \
-                            `#![foo]`, with a bang and no semicolon");
-            style = ast::AttrStyle::Inner;
-        }
-
         Ok(ast::Attribute {
             id: attr::mk_attr_id(),
             style,
@@ -148,7 +138,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_path_and_tokens(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+    /// Parse an inner part of attribute - path and following tokens.
+    /// The tokens must be either a delimited token stream, or empty token stream,
+    /// or the "legacy" key-value form.
+    /// PATH `(` TOKEN_STREAM `)`
+    /// PATH `[` TOKEN_STREAM `]`
+    /// PATH `{` TOKEN_STREAM `}`
+    /// PATH
+    /// PATH `=` TOKEN_TREE
+    /// The delimiters or `=` are still put into the resulting token stream.
+    crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
@@ -158,10 +157,24 @@ impl<'a> Parser<'a> {
         };
         Ok(if let Some(meta) = meta {
             self.bump();
-            (ast::Path::from_ident(meta.span, ast::Ident::with_empty_ctxt(meta.name)),
-             meta.node.tokens(meta.span))
+            (meta.ident, meta.node.tokens(meta.span))
         } else {
-            (self.parse_path(PathStyle::Mod)?, self.parse_tokens())
+            let path = self.parse_path(PathStyle::Mod)?;
+            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
+               self.check(&token::OpenDelim(DelimToken::Bracket)) ||
+               self.check(&token::OpenDelim(DelimToken::Brace)) {
+                   self.parse_token_tree().into()
+            } else if self.eat(&token::Eq) {
+                let eq = TokenTree::Token(self.prev_span, token::Eq);
+                let tree = match self.token {
+                    token::CloseDelim(_) | token::Eof => self.unexpected()?,
+                    _ => self.parse_token_tree(),
+                };
+                TokenStream::concat(vec![eq.into(), tree.into()])
+            } else {
+                TokenStream::empty()
+            };
+            (path, tokens)
         })
     }
 
@@ -170,7 +183,7 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
 
     /// matches inner_attrs*
-    pub fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             match self.token {
@@ -235,12 +248,13 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.span;
-        let ident = self.parse_ident()?;
+        let ident = self.parse_path(PathStyle::Mod)?;
         let node = self.parse_meta_item_kind()?;
-        Ok(ast::MetaItem { name: ident.name, node: node, span: lo.to(self.prev_span) })
+        let span = lo.to(self.prev_span);
+        Ok(ast::MetaItem { ident, node, span })
     }
 
-    pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
+    crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
         } else if self.eat(&token::OpenDelim(token::Paren)) {

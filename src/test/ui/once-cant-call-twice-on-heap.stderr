@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `blk`
+  --> $DIR/once-cant-call-twice-on-heap.rs:19:5
+   |
+LL |     blk();
+   |     --- value moved here
+LL |     blk(); //~ ERROR use of moved value
+   |     ^^^ value used here after move
+   |
+   = note: move occurs because `blk` has type `F`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

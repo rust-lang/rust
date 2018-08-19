@@ -1,0 +1,73 @@
+/**
+ * Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+.setting-line {
+	padding: 5px;
+}
+
+.setting-line > div {
+	max-width: calc(100% - 74px);
+	display: inline-block;
+	vertical-align: top;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+.toggle {
+	position: relative;
+	display: inline-block;
+	width: 45px;
+	height: 27px;
+	margin-right: 20px;
+}
+
+.toggle input {
+	display: none;
+}
+
+.slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	-webkit-transition: .3s;
+	transition: .3s;
+}
+
+.slider:before {
+	position: absolute;
+	content: "";
+	height: 19px;
+	width: 19px;
+	left: 4px;
+	bottom: 4px;
+	background-color: white;
+	-webkit-transition: .3s;
+	transition: .3s;
+}
+
+input:checked + .slider {
+	background-color: #2196F3;
+}
+
+input:focus + .slider {
+	box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+	-webkit-transform: translateX(19px);
+	-ms-transform: translateX(19px);
+	transform: translateX(19px);
+}

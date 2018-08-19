@@ -1,0 +1,38 @@
+error: struct is never constructed: `Foo`
+  --> $DIR/lint-dead-code-3.rs:23:1
+   |
+LL | struct Foo; //~ ERROR: struct is never constructed
+   | ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-3.rs:13:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: method is never used: `foo`
+  --> $DIR/lint-dead-code-3.rs:25:5
+   |
+LL |     fn foo(&self) { //~ ERROR: method is never used
+   |     ^^^^^^^^^^^^^
+
+error: function is never used: `bar`
+  --> $DIR/lint-dead-code-3.rs:30:1
+   |
+LL | fn bar() { //~ ERROR: function is never used
+   | ^^^^^^^^
+
+error: enum is never used: `c_void`
+  --> $DIR/lint-dead-code-3.rs:69:1
+   |
+LL | enum c_void {} //~ ERROR: enum is never used
+   | ^^^^^^^^^^^
+
+error: foreign function is never used: `free`
+  --> $DIR/lint-dead-code-3.rs:71:5
+   |
+LL |     fn free(p: *const c_void); //~ ERROR: foreign function is never used
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

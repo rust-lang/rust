@@ -1,0 +1,62 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:14:10
+   |
+LL |   struct Self;
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:25:13
+   |
+LL |         ref Self => (),
+   |             ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:27:13
+   |
+LL |         mut Self => (),
+   |             ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:29:17
+   |
+LL |         ref mut Self => (),
+   |                 ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:33:15
+   |
+LL |         Foo { Self } => (),
+   |               ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:39:26
+   |
+LL |     extern crate core as Self;
+   |                          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:44:32
+   |
+LL |     use std::option::Option as Self;
+   |                                ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/self_type_keyword.rs:49:11
+   |
+LL |     trait Self {}
+   |           ^^^^ expected identifier, found keyword
+
+error: lifetimes cannot use keyword names
+  --> $DIR/self_type_keyword.rs:18:12
+   |
+LL | struct Bar<'Self>;
+   |            ^^^^^
+
+error: cannot find macro `Self!` in this scope
+  --> $DIR/self_type_keyword.rs:31:9
+   |
+LL |         Self!() => (),
+   |         ^^^^
+
+error: aborting due to 10 previous errors
+

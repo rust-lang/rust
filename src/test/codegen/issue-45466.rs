@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// min-llvm-version 4.0
 // compile-flags: -O
+// min-llvm-version 6.0
 
 #![crate_type="rlib"]
 

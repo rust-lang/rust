@@ -1,0 +1,31 @@
+error[E0309]: the parameter type `U` may not live long enough
+  --> $DIR/enum.rs:23:5
+   |
+LL | struct Bar<'b, U> {
+   |                - help: consider adding an explicit lifetime bound `U: 'b`...
+LL |     field2: &'b U //~ ERROR the parameter type `U` may not live long enough [E0309]
+   |     ^^^^^^^^^^^^^
+   |
+note: ...so that the reference type `&'b U` does not outlive the data it points at
+  --> $DIR/enum.rs:23:5
+   |
+LL |     field2: &'b U //~ ERROR the parameter type `U` may not live long enough [E0309]
+   |     ^^^^^^^^^^^^^
+
+error[E0309]: the parameter type `K` may not live long enough
+  --> $DIR/enum.rs:30:9
+   |
+LL | enum Ying<'c, K> {
+   |               - help: consider adding an explicit lifetime bound `K: 'c`...
+LL |     One(&'c Yang<K>) //~ ERROR the parameter type `K` may not live long enough [E0309]
+   |         ^^^^^^^^^^^
+   |
+note: ...so that the reference type `&'c Yang<K>` does not outlive the data it points at
+  --> $DIR/enum.rs:30:9
+   |
+LL |     One(&'c Yang<K>) //~ ERROR the parameter type `K` may not live long enough [E0309]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

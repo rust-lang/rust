@@ -1,10 +1,10 @@
 error[E0597]: `last_dropped` does not live long enough
   --> $DIR/issue28498-reject-lifetime-param.rs:42:20
    |
-42 |     foo0 = Foo(0, &last_dropped);
+LL |     foo0 = Foo(0, &last_dropped);
    |                    ^^^^^^^^^^^^ borrowed value does not live long enough
 ...
-48 | }
+LL | }
    | - `last_dropped` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -12,13 +12,14 @@ error[E0597]: `last_dropped` does not live long enough
 error[E0597]: `first_dropped` does not live long enough
   --> $DIR/issue28498-reject-lifetime-param.rs:44:20
    |
-44 |     foo1 = Foo(1, &first_dropped);
+LL |     foo1 = Foo(1, &first_dropped);
    |                    ^^^^^^^^^^^^^ borrowed value does not live long enough
 ...
-48 | }
+LL | }
    | - `first_dropped` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

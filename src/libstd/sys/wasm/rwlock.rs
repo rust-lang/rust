@@ -30,7 +30,7 @@ impl RWLock {
         if *mode >= 0 {
             *mode += 1;
         } else {
-            panic!("rwlock locked for writing");
+            rtabort!("rwlock locked for writing");
         }
     }
 
@@ -51,7 +51,7 @@ impl RWLock {
         if *mode == 0 {
             *mode = -1;
         } else {
-            panic!("rwlock locked for reading")
+            rtabort!("rwlock locked for reading")
         }
     }
 

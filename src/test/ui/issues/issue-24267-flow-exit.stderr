@@ -1,0 +1,15 @@
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/issue-24267-flow-exit.rs:22:20
+   |
+LL |     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
+   |                    ^ use of possibly uninitialized `x`
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/issue-24267-flow-exit.rs:28:20
+   |
+LL |     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
+   |                    ^ use of possibly uninitialized `x`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

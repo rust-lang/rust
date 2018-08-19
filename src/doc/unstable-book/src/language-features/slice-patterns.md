@@ -4,25 +4,29 @@ The tracking issue for this feature is: [#23121]
 
 [#23121]: https://github.com/rust-lang/rust/issues/23121
 
-See also
-[`advanced_slice_patterns`](language-features/advanced-slice-patterns.html).
-
 ------------------------
 
-
-If you want to match against a slice or array, you can use `&` with the
-`slice_patterns` feature:
+The `slice_patterns` feature gate lets you use `..` to indicate any number of
+elements inside a pattern matching a slice. This wildcard can only be used once
+for a given array. If there's an pattern before the `..`, the subslice will be
+matched against that pattern. For example:
 
 ```rust
 #![feature(slice_patterns)]
 
-fn main() {
-    let v = vec!["match_this", "1"];
-
-    match &v[..] {
-        &["match_this", second] => println!("The second element is {}", second),
-        _ => {},
+fn is_symmetric(list: &[u32]) -> bool {
+    match list {
+        &[] | &[_] => true,
+        &[x, ref inside.., y] if x == y => is_symmetric(inside),
+        &[..] => false,
     }
 }
-```
 
+fn main() {
+    let sym = &[0, 1, 4, 2, 4, 1, 0];
+    assert!(is_symmetric(sym));
+
+    let not_sym = &[0, 1, 7, 2, 4, 1, 0];
+    assert!(!is_symmetric(not_sym));
+}
+```

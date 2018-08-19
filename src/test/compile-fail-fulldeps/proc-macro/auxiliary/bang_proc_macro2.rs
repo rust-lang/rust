@@ -10,7 +10,7 @@
 
 // force-host
 // no-prefer-dynamic
-#![feature(proc_macro)]
+
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

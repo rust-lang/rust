@@ -16,7 +16,7 @@ use hair::*;
 use rustc::ty;
 use rustc::mir::*;
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -104,8 +104,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Or:
                 //
                 // [block: If(lhs)] -false-> [else_block: If(rhs)] -true-> [true_block]
-                //        |                          | (false)
-                //        +----------true------------+-------------------> [false_block]
+                //        | (true)                   | (false)
+                //  [true_block]               [false_block]
 
                 let (true_block, false_block, mut else_block, join_block) =
                     (this.cfg.start_new_block(), this.cfg.start_new_block(),
@@ -147,20 +147,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 join_block.unit()
             }
             ExprKind::Loop { condition: opt_cond_expr, body } => {
-                // [block] --> [loop_block] ~~> [loop_block_end] -1-> [exit_block]
-                //                  ^                  |
-                //                  |                  0
-                //                  |                  |
-                //                  |                  v
-                //           [body_block_end] <~~~ [body_block]
+                // [block] --> [loop_block] -/eval. cond./-> [loop_block_end] -1-> [exit_block]
+                //                  ^                               |
+                //                  |                               0
+                //                  |                               |
+                //                  |                               v
+                //           [body_block_end] <-/eval. body/-- [body_block]
                 //
                 // If `opt_cond_expr` is `None`, then the graph is somewhat simplified:
                 //
-                // [block] --> [loop_block / body_block ] ~~> [body_block_end]    [exit_block]
-                //                         ^                          |
-                //                         |                          |
-                //                         +--------------------------+
-                //
+                // [block]
+                //    |
+                //   [loop_block] -> [body_block] -/eval. body/-> [body_block_end]
+                //    |        ^                                         |
+                // false link  |                                         |
+                //    |        +-----------------------------------------+
+                //    +-> [diverge_cleanup]
+                // The false link is required to make sure borrowck considers unwinds through the
+                // body, even when the exact code in the body cannot unwind
 
                 let loop_block = this.cfg.start_new_block();
                 let exit_block = this.cfg.start_new_block();
@@ -188,7 +192,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             // always `()` anyway
                             this.cfg.push_assign_unit(exit_block, source_info, destination);
                         } else {
-                            body_block = loop_block;
+                            body_block = this.cfg.start_new_block();
+                            let diverge_cleanup = this.diverge_cleanup();
+                            this.cfg.terminate(loop_block, source_info,
+                                               TerminatorKind::FalseUnwind {
+                                                   real_target: body_block,
+                                                   unwind: Some(diverge_cleanup)
+                                               })
                         }
 
                         // The “return” value of the loop body must always be an unit. We therefore
@@ -210,7 +220,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic ||
                            f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id))
+                            Some(this.hir.tcx().item_name(def_id).as_str())
                         } else {
                             None
                         }
@@ -237,9 +247,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: ptr_ty,
                         name: None,
                         source_info,
-                        syntactic_scope: source_info.scope,
+                        visibility_scope: source_info.scope,
                         internal: true,
-                        is_user_variable: false
+                        is_user_variable: None,
                     });
                     let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
@@ -272,9 +282,40 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Continue { .. } |
             ExprKind::Break { .. } |
             ExprKind::InlineAsm { .. } |
-            ExprKind::Return {.. } => {
+            ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr));
                 this.cfg.push_assign_unit(block, source_info, destination);
+                block.unit()
+            }
+
+            // Avoid creating a temporary
+            ExprKind::VarRef { .. } |
+            ExprKind::SelfRef |
+            ExprKind::StaticRef { .. } => {
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                let place = unpack!(block = this.as_place(block, expr));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                this.cfg.push_assign(block, source_info, destination, rvalue);
+                block.unit()
+            }
+            ExprKind::Index { .. } |
+            ExprKind::Deref { .. } |
+            ExprKind::Field { .. } => {
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                // Create a "fake" temporary variable so that we check that the
+                // value is Sized. Usually, this is caught in type checking, but
+                // in the case of box expr there is no such check.
+                if let Place::Projection(..) = destination {
+                    this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
+                }
+
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                let place = unpack!(block = this.as_place(block, expr));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
 
@@ -290,18 +331,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |
             ExprKind::Borrow { .. } |
-            ExprKind::VarRef { .. } |
-            ExprKind::SelfRef |
-            ExprKind::StaticRef { .. } |
             ExprKind::Array { .. } |
             ExprKind::Tuple { .. } |
             ExprKind::Adt { .. } |
             ExprKind::Closure { .. } |
-            ExprKind::Index { .. } |
-            ExprKind::Deref { .. } |
             ExprKind::Literal { .. } |
-            ExprKind::Yield { .. } |
-            ExprKind::Field { .. } => {
+            ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,
                     _ => true,

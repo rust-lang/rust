@@ -16,7 +16,6 @@
 use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use hir;
 use ty::util::IntTypeExt;
 
@@ -52,7 +51,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
         match *elem {
             ProjectionElem::Deref => {
                 let ty = self.to_ty(tcx)
-                             .builtin_deref(true, ty::LvaluePreference::NoPreference)
+                             .builtin_deref(true)
                              .unwrap_or_else(|| {
                                  bug!("deref projection of non-dereferencable ty {:?}", self)
                              })
@@ -70,7 +69,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
-                            let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                            let size = size.unwrap_usize(tcx);
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
@@ -100,25 +99,10 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.fold_with(folder) },
-            PlaceTy::Downcast { adt_def, substs, variant_index } => {
-                PlaceTy::Downcast {
-                    adt_def,
-                    substs: substs.fold_with(folder),
-                    variant_index,
-                }
-            }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            PlaceTy::Ty { ty } => ty.visit_with(visitor),
-            PlaceTy::Downcast { substs, .. } => substs.visit_with(visitor)
-        }
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
+        (PlaceTy::Ty) { ty },
+        (PlaceTy::Downcast) { adt_def, substs, variant_index },
     }
 }
 
@@ -129,10 +113,46 @@ impl<'tcx> Place<'tcx> {
         match *self {
             Place::Local(index) =>
                 PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
+            Place::Promoted(ref data) => PlaceTy::Ty { ty: data.1 },
             Place::Static(ref data) =>
                 PlaceTy::Ty { ty: data.ty },
             Place::Projection(ref proj) =>
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
+        }
+    }
+
+    /// If this is a field projection, and the field is being projected from a closure type,
+    /// then returns the index of the field being projected. Note that this closure will always
+    /// be `self` in the current MIR, because that is the only time we directly access the fields
+    /// of a closure type.
+    pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
+                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
+        let (place, by_ref) = if let Place::Projection(ref proj) = self {
+            if let ProjectionElem::Deref = proj.elem {
+                (&proj.base, true)
+            } else {
+                (self, false)
+            }
+        } else {
+            (self, false)
+        };
+
+        match place {
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Field(field, _ty) => {
+                    let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
+
+                    if (base_ty.is_closure() || base_ty.is_generator()) &&
+                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
+                    {
+                        Some(field)
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
+            }
+            _ => None,
         }
     }
 }
@@ -149,7 +169,7 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array_const_usize(operand.ty(local_decls, tcx), count)
+                tcx.mk_array(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
@@ -171,7 +191,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.intern_tup(&[ty, tcx.types.bool], false)
+                tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not, ref operand) |
             Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
@@ -182,9 +202,8 @@ impl<'tcx> Rvalue<'tcx> {
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
-                    // Undefined behaviour, bug for now; may want to return something for
-                    // the `discriminant` intrinsic later.
-                    bug!("Rvalue::Discriminant on Place of type {:?}", ty);
+                    // This can only be `0`, for now, so `u8` will suffice.
+                    tcx.types.u8
                 }
             }
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
@@ -195,19 +214,16 @@ impl<'tcx> Rvalue<'tcx> {
                         tcx.mk_array(ty, ops.len() as u64)
                     }
                     AggregateKind::Tuple => {
-                        tcx.mk_tup(
-                            ops.iter().map(|op| op.ty(local_decls, tcx)),
-                            false
-                        )
+                        tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
                     }
                     AggregateKind::Adt(def, _, substs, _) => {
                         tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {
-                        tcx.mk_closure_from_closure_substs(did, substs)
+                        tcx.mk_closure(did, substs)
                     }
-                    AggregateKind::Generator(did, substs, interior) => {
-                        tcx.mk_generator(did, substs, interior)
+                    AggregateKind::Generator(did, substs, movability) => {
+                        tcx.mk_generator(did, substs, movability)
                     }
                 }
             }
@@ -264,7 +280,7 @@ impl<'tcx> BinOp {
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            BorrowKind::Mut => hir::MutMutable,
+            BorrowKind::Mut { .. } => hir::MutMutable,
             BorrowKind::Shared => hir::MutImmutable,
 
             // We have no type corresponding to a unique imm borrow, so
@@ -276,24 +292,24 @@ impl BorrowKind {
 }
 
 impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOp_ {
+    pub fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
-            BinOp::Add => hir::BinOp_::BiAdd,
-            BinOp::Sub => hir::BinOp_::BiSub,
-            BinOp::Mul => hir::BinOp_::BiMul,
-            BinOp::Div => hir::BinOp_::BiDiv,
-            BinOp::Rem => hir::BinOp_::BiRem,
-            BinOp::BitXor => hir::BinOp_::BiBitXor,
-            BinOp::BitAnd => hir::BinOp_::BiBitAnd,
-            BinOp::BitOr => hir::BinOp_::BiBitOr,
-            BinOp::Shl => hir::BinOp_::BiShl,
-            BinOp::Shr => hir::BinOp_::BiShr,
-            BinOp::Eq => hir::BinOp_::BiEq,
-            BinOp::Ne => hir::BinOp_::BiNe,
-            BinOp::Lt => hir::BinOp_::BiLt,
-            BinOp::Gt => hir::BinOp_::BiGt,
-            BinOp::Le => hir::BinOp_::BiLe,
-            BinOp::Ge => hir::BinOp_::BiGe,
+            BinOp::Add => hir::BinOpKind::Add,
+            BinOp::Sub => hir::BinOpKind::Sub,
+            BinOp::Mul => hir::BinOpKind::Mul,
+            BinOp::Div => hir::BinOpKind::Div,
+            BinOp::Rem => hir::BinOpKind::Rem,
+            BinOp::BitXor => hir::BinOpKind::BitXor,
+            BinOp::BitAnd => hir::BinOpKind::BitAnd,
+            BinOp::BitOr => hir::BinOpKind::BitOr,
+            BinOp::Shl => hir::BinOpKind::Shl,
+            BinOp::Shr => hir::BinOpKind::Shr,
+            BinOp::Eq => hir::BinOpKind::Eq,
+            BinOp::Ne => hir::BinOpKind::Ne,
+            BinOp::Lt => hir::BinOpKind::Lt,
+            BinOp::Gt => hir::BinOpKind::Gt,
+            BinOp::Le => hir::BinOpKind::Le,
+            BinOp::Ge => hir::BinOpKind::Ge,
             BinOp::Offset => unreachable!()
         }
     }

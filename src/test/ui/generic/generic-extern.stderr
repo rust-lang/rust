@@ -1,0 +1,11 @@
+error[E0044]: foreign items may not have type parameters
+  --> $DIR/generic-extern.rs:12:5
+   |
+LL |     fn foo<T>(); //~ ERROR foreign items may not have type parameters
+   |     ^^^^^^^^^^^^ can't have type parameters
+   |
+   = help: use specialization instead of type parameters by replacing them with concrete types like `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0044`.

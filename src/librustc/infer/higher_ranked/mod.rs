@@ -19,10 +19,10 @@ use super::{CombinedSnapshot,
 use super::combine::CombineFields;
 use super::region_constraints::{TaintDirections};
 
-use std::collections::BTreeMap;
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use std::collections::BTreeMap;
 use syntax_pos::Span;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
             let (b_prime, skol_map) =
-                self.infcx.skolemize_late_bound_regions(b, snapshot);
+                self.infcx.skolemize_late_bound_regions(b);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -80,7 +80,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
-            Ok(ty::Binder(result))
+            Ok(ty::Binder::bind(result))
         });
     }
 
@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // First, we instantiate each bound region in the matcher
             // with a skolemized region.
             let ((a_match, a_value), skol_map) =
-                self.infcx.skolemize_late_bound_regions(a_pair, snapshot);
+                self.infcx.skolemize_late_bound_regions(a_pair);
 
             debug!("higher_ranked_match: a_match={:?}", a_match);
             debug!("higher_ranked_match: skol_map={:?}", skol_map);
@@ -239,12 +239,12 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::bind(result1))
         });
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot,
+                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
                                              a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
@@ -335,12 +335,12 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::bind(result1))
         });
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot,
+                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
                                              a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
@@ -417,7 +417,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         {
             for (a_br, a_r) in a_map {
                 if *a_r == r {
-                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), *a_br));
+                    return infcx.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, *a_br));
                 }
             }
             span_bug!(
@@ -473,13 +473,13 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             _ => true
         });
 
-        fldr(region, ty::DebruijnIndex::new(current_depth))
+        fldr(region, current_depth)
     })
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn tainted_regions(&self,
-                       snapshot: &CombinedSnapshot,
+                       snapshot: &CombinedSnapshot<'a, 'tcx>,
                        r: ty::Region<'tcx>,
                        directions: TaintDirections)
                        -> FxHashSet<ty::Region<'tcx>> {
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn region_vars_confined_to_snapshot(&self,
-                                        snapshot: &CombinedSnapshot)
+                                        snapshot: &CombinedSnapshot<'a, 'tcx>)
                                         -> Vec<ty::RegionVid>
     {
         /*!
@@ -580,16 +580,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the pop occurs as part of the rollback, so an explicit call is not
     /// needed (but is also permitted).
     ///
-    /// See `README.md` for more details.
+    /// For more information about how skolemization for HRTBs works, see
+    /// the [rustc guide].
+    ///
+    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
-                                           binder: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot)
+                                           binder: &ty::Binder<T>)
                                            -> (T, SkolemizationMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.borrow_region_constraints()
-                .push_skolemized(self.tcx, br, &snapshot.region_constraints_snapshot)
+            self.universe.set(self.universe().subuniverse());
+            self.tcx.mk_region(ty::ReSkolemized(self.universe(), br))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -609,11 +611,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       overly_polymorphic: bool,
                       _span: Span,
                       skol_map: &SkolemizationMap<'tcx>,
-                      snapshot: &CombinedSnapshot)
+                      snapshot: &CombinedSnapshot<'a, 'tcx>)
                       -> RelateResult<'tcx, ()>
     {
         debug!("leak_check: skol_map={:?}",
                skol_map);
+
+        // If the user gave `-Zno-leak-check`, then skip the leak
+        // check completely. This is wildly unsound and also not
+        // unlikely to cause an ICE or two. It is intended for use
+        // only during a transition period, in which the MIR typeck
+        // uses the "universe-style" check, and the rest of typeck
+        // uses the more conservative leak check.  Since the leak
+        // check is more conservative, we can't test the
+        // universe-style check without disabling it.
+        if self.tcx.sess.opts.debugging_opts.no_leak_check {
+            return Ok(());
+        }
 
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
         for (&skol_br, &skol) in skol_map {
@@ -684,7 +698,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// predicate is `for<'a> &'a int : Clone`.
     pub fn plug_leaks<T>(&self,
                          skol_map: SkolemizationMap<'tcx>,
-                         snapshot: &CombinedSnapshot,
+                         snapshot: &CombinedSnapshot<'a, 'tcx>,
                          value: T) -> T
         where T : TypeFoldable<'tcx>
     {
@@ -732,7 +746,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // trait checking, and all of the skolemized regions
                     // appear inside predicates, which always have
                     // binders, so this assert is satisfied.
-                    assert!(current_depth > 1);
+                    assert!(current_depth > ty::INNERMOST);
 
                     // since leak-check passed, this skolemized region
                     // should only have incoming edges from variables
@@ -748,7 +762,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         r, br);
 
                     self.tcx.mk_region(ty::ReLateBound(
-                        ty::DebruijnIndex::new(current_depth - 1), br.clone()))
+                        current_depth.shifted_out(1),
+                        br.clone(),
+                    ))
                 }
             }
         });
@@ -770,12 +786,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Note: popping also occurs implicitly as part of `leak_check`.
     pub fn pop_skolemized(&self,
                           skol_map: SkolemizationMap<'tcx>,
-                          snapshot: &CombinedSnapshot)
-    {
+                          snapshot: &CombinedSnapshot<'a, 'tcx>) {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
         self.borrow_region_constraints()
-            .pop_skolemized(self.tcx, &skol_regions, &snapshot.region_constraints_snapshot);
+            .pop_skolemized(self.universe(), &skol_regions, &snapshot.region_constraints_snapshot);
+        self.universe.set(snapshot.universe);
         if !skol_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_skolemized(
                 &snapshot.projection_cache_snapshot);

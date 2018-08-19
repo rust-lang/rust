@@ -1,0 +1,14 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/regions-infer-proc-static-upvar.rs:20:13
+   |
+LL |     let y = &x; //~ ERROR `x` does not live long enough
+   |             ^^ borrowed value does not live long enough
+...
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

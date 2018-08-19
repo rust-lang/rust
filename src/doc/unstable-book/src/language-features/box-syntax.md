@@ -1,8 +1,8 @@
 # `box_syntax`
 
-The tracking issue for this feature is: [#27779]
+The tracking issue for this feature is: [#49733]
 
-[#27779]: https://github.com/rust-lang/rust/issues/27779
+[#49733]: https://github.com/rust-lang/rust/issues/49733
 
 See also [`box_patterns`](language-features/box-patterns.html)
 

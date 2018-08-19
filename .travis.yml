@@ -3,6 +3,10 @@ sudo: required
 dist: trusty
 services:
   - docker
+addons:
+  apt:
+    packages:
+      - gdb
 
 git:
   depth: 2
@@ -12,7 +16,7 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-5.0 RUST_BACKTRACE=1
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
@@ -21,27 +25,29 @@ matrix:
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
-    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
+    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1 CI_JOB_NAME=dist-x86_64-linux-alt
       if: branch = try OR branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
+        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-x86_64-apple-alt
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
 
     # OSX builders running tests, these run the full test suite.
+    # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+    # runners that run `//ignore-debug` tests.
     #
     # Note that the compiler is compiled to target 10.8 here because the Xcode
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
@@ -50,13 +56,13 @@ matrix:
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=x86_64-apple
       os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
@@ -64,13 +70,13 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=i686-apple
       os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
@@ -81,30 +87,30 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-i686-apple
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-x86_64-apple
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # Linux builders, remaining docker images
@@ -169,26 +175,25 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
       if: branch = auto
     - env: IMAGE=x86_64-gnu-tools
-      if: branch = auto
+      if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri)\b)/)
     - env: IMAGE=x86_64-gnu-debug
       if: branch = auto
     - env: IMAGE=x86_64-gnu-nopt
       if: branch = auto
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
-    - env: IMAGE=x86_64-gnu-incremental
-      if: branch = auto
+    - env: IMAGE=mingw-check
+      if: type = pull_request OR branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
       before_install: []
       install: []
-      cache: false
       sudo: false
       script:
         MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
         . src/ci/docker/x86_64-gnu-tools/repo.sh;
-        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE"
+        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
 
 env:
   global:
@@ -198,10 +203,15 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
     # TOOLSTATE_REPO_ACCESS_TOKEN=...
-    - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
+    - secure: "ESfcXqv4N2VMhqi2iIyw6da9VrsA78I4iR1asouCaq4hzTTrkB4WNRrfURy6xg72gQ4nMhtRJbB0/2jmc9Cu1+g2CzXtyiL223aJ5CKrXdcvbitopQSDfp07dMWm+UED+hNFEanpErKAeU/6FM3A+J+60PMk8MCF1h9tqNRISJw="
 
 before_install:
-  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
+  # We'll use the AWS cli to download/upload cached docker layers, so install
+  # that here.
+  - if [ "$TRAVIS_OS_NAME" = linux ]; then
+      pip install --user awscli;
+      export PATH=$PATH:$HOME/.local/bin;
+    fi
   - mkdir -p $HOME/rustsrc
   # FIXME(#46924): these two commands are required to enable IPv6,
   # they shouldn't exist, please revert once more official solutions appeared.
@@ -221,12 +231,17 @@ install:
         osx)
           if [[ "$RUST_CHECK_TARGET" == dist ]]; then
             travis_retry brew update &&
-            travis_retry brew install xz;
+            travis_retry brew install xz &&
+            travis_retry brew install swig;
           fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
           travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
-            chmod +x /usr/local/bin/stamp
+            chmod +x /usr/local/bin/stamp &&
+          travis_retry curl -f http://releases.llvm.org/6.0.0/clang+llvm-6.0.0-x86_64-apple-darwin.tar.xz | tar xJf - &&
+            export CC=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang &&
+            export CXX=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang++ &&
+            export AR=ar
           ;;
     esac
 
@@ -241,6 +256,8 @@ before_script:
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
       else
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
+          # Enable core dump on Linux.
+          sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern';
       fi
 
 # Log time information from this machine and an external machine for insight into possible
@@ -264,43 +281,45 @@ after_failure:
       df -h;
       du . | sort -nr | head -n100
 
-  # One of these is the linux sccache log, one is the OSX sccache log. Instead
-  # of worrying about what system we are just cat both. One of these commands
-  # will fail but that's ok, they'll both get executed.
-  - cat obj/tmp/sccache.log
-  - cat /tmp/sccache.log
-
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
+
+  # Dump backtrace for macOS
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
+      -name '*.crash'
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
-      -exec echo travis_fold":"end:crashlog \;
+      -exec echo travis_fold":"end:crashlog \; || true
+
+  # Dump backtrace for Linux
+  - ln -s . checkout &&
+    for CORE in obj/cores/core.*; do
+      EXE=$(echo $CORE | sed 's|obj/cores/core\.[0-9]*\.!checkout!\(.*\)|\1|;y|!|/|');
+      if [ -f "$EXE" ]; then
+        printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" "$CORE";
+        gdb -q -c "$CORE" "$EXE"
+          -iex 'set auto-load off'
+          -iex 'dir src/'
+          -iex 'set sysroot .'
+          -ex bt
+          -ex q;
+        echo travis_fold":"end:crashlog;
+      fi;
+    done || true
+
+  # see #50887
+  - cat ./obj/build/x86_64-unknown-linux-gnu/native/asan/build/lib/asan/clang_rt.asan-dynamic-i386.vers || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
   - dmesg | grep -i kill
 
-# Save tagged docker images we created and load them if they're available
-# Travis saves caches whether the build failed or not, nuke rustsrc if
-# the failure was while updating it (as it may be in a bad state)
-# https://github.com/travis-ci/travis-ci/issues/4472
-before_cache:
-  - docker history -q rust-ci |
-    grep -v missing |
-    xargs docker save |
-    gzip > $HOME/docker/rust-ci.tar.gz
-
 notifications:
   email: false
-
-cache:
-  directories:
-    - $HOME/docker
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
@@ -312,7 +331,6 @@ before_deploy:
           rm -rf obj/build/dist/doc &&
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
-  - travis_retry gem update --system
   - ls -la deploy/$TRAVIS_COMMIT
 
 deploy:

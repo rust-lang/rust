@@ -12,8 +12,6 @@
 
 use self::Param::*;
 use self::States::*;
-use self::FormatState::*;
-use self::FormatOp::*;
 
 use std::iter::repeat;
 
@@ -36,9 +34,9 @@ enum States {
 
 #[derive(Copy, PartialEq, Clone)]
 enum FormatState {
-    FormatStateFlags,
-    FormatStateWidth,
-    FormatStatePrecision,
+    Flags,
+    Width,
+    Precision,
 }
 
 /// Types of parameters a capability can use
@@ -210,22 +208,22 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         if let Some(arg) = stack.pop() {
                             let flags = Flags::new();
                             let res = format(arg, FormatOp::from_char(cur), flags)?;
-                            output.extend(res.iter().map(|x| *x));
+                            output.extend(res.iter().cloned());
                         } else {
                             return Err("stack is empty".to_string());
                         }
                     }
-                    ':' | '#' | ' ' | '.' | '0'...'9' => {
+                    ':' | '#' | ' ' | '.' | '0'..='9' => {
                         let mut flags = Flags::new();
-                        let mut fstate = FormatStateFlags;
+                        let mut fstate = FormatState::Flags;
                         match cur {
                             ':' => (),
                             '#' => flags.alternate = true,
                             ' ' => flags.space = true,
-                            '.' => fstate = FormatStatePrecision,
-                            '0'...'9' => {
+                            '.' => fstate = FormatState::Precision,
+                            '0'..='9' => {
                                 flags.width = cur as usize - '0' as usize;
-                                fstate = FormatStateWidth;
+                                fstate = FormatState::Width;
                             }
                             _ => unreachable!(),
                         }
@@ -318,43 +316,43 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     (_, 'd') | (_, 'o') | (_, 'x') | (_, 'X') | (_, 's') => {
                         if let Some(arg) = stack.pop() {
                             let res = format(arg, FormatOp::from_char(cur), *flags)?;
-                            output.extend(res.iter().map(|x| *x));
+                            output.extend(res.iter().cloned());
                             // will cause state to go to Nothing
                             old_state = FormatPattern(*flags, *fstate);
                         } else {
                             return Err("stack is empty".to_string());
                         }
                     }
-                    (FormatStateFlags, '#') => {
+                    (FormatState::Flags, '#') => {
                         flags.alternate = true;
                     }
-                    (FormatStateFlags, '-') => {
+                    (FormatState::Flags, '-') => {
                         flags.left = true;
                     }
-                    (FormatStateFlags, '+') => {
+                    (FormatState::Flags, '+') => {
                         flags.sign = true;
                     }
-                    (FormatStateFlags, ' ') => {
+                    (FormatState::Flags, ' ') => {
                         flags.space = true;
                     }
-                    (FormatStateFlags, '0'...'9') => {
+                    (FormatState::Flags, '0'..='9') => {
                         flags.width = cur as usize - '0' as usize;
-                        *fstate = FormatStateWidth;
+                        *fstate = FormatState::Width;
                     }
-                    (FormatStateFlags, '.') => {
-                        *fstate = FormatStatePrecision;
+                    (FormatState::Flags, '.') => {
+                        *fstate = FormatState::Precision;
                     }
-                    (FormatStateWidth, '0'...'9') => {
+                    (FormatState::Width, '0'..='9') => {
                         let old = flags.width;
                         flags.width = flags.width * 10 + (cur as usize - '0' as usize);
                         if flags.width < old {
                             return Err("format width overflow".to_string());
                         }
                     }
-                    (FormatStateWidth, '.') => {
-                        *fstate = FormatStatePrecision;
+                    (FormatState::Width, '.') => {
+                        *fstate = FormatState::Precision;
                     }
-                    (FormatStatePrecision, '0'...'9') => {
+                    (FormatState::Precision, '0'..='9') => {
                         let old = flags.precision;
                         flags.precision = flags.precision * 10 + (cur as usize - '0' as usize);
                         if flags.precision < old {
@@ -437,31 +435,31 @@ impl Flags {
 
 #[derive(Copy, Clone)]
 enum FormatOp {
-    FormatDigit,
-    FormatOctal,
-    FormatHex,
-    FormatHEX,
-    FormatString,
+    Digit,
+    Octal,
+    LowerHex,
+    UpperHex,
+    String,
 }
 
 impl FormatOp {
     fn from_char(c: char) -> FormatOp {
         match c {
-            'd' => FormatDigit,
-            'o' => FormatOctal,
-            'x' => FormatHex,
-            'X' => FormatHEX,
-            's' => FormatString,
+            'd' => FormatOp::Digit,
+            'o' => FormatOp::Octal,
+            'x' => FormatOp::LowerHex,
+            'X' => FormatOp::UpperHex,
+            's' => FormatOp::String,
             _ => panic!("bad FormatOp char"),
         }
     }
     fn to_char(self) -> char {
         match self {
-            FormatDigit => 'd',
-            FormatOctal => 'o',
-            FormatHex => 'x',
-            FormatHEX => 'X',
-            FormatString => 's',
+            FormatOp::Digit => 'd',
+            FormatOp::Octal => 'o',
+            FormatOp::LowerHex => 'x',
+            FormatOp::UpperHex => 'X',
+            FormatOp::String => 's',
         }
     }
 }
@@ -470,7 +468,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
     let mut s = match val {
         Number(d) => {
             match op {
-                FormatDigit => {
+                FormatOp::Digit => {
                     if flags.sign {
                         format!("{:+01$}", d, flags.precision)
                     } else if d < 0 {
@@ -482,7 +480,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
                         format!("{:01$}", d, flags.precision)
                     }
                 }
-                FormatOctal => {
+                FormatOp::Octal => {
                     if flags.alternate {
                         // Leading octal zero counts against precision.
                         format!("0{:01$o}", d, flags.precision.saturating_sub(1))
@@ -490,27 +488,27 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
                         format!("{:01$o}", d, flags.precision)
                     }
                 }
-                FormatHex => {
+                FormatOp::LowerHex => {
                     if flags.alternate && d != 0 {
                         format!("0x{:01$x}", d, flags.precision)
                     } else {
                         format!("{:01$x}", d, flags.precision)
                     }
                 }
-                FormatHEX => {
+                FormatOp::UpperHex => {
                     if flags.alternate && d != 0 {
                         format!("0X{:01$X}", d, flags.precision)
                     } else {
                         format!("{:01$X}", d, flags.precision)
                     }
                 }
-                FormatString => return Err("non-number on stack with %s".to_string()),
+                FormatOp::String => return Err("non-number on stack with %s".to_string()),
             }
             .into_bytes()
         }
         Words(s) => {
             match op {
-                FormatString => {
+                FormatOp::String => {
                     let mut s = s.into_bytes();
                     if flags.precision > 0 && flags.precision < s.len() {
                         s.truncate(flags.precision);

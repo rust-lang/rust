@@ -12,7 +12,7 @@
 // the nested items (or even added new ones).
 
 // revisions: cfail1 cfail2
-// must-compile-successfully
+// compile-pass
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]

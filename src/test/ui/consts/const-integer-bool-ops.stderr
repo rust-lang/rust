@@ -1,0 +1,135 @@
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:11:18
+   |
+LL | const X: usize = 42 && 39;
+   |                  ^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:11:24
+   |
+LL | const X: usize = 42 && 39;
+   |                        ^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:11:18
+   |
+LL | const X: usize = 42 && 39;
+   |                  ^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:20:19
+   |
+LL | const X1: usize = 42 || 39;
+   |                   ^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:20:25
+   |
+LL | const X1: usize = 42 || 39;
+   |                         ^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:20:19
+   |
+LL | const X1: usize = 42 || 39;
+   |                   ^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:29:19
+   |
+LL | const X2: usize = -42 || -39;
+   |                   ^^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:29:26
+   |
+LL | const X2: usize = -42 || -39;
+   |                          ^^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:29:19
+   |
+LL | const X2: usize = -42 || -39;
+   |                   ^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:38:19
+   |
+LL | const X3: usize = -42 && -39;
+   |                   ^^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:38:26
+   |
+LL | const X3: usize = -42 && -39;
+   |                          ^^^ expected bool, found integral variable
+   |
+   = note: expected type `bool`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:38:19
+   |
+LL | const X3: usize = -42 && -39;
+   |                   ^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:47:18
+   |
+LL | const Y: usize = 42.0 == 42.0;
+   |                  ^^^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:52:19
+   |
+LL | const Y1: usize = 42.0 >= 42.0;
+   |                   ^^^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:57:19
+   |
+LL | const Y2: usize = 42.0 <= 42.0;
+   |                   ^^^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:62:19
+   |
+LL | const Y3: usize = 42.0 > 42.0;
+   |                   ^^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:67:19
+   |
+LL | const Y4: usize = 42.0 < 42.0;
+   |                   ^^^^^^^^^^^ expected usize, found bool
+
+error[E0308]: mismatched types
+  --> $DIR/const-integer-bool-ops.rs:72:19
+   |
+LL | const Y5: usize = 42.0 != 42.0;
+   |                   ^^^^^^^^^^^^ expected usize, found bool
+
+error: aborting due to 18 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

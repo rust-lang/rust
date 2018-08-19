@@ -1,0 +1,19 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex2e-push-inference-variable-3.rs:17:13
+   |
+LL |     let b = Ref { data: y.data };
+   |             ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/ex2e-push-inference-variable-3.rs:18:5
+   |
+LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |            --  -- lifetime `'c` defined here
+   |            |
+   |            lifetime `'b` defined here
+...
+LL |     Vec::push(a, b);
+   |     ^^^^^^^^^^^^^^^ argument requires that `'c` must outlive `'b`
+
+error: aborting due to previous error
+

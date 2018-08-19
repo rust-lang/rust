@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// this is for the wrapping_add call below.
-#![feature(core)]
-
-/*!
- * Tests the range assertion wraparound case in trans::middle::adt::load_discr.
- */
+// Tests the range assertion wraparound case when reading discriminants.
 
 #[repr(u8)]
 #[derive(Copy, Clone)]

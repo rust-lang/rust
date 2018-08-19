@@ -23,7 +23,7 @@
 // of other runtime components (registered via yet another special image section).
 
 #![feature(no_core, lang_items, optin_builtin_traits)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -43,7 +43,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+#[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frames {
     #[no_mangle]
     #[link_section = ".eh_frame"]
@@ -54,6 +54,21 @@ pub mod eh_frames {
     // This is defined as `struct object` in $GCC/libgcc/unwind-dw2-fde.h.
     static mut OBJ: [isize; 6] = [0; 6];
 
+    macro_rules! impl_copy {
+        ($($t:ty)*) => {
+            $(
+                impl ::Copy for $t {}
+            )*
+        }
+    }
+
+    impl_copy! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
     // Unwind info registration/deregistration routines.
     // See the docs of `unwind` module in libstd.
     extern "C" {
@@ -63,14 +78,18 @@ pub mod eh_frames {
 
     unsafe fn init() {
         // register unwind info on module startup
-        rust_eh_register_frames(&__EH_FRAME_BEGIN__ as *const u8,
-                                &mut OBJ as *mut _ as *mut u8);
+        rust_eh_register_frames(
+            &__EH_FRAME_BEGIN__ as *const u8,
+            &mut OBJ as *mut _ as *mut u8,
+        );
     }
 
     unsafe fn uninit() {
         // unregister on shutdown
-        rust_eh_unregister_frames(&__EH_FRAME_BEGIN__ as *const u8,
-                                  &mut OBJ as *mut _ as *mut u8);
+        rust_eh_unregister_frames(
+            &__EH_FRAME_BEGIN__ as *const u8,
+            &mut OBJ as *mut _ as *mut u8,
+        );
     }
 
     // MSVC-specific init/uninit routine registration

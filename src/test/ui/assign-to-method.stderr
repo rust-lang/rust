@@ -1,0 +1,11 @@
+error[E0615]: attempted to take value of method `speak` on type `cat`
+  --> $DIR/assign-to-method.rs:30:8
+   |
+LL |   nyan.speak = || println!("meow"); //~ ERROR attempted to take value of method
+   |        ^^^^^
+   |
+   = help: maybe a `()` to call it is missing?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0615`.

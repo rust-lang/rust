@@ -29,10 +29,17 @@ fn main() {
     // for targets like emscripten, even if we don't use it.
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
-    if target.contains("bitrig") || target.contains("cloudabi") || target.contains("emscripten") ||
-       target.contains("fuchsia") || target.contains("msvc") || target.contains("openbsd") ||
-       target.contains("redox") || target.contains("rumprun") || target.contains("wasm32") {
+    if target.contains("bitrig") || target.contains("emscripten") || target.contains("fuchsia") ||
+       target.contains("msvc") || target.contains("openbsd") || target.contains("redox") ||
+       target.contains("rumprun") || target.contains("wasm32") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
+        return;
+    }
+
+    // CloudABI ships with a copy of jemalloc that has been patched to
+    // work well with sandboxing. Don't attempt to build our own copy,
+    // as it won't build.
+    if target.contains("cloudabi") {
         return;
     }
 
@@ -98,11 +105,10 @@ fn main() {
         cmd.arg("--with-jemalloc-prefix=je_");
     }
 
-    // FIXME: building with jemalloc assertions is currently broken.
-    // See <https://github.com/rust-lang/rust/issues/44152>.
-    //if cfg!(feature = "debug") {
-    //    cmd.arg("--enable-debug");
-    //}
+    if cfg!(feature = "debug") {
+        // Enable jemalloc assertions.
+        cmd.arg("--enable-debug");
+    }
 
     cmd.arg(format!("--host={}", build_helper::gnu_target(&target)));
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));

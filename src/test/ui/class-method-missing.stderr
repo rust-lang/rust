@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `eat`
+  --> $DIR/class-method-missing.rs:19:1
+   |
+LL |   fn eat(&self);
+   |   -------------- `eat` from trait
+...
+LL | impl animal for cat {
+   | ^^^^^^^^^^^^^^^^^^^ missing `eat` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

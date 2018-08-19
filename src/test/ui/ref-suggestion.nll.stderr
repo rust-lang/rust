@@ -1,0 +1,34 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/ref-suggestion.rs:14:5
+   |
+LL |     let y = x;
+   |             - value moved here
+LL |     x; //~ ERROR use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/ref-suggestion.rs:18:5
+   |
+LL |     let mut y = x;
+   |                 - value moved here
+LL |     x; //~ ERROR use of moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/ref-suggestion.rs:26:5
+   |
+LL |         (Some(y), ()) => {},
+   |               - value moved here
+...
+LL |     x; //~ ERROR use of partially moved value
+   |     ^ value used here after move
+   |
+   = note: move occurs because value has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

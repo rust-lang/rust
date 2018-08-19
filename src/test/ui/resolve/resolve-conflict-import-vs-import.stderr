@@ -1,0 +1,17 @@
+error[E0252]: the name `transmute` is defined multiple times
+  --> $DIR/resolve-conflict-import-vs-import.rs:12:5
+   |
+LL | use std::mem::transmute;
+   |     ------------------- previous import of the value `transmute` here
+LL | use std::mem::transmute;
+   |     ^^^^^^^^^^^^^^^^^^^ `transmute` reimported here
+   |
+   = note: `transmute` must be defined only once in the value namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+LL | use std::mem::transmute as other_transmute;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0252`.

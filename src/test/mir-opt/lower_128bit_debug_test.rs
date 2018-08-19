@@ -15,7 +15,6 @@
 
 // compile-flags: -Z lower_128bit_ops=yes -C debug_assertions=yes
 
-#![feature(i128_type)]
 #![feature(const_fn)]
 
 static TEST_SIGNED: i128 = const_signed(-222);
@@ -183,8 +182,8 @@ fn main() {
 //     ...
 //     _1 = move (_13.0: i128);
 //     ...
-//     _17 = const 7i32 as u128 (Misc);
-//     _14 = const compiler_builtins::int::shift::rust_i128_shro(_1, move _17) -> bb16;
+//     _16 = const 7i32 as u128 (Misc);
+//     _14 = const compiler_builtins::int::shift::rust_i128_shro(_1, move _16) -> bb16;
 //     ...
 //     _1 = move (_14.0: i128);
 //     ...
@@ -196,8 +195,8 @@ fn main() {
 //     ...
 //     assert(!move (_13.1: bool), "attempt to shift left with overflow") -> bb8;
 //     ...
-//     _16 = const 6i32 as u128 (Misc);
-//     _13 = const compiler_builtins::int::shift::rust_i128_shlo(_1, move _16) -> bb14;
+//     _15 = const 6i32 as u128 (Misc);
+//     _13 = const compiler_builtins::int::shift::rust_i128_shlo(_1, move _15) -> bb14;
 //     ...
 //     assert(!move (_14.1: bool), "attempt to shift right with overflow") -> bb9;
 // END rustc.test_signed.Lower128Bit.after.mir
@@ -219,8 +218,8 @@ fn main() {
 //     ...
 //     _1 = move (_7.0: u128);
 //     ...
-//     _11 = const 7i32 as u128 (Misc);
-//     _8 = const compiler_builtins::int::shift::rust_u128_shro(_1, move _11) -> bb14;
+//     _10 = const 7i32 as u128 (Misc);
+//     _8 = const compiler_builtins::int::shift::rust_u128_shro(_1, move _10) -> bb14;
 //     ...
 //     _1 = move (_8.0: u128);
 //     ...
@@ -232,8 +231,8 @@ fn main() {
 //     ...
 //     assert(!move (_7.1: bool), "attempt to shift left with overflow") -> bb6;
 //     ...
-//     _10 = const 6i32 as u128 (Misc);
-//     _7 = const compiler_builtins::int::shift::rust_u128_shlo(_1, move _10) -> bb12;
+//     _9 = const 6i32 as u128 (Misc);
+//     _7 = const compiler_builtins::int::shift::rust_u128_shlo(_1, move _9) -> bb12;
 //     ...
 //     assert(!move (_8.1: bool), "attempt to shift right with overflow") -> bb7;
 // END rustc.test_unsigned.Lower128Bit.after.mir

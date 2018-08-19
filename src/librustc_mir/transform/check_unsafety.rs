@@ -10,8 +10,9 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -22,12 +23,11 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
-use std::rc::Rc;
 use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visibility_scope_info: &'a IndexVec<VisibilityScope, VisibilityScopeInfo>,
+    source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -38,16 +38,16 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
-           visibility_scope_info: &'a IndexVec<VisibilityScope, VisibilityScopeInfo>,
+           source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
            tcx: TyCtxt<'a, 'tcx, 'tcx>,
            param_env: ty::ParamEnv<'tcx>) -> Self {
         Self {
             mir,
-            visibility_scope_info,
+            source_scope_local_data,
             violations: vec![],
             source_info: SourceInfo {
                 span: mir.span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
             tcx,
             param_env,
@@ -76,7 +76,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             TerminatorKind::Abort |
             TerminatorKind::Return |
             TerminatorKind::Unreachable |
-            TerminatorKind::FalseEdges { .. } => {
+            TerminatorKind::FalseEdges { .. } |
+            TerminatorKind::FalseUnwind { .. } => {
                 // safe (at least as emitted during MIR construction)
             }
 
@@ -84,7 +85,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 let func_ty = func.ty(self.mir, self.tcx);
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
-                    self.require_unsafe("call to unsafe function")
+                    self.require_unsafe("call to unsafe function",
+                        "consult the function's documentation for information on how to avoid \
+                         undefined behavior")
                 }
             }
         }
@@ -99,17 +102,20 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         self.source_info = statement.source_info;
         match statement.kind {
             StatementKind::Assign(..) |
+            StatementKind::ReadForMatch(..) |
             StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(..) |
             StatementKind::StorageDead(..) |
             StatementKind::EndRegion(..) |
             StatementKind::Validate(..) |
+            StatementKind::UserAssertTy(..) |
             StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
 
             StatementKind::InlineAsm { .. } => {
-                self.require_unsafe("use of inline assembly")
+                self.require_unsafe("use of inline assembly",
+                    "inline assembly is entirely unchecked and can cause undefined behavior")
             },
         }
         self.super_statement(block, statement, location);
@@ -144,10 +150,15 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
                 let source_info = self.source_info;
                 let lint_root =
-                    self.visibility_scope_info[source_info.scope].lint_root;
+                    self.source_scope_local_data[source_info.scope].lint_root;
                 self.register_violations(&[UnsafetyViolation {
                     source_info,
-                    description: Symbol::intern("borrow of packed field").as_str(),
+                    description: Symbol::intern("borrow of packed field").as_interned_str(),
+                    details:
+                        Symbol::intern("fields of packed structs might be misaligned: \
+                                        dereferencing a misaligned pointer or even just creating a \
+                                        misaligned reference is undefined behavior")
+                            .as_interned_str(),
                     kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                 }], &[]);
             }
@@ -169,7 +180,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
                 match base_ty.sty {
                     ty::TyRawPtr(..) => {
-                        self.require_unsafe("dereference of raw pointer")
+                        self.require_unsafe("dereference of raw pointer",
+                            "raw pointers may be NULL, dangling or unaligned; they can violate \
+                             aliasing rules and cause data races: all of these are undefined \
+                             behavior")
                     }
                     ty::TyAdt(adt, _) => {
                         if adt.is_union() {
@@ -187,12 +201,17 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                 if elem_ty.moves_by_default(self.tcx, self.param_env,
                                                             self.source_info.span) {
                                     self.require_unsafe(
-                                        "assignment to non-`Copy` union field")
+                                        "assignment to non-`Copy` union field",
+                                        "the previous content of the field will be dropped, which \
+                                         causes undefined behavior if the field was not properly \
+                                         initialized")
                                 } else {
                                     // write to non-move union, safe
                                 }
                             } else {
-                                self.require_unsafe("access to union field")
+                                self.require_unsafe("access to union field",
+                                    "the field may not be properly initialized: using \
+                                     uninitialized data will cause undefined behavior")
                             }
                         }
                     }
@@ -203,16 +222,26 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             &Place::Local(..) => {
                 // locals are safe
             }
+            &Place::Promoted(_) => {
+                bug!("unsafety checking should happen before promotion")
+            }
             &Place::Static(box Static { def_id, ty: _ }) => {
-                if self.tcx.is_static_mut(def_id) {
-                    self.require_unsafe("use of mutable static");
+                if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
+                    self.require_unsafe("use of mutable static",
+                        "mutable statics can be mutated by multiple threads: aliasing violations \
+                         or data races will cause undefined behavior");
                 } else if self.tcx.is_foreign_item(def_id) {
                     let source_info = self.source_info;
                     let lint_root =
-                        self.visibility_scope_info[source_info.scope].lint_root;
+                        self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: Symbol::intern("use of extern static").as_str(),
+                        description: Symbol::intern("use of extern static").as_interned_str(),
+                        details:
+                            Symbol::intern("extern statics are not controlled by the Rust type \
+                                            system: invalid data, aliasing violations or data \
+                                            races will cause undefined behavior")
+                                .as_interned_str(),
                         kind: UnsafetyViolationKind::ExternStatic(lint_root)
                     }], &[]);
                 }
@@ -224,12 +253,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn require_unsafe(&mut self,
-                      description: &'static str)
+                      description: &'static str,
+                      details: &'static str)
     {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
-            description: Symbol::intern(description).as_str(),
+            description: Symbol::intern(description).as_interned_str(),
+            details: Symbol::intern(details).as_interned_str(),
             kind: UnsafetyViolationKind::General,
         }], &[]);
     }
@@ -237,7 +268,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
-        let within_unsafe = match self.visibility_scope_info[self.source_info.scope].safety {
+        let within_unsafe = match self.source_scope_local_data[self.source_info.scope].safety {
             Safety::Safe => {
                 for violation in violations {
                     if !self.violations.contains(violation) {
@@ -324,20 +355,20 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     // `mir_built` force this.
     let mir = &tcx.mir_built(def_id).borrow();
 
-    let visibility_scope_info = match mir.visibility_scope_info {
+    let source_scope_local_data = match mir.source_scope_local_data {
         ClearCrossCrate::Set(ref data) => data,
         ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
-                violations: Rc::new([]),
-                unsafe_blocks: Rc::new([])
+                violations: Lrc::new([]),
+                unsafe_blocks: Lrc::new([])
             }
         }
     };
 
     let param_env = tcx.param_env(def_id);
     let mut checker = UnsafetyChecker::new(
-        mir, visibility_scope_info, tcx, param_env);
+        mir, source_scope_local_data, tcx, param_env);
     checker.visit_mir(mir);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
@@ -355,12 +386,12 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
 
     // FIXME: when we make this a hard error, this should have its
     // own error code.
-    let message = if !tcx.generics_of(def_id).types.is_empty() {
-        format!("#[derive] can't be used on a #[repr(packed)] struct with \
-                 type parameters (error E0133)")
+    let message = if tcx.generics_of(def_id).own_counts().types != 0 {
+        "#[derive] can't be used on a #[repr(packed)] struct with \
+         type parameters (error E0133)".to_string()
     } else {
-        format!("#[derive] can't be used on a non-Copy #[repr(packed)] struct \
-                 (error E0133)")
+        "#[derive] can't be used on a #[repr(packed)] struct that \
+         does not derive Copy (error E0133)".to_string()
     };
     tcx.lint_node(SAFE_PACKED_BORROWS,
                   lint_node_id,
@@ -377,10 +408,13 @@ fn is_enclosed(tcx: TyCtxt,
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(hir::map::NodeItem(&hir::Item {
-            node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
+            node: hir::ItemKind::Fn(_, header, _, _),
             ..
         })) = tcx.hir.find(parent_id) {
-            Some(("fn".to_string(), parent_id))
+            match header.unsafety {
+                hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
+                hir::Unsafety::Normal => None,
+            }
         } else {
             is_enclosed(tcx, used_unsafe, parent_id)
         }
@@ -431,33 +465,36 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation {
-        source_info, description, kind
+        source_info, description, details, kind
     } in violations.iter() {
         // Report an error.
         match kind {
             UnsafetyViolationKind::General => {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
-                    "{} requires unsafe function or block", description)
-                    .span_label(source_info.span, &description[..])
+                    "{} is unsafe and requires unsafe function or block", description)
+                    .span_label(source_info.span, &description.as_str()[..])
+                    .note(&details.as_str()[..])
                     .emit();
             }
             UnsafetyViolationKind::ExternStatic(lint_node_id) => {
-                tcx.lint_node(SAFE_EXTERN_STATICS,
+                tcx.lint_node_note(SAFE_EXTERN_STATICS,
                               lint_node_id,
                               source_info.span,
-                              &format!("{} requires unsafe function or \
-                                        block (error E0133)", &description[..]));
+                              &format!("{} is unsafe and requires unsafe function or block \
+                                        (error E0133)", &description.as_str()[..]),
+                              &details.as_str()[..]);
             }
             UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
                     tcx.unsafe_derive_on_repr_packed(impl_def_id);
                 } else {
-                    tcx.lint_node(SAFE_PACKED_BORROWS,
+                    tcx.lint_node_note(SAFE_PACKED_BORROWS,
                                   lint_node_id,
                                   source_info.span,
-                                  &format!("{} requires unsafe function or \
-                                            block (error E0133)", &description[..]));
+                                  &format!("{} is unsafe and requires unsafe function or block \
+                                            (error E0133)", &description.as_str()[..]),
+                                  &details.as_str()[..]);
                 }
             }
         }

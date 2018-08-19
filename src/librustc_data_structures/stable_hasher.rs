@@ -165,29 +165,6 @@ impl<W> Hasher for StableHasher<W> {
     }
 }
 
-
-/// Something that can provide a stable hashing context.
-pub trait StableHashingContextProvider {
-    type ContextType;
-    fn create_stable_hashing_context(&self) -> Self::ContextType;
-}
-
-impl<'a, T: StableHashingContextProvider> StableHashingContextProvider for &'a T {
-    type ContextType = T::ContextType;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-        (**self).create_stable_hashing_context()
-    }
-}
-
-impl<'a, T: StableHashingContextProvider> StableHashingContextProvider for &'a mut T {
-    type ContextType = T::ContextType;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-        (**self).create_stable_hashing_context()
-    }
-}
-
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
 pub trait HashStable<CTX> {
@@ -206,13 +183,16 @@ pub trait ToStableHashKey<HCX> {
 
 // Implement HashStable by just calling `Hash::hash()`. This works fine for
 // self-contained values that don't depend on the hashing context `CTX`.
+#[macro_export]
 macro_rules! impl_stable_hash_via_hash {
     ($t:ty) => (
-        impl<CTX> HashStable<CTX> for $t {
+        impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {
             #[inline]
-            fn hash_stable<W: StableHasherResult>(&self,
-                                                  _: &mut CTX,
-                                                  hasher: &mut StableHasher<W>) {
+            fn hash_stable<W: $crate::stable_hasher::StableHasherResult>(
+                &self,
+                _: &mut CTX,
+                hasher: &mut $crate::stable_hasher::StableHasher<W>
+            ) {
                 ::std::hash::Hash::hash(self, hasher);
             }
         }
@@ -256,6 +236,14 @@ impl<CTX> HashStable<CTX> for f64 {
             ::std::mem::transmute(*self)
         };
         val.hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for ::std::cmp::Ordering {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (*self as i8).hash_stable(ctx, hasher);
     }
 }
 

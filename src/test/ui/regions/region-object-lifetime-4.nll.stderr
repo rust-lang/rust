@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/region-object-lifetime-4.rs:22:7
+   |
+LL |     x.borrowed() //~ ERROR cannot infer
+   |       ^^^^^^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/region-object-lifetime-4.rs:22:5
+   |
+LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
+   |                                         -- -- lifetime `'b` defined here
+   |                                         |
+   |                                         lifetime `'a` defined here
+LL |     x.borrowed() //~ ERROR cannot infer
+   |     ^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

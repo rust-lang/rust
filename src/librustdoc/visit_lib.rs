@@ -22,8 +22,8 @@ use clean::{AttributesExt, NestedAttributesExt};
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
-pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    cx: &'a ::core::DocContext<'b, 'tcx>,
+pub struct LibEmbargoVisitor<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
+    cx: &'a ::core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
     // Accessibility levels for reachable nodes
     access_levels: RefMut<'a, AccessLevels<DefId>>,
     // Previous accessibility level, None means unreachable
@@ -32,8 +32,10 @@ pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
     visited_mods: FxHashSet<DefId>,
 }
 
-impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
-    pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
+impl<'a, 'tcx, 'rcx, 'cstore> LibEmbargoVisitor<'a, 'tcx, 'rcx, 'cstore> {
+    pub fn new(
+        cx: &'a ::core::DocContext<'a, 'tcx, 'rcx, 'cstore>
+    ) -> LibEmbargoVisitor<'a, 'tcx, 'rcx, 'cstore> {
         LibEmbargoVisitor {
             cx,
             access_levels: cx.access_levels.borrow_mut(),
@@ -68,7 +70,8 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         }
 
         for item in self.cx.tcx.item_children(def_id).iter() {
-            if !item.is_import || item.vis == Visibility::Public {
+            if self.cx.tcx.def_key(item.def.def_id()).parent.map_or(false, |d| d == def_id.index) ||
+                item.vis == Visibility::Public {
                 self.visit_item(item.def);
             }
         }

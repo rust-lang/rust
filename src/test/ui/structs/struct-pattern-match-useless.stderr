@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/struct-pattern-match-useless.rs:22:9
+   |
+LL |         Foo { .. } => () //~ ERROR unreachable pattern
+   |         ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/struct-pattern-match-useless.rs:11:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

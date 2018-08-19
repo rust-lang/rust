@@ -34,16 +34,15 @@ use mem;
 /// ```
 /// use std::io;
 ///
-/// # fn foo() -> io::Result<()> {
-/// let mut reader: &[u8] = b"hello";
-/// let mut writer: Vec<u8> = vec![];
+/// fn main() -> io::Result<()> {
+///     let mut reader: &[u8] = b"hello";
+///     let mut writer: Vec<u8> = vec![];
 ///
-/// io::copy(&mut reader, &mut writer)?;
+///     io::copy(&mut reader, &mut writer)?;
 ///
-/// assert_eq!(&b"hello"[..], &writer[..]);
-/// # Ok(())
-/// # }
-/// # foo().unwrap();
+///     assert_eq!(&b"hello"[..], &writer[..]);
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
@@ -224,7 +223,7 @@ mod tests {
         assert_eq!(copy(&mut r, &mut w).unwrap(), 4);
 
         let mut r = repeat(0).take(1 << 17);
-        assert_eq!(copy(&mut r as &mut Read, &mut w as &mut Write).unwrap(), 1 << 17);
+        assert_eq!(copy(&mut r as &mut dyn Read, &mut w as &mut dyn Write).unwrap(), 1 << 17);
     }
 
     #[test]

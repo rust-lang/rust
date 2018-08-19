@@ -1,0 +1,105 @@
+error[E0261]: use of undeclared lifetime name `'x`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:16:12
+   |
+LL | fn foo(x: &'x u8) -> &'x u8 { x }
+   |            ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'x`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:16:23
+   |
+LL | fn foo(x: &'x u8) -> &'x u8 { x }
+   |                       ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:28:12
+   |
+LL | impl<'a> X<'b> {
+   |            ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:30:27
+   |
+LL |     fn inner_2(&self) -> &'b u8 {
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:36:8
+   |
+LL | impl X<'b> {
+   |        ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:38:27
+   |
+LL |     fn inner_3(&self) -> &'b u8 {
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:46:9
+   |
+LL | impl Y<&'a u8> {
+   |         ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:48:25
+   |
+LL |     fn inner(&self) -> &'a u8 {
+   |                         ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:56:27
+   |
+LL |     fn any_lifetime() -> &'b u8;
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:58:27
+   |
+LL |     fn borrowed_lifetime(&'b self) -> &'b u8;
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:58:40
+   |
+LL |     fn borrowed_lifetime(&'b self) -> &'b u8;
+   |                                        ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:63:14
+   |
+LL | impl MyTrait<'a> for Y<&'a u8> {
+   |              ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:63:25
+   |
+LL | impl MyTrait<'a> for Y<&'a u8> {
+   |                         ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:66:31
+   |
+LL |     fn my_lifetime(&self) -> &'a u8 { self.0 }
+   |                               ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:68:27
+   |
+LL |     fn any_lifetime() -> &'b u8 { &0 }
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:70:27
+   |
+LL |     fn borrowed_lifetime(&'b self) -> &'b u8 { &*self.0 }
+   |                           ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/feature-gate-in_band_lifetimes.rs:70:40
+   |
+LL |     fn borrowed_lifetime(&'b self) -> &'b u8 { &*self.0 }
+   |                                        ^^ undeclared lifetime
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

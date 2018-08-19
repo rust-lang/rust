@@ -11,7 +11,7 @@
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::ty::TyCtxt;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     let mut collector = Collector {
@@ -37,7 +37,7 @@ struct Collector {
 impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         let fm = match it.node {
-            hir::ItemForeignMod(ref fm) => fm,
+            hir::ItemKind::ForeignMod(ref fm) => fm,
             _ => return,
         };
         if fm.abi == Abi::Rust ||

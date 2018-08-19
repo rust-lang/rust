@@ -1,0 +1,14 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-ref-into-rvalue.rs:13:11
+   |
+LL |     match Some("Hello".to_string()) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+...
+LL |     }
+   |     - temporary value only lives until here
+LL |     println!("{}", *msg);
+   |                    ---- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,19 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:30:7
+   |
+LL |     f.method(b); //~ ERROR 30:7: 30:13: lifetime mismatch [E0623]
+   |       ^^^^^^
+
+error: borrowed data escapes outside of function
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:30:5
+   |
+LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
+   |                             -           - `b` is a reference that is only valid in the function body
+   |                             |
+   |                             `a` is declared here, outside of the function body
+LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
+LL |     f.method(b); //~ ERROR 30:7: 30:13: lifetime mismatch [E0623]
+   |     ^^^^^^^^^^^ `b` escapes the function body here
+
+error: aborting due to previous error
+

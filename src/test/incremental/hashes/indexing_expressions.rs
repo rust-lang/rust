@@ -16,14 +16,13 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// must-compile-successfully
+// compile-pass
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
-#![feature(inclusive_range_syntax)]
 
 // Change simple index ---------------------------------------------------------
 #[cfg(cfail1)]

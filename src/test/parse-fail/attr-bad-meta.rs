@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// asterisk is bogus
-#[path*] //~ ERROR expected one of `(` or `=`
+#![feature(unrestricted_attribute_tokens)]
+
+#[path*] //~ ERROR expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `*`
 mod m {}

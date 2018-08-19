@@ -1,0 +1,12 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/issue-28576.rs:17:12
+   |
+LL | /            Bar //~ ERROR the trait `Bar` cannot be made into an object
+LL | |               <Assoc=()>
+   | |________________________^ the trait `Bar` cannot be made into an object
+   |
+   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

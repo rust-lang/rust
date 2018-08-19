@@ -1,0 +1,9 @@
+error[E0244]: wrong number of type arguments: expected at most 2, found 3
+  --> $DIR/generic-impl-more-params-with-defaults.rs:23:5
+   |
+LL |     Vec::<isize, Heap, bool>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 2 type arguments
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0244`.

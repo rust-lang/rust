@@ -1,0 +1,21 @@
+error: `foo` is not yet stable as a const fn
+  --> $DIR/dont_promote_unstable_const_fn.rs:25:25
+   |
+LL | const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
+   |                         ^^^^^
+   |
+   = help: in Nightly builds, add `#![feature(foo)]` to the crate attributes to enable
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/dont_promote_unstable_const_fn.rs:33:26
+   |
+LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

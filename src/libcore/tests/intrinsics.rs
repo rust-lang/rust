@@ -22,7 +22,7 @@ fn test_typeid_sized_types() {
 #[test]
 fn test_typeid_unsized_types() {
     trait Z {}
-    struct X(str); struct Y(Z + 'static);
+    struct X(str); struct Y(dyn Z + 'static);
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());

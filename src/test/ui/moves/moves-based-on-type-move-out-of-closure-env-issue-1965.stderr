@@ -1,0 +1,11 @@
+error[E0507]: cannot move out of captured outer variable in an `Fn` closure
+  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:21:28
+   |
+LL |     let i = box 3;
+   |         - captured outer variable
+LL |     let _f = to_fn(|| test(i)); //~ ERROR cannot move out
+   |                            ^ cannot move out of captured outer variable in an `Fn` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

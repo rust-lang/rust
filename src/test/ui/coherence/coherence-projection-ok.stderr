@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/coherence-projection-ok.rs:28:1
+   |
+LL | fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

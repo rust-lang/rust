@@ -1,18 +1,19 @@
 error[E0384]: cannot assign twice to immutable variable `_x` (Ast)
   --> $DIR/immutable-arg.rs:14:5
    |
-13 | fn foo(_x: u32) {
+LL | fn foo(_x: u32) {
    |        -- first assignment to `_x`
-14 |     _x = 4;
+LL |     _x = 4;
    |     ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign to immutable argument `_x` (Mir)
   --> $DIR/immutable-arg.rs:14:5
    |
-13 | fn foo(_x: u32) {
-   |        -- argument not declared as `mut`
-14 |     _x = 4;
+LL | fn foo(_x: u32) {
+   |        -- consider changing this to `mut _x`
+LL |     _x = 4;
    |     ^^^^^^ cannot assign to immutable argument
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0384`.

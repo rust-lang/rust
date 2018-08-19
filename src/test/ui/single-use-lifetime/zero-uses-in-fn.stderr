@@ -1,0 +1,14 @@
+error: lifetime parameter `'a` never used
+  --> $DIR/zero-uses-in-fn.rs:17:6
+   |
+LL | fn d<'a>() { } //~ ERROR `'a` never used
+   |      ^^
+   |
+note: lint level defined here
+  --> $DIR/zero-uses-in-fn.rs:13:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,20 @@
+error[E0491]: in type `&'a rev_variant_struct_region::Foo<'b>`, reference has a longer lifetime than the data it references
+  --> $DIR/regions-outlives-nominal-type-struct-region-rev.rs:24:9
+   |
+LL |         f: &'a Foo<'b> //~ ERROR reference has a longer lifetime
+   |         ^^^^^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime 'a as defined on the struct at 23:16
+  --> $DIR/regions-outlives-nominal-type-struct-region-rev.rs:23:16
+   |
+LL |     struct Bar<'a,'b> {
+   |                ^^
+note: but the referenced data is only valid for the lifetime 'b as defined on the struct at 23:19
+  --> $DIR/regions-outlives-nominal-type-struct-region-rev.rs:23:19
+   |
+LL |     struct Bar<'a,'b> {
+   |                   ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0491`.

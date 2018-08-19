@@ -1,0 +1,15 @@
+error[E0603]: module `bar` is private
+  --> $DIR/use-mod-3.rs:12:5
+   |
+LL |     self //~ ERROR module `bar` is private
+   |     ^^^^
+
+error[E0603]: module `bar` is private
+  --> $DIR/use-mod-3.rs:15:5
+   |
+LL |     Bar //~ ERROR module `bar` is private
+   |     ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,15 @@
+error: `crate_type` requires a value
+  --> $DIR/invalid_crate_type_syntax.rs:12:1
+   |
+LL | #![crate_type(lib)]  //~ ERROR `crate_type` requires a value
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for example: `#![crate_type="lib"]`
+
+error[E0601]: `main` function not found in crate `invalid_crate_type_syntax`
+   |
+   = note: consider adding a `main` function to `$DIR/invalid_crate_type_syntax.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

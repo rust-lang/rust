@@ -36,7 +36,7 @@ pub fn main() {
     }
 
     match 100 {
-        b'a' ... b'z' => {},
+        b'a' ..= b'z' => {},
         _ => panic!()
     }
 

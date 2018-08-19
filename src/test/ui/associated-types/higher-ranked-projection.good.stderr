@@ -1,0 +1,12 @@
+error: compilation successful
+  --> $DIR/higher-ranked-projection.rs:34:1
+   |
+LL | / fn main() { //[good]~ ERROR compilation successful
+LL | |     foo(());
+LL | |     //[bad]~^ ERROR type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
+LL | |     //[bad]~| expected bound lifetime parameter 'a, found concrete lifetime
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

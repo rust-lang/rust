@@ -1,0 +1,45 @@
+error: `Foo` import is ambiguous
+  --> $DIR/block-scoped-shadow.rs:21:9
+   |
+LL | enum Foo { A, B }
+   | ----------------- can refer to `self::Foo`
+...
+LL |     enum Foo {}
+   |     ----------- shadowed by block-scoped `Foo`
+LL |     use Foo::*;
+   |         ^^^
+   |
+   = help: write `self::Foo` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: `std` import is ambiguous
+  --> $DIR/block-scoped-shadow.rs:28:9
+   |
+LL | struct std;
+   | ----------- can refer to `self::std`
+...
+LL |     enum std {}
+   |     ----------- shadowed by block-scoped `std`
+LL |     use std as foo;
+   |         ^^^ can refer to external crate `::std`
+   |
+   = help: write `::std` or `self::std` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: `std` import is ambiguous
+  --> $DIR/block-scoped-shadow.rs:28:9
+   |
+LL | struct std;
+   | ----------- can refer to `self::std`
+...
+LL |     fn std() {}
+   |     ----------- shadowed by block-scoped `std`
+LL |     enum std {}
+LL |     use std as foo;
+   |         ^^^
+   |
+   = help: write `self::std` explicitly instead
+   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+
+error: aborting due to 3 previous errors
+

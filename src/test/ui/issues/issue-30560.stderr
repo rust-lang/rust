@@ -1,0 +1,21 @@
+error: items in traits are not importable.
+  --> $DIR/issue-30560.rs:20:5
+   |
+LL | use T::*; //~ ERROR items in traits are not importable
+   |     ^^^^
+
+error[E0432]: unresolved import `Alias`
+  --> $DIR/issue-30560.rs:12:5
+   |
+LL | use Alias::*;
+   |     ^^^^^ Not a module `Alias`
+
+error[E0432]: unresolved import `std::io::Result`
+  --> $DIR/issue-30560.rs:15:14
+   |
+LL | use std::io::Result::*;
+   |              ^^^^^^ Not a module `Result`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

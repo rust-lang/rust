@@ -1,11 +1,12 @@
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/proj-outlives-region.rs:19:5
    |
-14 |     fn foo() where T: 'a;
+LL |     fn foo() where T: 'a;
    |     --------------------- definition of `foo` from trait
 ...
-19 |     fn foo() where U: 'a { } //~ ERROR E0276
+LL |     fn foo() where U: 'a { } //~ ERROR E0276
    |     ^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `U: 'a`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0276`.

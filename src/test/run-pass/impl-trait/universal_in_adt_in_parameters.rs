@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(universal_impl_trait)]
 use std::fmt::Display;
 
 fn check_display_eq(iter: &Vec<impl Display>) {

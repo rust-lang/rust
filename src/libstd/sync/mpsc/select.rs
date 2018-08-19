@@ -93,7 +93,7 @@ pub struct Handle<'rx, T:Send+'rx> {
     next: *mut Handle<'static, ()>,
     prev: *mut Handle<'static, ()>,
     added: bool,
-    packet: &'rx (Packet+'rx),
+    packet: &'rx (dyn Packet+'rx),
 
     // due to our fun transmutes, we be sure to place this at the end. (nothing
     // previous relies on T)
@@ -518,6 +518,7 @@ mod tests {
         }
     }
 
+    #[allow(unused_must_use)]
     #[test]
     fn cloning() {
         let (tx1, rx1) = channel::<i32>();
@@ -540,6 +541,7 @@ mod tests {
         tx3.send(()).unwrap();
     }
 
+    #[allow(unused_must_use)]
     #[test]
     fn cloning2() {
         let (tx1, rx1) = channel::<i32>();

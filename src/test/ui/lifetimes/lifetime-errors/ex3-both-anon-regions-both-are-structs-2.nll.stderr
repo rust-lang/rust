@@ -1,0 +1,18 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:16:11
+   |
+LL |     x.b = y.b; //~ ERROR lifetime mismatch
+   |           ^^^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:16:5
+   |
+LL | fn foo(mut x: Ref, y: Ref) {
+   |        -----       - has type `Ref<'_, '1>`
+   |        |
+   |        has type `Ref<'_, '2>`
+LL |     x.b = y.b; //~ ERROR lifetime mismatch
+   |     ^^^^^^^^^ requires that `'1` must outlive `'2`
+
+error: aborting due to previous error
+

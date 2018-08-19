@@ -1,0 +1,38 @@
+error: type `foo::S` is private
+  --> $DIR/fields.rs:25:17
+   |
+LL |         let s = S { x: 0 }; //~ ERROR type `foo::S` is private
+   |                 ^^^^^^^^^^
+...
+LL |     let s = foo::m!(S, x);
+   |             ------------- in this macro invocation
+
+error: type `foo::S` is private
+  --> $DIR/fields.rs:26:17
+   |
+LL |         let _ = s.x; //~ ERROR type `foo::S` is private
+   |                 ^
+...
+LL |     let s = foo::m!(S, x);
+   |             ------------- in this macro invocation
+
+error: type `foo::T` is private
+  --> $DIR/fields.rs:28:17
+   |
+LL |         let t = T(0); //~ ERROR type `foo::T` is private
+   |                 ^^^^
+...
+LL |     let s = foo::m!(S, x);
+   |             ------------- in this macro invocation
+
+error: type `foo::T` is private
+  --> $DIR/fields.rs:29:17
+   |
+LL |         let _ = t.0; //~ ERROR type `foo::T` is private
+   |                 ^
+...
+LL |     let s = foo::m!(S, x);
+   |             ------------- in this macro invocation
+
+error: aborting due to 4 previous errors
+

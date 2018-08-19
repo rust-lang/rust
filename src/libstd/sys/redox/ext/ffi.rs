@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unix-specific extension to the primitives in the `std::ffi` module
+//! Redox-specific extension to the primitives in the `std::ffi` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -17,7 +17,9 @@ use mem;
 use sys::os_str::Buf;
 use sys_common::{FromInner, IntoInner, AsInner};
 
-/// Unix-specific extensions to `OsString`.
+/// Redox-specific extensions to [`OsString`].
+///
+/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStringExt {
     /// Creates an `OsString` from a byte vector.
@@ -39,7 +41,9 @@ impl OsStringExt for OsString {
     }
 }
 
-/// Unix-specific extensions to `OsStr`.
+/// Redox-specific extensions to [`OsStr`].
+///
+/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]

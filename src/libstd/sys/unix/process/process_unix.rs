@@ -34,6 +34,11 @@ impl Command {
         }
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
+
+        if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
+            return Ok((ret, ours))
+        }
+
         let (input, output) = sys::pipe::anon_pipe()?;
 
         let pid = unsafe {
@@ -228,6 +233,119 @@ impl Command {
 
         libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
         io::Error::last_os_error()
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "freebsd",
+                  all(target_os = "linux", target_env = "gnu"))))]
+    fn posix_spawn(&mut self, _: &ChildPipes, _: Option<&CStringArray>)
+        -> io::Result<Option<Process>>
+    {
+        Ok(None)
+    }
+
+    // Only support platforms for which posix_spawn() can return ENOENT
+    // directly.
+    #[cfg(any(target_os = "macos", target_os = "freebsd",
+              all(target_os = "linux", target_env = "gnu")))]
+    fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
+        -> io::Result<Option<Process>>
+    {
+        use mem;
+        use sys;
+
+        if self.get_cwd().is_some() ||
+            self.get_gid().is_some() ||
+            self.get_uid().is_some() ||
+            self.env_saw_path() ||
+            self.get_closures().len() != 0 {
+            return Ok(None)
+        }
+
+        // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        {
+            if let Some(version) = sys::os::glibc_version() {
+                if version < (2, 24) {
+                    return Ok(None)
+                }
+            } else {
+                return Ok(None)
+            }
+        }
+
+        let mut p = Process { pid: 0, status: None };
+
+        struct PosixSpawnFileActions(libc::posix_spawn_file_actions_t);
+
+        impl Drop for PosixSpawnFileActions {
+            fn drop(&mut self) {
+                unsafe {
+                    libc::posix_spawn_file_actions_destroy(&mut self.0);
+                }
+            }
+        }
+
+        struct PosixSpawnattr(libc::posix_spawnattr_t);
+
+        impl Drop for PosixSpawnattr {
+            fn drop(&mut self) {
+                unsafe {
+                    libc::posix_spawnattr_destroy(&mut self.0);
+                }
+            }
+        }
+
+        unsafe {
+            let mut file_actions = PosixSpawnFileActions(mem::uninitialized());
+            let mut attrs = PosixSpawnattr(mem::uninitialized());
+
+            libc::posix_spawnattr_init(&mut attrs.0);
+            libc::posix_spawn_file_actions_init(&mut file_actions.0);
+
+            if let Some(fd) = stdio.stdin.fd() {
+                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                                                           fd,
+                                                           libc::STDIN_FILENO))?;
+            }
+            if let Some(fd) = stdio.stdout.fd() {
+                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                                                           fd,
+                                                           libc::STDOUT_FILENO))?;
+            }
+            if let Some(fd) = stdio.stderr.fd() {
+                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                                                           fd,
+                                                           libc::STDERR_FILENO))?;
+            }
+
+            let mut set: libc::sigset_t = mem::uninitialized();
+            cvt(libc::sigemptyset(&mut set))?;
+            cvt(libc::posix_spawnattr_setsigmask(&mut attrs.0,
+                                                 &set))?;
+            cvt(libc::sigaddset(&mut set, libc::SIGPIPE))?;
+            cvt(libc::posix_spawnattr_setsigdefault(&mut attrs.0,
+                                                    &set))?;
+
+            let flags = libc::POSIX_SPAWN_SETSIGDEF |
+                libc::POSIX_SPAWN_SETSIGMASK;
+            cvt(libc::posix_spawnattr_setflags(&mut attrs.0, flags as _))?;
+
+            let envp = envp.map(|c| c.as_ptr())
+                .unwrap_or(*sys::os::environ() as *const _);
+            let ret = libc::posix_spawnp(
+                &mut p.pid,
+                self.get_argv()[0],
+                &file_actions.0,
+                &attrs.0,
+                self.get_argv().as_ptr() as *const _,
+                envp as *const _,
+            );
+            if ret == 0 {
+                Ok(Some(p))
+            } else {
+                Err(io::Error::from_raw_os_error(ret))
+            }
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43927-non-ADT-derive.rs:13:1
    |
-13 | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
+LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug, PartialEq, Eq)]`
 
 error: aborting due to previous error

@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(global_allocator, alloc_system, allocator_api)]
-extern crate alloc_system;
-
+use std::alloc::System;
 use std::collections::VecDeque;
-use alloc_system::System;
 
 #[global_allocator]
 static ALLOCATOR: System = System;

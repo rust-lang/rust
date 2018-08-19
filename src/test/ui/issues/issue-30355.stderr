@@ -1,0 +1,22 @@
+error[E0161]: cannot move a value of type X: the size of X cannot be statically determined
+  --> $DIR/issue-30355.rs:15:6
+   |
+LL |     &X(*Y)
+   |      ^^^^^
+
+error[E0161]: cannot move a value of type [u8]: the size of [u8] cannot be statically determined
+  --> $DIR/issue-30355.rs:15:8
+   |
+LL |     &X(*Y)
+   |        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-30355.rs:15:8
+   |
+LL |     &X(*Y)
+   |        ^^ cannot move out of borrowed content
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0161, E0507.
+For more information about an error, try `rustc --explain E0161`.

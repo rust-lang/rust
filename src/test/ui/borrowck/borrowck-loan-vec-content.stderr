@@ -1,0 +1,15 @@
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-loan-vec-content.rs:28:9
+   |
+LL |         &v[0],
+   |          - immutable borrow occurs here
+LL |         || { //~ ERROR cannot borrow `v` as mutable
+   |         ^^ mutable borrow occurs here
+LL |             v[1] = 4;
+   |             - borrow occurs due to use of `v` in closure
+LL |         })
+   |          - immutable borrow ends here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.

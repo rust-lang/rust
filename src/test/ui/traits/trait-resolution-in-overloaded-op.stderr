@@ -1,0 +1,11 @@
+error[E0369]: binary operation `*` cannot be applied to type `&T`
+  --> $DIR/trait-resolution-in-overloaded-op.rs:18:5
+   |
+LL |     a * b //~ ERROR binary operation `*` cannot be applied to type `&T`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Mul` might be missing for `&T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

@@ -87,7 +87,10 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
         lang_items: lang_items(tcx),
     };
 
-    // See README.md for a discussion on dep-graph management.
+    // See the following for a discussion on dep-graph management.
+    //
+    // - https://rust-lang-nursery.github.io/rustc-guide/query.html
+    // - https://rust-lang-nursery.github.io/rustc-guide/variance.html
     tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
@@ -139,8 +142,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
                self.tcx.hir.node_to_string(item.id));
 
         match item.node {
-            hir::ItemStruct(ref struct_def, _) |
-            hir::ItemUnion(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) |
+            hir::ItemKind::Union(ref struct_def, _) => {
                 self.add_inferreds_for_item(item.id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
@@ -148,7 +151,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemEnum(ref enum_def, _) => {
+            hir::ItemKind::Enum(ref enum_def, _) => {
                 self.add_inferreds_for_item(item.id);
 
                 for variant in &enum_def.variants {
@@ -158,13 +161,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 self.add_inferreds_for_item(item.id);
             }
 
-            hir::ItemForeignMod(ref foreign_mod) => {
+            hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if let hir::ForeignItemFn(..) = foreign_item.node {
+                    if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
                         self.add_inferreds_for_item(foreign_item.id);
                     }
                 }

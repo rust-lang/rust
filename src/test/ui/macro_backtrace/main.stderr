@@ -1,30 +1,30 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
-18 | / macro_rules! pong {
-19 | |     () => { syntax error };
+LL | / macro_rules! pong {
+LL | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | | }
+LL | | }
    | |_- in this expansion of `pong!`
 ...
-26 |       pong!();
+LL |       pong!();
    |       -------- in this macro invocation
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
-18 | / macro_rules! pong {
-19 | |     () => { syntax error };
+LL | / macro_rules! pong {
+LL | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | | }
+LL | | }
    | |_- in this expansion of `pong!`
 ...
-27 |       ping!();
+LL |       ping!();
    |       -------- in this macro invocation
    | 
-  ::: <ping macros>
+  ::: <ping macros>:1:1
    |
-1  |   (  ) => { pong ! (  ) ; }
+LL |   (  ) => { pong ! (  ) ; }
    |   -------------------------
    |   |         |
    |   |         in this macro invocation
@@ -33,42 +33,42 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
-18 | / macro_rules! pong {
-19 | |     () => { syntax error };
+LL | / macro_rules! pong {
+LL | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | | }
+LL | | }
    | |_- in this expansion of `pong!` (#5)
 ...
-28 |       deep!();
+LL |       deep!();
    |       -------- in this macro invocation (#1)
    | 
-  ::: <deep macros>
+  ::: <deep macros>:1:1
    |
-1  |   (  ) => { foo ! (  ) ; }
+LL |   (  ) => { foo ! (  ) ; }
    |   ------------------------
    |   |         |
    |   |         in this macro invocation (#2)
    |   in this expansion of `deep!` (#1)
    | 
-  ::: <foo macros>
+  ::: <foo macros>:1:1
    |
-1  |   (  ) => { bar ! (  ) ; }
+LL |   (  ) => { bar ! (  ) ; }
    |   ------------------------
    |   |         |
    |   |         in this macro invocation (#3)
    |   in this expansion of `foo!` (#2)
    | 
-  ::: <bar macros>
+  ::: <bar macros>:1:1
    |
-1  |   (  ) => { ping ! (  ) ; }
+LL |   (  ) => { ping ! (  ) ; }
    |   -------------------------
    |   |         |
    |   |         in this macro invocation (#4)
    |   in this expansion of `bar!` (#3)
    | 
-  ::: <ping macros>
+  ::: <ping macros>:1:1
    |
-1  |   (  ) => { pong ! (  ) ; }
+LL |   (  ) => { pong ! (  ) ; }
    |   -------------------------
    |   |         |
    |   |         in this macro invocation (#5)

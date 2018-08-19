@@ -40,7 +40,7 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-pub fn is_doc_comment(s: &str) -> bool {
+fn is_doc_comment(s: &str) -> bool {
     (s.starts_with("///") && super::is_doc_comment(s)) || s.starts_with("//!") ||
     (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
 }
@@ -63,6 +63,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         if !lines.is_empty() && lines[0].chars().all(|c| c == '*') {
             i += 1;
         }
+
         while i < j && lines[i].trim().is_empty() {
             i += 1;
         }
@@ -74,9 +75,11 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
                .all(|c| c == '*') {
             j -= 1;
         }
+
         while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
+
         lines[i..j].to_vec()
     }
 
@@ -85,6 +88,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut i = usize::MAX;
         let mut can_trim = true;
         let mut first = true;
+
         for line in &lines {
             for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains(c) {
@@ -119,7 +123,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     }
 
     // one-line comments lose their prefix
-    const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
+    const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
+
     for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
             return (&comment[prefix.len()..]).to_string();
@@ -205,6 +210,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
     let len = s.len();
     let mut col = col.to_usize();
     let mut cursor: usize = 0;
+
     while col > 0 && cursor < len {
         let ch = char_at(s, cursor);
         if !ch.is_whitespace() {
@@ -213,7 +219,8 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
         cursor += ch.len_utf8();
         col -= 1;
     }
-    return Some(cursor);
+
+    Some(cursor)
 }
 
 fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String>, s: String, col: CharPos) {
@@ -238,7 +245,23 @@ fn read_block_comment(rdr: &mut StringReader,
     debug!(">>> block comment");
     let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
-    let col = rdr.col;
+
+    // Count the number of chars since the start of the line by rescanning.
+    let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos(rdr.pos));
+    let end_src_index = rdr.src_index(rdr.pos);
+    assert!(src_index <= end_src_index,
+        "src_index={}, end_src_index={}, line_begin_pos={}",
+        src_index, end_src_index, rdr.filemap.line_begin_pos(rdr.pos).to_u32());
+    let mut n = 0;
+
+    while src_index < end_src_index {
+        let c = char_at(&rdr.src, src_index);
+        src_index += c.len_utf8();
+        n += 1;
+    }
+
+    let col = CharPos(n);
+
     rdr.bump();
     rdr.bump();
 
@@ -265,7 +288,7 @@ fn read_block_comment(rdr: &mut StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if rdr.is_eof() {
-                panic!(rdr.fatal("unterminated block comment"));
+                rdr.fatal("unterminated block comment").raise();
             }
             if rdr.ch_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
@@ -343,19 +366,20 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut Read)
-                                    -> (Vec<Comment>, Vec<Literal>) {
-    let mut src = Vec::new();
-    srdr.read_to_end(&mut src).unwrap();
-    let src = String::from_utf8(src).unwrap();
+pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut dyn Read)
+    -> (Vec<Comment>, Vec<Literal>)
+{
+    let mut src = String::new();
+    srdr.read_to_string(&mut src).unwrap();
     let cm = CodeMap::new(sess.codemap().path_mapping().clone());
     let filemap = cm.new_filemap(path, src);
-    let mut rdr = lexer::StringReader::new_raw(sess, filemap);
+    let mut rdr = lexer::StringReader::new_raw(sess, filemap, None);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut literals: Vec<Literal> = Vec::new();
     let mut code_to_the_left = false; // Only code
     let mut anything_to_the_left = false; // Code or comments
+
     while !rdr.is_eof() {
         loop {
             // Eat all the whitespace and count blank lines.

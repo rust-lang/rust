@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::thin_vec::ThinVec;
+
 use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
@@ -16,13 +18,12 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
-use syntax_pos::hygiene::SyntaxContext;
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[TokenTree])
-                              -> Box<base::MacResult + 'cx> {
+                              -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "concat_idents",
@@ -30,6 +31,11 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_CONCAT_IDENTS);
         return base::DummyResult::expr(sp);
+    }
+
+    if tts.is_empty() {
+        cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
+        return DummyResult::expr(sp);
     }
 
     let mut res_str = String::new();
@@ -44,7 +50,8 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
             }
         } else {
             match *e {
-                TokenTree::Token(_, token::Ident(ident)) => res_str.push_str(&ident.name.as_str()),
+                TokenTree::Token(_, token::Ident(ident, _)) =>
+                    res_str.push_str(&ident.as_str()),
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
                     return DummyResult::expr(sp);
@@ -52,46 +59,29 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
             }
         }
     }
-    let res = ast::Ident {
-        name: Symbol::intern(&res_str),
-        ctxt: SyntaxContext::empty().apply_mark(cx.current_expansion.mark),
-    };
 
-    struct Result {
-        ident: ast::Ident,
-        span: Span,
-    };
+    let ident = ast::Ident::new(Symbol::intern(&res_str), sp.apply_mark(cx.current_expansion.mark));
 
-    impl Result {
-        fn path(&self) -> ast::Path {
-            ast::Path {
-                span: self.span,
-                segments: vec![ast::PathSegment::from_ident(self.ident, self.span)],
-            }
-        }
-    }
+    struct ConcatIdentsResult { ident: ast::Ident }
 
-    impl base::MacResult for Result {
+    impl base::MacResult for ConcatIdentsResult {
         fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
             Some(P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Path(None, self.path()),
-                span: self.span,
-                attrs: ast::ThinVec::new(),
+                node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
+                span: self.ident.span,
+                attrs: ThinVec::new(),
             }))
         }
 
         fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
             Some(P(ast::Ty {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::TyKind::Path(None, self.path()),
-                span: self.span,
+                node: ast::TyKind::Path(None, ast::Path::from_ident(self.ident)),
+                span: self.ident.span,
             }))
         }
     }
 
-    Box::new(Result {
-        ident: res,
-        span: sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark)),
-    })
+    Box::new(ConcatIdentsResult { ident })
 }

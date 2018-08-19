@@ -1,0 +1,12 @@
+error[E0530]: match bindings cannot shadow statics
+  --> $DIR/E0530.rs:16:9
+   |
+LL |     static TEST: i32 = 0;
+   |     --------------------- a static `TEST` is defined here
+...
+LL |         TEST => {} //~ ERROR E0530
+   |         ^^^^ cannot be named the same as a static
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0530`.

@@ -1,34 +1,11 @@
-error[E0658]: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
-  --> $DIR/gated-features-attr-spans.rs:13:1
-   |
-13 | #[repr(align(16))] //~ ERROR is experimental
-   | ^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(repr_align)] to the crate attributes to enable
-
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
-  --> $DIR/gated-features-attr-spans.rs:20:1
+  --> $DIR/gated-features-attr-spans.rs:11:1
    |
-20 | #[repr(simd)] //~ ERROR are experimental
+LL | #[repr(simd)] //~ ERROR are experimental
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
 
-warning: `#[must_use]` on methods is experimental (see issue #43302)
-  --> $DIR/gated-features-attr-spans.rs:27:5
-   |
-27 |     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
-   |     ^^^^^^^^^^^
-   |
-   = help: add #![feature(fn_must_use)] to the crate attributes to enable
+error: aborting due to previous error
 
-warning: `#[must_use]` on functions is experimental (see issue #43302)
-  --> $DIR/gated-features-attr-spans.rs:31:1
-   |
-31 | #[must_use] //~ WARN is experimental
-   | ^^^^^^^^^^^
-   |
-   = help: add #![feature(fn_must_use)] to the crate attributes to enable
-
-error: aborting due to 2 previous errors
-
+For more information about this error, try `rustc --explain E0658`.

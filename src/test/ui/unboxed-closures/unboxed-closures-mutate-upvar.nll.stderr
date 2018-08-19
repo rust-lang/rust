@@ -1,0 +1,45 @@
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:25:9
+   |
+LL |     let n = 0;
+   |         - help: consider changing this to be mutable: `mut n`
+LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:42:9
+   |
+LL |     let n = 0;
+   |         - help: consider changing this to be mutable: `mut n`
+...
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:56:9
+   |
+LL |     let n = 0;
+   |         - help: consider changing this to be mutable: `mut n`
+LL |     let mut f = to_fn(move || {
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
+  --> $DIR/unboxed-closures-mutate-upvar.rs:63:9
+   |
+LL |         n += 1; //~ ERROR cannot assign
+   |         ^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/unboxed-closures-mutate-upvar.rs:62:23
+   |
+LL |       let mut f = to_fn(move || {
+   |  _______________________^
+LL | |         n += 1; //~ ERROR cannot assign
+LL | |     });
+   | |_____^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

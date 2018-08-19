@@ -16,7 +16,7 @@
 
 // http://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
 
-use alloc::boxed::Box;
+use boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;
 

@@ -1,0 +1,14 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-36082.rs:23:19
+   |
+LL |     let val: &_ = x.borrow().0;
+   |                   ^^^^^^^^^^  - temporary value only lives until here
+   |                   |
+   |                   temporary value does not live long enough
+...
+LL |     println!("{}", val);
+   |                    --- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

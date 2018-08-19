@@ -27,7 +27,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
-                                       push: &mut FnMut(Annotatable)) {
+                                       push: &mut dyn FnMut(Annotatable)) {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
@@ -35,7 +35,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable)) {
+                                 push: &mut dyn FnMut(Annotatable)) {
     warn_if_deprecated(cx, span, "Decodable");
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
@@ -44,7 +44,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable),
+                                 push: &mut dyn FnMut(Annotatable),
                                  krate: &'static str) {
     let typaram = &*deriving::hygienic_type_parameter(item, "__D");
 
@@ -67,8 +67,8 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                                             PathKind::Global)])],
                           },
                           explicit_self: None,
-                          args: vec![Ptr(Box::new(Literal(Path::new_local(typaram))),
-                                         Borrowed(None, Mutability::Mutable))],
+                          args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
+                                         Borrowed(None, Mutability::Mutable)), "d")],
                           ret_ty:
                               Literal(Path::new_(pathvec_std!(cx, result::Result),
                                                  None,
@@ -131,8 +131,8 @@ fn decodable_substructure(cx: &mut ExtCtxt,
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
 
-            let mut arms = Vec::new();
-            let mut variants = Vec::new();
+            let mut arms = Vec::with_capacity(fields.len() + 1);
+            let mut variants = Vec::with_capacity(fields.len());
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
             for (i, &(ident, v_span, ref parts)) in fields.iter().enumerate() {

@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `dyn Foo<(char,), Output=()>: Eq<dyn Foo<(), Output=()>>` is not satisfied
+  --> $DIR/unboxed-closure-sugar-equiv.rs:53:5
+   |
+LL | /     eq::< Foo<(),Output=()>,
+LL | |           Foo(char)                                               >();
+   | |___________________________________________________________________^ the trait `Eq<dyn Foo<(), Output=()>>` is not implemented for `dyn Foo<(char,), Output=()>`
+   |
+note: required by `eq`
+  --> $DIR/unboxed-closure-sugar-equiv.rs:26:1
+   |
+LL | fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

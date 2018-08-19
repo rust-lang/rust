@@ -22,7 +22,7 @@ mod rustrt {
     #[cfg(bogus)]
     extern {
         // This symbol doesn't exist and would be a link error if this
-        // module was translated
+        // module was codegened
         pub fn bogus();
     }
 

@@ -60,8 +60,14 @@
 /// assert_eq!(nucleotide_count[Nucleotide::T], 12);
 /// ```
 #[lang = "index"]
-#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` cannot be indexed by `{Idx}`",
+    label="`{Self}` cannot be indexed by `{Idx}`",
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "]")]
+#[doc(alias = "[")]
+#[doc(alias = "[]")]
 pub trait Index<Idx: ?Sized> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -144,8 +150,14 @@ pub trait Index<Idx: ?Sized> {
 /// balance[Side::Left] = Weight::Kilogram(3.0);
 /// ```
 #[lang = "index_mut"]
-#[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` cannot be mutably indexed by `{Idx}`",
+    label="`{Self}` cannot be mutably indexed by `{Idx}`",
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "[")]
+#[doc(alias = "]")]
+#[doc(alias = "[]")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     #[stable(feature = "rust1", since = "1.0.0")]

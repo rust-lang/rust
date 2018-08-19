@@ -1,0 +1,15 @@
+error[E0283]: type annotations required: cannot resolve `_: Generator`
+  --> $DIR/E0283.rs:28:21
+   |
+LL |     let cont: u32 = Generator::create(); //~ ERROR E0283
+   |                     ^^^^^^^^^^^^^^^^^
+   |
+note: required by `Generator::create`
+  --> $DIR/E0283.rs:12:5
+   |
+LL |     fn create() -> u32;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

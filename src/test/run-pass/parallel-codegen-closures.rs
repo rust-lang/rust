@@ -14,7 +14,6 @@
 // ignore-bitrig
 // compile-flags: -C codegen_units=2
 
-#![feature(core)]
 #![feature(iter_arith)]
 
 mod a {

@@ -289,7 +289,7 @@ mod inner {
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {
             self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
-                panic!("other was less than the current instant")
+                panic!("specified instant was later than self")
             })
         }
 
@@ -345,9 +345,9 @@ mod inner {
         }
     }
 
-    #[cfg(not(target_os = "dragonfly"))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "hermit")))]
     pub type clock_t = libc::c_int;
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "dragonfly", target_os = "hermit"))]
     pub type clock_t = libc::c_ulong;
 
     fn now(clock: clock_t) -> Timespec {

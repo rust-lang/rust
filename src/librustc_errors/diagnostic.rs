@@ -11,6 +11,7 @@
 use CodeSuggestion;
 use SubstitutionPart;
 use Substitution;
+use Applicability;
 use Level;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
@@ -27,7 +28,7 @@ pub struct Diagnostic {
     pub suggestions: Vec<CodeSuggestion>,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DiagnosticId {
     Error(String),
     Lint(String),
@@ -98,6 +99,25 @@ impl Diagnostic {
         }
     }
 
+    pub fn is_error(&self) -> bool {
+        match self.level {
+            Level::Bug |
+            Level::Fatal |
+            Level::PhaseFatal |
+            Level::Error |
+            Level::FailureNote => {
+                true
+            }
+
+            Level::Warning |
+            Level::Note |
+            Level::Help |
+            Level::Cancelled => {
+                false
+            }
+        }
+    }
+
     /// Cancel the diagnostic (a structured diagnostic must either be emitted or
     /// canceled or it will panic when dropped).
     pub fn cancel(&mut self) {
@@ -120,7 +140,7 @@ impl Diagnostic {
     }
 
     pub fn note_expected_found(&mut self,
-                               label: &fmt::Display,
+                               label: &dyn fmt::Display,
                                expected: DiagnosticStyledString,
                                found: DiagnosticStyledString)
                                -> &mut Self
@@ -129,11 +149,11 @@ impl Diagnostic {
     }
 
     pub fn note_expected_found_extra(&mut self,
-                                     label: &fmt::Display,
+                                     label: &dyn fmt::Display,
                                      expected: DiagnosticStyledString,
                                      found: DiagnosticStyledString,
-                                     expected_extra: &fmt::Display,
-                                     found_extra: &fmt::Display)
+                                     expected_extra: &dyn fmt::Display,
+                                     found_extra: &dyn fmt::Display)
                                      -> &mut Self
     {
         let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
@@ -222,6 +242,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: false,
+            applicability: Applicability::Unspecified,
         });
         self
     }
@@ -252,6 +273,26 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
+            applicability: Applicability::Unspecified,
+        });
+        self
+    }
+
+    pub fn multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: suggestion
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect(),
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: true,
+            applicability: Applicability::Unspecified,
         });
         self
     }
@@ -267,6 +308,60 @@ impl Diagnostic {
             }).collect(),
             msg: msg.to_owned(),
             show_code_when_inline: true,
+            applicability: Applicability::Unspecified,
+        });
+        self
+    }
+
+    /// This is a suggestion that may contain mistakes or fillers and should
+    /// be read and understood by a human.
+    pub fn span_suggestion_with_applicability(&mut self, sp: Span, msg: &str,
+                                       suggestion: String,
+                                       applicability: Applicability) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: true,
+            applicability,
+        });
+        self
+    }
+
+    pub fn span_suggestions_with_applicability(&mut self, sp: Span, msg: &str,
+                                        suggestions: Vec<String>,
+                                        applicability: Applicability) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: suggestions.into_iter().map(|snippet| Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet,
+                    span: sp,
+                }],
+            }).collect(),
+            msg: msg.to_owned(),
+            show_code_when_inline: true,
+            applicability,
+        });
+        self
+    }
+
+    pub fn span_suggestion_short_with_applicability(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: false,
+            applicability: applicability,
         });
         self
     }
@@ -279,6 +374,10 @@ impl Diagnostic {
     pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
         self.code = Some(s);
         self
+    }
+
+    pub fn get_code(&self) -> Option<DiagnosticId> {
+        self.code.clone()
     }
 
     pub fn message(&self) -> String {
@@ -299,7 +398,7 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
-    pub(crate) fn sub(&mut self,
+    pub fn sub(&mut self,
            level: Level,
            message: &str,
            span: MultiSpan,

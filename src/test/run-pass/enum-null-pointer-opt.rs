@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(nonzero, core)]
-
-extern crate core;
-
-use core::nonzero::NonZero;
 use std::mem::size_of;
+use std::num::NonZeroUsize;
+use std::ptr::NonNull;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -59,8 +56,8 @@ fn main() {
     assert_eq!(size_of::<[Box<isize>; 1]>(), size_of::<Option<[Box<isize>; 1]>>());
 
     // Should apply to NonZero
-    assert_eq!(size_of::<NonZero<usize>>(), size_of::<Option<NonZero<usize>>>());
-    assert_eq!(size_of::<NonZero<*mut i8>>(), size_of::<Option<NonZero<*mut i8>>>());
+    assert_eq!(size_of::<NonZeroUsize>(), size_of::<Option<NonZeroUsize>>());
+    assert_eq!(size_of::<NonNull<i8>>(), size_of::<Option<NonNull<i8>>>());
 
     // Should apply to types that use NonZero internally
     assert_eq!(size_of::<Vec<isize>>(), size_of::<Option<Vec<isize>>>());

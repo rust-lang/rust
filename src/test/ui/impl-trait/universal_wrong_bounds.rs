@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(universal_impl_trait)]
-
 use std::fmt::Display;
 
 fn foo(f: impl Display + Clone) -> String {
     wants_debug(f);
     wants_display(f);
-    wants_clone(f); //~ ERROR cannot find
+    wants_clone(f);
 }
 
 fn wants_debug(g: impl Debug) { } //~ ERROR cannot find
 fn wants_display(g: impl Debug) { } //~ ERROR cannot find
-fn wants_cone(g: impl Clone) { }
+fn wants_clone(g: impl Clone) { }
 
 fn main() {
 }

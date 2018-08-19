@@ -1,0 +1,14 @@
+error: enum variant is more than three times larger (1024 bytes) than the next largest
+  --> $DIR/variant-size-differences.rs:15:5
+   |
+LL |     VBig([u8; 1024]),   //~ ERROR variant is more than three times larger
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/variant-size-differences.rs:11:9
+   |
+LL | #![deny(variant_size_differences)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

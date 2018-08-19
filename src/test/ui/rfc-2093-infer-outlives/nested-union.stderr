@@ -1,0 +1,12 @@
+error: rustc_outlives
+  --> $DIR/nested-union.rs:18:1
+   |
+LL | / union Foo<'a, T> { //~ ERROR 18:1: 20:2: rustc_outlives
+LL | |     field1: Bar<'a, T>
+LL | | }
+   | |_^
+   |
+   = note: T : 'a
+
+error: aborting due to previous error
+

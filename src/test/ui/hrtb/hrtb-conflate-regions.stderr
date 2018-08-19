@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `for<'a, 'b> SomeStruct: Foo<(&'a isize, &'b isize)>` is not satisfied
+  --> $DIR/hrtb-conflate-regions.rs:38:10
+   |
+LL | fn b() { want_foo2::<SomeStruct>(); } //~ ERROR E0277
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Foo<(&'a isize, &'b isize)>` is not implemented for `SomeStruct`
+   |
+   = help: the following implementations were found:
+             <SomeStruct as Foo<(&'a isize, &'a isize)>>
+note: required by `want_foo2`
+  --> $DIR/hrtb-conflate-regions.rs:18:1
+   |
+LL | / fn want_foo2<T>()
+LL | |     where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
+LL | | {
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

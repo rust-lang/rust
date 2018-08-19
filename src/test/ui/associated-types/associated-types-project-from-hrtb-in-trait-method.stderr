@@ -1,0 +1,9 @@
+error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+  --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:21:32
+   |
+LL |     fn some_method(&self, arg: I::A);
+   |                                ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0212`.

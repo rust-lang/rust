@@ -1,0 +1,13 @@
+error[E0599]: no method named `foo` found for type `&b::B` in the current scope
+  --> $DIR/issue-10465.rs:27:15
+   |
+LL |             b.foo(); //~ ERROR: no method named `foo` found
+   |               ^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
+           `use a::A;`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -11,7 +11,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
-#![feature(std_misc, os)]
+#![feature(os)]
 
 #[cfg(unix)]
 fn main() {

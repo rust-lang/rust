@@ -1,0 +1,28 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/regions-escape-method.rs:25:13
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |             ^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 25:9...
+  --> $DIR/regions-escape-method.rs:25:9
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |         ^^^^^
+   = note: ...so that the expression is assignable:
+           expected &i32
+              found &i32
+note: but, the lifetime must be valid for the method call at 25:5...
+  --> $DIR/regions-escape-method.rs:25:5
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |     ^^^^^^^^^^
+note: ...so that a type/lifetime parameter is in scope here
+  --> $DIR/regions-escape-method.rs:25:5
+   |
+LL |     s.f(|p| p) //~ ERROR cannot infer
+   |     ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

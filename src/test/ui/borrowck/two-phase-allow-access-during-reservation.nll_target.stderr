@@ -1,0 +1,27 @@
+error[E0503]: cannot use `i` because it was mutably borrowed
+  --> $DIR/two-phase-allow-access-during-reservation.rs:40:19
+   |
+LL |     /*1*/ let p = &mut i; // (reservation of `i` starts here)
+   |                   ------ borrow of `i` occurs here
+LL | 
+LL |     /*2*/ let j = i;      // OK: `i` is only reserved here
+   |                   ^ use of borrowed `i`
+...
+LL |     /*3*/ *p += 1;        // (mutable borrow of `i` starts here, since `p` is used)
+   |           ------- borrow later used here
+
+error[E0503]: cannot use `i` because it was mutably borrowed
+  --> $DIR/two-phase-allow-access-during-reservation.rs:45:19
+   |
+LL |     /*1*/ let p = &mut i; // (reservation of `i` starts here)
+   |                   ------ borrow of `i` occurs here
+...
+LL |     /*4*/ let k = i;      //[nll_beyond]~  ERROR cannot use `i` because it was mutably borrowed [E0503]
+   |                   ^ use of borrowed `i`
+...
+LL |     /*5*/ *p += 1;
+   |           ------- borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0503`.

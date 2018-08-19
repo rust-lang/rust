@@ -1,0 +1,9 @@
+error[E0107]: wrong number of lifetime parameters: expected 1, found 0
+  --> $DIR/unboxed-closure-sugar-region.rs:40:43
+   |
+LL | fn test2(x: &Foo<(isize,),Output=()>, y: &Foo(isize)) {
+   |                                           ^^^^^^^^^^ expected 1 lifetime parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,68 @@
+error[E0080]: could not evaluate constant expression
+  --> $DIR/infinite-recursion-const-fn.rs:16:1
+   |
+LL | const fn a() -> usize { b() }
+   |                         ---
+   |                         |
+   |                         reached the configured maximum number of stack frames
+   |                         inside call to `b`
+LL | const fn b() -> usize { a() }
+   |                         ---
+   |                         |
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+   |                         inside call to `a`
+LL | const ARR: [i32; a()] = [5; 6]; //~ ERROR could not evaluate constant expression
+   | ^^^^^^^^^^^^^^^^^---^^^^^^^^^^^
+   |                  |
+   |                  inside call to `a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

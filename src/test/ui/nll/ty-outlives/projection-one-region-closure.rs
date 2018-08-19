@@ -22,10 +22,9 @@
 //
 // Ensuring that both `T: 'a` and `'b: 'a` holds does work (`elements_outlive`).
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 #![feature(rustc_attrs)]
 
 use std::cell::Cell;
@@ -54,9 +53,9 @@ where
     T: Anything<'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the parameter type `T` may not live long enough
-    //~| ERROR does not outlive free region
+    //~| ERROR
 }
 
 #[rustc_regions]
@@ -66,9 +65,9 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the parameter type `T` may not live long enough
-    //~| ERROR does not outlive free region
+    //~| ERROR
 }
 
 #[rustc_regions]
@@ -88,9 +87,9 @@ where
     // can do better here with a more involved verification step.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the parameter type `T` may not live long enough
-    //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+    //~| ERROR
 }
 
 #[rustc_regions]

@@ -8,16 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten weird assertion?
+
+#![feature(repr_packed)]
 
 #[repr(packed)]
-struct Foo {
+struct Foo1 {
+    bar: u8,
+    baz: usize
+}
+
+#[repr(packed(2))]
+struct Foo2 {
+    bar: u8,
+    baz: usize
+}
+
+#[repr(C, packed(4))]
+struct Foo4C {
     bar: u8,
     baz: usize
 }
 
 pub fn main() {
-    let foo = Foo { bar: 1, baz: 2 };
+    let foo = Foo1 { bar: 1, baz: 2 };
     let brw = unsafe { &foo.baz };
+    assert_eq!(*brw, 2);
 
+    let foo = Foo2 { bar: 1, baz: 2 };
+    let brw = unsafe { &foo.baz };
+    assert_eq!(*brw, 2);
+
+    let foo = Foo4C { bar: 1, baz: 2 };
+    let brw = unsafe { &foo.baz };
     assert_eq!(*brw, 2);
 }

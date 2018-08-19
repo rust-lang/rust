@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(slice_patterns)]
-#![feature(match_default_bindings)]
 
 pub fn main() {
     let sl: &[u8] = b"foo";

@@ -1,0 +1,9 @@
+error[E0459]: #[link(...)] specified without `name = "foo"`
+  --> $DIR/E0459.rs:11:1
+   |
+LL | #[link(kind = "dylib")] extern {} //~ ERROR E0459
+   | ^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0459`.

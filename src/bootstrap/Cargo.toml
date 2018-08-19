@@ -28,10 +28,15 @@ name = "sccache-plus-cl"
 path = "bin/sccache-plus-cl.rs"
 test = false
 
+[[bin]]
+name = "llvm-config-wrapper"
+path = "bin/llvm-config-wrapper.rs"
+test = false
+
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.23"
-filetime = "0.1"
+filetime = "0.2"
 num_cpus = "1.0"
 getopts = "0.2"
 cc = "1.0.1"
@@ -41,3 +46,8 @@ serde_derive = "1.0.8"
 serde_json = "1.0.2"
 toml = "0.4"
 lazy_static = "0.2"
+time = "0.1"
+petgraph = "0.4.12"
+
+[dev-dependencies]
+pretty_assertions = "0.5"

@@ -1,0 +1,32 @@
+error: variant is never constructed: `Variant2`
+  --> $DIR/lint-dead-code-5.rs:16:5
+   |
+LL |     Variant2 //~ ERROR: variant is never constructed
+   |     ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-5.rs:12:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: variant is never constructed: `Variant5`
+  --> $DIR/lint-dead-code-5.rs:23:5
+   |
+LL |     Variant5 { _x: isize }, //~ ERROR: variant is never constructed: `Variant5`
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: variant is never constructed: `Variant6`
+  --> $DIR/lint-dead-code-5.rs:24:5
+   |
+LL |     Variant6(isize), //~ ERROR: variant is never constructed: `Variant6`
+   |     ^^^^^^^^^^^^^^^
+
+error: enum is never used: `Enum3`
+  --> $DIR/lint-dead-code-5.rs:28:1
+   |
+LL | enum Enum3 { //~ ERROR: enum is never used
+   | ^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

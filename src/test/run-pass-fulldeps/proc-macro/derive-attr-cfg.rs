@@ -11,8 +11,6 @@
 // aux-build:derive-attr-cfg.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
-
 extern crate derive_attr_cfg;
 use derive_attr_cfg::Foo;
 

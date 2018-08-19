@@ -242,7 +242,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use ops;
+use ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -251,7 +251,7 @@ use ops;
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Err`]: enum.Result.html#variant.Err
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[must_use]
+#[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
     /// Contains the success value
@@ -909,6 +909,73 @@ impl<T: Default, E> Result<T, E> {
     }
 }
 
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Ok` arm of the Result via
+    /// `Deref`.
+    pub fn deref_ok(&self) -> Result<&T::Target, &E> {
+        self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Err` arm of the Result via
+    /// `Deref`.
+    pub fn deref_err(&self) -> Result<&T, &E::Target>
+    {
+        self.as_ref().map_err(|e| e.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing both the `Ok` and `Err` arms
+    /// of the Result via `Deref`.
+    pub fn deref(&self) -> Result<&T::Target, &E::Target>
+    {
+        self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
+    }
+}
+
+impl<T, E> Result<Option<T>, E> {
+    /// Transposes a `Result` of an `Option` into an `Option` of a `Result`.
+    ///
+    /// `Ok(None)` will be mapped to `None`.
+    /// `Ok(Some(_))` and `Err(_)` will be mapped to `Some(Ok(_))` and `Some(Err(_))`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_result)]
+    ///
+    /// #[derive(Debug, Eq, PartialEq)]
+    /// struct SomeErr;
+    ///
+    /// let x: Result<Option<i32>, SomeErr> = Ok(Some(5));
+    /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
+    /// assert_eq!(x.transpose(), y);
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_result", issue = "47338")]
+    pub fn transpose(self) -> Option<Result<T, E>> {
+        match self {
+            Ok(Some(x)) => Some(Ok(x)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
@@ -1009,7 +1076,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1017,6 +1084,7 @@ unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
+    #[inline]
     fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
 }
 
@@ -1053,7 +1121,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1096,7 +1164,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1168,14 +1236,17 @@ impl<T,E> ops::Try for Result<T, E> {
     type Ok = T;
     type Error = E;
 
+    #[inline]
     fn into_result(self) -> Self {
         self
     }
 
+    #[inline]
     fn from_ok(v: T) -> Self {
         Ok(v)
     }
 
+    #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
     }

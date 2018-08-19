@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `HastaLaVistaBaby` not covered
+  --> $DIR/E0004.rs:19:11
+   |
+LL |     match x { //~ ERROR E0004
+   |           ^ pattern `HastaLaVistaBaby` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

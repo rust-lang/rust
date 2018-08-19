@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir
-// must-compile-successfully
+// compile-flags:-Zborrowck=mir
+// compile-pass
 
 #![feature(rustc_attrs)]
 

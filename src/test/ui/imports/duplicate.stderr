@@ -1,88 +1,90 @@
 error[E0252]: the name `foo` is defined multiple times
   --> $DIR/duplicate.rs:25:9
    |
-24 |     use a::foo;
+LL |     use a::foo;
    |         ------ previous import of the value `foo` here
-25 |     use a::foo; //~ ERROR the name `foo` is defined multiple times
+LL |     use a::foo; //~ ERROR the name `foo` is defined multiple times
    |         ^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-25 |     use a::foo as Otherfoo; //~ ERROR the name `foo` is defined multiple times
-   |         ^^^^^^^^^^^^^^^^^^
+LL |     use a::foo as other_foo; //~ ERROR the name `foo` is defined multiple times
+   |         ^^^^^^^^^^^^^^^^^^^
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:56:9
    |
-56 |     use self::foo::bar; //~ ERROR `foo` is ambiguous
+LL |     use self::foo::bar; //~ ERROR `foo` is ambiguous
    |         ^^^^^^^^^^^^^^
    |
 note: `foo` could refer to the name imported here
   --> $DIR/duplicate.rs:53:9
    |
-53 |     use self::m1::*;
+LL |     use self::m1::*;
    |         ^^^^^^^^^^^
 note: `foo` could also refer to the name imported here
   --> $DIR/duplicate.rs:54:9
    |
-54 |     use self::m2::*;
+LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:45:5
    |
-45 |     f::foo(); //~ ERROR `foo` is ambiguous
+LL |     f::foo(); //~ ERROR `foo` is ambiguous
    |     ^^^^^^
    |
 note: `foo` could refer to the name imported here
   --> $DIR/duplicate.rs:34:13
    |
-34 |     pub use a::*;
+LL |     pub use a::*;
    |             ^^^^
 note: `foo` could also refer to the name imported here
   --> $DIR/duplicate.rs:35:13
    |
-35 |     pub use b::*;
+LL |     pub use b::*;
    |             ^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:46:5
    |
-46 |     g::foo(); //~ ERROR `foo` is ambiguous
+LL |     g::foo(); //~ ERROR `foo` is ambiguous
    |     ^^^^^^
    |
 note: `foo` could refer to the name imported here
   --> $DIR/duplicate.rs:39:13
    |
-39 |     pub use a::*;
+LL |     pub use a::*;
    |             ^^^^
 note: `foo` could also refer to the name imported here
   --> $DIR/duplicate.rs:40:13
    |
-40 |     pub use f::*;
+LL |     pub use f::*;
    |             ^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:59:9
    |
-59 |         foo::bar(); //~ ERROR `foo` is ambiguous
+LL |         foo::bar(); //~ ERROR `foo` is ambiguous
    |         ^^^^^^^^
    |
 note: `foo` could refer to the name imported here
   --> $DIR/duplicate.rs:53:9
    |
-53 |     use self::m1::*;
+LL |     use self::m1::*;
    |         ^^^^^^^^^^^
 note: `foo` could also refer to the name imported here
   --> $DIR/duplicate.rs:54:9
    |
-54 |     use self::m2::*;
+LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
 error: aborting due to 5 previous errors
 
+Some errors occurred: E0252, E0659.
+For more information about an error, try `rustc --explain E0252`.

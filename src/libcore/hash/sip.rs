@@ -23,10 +23,11 @@ use mem;
 /// (eg. `collections::HashMap` uses it by default).
 ///
 /// See: <https://131002.net/siphash>
-#[unstable(feature = "sip_hash_13", issue = "34767")]
+#[unstable(feature = "hashmap_internals", issue = "0")]
 #[rustc_deprecated(since = "1.13.0",
                    reason = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
+#[doc(hidden)]
 pub struct SipHasher13 {
     hasher: Hasher<Sip13Rounds>,
 }
@@ -34,11 +35,11 @@ pub struct SipHasher13 {
 /// An implementation of SipHash 2-4.
 ///
 /// See: <https://131002.net/siphash/>
-#[unstable(feature = "sip_hash_13", issue = "34767")]
+#[unstable(feature = "hashmap_internals", issue = "0")]
 #[rustc_deprecated(since = "1.13.0",
                    reason = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
-pub struct SipHasher24 {
+struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
 }
 
@@ -156,14 +157,16 @@ impl SipHasher {
     #[rustc_deprecated(since = "1.13.0",
                        reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
-        SipHasher(SipHasher24::new_with_keys(key0, key1))
+        SipHasher(SipHasher24 {
+            hasher: Hasher::new_with_keys(key0, key1)
+        })
     }
 }
 
 impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[unstable(feature = "hashmap_internals", issue = "0")]
     #[rustc_deprecated(since = "1.13.0",
                        reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new() -> SipHasher13 {
@@ -172,33 +175,11 @@ impl SipHasher13 {
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[unstable(feature = "hashmap_internals", issue = "0")]
     #[rustc_deprecated(since = "1.13.0",
                        reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 {
-            hasher: Hasher::new_with_keys(key0, key1)
-        }
-    }
-}
-
-impl SipHasher24 {
-    /// Creates a new `SipHasher24` with the two initial keys set to 0.
-    #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0",
-                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
-    pub fn new() -> SipHasher24 {
-        SipHasher24::new_with_keys(0, 0)
-    }
-
-    /// Creates a `SipHasher24` that is keyed off the provided keys.
-    #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0",
-                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
-    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
-        SipHasher24 {
             hasher: Hasher::new_with_keys(key0, key1)
         }
     }
@@ -271,30 +252,17 @@ impl<S: Sip> Hasher<S> {
 impl super::Hasher for SipHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        self.0.write(msg)
+        self.0.hasher.write(msg)
     }
 
     #[inline]
     fn finish(&self) -> u64 {
-        self.0.finish()
+        self.0.hasher.finish()
     }
 }
 
-#[unstable(feature = "sip_hash_13", issue = "34767")]
+#[unstable(feature = "hashmap_internals", issue = "0")]
 impl super::Hasher for SipHasher13 {
-    #[inline]
-    fn write(&mut self, msg: &[u8]) {
-        self.hasher.write(msg)
-    }
-
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.hasher.finish()
-    }
-}
-
-#[unstable(feature = "sip_hash_13", issue = "34767")]
-impl super::Hasher for SipHasher24 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)

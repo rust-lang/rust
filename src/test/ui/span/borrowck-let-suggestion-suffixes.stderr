@@ -1,10 +1,10 @@
 error[E0597]: `young[..]` does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:21:14
    |
-21 |     v2.push(&young[0]);      // statement 4
+LL |     v2.push(&young[0]);      // statement 4
    |              ^^^^^^^^ borrowed value does not live long enough
 ...
-56 | }
+LL | }
    | - `young[..]` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -12,12 +12,12 @@ error[E0597]: `young[..]` does not live long enough
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:28:14
    |
-28 |     v3.push(&id('x'));           // statement 6
+LL |     v3.push(&id('x'));           // statement 6
    |              ^^^^^^^ - temporary value dropped here while still borrowed
    |              |
    |              temporary value does not live long enough
 ...
-56 | }
+LL | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
@@ -25,12 +25,12 @@ error[E0597]: borrowed value does not live long enough
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:38:18
    |
-38 |         v4.push(&id('y'));
+LL |         v4.push(&id('y'));
    |                  ^^^^^^^ - temporary value dropped here while still borrowed
    |                  |
    |                  temporary value does not live long enough
 ...
-44 |     }                       // (statement 7)
+LL |     }                       // (statement 7)
    |     - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
@@ -38,15 +38,16 @@ error[E0597]: borrowed value does not live long enough
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:49:14
    |
-49 |     v5.push(&id('z'));
+LL |     v5.push(&id('z'));
    |              ^^^^^^^ - temporary value dropped here while still borrowed
    |              |
    |              temporary value does not live long enough
 ...
-56 | }
+LL | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

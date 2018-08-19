@@ -1,0 +1,34 @@
+error[E0364]: `foo` is private, and cannot be re-exported
+  --> $DIR/reexports.rs:16:17
+   |
+LL |         pub use super::foo; //~ ERROR cannot be re-exported
+   |                 ^^^^^^^^^^
+   |
+note: consider marking `foo` as `pub` in the imported module
+  --> $DIR/reexports.rs:16:17
+   |
+LL |         pub use super::foo; //~ ERROR cannot be re-exported
+   |                 ^^^^^^^^^^
+
+error: A non-empty glob must import something with the glob's visibility
+  --> $DIR/reexports.rs:17:17
+   |
+LL |         pub use super::*; //~ ERROR must import something with the glob's visibility
+   |                 ^^^^^^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/reexports.rs:38:9
+   |
+LL |     use b::a::foo::S; //~ ERROR `foo`
+   |         ^^^^^^^^^^^^
+
+error[E0603]: module `foo` is private
+  --> $DIR/reexports.rs:39:9
+   |
+LL |     use b::b::foo::S as T; //~ ERROR `foo`
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0364, E0603.
+For more information about an error, try `rustc --explain E0364`.

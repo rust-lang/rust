@@ -97,7 +97,7 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4
 h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
-	position: relative;
+	overflow: auto;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
@@ -109,7 +109,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	position: relative;
 }
 h3.impl, h3.method, h3.type {
-	margin-top: 15px;
+	padding-left: 15px;
 }
 
 h1, h2, h3, h4,
@@ -181,15 +181,19 @@ nav.sub {
 	overflow: auto;
 }
 
-.sidebar .current {
-	margin-right: -20px;
+.sidebar .block > ul > li {
+	margin-right: -10px;
 }
 
-.content, nav { max-width: 960px; }
+.content, nav {
+	max-width: 960px;
+}
 
 /* Everything else */
 
-.js-only, .hidden { display: none !important; }
+.js-only, .hidden {
+	display: none !important;
+}
 
 .sidebar img {
 	margin: 20px auto;
@@ -218,7 +222,9 @@ nav.sub {
 	border: none;
 }
 
-.location a:first-child { font-weight: 500; }
+.location a:first-child {
+	font-weight: 500;
+}
 
 .block {
 	padding: 0;
@@ -289,6 +295,11 @@ nav.sub {
 	overflow: auto;
 }
 
+#results > table {
+	width: 100%;
+	table-layout: fixed;
+}
+
 .content pre.line-numbers {
 	float: left;
 	border: none;
@@ -299,7 +310,9 @@ nav.sub {
 	-ms-user-select: none;
 	user-select: none;
 }
-.line-numbers span { cursor: pointer; }
+.line-numbers span {
+	cursor: pointer;
+}
 
 .docblock-short p {
 	display: inline;
@@ -317,7 +330,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code { white-space: nowrap; }
+.docblock-short code {
+	white-space: nowrap;
+}
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
 	border-bottom: 1px solid;
@@ -337,14 +352,11 @@ nav.sub {
 }
 
 .content .out-of-band {
+	float: right;
 	font-size: 23px;
 	margin: 0px;
 	padding: 0px;
-	text-align: right;
-	display: inline-block;
 	font-weight: normal;
-	position: absolute;
-	right: 0;
 }
 
 h3.impl > .out-of-band {
@@ -360,7 +372,8 @@ ul.item-list > li > .out-of-band {
 }
 
 h4 > code, h3 > code, .invisible > code {
-	position: inherit;
+	max-width: calc(100% - 41px);
+	display: block;
 }
 
 .in-band, code {
@@ -375,46 +388,43 @@ h4 > code, h3 > code, .invisible > code {
 .content .in-band {
 	margin: 0px;
 	padding: 0px;
-	display: inline-block;
 }
 
 .in-band > code {
 	display: inline-block;
 }
 
-#main { position: relative; }
+#main {
+	position: relative;
+}
 #main > .since {
 	top: inherit;
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-.content table {
+.content table:not(.table-display) {
 	border-spacing: 0 5px;
-	border-collapse: separate;
 }
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
 .content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+.content tr:first-child td { border-top: 0; }
 
 .docblock table {
-	border: 1px solid;
 	margin: .5em 0;
-	border-collapse: collapse;
 	width: 100%;
 }
 
 .docblock table td {
 	padding: .5em;
-	border-top: 1px dashed;
-	border-bottom: 1px dashed;
+	border: 1px dashed;
 }
 
 .docblock table th {
 	padding: .5em;
 	text-align: left;
-	border-top: 1px solid;
-	border-bottom: 1px solid;
+	border: 1px solid;
 }
 
 .fields + table {
@@ -426,7 +436,9 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 1em; }
+.content .item-list li {
+	margin-bottom: 1em;
+}
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -450,14 +462,35 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.important-traits) { margin-left: 40px; }
-
-.content .impl-items .docblock, .content .impl-items .stability {
+.content .methods > div:not(.important-traits) {
 	margin-left: 40px;
-	margin-bottom: .6em;
+	margin-bottom: 15px;
 }
+
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
+}
+.content .impl-items .docblock, .content .impl-items .stability {
+	margin-bottom: .6em;
+}
+.content .docblock > .impl-items {
+	margin-left: 20px;
+	margin-top: -34px;
+}
+.content .docblock > .impl-items > h4 {
+	border-bottom: 0;
+}
+.content .docblock >.impl-items .table-display {
+	margin: 0;
+}
+.content .docblock >.impl-items table td {
+	padding: 0;
+}
+.toggle-wrapper.marg-left > .collapse-toggle {
+	left: -24px;
+}
+.content .docblock > .impl-items .table-display, .impl-items table td {
+	border: none;
 }
 
 .content .stability code {
@@ -506,23 +539,38 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -25px;
+	left: -7px;
 }
 .anchor.field {
+	left: -5px;
+}
+.small-section-header > .anchor {
 	left: -20px;
+}
+.small-section-header > .anchor:not(.field) {
+	left: -28px;
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
 }
 
-.docblock a:hover, .docblock-short a:hover, .stability a {
+.docblock a:not(.srclink):not(.test-arrow):hover,
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
 	text-decoration: underline;
 }
 
 .block a.current.crate { font-weight: 500; }
 
+.search-container {
+	position: relative;
+}
+.search-container > .top-button {
+	position: absolute;
+	right: 0;
+	top: 10px;
+}
 .search-input {
-	width: 100%;
+	width: calc(100% - 34px);
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
@@ -557,11 +605,29 @@ a {
 	display: block;
 }
 
-.content .search-results td:first-child { padding-right: 0; }
-.content .search-results td:first-child a { padding-right: 10px; }
+.content .search-results td:first-child {
+	padding-right: 0;
+	width: 50%;
+}
+.content .search-results td:first-child a {
+	padding-right: 10px;
+}
+.content .search-results td:first-child a:after {
+    clear: both;
+    content: "";
+    display: block;
+}
+.content .search-results td:first-child a span {
+	float: left;
+}
 
 tr.result span.primitive::after {
 	content: ' (primitive type)';
+	font-style: italic;
+}
+
+tr.result span.keyword::after {
+	content: ' (keyword)';
 	font-style: italic;
 }
 
@@ -585,18 +651,13 @@ body.blur > :not(#help) {
 	flex: 0 0 auto;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
-	height: 354px;
+	height: auto;
 	border: 1px solid;
 }
 #help dt {
 	float: left;
-	border-radius: 4px;
-	border: 1px solid;
-	width: 23px;
-	text-align: center;
 	clear: left;
 	display: block;
-	margin-top: -1px;
 }
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
@@ -714,7 +775,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .toggle-wrapper {
 	position: relative;
-	margin-top: 5px;
+	margin-top: 0;
 }
 
 .toggle-wrapper.collapsed {
@@ -797,10 +858,19 @@ span.since {
 
 .attributes {
 	display: block;
-	margin: 0px 0px 0px 30px !important;
+	margin-top: 0px !important;
+	margin-right: 0px;
+	margin-bottom: 0px !important;
+	margin-left: 30px;
 }
 .toggle-attributes.collapsed {
-	margin-bottom: 5px;
+	margin-bottom: 0;
+}
+.impl-items > .toggle-attributes {
+	margin-left: 20px;
+}
+.impl-items .attributes {
+	font-weight: 500;
 }
 
 :target > code {
@@ -859,6 +929,7 @@ span.since {
 		display: block;
 		border-bottom: 1px solid;
 		border-right: 1px solid;
+		height: 45px;
 	}
 
 	.sidebar-elems {
@@ -878,11 +949,17 @@ span.since {
 	}
 
 	nav.sub {
-		margin: 0 auto;
+		width: calc(100% - 32px);
+		float: right;
 	}
 
 	.content {
 		margin-left: 0px;
+	}
+
+	#main {
+		margin-top: 45px;
+		padding: 0;
 	}
 
 	.content .in-band {
@@ -907,6 +984,10 @@ span.since {
 
 	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 		display: flex;
+	}
+
+	.anchor {
+		display: none !important;
 	}
 }
 
@@ -961,6 +1042,8 @@ span.since {
 
 pre.rust {
 	position: relative;
+	tab-width: 4;
+	-moz-tab-width: 4;
 }
 
 .search-failed {
@@ -1031,6 +1114,24 @@ h4 > .important-traits {
 
 	.show-it {
 		display: block;
+		width: 246px;
+	}
+
+	.show-it > .block.items {
+		margin: 8px 0;
+	}
+
+	.show-it > .block.items > ul {
+		margin: 0;
+	}
+
+	.show-it > .block.items > ul > li {
+		text-align: center;
+		margin: 2px 0;
+	}
+
+	.show-it > .block.items > ul > li > a {
+		font-size: 21px;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -1046,6 +1147,14 @@ h4 > .important-traits {
 		height: 45px;
 		z-index: -1;
 		border-bottom: 1px solid;
+	}
+
+	.collapse-toggle {
+		left: -20px;
+	}
+
+	.impl > .collapse-toggle {
+		left: -10px;
 	}
 }
 
@@ -1133,4 +1242,126 @@ h3.important {
 	position: absolute;
 	left: -42px;
 	margin-top: 2px;
+}
+
+kbd {
+	display: inline-block;
+	padding: 3px 5px;
+	font: 15px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	line-height: 10px;
+	vertical-align: middle;
+	border: solid 1px;
+	border-radius: 3px;
+	box-shadow: inset 0 -1px 0;
+	cursor: default;
+}
+
+.theme-picker {
+	position: absolute;
+	left: 211px;
+	top: 19px;
+}
+
+.theme-picker button {
+	outline: none;
+}
+
+#settings-menu {
+	position: absolute;
+	right: 0;
+	top: 10px;
+	outline: none;
+}
+
+#theme-picker, #settings-menu {
+	padding: 4px;
+	width: 27px;
+	height: 29px;
+	border: 1px solid;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#theme-choices {
+	display: none;
+	position: absolute;
+	left: 0;
+	top: 28px;
+	border: 1px solid;
+	border-radius: 3px;
+	z-index: 1;
+	cursor: pointer;
+}
+
+#theme-choices > button {
+	border: none;
+	width: 100%;
+	padding: 4px;
+	text-align: center;
+	background: rgba(0,0,0,0);
+}
+
+#theme-choices > button:not(:first-child) {
+	border-top: 1px solid;
+}
+
+@media (max-width: 700px) {
+	.theme-picker {
+		left: 10px;
+		top: 54px;
+		z-index: 1;
+	}
+}
+
+.hidden-by-impl-hider,
+.hidden-by-usual-hider {
+	/* important because of conflicting rule for small screens */
+	display: none !important;
+}
+
+#implementations-list > h3 > span.in-band {
+	width: 100%;
+}
+
+.table-display {
+	width: 100%;
+	border: 0;
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 16px;
+}
+
+.table-display tr td:first-child {
+	padding-right: 0;
+}
+
+.table-display tr td:last-child {
+	float: right;
+}
+.table-display .out-of-band {
+	position: relative;
+	font-size: 19px;
+	display: block;
+}
+
+#main > ul {
+	padding-left: 10px;
+}
+#main > ul > li {
+	list-style: none;
+}
+#all-types {
+	text-align: center;
+	border: 1px solid;
+	margin: 0 10px;
+	margin-bottom: 10px;
+	display: block;
+	border-radius: 7px;
+}
+#all-types > p {
+	margin: 5px 0;
+}
+
+.non-exhaustive {
+	margin-bottom: 1em;
 }

@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/unboxed-closures-failed-recursive-fn-2.rs:26:32
+   |
+LL |     let mut closure0 = None;
+   |         ------------ consider giving `closure0` a type
+...
+LL |                         return c();
+   |                                ^^^ cannot infer type
+   |
+   = note: type must be known at this point
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

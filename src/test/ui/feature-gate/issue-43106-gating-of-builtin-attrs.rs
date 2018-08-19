@@ -43,6 +43,7 @@
 #![feature(rustc_attrs)] // For `rustc_error`; see note below.
 #![warn(unused_attributes, unknown_lints)]
 #![allow(dead_code)]
+#![allow(stable_features)]
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -50,7 +51,6 @@
 #![allow                       (x5300)] //~ WARN unknown lint: `x5300`
 #![forbid                      (x5200)] //~ WARN unknown lint: `x5200`
 #![deny                        (x5100)] //~ WARN unknown lint: `x5100`
-#![macro_reexport             = "5000"] //~ WARN unused attribute
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
 #![macro_export               = "4800"] //~ WARN unused attribute
 #![plugin_registrar           = "4700"] //~ WARN unused attribute
@@ -60,7 +60,9 @@
 #![start                     = "x4300"] //~ WARN unused attribute
 // see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
 // see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
-#![repr                       = "3900"] //~ WARN unused attribute
+#![repr                       = "3900"]
+//~^ WARN unused attribute
+//~| WARN `repr` attribute isn't configurable with a literal
 #![path                       = "3800"] //~ WARN unused attribute
 #![abi                        = "3700"] //~ WARN unused attribute
 #![automatically_derived      = "3600"] //~ WARN unused attribute
@@ -99,7 +101,7 @@
 // For #![crate_id], see issue #43142. (I cannot bear to enshrine current behavior in a test)
 
 // FIXME(#44232) we should warn that this isn't used.
-#![feature                    ( x0600)]
+#![feature                    ( rust1)]
 
 // For #![no_start], see issue #43144. (I cannot bear to enshrine current behavior in a test)
 
@@ -184,25 +186,6 @@ mod deny {
 
     #[deny(x5100)] impl S { }
     //~^ WARN unknown lint: `x5100`
-}
-
-#[macro_reexport = "5000"]
-//~^ WARN unused attribute
-mod macro_reexport {
-    mod inner { #![macro_reexport="5000"] }
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] fn f() { }
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] struct S;
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] type T = S;
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] impl S { }
-    //~^ WARN unused attribute
 }
 
 #[macro_use]
@@ -329,20 +312,25 @@ mod bench {
 
 #[repr = "3900"]
 //~^ WARN unused attribute
+//~| WARN `repr` attribute isn't configurable with a literal
 mod repr {
     mod inner { #![repr="3900"] }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     #[repr = "3900"] fn f() { }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     struct S;
 
     #[repr = "3900"] type T = S;
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     #[repr = "3900"] impl S { }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 }
 
 #[path = "3800"]
@@ -509,7 +497,7 @@ mod reexport_test_harness_main {
     //~^ WARN unused attribute
 }
 
-// Cannnot feed "2700" to `#[macro_escape]` without signaling an error.
+// Cannot feed "2700" to `#[macro_escape]` without signaling an error.
 #[macro_escape]
 //~^ WARN macro_escape is a deprecated synonym for macro_use
 mod macro_escape {
@@ -661,7 +649,6 @@ mod must_use {
     mod inner { #![must_use="1400"] }
 
     #[must_use = "1400"] fn f() { }
-    //~^ WARN `#[must_use]` on functions is experimental
 
     #[must_use = "1400"] struct S;
 

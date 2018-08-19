@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// min-llvm-version 4.0
 // compile-flags: -O
 // ignore-x86
 // ignore-arm

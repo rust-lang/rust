@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C debug_assertions=no
-
-#![feature(i128_type)]
+// ignore-emscripten dies with an LLVM error
 
 fn main() {
     for i in 129..256 {

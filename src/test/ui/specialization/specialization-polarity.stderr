@@ -1,0 +1,19 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `u8`:
+  --> $DIR/specialization-polarity.rs:19:1
+   |
+LL | impl<T> Foo for T {}
+   | ----------------- first implementation here
+LL | impl !Foo for u8 {} //~ ERROR E0119
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error[E0119]: conflicting implementations of trait `Bar` for type `u8`:
+  --> $DIR/specialization-polarity.rs:24:1
+   |
+LL | impl<T> !Bar for T {}
+   | ------------------ first implementation here
+LL | impl Bar for u8 {} //~ ERROR E0119
+   | ^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

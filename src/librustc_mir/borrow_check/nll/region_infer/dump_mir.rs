@@ -13,8 +13,9 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
+use rustc::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
-use super::{Constraint, RegionInferenceContext};
+use super::{OutlivesConstraint, RegionInferenceContext};
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
@@ -23,13 +24,16 @@ const REGION_WIDTH: usize = 8;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
-    pub(crate) fn dump_mir(&self, out: &mut Write) -> io::Result<()> {
+    pub(crate) fn dump_mir(&self, out: &mut dyn Write) -> io::Result<()> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
-            if self.definitions[region].is_universal {
-                let classification = self.universal_regions.region_classification(region).unwrap();
-                let outlived_by = self.universal_regions.regions_outlived_by(region);
+            if let NLLRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
+                let classification = self
+                    .universal_regions
+                    .region_classification(region)
+                    .unwrap();
+                let outlived_by = self.universal_region_relations.regions_outlived_by(region);
                 writeln!(
                     out,
                     "| {r:rw$} | {c:cw$} | {ob}",
@@ -47,9 +51,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for region in self.regions() {
             writeln!(
                 out,
-                "| {r:rw$} | {v}",
+                "| {r:rw$} | {ui:4?} | {v}",
                 r = format!("{:?}", region),
                 rw = REGION_WIDTH,
+                ui = self.region_universe(region),
                 v = self.region_value_str(region),
             )?;
         }
@@ -67,7 +72,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// inference resulted in the values that it did when debugging.
     fn for_each_constraint(
         &self,
-        with_msg: &mut FnMut(&str) -> io::Result<()>,
+        with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
     ) -> io::Result<()> {
         for region in self.definitions.indices() {
             let value = self.liveness_constraints.region_value_str(region);
@@ -79,18 +84,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.iter().collect();
         constraints.sort();
         for constraint in &constraints {
-            let Constraint {
+            let OutlivesConstraint {
                 sup,
                 sub,
-                point,
-                span,
+                locations,
             } = constraint;
             with_msg(&format!(
-                "{:?}: {:?} @ {:?} due to {:?}",
+                "{:?}: {:?} due to {:?}",
                 sup,
                 sub,
-                point,
-                span
+                locations,
             ))?;
         }
 

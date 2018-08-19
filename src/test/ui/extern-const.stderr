@@ -1,8 +1,0 @@
-error: extern items cannot be `const`
-  --> $DIR/extern-const.rs:14:5
-   |
-14 |     const C: u8; //~ ERROR extern items cannot be `const`
-   |     ^^^^^ help: instead try using: `static`
-
-error: aborting due to previous error
-

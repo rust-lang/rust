@@ -10,8 +10,6 @@
 
 // aux-build:two_macros.rs
 
-#![feature(use_extern_macros)]
-
 mod foo {
     extern crate two_macros;
     pub use self::two_macros::m as panic;

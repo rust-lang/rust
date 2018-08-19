@@ -1,0 +1,19 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-3.rs:12:13
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                     ---                 --- these two types are declared with different lifetimes...
+LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+   |             ^ ...but data flows into `z` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-3.rs:12:15
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                         ---                  --- these two types are declared with different lifetimes...
+LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+   |               ^ ...but data flows into `z` here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

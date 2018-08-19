@@ -1,7 +1,7 @@
 note: External requirements
   --> $DIR/escape-upvar-ref.rs:33:27
    |
-33 |         let mut closure = || p = &y;
+LL |         let mut closure = || p = &y;
    |                           ^^^^^^^^^
    |
    = note: defining type: DefId(0/1:9 ~ escape_upvar_ref[317d]::test[0]::{{closure}}[0]) with closure substs [
@@ -16,30 +16,31 @@ note: External requirements
 note: No external requirements
   --> $DIR/escape-upvar-ref.rs:27:1
    |
-27 | / fn test() {
-28 | |     let x = 44;
-29 | |     let mut p = &x;
-30 | |
+LL | / fn test() {
+LL | |     let x = 44;
+LL | |     let mut p = &x;
+LL | |
 ...  |
-38 | |     deref(p);
-39 | | }
+LL | |     deref(p);
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:3 ~ escape_upvar_ref[317d]::test[0]) with substs []
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/escape-upvar-ref.rs:33:27
+  --> $DIR/escape-upvar-ref.rs:33:35
    |
-33 |         let mut closure = || p = &y;
-   |                           ^^^^^^^^^ borrowed value does not live long enough
+LL |         let mut closure = || p = &y;
+   |                           --      ^ borrowed value does not live long enough
+   |                           |
+   |                           value captured here
 ...
-36 |     }
-   |      - borrowed value only lives until here
-37 | 
-38 |     deref(p);
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | 
+LL |     deref(p);
    |           - borrow later used here
-   |
-   = note: borrowed value must be valid for lifetime '_#4r...
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

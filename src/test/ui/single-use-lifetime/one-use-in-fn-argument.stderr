@@ -1,0 +1,16 @@
+error: lifetime parameter `'a` only used once
+  --> $DIR/one-use-in-fn-argument.rs:18:6
+   |
+LL | fn a<'a>(x: &'a u32) { //~ ERROR `'a` only used once
+   |      ^^      -- ...is used only here
+   |      |
+   |      this lifetime...
+   |
+note: lint level defined here
+  --> $DIR/one-use-in-fn-argument.rs:11:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

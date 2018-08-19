@@ -1,0 +1,19 @@
+error[E0382]: use of moved value: `a[..]`
+  --> $DIR/borrowck-move-out-from-array.rs:20:14
+   |
+LL |     let [_, _x] = a;
+   |             -- value moved here
+LL |     let [.., _y] = a; //[ast]~ ERROR [E0382]
+   |              ^^ value used here after move
+
+error[E0382]: use of moved value: `a[..]`
+  --> $DIR/borrowck-move-out-from-array.rs:27:10
+   |
+LL |     let [_x, _] = a;
+   |          -- value moved here
+LL |     let [_y..] = a; //[ast]~ ERROR [E0382]
+   |          ^^ value used here after move
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

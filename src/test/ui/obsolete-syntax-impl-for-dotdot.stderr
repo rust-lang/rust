@@ -1,7 +1,7 @@
 error: `impl Trait for .. {}` is an obsolete syntax
   --> $DIR/obsolete-syntax-impl-for-dotdot.rs:17:1
    |
-17 | impl Trait2 for .. {} //~ ERROR `impl Trait for .. {}` is an obsolete syntax
+LL | impl Trait2 for .. {} //~ ERROR `impl Trait for .. {}` is an obsolete syntax
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use `auto trait Trait {}` instead

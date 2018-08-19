@@ -1,0 +1,56 @@
+error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
+  --> $DIR/macro-input-future-proofing.rs:14:13
+   |
+LL |     ($ty:ty <) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
+   |             ^
+
+error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
+  --> $DIR/macro-input-future-proofing.rs:15:13
+   |
+LL |     ($ty:ty < foo ,) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
+   |             ^
+
+error: `$pa:pat` is followed by `>`, which is not allowed for `pat` fragments
+  --> $DIR/macro-input-future-proofing.rs:21:14
+   |
+LL |     ($pa:pat >) => (); //~ ERROR `$pa:pat` is followed by `>`, which is not allowed for `pat`
+   |              ^
+
+error: `$pa:pat` is followed by `$pb:pat`, which is not allowed for `pat` fragments
+  --> $DIR/macro-input-future-proofing.rs:23:14
+   |
+LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
+   |              ^^^^^^^
+
+error: `$pb:pat` is followed by `$ty:ty`, which is not allowed for `pat` fragments
+  --> $DIR/macro-input-future-proofing.rs:23:22
+   |
+LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
+   |                      ^^^^^^
+
+error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
+  --> $DIR/macro-input-future-proofing.rs:26:17
+   |
+LL |     ($($ty:ty)* -) => (); //~ ERROR `$ty:ty` is followed by `-`
+   |                 ^
+
+error: `$b:ty` is followed by `-`, which is not allowed for `ty` fragments
+  --> $DIR/macro-input-future-proofing.rs:27:23
+   |
+LL |     ($($a:ty, $b:ty)* -) => (); //~ ERROR `$b:ty` is followed by `-`
+   |                       ^
+
+error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
+  --> $DIR/macro-input-future-proofing.rs:28:7
+   |
+LL |     ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is not allowed for `ty`
+   |       ^^^^^^^^
+
+error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
+  --> $DIR/macro-input-future-proofing.rs:29:21
+   |
+LL |     ( $($a:expr)* $($b:tt)* ) => { };
+   |                     ^^^^^
+
+error: aborting due to 9 previous errors
+

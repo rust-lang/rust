@@ -1,0 +1,35 @@
+error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-argument.rs:20:5
+   |
+LL | fn func(arg: S) {
+   |         --- help: consider changing this to be mutable: `mut arg`
+LL |     arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |     ^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-argument.rs:25:9
+   |
+LL |     fn method(&self, arg: S) {
+   |                      --- help: consider changing this to be mutable: `mut arg`
+LL |         arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |         ^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-argument.rs:31:9
+   |
+LL |     fn default(&self, arg: S) {
+   |                       --- help: consider changing this to be mutable: `mut arg`
+LL |         arg.mutate(); //~ ERROR: cannot borrow immutable argument
+   |         ^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-argument.rs:42:17
+   |
+LL |     (|arg: S| { arg.mutate() })(s); //~ ERROR: cannot borrow immutable argument
+   |       ---       ^^^ cannot borrow as mutable
+   |       |
+   |       help: consider changing this to be mutable: `mut arg`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

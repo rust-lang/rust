@@ -1,0 +1,18 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/issue-24363.rs:12:7
+   |
+LL |     1.create_a_type_error[ //~ `{integer}` is a primitive type and therefore doesn't have fields
+   |       ^^^^^^^^^^^^^^^^^^^
+
+error[E0369]: binary operation `+` cannot be applied to type `()`
+  --> $DIR/issue-24363.rs:13:9
+   |
+LL |         ()+() //~ ERROR binary operation `+` cannot be applied
+   |         ^^^^^
+   |
+   = note: an implementation of `std::ops::Add` might be missing for `()`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0369, E0610.
+For more information about an error, try `rustc --explain E0369`.

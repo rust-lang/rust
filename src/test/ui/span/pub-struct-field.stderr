@@ -1,19 +1,20 @@
 error[E0124]: field `bar` is already declared
   --> $DIR/pub-struct-field.rs:16:5
    |
-15 |     bar: u8,
+LL |     bar: u8,
    |     ------- `bar` first declared here
-16 |     pub bar: u8, //~ ERROR is already declared
+LL |     pub bar: u8, //~ ERROR is already declared
    |     ^^^^^^^^^^^ field already declared
 
 error[E0124]: field `bar` is already declared
   --> $DIR/pub-struct-field.rs:17:5
    |
-15 |     bar: u8,
+LL |     bar: u8,
    |     ------- `bar` first declared here
-16 |     pub bar: u8, //~ ERROR is already declared
-17 |     pub(crate) bar: u8, //~ ERROR is already declared
+LL |     pub bar: u8, //~ ERROR is already declared
+LL |     pub(crate) bar: u8, //~ ERROR is already declared
    |     ^^^^^^^^^^^^^^^^^^ field already declared
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0124`.

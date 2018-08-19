@@ -35,7 +35,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         let name_and_namespace = |def_id| {
             let item = self.tcx.associated_item(def_id);
-            (item.name, Namespace::from(item.kind))
+            (item.ident, Namespace::from(item.kind))
         };
 
         let impl_items1 = self.tcx.associated_item_def_ids(impl1);
@@ -82,29 +82,37 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
-                let used_to_be_allowed = self.tcx.infer_ctxt().enter(|infcx| {
-                    if let Some(overlap) =
-                        traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id,
-                                                  IntercrateMode::Issue43355)
-                    {
+                let used_to_be_allowed = traits::overlapping_impls(
+                    self.tcx,
+                    impl1_def_id,
+                    impl2_def_id,
+                    IntercrateMode::Issue43355,
+                    |overlap| {
                         self.check_for_common_items_in_impls(
-                            impl1_def_id, impl2_def_id, overlap, false);
+                            impl1_def_id,
+                            impl2_def_id,
+                            overlap,
+                            false,
+                        );
                         false
-                    } else {
-                        true
-                    }
-                });
+                    },
+                    || true,
+                );
 
                 if used_to_be_allowed {
-                    self.tcx.infer_ctxt().enter(|infcx| {
-                        if let Some(overlap) =
-                            traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id,
-                                                      IntercrateMode::Fixed)
-                        {
-                            self.check_for_common_items_in_impls(
-                                impl1_def_id, impl2_def_id, overlap, true);
-                        }
-                    });
+                    traits::overlapping_impls(
+                        self.tcx,
+                        impl1_def_id,
+                        impl2_def_id,
+                        IntercrateMode::Fixed,
+                        |overlap| self.check_for_common_items_in_impls(
+                            impl1_def_id,
+                            impl2_def_id,
+                            overlap,
+                            true,
+                        ),
+                        || (),
+                    );
                 }
             }
         }
@@ -114,10 +122,10 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemTrait(..) |
-            hir::ItemUnion(..) => {
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Trait(..) |
+            hir::ItemKind::Union(..) => {
                 let type_def_id = self.tcx.hir.local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }

@@ -22,11 +22,9 @@ struct MarkAttrs<'a>(&'a [ast::Name]);
 
 impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        if let Some(name) = attr.name() {
-            if self.0.contains(&name) {
-                mark_used(attr);
-                mark_known(attr);
-            }
+        if self.0.contains(&attr.name()) {
+            mark_used(attr);
+            mark_known(attr);
         }
     }
 
@@ -54,18 +52,22 @@ impl MultiItemModifier for ProcMacroDerive {
         let item = match item {
             Annotatable::Item(item) => item,
             Annotatable::ImplItem(_) |
-            Annotatable::TraitItem(_) => {
+            Annotatable::TraitItem(_) |
+            Annotatable::ForeignItem(_) |
+            Annotatable::Stmt(_) |
+            Annotatable::Expr(_) => {
                 ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to struct/enum items");
+                                    applied to a struct, enum, or union");
                 return Vec::new()
             }
         };
         match item.node {
             ItemKind::Struct(..) |
-            ItemKind::Enum(..) => {},
+            ItemKind::Enum(..) |
+            ItemKind::Union(..) => {},
             _ => {
                 ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to struct/enum items");
+                                    applied to a struct, enum, or union");
                 return Vec::new()
             }
         }
@@ -92,7 +94,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 }
 
                 err.emit();
-                panic!(FatalError);
+                FatalError.raise();
             }
         };
 
@@ -103,13 +105,13 @@ impl MultiItemModifier for ProcMacroDerive {
                 // fail if there have been errors emitted
                 Ok(_) if ecx.parse_sess.span_diagnostic.err_count() > error_count_before => {
                     ecx.struct_span_fatal(span, msg).emit();
-                    panic!(FatalError);
+                    FatalError.raise();
                 }
                 Ok(new_items) => new_items.into_iter().map(Annotatable::Item).collect(),
                 Err(_) => {
                     // FIXME: handle this better
                     ecx.struct_span_fatal(span, msg).emit();
-                    panic!(FatalError);
+                    FatalError.raise();
                 }
             }
         })

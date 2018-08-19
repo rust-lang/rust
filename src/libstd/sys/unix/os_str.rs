@@ -19,7 +19,7 @@ use rc::Rc;
 use sync::Arc;
 use sys_common::{AsInner, IntoInner};
 use sys_common::bytestring::debug_fmt_bytestring;
-use std_unicode::lossy::Utf8Lossy;
+use core::str::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
 pub struct Buf {
@@ -102,6 +102,11 @@ impl Buf {
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
+    }
+
+    #[inline]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.inner.shrink_to(min_capacity)
     }
 
     pub fn as_slice(&self) -> &Slice {

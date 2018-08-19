@@ -1,0 +1,14 @@
+error[E0072]: recursive type `U` has infinite size
+  --> $DIR/union-nonrepresentable.rs:13:1
+   |
+LL | union U { //~ ERROR recursive type `U` has infinite size
+   | ^^^^^^^ recursive type has infinite size
+LL |     a: u8,
+LL |     b: U,
+   |     ---- recursive without indirection
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `U` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

@@ -24,13 +24,13 @@ fn main() {
     };
 
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        foo.resume()
+        unsafe { foo.resume() }
     }));
     assert!(res.is_err());
 
     for _ in 0..10 {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            foo.resume()
+            unsafe { foo.resume() }
         }));
         assert!(res.is_err());
     }

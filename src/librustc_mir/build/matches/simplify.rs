@@ -92,15 +92,29 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Range { .. } |
-            PatternKind::Slice { .. } => {
+            PatternKind::Range { .. } => {
                 Err(match_pair)
+            }
+
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                    // irrefutable
+                    self.prefix_slice_suffix(&mut candidate.match_pairs,
+                                             &match_pair.place,
+                                             prefix,
+                                             slice.as_ref(),
+                                             suffix);
+                    Ok(())
+                } else {
+                    Err(match_pair)
+                }
             }
 
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().sess.features.borrow().never_type &&
+                        self.hir.tcx().features().never_type &&
+                        self.hir.tcx().features().exhaustive_patterns &&
                         self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
                     }
                 });

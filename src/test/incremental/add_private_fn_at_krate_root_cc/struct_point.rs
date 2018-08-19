@@ -15,7 +15,7 @@
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph
 // aux-build:point.rs
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]

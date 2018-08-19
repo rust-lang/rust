@@ -1,0 +1,56 @@
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:15:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:18:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:21:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:24:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:27:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:30:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:33:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:36:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/deriving-non-type.rs:39:1
+   |
+LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

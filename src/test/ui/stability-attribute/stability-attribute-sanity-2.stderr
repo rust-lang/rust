@@ -1,0 +1,22 @@
+error[E0538]: multiple 'feature' items
+  --> $DIR/stability-attribute-sanity-2.rs:17:25
+   |
+LL | #[stable(feature = "a", feature = "b", since = "1.0.0")] //~ ERROR multiple 'feature' items
+   |                         ^^^^^^^^^^^^^
+
+error[E0541]: unknown meta item 'sinse'
+  --> $DIR/stability-attribute-sanity-2.rs:20:25
+   |
+LL | #[stable(feature = "a", sinse = "1.0.0")] //~ ERROR unknown meta item 'sinse'
+   |                         ^^^^^^^^^^^^^^^ expected one of `since`, `note`
+
+error[E0545]: incorrect 'issue'
+  --> $DIR/stability-attribute-sanity-2.rs:23:1
+   |
+LL | #[unstable(feature = "a", issue = "no")] //~ ERROR incorrect 'issue'
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0538, E0541, E0545.
+For more information about an error, try `rustc --explain E0538`.

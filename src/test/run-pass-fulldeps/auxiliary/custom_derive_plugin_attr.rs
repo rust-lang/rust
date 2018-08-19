@@ -35,7 +35,7 @@ use rustc_plugin::Registry;
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
-        Symbol::intern("derive_TotalSum"),
+        Symbol::intern("rustc_derive_TotalSum"),
         MultiDecorator(box expand));
 }
 

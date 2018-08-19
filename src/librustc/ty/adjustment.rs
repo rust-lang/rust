@@ -77,7 +77,7 @@ pub enum Adjust<'tcx> {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
-    /// Dereference once, producing an lvalue.
+    /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref<'tcx>>),
 
     /// Take the address and produce either a `&` or `*` pointer.
@@ -91,8 +91,8 @@ pub enum Adjust<'tcx> {
     /// pointers.  We don't store the details of how the transform is
     /// done (in fact, we don't know that, because it might depend on
     /// the precise type parameters). We just store the target
-    /// type. Trans figures out what has to be done at monomorphization
-    /// time based on the precise source/target type at hand.
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
     Unsize,
 }
 
@@ -119,10 +119,43 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
     }
 }
 
+/// At least for initial deployment, we want to limit two-phase borrows to
+/// only a few specific cases. Right now, those mostly "things that desugar"
+/// into method calls
+///     - using x.some_method() syntax, where some_method takes &mut self
+///     - using Foo::some_method(&mut x, ...) syntax
+///     - binary assignment operators (+=, -=, *=, etc.)
+/// Anything else should be rejected until generalized two phase borrow support
+/// is implemented. Right now, dataflow can't handle the general case where there
+/// is more than one use of a mutable borrow, and we don't want to accept too much
+/// new code via two-phase borrows, so we try to limit where we create two-phase
+/// capable mutable borrows.
+/// See #49434 for tracking.
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AllowTwoPhase {
+    Yes,
+    No
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AutoBorrowMutability {
+    Mutable { allow_two_phase_borrow: AllowTwoPhase },
+    Immutable,
+}
+
+impl From<AutoBorrowMutability> for hir::Mutability {
+    fn from(m: AutoBorrowMutability) -> Self {
+        match m {
+            AutoBorrowMutability::Mutable { .. } => hir::MutMutable,
+            AutoBorrowMutability::Immutable => hir::MutImmutable,
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
     /// Convert from T to &T.
-    Ref(ty::Region<'tcx>, hir::Mutability),
+    Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
     /// Convert from T to *T.
     RawPtr(hir::Mutability),

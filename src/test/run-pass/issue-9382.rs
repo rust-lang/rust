@@ -11,7 +11,6 @@
 // except according to those terms.
 
 #![allow(unnecessary_allocation)]
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 // Tests for a previous bug that occurred due to an interaction

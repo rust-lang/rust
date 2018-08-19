@@ -1,0 +1,40 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:17:13
+   |
+LL |     let y = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     //~^ mutable borrow occurs here
+LL |     let z = &x; //~ ERROR cannot borrow
+   |             ^^ immutable borrow occurs here
+...
+LL |     y.use_mut();
+   |     - borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:30:21
+   |
+LL |             let y = &x;
+   |                     -- immutable borrow occurs here
+LL |             //~^ immutable borrow occurs here
+LL |             let z = &mut x; //~ ERROR cannot borrow
+   |                     ^^^^^^ mutable borrow occurs here
+...
+LL |             y.use_ref();
+   |             - borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:45:17
+   |
+LL |         let y = &mut x;
+   |                 ------ first mutable borrow occurs here
+LL |         //~^ first mutable borrow occurs here
+LL |         let z = &mut x; //~ ERROR cannot borrow
+   |                 ^^^^^^ second mutable borrow occurs here
+...
+LL |         y.use_mut();
+   |         - borrow later used here
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.

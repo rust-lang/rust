@@ -1,0 +1,11 @@
+error[E0263]: lifetime name `'a` declared twice in the same scope
+  --> $DIR/regions-name-duplicated.rs:11:16
+   |
+LL | struct Foo<'a, 'a> { //~ ERROR lifetime name `'a` declared twice
+   |            --  ^^ declared twice
+   |            |
+   |            previous declaration here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0263`.

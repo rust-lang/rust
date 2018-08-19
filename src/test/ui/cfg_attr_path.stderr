@@ -1,0 +1,11 @@
+error: compilation successful
+  --> $DIR/cfg_attr_path.rs:21:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | |     let _ = auxiliary::namespaced_enums::Foo::A;
+LL | |     let _ = auxiliary::nonexistent_file::Foo::A;
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

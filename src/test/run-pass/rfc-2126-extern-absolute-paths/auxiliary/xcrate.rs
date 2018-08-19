@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct S;
 
 #[derive(Debug)]
 pub struct Z;
+
+pub trait Tr<'a> {}

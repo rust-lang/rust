@@ -13,7 +13,6 @@ use rustc::session::Session;
 use generated_code;
 
 use std::cell::Cell;
-use std::env;
 
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
@@ -36,11 +35,10 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn make_path_string(path: &FileName) -> String {
+    pub fn make_path_string(&self, path: &FileName) -> String {
         match *path {
             FileName::Real(ref path) if !path.is_absolute() =>
-                env::current_dir()
-                    .unwrap()
+                self.sess.working_dir.0
                     .join(&path)
                     .display()
                     .to_string(),
@@ -115,7 +113,7 @@ impl<'a> SpanUtils<'a> {
         // We keep track of the following two counts - the depth of nesting of
         // angle brackets, and the depth of nesting of square brackets. For the
         // angle bracket count, we only count tokens which occur outside of any
-        // square brackets (i.e. bracket_count == 0). The intutition here is
+        // square brackets (i.e. bracket_count == 0). The intuition here is
         // that we want to count angle brackets in the type, but not any which
         // could be in expression context (because these could mean 'less than',
         // etc.).
@@ -151,18 +149,20 @@ impl<'a> SpanUtils<'a> {
             }
             prev = next;
         }
-        if angle_count != 0 || bracket_count != 0 {
-            let loc = self.sess.codemap().lookup_char_pos(span.lo());
-            span_bug!(
-                span,
-                "Mis-counted brackets when breaking path? Parsing '{}' \
-                 in {}, line {}",
-                self.snippet(span),
-                loc.file.name,
-                loc.line
-            );
+        #[cfg(debug_assertions)] {
+            if angle_count != 0 || bracket_count != 0 {
+                let loc = self.sess.codemap().lookup_char_pos(span.lo());
+                span_bug!(
+                    span,
+                    "Mis-counted brackets when breaking path? Parsing '{}' \
+                     in {}, line {}",
+                    self.snippet(span),
+                    loc.file.name,
+                    loc.line
+                );
+            }
         }
-        if result.is_none() && prev.tok.is_ident() && angle_count == 0 {
+        if result.is_none() && prev.tok.is_ident() {
             return Some(prev.sp);
         }
         result
@@ -198,10 +198,6 @@ impl<'a> SpanUtils<'a> {
 
     pub fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword) -> Option<Span> {
         self.sub_span_after(span, |t| t.is_keyword(keyword))
-    }
-
-    pub fn sub_span_after_token(&self, span: Span, tok: Token) -> Option<Span> {
-        self.sub_span_after(span, |t| t == tok)
     }
 
     fn sub_span_after<F: Fn(Token) -> bool>(&self, span: Span, f: F) -> Option<Span> {

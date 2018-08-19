@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attr_proc_macro.rs
-#![feature(proc_macro)]
 
 #[macro_use] extern crate attr_proc_macro;
 

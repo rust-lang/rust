@@ -1,0 +1,14 @@
+error[E0382]: use of partially moved value: `node`
+  --> $DIR/moves-based-on-type-cyclic-types-issue-4821.rs:23:13
+   |
+LL |         Some(right) => consume(right),
+   |              ----- value moved here
+...
+LL |     consume(node) + r //~ ERROR use of partially moved value: `node`
+   |             ^^^^ value used here after move
+   |
+   = note: move occurs because the value has type `std::boxed::Box<List>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

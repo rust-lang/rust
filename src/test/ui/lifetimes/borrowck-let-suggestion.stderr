@@ -1,11 +1,12 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion.rs:12:13
+  --> $DIR/borrowck-let-suggestion.rs:12:17
    |
-12 |     let x = vec![1].iter();
-   |             ^^^^^^^       - temporary value dropped here while still borrowed
-   |             |
-   |             temporary value does not live long enough
-13 | }
+LL |     let mut x = vec![1].iter();
+   |                 ^^^^^^^       - temporary value dropped here while still borrowed
+   |                 |
+   |                 temporary value does not live long enough
+...
+LL | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
@@ -13,3 +14,4 @@ error[E0597]: borrowed value does not live long enough
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

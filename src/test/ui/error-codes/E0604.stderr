@@ -1,0 +1,9 @@
+error[E0604]: only `u8` can be cast as `char`, not `u32`
+  --> $DIR/E0604.rs:12:5
+   |
+LL |     1u32 as char; //~ ERROR E0604
+   |     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0604`.

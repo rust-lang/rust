@@ -1,0 +1,27 @@
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/yield-while-iterating.rs:22:18
+   |
+LL |         for p in &x { //~ ERROR
+   |                  ^^
+LL |             yield();
+   |             ------- possible yield occurs here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/yield-while-iterating.rs:67:20
+   |
+LL |       let mut b = || {
+   |  _________________-
+LL | |         for p in &mut x {
+LL | |             yield p;
+LL | |         }
+LL | |     };
+   | |_____- mutable borrow occurs here
+LL |       println!("{}", x[0]); //~ ERROR
+   |                      ^ immutable borrow occurs here
+LL |       b.resume();
+   |       - borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0502, E0626.
+For more information about an error, try `rustc --explain E0502`.

@@ -1,0 +1,44 @@
+warning: unreachable statement
+  --> $DIR/never-assign-dead-code.rs:20:5
+   |
+LL |     drop(x); //~ WARN unreachable
+   |     ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/never-assign-dead-code.rs:15:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(unreachable_code)] implied by #[warn(unused)]
+
+warning: unreachable expression
+  --> $DIR/never-assign-dead-code.rs:20:5
+   |
+LL |     drop(x); //~ WARN unreachable
+   |     ^^^^^^^
+
+warning: unused variable: `x`
+  --> $DIR/never-assign-dead-code.rs:19:9
+   |
+LL |     let x: ! = panic!("aah"); //~ WARN unused
+   |         ^ help: consider using `_x` instead
+   |
+note: lint level defined here
+  --> $DIR/never-assign-dead-code.rs:15:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+
+error: compilation successful
+  --> $DIR/never-assign-dead-code.rs:18:1
+   |
+LL | / fn main() { //~ ERROR: compilation successful
+LL | |     let x: ! = panic!("aah"); //~ WARN unused
+LL | |     drop(x); //~ WARN unreachable
+LL | |     //~^ WARN unreachable
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

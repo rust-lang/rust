@@ -11,8 +11,6 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::middle::cstore in no particular order.
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
-
 use middle;
 
 impl_stable_hash_for!(enum middle::cstore::DepKind {
@@ -33,7 +31,13 @@ impl_stable_hash_for!(struct middle::cstore::NativeLibrary {
     kind,
     name,
     cfg,
-    foreign_items
+    foreign_module,
+    wasm_import_module
+});
+
+impl_stable_hash_for!(struct middle::cstore::ForeignModule {
+    foreign_items,
+    def_id
 });
 
 impl_stable_hash_for!(enum middle::cstore::LinkagePreference {
@@ -42,10 +46,16 @@ impl_stable_hash_for!(enum middle::cstore::LinkagePreference {
 });
 
 impl_stable_hash_for!(struct middle::cstore::ExternCrate {
-    def_id,
+    src,
     span,
-    direct,
-    path_len
+    path_len,
+    direct
+});
+
+impl_stable_hash_for!(enum middle::cstore::ExternCrateSource {
+    Extern(def_id),
+    Use,
+    Path,
 });
 
 impl_stable_hash_for!(struct middle::cstore::CrateSource {
@@ -53,29 +63,3 @@ impl_stable_hash_for!(struct middle::cstore::CrateSource {
     rlib,
     rmeta
 });
-
-impl<HCX> HashStable<HCX> for middle::cstore::ExternBodyNestedBodies {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut HCX,
-                                          hasher: &mut StableHasher<W>) {
-        let middle::cstore::ExternBodyNestedBodies {
-            nested_bodies: _,
-            fingerprint,
-        } = *self;
-
-        fingerprint.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, HCX> HashStable<HCX> for middle::cstore::ExternConstBody<'a> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut HCX,
-                                          hasher: &mut StableHasher<W>) {
-        let middle::cstore::ExternConstBody {
-            body: _,
-            fingerprint,
-        } = *self;
-
-        fingerprint.hash_stable(hcx, hasher);
-    }
-}

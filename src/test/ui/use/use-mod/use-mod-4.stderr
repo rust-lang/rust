@@ -1,0 +1,22 @@
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-mod-4.rs:11:5
+   |
+LL | use foo::self; //~ ERROR unresolved import `foo`
+   |     ^^^^^^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-mod-4.rs:14:5
+   |
+LL | use std::mem::self;
+   |     ^^^^^^^^^^^^^^
+
+error[E0432]: unresolved import `foo`
+  --> $DIR/use-mod-4.rs:11:5
+   |
+LL | use foo::self; //~ ERROR unresolved import `foo`
+   |     ^^^ Maybe a missing `extern crate foo;`?
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0429, E0432.
+For more information about an error, try `rustc --explain E0429`.

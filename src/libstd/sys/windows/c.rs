@@ -280,6 +280,9 @@ pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
 #[cfg(target_arch = "x86_64")]
 #[cfg(feature = "backtrace")]
 pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
+#[cfg(target_arch = "aarch64")]
+#[cfg(feature = "backtrace")]
+pub const IMAGE_FILE_MACHINE_ARM64: DWORD = 0xAA64;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
@@ -295,6 +298,8 @@ pub const PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
 pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 
 pub const FD_SETSIZE: usize = 64;
+
+pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
@@ -619,6 +624,24 @@ pub struct ADDRESS64 {
 
 #[repr(C)]
 #[cfg(feature = "backtrace")]
+pub struct STACKFRAME_EX {
+    pub AddrPC: ADDRESS64,
+    pub AddrReturn: ADDRESS64,
+    pub AddrFrame: ADDRESS64,
+    pub AddrStack: ADDRESS64,
+    pub AddrBStore: ADDRESS64,
+    pub FuncTableEntry: *mut c_void,
+    pub Params: [u64; 4],
+    pub Far: BOOL,
+    pub Virtual: BOOL,
+    pub Reserved: [u64; 3],
+    pub KdHelp: KDHELP64,
+    pub StackFrameSize: DWORD,
+    pub InlineFrameContext: DWORD,
+}
+
+#[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct STACKFRAME64 {
     pub AddrPC: ADDRESS64,
     pub AddrReturn: ADDRESS64,
@@ -771,8 +794,67 @@ pub struct FLOATING_SAVE_AREA {
 // will not appear in the final documentation. This should be also defined for
 // other architectures supported by Windows such as ARM, and for historical
 // interest, maybe MIPS and PowerPC as well.
-#[cfg(all(dox, not(any(target_arch = "x86_64", target_arch = "x86"))))]
+#[cfg(all(dox, not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"))))]
 pub enum CONTEXT {}
+
+#[cfg(target_arch = "aarch64")]
+pub const ARM64_MAX_BREAKPOINTS: usize = 8;
+
+#[cfg(target_arch = "aarch64")]
+pub const ARM64_MAX_WATCHPOINTS: usize = 2;
+
+#[cfg(target_arch = "aarch64")]
+#[repr(C)]
+pub struct ARM64_NT_NEON128 {
+    pub D: [f64; 2],
+}
+
+#[cfg(target_arch = "aarch64")]
+#[repr(C, align(16))]
+pub struct CONTEXT {
+    pub ContextFlags: DWORD,
+    pub Cpsr: DWORD,
+    pub X0: u64,
+    pub X1: u64,
+    pub X2: u64,
+    pub X3: u64,
+    pub X4: u64,
+    pub X5: u64,
+    pub X6: u64,
+    pub X7: u64,
+    pub X8: u64,
+    pub X9: u64,
+    pub X10: u64,
+    pub X11: u64,
+    pub X12: u64,
+    pub X13: u64,
+    pub X14: u64,
+    pub X15: u64,
+    pub X16: u64,
+    pub X17: u64,
+    pub X18: u64,
+    pub X19: u64,
+    pub X20: u64,
+    pub X21: u64,
+    pub X22: u64,
+    pub X23: u64,
+    pub X24: u64,
+    pub X25: u64,
+    pub X26: u64,
+    pub X27: u64,
+    pub X28: u64,
+    pub Fp: u64,
+    pub Lr: u64,
+    pub Sp: u64,
+    pub Pc: u64,
+    pub V: [ARM64_NT_NEON128; 32],
+    pub Fpcr: DWORD,
+    pub Fpsr: DWORD,
+    pub Bcr: [DWORD; ARM64_MAX_BREAKPOINTS],
+    pub Bvr: [DWORD; ARM64_MAX_BREAKPOINTS],
+    pub Wcr: [DWORD; ARM64_MAX_WATCHPOINTS],
+    pub Wvr: [DWORD; ARM64_MAX_WATCHPOINTS],
+}
 
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {

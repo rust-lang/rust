@@ -1,0 +1,68 @@
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:25:9
+   |
+LL | fn f(_: m::Alias) {} //~ ERROR type `m::Priv` is private
+   |         ^^^^^^^^
+
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:25:6
+   |
+LL | fn f(_: m::Alias) {} //~ ERROR type `m::Priv` is private
+   |      ^
+
+error: type `ext::Priv` is private
+  --> $DIR/private-type-in-interface.rs:27:13
+   |
+LL | fn f_ext(_: ext::Alias) {} //~ ERROR type `ext::Priv` is private
+   |             ^^^^^^^^^^
+
+error: type `ext::Priv` is private
+  --> $DIR/private-type-in-interface.rs:27:10
+   |
+LL | fn f_ext(_: ext::Alias) {} //~ ERROR type `ext::Priv` is private
+   |          ^
+
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:31:6
+   |
+LL | impl m::Alias {} //~ ERROR type `m::Priv` is private
+   |      ^^^^^^^^
+
+error: type `ext::Priv` is private
+  --> $DIR/private-type-in-interface.rs:32:14
+   |
+LL | impl Tr1 for ext::Alias {} //~ ERROR type `ext::Priv` is private
+   |              ^^^^^^^^^^
+
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:33:10
+   |
+LL | type A = <m::Alias as m::Trait>::X; //~ ERROR type `m::Priv` is private
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:37:11
+   |
+LL | fn g() -> impl Tr2<m::Alias> { 0 } //~ ERROR type `m::Priv` is private
+   |           ^^^^^^^^^^^^^^^^^^
+
+error: type `m::Priv` is private
+  --> $DIR/private-type-in-interface.rs:37:16
+   |
+LL | fn g() -> impl Tr2<m::Alias> { 0 } //~ ERROR type `m::Priv` is private
+   |                ^^^^^^^^^^^^^
+
+error: type `ext::Priv` is private
+  --> $DIR/private-type-in-interface.rs:39:15
+   |
+LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 } //~ ERROR type `ext::Priv` is private
+   |               ^^^^^^^^^^^^^^^^^^^^
+
+error: type `ext::Priv` is private
+  --> $DIR/private-type-in-interface.rs:39:20
+   |
+LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 } //~ ERROR type `ext::Priv` is private
+   |                    ^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

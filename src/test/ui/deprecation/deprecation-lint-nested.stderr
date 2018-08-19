@@ -1,0 +1,44 @@
+error: use of deprecated item 'loud::DeprecatedType'
+  --> $DIR/deprecation-lint-nested.rs:65:16
+   |
+LL |     struct Foo(DeprecatedType); //~ ERROR use of deprecated item
+   |                ^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/deprecation-lint-nested.rs:11:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated item 'loud::DeprecatedTrait'
+  --> $DIR/deprecation-lint-nested.rs:67:10
+   |
+LL |     impl DeprecatedTrait for Foo {} //~ ERROR use of deprecated item
+   |          ^^^^^^^^^^^^^^^
+
+error: use of deprecated item 'loud::DEPRECATED_STATIC'
+  --> $DIR/deprecation-lint-nested.rs:76:9
+   |
+LL |         DEPRECATED_STATIC + //~ ERROR use of deprecated item
+   |         ^^^^^^^^^^^^^^^^^
+
+error: use of deprecated item 'loud::DEPRECATED_CONST'
+  --> $DIR/deprecation-lint-nested.rs:77:9
+   |
+LL |         DEPRECATED_CONST //~ ERROR use of deprecated item
+   |         ^^^^^^^^^^^^^^^^
+
+error: use of deprecated item 'loud::DeprecatedTrait'
+  --> $DIR/deprecation-lint-nested.rs:70:19
+   |
+LL |         fn bar<T: DeprecatedTrait>() { //~ ERROR use of deprecated item
+   |                   ^^^^^^^^^^^^^^^
+
+error: use of deprecated item 'loud::deprecated_fn'
+  --> $DIR/deprecation-lint-nested.rs:71:13
+   |
+LL |             deprecated_fn(); //~ ERROR use of deprecated item
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

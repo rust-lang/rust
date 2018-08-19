@@ -19,4 +19,9 @@ pub fn main() {
     assert_eq!(i as u8 as i8, 'Q' as u8 as i8);
     assert_eq!(0x51 as char, 'Q');
     assert_eq!(0 as u32, false as u32);
+
+    // Test that `_` is correctly inferred.
+    let x = &"hello";
+    let mut y = x as *const _;
+    y = 0 as *const _;
 }

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+// compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is the "goto example" for why we want two phase borrows.
 

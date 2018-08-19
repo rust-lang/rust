@@ -1,0 +1,21 @@
+error[E0596]: cannot borrow immutable argument `arg` as mutable
+  --> $DIR/mut-suggestion.rs:21:5
+   |
+LL | fn func(arg: S) {
+   |         --- consider changing this to `mut arg`
+LL |     //~^ consider changing this to `mut arg`
+LL |     arg.mutate();
+   |     ^^^ cannot borrow mutably
+
+error[E0596]: cannot borrow immutable local variable `local` as mutable
+  --> $DIR/mut-suggestion.rs:29:5
+   |
+LL |     let local = S;
+   |         ----- consider changing this to `mut local`
+LL |     //~^ consider changing this to `mut local`
+LL |     local.mutate();
+   |     ^^^^^ cannot borrow mutably
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

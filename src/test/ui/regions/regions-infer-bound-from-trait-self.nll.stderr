@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/regions-infer-bound-from-trait-self.rs:56:9
+   |
+LL |         check_bound(x, self)
+   |         ^^^^^^^^^^^
+
+error[E0309]: the parameter type `Self` may not live long enough
+  --> $DIR/regions-infer-bound-from-trait-self.rs:56:9
+   |
+LL |         check_bound(x, self)
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

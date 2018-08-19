@@ -124,6 +124,15 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_VEC:
         return RustStdVecPrinter(val)
 
+    if type_kind == rustpp.TYPE_KIND_STD_VECDEQUE:
+        return RustStdVecDequePrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_STD_BTREESET:
+        return RustStdBTreeSetPrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_STD_BTREEMAP:
+        return RustStdBTreeMapPrinter(val)
+
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
 
@@ -274,6 +283,77 @@ class RustStdVecPrinter(object):
             yield (str(index), (gdb_ptr + index).dereference())
 
 
+class RustStdVecDequePrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "array"
+
+    def to_string(self):
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i, cap: %i)" % (head - tail, cap)))
+
+    def children(self):
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        gdb_ptr = data_ptr.get_wrapped_value()
+        for index in xrange(tail, head):
+            yield (str(index), (gdb_ptr + index).dereference())
+
+
+class RustStdBTreeSetPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "array"
+
+    def to_string(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i)" % length))
+
+    def children(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
+        val = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        gdb_ptr = val.get_wrapped_value()
+        for index in xrange(length):
+            yield (str(index), gdb_ptr[index])
+
+
+class RustStdBTreeMapPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "map"
+
+    def to_string(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i)" % length))
+
+    def children(self):
+        (length, data_ptr) = \
+            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
+        keys = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        keys_ptr = keys.get_wrapped_value()
+        vals = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(4)
+        vals_ptr = vals.get_wrapped_value()
+        for index in xrange(length):
+            yield (str(index), keys_ptr[index])
+            yield (str(index), vals_ptr[index])
+
+
 class RustStdStringPrinter(object):
     def __init__(self, val):
         self.__val = val
@@ -286,6 +366,7 @@ class RustStdStringPrinter(object):
 
     def display_hint(self):
         return "string"
+
 
 class RustOsStringPrinter(object):
     def __init__(self, val):

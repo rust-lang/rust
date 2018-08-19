@@ -12,7 +12,6 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn foo() {
     if {return} {
@@ -36,6 +35,7 @@ fn baz() {
     // As the next action to be taken after the if arms, we should
     // report the `println!` as unreachable:
     println!("But I am.");
+    //~^ ERROR unreachable statement
 }
 
 fn main() { }

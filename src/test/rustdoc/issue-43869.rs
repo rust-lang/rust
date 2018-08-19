@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait)]
-
 pub fn g() -> impl Iterator<Item=u8> {
     Some(1u8).into_iter()
 }

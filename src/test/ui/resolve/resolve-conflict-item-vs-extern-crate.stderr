@@ -1,0 +1,15 @@
+error[E0260]: the name `std` is defined multiple times
+  --> $DIR/resolve-conflict-item-vs-extern-crate.rs:12:1
+   |
+LL | mod std {}    //~ ERROR the name `std` is defined multiple times
+   | ^^^^^^^ `std` redefined here
+   |
+   = note: `std` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+LL |  as other_std// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+   |  ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0260`.

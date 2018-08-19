@@ -1,0 +1,11 @@
+error[E0605]: non-primitive cast: `()` as `usize`
+  --> $DIR/issue-10991.rs:13:14
+   |
+LL |     let _t = nil as usize; //~ ERROR: non-primitive cast: `()` as `usize`
+   |              ^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0605`.

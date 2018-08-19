@@ -1,13 +1,15 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-36537.rs:14:10
+  --> $DIR/issue-36537.rs:15:14
    |
-14 |     p = &a;
-   |          ^ borrowed value does not live long enough
-15 |     //~^ ERROR `a` does not live long enough
-16 | }
-   | - `a` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+LL |         p = &a;
+   |              ^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `a` dropped here while still borrowed
+...
+LL | }
+   | - borrowed value needs to live until here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

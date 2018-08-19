@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait, nested_impl_trait)]
 #![allow(warnings)]
 
 use std::fmt::Debug;
@@ -50,20 +49,27 @@ fn closure_hr_elided_return() -> impl Fn(&u32) -> &u32 { |x| x }
 fn closure_pass_through_elided_return(x: impl Fn(&u32) -> &u32) -> impl Fn(&u32) -> &u32 { x }
 fn closure_pass_through_reference_elided(x: &impl Fn(&u32) -> &u32) -> &impl Fn(&u32) -> &u32 { x }
 
+fn nested_lifetime<'a>(input: &'a str)
+    -> impl Iterator<Item = impl Iterator<Item = i32> + 'a> + 'a
+{
+    input.lines().map(|line| {
+        line.split_whitespace().map(|cell| cell.parse().unwrap())
+    })
+}
+
 fn pass_through_elision(x: &u32) -> impl Into<&u32> { x }
 fn pass_through_elision_with_fn_ptr(x: &fn(&u32) -> &u32) -> impl Into<&fn(&u32) -> &u32> { x }
 
 fn pass_through_elision_with_fn_path<T: Fn(&u32) -> &u32>(
     x: &T
-) -> impl Into<&impl Fn(&u32) -> &u32> { x }
+) -> &impl Fn(&u32) -> &u32 { x }
 
-fn foo(x: &impl Debug) -> impl Into<&impl Debug> { x }
-fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> impl Into<&'a impl Debug> { x }
-fn foo_no_outer_impl(x: &impl Debug) -> &impl Debug { x }
-fn foo_explicit_arg<T: Debug>(x: &T) -> impl Into<&impl Debug> { x }
+fn foo(x: &impl Debug) -> &impl Debug { x }
+fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> &'a impl Debug { x }
+fn foo_explicit_arg<T: Debug>(x: &T) -> &impl Debug { x }
 
-fn mixed_lifetimes<'a>() -> impl for<'b: 'a> Fn(&'b u32) { |_| () }
-fn mixed_as_static() -> impl Fn(&'static u32) { mixed_lifetimes() }
+fn mixed_lifetimes<'a>() -> impl for<'b> Fn(&'b &'a u32) { |_| () }
+fn mixed_as_static() -> impl Fn(&'static &'static u32) { mixed_lifetimes() }
 
 trait MultiRegionTrait<'a, 'b>: Debug {}
 

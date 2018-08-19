@@ -11,12 +11,12 @@
 // aux-build:derive-b.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(proc_macro_path_invoc, unrestricted_attribute_tokens)]
 
 extern crate derive_b;
 
 #[derive(Debug, PartialEq, derive_b::B, Eq, Copy, Clone)]
-#[cfg_attr(all(), B arbitrary tokens)]
+#[cfg_attr(all(), B[arbitrary tokens])]
 struct B {
     #[C]
     a: u64

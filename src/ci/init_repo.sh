@@ -17,6 +17,7 @@ ci_dir=$(cd $(dirname $0) && pwd)
 . "$ci_dir/shared.sh"
 
 travis_fold start init_repo
+travis_time_start
 
 REPO_DIR="$1"
 CACHE_DIR="$2"
@@ -36,49 +37,45 @@ fi
 rm -rf "$CACHE_DIR"
 mkdir "$CACHE_DIR"
 
-travis_fold start update_cache
-travis_time_start
+# On the beta channel we'll be automatically calculating the prerelease version
+# via the git history, so unshallow our shallow clone from CI.
+if grep -q RUST_RELEASE_CHANNEL=beta src/ci/run.sh; then
+  git fetch origin --unshallow beta master
+fi
 
-# Update the cache (a pristine copy of the rust source master)
-retry sh -c "rm -rf $cache_src_dir && mkdir -p $cache_src_dir && \
-    git clone --depth 1 https://github.com/rust-lang/rust.git $cache_src_dir"
-(cd $cache_src_dir && git rm src/llvm)
-retry sh -c "cd $cache_src_dir && \
-    git submodule deinit -f . && git submodule sync && git submodule update --init"
+function fetch_submodule {
+    local module=$1
+    local cached="download-${module//\//-}.tar.gz"
+    retry sh -c "rm -f $cached && \
+        curl -sSL -o $cached $2"
+    mkdir $module
+    touch "$module/.git"
+    tar -C $module --strip-components=1 -xf $cached
+    rm $cached
+}
 
-travis_fold end update_cache
-travis_time_finish
-
-travis_fold start update_submodules
-travis_time_start
-
-# Update the submodules of the repo we're in, using the pristine repo as
-# a cache for any object files
-# No, `git submodule foreach` won't work:
-# http://stackoverflow.com/questions/12641469/list-submodules-in-a-git-repository
+included="src/llvm src/llvm-emscripten src/doc/book src/doc/rust-by-example"
 modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
-for module in $modules; do
-    if [ "$module" = src/llvm ]; then
-        commit="$(git ls-tree HEAD src/llvm | awk '{print $3}')"
-        git rm src/llvm
-        retry sh -c "rm -f $commit.tar.gz && \
-            curl -sSL -O https://github.com/rust-lang/llvm/archive/$commit.tar.gz"
-        tar -C src/ -xf "$commit.tar.gz"
-        rm "$commit.tar.gz"
-        mv "src/llvm-$commit" src/llvm
+modules=($modules)
+use_git=""
+urls="$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
+urls=($urls)
+for i in ${!modules[@]}; do
+    module=${modules[$i]}
+    if [[ " $included " = *" $module "* ]]; then
+        commit="$(git ls-tree HEAD $module | awk '{print $3}')"
+        git rm $module
+        url=${urls[$i]}
+        url=${url/\.git/}
+        fetch_submodule $module "$url/archive/$commit.tar.gz" &
         continue
+    else
+        use_git="$use_git $module"
     fi
-    if [ ! -e "$cache_src_dir/$module/.git" ]; then
-        echo "WARNING: $module not found in pristine repo"
-        retry sh -c "git submodule deinit -f $module && \
-            git submodule update --init --recursive $module"
-        continue
-    fi
-    retry sh -c "git submodule deinit -f $module && \
-        git submodule update --init --recursive --reference $cache_src_dir/$module $module"
 done
-
-travis_fold end update_submodules
-travis_time_finish
-
+retry sh -c "git submodule deinit -f $use_git && \
+    git submodule sync && \
+    git submodule update -j 16 --init --recursive $use_git"
+wait
 travis_fold end init_repo
+travis_time_finish

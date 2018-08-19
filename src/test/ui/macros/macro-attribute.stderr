@@ -1,0 +1,8 @@
+error: expected `]`, found `not_there`
+  --> $DIR/macro-attribute.rs:13:10
+   |
+LL | #[doc = $not_there] //~ ERROR expected `]`, found `not_there`
+   |          ^^^^^^^^^ expected `]`
+
+error: aborting due to previous error
+

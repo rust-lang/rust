@@ -1,0 +1,27 @@
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:20:16
+   |
+LL |     () => {use std::string::ToString;} //~ WARN: unused import
+   |                ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod a { foo!(); }
+   |         ------- in this macro invocation
+   |
+note: lint level defined here
+  --> $DIR/lints-in-foreign-macros.rs:14:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:25:18
+   |
+LL | mod c { baz!(use std::string::ToString;); } //~ WARN: unused import
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:26:19
+   |
+LL | mod d { baz2!(use std::string::ToString;); } //~ WARN: unused import
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+

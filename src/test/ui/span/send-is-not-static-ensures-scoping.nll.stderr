@@ -1,0 +1,29 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-ensures-scoping.rs:26:17
+   |
+LL |         let y = &x;
+   |                 ^^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `x` dropped here while still borrowed
+LL | 
+LL |     bad.join();
+   |     --- borrow later used here
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/send-is-not-static-ensures-scoping.rs:30:22
+   |
+LL |         scoped(|| {
+   |                -- value captured here
+LL |             let _z = y;
+   |                      ^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `y` dropped here while still borrowed
+LL | 
+LL |     bad.join();
+   |     --- borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

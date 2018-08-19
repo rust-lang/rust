@@ -1,14 +1,15 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-11925.rs:18:36
    |
-18 |         let f = to_fn_once(move|| &x); //~ ERROR does not live long enough
+LL |         let f = to_fn_once(move|| &x); //~ ERROR does not live long enough
    |                                    ^
    |                                    |
    |                                    borrowed value does not live long enough
    |                                    `x` dropped here while still borrowed
 ...
-23 | }
+LL | }
    | - borrowed value needs to live until here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

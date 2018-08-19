@@ -1,0 +1,11 @@
+error[E0081]: discriminant value `3` already exists
+  --> $DIR/E0081.rs:13:9
+   |
+LL |     P = 3,
+   |         - first use of `3`
+LL |     X = 3,
+   |         ^ enum already has `3`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0081`.

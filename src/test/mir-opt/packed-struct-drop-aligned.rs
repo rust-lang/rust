@@ -29,9 +29,9 @@ impl Drop for Droppy {
 // fn main() -> () {
 //     let mut _0: ();
 //     scope 1 {
-//         let mut _1: Packed;
 //     }
 //     scope 2 {
+//         let mut _1: Packed;
 //     }
 //     let mut _2: Aligned;
 //     let mut _3: Droppy;

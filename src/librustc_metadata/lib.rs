@@ -11,18 +11,20 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
 #![feature(box_patterns)]
-#![feature(conservative_impl_trait)]
-#![feature(fs_read_write)]
-#![feature(i128_type)]
 #![feature(libc)]
+#![feature(macro_at_most_once_rep)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(proc_macro_internals)]
+#![feature(proc_macro_quote)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(rustc_private)]
+
+#![recursion_limit="256"]
 
 extern crate libc;
 #[macro_use]
@@ -35,15 +37,16 @@ extern crate serialize as rustc_serialize; // used by deriving
 extern crate rustc_errors as errors;
 extern crate syntax_ext;
 extern crate proc_macro;
+extern crate rustc_metadata_utils;
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_back;
+extern crate rustc_target;
+#[macro_use]
 extern crate rustc_data_structures;
 
 mod diagnostics;
 
-mod astencode;
 mod index_builder;
 mod index;
 mod encoder;
@@ -53,11 +56,11 @@ mod isolated_encoder;
 mod schema;
 mod native_libs;
 mod link_args;
+mod foreign_modules;
 
 pub mod creader;
 pub mod cstore;
 pub mod dynamic_lib;
 pub mod locator;
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

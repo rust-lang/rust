@@ -14,7 +14,6 @@
 // -Z saturating-float-casts is not enabled.
 
 #![crate_type = "lib"]
-#![feature(i128_type)]
 
 // CHECK-LABEL: @f32_to_u32
 #[no_mangle]

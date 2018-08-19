@@ -1,0 +1,50 @@
+error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:15:1
+   |
+LL | struct A where i32: Copy; //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/trivial-bounds-lint.rs:13:9
+   |
+LL | #![deny(trivial_bounds)]
+   |         ^^^^^^^^^^^^^^
+
+error: Trait bound i32: X<()> does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:28:1
+   |
+LL | fn global_param() where i32: X<()> {} //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Trait bound i32: Z does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:32:1
+   |
+LL | fn global_projection() where i32: Z<S = i32> {} //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Lifetime bound i32 : 'static does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:39:1
+   |
+LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Lifetime bound &'static str : 'static does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:39:1
+   |
+LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Lifetime bound 'static : 'static does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:45:1
+   |
+LL | fn global_outlives() where 'static: 'static {} //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-lint.rs:48:1
+   |
+LL | fn mixed_bounds<T: Copy>() where i32: X<T> + Copy {} //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

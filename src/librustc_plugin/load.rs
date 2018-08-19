@@ -52,7 +52,7 @@ pub fn load_plugins(sess: &Session,
     // do not report any error now. since crate attributes are
     // not touched by expansion, every use of plugin without
     // the feature enabled will result in an error later...
-    if sess.features.borrow().plugin {
+    if sess.features_untracked().plugin {
         for attr in &krate.attrs {
             if !attr.check_name("plugin") {
                 continue;
@@ -100,8 +100,8 @@ impl<'a> PluginLoader<'a> {
     fn load_plugin(&mut self, span: Span, name: &str, args: Vec<ast::NestedMetaItem>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
-        if let Some((lib, disambiguator, index)) = registrar {
-            let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator, index);
+        if let Some((lib, disambiguator)) = registrar {
+            let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator);
             let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.push(PluginRegistrar {
                 fun,

@@ -68,17 +68,13 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // fn main::{{closure}}(_1: [closure@NodeId(22) d:&'19s D]) -> i32 {
 //     let mut _0: i32;
 //     ...
-//     let _2: &'15_0rs D;
+//     let _2: &'16_0rs D;
 //     ...
-//     let mut _3: i32;
 //     bb0: {
 //         StorageLive(_2);
-//         _2 = &'15_0rs (*(_1.0: &'19s D));
-//         StorageLive(_3);
-//         _3 = ((*_2).0: i32);
-//         _0 = move _3;
-//         StorageDead(_3);
-//         EndRegion('15_0rs);
+//         _2 = &'16_0rs (*(_1.0: &'19s D));
+//         _0 = ((*_2).0: i32);
+//         EndRegion('16_0rs);
 //         StorageDead(_2);
 //         return;
 //     }

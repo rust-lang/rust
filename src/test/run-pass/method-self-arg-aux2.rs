@@ -10,8 +10,6 @@
 
 // Test method calls with self as an argument (cross-crate)
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 // aux-build:method_self_arg2.rs

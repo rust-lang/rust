@@ -1,2 +1,6 @@
-error: cannot continue compilation due to previous error
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/generic-associated-types-where.rs:11:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
 

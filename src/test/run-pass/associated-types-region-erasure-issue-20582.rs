@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Regression test for #20582. This test caused an ICE related to
-// inconsistent region erasure in trans.
+// inconsistent region erasure in codegen.
 
 // pretty-expanded FIXME #23616
 

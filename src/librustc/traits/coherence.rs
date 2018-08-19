@@ -8,18 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See `README.md` for high-level documentation
+//! See rustc guide chapters on [trait-resolution] and [trait-specialization] for more info on how
+//! this works.
+//!
+//! [trait-resolution]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
+//! [trait-specialization]: https://rust-lang-nursery.github.io/rustc-guide/traits/specialization.html
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
-use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
+use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
 use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::TypeFoldable;
 use ty::subst::Subst;
 
-use infer::{InferCtxt, InferOk};
+use infer::{InferOk};
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -40,15 +44,22 @@ pub struct OverlapResult<'tcx> {
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 }
 
-/// If there are types that satisfy both impls, returns a suitably-freshened
-/// `ImplHeader` with those types substituted
-pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-                                          impl1_def_id: DefId,
-                                          impl2_def_id: DefId,
-                                          intercrate_mode: IntercrateMode)
-                                          -> Option<OverlapResult<'tcx>>
+/// If there are types that satisfy both impls, invokes `on_overlap`
+/// with a suitably-freshened `ImplHeader` with those types
+/// substituted. Otherwise, invokes `no_overlap`.
+pub fn overlapping_impls<'gcx, F1, F2, R>(
+    tcx: TyCtxt<'_, 'gcx, 'gcx>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+    intercrate_mode: IntercrateMode,
+    on_overlap: F1,
+    no_overlap: F2,
+) -> R
+where
+    F1: FnOnce(OverlapResult<'_>) -> R,
+    F2: FnOnce() -> R,
 {
-    debug!("impl_can_satisfy(\
+    debug!("overlapping_impls(\
            impl1_def_id={:?}, \
            impl2_def_id={:?},
            intercrate_mode={:?})",
@@ -56,8 +67,23 @@ pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
            impl2_def_id,
            intercrate_mode);
 
-    let selcx = &mut SelectionContext::intercrate(infcx, intercrate_mode);
-    overlap(selcx, impl1_def_id, impl2_def_id)
+    let overlaps = tcx.infer_ctxt().enter(|infcx| {
+        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        overlap(selcx, impl1_def_id, impl2_def_id).is_some()
+    });
+
+    if !overlaps {
+        return no_overlap();
+    }
+
+    // In the case where we detect an error, run the check again, but
+    // this time tracking intercrate ambuiguity causes for better
+    // diagnostics. (These take time and can lead to false errors.)
+    tcx.infer_ctxt().enter(|infcx| {
+        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        selcx.enable_tracking_intercrate_ambiguity_causes();
+        on_overlap(overlap(selcx, impl1_def_id, impl2_def_id).unwrap())
+    })
 }
 
 fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
@@ -97,7 +123,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
     // empty environment.
-    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+    let param_env = ty::ParamEnv::empty();
 
     let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
     let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);
@@ -128,17 +154,20 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                                            recursion_depth: 0,
                                            predicate: p })
                      .chain(obligations)
-                     .find(|o| !selcx.evaluate_obligation(o));
+                     .find(|o| !selcx.predicate_may_hold_fatal(o));
+    // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
+    // to the canonical trait query form, `infcx.predicate_may_hold`, once
+    // the new system supports intercrate mode (which coherence needs).
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
         return None
     }
 
-    Some(OverlapResult {
-        impl_header: selcx.infcx().resolve_type_vars_if_possible(&a_impl_header),
-        intercrate_ambiguity_causes: selcx.intercrate_ambiguity_causes().to_vec(),
-    })
+    let impl_header =  selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
+    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -255,7 +284,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
 ///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
-///     the second occurence of `T` is not a subtree of *any* local type.
+///     the second occurrence of `T` is not a subtree of *any* local type.
 ///     - however, `LocalType<Vec<T>>` is OK, because `T` is a subtree of
 ///     `LocalType<Vec<T>>`, which is local and has no types between it and
 ///     the type parameter.
@@ -451,7 +480,10 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
             true
         }
 
-        ty::TyClosure(..) | ty::TyGenerator(..) | ty::TyAnon(..) => {
+        ty::TyClosure(..) |
+        ty::TyGenerator(..) |
+        ty::TyGeneratorWitness(..) |
+        ty::TyAnon(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

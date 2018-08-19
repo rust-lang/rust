@@ -11,9 +11,6 @@
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 
-
-#![feature(core)]
-
 use std::ops::Index;
 
 struct Mat<T> { data: Vec<T>, cols: usize, }

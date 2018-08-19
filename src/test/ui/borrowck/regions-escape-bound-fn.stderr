@@ -1,0 +1,12 @@
+error: borrowed data cannot be stored outside of its closure
+  --> $DIR/regions-escape-bound-fn.rs:18:27
+   |
+LL |     let mut x: Option<&isize> = None;
+   |         ----- borrowed data cannot be stored into here...
+LL |     with_int(|y| x = Some(y));
+   |              ---          ^ cannot be stored outside of its closure
+   |              |
+   |              ...because it cannot outlive this closure
+
+error: aborting due to previous error
+

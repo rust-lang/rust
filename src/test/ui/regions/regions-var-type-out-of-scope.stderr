@@ -1,0 +1,16 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/regions-var-type-out-of-scope.rs:19:14
+   |
+LL |         x = &id(3); //~ ERROR borrowed value does not live long enough
+   |              ^^^^^- temporary value dropped here while still borrowed
+   |              |
+   |              temporary value does not live long enough
+...
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

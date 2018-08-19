@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cell::Cell;
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::cmp::Ordering;
 use std::mem;
+use std::panic;
 use std::rc::Rc;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
+use std::thread;
 
 use rand::{Rng, thread_rng};
 
@@ -419,6 +425,14 @@ fn test_sort() {
                 v.sort_by(|a, b| b.cmp(a));
                 assert!(v.windows(2).all(|w| w[0] >= w[1]));
 
+                // Sort in lexicographic order.
+                let mut v1 = orig.clone();
+                let mut v2 = orig.clone();
+                v1.sort_by_key(|x| x.to_string());
+                v2.sort_by_cached_key(|x| x.to_string());
+                assert!(v1.windows(2).all(|w| w[0].to_string() <= w[1].to_string()));
+                assert!(v1 == v2);
+
                 // Sort with many pre-sorted runs.
                 let mut v = orig.clone();
                 v.sort();
@@ -471,7 +485,7 @@ fn test_sort_stability() {
             // the second item represents which occurrence of that
             // number this element is, i.e. the second elements
             // will occur in sorted order.
-            let mut v: Vec<_> = (0..len)
+            let mut orig: Vec<_> = (0..len)
                 .map(|_| {
                     let n = thread_rng().gen::<usize>() % 10;
                     counts[n] += 1;
@@ -479,15 +493,20 @@ fn test_sort_stability() {
                 })
                 .collect();
 
-            // only sort on the first element, so an unstable sort
+            let mut v = orig.clone();
+            // Only sort on the first element, so an unstable sort
             // may mix up the counts.
             v.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-            // this comparison includes the count (the second item
+            // This comparison includes the count (the second item
             // of the tuple), so elements with equal first items
             // will need to be ordered with increasing
             // counts... i.e. exactly asserting that this sort is
             // stable.
+            assert!(v.windows(2).all(|w| w[0] <= w[1]));
+
+            let mut v = orig.clone();
+            v.sort_by_cached_key(|&(x, _)| x);
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
         }
     }
@@ -588,6 +607,15 @@ fn test_join() {
     assert_eq!(v.join(&0), [1, 0, 2, 3]);
     let v: [&[_]; 3] = [&[1], &[2], &[3]];
     assert_eq!(v.join(&0), [1, 0, 2, 0, 3]);
+}
+
+#[test]
+fn test_join_nocopy() {
+    let v: [String; 0] = [];
+    assert_eq!(v.join(","), "");
+    assert_eq!(["a".to_string(), "ab".into()].join(","), "a,ab");
+    assert_eq!(["a".to_string(), "ab".into(), "abc".into()].join(","), "a,ab,abc");
+    assert_eq!(["a".to_string(), "ab".into(), "".into()].join(","), "a,ab,");
 }
 
 #[test]
@@ -1263,6 +1291,7 @@ fn test_box_slice_clone() {
 }
 
 #[test]
+#[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;
@@ -1340,4 +1369,174 @@ fn test_copy_from_slice_dst_shorter() {
     let src = [0, 1, 2, 3];
     let mut dst = [0; 3];
     dst.copy_from_slice(&src);
+}
+
+const MAX_LEN: usize = 80;
+
+static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
+    // FIXME(RFC 1109): AtomicUsize is not Copy.
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+];
+
+static VERSIONS: AtomicUsize = ATOMIC_USIZE_INIT;
+
+#[derive(Clone, Eq)]
+struct DropCounter {
+    x: u32,
+    id: usize,
+    version: Cell<usize>,
+}
+
+impl PartialEq for DropCounter {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for DropCounter {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.version.set(self.version.get() + 1);
+        other.version.set(other.version.get() + 1);
+        VERSIONS.fetch_add(2, Relaxed);
+        self.x.partial_cmp(&other.x)
+    }
+}
+
+impl Ord for DropCounter {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl Drop for DropCounter {
+    fn drop(&mut self) {
+        DROP_COUNTS[self.id].fetch_add(1, Relaxed);
+        VERSIONS.fetch_sub(self.version.get(), Relaxed);
+    }
+}
+
+macro_rules! test {
+    ($input:ident, $func:ident) => {
+        let len = $input.len();
+
+        // Work out the total number of comparisons required to sort
+        // this array...
+        let mut count = 0usize;
+        $input.to_owned().$func(|a, b| { count += 1; a.cmp(b) });
+
+        // ... and then panic on each and every single one.
+        for panic_countdown in 0..count {
+            // Refresh the counters.
+            VERSIONS.store(0, Relaxed);
+            for i in 0..len {
+                DROP_COUNTS[i].store(0, Relaxed);
+            }
+
+            let v = $input.to_owned();
+            let _ = thread::spawn(move || {
+                let mut v = v;
+                let mut panic_countdown = panic_countdown;
+                v.$func(|a, b| {
+                    if panic_countdown == 0 {
+                        SILENCE_PANIC.with(|s| s.set(true));
+                        panic!();
+                    }
+                    panic_countdown -= 1;
+                    a.cmp(b)
+                })
+            }).join();
+
+            // Check that the number of things dropped is exactly
+            // what we expect (i.e. the contents of `v`).
+            for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
+                let count = c.load(Relaxed);
+                assert!(count == 1,
+                        "found drop count == {} for i == {}, len == {}",
+                        count, i, len);
+            }
+
+            // Check that the most recent versions of values were dropped.
+            assert_eq!(VERSIONS.load(Relaxed), 0);
+        }
+    }
+}
+
+thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
+
+#[test]
+#[cfg_attr(target_os = "emscripten", ignore)] // no threads
+fn panic_safe() {
+    let prev = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        if !SILENCE_PANIC.with(|s| s.get()) {
+            prev(info);
+        }
+    }));
+
+    let mut rng = thread_rng();
+
+    for len in (1..20).chain(70..MAX_LEN) {
+        for &modulus in &[5, 20, 50] {
+            for &has_runs in &[false, true] {
+                let mut input = (0..len)
+                    .map(|id| {
+                        DropCounter {
+                            x: rng.next_u32() % modulus,
+                            id: id,
+                            version: Cell::new(0),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                if has_runs {
+                    for c in &mut input {
+                        c.x = c.id as u32;
+                    }
+
+                    for _ in 0..5 {
+                        let a = rng.gen::<usize>() % len;
+                        let b = rng.gen::<usize>() % len;
+                        if a < b {
+                            input[a..b].reverse();
+                        } else {
+                            input.swap(a, b);
+                        }
+                    }
+                }
+
+                test!(input, sort_by);
+                test!(input, sort_unstable_by);
+            }
+        }
+    }
+}
+
+#[test]
+fn repeat_generic_slice() {
+    assert_eq!([1, 2].repeat(2), vec![1, 2, 1, 2]);
+    assert_eq!([1, 2, 3, 4].repeat(0), vec![]);
+    assert_eq!([1, 2, 3, 4].repeat(1), vec![1, 2, 3, 4]);
+    assert_eq!(
+        [1, 2, 3, 4].repeat(3),
+        vec![1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+    );
 }

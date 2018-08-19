@@ -10,7 +10,7 @@
 
 // aux-build:bang_proc_macro.rs
 
-#![feature(proc_macro)]
+#![feature(proc_macro_non_items)]
 
 #[macro_use]
 extern crate bang_proc_macro;

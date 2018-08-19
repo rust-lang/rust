@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir
+// compile-flags:-Zborrowck=mir
 
 // Test that we assume that universal types like `T` outlive the
 // function body.
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 
 use std::cell::Cell;
 
@@ -28,7 +27,7 @@ fn region_within_body<T>(t: T) {
 // Error here, because T: 'a is not satisfied.
 fn region_static<'a, T>(cell: Cell<&'a usize>, t: T) {
     outlives(cell, t)
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the parameter type `T` may not live long enough
 }
 

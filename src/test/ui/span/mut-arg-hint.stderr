@@ -1,26 +1,27 @@
 error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
   --> $DIR/mut-arg-hint.rs:13:9
    |
-12 |     fn foo(mut a: &String) {
+LL |     fn foo(mut a: &String) {
    |                   ------- use `&mut String` here to make mutable
-13 |         a.push_str("bar"); //~ ERROR cannot borrow immutable borrowed content
+LL |         a.push_str("bar"); //~ ERROR cannot borrow immutable borrowed content
    |         ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
   --> $DIR/mut-arg-hint.rs:18:5
    |
-17 | pub fn foo<'a>(mut a: &'a String) {
+LL | pub fn foo<'a>(mut a: &'a String) {
    |                       ---------- use `&'a mut String` here to make mutable
-18 |     a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
+LL |     a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
   --> $DIR/mut-arg-hint.rs:25:9
    |
-24 |     pub fn foo(mut a: &String) {
+LL |     pub fn foo(mut a: &String) {
    |                       ------- use `&mut String` here to make mutable
-25 |         a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
+LL |         a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
    |         ^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0596`.

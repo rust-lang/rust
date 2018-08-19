@@ -13,19 +13,19 @@ use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Mir, Promoted};
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::DefIdSet;
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
-use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 
 pub mod add_validation;
 pub mod add_moves_for_packed_drops;
-pub mod clean_end_regions;
+pub mod cleanup_post_borrowck;
 pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify;
@@ -41,9 +41,11 @@ pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
 pub mod copy_prop;
+pub mod const_prop;
 pub mod generator;
 pub mod inline;
 pub mod lower_128bit;
+pub mod uniform_array_move_out;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
@@ -66,7 +68,7 @@ fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> boo
 /// Finds the full set of def-ids within the current crate that have
 /// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
-                      -> Rc<DefIdSet> {
+                      -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet();
@@ -101,7 +103,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         set: &mut set,
     }.as_deep_visitor());
 
-    Rc::new(set)
+    Lrc::new(set)
 }
 
 fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
@@ -160,7 +162,7 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
             promoted
         };
         let mut index = 0;
-        let mut run_pass = |pass: &MirPass| {
+        let mut run_pass = |pass: &dyn MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
                 dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
                                       &pass.name(), source, mir, is_after);
@@ -191,12 +193,13 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let mut mir = tcx.mir_built(def_id).steal();
     run_passes![tcx, mir, def_id, 0;
         // Remove all `EndRegion` statements that are not involved in borrows.
-        clean_end_regions::CleanEndRegions,
+        cleanup_post_borrowck::CleanEndRegions,
 
         // What we need to do constant evaluation.
         simplify::SimplifyCfg::new("initial"),
         type_check::TypeckMir,
         rustc_peek::SanityCheck,
+        uniform_array_move_out::UniformArrayMoveOut,
     ];
     tcx.alloc_steal_mir(mir)
 }
@@ -222,7 +225,10 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     let _ = tcx.mir_borrowck(def_id);
-    let _ = tcx.borrowck(def_id);
+
+    if tcx.use_ast_borrowck() {
+        let _ = tcx.borrowck(def_id);
+    }
 
     let mut mir = tcx.mir_validated(def_id).steal();
     run_passes![tcx, mir, def_id, 2;
@@ -231,6 +237,8 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         simplify_branches::SimplifyBranches::new("initial"),
         remove_noop_landing_pads::RemoveNoopLandingPads,
         simplify::SimplifyCfg::new("early-opt"),
+        // Remove all `UserAssertTy` statements.
+        cleanup_post_borrowck::CleanUserAssertTy,
 
         // These next passes must be executed together
         add_call_guards::CriticalCallEdges,
@@ -253,18 +261,26 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
         lower_128bit::Lower128Bit,
 
+
         // Optimizations begin.
+        uniform_array_move_out::RestoreSubsliceArrayMoveOut,
         inline::Inline,
+
+        // Lowering generator control-flow and variables
+        // has to happen before we do anything else to them.
+        generator::StateTransform,
+
         instcombine::InstCombine,
+        const_prop::ConstProp,
+        simplify_branches::SimplifyBranches::new("after-const-prop"),
         deaggregator::Deaggregator,
         copy_prop::CopyPropagation,
         remove_noop_landing_pads::RemoveNoopLandingPads,
         simplify::SimplifyCfg::new("final"),
         simplify::SimplifyLocals,
 
-        generator::StateTransform,
         add_call_guards::CriticalCallEdges,
-        dump_mir::Marker("PreTrans"),
+        dump_mir::Marker("PreCodegen"),
     ];
     tcx.alloc_mir(mir)
 }

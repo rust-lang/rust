@@ -15,7 +15,7 @@
 //
 // except that the closure does so via a second closure.
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -27,8 +27,8 @@ fn test() {
     {
         let y = 22;
 
-        let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
-            let mut closure1 = || p = &y;
+        let mut closure = || {
+            let mut closure1 = || p = &y; //~ ERROR `y` does not live long enough [E0597]
             closure1();
         };
 

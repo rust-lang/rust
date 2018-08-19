@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ///
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
-        let NiceRegionError { span, sub, sup, .. } = *self;
+        let (span, sub, sup) = self.get_regions();
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let anon_reg_sup = self.is_suitable_region(sup)?;
@@ -96,33 +96,29 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let sub_is_ret_type =
             self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
-        let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
-            format!(" from `{}`", simple_name)
+        let span_label_var1 = if let Some(simple_ident) = anon_arg_sup.pat.simple_ident() {
+            format!(" from `{}`", simple_ident)
         } else {
-            format!("")
+            String::new()
         };
 
-        let span_label_var2 = if let Some(simple_name) = anon_arg_sub.pat.simple_name() {
-            format!(" into `{}`", simple_name)
+        let span_label_var2 = if let Some(simple_ident) = anon_arg_sub.pat.simple_ident() {
+            format!(" into `{}`", simple_ident)
         } else {
-            format!("")
+            String::new()
         };
 
 
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
-                let (main_label_1, span_label_1) = if ty_sup == ty_sub {
+                let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
-                        format!("this type is declared with multiple lifetimes..."),
-                        format!(
-                            "...but data{} flows{} here",
-                            format!(" with one lifetime"),
-                            format!(" into the other")
-                        ),
+                        "this type is declared with multiple lifetimes...".to_string(),
+                        "...but data with one lifetime flows into the other here".to_string()
                     )
                 } else {
                     (
-                        format!("these two types are declared with different lifetimes..."),
+                        "these two types are declared with different lifetimes...".to_string(),
                         format!(
                             "...but data{} flows{} here",
                             span_label_var1,
@@ -136,19 +132,17 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             (Some(ret_span), _) => (
                 ty_sub.span,
                 ret_span,
-                format!(
-                    "this parameter and the return type are declared \
-                     with different lifetimes...",
-                ),
+                "this parameter and the return type are declared \
+                 with different lifetimes...".to_string()
+                ,
                 format!("...but data{} is returned here", span_label_var1),
             ),
             (_, Some(ret_span)) => (
                 ty_sup.span,
                 ret_span,
-                format!(
-                    "this parameter and the return type are declared \
-                     with different lifetimes...",
-                ),
+                "this parameter and the return type are declared \
+                 with different lifetimes...".to_string()
+                ,
                 format!("...but data{} is returned here", span_label_var1),
             ),
         };
@@ -156,7 +150,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
             .span_label(span_1, main_label)
-            .span_label(span_2, format!(""))
+            .span_label(span_2, String::new())
             .span_label(span, span_label)
             .emit();
         return Some(ErrorReported);

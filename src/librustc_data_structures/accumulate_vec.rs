@@ -15,11 +15,10 @@
 //!
 //! The N above is determined by Array's implementor, by way of an associated constant.
 
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, RangeBounds};
 use std::iter::{self, IntoIterator, FromIterator};
 use std::slice;
 use std::vec;
-use std::collections::range::RangeArgument;
 
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 
@@ -45,6 +44,13 @@ impl<A> Clone for AccumulateVec<A>
 impl<A: Array> AccumulateVec<A> {
     pub fn new() -> AccumulateVec<A> {
         AccumulateVec::Array(ArrayVec::new())
+    }
+
+    pub fn is_array(&self) -> bool {
+        match self {
+            AccumulateVec::Array(..) => true,
+            AccumulateVec::Heap(..) => false,
+        }
     }
 
     pub fn one(el: A::Element) -> Self {
@@ -74,7 +80,7 @@ impl<A: Array> AccumulateVec<A> {
     }
 
     pub fn drain<R>(&mut self, range: R) -> Drain<A>
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         match *self {
             AccumulateVec::Array(ref mut v) => {
@@ -218,7 +224,7 @@ impl<A> Encodable for AccumulateVec<A>
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)));
+                s.emit_seq_elt(i, |s| e.encode(s))?;
             }
             Ok(())
         })
@@ -230,8 +236,7 @@ impl<A> Decodable for AccumulateVec<A>
           A::Element: Decodable {
     fn decode<D: Decoder>(d: &mut D) -> Result<AccumulateVec<A>, D::Error> {
         d.read_seq(|d, len| {
-            Ok(try!((0..len).map(|i| d.read_seq_elt(i, |d| Decodable::decode(d))).collect()))
+            (0..len).map(|i| d.read_seq_elt(i, |d| Decodable::decode(d))).collect()
         })
     }
 }
-

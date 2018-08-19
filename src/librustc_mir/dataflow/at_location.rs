@@ -12,7 +12,7 @@
 //! locations.
 
 use rustc::mir::{BasicBlock, Location};
-use rustc_data_structures::indexed_set::{self, IdxSetBuf};
+use rustc_data_structures::indexed_set::{HybridIdxSetBuf, IdxSetBuf, Iter};
 use rustc_data_structures::indexed_vec::Idx;
 
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
@@ -68,8 +68,8 @@ where
 {
     base_results: DataflowResults<BD>,
     curr_state: IdxSetBuf<BD::Idx>,
-    stmt_gen: IdxSetBuf<BD::Idx>,
-    stmt_kill: IdxSetBuf<BD::Idx>,
+    stmt_gen: HybridIdxSetBuf<BD::Idx>,
+    stmt_kill: HybridIdxSetBuf<BD::Idx>,
 }
 
 impl<BD> FlowAtLocation<BD>
@@ -81,8 +81,7 @@ where
     where
         F: FnMut(BD::Idx),
     {
-        self.curr_state
-            .each_bit(self.base_results.operator().bits_per_block(), f)
+        self.curr_state.iter().for_each(f)
     }
 
     /// Iterate over each `gen` bit in the current effect (invoke
@@ -92,15 +91,14 @@ where
     where
         F: FnMut(BD::Idx),
     {
-        self.stmt_gen
-            .each_bit(self.base_results.operator().bits_per_block(), f)
+        self.stmt_gen.iter().for_each(f)
     }
 
     pub fn new(results: DataflowResults<BD>) -> Self {
         let bits_per_block = results.sets().bits_per_block();
         let curr_state = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_gen = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_kill = IdxSetBuf::new_empty(bits_per_block);
+        let stmt_gen = HybridIdxSetBuf::new_empty(bits_per_block);
+        let stmt_kill = HybridIdxSetBuf::new_empty(bits_per_block);
         FlowAtLocation {
             base_results: results,
             curr_state: curr_state,
@@ -119,23 +117,21 @@ where
     }
 
     /// Returns an iterator over the elements present in the current state.
-    pub fn elems_incoming(&self) -> iter::Peekable<indexed_set::Elems<BD::Idx>> {
-        let univ = self.base_results.sets().bits_per_block();
-        self.curr_state.elems(univ).peekable()
+    pub fn iter_incoming(&self) -> iter::Peekable<Iter<BD::Idx>> {
+        self.curr_state.iter().peekable()
     }
 
     /// Creates a clone of the current state and applies the local
     /// effects to the clone (leaving the state of self intact).
     /// Invokes `f` with an iterator over the resulting state.
-    pub fn with_elems_outgoing<F>(&self, f: F)
+    pub fn with_iter_outgoing<F>(&self, f: F)
     where
-        F: FnOnce(indexed_set::Elems<BD::Idx>),
+        F: FnOnce(Iter<BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
-        curr_state.union(&self.stmt_gen);
-        curr_state.subtract(&self.stmt_kill);
-        let univ = self.base_results.sets().bits_per_block();
-        f(curr_state.elems(univ));
+        curr_state.union_hybrid(&self.stmt_gen);
+        curr_state.subtract_hybrid(&self.stmt_kill);
+        f(curr_state.iter());
     }
 }
 
@@ -143,12 +139,12 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     where BD: BitDenotation
 {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
-        (*self.curr_state).clone_from(self.base_results.sets().on_entry_set_for(bb.index()));
+        self.curr_state.overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
     }
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {
-        self.stmt_gen.reset_to_empty();
-        self.stmt_kill.reset_to_empty();
+        self.stmt_gen.clear();
+        self.stmt_kill.clear();
         {
             let mut sets = BlockSets {
                 on_entry: &mut self.curr_state,
@@ -172,8 +168,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     }
 
     fn reconstruct_terminator_effect(&mut self, loc: Location) {
-        self.stmt_gen.reset_to_empty();
-        self.stmt_kill.reset_to_empty();
+        self.stmt_gen.clear();
+        self.stmt_kill.clear();
         {
             let mut sets = BlockSets {
                 on_entry: &mut self.curr_state,
@@ -197,8 +193,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     }
 
     fn apply_local_effect(&mut self, _loc: Location) {
-        self.curr_state.union(&self.stmt_gen);
-        self.curr_state.subtract(&self.stmt_kill);
+        self.curr_state.union_hybrid(&self.stmt_gen);
+        self.curr_state.subtract_hybrid(&self.stmt_kill);
     }
 }
 
@@ -208,10 +204,22 @@ where
     T: HasMoveData<'tcx> + BitDenotation<Idx = MovePathIndex>,
 {
     pub fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
+        // We process `mpi` before the loop below, for two reasons:
+        // - it's a little different from the loop case (we don't traverse its
+        //   siblings);
+        // - ~99% of the time the loop isn't reached, and this code is hot, so
+        //   we don't want to allocate `todo` unnecessarily.
+        if self.contains(&mpi) {
+            return Some(mpi);
+        }
         let move_data = self.operator().move_data();
+        let move_path = &move_data.move_paths[mpi];
+        let mut todo = if let Some(child) = move_path.first_child {
+            vec![child]
+        } else {
+            return None;
+        };
 
-        let mut todo = vec![mpi];
-        let mut push_siblings = false; // don't look at siblings of original `mpi`.
         while let Some(mpi) = todo.pop() {
             if self.contains(&mpi) {
                 return Some(mpi);
@@ -220,15 +228,10 @@ where
             if let Some(child) = move_path.first_child {
                 todo.push(child);
             }
-            if push_siblings {
-                if let Some(sibling) = move_path.next_sibling {
-                    todo.push(sibling);
-                }
-            } else {
-                // after we've processed the original `mpi`, we should
-                // always traverse the siblings of any of its
-                // children.
-                push_siblings = true;
+            // After we've processed the original `mpi`, we should always
+            // traverse the siblings of any of its children.
+            if let Some(sibling) = move_path.next_sibling {
+                todo.push(sibling);
             }
         }
         return None;

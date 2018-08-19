@@ -1,0 +1,9 @@
+error[E0635]: unknown feature `unknown_rust_feature`
+  --> $DIR/unknown-feature.rs:11:12
+   |
+LL | #![feature(unknown_rust_feature)] //~ ERROR unknown feature
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0635`.

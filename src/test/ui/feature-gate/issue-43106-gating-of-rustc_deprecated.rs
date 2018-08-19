@@ -36,3 +36,4 @@ mod rustc_deprecated {
     //~^ ERROR stability attributes may not be used outside of the standard library
 }
 
+fn main() {}

@@ -1,0 +1,11 @@
+error[E0393]: the type parameter `T` must be explicitly specified
+  --> $DIR/E0393.rs:13:43
+   |
+LL | fn together_we_will_rule_the_galaxy(son: &A) {}
+   |                                           ^ missing reference to `T`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0393`.

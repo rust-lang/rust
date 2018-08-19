@@ -1,0 +1,50 @@
+warning: literal out of range for i8
+  --> $DIR/lint-type-overflow2.rs:19:20
+   |
+LL |     let x2: i8 = --128; //~ warn: literal out of range for i8
+   |                    ^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-type-overflow2.rs:12:9
+   |
+LL | #![warn(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: literal out of range for f32
+  --> $DIR/lint-type-overflow2.rs:21:14
+   |
+LL |     let x = -3.40282357e+38_f32; //~ warn: literal out of range for f32
+   |              ^^^^^^^^^^^^^^^^^^
+
+warning: literal out of range for f32
+  --> $DIR/lint-type-overflow2.rs:22:14
+   |
+LL |     let x =  3.40282357e+38_f32; //~ warn: literal out of range for f32
+   |              ^^^^^^^^^^^^^^^^^^
+
+warning: literal out of range for f64
+  --> $DIR/lint-type-overflow2.rs:23:14
+   |
+LL |     let x = -1.7976931348623159e+308_f64; //~ warn: literal out of range for f64
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: literal out of range for f64
+  --> $DIR/lint-type-overflow2.rs:24:14
+   |
+LL |     let x =  1.7976931348623159e+308_f64; //~ warn: literal out of range for f64
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: compilation successful
+  --> $DIR/lint-type-overflow2.rs:18:1
+   |
+LL | / fn main() { //~ ERROR: compilation successful
+LL | |     let x2: i8 = --128; //~ warn: literal out of range for i8
+LL | |
+LL | |     let x = -3.40282357e+38_f32; //~ warn: literal out of range for f32
+...  |
+LL | |     let x =  1.7976931348623159e+308_f64; //~ warn: literal out of range for f64
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

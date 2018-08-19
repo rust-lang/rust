@@ -1,0 +1,15 @@
+error[E0004]: non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
+  --> $DIR/non-exhaustive-match-nested.rs:17:11
+   |
+LL |     match (l1, l2) { //~ ERROR non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
+   |           ^^^^^^^^ pattern `(Some(&[]), Err(_))` not covered
+
+error[E0004]: non-exhaustive patterns: `a(c)` not covered
+  --> $DIR/non-exhaustive-match-nested.rs:27:11
+   |
+LL |     match x { //~ ERROR non-exhaustive patterns: `a(c)` not covered
+   |           ^ pattern `a(c)` not covered
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

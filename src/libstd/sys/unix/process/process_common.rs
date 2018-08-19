@@ -13,7 +13,7 @@ use os::unix::prelude::*;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io;
-use libc::{self, c_int, gid_t, uid_t, c_char};
+use libc::{self, c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
@@ -45,18 +45,24 @@ pub struct Command {
     // other keys.
     program: CString,
     args: Vec<CString>,
-    argv: Vec<*const c_char>,
+    argv: Argv,
     env: CommandEnv<DefaultEnvKey>,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
-    closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
+    closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
+
+// Create a new type for argv, so that we can make it `Send`
+struct Argv(Vec<*const c_char>);
+
+// It is safe to make Argv Send, because it contains pointers to memory owned by `Command.args`
+unsafe impl Send for Argv {}
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -92,7 +98,7 @@ impl Command {
         let mut saw_nul = false;
         let program = os2c(program, &mut saw_nul);
         Command {
-            argv: vec![program.as_ptr(), ptr::null()],
+            argv: Argv(vec![program.as_ptr(), ptr::null()]),
             program,
             args: Vec::new(),
             env: Default::default(),
@@ -111,8 +117,8 @@ impl Command {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv[self.args.len() + 1] = arg.as_ptr();
-        self.argv.push(ptr::null());
+        self.argv.0[self.args.len() + 1] = arg.as_ptr();
+        self.argv.0.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
         // destructor for this memory.
@@ -133,7 +139,7 @@ impl Command {
         self.saw_nul
     }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
-        &self.argv
+        &self.argv.0
     }
 
     #[allow(dead_code)]
@@ -149,12 +155,12 @@ impl Command {
         self.gid
     }
 
-    pub fn get_closures(&mut self) -> &mut Vec<Box<FnMut() -> io::Result<()> + Send + Sync>> {
+    pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
         &mut self.closures
     }
 
     pub fn before_exec(&mut self,
-                       f: Box<FnMut() -> io::Result<()> + Send + Sync>) {
+                       f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
 
@@ -177,6 +183,10 @@ impl Command {
     pub fn capture_env(&mut self) -> Option<CStringArray> {
         let maybe_env = self.env.capture_if_changed();
         maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+    }
+    #[allow(dead_code)]
+    pub fn env_saw_path(&self) -> bool {
+        self.env.have_changed_path()
     }
 
     pub fn setup_io(&self, default: Stdio, needs_stdin: bool)
@@ -384,6 +394,19 @@ impl fmt::Display for ExitStatus {
             let signal = self.signal().unwrap();
             write!(f, "signal: {}", signal)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(u8);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    #[inline]
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
     }
 }
 

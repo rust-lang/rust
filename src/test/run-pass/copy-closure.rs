@@ -10,9 +10,6 @@
 
 // Check that closures implement `Copy`.
 
-#![feature(copy_closures)]
-#![feature(clone_closures)]
-
 fn call<T, F: FnOnce() -> T>(f: F) -> T { f() }
 
 fn main() {

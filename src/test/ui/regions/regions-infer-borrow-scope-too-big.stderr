@@ -1,0 +1,18 @@
+error[E0597]: `*p` does not live long enough
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:22:23
+   |
+LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
+   |                       ^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:8...
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:21:8
+   |
+LL | fn foo<'a>(p: Box<point>) -> &'a isize {
+   |        ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

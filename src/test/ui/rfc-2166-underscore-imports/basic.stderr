@@ -1,0 +1,30 @@
+warning: unused import: `m::Tr1 as _`
+  --> $DIR/basic.rs:31:9
+   |
+LL |     use m::Tr1 as _; //~ WARN unused import
+   |         ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/basic.rs:14:9
+   |
+LL | #![warn(unused_imports, unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^
+
+warning: unused import: `S as _`
+  --> $DIR/basic.rs:32:9
+   |
+LL |     use S as _; //~ WARN unused import
+   |         ^^^^^^
+
+warning: unused extern crate
+  --> $DIR/basic.rs:33:5
+   |
+LL |     extern crate core as _; //~ WARN unused extern crate
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   |
+note: lint level defined here
+  --> $DIR/basic.rs:14:25
+   |
+LL | #![warn(unused_imports, unused_extern_crates)]
+   |                         ^^^^^^^^^^^^^^^^^^^^
+

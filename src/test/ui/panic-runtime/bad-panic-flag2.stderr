@@ -1,0 +1,2 @@
+error: codegen option `panic` requires either `panic` or `abort` (C panic=<value>)
+

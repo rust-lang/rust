@@ -1,0 +1,8 @@
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:12:20
+   |
+LL |     ( $( any_token $field_rust_type )* ) => {}; //~ ERROR missing fragment
+   |                    ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

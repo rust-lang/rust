@@ -1,0 +1,13 @@
+error: rustc_outlives
+  --> $DIR/explicit-dyn.rs:19:1
+   |
+LL | / struct Foo<'a, A> //~ ERROR 19:1: 22:2: rustc_outlives
+LL | | {
+LL | |     foo: Box<dyn Trait<'a, A>>
+LL | | }
+   | |_^
+   |
+   = note: A : 'a
+
+error: aborting due to previous error
+

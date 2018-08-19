@@ -10,7 +10,7 @@
 
 // revisions: cfail1 cfail2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
+// compile-pass
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

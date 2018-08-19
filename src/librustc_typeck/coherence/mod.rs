@@ -18,7 +18,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 use syntax::ast;
 
@@ -52,10 +52,10 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
 fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
+    let span = tcx.sess.codemap().def_span(tcx.span_of_impl(impl_def_id).unwrap());
 
     // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
     if did == li.sized_trait() {
-        let span = tcx.span_of_impl(impl_def_id).unwrap();
         struct_span_err!(tcx.sess,
                          span,
                          E0322,
@@ -66,15 +66,16 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
     }
 
     if did == li.unsize_trait() {
-        let span = tcx.span_of_impl(impl_def_id).unwrap();
-        span_err!(tcx.sess,
-                  span,
-                  E0328,
-                  "explicit impls for the `Unsize` trait are not permitted");
+        struct_span_err!(tcx.sess,
+                         span,
+                         E0328,
+                         "explicit impls for the `Unsize` trait are not permitted")
+            .span_label(span, "impl of `Unsize` not allowed")
+            .emit();
         return;
     }
 
-    if tcx.sess.features.borrow().unboxed_closures {
+    if tcx.features().unboxed_closures {
         // the feature gate allows all Fn traits
         return;
     }
@@ -88,14 +89,14 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
     } else {
         return; // everything OK
     };
-    let mut err = struct_span_err!(tcx.sess,
-                                   tcx.span_of_impl(impl_def_id).unwrap(),
-                                   E0183,
-                                   "manual implementations of `{}` are experimental",
-                                   trait_name);
-    help!(&mut err,
-          "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
-    err.emit();
+    struct_span_err!(tcx.sess,
+                     span,
+                     E0183,
+                     "manual implementations of `{}` are experimental",
+                     trait_name)
+        .span_label(span, format!("manual implementations of `{}` are experimental", trait_name))
+        .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
+        .emit();
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -126,15 +127,15 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
-        ty::maps::queries::coherent_trait::ensure(tcx, trait_def_id);
+        ty::query::queries::coherent_trait::ensure(tcx, trait_def_id);
     }
 
     unsafety::check(tcx);
     orphan::check(tcx);
 
     // these queries are executed for side-effects (error reporting):
-    ty::maps::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
-    ty::maps::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
+    ty::query::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
+    ty::query::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
 }
 
 /// Overlap: No two impls for the same trait are implemented for the
@@ -168,13 +169,17 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
                 traits::supertrait_def_ids(tcx,
                                            data.principal().unwrap().def_id());
             if supertrait_def_ids.any(|d| d == trait_def_id) {
-                span_err!(tcx.sess,
-                          tcx.span_of_impl(impl_def_id).unwrap(),
-                          E0371,
-                          "the object type `{}` automatically \
-                           implements the trait `{}`",
-                          trait_ref.self_ty(),
-                          tcx.item_path_str(trait_def_id));
+                let sp = tcx.sess.codemap().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+                struct_span_err!(tcx.sess,
+                                 sp,
+                                 E0371,
+                                 "the object type `{}` automatically implements the trait `{}`",
+                                 trait_ref.self_ty(),
+                                 tcx.item_path_str(trait_def_id))
+                    .span_label(sp, format!("`{}` automatically implements trait `{}`",
+                                            trait_ref.self_ty(),
+                                            tcx.item_path_str(trait_def_id)))
+                    .emit();
             }
         }
     }

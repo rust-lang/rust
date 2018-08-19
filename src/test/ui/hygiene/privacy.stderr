@@ -1,0 +1,9 @@
+error[E0603]: function `f` is private
+  --> $DIR/privacy.rs:26:9
+   |
+LL |         foo::f() //~ ERROR `f` is private
+   |         ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

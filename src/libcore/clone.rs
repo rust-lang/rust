@@ -87,6 +87,23 @@
 ///     fn clone(&self) -> Stats { *self }
 /// }
 /// ```
+///
+/// ## Additional implementors
+///
+/// In addition to the [implementors listed below][impls],
+/// the following types also implement `Clone`:
+///
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Clone` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Clone` (e.g. `()`, `(i32, bool)`)
+/// * Closure types, if they capture no value from the environment
+///   or if all such captured values implement `Clone` themselves.
+///   Note that variables captured by shared reference always implement `Clone`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Clone`.
+///
+/// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 pub trait Clone : Sized {
@@ -100,6 +117,7 @@ pub trait Clone : Sized {
     /// assert_eq!("Hello", hello.clone());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
     fn clone(&self) -> Self;
 
     /// Performs copy-assignment from `source`.
@@ -130,3 +148,67 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData
            reason = "deriving hack, should not be public",
            issue = "0")]
 pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
+
+/// Implementations of `Clone` for primitive types.
+///
+/// Implementations that cannot be described in Rust
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+mod impls {
+
+    use super::Clone;
+
+    macro_rules! impl_clone {
+        ($($t:ty)*) => {
+            $(
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl Clone for $t {
+                    #[inline]
+                    fn clone(&self) -> Self {
+                        *self
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_clone! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl Clone for ! {
+        #[inline]
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Clone for *const T {
+        #[inline]
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Clone for *mut T {
+        #[inline]
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    // Shared references can be cloned, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T: ?Sized> Clone for &'a T {
+        #[inline]
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+}

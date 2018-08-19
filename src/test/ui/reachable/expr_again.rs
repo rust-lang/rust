@@ -16,5 +16,6 @@ fn main() {
     let x = loop {
         continue;
         println!("hi");
+        //~^ ERROR unreachable statement
     };
 }

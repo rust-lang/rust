@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Helpers for handling cast expressions, used in both
-// typeck and trans.
+// typeck and codegen.
 
 use ty::{self, Ty};
 
@@ -20,7 +20,6 @@ use syntax::ast;
 pub enum IntTy {
     U(ast::UintTy),
     I,
-    Ivar,
     CEnum,
     Bool,
     Char
@@ -37,9 +36,9 @@ pub enum CastTy<'tcx> {
     /// Function Pointers
     FnPtr,
     /// Raw pointers
-    Ptr(&'tcx ty::TypeAndMut<'tcx>),
+    Ptr(ty::TypeAndMut<'tcx>),
     /// References
-    RPtr(&'tcx ty::TypeAndMut<'tcx>),
+    RPtr(ty::TypeAndMut<'tcx>),
 }
 
 /// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)
@@ -64,14 +63,14 @@ impl<'tcx> CastTy<'tcx> {
             ty::TyBool => Some(CastTy::Int(IntTy::Bool)),
             ty::TyChar => Some(CastTy::Int(IntTy::Char)),
             ty::TyInt(_) => Some(CastTy::Int(IntTy::I)),
-            ty::TyInfer(ty::InferTy::IntVar(_)) => Some(CastTy::Int(IntTy::Ivar)),
+            ty::TyInfer(ty::InferTy::IntVar(_)) => Some(CastTy::Int(IntTy::I)),
             ty::TyInfer(ty::InferTy::FloatVar(_)) => Some(CastTy::Float),
             ty::TyUint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::TyFloat(_) => Some(CastTy::Float),
             ty::TyAdt(d,_) if d.is_enum() && d.is_payloadfree() =>
                 Some(CastTy::Int(IntTy::CEnum)),
-            ty::TyRawPtr(ref mt) => Some(CastTy::Ptr(mt)),
-            ty::TyRef(_, ref mt) => Some(CastTy::RPtr(mt)),
+            ty::TyRawPtr(mt) => Some(CastTy::Ptr(mt)),
+            ty::TyRef(_, ty, mutbl) => Some(CastTy::RPtr(ty::TypeAndMut { ty, mutbl })),
             ty::TyFnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
         }

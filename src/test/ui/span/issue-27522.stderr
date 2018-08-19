@@ -1,11 +1,12 @@
 error[E0307]: invalid `self` type: &SomeType
   --> $DIR/issue-27522.rs:16:22
    |
-16 |     fn handler(self: &SomeType); //~ ERROR invalid `self` type
+LL |     fn handler(self: &SomeType); //~ ERROR invalid `self` type
    |                      ^^^^^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it`
+   = note: type must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0307`.

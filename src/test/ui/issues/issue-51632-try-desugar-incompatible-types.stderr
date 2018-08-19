@@ -1,0 +1,15 @@
+error[E0308]: try expression alternatives have incompatible types
+  --> $DIR/issue-51632-try-desugar-incompatible-types.rs:20:5
+   |
+LL |     missing_discourses()?
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected enum `std::result::Result`, found isize
+   |     help: try wrapping with a success variant: `Ok(missing_discourses()?)`
+   |
+   = note: expected type `std::result::Result<isize, ()>`
+              found type `isize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

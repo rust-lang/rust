@@ -12,8 +12,8 @@
 // in the type of `p` includes the points after `&v[0]` up to (but not
 // including) the call to `use_x`. The `else` branch is not included.
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Zborrowck=mir -Zverbose
+//                              ^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
 
@@ -32,18 +32,16 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#2r    | {bb2[0..=6], bb3[0..=1]}
-// | '_#3r    | {bb2[1..=6], bb3[0..=1]}
-// | '_#4r    | {bb2[5..=6], bb3[0..=1]}
+// | '_#2r    | U0 | {bb2[0..=3], bb3[0..=1]}
+// | '_#3r    | U0 | {bb2[1..=3], bb3[0..=1]}
+// | '_#4r    | U0 | {bb2[3], bb3[0..=1]}
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
-// let _2: &'_#3r usize;
-// ...
 // let _6: &'_#4r usize;
+// ...
+// let _2: &'_#3r usize;
 // ...
 // _2 = &'_#2r _1[_3];
 // ...
-// _7 = _2;
-// ...
-// _6 = move _7;
+// _6 = _2;
 // END rustc.main.nll.0.mir

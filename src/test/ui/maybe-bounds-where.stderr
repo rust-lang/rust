@@ -1,0 +1,45 @@
+error: `?Trait` bounds are only permitted at the point where a type parameter is declared
+  --> $DIR/maybe-bounds-where.rs:11:23
+   |
+LL | struct S1<T>(T) where (T): ?Sized;
+   |                       ^^^
+
+error: `?Trait` bounds are only permitted at the point where a type parameter is declared
+  --> $DIR/maybe-bounds-where.rs:14:23
+   |
+LL | struct S2<T>(T) where u8: ?Sized;
+   |                       ^^
+
+error: `?Trait` bounds are only permitted at the point where a type parameter is declared
+  --> $DIR/maybe-bounds-where.rs:17:23
+   |
+LL | struct S3<T>(T) where &'static T: ?Sized;
+   |                       ^^^^^^^^^^
+
+error: `?Trait` bounds are only permitted at the point where a type parameter is declared
+  --> $DIR/maybe-bounds-where.rs:22:31
+   |
+LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
+   |                               ^
+
+error: `?Trait` bounds are only permitted at the point where a type parameter is declared
+  --> $DIR/maybe-bounds-where.rs:30:18
+   |
+LL |     fn f() where T: ?Sized {}
+   |                  ^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/maybe-bounds-where.rs:25:11
+   |
+LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
+   |           ^
+
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default. Only `?Sized` is supported
+  --> $DIR/maybe-bounds-where.rs:25:11
+   |
+LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
+   |           ^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0203`.

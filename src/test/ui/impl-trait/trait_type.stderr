@@ -1,8 +1,8 @@
 error[E0053]: method `fmt` has an incompatible type for trait
   --> $DIR/trait_type.rs:17:4
    |
-17 |    fn fmt(&self, x: &str) -> () { }
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
+LL |    fn fmt(&self, x: &str) -> () { }
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
    = note: expected type `fn(&MyType, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
               found type `fn(&MyType, &str)`
@@ -10,7 +10,7 @@ error[E0053]: method `fmt` has an incompatible type for trait
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
   --> $DIR/trait_type.rs:22:11
    |
-22 |    fn fmt(&self) -> () { }
+LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
@@ -18,18 +18,20 @@ error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fm
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/trait_type.rs:27:4
    |
-27 |    fn fmt() -> () { }
-   |    ^^^^^^^^^^^^^^^^^^ expected `&self` in impl
+LL |    fn fmt() -> () { }
+   |    ^^^^^^^^^^^^^^ expected `&self` in impl
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0046]: not all trait items implemented, missing: `fmt`
   --> $DIR/trait_type.rs:31:1
    |
-31 | impl std::fmt::Display for MyType4 {}
+LL | impl std::fmt::Display for MyType4 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error: aborting due to 4 previous errors
 
+Some errors occurred: E0046, E0050, E0053, E0186.
+For more information about an error, try `rustc --explain E0046`.

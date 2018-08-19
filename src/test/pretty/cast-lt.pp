@@ -1,9 +1,9 @@
 #![feature(prelude_import)]
 #![no_std]
 #[prelude_import]
-use std::prelude::v1::*;
+use ::std::prelude::v1::*;
 #[macro_use]
-extern crate std as std;
+extern crate std;
 // Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -21,4 +21,3 @@ extern crate std as std;
 macro_rules! negative(( $ e : expr ) => { $ e < 0 });
 
 fn main() { (1 as i32) < 0; }
-

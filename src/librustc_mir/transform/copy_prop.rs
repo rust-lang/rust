@@ -29,7 +29,6 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use rustc::hir;
 use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -41,26 +40,8 @@ pub struct CopyPropagation;
 impl MirPass for CopyPropagation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        // Don't run on constant MIR, because trans might not be able to
-        // evaluate the modified MIR.
-        // FIXME(eddyb) Remove check after miri is merged.
-        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
-        match (tcx.hir.body_owner_kind(id), source.promoted) {
-            (_, Some(_)) |
-            (hir::BodyOwnerKind::Const, _) |
-            (hir::BodyOwnerKind::Static(_), _) => return,
-
-            (hir::BodyOwnerKind::Fn, _) => {
-                if tcx.is_const_fn(source.def_id) {
-                    // Don't run on const functions, as, again, trans might not be able to evaluate
-                    // the optimized IR.
-                    return
-                }
-            }
-        }
-
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {

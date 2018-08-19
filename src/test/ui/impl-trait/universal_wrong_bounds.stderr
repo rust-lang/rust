@@ -1,28 +1,23 @@
-error[E0425]: cannot find function `wants_clone` in this scope
-  --> $DIR/universal_wrong_bounds.rs:18:5
-   |
-18 |     wants_clone(f); //~ ERROR cannot find
-   |     ^^^^^^^^^^^ did you mean `wants_cone`?
-
 error[E0405]: cannot find trait `Debug` in this scope
-  --> $DIR/universal_wrong_bounds.rs:21:24
+  --> $DIR/universal_wrong_bounds.rs:19:24
    |
-21 | fn wants_debug(g: impl Debug) { } //~ ERROR cannot find
+LL | fn wants_debug(g: impl Debug) { } //~ ERROR cannot find
    |                        ^^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-13 | use std::fmt::Debug;
+LL | use std::fmt::Debug;
    |
 
 error[E0405]: cannot find trait `Debug` in this scope
-  --> $DIR/universal_wrong_bounds.rs:22:26
+  --> $DIR/universal_wrong_bounds.rs:20:26
    |
-22 | fn wants_display(g: impl Debug) { } //~ ERROR cannot find
+LL | fn wants_display(g: impl Debug) { } //~ ERROR cannot find
    |                          ^^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-13 | use std::fmt::Debug;
+LL | use std::fmt::Debug;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0405`.

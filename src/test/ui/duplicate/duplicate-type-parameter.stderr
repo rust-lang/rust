@@ -1,0 +1,66 @@
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:11:12
+   |
+LL | type Foo<T,T> = Option<T>;
+   |          - ^ already used
+   |          |
+   |          first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:14:14
+   |
+LL | struct Bar<T,T>(T);
+   |            - ^ already used
+   |            |
+   |            first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:17:14
+   |
+LL | struct Baz<T,T> {
+   |            - ^ already used
+   |            |
+   |            first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:22:12
+   |
+LL | enum Boo<T,T> {
+   |          - ^ already used
+   |          |
+   |          first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:28:11
+   |
+LL | fn quux<T,T>(x: T) {}
+   |         - ^ already used
+   |         |
+   |         first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:31:13
+   |
+LL | trait Qux<T,T> {}
+   |           - ^ already used
+   |           |
+   |           first use of `T`
+
+error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+  --> $DIR/duplicate-type-parameter.rs:34:8
+   |
+LL | impl<T,T> Qux<T,T> for Option<T> {}
+   |      - ^ already used
+   |      |
+   |      first use of `T`
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/duplicate-type-parameter.rs:34:6
+   |
+LL | impl<T,T> Qux<T,T> for Option<T> {}
+   |      ^ unconstrained type parameter
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0207, E0403.
+For more information about an error, try `rustc --explain E0207`.

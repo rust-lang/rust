@@ -1,0 +1,25 @@
+error[E0382]: use of moved value: `arc_v`
+  --> $DIR/no-reuse-move-arc.rs:22:18
+   |
+LL |     thread::spawn(move|| {
+   |                   ------ value moved (into closure) here
+...
+LL |     assert_eq!((*arc_v)[2], 3); //~ ERROR use of moved value: `arc_v`
+   |                  ^^^^^ value used here after move
+   |
+   = note: move occurs because `arc_v` has type `std::sync::Arc<std::vec::Vec<i32>>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `arc_v`
+  --> $DIR/no-reuse-move-arc.rs:24:23
+   |
+LL |     thread::spawn(move|| {
+   |                   ------ value moved (into closure) here
+...
+LL |     println!("{:?}", *arc_v); //~ ERROR use of moved value: `arc_v`
+   |                       ^^^^^ value used here after move
+   |
+   = note: move occurs because `arc_v` has type `std::sync::Arc<std::vec::Vec<i32>>`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

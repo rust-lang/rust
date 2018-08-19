@@ -258,7 +258,7 @@ pub struct CharSearcher<'a> {
 
     /// `finger` is the current byte index of the forward search.
     /// Imagine that it exists before the byte at its index, i.e.
-    /// haystack[finger] is the first byte of the slice we must inspect during
+    /// `haystack[finger]` is the first byte of the slice we must inspect during
     /// forward searching
     finger: usize,
     /// `finger_back` is the current byte index of the reverse search.
@@ -324,7 +324,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 // the second byte when searching for the third.
                 //
                 // However, this is totally okay. While we have the invariant that
-                // self.finger is on a UTF8 boundary, this invariant is not relid upon
+                // self.finger is on a UTF8 boundary, this invariant is not relied upon
                 // within this method (it is relied upon in CharSearcher::next()).
                 //
                 // We only exit this method when we reach the end of the string, or if we
@@ -354,7 +354,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
-        let slice = unsafe { self.haystack.slice_unchecked(self.finger, old_finger) };
+        let slice = unsafe { self.haystack.get_unchecked(self.finger..old_finger) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next_back() {

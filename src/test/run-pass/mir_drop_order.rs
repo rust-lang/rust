@@ -41,7 +41,7 @@ fn main() {
         // all borrows are extended - nothing has been dropped yet
         assert_eq!(get(), vec![]);
     }
-    // in a let-statement, extended lvalues are dropped
+    // in a let-statement, extended places are dropped
     // *after* the let result (tho they have the same scope
     // as far as scope-based borrowck goes).
     assert_eq!(get(), vec![0, 2, 3, 1]);

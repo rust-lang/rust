@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied in `std::cell::Cell<i32>`
+error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
   --> $DIR/interior-mutability.rs:15:5
    |
-15 |     catch_unwind(|| { x.set(23); }); //~ ERROR the trait bound
-   |     ^^^^^^^^^^^^ the type std::cell::UnsafeCell<i32> may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+LL |     catch_unwind(|| { x.set(23); });
+   |     ^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
    |
    = help: within `std::cell::Cell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`
    = note: required because it appears within the type `std::cell::Cell<i32>`
@@ -12,3 +12,4 @@ error[E0277]: the trait bound `std::cell::UnsafeCell<i32>: std::panic::RefUnwind
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,11 @@
+error[E0477]: the type `&'a isize` does not fulfill the required lifetime
+  --> $DIR/regions-bounded-method-type-parameters.rs:24:9
+   |
+LL |     Foo.some_method::<&'a isize>();
+   |         ^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0477`.

@@ -61,7 +61,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// # Conversions
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
-/// the traits which `OsString` implements for conversions from/to native representations.
+/// the traits which `OsString` implements for [conversions] from/to native representations.
 ///
 /// [`OsStr`]: struct.OsStr.html
 /// [`&OsStr`]: struct.OsStr.html
@@ -74,6 +74,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// [`new`]: #method.new
 /// [`push`]: #method.push
 /// [`as_os_str`]: #method.as_os_str
+/// [conversions]: index.html#conversions
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -89,7 +90,7 @@ pub struct OsString {
 /// references; the latter are owned strings.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
-/// the traits which `OsStr` implements for conversions from/to native representations.
+/// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
 /// [`&str`]: ../primitive.str.html
@@ -295,6 +296,36 @@ impl OsString {
         self.inner.shrink_to_fit()
     }
 
+    /// Shrinks the capacity of the `OsString` with a lower bound.
+    ///
+    /// The capacity will remain at least as large as both the length
+    /// and the supplied value.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shrink_to)]
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::from("foo");
+    ///
+    /// s.reserve(100);
+    /// assert!(s.capacity() >= 100);
+    ///
+    /// s.shrink_to(10);
+    /// assert!(s.capacity() >= 10);
+    /// s.shrink_to(0);
+    /// assert!(s.capacity() >= 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.inner.shrink_to(min_capacity)
+    }
+
     /// Converts this `OsString` into a boxed [`OsStr`].
     ///
     /// [`OsStr`]: struct.OsStr.html
@@ -317,6 +348,12 @@ impl OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for OsString {
+    /// Converts a [`String`] into a [`OsString`].
+    ///
+    /// The conversion copies the data, and includes an allocation on the heap.
+    ///
+    /// [`String`]: ../string/struct.String.html
+    /// [`OsString`]: struct.OsString.html
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
     }
@@ -383,6 +420,20 @@ impl PartialEq<str> for OsString {
 impl PartialEq<OsString> for str {
     fn eq(&self, other: &OsString) -> bool {
         &**other == self
+    }
+}
+
+#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+impl<'a> PartialEq<&'a str> for OsString {
+    fn eq(&self, other: &&'a str) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+impl<'a> PartialEq<OsString> for &'a str {
+    fn eq(&self, other: &OsString) -> bool {
+        **other == **self
     }
 }
 
@@ -469,10 +520,12 @@ impl OsStr {
 
     /// Converts an `OsStr` to a [`Cow`]`<`[`str`]`>`.
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [`Cow`]: ../../std/borrow/enum.Cow.html
     /// [`str`]: ../../std/primitive.str.html
+    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
@@ -585,6 +638,10 @@ impl<'a> From<&'a OsStr> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
+    /// Converts a `Box<OsStr>` into a `OsString` without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
@@ -592,13 +649,29 @@ impl From<Box<OsStr>> for OsString {
 
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
+    /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<OsStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.to_os_string().into_boxed_os_str()
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
+    /// Converts a [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Arc`]: ../sync/struct.Arc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -617,6 +690,10 @@ impl<'a> From<&'a OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
+    /// Converts a [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Rc`]: ../rc/struct.Rc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
@@ -630,6 +707,38 @@ impl<'a> From<&'a OsStr> for Rc<OsStr> {
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const OsStr) }
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<OsString> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: OsString) -> Cow<'a, OsStr> {
+        Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: &'a OsStr) -> Cow<'a, OsStr> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: &'a OsString) -> Cow<'a, OsStr> {
+        Cow::Borrowed(s.as_os_str())
+    }
+}
+
+#[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
+impl<'a> From<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from(s: Cow<'a, OsStr>) -> Self {
+        s.into_owned()
     }
 }
 

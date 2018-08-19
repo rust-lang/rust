@@ -6,7 +6,7 @@ environment:
     secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
   TOOLSTATE_REPO_ACCESS_TOKEN:
-    secure: PTZiSxJMVUZ0VnMR5i13E4OagbXfglj7pcskDQiKufVrDm13mLoI0vDJAEM35+bY
+    secure: gKGlVktr7iuqCoYSxHxDE9ltLOKU0nYDEuQxvWbNxUIW7ri5ppn8L06jQzN0GGzN
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation
@@ -18,19 +18,31 @@ environment:
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
+    CI_JOB_NAME: x86_64-msvc
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i686-pc-windows-msvc
-    SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    SCRIPT: make appveyor-subset-1
+    CI_JOB_NAME: i686-msvc-1
+  - MSYS_BITS: 32
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    SCRIPT: make appveyor-subset-2
+    CI_JOB_NAME: i686-msvc-2
 
   # MSVC aux tests
   - MSYS_BITS: 64
-    RUST_CHECK_TARGET: check-aux
+    RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    CI_JOB_NAME: x86_64-msvc-aux
+  - MSYS_BITS: 64
+    SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    CI_JOB_NAME: x86_64-msvc-cargo
 
   # MSVC tools tests
   - MSYS_BITS: 64
     SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+    CI_JOB_NAME: x86_64-msvc-tools
 
   # 32/64-bit MinGW builds.
   #
@@ -47,51 +59,65 @@ environment:
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    SCRIPT: python x.py test
+    SCRIPT: make appveyor-subset-1
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
+    CI_JOB_NAME: i686-mingw-1
+  - MSYS_BITS: 32
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    SCRIPT: make appveyor-subset-2
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+    MINGW_DIR: mingw32
+    CI_JOB_NAME: i686-mingw-2
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
+    CI_JOB_NAME: x86_64-mingw
 
   # 32/64 bit MSVC and GNU deployment
   - RUST_CONFIGURE_ARGS: >
       --build=x86_64-pc-windows-msvc
-      --enable-extended
+      --enable-full-tools
       --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
+    CI_JOB_NAME: dist-x86_64-msvc
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
-      --enable-extended
+      --enable-full-tools
       --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
+    CI_JOB_NAME: dist-i686-msvc
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
     SCRIPT: python x.py dist
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
+    CI_JOB_NAME: dist-i686-mingw
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
+    CI_JOB_NAME: dist-x86_64-mingw
 
   # "alternate" deployment, see .travis.yml for more info
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY_ALT: 1
+    CI_JOB_NAME: dist-x86_64-msvc-alt
 
 matrix:
   fast_finish: true
@@ -111,6 +137,20 @@ install:
   - if defined MINGW_URL appveyor-retry appveyor DownloadFile %MINGW_URL%/%MINGW_ARCHIVE%
   - if defined MINGW_URL 7z x -y %MINGW_ARCHIVE% > nul
   - if defined MINGW_URL set PATH=%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
+
+  # If we're compiling for MSVC then we, like most other distribution builders,
+  # switch to clang as the compiler. This'll allow us eventually to enable LTO
+  # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
+  # clang has an output mode compatible with MinGW that we need. If it does we
+  # should switch to clang for MinGW as well!
+  #
+  # Note that the LLVM installer is an NSIS installer
+  #
+  # Original downloaded here came from
+  # http://releases.llvm.org/6.0.0/LLVM-6.0.0-win64.exe
+  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-6.0.0-win64.exe
+  - if NOT defined MINGW_URL .\LLVM-6.0.0-win64.exe /S /NCRC /D=C:\clang-rust
+  - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
 
   # Here we do a pretty heinous thing which is to mangle the MinGW installation
   # we just had above. Currently, as of this writing, we're using MinGW-w64
@@ -140,8 +180,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-pc-windows-msvc
-  - mv 2017-05-12-sccache-x86_64-pc-windows-msvc sccache.exe
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc
+  - mv 2018-04-26-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
@@ -164,9 +204,6 @@ install:
   - set PATH=%PATH%;%CD%\handle
   - handle.exe -accepteula -help
 
-  # Attempt to debug sccache failures
-  - set SCCACHE_ERROR_LOG=%CD%/sccache.log
-
 test_script:
   - if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
   - sh src/ci/init_repo.sh . /c/cache/rustsrc
@@ -175,7 +212,9 @@ test_script:
   - sh src/ci/run.sh
 
 on_failure:
-  - cat %CD%\sccache.log || exit 0
+  # Dump crash log
+  - set PATH=%PATH%;"C:\Program Files (x86)\Windows Kits\10\Debuggers\X64"
+  - if exist %LOCALAPPDATA%\CrashDumps for %%f in (%LOCALAPPDATA%\CrashDumps\*) do cdb -c "k;q" -G -z "%%f"
 
 branches:
   only:

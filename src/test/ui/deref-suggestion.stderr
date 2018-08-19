@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:18:9
    |
-18 |     foo(s); //~ ERROR mismatched types
+LL |     foo(s); //~ ERROR mismatched types
    |         ^
    |         |
    |         expected struct `std::string::String`, found reference
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:23:10
    |
-23 |     foo3(u); //~ ERROR mismatched types
+LL |     foo3(u); //~ ERROR mismatched types
    |          ^
    |          |
    |          expected u32, found &u32
@@ -25,7 +25,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:30:9
    |
-30 |     foo(&"aaa".to_owned()); //~ ERROR mismatched types
+LL |     foo(&"aaa".to_owned()); //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^^^^^
    |         |
    |         expected struct `std::string::String`, found reference
@@ -37,7 +37,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:31:9
    |
-31 |     foo(&mut "aaa".to_owned()); //~ ERROR mismatched types
+LL |     foo(&mut "aaa".to_owned()); //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         expected struct `std::string::String`, found mutable reference
@@ -49,10 +49,10 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:12:20
    |
-12 |     ($x:expr) => { &$x } //~ ERROR mismatched types
+LL |     ($x:expr) => { &$x } //~ ERROR mismatched types
    |                    ^^^ expected u32, found &{integer}
 ...
-32 |     foo3(borrow!(0));
+LL |     foo3(borrow!(0));
    |          ---------- in this macro invocation
    |
    = note: expected type `u32`
@@ -60,3 +60,4 @@ error[E0308]: mismatched types
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

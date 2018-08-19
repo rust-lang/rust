@@ -1,0 +1,19 @@
+error[E0658]: existential types are unstable (see issue #34511)
+  --> $DIR/feature-gate-existential-type.rs:15:1
+   |
+LL | existential type Foo: std::fmt::Debug; //~ ERROR existential types are unstable
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(existential_type)] to the crate attributes to enable
+
+error[E0658]: existential types are unstable (see issue #34511)
+  --> $DIR/feature-gate-existential-type.rs:22:5
+   |
+LL |     existential type Baa: std::fmt::Debug; //~ ERROR existential types are unstable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(existential_type)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

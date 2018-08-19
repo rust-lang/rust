@@ -21,7 +21,7 @@ WORKDIR /build/
 COPY scripts/musl.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CC=gcc \
-    CFLAGS="-fPIC -Wa,-mrelax-relocations=no" \
+    CFLAGS="-Wa,-mrelax-relocations=no" \
     CXX=g++ \
     CXXFLAGS="-Wa,-mrelax-relocations=no" \
     bash musl.sh x86_64 && rm -rf /build
@@ -30,9 +30,9 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=x86_64-unknown-linux-musl \
       --musl-root-x86_64=/musl-x86_64 \
-      --enable-extended
+      --enable-extended \
+      --disable-docs
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our

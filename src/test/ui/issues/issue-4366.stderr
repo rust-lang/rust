@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/issue-4366.rs:28:29
+   |
+LL |         fn sub() -> isize { foo(); 1 } //~ ERROR cannot find function `foo` in this scope
+   |                             ^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL |         use foo::foo;
+   |
+LL |         use m1::foo;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

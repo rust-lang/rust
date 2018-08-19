@@ -1,10 +1,11 @@
 error[E0599]: no method named `b` found for type `&Self` in the current scope
   --> $DIR/issue-3563.rs:13:17
    |
-13 |         || self.b()
+LL |         || self.b()
    |                 ^
    |
    = help: did you mean `a`?
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

@@ -1,16 +1,17 @@
 error[E0072]: recursive type `ListNode` has infinite size
   --> $DIR/multiline-span-E0072.rs:12:1
    |
-12 | / struct //~ ERROR has infinite size
-13 | | ListNode
-14 | | {
-15 | |     head: u8,
-16 | |     tail: Option<ListNode>,
+LL | / struct //~ ERROR has infinite size
+LL | | ListNode
+LL | | {
+LL | |     head: u8,
+LL | |     tail: Option<ListNode>,
    | |     ---------------------- recursive without indirection
-17 | | }
+LL | | }
    | |_^ recursive type has infinite size
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ListNode` representable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0072`.

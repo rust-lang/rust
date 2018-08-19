@@ -11,9 +11,10 @@
 // aux-build:derive-a.rs
 
 #![feature(rustc_attrs)]
+#![warn(unused_extern_crates)]
 
 extern crate derive_a;
-//~^ WARN proc macro crates and `#[no_link]` crates have no effect without `#[macro_use]`
+//~^ WARN unused extern crate
 
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful

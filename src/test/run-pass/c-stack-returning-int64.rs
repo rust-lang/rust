@@ -10,7 +10,7 @@
 
 // ignore-wasm32-bare no libc to test with
 
-#![feature(libc, std_misc)]
+#![feature(libc)]
 
 extern crate libc;
 

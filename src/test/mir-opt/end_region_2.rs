@@ -27,11 +27,11 @@ fn main() {
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
-//     let _2: bool;
+//     let _7: &'23_3rs bool;
 //     ...
 //     let _3: &'23_1rs bool;
 //     ...
-//     let _7: &'23_3rs bool;
+//     let _2: bool;
 //     ...
 //     let mut _4: ();
 //     let mut _5: bool;
@@ -40,15 +40,21 @@ fn main() {
 //         goto -> bb1;
 //     }
 //     bb1: {
+//          falseUnwind -> [real: bb2, cleanup: bb3];
+//     }
+//     bb2: {
 //         StorageLive(_2);
 //         _2 = const true;
 //         StorageLive(_3);
 //         _3 = &'23_1rs _2;
 //         StorageLive(_5);
 //         _5 = _2;
-//         switchInt(move _5) -> [0u8: bb3, otherwise: bb2];
+//         switchInt(move _5) -> [false: bb5, otherwise: bb4];
 //     }
-//     bb2: {
+//     bb3: {
+//         ...
+//     }
+//     bb4: {
 //         _0 = ();
 //         StorageDead(_5);
 //         EndRegion('23_1rs);
@@ -56,7 +62,7 @@ fn main() {
 //         StorageDead(_2);
 //         return;
 //     }
-//     bb3: {
+//     bb5: {
 //         _4 = ();
 //         StorageDead(_5);
 //         StorageLive(_7);

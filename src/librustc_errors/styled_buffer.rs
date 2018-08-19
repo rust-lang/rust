@@ -144,4 +144,25 @@ impl StyledBuffer {
     pub fn num_lines(&self) -> usize {
         self.text.len()
     }
+
+    pub fn set_style_range(&mut self,
+                           line: usize,
+                           col_start: usize,
+                           col_end: usize,
+                           style: Style,
+                           overwrite: bool) {
+        for col in col_start..col_end {
+            self.set_style(line, col, style, overwrite);
+        }
+    }
+
+    pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
+        if let Some(ref mut line) = self.styles.get_mut(line) {
+            if let Some(s) = line.get_mut(col) {
+                if *s == Style::NoStyle || *s == Style::Quotation || overwrite {
+                    *s = style;
+                }
+            }
+        }
+    }
 }

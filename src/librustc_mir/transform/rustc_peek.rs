@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::abi::{Abi};
+use rustc_target::spec::abi::{Abi};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -22,7 +22,7 @@ use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::MoveDataParamEnv;
 use dataflow::BitDenotation;
 use dataflow::DataflowResults;
-use dataflow::{DefinitelyInitializedLvals, MaybeInitializedLvals, MaybeUninitializedLvals};
+use dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::move_paths::{MovePathIndex, LookupResult};
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow;
@@ -36,7 +36,7 @@ impl MirPass for SanityCheck {
                           src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        if !tcx.has_attr(def_id, "rustc_mir_borrowck") {
+        if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;
         } else {
@@ -50,15 +50,15 @@ impl MirPass for SanityCheck {
         let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
         let flow_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        MaybeInitializedLvals::new(tcx, mir, &mdpe),
+                        MaybeInitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_uninits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        MaybeUninitializedLvals::new(tcx, mir, &mdpe),
+                        MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_def_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
+                        DefinitelyInitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
 
         if has_rustc_mir_with(&attributes, "rustc_peek_maybe_init").is_some() {
@@ -138,9 +138,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
-    let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
-    let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
+    let mut on_entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
+    let mut gen_set = results.0.sets.gen_set_for(bb.index()).clone();
+    let mut kill_set = results.0.sets.kill_set_for(bb.index()).clone();
 
     // Emulate effect of all statements in the block up to (but not
     // including) the borrow within `peek_arg_place`. Do *not* include
@@ -148,9 +148,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
-    let mut sets = dataflow::BlockSets { on_entry: &mut entry,
-                                      gen_set: &mut gen,
-                                      kill_set: &mut kill };
+    let mut sets = dataflow::BlockSets { on_entry: &mut on_entry,
+                                         gen_set: &mut gen_set,
+                                         kill_set: &mut kill_set };
 
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
@@ -158,11 +158,13 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             mir::StatementKind::Assign(ref place, ref rvalue) => {
                 (place, rvalue)
             }
+            mir::StatementKind::ReadForMatch(_) |
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
+            mir::StatementKind::UserAssertTy(..) |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
@@ -201,14 +203,14 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);
         // reset GEN and KILL sets before emulating their effect.
-        for e in sets.gen_set.words_mut() { *e = 0; }
-        for e in sets.kill_set.words_mut() { *e = 0; }
+        sets.gen_set.clear();
+        sets.kill_set.clear();
         results.0.operator.before_statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
         results.0.operator.statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
-        sets.on_entry.union(sets.gen_set);
-        sets.on_entry.subtract(sets.kill_set);
+        sets.on_entry.union_hybrid(sets.gen_set);
+        sets.on_entry.subtract_hybrid(sets.kill_set);
     }
 
     results.0.operator.before_terminator_effect(

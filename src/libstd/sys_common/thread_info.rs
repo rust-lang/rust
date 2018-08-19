@@ -11,10 +11,11 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
 use cell::RefCell;
+use sys::thread::guard::Guard;
 use thread::Thread;
 
 struct ThreadInfo {
-    stack_guard: Option<usize>,
+    stack_guard: Option<Guard>,
     thread: Thread,
 }
 
@@ -38,14 +39,18 @@ pub fn current_thread() -> Option<Thread> {
     ThreadInfo::with(|info| info.thread.clone())
 }
 
-pub fn stack_guard() -> Option<usize> {
-    ThreadInfo::with(|info| info.stack_guard).and_then(|o| o)
+pub fn stack_guard() -> Option<Guard> {
+    ThreadInfo::with(|info| info.stack_guard.clone()).and_then(|o| o)
 }
 
-pub fn set(stack_guard: Option<usize>, thread: Thread) {
+pub fn set(stack_guard: Option<Guard>, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
     THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
         stack_guard,
         thread,
     }));
+}
+
+pub fn reset_guard(stack_guard: Option<Guard>) {
+    THREAD_INFO.with(move |c| c.borrow_mut().as_mut().unwrap().stack_guard = stack_guard);
 }

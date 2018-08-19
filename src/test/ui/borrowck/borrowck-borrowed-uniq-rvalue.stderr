@@ -1,0 +1,16 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:20:27
+   |
+LL |     buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not live long enough
+   |                           ^^^^^^^^^^^^ - borrowed value dropped here while still borrowed
+   |                           |
+   |                           borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

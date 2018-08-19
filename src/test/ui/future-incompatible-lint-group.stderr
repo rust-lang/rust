@@ -1,0 +1,17 @@
+error: anonymous parameters are deprecated and will be removed in the next edition.
+  --> $DIR/future-incompatible-lint-group.rs:14:10
+   |
+LL |     fn f(u8) {} //~ ERROR anonymous parameters are deprecated
+   |          ^^ help: Try naming the parameter or explicitly ignoring it: `_: u8`
+   |
+note: lint level defined here
+  --> $DIR/future-incompatible-lint-group.rs:11:9
+   |
+LL | #![deny(future_incompatible)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: #[deny(anonymous_parameters)] implied by #[deny(future_incompatible)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+
+error: aborting due to previous error
+

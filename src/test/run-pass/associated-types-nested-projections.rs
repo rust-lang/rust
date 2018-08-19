@@ -12,8 +12,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
 use std::slice;
 
 trait Bound {}

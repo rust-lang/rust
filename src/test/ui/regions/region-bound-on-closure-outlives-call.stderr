@@ -1,0 +1,11 @@
+error[E0505]: cannot move out of `f` because it is borrowed
+  --> $DIR/region-bound-on-closure-outlives-call.rs:12:25
+   |
+LL |     (|x| f(x))(call_rec(f)) //~ ERROR cannot move out of `f`
+   |      ---                ^ move out of `f` occurs here
+   |      |
+   |      borrow of `f` occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0505`.

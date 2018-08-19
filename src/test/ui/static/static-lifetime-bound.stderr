@@ -1,0 +1,21 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime-bound.rs:11:6
+   |
+LL | fn f<'a: 'static>(_: &'a i32) {} //~WARN unnecessary lifetime parameter `'a`
+   |      ^^^^^^^^^^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/static-lifetime-bound.rs:15:8
+   |
+LL |     f(&x); //~ERROR does not live long enough
+   |        ^ borrowed value does not live long enough
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

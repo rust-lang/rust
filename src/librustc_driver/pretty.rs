@@ -20,11 +20,13 @@ use {abort_on_err, driver};
 use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
-use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::{Input, OutputFilenames};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
+use rustc_data_structures::small_vec::OneVector;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_metadata::cstore::CStore;
 
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
@@ -33,7 +35,6 @@ use syntax::fold::{self, Folder};
 use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
-use syntax::util::small_vector::SmallVector;
 use syntax_pos::{self, FileName};
 
 use graphviz as dot;
@@ -66,7 +67,7 @@ pub enum PpSourceMode {
 pub enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
-    /// is mostly for use in the --unpretty flowgraph run-make tests,
+    /// is mostly for use in the -Z unpretty flowgraph run-make tests,
     /// since the labels are largely uninteresting in those cases and
     /// have become a pain to maintain.
     UnlabelledEdges,
@@ -170,7 +171,7 @@ impl PpSourceMode {
                                            hir_map: Option<&hir_map::Map<'tcx>>,
                                            f: F)
                                            -> A
-        where F: FnOnce(&PrinterSupport) -> A
+        where F: FnOnce(&dyn PrinterSupport) -> A
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
@@ -199,7 +200,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
-                                               cstore: &'tcx CrateStore,
+                                               cstore: &'tcx CStore,
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
@@ -208,7 +209,7 @@ impl PpSourceMode {
                                                id: &str,
                                                f: F)
                                                -> A
-        where F: FnOnce(&HirPrinterSupport, &hir::Crate) -> A
+        where F: FnOnce(&dyn HirPrinterSupport, &hir::Crate) -> A
     {
         match *self {
             PpmNormal => {
@@ -228,7 +229,9 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let control = &driver::CompileController::basic();
-                abort_on_err(driver::phase_3_run_analysis_passes(control,
+                let codegen_backend = ::get_codegen_backend(sess);
+                abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                                                 control,
                                                                  sess,
                                                                  cstore,
                                                                  hir_map.clone(),
@@ -263,7 +266,7 @@ trait PrinterSupport: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn;
 }
 
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
@@ -279,7 +282,7 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn;
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
     fn node_path(&self, id: ast::NodeId) -> Option<String> {
@@ -303,7 +306,7 @@ impl<'hir> PrinterSupport for NoAnn<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
         self
     }
 }
@@ -317,7 +320,7 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
         self.hir_map.as_ref()
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -344,7 +347,7 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
         self
     }
 }
@@ -395,7 +398,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
         self.hir_map.as_ref()
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -456,7 +459,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
         self.sess
     }
 
-    fn pp_ann(&self) -> &pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -464,11 +467,11 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
-            pprust::NodeIdent(&ast::Ident { name, ctxt }) => {
+            pprust::NodeIdent(&ast::Ident { name, span }) => {
                 s.s.space()?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
-                s.synth_comment(format!("{}{:?}", name.as_u32(), ctxt))
+                s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
             pprust::NodeName(&name) => {
                 s.s.space()?;
@@ -494,7 +497,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         Some(&self.tcx.hir)
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 
@@ -582,6 +585,13 @@ impl<'a, 'hir> Iterator for NodesMatchingUII<'a, 'hir> {
             &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            &NodesMatchingDirect(ref iter) => iter.size_hint(),
+            &NodesMatchingSuffix(ref iter) => iter.size_hint(),
+        }
+    }
 }
 
 impl UserIdentifiedItem {
@@ -641,18 +651,25 @@ impl UserIdentifiedItem {
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a> {
     within_static_or_const: bool,
+    nested_blocks: Option<Vec<ast::Block>>,
     sess: &'a Session,
 }
 
 impl<'a> ReplaceBodyWithLoop<'a> {
     pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
-        ReplaceBodyWithLoop { within_static_or_const: false, sess }
+        ReplaceBodyWithLoop {
+            within_static_or_const: false,
+            nested_blocks: None,
+            sess
+        }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
         let old_const = mem::replace(&mut self.within_static_or_const, is_const);
+        let old_blocks = self.nested_blocks.take();
         let ret = action(self);
         self.within_static_or_const = old_const;
+        self.nested_blocks = old_blocks;
         ret
     }
 
@@ -660,7 +677,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
         if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.node {
-                    ast::TyKind::ImplTrait(_) => true,
+                    ast::TyKind::ImplTrait(..) => true,
                     ast::TyKind::Slice(ref subty) |
                     ast::TyKind::Array(ref subty, _) |
                     ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
@@ -668,14 +685,20 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                     ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
                     ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
                     ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
-                        match seg.parameters.as_ref().map(|p| &**p) {
+                        match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
                             None => false,
-                            Some(&ast::PathParameters::AngleBracketed(ref data)) =>
-                                any_involves_impl_trait(data.types.iter()) ||
-                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
-                            Some(&ast::PathParameters::Parenthesized(ref data)) =>
+                            Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
+                                let types = data.args.iter().filter_map(|arg| match arg {
+                                    ast::GenericArg::Type(ty) => Some(ty),
+                                    _ => None,
+                                });
+                                any_involves_impl_trait(types.into_iter()) ||
+                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty))
+                            },
+                            Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||
-                                any_involves_impl_trait(data.output.iter()),
+                                any_involves_impl_trait(data.output.iter())
+                            }
                         }
                     }),
                     _ => false,
@@ -697,69 +720,115 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(ref decl, _, ref constness, _, _, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ItemKind::Fn(ref decl, ref header, _, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
     }
 
-    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, i: ast::TraitItem) -> OneVector<ast::TraitItem> {
         let is_const = match i.node {
             ast::TraitItemKind::Const(..) => true,
-            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
     }
 
-    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, i: ast::ImplItem) -> OneVector<ast::ImplItem> {
         let is_const = match i.node {
             ast::ImplItemKind::Const(..) => true,
-            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_impl_item(i, s))
     }
 
+    fn fold_anon_const(&mut self, c: ast::AnonConst) -> ast::AnonConst {
+        self.run(true, |s| fold::noop_fold_anon_const(c, s))
+    }
+
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
-        fn expr_to_block(rules: ast::BlockCheckMode,
+        fn stmt_to_block(rules: ast::BlockCheckMode,
                          recovered: bool,
-                         e: Option<P<ast::Expr>>,
-                         sess: &Session) -> P<ast::Block> {
-            P(ast::Block {
-                stmts: e.map(|e| {
-                        ast::Stmt {
-                            id: sess.next_node_id(),
-                            span: e.span,
-                            node: ast::StmtKind::Expr(e),
-                        }
-                    })
-                    .into_iter()
-                    .collect(),
+                         s: Option<ast::Stmt>,
+                         sess: &Session) -> ast::Block {
+            ast::Block {
+                stmts: s.into_iter().collect(),
                 rules,
                 id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
                 recovered,
-            })
+            }
         }
 
-        if !self.within_static_or_const {
-
-            let empty_block = expr_to_block(BlockCheckMode::Default, false, None, self.sess);
-            let loop_expr = P(ast::Expr {
-                node: ast::ExprKind::Loop(empty_block, None),
-                id: self.sess.next_node_id(),
+        fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
+            let expr = P(ast::Expr {
+                id: sess.next_node_id(),
+                node: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
-                attrs: ast::ThinVec::new(),
+                attrs: ThinVec::new(),
             });
 
-            expr_to_block(b.rules, b.recovered, Some(loop_expr), self.sess)
+            ast::Stmt {
+                id: sess.next_node_id(),
+                node: ast::StmtKind::Expr(expr),
+                span: syntax_pos::DUMMY_SP,
+            }
+        }
 
-        } else {
+        let empty_block = stmt_to_block(BlockCheckMode::Default, false, None, self.sess);
+        let loop_expr = P(ast::Expr {
+            node: ast::ExprKind::Loop(P(empty_block), None),
+            id: self.sess.next_node_id(),
+            span: syntax_pos::DUMMY_SP,
+                attrs: ThinVec::new(),
+        });
+
+        let loop_stmt = ast::Stmt {
+            id: self.sess.next_node_id(),
+            span: syntax_pos::DUMMY_SP,
+            node: ast::StmtKind::Expr(loop_expr),
+        };
+
+        if self.within_static_or_const {
             fold::noop_fold_block(b, self)
+        } else {
+            b.map(|b| {
+                let mut stmts = vec![];
+                for s in b.stmts {
+                    let old_blocks = self.nested_blocks.replace(vec![]);
+
+                    stmts.extend(self.fold_stmt(s).into_iter().filter(|s| s.is_item()));
+
+                    // we put a Some in there earlier with that replace(), so this is valid
+                    let new_blocks = self.nested_blocks.take().unwrap();
+                    self.nested_blocks = old_blocks;
+                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+                }
+
+                let mut new_block = ast::Block {
+                    stmts,
+                    ..b
+                };
+
+                if let Some(old_blocks) = self.nested_blocks.as_mut() {
+                    //push our fresh block onto the cache and yield an empty block with `loop {}`
+                    if !new_block.stmts.is_empty() {
+                        old_blocks.push(new_block);
+                    }
+
+                    stmt_to_block(b.rules, b.recovered, Some(loop_stmt), self.sess)
+                } else {
+                    //push `loop {}` onto the end of our fresh block and yield that
+                    new_block.stmts.push(loop_stmt);
+
+                    new_block
+                }
+            })
         }
     }
 
@@ -881,7 +950,7 @@ pub fn print_after_parsing(sess: &Session,
 
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
-        let out: &mut Write = &mut out;
+        let out: &mut dyn Write = &mut out;
         s.call_with_pp_support(sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
@@ -903,7 +972,7 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                                cstore: &'tcx CrateStore,
+                                                cstore: &'tcx CStore,
                                                 hir_map: &hir_map::Map<'tcx>,
                                                 analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
@@ -938,7 +1007,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
     match (ppm, opt_uii) {
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support(sess, Some(hir_map), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -954,7 +1023,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHir(s), None) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -978,7 +1047,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHirTree(s), None) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -994,7 +1063,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHir(s), Some(uii)) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -1006,7 +1075,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
-                    let hir_map = annotation.hir_map().expect("--unpretty missing HIR map");
+                    let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
                     let mut pp_state = pprust_hir::State::new_from_input(sess.codemap(),
                                                                          &sess.parse_sess,
                                                                          src_name,
@@ -1019,7 +1088,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                         pp_state.print_node(node)?;
                         pp_state.s.space()?;
                         let path = annotation.node_path(node_id)
-                            .expect("--unpretty missing node paths");
+                            .expect("-Z unpretty missing node paths");
                         pp_state.synth_comment(path)?;
                         pp_state.s.hardbreak()?;
                     }
@@ -1028,7 +1097,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHirTree(s), Some(uii)) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -1059,7 +1128,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                       cstore: &'a CrateStore,
+                                       cstore: &'a CStore,
                                        hir_map: &hir_map::Map<'tcx>,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
@@ -1071,7 +1140,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        ofile: Option<&Path>) {
     let nodeid = if let Some(uii) = uii {
         debug!("pretty printing for {:?}", uii);
-        Some(uii.to_one_node_id("--unpretty", sess, &hir_map))
+        Some(uii.to_one_node_id("-Z unpretty", sess, &hir_map))
     } else {
         debug!("pretty printing for whole crate");
         None
@@ -1080,7 +1149,9 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     let mut out = Vec::new();
 
     let control = &driver::CompileController::basic();
-    abort_on_err(driver::phase_3_run_analysis_passes(control,
+    let codegen_backend = ::get_codegen_backend(sess);
+    abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                                     control,
                                                      sess,
                                                      cstore,
                                                      hir_map.clone(),
@@ -1120,7 +1191,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 
-                        let out: &mut Write = &mut out;
+                        let out: &mut dyn Write = &mut out;
 
                         print_flowgraph(variants, tcx, code, mode, out)
                     }

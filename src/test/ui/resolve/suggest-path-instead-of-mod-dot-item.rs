@@ -65,3 +65,5 @@ fn h8() -> i32 {
     a::b()
     //~^ ERROR expected function, found module `a::b`
 }
+
+fn main() {}

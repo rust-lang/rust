@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/issue-17385.rs:28:11
+   |
+LL |     drop(foo);
+   |          --- value moved here
+LL |     match foo { //~ ERROR use of moved value
+   |           ^^^ value used here after move
+   |
+   = note: move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `e`
+  --> $DIR/issue-17385.rs:35:11
+   |
+LL |     drop(e);
+   |          - value moved here
+LL |     match e { //~ ERROR use of moved value
+   |           ^ value used here after move
+   |
+   = note: move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

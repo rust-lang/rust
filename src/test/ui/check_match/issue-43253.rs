@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(exclusive_range_pattern)]
 #![warn(unreachable_patterns)]
@@ -23,13 +23,13 @@ fn main() {
 
     match 10 {
         1..10 => {},
-        9...10 => {},
+        9..=10 => {},
         _ => {},
     }
 
     match 10 {
         1..10 => {},
-        10...10 => {},
+        10..=10 => {},
         _ => {},
     }
 
@@ -42,13 +42,13 @@ fn main() {
 
     match 10 {
         1..10 => {},
-        8...9 => {},
+        8..=9 => {},
         _ => {},
     }
 
     match 10 {
         1..10 => {},
-        9...9 => {},
+        9..=9 => {},
         _ => {},
     }
 }

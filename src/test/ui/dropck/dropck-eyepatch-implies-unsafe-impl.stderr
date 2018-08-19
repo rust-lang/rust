@@ -1,24 +1,25 @@
 error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:32:1
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:31:1
    |
-32 | / impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
-33 | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-34 | |
-35 | |     // (unsafe to access self.1  due to #[may_dangle] on A)
-36 | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
-37 | | }
+LL | / impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
+LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+LL | |
+LL | |     // (unsafe to access self.1  due to #[may_dangle] on A)
+LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
+LL | | }
    | |_^
 
 error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:38:1
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:37:1
    |
-38 | / impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
-39 | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-40 | |
-41 | |     // (unsafe to access self.1 due to #[may_dangle] on 'a)
-42 | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
-43 | | }
+LL | / impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
+LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+LL | |
+LL | |     // (unsafe to access self.1 due to #[may_dangle] on 'a)
+LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
+LL | | }
    | |_^
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0569`.

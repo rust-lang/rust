@@ -14,9 +14,9 @@ use m::{START, END};
 
 fn main() {
     match 42 {
-        m::START...m::END => {},
-        0...m::END => {},
-        m::START...59 => {},
+        m::START..=m::END => {},
+        0..=m::END => {},
+        m::START..=59 => {},
         _  => {},
     }
 }

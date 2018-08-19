@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // This file illustrates how generics are handled: types have to be
 // monomorphized, in the MIR of the original function in which they
@@ -72,7 +72,7 @@ pub fn f1<T:Copy>(x: T) {
 fn start(_: isize, _: *const *const u8) -> isize {
     let _b: Pair<u8> = Pair::new(0, 0);
     let _s: Pair<SevenBytes> = Pair::new(SevenBytes::new(), SevenBytes::new());
-    let _z: ZeroSized = ZeroSized;
+    let ref _z: ZeroSized = ZeroSized;
     f1::<SevenBytes>(SevenBytes::new());
     0
 }

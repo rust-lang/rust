@@ -12,12 +12,12 @@
 // ignore-stage1
 // compile-flags: -D crate-not-okay
 
-#![feature(plugin, custom_attribute)]
+#![feature(plugin, rustc_attrs)]
 #![plugin(lint_for_crate)]
-#![crate_okay]
-#![crate_blue]
-#![crate_red]
-#![crate_grey]
-#![crate_green]
+#![rustc_crate_okay]
+#![rustc_crate_blue]
+#![rustc_crate_red]
+#![rustc_crate_grey]
+#![rustc_crate_green]
 
 pub fn main() { }

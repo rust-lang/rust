@@ -1,0 +1,11 @@
+error[E0369]: binary operation `+` cannot be applied to type `&str`
+  --> $DIR/issue-41394.rs:12:9
+   |
+LL |     A = "" + 1
+   |         ^^^^^^
+   |
+   = note: an implementation of `std::ops::Add` might be missing for `&str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

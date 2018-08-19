@@ -1,0 +1,18 @@
+error[E0532]: expected unit struct/variant or constant, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-pat-1.rs:34:9
+   |
+LL |         E::Empty3 => ()
+   |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
+
+error[E0532]: expected unit struct/variant or constant, found struct variant `XE::XEmpty3`
+  --> $DIR/empty-struct-braces-pat-1.rs:41:9
+   |
+LL |         XE::XEmpty3 => ()
+   |         ^^^^-------
+   |         |   |
+   |         |   did you mean `XEmpty4`?
+   |         did you mean `XE::XEmpty3 { /* fields */ }`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

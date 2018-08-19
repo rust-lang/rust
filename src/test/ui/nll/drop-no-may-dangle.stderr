@@ -1,25 +1,26 @@
 error[E0506]: cannot assign to `v[..]` because it is borrowed
-  --> $DIR/drop-no-may-dangle.rs:31:9
+  --> $DIR/drop-no-may-dangle.rs:30:9
    |
-26 |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
+LL |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
    |                                                                 ----- borrow of `v[..]` occurs here
 ...
-31 |         v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
+LL |         v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
    |         ^^^^^^^^^ assignment to borrowed `v[..]` occurs here
 ...
-35 | }
-   |  - borrow later used here, when `p` is dropped
+LL | }
+   | - borrow later used here, when `p` is dropped
 
 error[E0506]: cannot assign to `v[..]` because it is borrowed
-  --> $DIR/drop-no-may-dangle.rs:34:5
+  --> $DIR/drop-no-may-dangle.rs:33:5
    |
-26 |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
+LL |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
    |                                                                 ----- borrow of `v[..]` occurs here
 ...
-34 |     v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
+LL |     v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
    |     ^^^^^^^^^ assignment to borrowed `v[..]` occurs here
-35 | }
-   |  - borrow later used here, when `p` is dropped
+LL | }
+   | - borrow later used here, when `p` is dropped
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0506`.

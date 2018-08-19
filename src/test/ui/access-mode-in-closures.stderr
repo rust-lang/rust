@@ -1,0 +1,11 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/access-mode-in-closures.rs:19:15
+   |
+LL |         match *s { sty(v) => v } //~ ERROR cannot move out
+   |               ^^       - hint: to prevent move, use `ref v` or `ref mut v`
+   |               |
+   |               cannot move out of borrowed content
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

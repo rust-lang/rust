@@ -1,0 +1,8 @@
+error: this function can only be invoked directly, not through a function pointer
+  --> $DIR/rustc-args-required-const2.rs:18:13
+   |
+LL |     let a = foo; //~ ERROR: this function can only be invoked directly
+   |             ^^^
+
+error: aborting due to previous error
+

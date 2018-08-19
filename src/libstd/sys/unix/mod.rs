@@ -28,6 +28,7 @@ use libc;
 #[cfg(all(not(dox), target_os = "emscripten"))] pub use os::emscripten as platform;
 #[cfg(all(not(dox), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
 #[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
+#[cfg(all(not(dox), target_os = "hermit"))]    pub use os::hermit as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
@@ -80,11 +81,11 @@ pub fn init() {
         reset_sigpipe();
     }
 
-    #[cfg(not(any(target_os = "emscripten", target_os="fuchsia")))]
+    #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
     unsafe fn reset_sigpipe() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
-    #[cfg(any(target_os = "emscripten", target_os="fuchsia"))]
+    #[cfg(any(target_os = "emscripten", target_os = "fuchsia"))]
     unsafe fn reset_sigpipe() {}
 }
 

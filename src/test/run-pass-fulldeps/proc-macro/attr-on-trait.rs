@@ -11,12 +11,12 @@
 // aux-build:attr-on-trait.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
-
 extern crate attr_on_trait;
 
+use attr_on_trait::foo;
+
 trait Foo {
-    #[attr_on_trait::foo]
+    #[foo]
     fn foo() {}
 }
 

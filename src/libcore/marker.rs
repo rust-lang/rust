@@ -39,7 +39,10 @@ use hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be sent between threads safely",
+    label="`{Self}` cannot be sent between threads safely"
+)]
 pub unsafe auto trait Send {
     // empty.
 }
@@ -63,9 +66,13 @@ impl<T: ?Sized> !Send for *mut T { }
 /// struct BarUse(Bar<[i32]>); // OK
 /// ```
 ///
-/// The one exception is the implicit `Self` type of a trait, which does not
-/// get an implicit `Sized` bound. This is because a `Sized` bound prevents
-/// the trait from being used to form a [trait object]:
+/// The one exception is the implicit `Self` type of a trait. A trait does not
+/// have an implicit `Sized` bound as this is incompatible with [trait object]s
+/// where, by definition, the trait needs to work with all possible implementors,
+/// and thus could be any size.
+///
+/// Although Rust will let you bind `Sized` to a trait, you won't
+/// be able to use it to form a trait object later:
 ///
 /// ```
 /// # #![allow(unused_variables)]
@@ -84,7 +91,12 @@ impl<T: ?Sized> !Send for *mut T { }
 /// [trait object]: ../../book/first-edition/trait-objects.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
-#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
+#[rustc_on_unimplemented(
+    message="the size for values of type `{Self}` cannot be known at compilation time",
+    label="doesn't have a size known at compile-time",
+    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
+          ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>",
+)]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {
     // Empty.
@@ -256,6 +268,21 @@ pub trait Unsize<T: ?Sized> {
 /// non-`Copy` in the future, it could be prudent to omit the `Copy` implementation now, to
 /// avoid a breaking API change.
 ///
+/// ## Additional implementors
+///
+/// In addition to the [implementors listed below][impls],
+/// the following types also implement `Copy`:
+///
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Closure types, if they capture no value from the environment
+///   or if all such captured values implement `Copy` themselves.
+///   Note that variables captured by shared reference always implement `Copy`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Copy`.
+///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Drop`]: ../../std/ops/trait.Drop.html
@@ -263,6 +290,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`i32`]: ../../std/primitive.i32.html
+/// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
@@ -274,7 +302,7 @@ pub trait Copy : Clone {
 /// This trait is automatically implemented when the compiler determines
 /// it's appropriate.
 ///
-/// The precise definition is: a type `T` is `Sync` if `&T` is
+/// The precise definition is: a type `T` is `Sync` if and only if `&T` is
 /// [`Send`][send]. In other words, if there is no possibility of
 /// [undefined behavior][ub] (including data races) when passing
 /// `&T` references between threads.
@@ -339,8 +367,21 @@ pub trait Copy : Clone {
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be shared between threads safely",
+    label="`{Self}` cannot be shared between threads safely"
+)]
 pub unsafe auto trait Sync {
+    // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
+    // lands in beta, and it has been extended to check whether a closure is
+    // anywhere in the requirement chain, extend it as such (#48534):
+    // ```
+    // on(
+    //     closure,
+    //     note="`{Self}` cannot be shared safely, consider marking the closure `move`"
+    // ),
+    // ```
+
     // Empty
 }
 
@@ -561,3 +602,70 @@ unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+
+/// Types which can be moved out of a `PinMut`.
+///
+/// The `Unpin` trait is used to control the behavior of the [`PinMut`] type. If a
+/// type implements `Unpin`, it is safe to move a value of that type out of the
+/// `PinMut` pointer.
+///
+/// This trait is automatically implemented for almost every type.
+///
+/// [`PinMut`]: ../mem/struct.PinMut.html
+#[unstable(feature = "pin", issue = "49150")]
+pub auto trait Unpin {}
+
+/// A type which does not implement `Unpin`.
+///
+/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
+#[unstable(feature = "pin", issue = "49150")]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Pinned;
+
+#[unstable(feature = "pin", issue = "49150")]
+impl !Unpin for Pinned {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
+
+/// Implementations of `Copy` for primitive types.
+///
+/// Implementations that cannot be described in Rust
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+mod copy_impls {
+
+    use super::Copy;
+
+    macro_rules! impl_copy {
+        ($($t:ty)*) => {
+            $(
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl Copy for $t {}
+            )*
+        }
+    }
+
+    impl_copy! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl Copy for ! {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *const T {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *mut T {}
+
+    // Shared references can be copied, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T: ?Sized> Copy for &'a T {}
+
+}

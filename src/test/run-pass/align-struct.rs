@@ -7,9 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(attr_literals)]
-#![feature(repr_align)]
 #![feature(box_syntax)]
+#![feature(repr_packed)]
 
 use std::mem;
 
@@ -60,6 +59,18 @@ struct Packed(i32);
 struct AlignContainsPacked {
     a: Packed,
     b: Packed,
+}
+
+#[repr(C, packed(4))]
+struct Packed4C {
+    a: u32,
+    b: u64,
+}
+
+#[repr(align(16))]
+struct AlignContainsPacked4C {
+    a: Packed4C,
+    b: u64,
 }
 
 // The align limit was originally smaller (2^15).
@@ -218,6 +229,15 @@ pub fn main() {
     assert_eq!(mem::align_of_val(&a.a), 1);
     assert_eq!(mem::align_of_val(&a.b), 1);
     assert_eq!(mem::size_of_val(&a), 16);
+    assert!(is_aligned_to(&a, 16));
+
+    assert_eq!(mem::align_of::<AlignContainsPacked4C>(), 16);
+    assert_eq!(mem::size_of::<AlignContainsPacked4C>(), 32);
+    let a = AlignContainsPacked4C { a: Packed4C{ a: 1, b: 2 }, b: 3 };
+    assert_eq!(mem::align_of_val(&a), 16);
+    assert_eq!(mem::align_of_val(&a.a), 4);
+    assert_eq!(mem::align_of_val(&a.b), mem::align_of::<u64>());
+    assert_eq!(mem::size_of_val(&a), 32);
     assert!(is_aligned_to(&a, 16));
 
     let mut large = box AlignLarge {

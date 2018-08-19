@@ -1,34 +1,34 @@
 error: expected one of `:` or `@`, found `<`
   --> $DIR/issue-34264.rs:11:14
    |
-11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |              ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `)`
   --> $DIR/issue-34264.rs:11:27
    |
-11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |                           ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `,`
   --> $DIR/issue-34264.rs:13:9
    |
-13 | fn bar(x, y: usize) {} //~ ERROR expected one of
+LL | fn bar(x, y: usize) {} //~ ERROR expected one of
    |         ^ expected one of `:` or `@` here
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:17:5
    |
-11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    | --------------------------- defined here
 ...
-17 |     foo(Some(42), 2, ""); //~ ERROR this function takes
+LL |     foo(Some(42), 2, ""); //~ ERROR this function takes
    |     ^^^^^^^^^^^^^^^^^^^^ expected 2 parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-34264.rs:18:13
    |
-18 |     bar("", ""); //~ ERROR mismatched types
+LL |     bar("", ""); //~ ERROR mismatched types
    |             ^^ expected usize, found reference
    |
    = note: expected type `usize`
@@ -37,11 +37,13 @@ error[E0308]: mismatched types
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:20:5
    |
-13 | fn bar(x, y: usize) {} //~ ERROR expected one of
+LL | fn bar(x, y: usize) {} //~ ERROR expected one of
    | ------------------- defined here
 ...
-20 |     bar(1, 2, 3); //~ ERROR this function takes
+LL |     bar(1, 2, 3); //~ ERROR this function takes
    |     ^^^^^^^^^^^^ expected 2 parameters
 
 error: aborting due to 6 previous errors
 
+Some errors occurred: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

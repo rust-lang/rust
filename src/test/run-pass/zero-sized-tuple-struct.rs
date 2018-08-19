@@ -10,7 +10,7 @@
 
 #![allow(unused_assignments)]
 
-// Make sure that the constructor args are translated for zero-sized tuple structs
+// Make sure that the constructor args are codegened for zero-sized tuple structs
 
 struct Foo(());
 

@@ -1,0 +1,46 @@
+error[E0596]: cannot borrow immutable local variable `x` as mutable
+  --> $DIR/borrowck-access-permissions.rs:22:24
+   |
+LL |     let x = 1;
+   |         - consider changing this to `mut x`
+...
+LL |         let _y1 = &mut x; //[ast]~ ERROR [E0596]
+   |                        ^ cannot borrow mutably
+
+error[E0596]: cannot borrow immutable static item as mutable
+  --> $DIR/borrowck-access-permissions.rs:28:24
+   |
+LL |         let _y1 = &mut static_x; //[ast]~ ERROR [E0596]
+   |                        ^^^^^^^^
+
+error[E0596]: cannot borrow immutable `Box` content `*box_x` as mutable
+  --> $DIR/borrowck-access-permissions.rs:37:24
+   |
+LL |         let box_x = Box::new(1);
+   |             ----- consider changing this to `mut box_x`
+...
+LL |         let _y1 = &mut *box_x; //[ast]~ ERROR [E0596]
+   |                        ^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable borrowed content `*ref_x` as mutable
+  --> $DIR/borrowck-access-permissions.rs:46:24
+   |
+LL |         let _y1 = &mut *ref_x; //[ast]~ ERROR [E0596]
+   |                        ^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable dereference of raw pointer `*ptr_x` as mutable
+  --> $DIR/borrowck-access-permissions.rs:56:28
+   |
+LL |             let _y1 = &mut *ptr_x; //[ast]~ ERROR [E0596]
+   |                            ^^^^^^ cannot borrow as mutable
+
+error[E0389]: cannot borrow data mutably in a `&` reference
+  --> $DIR/borrowck-access-permissions.rs:66:23
+   |
+LL |         let _y = &mut *foo_ref.f; //[ast]~ ERROR [E0389]
+   |                       ^^^^^^^^^^ assignment into an immutable reference
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0389, E0596.
+For more information about an error, try `rustc --explain E0389`.

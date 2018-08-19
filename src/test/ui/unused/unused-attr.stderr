@@ -1,0 +1,98 @@
+error: unused attribute
+  --> $DIR/unused-attr.rs:17:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unused-attr.rs:11:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:20:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:25:5
+   |
+LL |     #[foo] //~ ERROR unused attribute
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:23:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:33:9
+   |
+LL |         #[foo] //~ ERROR unused attribute
+   |         ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:31:5
+   |
+LL |     #[foo] //~ ERROR unused attribute
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:29:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:41:9
+   |
+LL |         #[foo] //~ ERROR unused attribute
+   |         ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:38:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:48:5
+   |
+LL |     #[foo] //~ ERROR unused attribute
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:46:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:54:5
+   |
+LL |     #[foo] //~ ERROR unused attribute
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:56:5
+   |
+LL |     #[foo] //~ ERROR unused attribute
+   |     ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:52:1
+   |
+LL | #[foo] //~ ERROR unused attribute
+   | ^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:15:1
+   |
+LL | #![foo] //~ ERROR unused attribute
+   | ^^^^^^^
+
+error: aborting due to 15 previous errors
+

@@ -1,49 +1,51 @@
 error[E0405]: cannot find trait `Mul` in this scope
   --> $DIR/issue-21221-1.rs:53:6
    |
-53 | impl Mul for Foo {
+LL | impl Mul for Foo {
    |      ^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |
-11 | use mul1::Mul;
+LL | use mul1::Mul;
    |
-11 | use mul2::Mul;
+LL | use mul2::Mul;
    |
-11 | use std::ops::Mul;
+LL | use std::ops::Mul;
    |
 
 error[E0412]: cannot find type `Mul` in this scope
   --> $DIR/issue-21221-1.rs:68:16
    |
-68 | fn getMul() -> Mul {
+LL | fn getMul() -> Mul {
    |                ^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |
-11 | use mul1::Mul;
+LL | use mul1::Mul;
    |
-11 | use mul2::Mul;
+LL | use mul2::Mul;
    |
-11 | use mul3::Mul;
+LL | use mul3::Mul;
    |
-11 | use mul4::Mul;
+LL | use mul4::Mul;
    |
 and 2 other candidates
 
 error[E0405]: cannot find trait `ThisTraitReallyDoesntExistInAnyModuleReally` in this scope
   --> $DIR/issue-21221-1.rs:73:6
    |
-73 | impl ThisTraitReallyDoesntExistInAnyModuleReally for Foo {
+LL | impl ThisTraitReallyDoesntExistInAnyModuleReally for Foo {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0405]: cannot find trait `Div` in this scope
   --> $DIR/issue-21221-1.rs:78:6
    |
-78 | impl Div for Foo {
+LL | impl Div for Foo {
    |      ^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-11 | use std::ops::Div;
+LL | use std::ops::Div;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to 4 previous errors
 
+Some errors occurred: E0405, E0412.
+For more information about an error, try `rustc --explain E0405`.

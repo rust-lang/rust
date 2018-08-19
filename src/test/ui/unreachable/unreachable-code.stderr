@@ -1,0 +1,14 @@
+error: unreachable statement
+  --> $DIR/unreachable-code.rs:17:3
+   |
+LL |   let a = 3; //~ ERROR: unreachable statement
+   |   ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-code.rs:11:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -140,14 +140,18 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        cmd_finder.must_have(build.cc(*target));
-        if let Some(ar) = build.ar(*target) {
-            cmd_finder.must_have(ar);
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cc(*target));
+            if let Some(ar) = build.ar(*target) {
+                cmd_finder.must_have(ar);
+            }
         }
     }
 
     for host in &build.hosts {
-        cmd_finder.must_have(build.cxx(*host).unwrap());
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cxx(*host).unwrap());
+        }
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
@@ -169,13 +173,26 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
+        if target.contains("-none-") {
+            if build.no_std(*target).is_none() {
+                let target = build.config.target_config.entry(target.clone())
+                    .or_default();
+
+                target.no_std = true;
+            }
+
+            if build.no_std(*target) == Some(false) {
+                panic!("All the *-none-* targets are no-std targets")
+            }
+        }
+
         // Make sure musl-root is valid
-        if target.contains("musl") && !target.contains("mips") {
+        if target.contains("musl") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
                 let target = build.config.target_config.entry(target.clone())
-                                 .or_insert(Default::default());
+                    .or_default();
                 target.musl_root = Some("/usr".into());
             }
             match build.musl_root(*target) {

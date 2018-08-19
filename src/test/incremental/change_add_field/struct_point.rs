@@ -15,21 +15,21 @@
 
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 #![crate_type = "rlib"]
 
-// These are expected to require translation.
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_with_type_in_sig", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-call_fn_with_type_in_sig", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_with_type_in_body", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_read_field", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_write_field", cfg="cfail2")]
+// These are expected to require codegen.
+#![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_with_type_in_sig", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-call_fn_with_type_in_sig", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_with_type_in_body", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_make_struct", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_read_field", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_write_field", cfg="cfail2")]
 
 #![rustc_partition_reused(module="struct_point-call_fn_with_type_in_body", cfg="cfail2")]
 

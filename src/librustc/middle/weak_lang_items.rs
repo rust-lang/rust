@@ -13,10 +13,11 @@
 use session::config;
 use middle::lang_items;
 
-use rustc_back::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use hir::def_id::DefId;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
@@ -55,7 +56,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
-    lang_items::extract(attrs).and_then(|name| {
+    lang_items::extract(attrs).and_then(|(name, _)| {
         $(if name == stringify!($name) {
             Some(Symbol::intern(stringify!($sym)))
         } else)* {
@@ -64,18 +65,36 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
     })
 }
 
+/// Returns whether the specified `lang_item` doesn't actually need to be
+/// present for this compilation.
+///
+/// Not all lang items are always required for each compilation, particularly in
+/// the case of panic=abort. In these situations some lang items are injected by
+/// crates and don't actually need to be defined in libstd.
+pub fn whitelisted(tcx: TyCtxt, lang_item: lang_items::LangItem) -> bool {
+    // If we're not compiling with unwinding, we won't actually need these
+    // symbols. Other panic runtimes ensure that the relevant symbols are
+    // available to link things together, but they're never exercised.
+    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+        return lang_item == lang_items::EhPersonalityLangItem ||
+            lang_item == lang_items::EhUnwindResumeLangItem
+    }
+
+    false
+}
+
 fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     items: &lang_items::LanguageItems) {
     // We only need to check for the presence of weak lang items if we're
     // emitting something that's not an rlib.
     let needs_check = tcx.sess.crate_types.borrow().iter().any(|kind| {
         match *kind {
-            config::CrateTypeDylib |
-            config::CrateTypeProcMacro |
-            config::CrateTypeCdylib |
-            config::CrateTypeExecutable |
-            config::CrateTypeStaticlib => true,
-            config::CrateTypeRlib => false,
+            config::CrateType::Dylib |
+            config::CrateType::ProcMacro |
+            config::CrateType::Cdylib |
+            config::CrateType::Executable |
+            config::CrateType::Staticlib => true,
+            config::CrateType::Rlib => false,
         }
     });
     if !needs_check {
@@ -89,22 +108,20 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    // If we're not compiling with unwinding, we won't actually need these
-    // symbols. Other panic runtimes ensure that the relevant symbols are
-    // available to link things together, but they're never exercised.
-    let mut whitelisted = HashSet::new();
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        whitelisted.insert(lang_items::EhPersonalityLangItem);
-        whitelisted.insert(lang_items::EhUnwindResumeLangItem);
-    }
-
     $(
         if missing.contains(&lang_items::$item) &&
-           !whitelisted.contains(&lang_items::$item) &&
+           !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
-            tcx.sess.err(&format!("language item required, but not found: `{}`",
-                                  stringify!($name)));
-
+            if lang_items::$item == lang_items::PanicImplLangItem {
+                tcx.sess.err(&format!("`#[panic_implementation]` function required, \
+                                        but not found"));
+            } else if lang_items::$item == lang_items::OomLangItem {
+                tcx.sess.err(&format!("`#[alloc_error_handler]` function required, \
+                                        but not found"));
+            } else {
+                tcx.sess.err(&format!("language item required, but not found: `{}`",
+                                        stringify!($name)));
+            }
         }
     )*
 }
@@ -129,17 +146,27 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        if let Some(lang_item) = lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
             self.register(&lang_item.as_str(), i.span);
         }
         intravisit::walk_foreign_item(self, i)
     }
 }
 
+impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+    pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
+        let lang_items = self.lang_items();
+        let did = Some(item_def_id);
+
+        $(lang_items.$name() == did)||+
+    }
+}
+
 ) }
 
 weak_lang_items! {
-    panic_fmt,          PanicFmtLangItem,           rust_begin_unwind;
+    panic_impl,         PanicImplLangItem,          rust_begin_unwind;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
     eh_unwind_resume,   EhUnwindResumeLangItem,     rust_eh_unwind_resume;
+    oom,                OomLangItem,                rust_oom;
 }

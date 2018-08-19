@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/issue-12369.rs:20:9
+   |
+LL |         &[10,a, ref rest..] => 10 //~ ERROR: unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-12369.rs:12:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

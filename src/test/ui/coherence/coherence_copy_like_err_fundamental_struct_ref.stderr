@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/coherence_copy_like_err_fundamental_struct_ref.rs:34:1
+   |
+LL | fn main() { } //~ ERROR compilation successful
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

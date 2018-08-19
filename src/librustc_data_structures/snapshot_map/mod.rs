@@ -45,6 +45,11 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
+    pub fn clear(&mut self) {
+        self.map.clear();
+        self.undo_log.clear();
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.map.insert(key.clone(), value) {
             None => {
@@ -59,6 +64,12 @@ impl<K, V> SnapshotMap<K, V>
                 }
                 false
             }
+        }
+    }
+
+    pub fn insert_noop(&mut self) {
+        if !self.undo_log.is_empty() {
+            self.undo_log.push(UndoLog::Noop);
         }
     }
 
@@ -81,7 +92,7 @@ impl<K, V> SnapshotMap<K, V>
     pub fn snapshot(&mut self) -> Snapshot {
         self.undo_log.push(UndoLog::OpenSnapshot);
         let len = self.undo_log.len() - 1;
-        Snapshot { len: len }
+        Snapshot { len }
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {
@@ -92,8 +103,8 @@ impl<K, V> SnapshotMap<K, V>
         });
     }
 
-    pub fn commit(&mut self, snapshot: Snapshot) {
-        self.assert_open_snapshot(&snapshot);
+    pub fn commit(&mut self, snapshot: &Snapshot) {
+        self.assert_open_snapshot(snapshot);
         if snapshot.len == 0 {
             // The root snapshot.
             self.undo_log.truncate(0);
@@ -124,8 +135,8 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
-    pub fn rollback_to(&mut self, snapshot: Snapshot) {
-        self.assert_open_snapshot(&snapshot);
+    pub fn rollback_to(&mut self, snapshot: &Snapshot) {
+        self.assert_open_snapshot(snapshot);
         while self.undo_log.len() > snapshot.len + 1 {
             let entry = self.undo_log.pop().unwrap();
             self.reverse(entry);

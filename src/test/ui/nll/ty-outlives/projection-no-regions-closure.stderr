@@ -1,95 +1,40 @@
-warning: not reporting region error due to -Znll
-  --> $DIR/projection-no-regions-closure.rs:36:31
+warning: not reporting region error due to nll
+  --> $DIR/projection-no-regions-closure.rs:35:31
    |
-36 |     with_signature(x, |mut y| Box::new(y.next()))
+LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
-warning: not reporting region error due to -Znll
-  --> $DIR/projection-no-regions-closure.rs:54:31
+warning: not reporting region error due to nll
+  --> $DIR/projection-no-regions-closure.rs:53:31
    |
-54 |     with_signature(x, |mut y| Box::new(y.next()))
+LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:36:23
+  --> $DIR/projection-no-regions-closure.rs:35:23
    |
-36 |     with_signature(x, |mut y| Box::new(y.next()))
+LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:15 ~ projection_no_regions_closure[317d]::no_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#2r>
-           ]
-   = note: number of external vids: 3
-   = note: where <T as std::iter::Iterator>::Item: '_#2r
-
-note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:46:23
-   |
-46 |     with_signature(x, |mut y| Box::new(y.next()))
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: defining type: DefId(0/1:18 ~ projection_no_regions_closure[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               T,
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#2r>
-           ]
-   = note: number of external vids: 3
-   = note: where <T as std::iter::Iterator>::Item: '_#2r
-
-note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:54:23
-   |
-54 |     with_signature(x, |mut y| Box::new(y.next()))
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: defining type: DefId(0/1:22 ~ projection_no_regions_closure[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               '_#2r,
-               T,
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#3r>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
            ]
    = note: number of external vids: 4
-   = note: where <T as std::iter::Iterator>::Item: '_#3r
-
-note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:65:23
-   |
-65 |     with_signature(x, |mut y| Box::new(y.next()))
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: defining type: DefId(0/1:26 ~ projection_no_regions_closure[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               '_#2r,
-               T,
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#3r>
-           ]
-   = note: number of external vids: 4
-   = note: where <T as std::iter::Iterator>::Item: '_#3r
-
-error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:36:23
-   |
-36 |     with_signature(x, |mut y| Box::new(y.next()))
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:32:1
+  --> $DIR/projection-no-regions-closure.rs:31:1
    |
-32 | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
-33 | | where
-34 | |     T: Iterator,
-35 | | {
+LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: Iterator,
+LL | | {
 ...  |
-38 | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-39 | | }
+LL | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ projection_no_regions_closure[317d]::no_region[0]) with substs [
@@ -97,15 +42,38 @@ note: No external requirements
                T
            ]
 
-note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:42:1
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+  --> $DIR/projection-no-regions-closure.rs:35:23
    |
-42 | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
-43 | | where
-44 | |     T: 'a + Iterator,
-45 | | {
-46 | |     with_signature(x, |mut y| Box::new(y.next()))
-47 | | }
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+
+note: External requirements
+  --> $DIR/projection-no-regions-closure.rs:45:23
+   |
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:18 ~ projection_no_regions_closure[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
+           ]
+   = note: number of external vids: 4
+   = note: where <T as std::iter::Iterator>::Item: '_#2r
+
+note: No external requirements
+  --> $DIR/projection-no-regions-closure.rs:41:1
+   |
+LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: 'a + Iterator,
+LL | | {
+LL | |     with_signature(x, |mut y| Box::new(y.next()))
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:7 ~ projection_no_regions_closure[317d]::correct_region[0]) with substs [
@@ -113,24 +81,32 @@ note: No external requirements
                T
            ]
 
-error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:54:23
+note: External requirements
+  --> $DIR/projection-no-regions-closure.rs:53:23
    |
-54 |     with_signature(x, |mut y| Box::new(y.next()))
+LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = note: defining type: DefId(0/1:22 ~ projection_no_regions_closure[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
+           ]
+   = note: number of external vids: 5
+   = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:50:1
+  --> $DIR/projection-no-regions-closure.rs:49:1
    |
-50 | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
-51 | | where
-52 | |     T: 'b + Iterator,
-53 | | {
+LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: 'b + Iterator,
+LL | | {
 ...  |
-56 | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-57 | | }
+LL | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:8 ~ projection_no_regions_closure[317d]::wrong_region[0]) with substs [
@@ -139,16 +115,40 @@ note: No external requirements
                T
            ]
 
-note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:60:1
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+  --> $DIR/projection-no-regions-closure.rs:53:23
    |
-60 | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
-61 | | where
-62 | |     T: 'b + Iterator,
-63 | |     'b: 'a,
-64 | | {
-65 | |     with_signature(x, |mut y| Box::new(y.next()))
-66 | | }
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+
+note: External requirements
+  --> $DIR/projection-no-regions-closure.rs:64:23
+   |
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:26 ~ projection_no_regions_closure[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
+           ]
+   = note: number of external vids: 5
+   = note: where <T as std::iter::Iterator>::Item: '_#3r
+
+note: No external requirements
+  --> $DIR/projection-no-regions-closure.rs:59:1
+   |
+LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: 'b + Iterator,
+LL | |     'b: 'a,
+LL | | {
+LL | |     with_signature(x, |mut y| Box::new(y.next()))
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:9 ~ projection_no_regions_closure[317d]::outlives_region[0]) with substs [
@@ -159,3 +159,4 @@ note: No external requirements
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0309`.

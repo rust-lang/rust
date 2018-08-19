@@ -1,0 +1,19 @@
+error[E0118]: no base type found for inherent implementation
+  --> $DIR/private-in-public-ill-formed.rs:24:10
+   |
+LL |     impl <Priv as PrivTr>::AssocAlias { //~ ERROR no base type found for inherent implementation
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a base type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error[E0118]: no base type found for inherent implementation
+  --> $DIR/private-in-public-ill-formed.rs:40:10
+   |
+LL |     impl <Priv as PrivTr>::AssocAlias { //~ ERROR no base type found for inherent implementation
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a base type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0118`.

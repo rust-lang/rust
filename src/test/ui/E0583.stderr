@@ -1,0 +1,11 @@
+error[E0583]: file not found for module `module_that_doesnt_exist`
+  --> $DIR/E0583.rs:11:5
+   |
+LL | mod module_that_doesnt_exist; //~ ERROR E0583
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: name the file either module_that_doesnt_exist.rs or module_that_doesnt_exist/mod.rs inside the directory "$DIR"
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0583`.

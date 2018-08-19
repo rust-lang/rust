@@ -1,0 +1,8 @@
+error: compilation successful
+  --> $DIR/region-object-lifetime-1.rs:28:1
+   |
+LL | fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,17 @@
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-31424.rs:17:9
+   |
+LL |         (&mut self).bar(); //~ ERROR cannot borrow
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-31424.rs:23:9
+   |
+LL |     fn bar(self: &mut Self) {
+   |            ---- help: consider changing this to be mutable: `mut self`
+LL |         (&mut self).bar(); //~ ERROR cannot borrow
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

@@ -46,7 +46,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 /// An owned smart pointer.
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq)]
 pub struct P<T: ?Sized> {
     ptr: Box<T>
 }

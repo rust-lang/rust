@@ -1,0 +1,28 @@
+error[E0087]: too many type parameters provided: expected at most 1 type parameter, found 2 type parameters
+  --> $DIR/bad-mid-path-type-params.rs:40:28
+   |
+LL |     let _ = S::new::<isize,f64>(1, 1.0);
+   |                            ^^^ expected 1 type parameter
+
+error[E0107]: wrong number of lifetime parameters: expected 0, found 1
+  --> $DIR/bad-mid-path-type-params.rs:43:13
+   |
+LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime parameter
+
+error[E0087]: too many type parameters provided: expected at most 1 type parameter, found 2 type parameters
+  --> $DIR/bad-mid-path-type-params.rs:46:36
+   |
+LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
+   |                                    ^^^ expected 1 type parameter
+
+error[E0088]: too many lifetime parameters provided: expected at most 0 lifetime parameters, found 1 lifetime parameter
+  --> $DIR/bad-mid-path-type-params.rs:49:25
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
+   |                         ^^ expected 0 lifetime parameters
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0087, E0088, E0107.
+For more information about an error, try `rustc --explain E0087`.

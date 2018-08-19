@@ -1,6 +1,0 @@
-error: compilation successful
-  --> $DIR/feature-gate-fn_must_use-cap-lints-allow.rs:22:1
-   |
-22 | fn main() {} //~ ERROR compilation successful
-   | ^^^^^^^^^^^^
-

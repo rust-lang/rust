@@ -33,7 +33,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "ripgrep",
         repo: "https://github.com/BurntSushi/ripgrep",
-        sha: "b65bb37b14655e1a89c7cd19c8b011ef3e312791",
+        sha: "ad9befbc1d3b5c695e7f6b6734ee1b8e683edd41",
         lock: None,
         packages: &[],
     },

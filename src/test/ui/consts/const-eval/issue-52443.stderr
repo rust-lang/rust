@@ -1,0 +1,51 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-52443.rs:12:10
+   |
+LL |     [(); & { loop { continue } } ]; //~ ERROR mismatched types
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          expected usize, found reference
+   |          help: consider removing the borrow: `{ loop { continue } }`
+   |
+   = note: expected type `usize`
+              found type `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-52443.rs:13:17
+   |
+LL |     [(); loop { break }]; //~ ERROR mismatched types
+   |                 ^^^^^ expected (), found usize
+   |
+   = note: expected type `()`
+              found type `usize`
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/issue-52443.rs:14:11
+   |
+LL |     [(); {while true {break}; 0}]; //~ ERROR constant contains unimplemented expression type
+   |           ^^^^^^^^^^^^^^^^^^
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-52443.rs:15:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}]; //~ ERROR calls in constants are limited to constant functions
+   |                     ^^^^^^^^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/issue-52443.rs:15:21
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}]; //~ ERROR calls in constants are limited to constant functions
+   |                     ^^^^^^^^
+
+error[E0080]: could not evaluate repeat length
+  --> $DIR/issue-52443.rs:15:10
+   |
+LL |     [(); { for _ in 0usize.. {}; 0}]; //~ ERROR calls in constants are limited to constant functions
+   |          ^^^^^^^^^^^--------^^^^^^^
+   |                     |
+   |                     calling non-const fn `<I as std::iter::IntoIterator><std::ops::RangeFrom<usize>>::into_iter`
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0015, E0019, E0080, E0308.
+For more information about an error, try `rustc --explain E0015`.

@@ -1,16 +1,17 @@
 error[E0574]: expected struct, variant or union type, found enum `Result`
   --> $DIR/issue-16058.rs:19:9
    |
-19 |         Result {
+LL |         Result {
    |         ^^^^^^ not a struct, variant or union type
 help: possible better candidates are found in other modules, you can import them into scope
    |
-12 | use std::fmt::Result;
+LL | use std::fmt::Result;
    |
-12 | use std::io::Result;
+LL | use std::io::Result;
    |
-12 | use std::thread::Result;
+LL | use std::thread::Result;
    |
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0574`.

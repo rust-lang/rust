@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(crate_visibility_modifier)]
 #![feature(macro_vis_matcher)]
@@ -19,6 +19,7 @@
 mod private_mod {
     // non-leaked `pub` items in private module should be linted
     pub use std::fmt;
+    pub use std::env::{Args}; // braced-use has different item spans than unbraced
 
     pub struct Hydrogen {
         // `pub` struct fields, too

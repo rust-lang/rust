@@ -12,15 +12,15 @@
 
 use std::marker::Unsize;
 use std::iter::Extend;
-use std::ptr::{self, drop_in_place, Shared};
+use std::ptr::{self, drop_in_place, NonNull};
 use std::ops::{Deref, DerefMut, Range};
 use std::hash::{Hash, Hasher};
 use std::slice;
 use std::fmt;
 use std::mem;
-use std::collections::range::RangeArgument;
-use std::collections::Bound::{Excluded, Included, Unbounded};
 use std::mem::ManuallyDrop;
+use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::RangeBounds;
 
 pub unsafe trait Array {
     type Element;
@@ -106,7 +106,7 @@ impl<A: Array> ArrayVec<A> {
     }
 
     pub fn drain<R>(&mut self, range: R) -> Drain<A>
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         // Memory safety
         //
@@ -119,12 +119,12 @@ impl<A: Array> ArrayVec<A> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = match range.start() {
+        let start = match range.start_bound() {
             Included(&n) => n,
             Excluded(&n) => n + 1,
             Unbounded    => 0,
         };
-        let end = match range.end() {
+        let end = match range.end_bound() {
             Included(&n) => n + 1,
             Excluded(&n) => n,
             Unbounded    => len,
@@ -146,7 +146,7 @@ impl<A: Array> ArrayVec<A> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                array_vec: Shared::from(self),
+                array_vec: NonNull::from(self),
             }
         }
     }
@@ -207,7 +207,7 @@ pub struct Iter<A: Array> {
 
 impl<A: Array> Drop for Iter<A> {
     fn drop(&mut self) {
-        for _ in self {}
+        self.for_each(drop);
     }
 }
 
@@ -232,7 +232,7 @@ pub struct Drain<'a, A: Array>
     tail_start: usize,
     tail_len: usize,
     iter: slice::Iter<'a, ManuallyDrop<A::Element>>,
-    array_vec: Shared<ArrayVec<A>>,
+    array_vec: NonNull<ArrayVec<A>>,
 }
 
 impl<'a, A: Array> Iterator for Drain<'a, A> {
@@ -251,7 +251,7 @@ impl<'a, A: Array> Iterator for Drain<'a, A> {
 impl<'a, A: Array> Drop for Drain<'a, A> {
     fn drop(&mut self) {
         // exhaust self first
-        while let Some(_) = self.next() {}
+        self.for_each(drop);
 
         if self.tail_len > 0 {
             unsafe {

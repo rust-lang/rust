@@ -60,6 +60,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
         .map(|entry| entry.file_name().into_string().unwrap())
+        .filter(|n| n.ends_with(".md"))
         .map(|n| n.trim_right_matches(".md").to_owned())
         .collect()
 }
@@ -86,7 +87,7 @@ pub fn check(path: &path::Path, bad: &mut bool) {
 
     // Library features
 
-    let lang_features = collect_lang_features(path);
+    let lang_features = collect_lang_features(path, bad);
     let lib_features = collect_lib_features(path).into_iter().filter(|&(ref name, _)| {
         !lang_features.contains_key(name)
     }).collect();

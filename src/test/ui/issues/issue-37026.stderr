@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-37026.rs:16:9
+   |
+LL |     let empty_struct::XEmpty2 = (); //~ ERROR mismatched types
+   |         ^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `empty_struct::XEmpty2`
+   |
+   = note: expected type `()`
+              found type `empty_struct::XEmpty2`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-37026.rs:17:9
+   |
+LL |     let empty_struct::XEmpty6(..) = (); //~ ERROR mismatched types
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `empty_struct::XEmpty6`
+   |
+   = note: expected type `()`
+              found type `empty_struct::XEmpty6`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

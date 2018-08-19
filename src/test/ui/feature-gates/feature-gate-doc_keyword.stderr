@@ -1,0 +1,11 @@
+error[E0658]: #[doc(keyword = "...")] is experimental (see issue #51315)
+  --> $DIR/feature-gate-doc_keyword.rs:11:1
+   |
+LL | #[doc(keyword = "match")] //~ ERROR: #[doc(keyword = "...")] is experimental
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(doc_keyword)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,17 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-borrowed-uniq-rvalue-2.rs:32:20
+   |
+LL |     let x = defer(&vec!["Goodbye", "world!"]);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ - temporary value dropped here while still borrowed
+   |                    |
+   |                    temporary value does not live long enough
+LL |     x.x[0];
+LL | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

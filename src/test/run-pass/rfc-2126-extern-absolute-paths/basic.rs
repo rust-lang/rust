@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // aux-build:xcrate.rs
-
-#![feature(extern_absolute_paths)]
+// edition:2018
 
 use xcrate::Z;
 

@@ -1,10 +1,10 @@
 error[E0597]: `foo.data` does not live long enough
   --> $DIR/issue28498-reject-ex1.rs:44:29
    |
-44 |     foo.data[0].1.set(Some(&foo.data[1]));
+LL |     foo.data[0].1.set(Some(&foo.data[1]));
    |                             ^^^^^^^^ borrowed value does not live long enough
 ...
-48 | }
+LL | }
    | - `foo.data` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -12,13 +12,14 @@ error[E0597]: `foo.data` does not live long enough
 error[E0597]: `foo.data` does not live long enough
   --> $DIR/issue28498-reject-ex1.rs:46:29
    |
-46 |     foo.data[1].1.set(Some(&foo.data[0]));
+LL |     foo.data[1].1.set(Some(&foo.data[0]));
    |                             ^^^^^^^^ borrowed value does not live long enough
-47 |     //~^ ERROR `foo.data` does not live long enough
-48 | }
+LL |     //~^ ERROR `foo.data` does not live long enough
+LL | }
    | - `foo.data` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

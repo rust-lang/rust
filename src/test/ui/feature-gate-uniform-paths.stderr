@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `bar`
+  --> $DIR/feature-gate-uniform-paths.rs:12:13
+   |
+LL |     pub use bar::Bar;
+   |             ^^^ Did you mean `self::bar`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

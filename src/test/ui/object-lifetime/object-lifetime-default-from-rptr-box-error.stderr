@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/object-lifetime-default-from-rptr-box-error.rs:25:12
+   |
+LL |     ss.t = t; //~ ERROR mismatched types
+   |            ^ lifetime mismatch
+   |
+   = note: expected type `&'a std::boxed::Box<(dyn Test + 'static)>`
+              found type `&'a std::boxed::Box<(dyn Test + 'a)>`
+note: the lifetime 'a as defined on the function body at 24:6...
+  --> $DIR/object-lifetime-default-from-rptr-box-error.rs:24:6
+   |
+LL | fn c<'a>(t: &'a Box<Test+'a>, mut ss: SomeStruct<'a>) {
+   |      ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

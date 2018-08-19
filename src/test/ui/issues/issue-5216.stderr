@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-5216.rs:13:21
+   |
+LL | pub static C: S = S(f); //~ ERROR mismatched types
+   |                     ^ expected struct `std::boxed::Box`, found fn item
+   |
+   = note: expected type `std::boxed::Box<(dyn std::ops::FnMut() + 'static)>`
+              found type `fn() {f}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5216.rs:18:19
+   |
+LL | pub static D: T = g; //~ ERROR mismatched types
+   |                   ^ expected struct `std::boxed::Box`, found fn item
+   |
+   = note: expected type `std::boxed::Box<(dyn std::ops::FnMut() + 'static)>`
+              found type `fn() {g}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

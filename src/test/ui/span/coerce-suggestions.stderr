@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:17:20
    |
-17 |     let x: usize = String::new();
+LL |     let x: usize = String::new();
    |                    ^^^^^^^^^^^^^ expected usize, found struct `std::string::String`
    |
    = note: expected type `usize`
@@ -10,7 +10,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:19:19
    |
-19 |     let x: &str = String::new();
+LL |     let x: &str = String::new();
    |                   ^^^^^^^^^^^^^
    |                   |
    |                   expected &str, found struct `std::string::String`
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:22:10
    |
-22 |     test(&y);
+LL |     test(&y);
    |          ^^ types differ in mutability
    |
    = note: expected type `&mut std::string::String`
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:24:11
    |
-24 |     test2(&y);
+LL |     test2(&y);
    |           ^^ types differ in mutability
    |
    = note: expected type `&mut i32`
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:27:9
    |
-27 |     f = box f;
+LL |     f = box f;
    |         ^^^^^
    |         |
    |         cyclic type of infinite size
@@ -49,7 +49,7 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:31:9
    |
-31 |     s = format!("foo");
+LL |     s = format!("foo");
    |         ^^^^^^^^^^^^^^
    |         |
    |         expected mutable reference, found struct `std::string::String`
@@ -61,3 +61,4 @@ error[E0308]: mismatched types
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

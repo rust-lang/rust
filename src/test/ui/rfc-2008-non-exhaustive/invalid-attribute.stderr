@@ -1,0 +1,34 @@
+error[E0702]: attribute should be empty
+  --> $DIR/invalid-attribute.rs:13:1
+   |
+LL | #[non_exhaustive(anything)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | //~^ ERROR attribute should be empty [E0702]
+LL | struct Foo;
+   | ----------- not empty
+
+error[E0701]: attribute can only be applied to a struct or enum
+  --> $DIR/invalid-attribute.rs:17:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+LL | //~^ ERROR attribute can only be applied to a struct or enum [E0701]
+LL | trait Bar { }
+   | ------------- not a struct or enum
+
+error[E0701]: attribute can only be applied to a struct or enum
+  --> $DIR/invalid-attribute.rs:21:1
+   |
+LL |   #[non_exhaustive]
+   |   ^^^^^^^^^^^^^^^^^
+LL |   //~^ ERROR attribute can only be applied to a struct or enum [E0701]
+LL | / union Baz {
+LL | |     f1: u16,
+LL | |     f2: u16
+LL | | }
+   | |_- not a struct or enum
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0701, E0702.
+For more information about an error, try `rustc --explain E0701`.

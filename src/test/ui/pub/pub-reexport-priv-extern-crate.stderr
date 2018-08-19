@@ -1,0 +1,30 @@
+error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+  --> $DIR/pub-reexport-priv-extern-crate.rs:14:9
+   |
+LL | pub use core as reexported_core; //~ ERROR `core` is private, and cannot be re-exported
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(pub_use_of_private_extern_crate)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+  --> $DIR/pub-reexport-priv-extern-crate.rs:22:9
+   |
+LL |     use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
+   |         ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+  --> $DIR/pub-reexport-priv-extern-crate.rs:30:13
+   |
+LL |     pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be re-exported
+   |             ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: aborting due to 3 previous errors
+

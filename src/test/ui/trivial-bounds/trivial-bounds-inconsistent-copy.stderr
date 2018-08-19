@@ -1,0 +1,41 @@
+warning: Trait bound std::string::String: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:16:1
+   |
+LL | / fn copy_string(t: String) -> String where String: Copy {
+LL | |     is_copy(&t);
+LL | |     let x = t;
+LL | |     drop(t);
+LL | |     t
+LL | | }
+   | |_^
+   |
+   = note: #[warn(trivial_bounds)] on by default
+
+warning: Trait bound std::string::String: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:23:1
+   |
+LL | / fn copy_out_string(t: &String) -> String where String: Copy {
+LL | |     *t
+LL | | }
+   | |_^
+
+warning: Trait bound std::string::String: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:27:1
+   |
+LL | / fn copy_string_with_param<T>(x: String) where String: Copy {
+LL | |     let y = x;
+LL | |     let z = x;
+LL | | }
+   | |_^
+
+warning: Trait bound for<'b> &'b mut i32: std::marker::Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:33:1
+   |
+LL | / fn copy_mut<'a>(t: &&'a mut i32) -> &'a mut i32 where for<'b> &'b mut i32: Copy {
+LL | |     is_copy(t);
+LL | |     let x = *t;
+LL | |     drop(x);
+LL | |     x
+LL | | }
+   | |_^
+

@@ -1,0 +1,63 @@
+error[E0382]: use of moved value: `u.n1`
+  --> $DIR/borrowck-union-move.rs:36:21
+   |
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u.n1; //~ ERROR use of moved value: `u.n1`
+   |                     ^^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:41:21
+   |
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u; //~ ERROR use of partially moved value: `u`
+   |                     ^ value used here after move
+   |
+   = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.n2`
+  --> $DIR/borrowck-union-move.rs:46:21
+   |
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u.n2; //~ ERROR use of moved value: `u.n2`
+   |                     ^^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.n`
+  --> $DIR/borrowck-union-move.rs:73:21
+   |
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u.n; //~ ERROR use of moved value: `u.n`
+   |                     ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u.c`
+  --> $DIR/borrowck-union-move.rs:78:21
+   |
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u.c; //~ ERROR use of moved value: `u.c`
+   |                     ^^^ value used here after move
+   |
+   = note: move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:93:21
+   |
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u; //~ ERROR use of partially moved value: `u`
+   |                     ^ value used here after move
+   |
+   = note: move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

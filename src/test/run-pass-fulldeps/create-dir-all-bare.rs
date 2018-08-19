@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-cross-compile
-
-#![feature(rustc_private)]
-
-extern crate tempdir;
-
 use std::env;
 use std::fs;
-use tempdir::TempDir;
+use std::path::PathBuf;
 
 fn main() {
-    let td = TempDir::new("create-dir-all-bare").unwrap();
-    env::set_current_dir(td.path()).unwrap();
+    let path = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
+    env::set_current_dir(&path).unwrap();
     fs::create_dir_all("create-dir-all-bare").unwrap();
 }

@@ -12,7 +12,6 @@
 // no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
-#![feature(proc_macro)]
 
 extern crate proc_macro;
 use proc_macro::TokenStream;

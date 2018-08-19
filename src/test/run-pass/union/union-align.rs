@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
-#![feature(repr_align)]
 #![feature(untagged_unions)]
 
 use std::mem::{size_of, size_of_val, align_of, align_of_val};

@@ -1,0 +1,9 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/E0225.rs:12:32
+   |
+LL |     let _: Box<std::io::Read + std::io::Write>;
+   |                                ^^^^^^^^^^^^^^ non-auto additional trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0225`.

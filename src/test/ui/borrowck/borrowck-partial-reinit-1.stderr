@@ -1,0 +1,15 @@
+error[E0383]: partial reinitialization of uninitialized structure `t`
+  --> $DIR/borrowck-partial-reinit-1.rs:37:5
+   |
+LL |     t.b = Some(u);
+   |     ^^^^^^^^^^^^^
+
+error[E0383]: partial reinitialization of uninitialized structure `t`
+  --> $DIR/borrowck-partial-reinit-1.rs:43:5
+   |
+LL |     t.0 = Some(u);
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0383`.

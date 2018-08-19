@@ -34,10 +34,10 @@
 
 use super::equate::Equate;
 use super::glb::Glb;
+use super::{InferCtxt, MiscVariable, TypeTrace};
 use super::lub::Lub;
 use super::sub::Sub;
-use super::InferCtxt;
-use super::{MiscVariable, TypeTrace};
+use super::type_variable::TypeVariableValue;
 
 use hir::def_id::DefId;
 use ty::{IntType, UintType};
@@ -132,7 +132,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     {
         self.int_unification_table
             .borrow_mut()
-            .unify_var_value(vid, val)
+            .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
             IntType(v) => Ok(self.tcx.mk_mach_int(v)),
@@ -148,7 +148,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     {
         self.float_unification_table
             .borrow_mut()
-            .unify_var_value(vid, val)
+            .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
         Ok(self.tcx.mk_mach_float(val))
     }
@@ -194,7 +194,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         use self::RelationDir::*;
 
         // Get the actual variable that b_vid has been inferred to
-        debug_assert!(self.infcx.type_variables.borrow_mut().probe(b_vid).is_none());
+        debug_assert!(self.infcx.type_variables.borrow_mut().probe(b_vid).is_unknown());
 
         debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
@@ -302,7 +302,7 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
 /// Result from a generalization operation. This includes
 /// not only the generalized type, but also a bool flag
-/// indicating whether further WF checks are needed.q
+/// indicating whether further WF checks are needed.
 struct Generalization<'tcx> {
     ty: Ty<'tcx>,
 
@@ -351,7 +351,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn relate_item_substs(&mut self,
@@ -402,12 +402,12 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     // `vid` are related via subtyping.
                     return Err(TypeError::CyclicTy(self.root_ty));
                 } else {
-                    match variables.probe_root(vid) {
-                        Some(u) => {
+                    match variables.probe(vid) {
+                        TypeVariableValue::Known { value: u } => {
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        None => {
+                        TypeVariableValue::Unknown { universe } => {
                             match self.ambient_variance {
                                 // Invariant: no need to make a fresh type variable.
                                 ty::Invariant => return Ok(t),
@@ -423,8 +423,8 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                                 ty::Covariant | ty::Contravariant => (),
                             }
 
-                            let origin = variables.origin(vid);
-                            let new_var_id = variables.new_var(false, origin, None);
+                            let origin = *variables.var_origin(vid);
+                            let new_var_id = variables.new_var(universe, false, origin);
                             let u = self.tcx().mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);
@@ -476,6 +476,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 }
             }
 
+            ty::ReCanonical(..) |
             ty::ReClosureBound(..) => {
                 span_bug!(
                     self.span,
@@ -518,9 +519,9 @@ fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::Int
 }
 
 fn float_unification_error<'tcx>(a_is_expected: bool,
-                                 v: (ast::FloatTy, ast::FloatTy))
+                                 v: (ty::FloatVarValue, ty::FloatVarValue))
                                  -> TypeError<'tcx>
 {
-    let (a, b) = v;
+    let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
 }

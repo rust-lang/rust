@@ -1,0 +1,12 @@
+error: compilation successful
+  --> $DIR/match-guards-always-borrow.rs:57:1
+   |
+LL | / fn main() { //[ast]~ ERROR compilation successful
+LL | |     should_reject_destructive_mutate_in_guard();
+LL | |     allow_mutate_in_arm_body();
+LL | |     allow_move_into_arm_body();
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

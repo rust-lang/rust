@@ -1,0 +1,14 @@
+error[E0072]: recursive type `pingpong::pong` has infinite size
+  --> $DIR/issue-2718-a.rs:18:5
+   |
+LL |     pub struct pong(send_packet<ping>);
+   |     ^^^^^^^^^^^^^^^^-----------------^^
+   |     |               |
+   |     |               recursive without indirection
+   |     recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `pingpong::pong` representable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

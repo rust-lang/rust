@@ -22,7 +22,7 @@
 // basically checking that the MIR type checker correctly enforces the
 // closure signature.
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 

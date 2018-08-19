@@ -1,0 +1,24 @@
+error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the data it references
+  --> $DIR/regions-free-region-ordering-callee-4.rs:15:1
+   |
+LL | / fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
+LL | |     //~^ ERROR reference has a longer lifetime than the data it references
+LL | |     // Do not infer ordering from closure argument types.
+LL | |     let z: Option<&'a &'b usize> = None;
+LL | | }
+   | |_^
+   |
+note: the pointer is valid for the lifetime 'a as defined on the function body at 15:14
+  --> $DIR/regions-free-region-ordering-callee-4.rs:15:14
+   |
+LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
+   |              ^^
+note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 15:18
+  --> $DIR/regions-free-region-ordering-callee-4.rs:15:18
+   |
+LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
+   |                  ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0491`.

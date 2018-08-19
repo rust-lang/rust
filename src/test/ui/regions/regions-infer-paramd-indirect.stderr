@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+  --> $DIR/regions-infer-paramd-indirect.rs:33:18
+   |
+LL |         self.f = b;
+   |                  ^ lifetime mismatch
+   |
+   = note: expected type `std::boxed::Box<std::boxed::Box<&'a isize>>`
+              found type `std::boxed::Box<std::boxed::Box<&isize>>`
+note: the anonymous lifetime #2 defined on the method body at 32:5...
+  --> $DIR/regions-infer-paramd-indirect.rs:32:5
+   |
+LL | /     fn set_f_bad(&mut self, b: Box<b>) {
+LL | |         self.f = b;
+LL | |         //~^ ERROR mismatched types
+LL | |         //~| expected type `std::boxed::Box<std::boxed::Box<&'a isize>>`
+LL | |         //~| found type `std::boxed::Box<std::boxed::Box<&isize>>`
+LL | |         //~| lifetime mismatch
+LL | |     }
+   | |_____^
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 27:6
+  --> $DIR/regions-infer-paramd-indirect.rs:27:6
+   |
+LL | impl<'a> set_f<'a> for c<'a> {
+   |      ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,11 @@
+error[E0658]: labels on blocks are unstable (see issue #48594)
+  --> $DIR/feature-gate-label_break_value.rs:12:5
+   |
+LL |     'a: { //~ ERROR labels on blocks are unstable
+   |     ^^
+   |
+   = help: add #![feature(label_break_value)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

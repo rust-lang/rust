@@ -1,0 +1,13 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/use-after-move-based-on-type.rs:14:20
+   |
+LL |     let _y = x;
+   |              - value moved here
+LL |     println!("{}", x); //~ ERROR use of moved value
+   |                    ^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

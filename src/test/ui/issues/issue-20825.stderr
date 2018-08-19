@@ -1,0 +1,11 @@
+error[E0391]: cycle detected when computing the supertraits of `Processor`
+  --> $DIR/issue-20825.rs:15:1
+   |
+LL | pub trait Processor: Subscriber<Input = Self::Input> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which again requires computing the supertraits of `Processor`, completing the cycle
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -591,7 +591,7 @@ def parse_args():
         The X86 architecture is specified as multiple files (for the different
         instruction sets that x86 supports). To generate the compiler
         definitions one needs to pass the script a "platform information file"
-        (with the -i flag) next to the files of the different intruction sets.
+        (with the -i flag) next to the files of the different instruction sets.
         For example, to generate the X86 compiler-definitions for SSE4.2, just:
 
         python generator.py --format compiler-defs -i x86/info.json sse42.json
@@ -806,9 +806,6 @@ class CompilerDefs(object):
 use {{Intrinsic, Type}};
 use IntrinsicDef::Named;
 
-// The default inlining settings trigger a pathological behaviour in
-// LLVM, which causes makes compilation very slow. See #28273.
-#[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {{
     if !name.starts_with("{0}") {{ return None }}
     Some(match &name["{0}".len()..] {{'''.format(platform.platform_prefix())

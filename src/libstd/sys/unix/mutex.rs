@@ -25,8 +25,10 @@ unsafe impl Sync for Mutex {}
 #[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     pub const fn new() -> Mutex {
-        // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
+        // Might be moved to a different address, so it is better to avoid
+        // initialization of potentially opaque OS data before it landed.
+        // Be very careful using this newly constructed `Mutex`, reentrant
+        // locking is undefined behavior until `init` is called!
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
@@ -49,9 +51,6 @@ impl Mutex {
         // references, we instead create the mutex with type
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
-        //
-        // We can't do anything for StaticMutex, but that type is deprecated
-        // anyways.
         let mut attr: libc::pthread_mutexattr_t = mem::uninitialized();
         let r = libc::pthread_mutexattr_init(&mut attr);
         debug_assert_eq!(r, 0);

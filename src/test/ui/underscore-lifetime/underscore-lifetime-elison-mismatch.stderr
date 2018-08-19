@@ -1,0 +1,11 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/underscore-lifetime-elison-mismatch.rs:11:49
+   |
+LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); } //~ ERROR lifetime mismatch
+   |                    ------      ------           ^ ...but data from `y` flows into `x` here
+   |                                |
+   |                                these two types are declared with different lifetimes...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

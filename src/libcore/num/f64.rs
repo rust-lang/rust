@@ -11,16 +11,14 @@
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
-//! Mathematically significant numbers are provided in the `consts` sub-module.
-//!
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use intrinsics;
 use mem;
-use num::FpCategory as Fp;
-use num::Float;
+use num::FpCategory;
 
 /// The radix or base of the internal representation of `f64`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -33,7 +31,11 @@ pub const MANTISSA_DIGITS: u32 = 53;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = 15;
 
-/// Difference between `1.0` and the next largest representable number.
+/// [Machine epsilon] value for `f64`.
+///
+/// This is the difference between `1.0` and the next largest representable number.
+///
+/// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
@@ -124,9 +126,17 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const E: f64 = 2.71828182845904523536028747135266250_f64;
 
+    /// log<sub>2</sub>(10)
+    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    pub const LOG2_10: f64 = 3.32192809488736234787031942948939018_f64;
+
     /// log<sub>2</sub>(e)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const LOG2_E: f64 = 1.44269504088896340735992468100189214_f64;
+
+    /// log<sub>10</sub>(2)
+    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    pub const LOG10_2: f64 = 0.301029995663981195213738894724493027_f64;
 
     /// log<sub>10</sub>(e)
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -141,118 +151,240 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[unstable(feature = "core_float",
-           reason = "stable interface is via `impl f{32,64}` in later crates",
-           issue = "32110")]
-impl Float for f64 {
-    /// Returns `true` if the number is NaN.
+#[lang = "f64"]
+#[cfg(not(test))]
+impl f64 {
+    /// Returns `true` if this value is `NaN` and false otherwise.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let nan = f64::NAN;
+    /// let f = 7.0_f64;
+    ///
+    /// assert!(nan.is_nan());
+    /// assert!(!f.is_nan());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_nan(self) -> bool {
+    pub fn is_nan(self) -> bool {
         self != self
     }
 
-    /// Returns `true` if the number is infinite.
+    /// Returns `true` if this value is positive infinity or negative infinity and
+    /// false otherwise.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let f = 7.0f64;
+    /// let inf = f64::INFINITY;
+    /// let neg_inf = f64::NEG_INFINITY;
+    /// let nan = f64::NAN;
+    ///
+    /// assert!(!f.is_infinite());
+    /// assert!(!nan.is_infinite());
+    ///
+    /// assert!(inf.is_infinite());
+    /// assert!(neg_inf.is_infinite());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_infinite(self) -> bool {
+    pub fn is_infinite(self) -> bool {
         self == INFINITY || self == NEG_INFINITY
     }
 
-    /// Returns `true` if the number is neither infinite or NaN.
+    /// Returns `true` if this number is neither infinite nor `NaN`.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let f = 7.0f64;
+    /// let inf: f64 = f64::INFINITY;
+    /// let neg_inf: f64 = f64::NEG_INFINITY;
+    /// let nan: f64 = f64::NAN;
+    ///
+    /// assert!(f.is_finite());
+    ///
+    /// assert!(!nan.is_finite());
+    /// assert!(!inf.is_finite());
+    /// assert!(!neg_inf.is_finite());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_finite(self) -> bool {
+    pub fn is_finite(self) -> bool {
         !(self.is_nan() || self.is_infinite())
     }
 
-    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN.
+    /// Returns `true` if the number is neither zero, infinite,
+    /// [subnormal][subnormal], or `NaN`.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
+    /// let max = f64::MAX;
+    /// let lower_than_min = 1.0e-308_f64;
+    /// let zero = 0.0f64;
+    ///
+    /// assert!(min.is_normal());
+    /// assert!(max.is_normal());
+    ///
+    /// assert!(!zero.is_normal());
+    /// assert!(!f64::NAN.is_normal());
+    /// assert!(!f64::INFINITY.is_normal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(!lower_than_min.is_normal());
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_normal(self) -> bool {
-        self.classify() == Fp::Normal
+    pub fn is_normal(self) -> bool {
+        self.classify() == FpCategory::Normal
     }
 
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
-    fn classify(self) -> Fp {
+    ///
+    /// ```
+    /// use std::num::FpCategory;
+    /// use std::f64;
+    ///
+    /// let num = 12.4_f64;
+    /// let inf = f64::INFINITY;
+    ///
+    /// assert_eq!(num.classify(), FpCategory::Normal);
+    /// assert_eq!(inf.classify(), FpCategory::Infinite);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits: u64 = unsafe { mem::transmute(self) };
+        let bits = self.to_bits();
         match (bits & MAN_MASK, bits & EXP_MASK) {
-            (0, 0) => Fp::Zero,
-            (_, 0) => Fp::Subnormal,
-            (0, EXP_MASK) => Fp::Infinite,
-            (_, EXP_MASK) => Fp::Nan,
-            _ => Fp::Normal,
-        }
-    }
-
-    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
-    /// number is `Float::nan()`.
-    #[inline]
-    fn abs(self) -> f64 {
-        unsafe { intrinsics::fabsf64(self) }
-    }
-
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
-    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
-    /// - `Float::nan()` if the number is `Float::nan()`
-    #[inline]
-    fn signum(self) -> f64 {
-        if self.is_nan() {
-            NAN
-        } else {
-            unsafe { intrinsics::copysignf64(1.0, self) }
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            (0, EXP_MASK) => FpCategory::Infinite,
+            (_, EXP_MASK) => FpCategory::Nan,
+            _ => FpCategory::Normal,
         }
     }
 
     /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
+    ///
+    /// ```
+    /// let f = 7.0_f64;
+    /// let g = -7.0_f64;
+    ///
+    /// assert!(f.is_sign_positive());
+    /// assert!(!g.is_sign_positive());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_sign_positive(self) -> bool {
+    pub fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
+    #[inline]
+    #[doc(hidden)]
+    pub fn is_positive(self) -> bool {
+        self.is_sign_positive()
     }
 
     /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
+    ///
+    /// ```
+    /// let f = 7.0_f64;
+    /// let g = -7.0_f64;
+    ///
+    /// assert!(!f.is_sign_negative());
+    /// assert!(g.is_sign_negative());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn is_sign_negative(self) -> bool {
-        #[repr(C)]
-        union F64Bytes {
-            f: f64,
-            b: u64
-        }
-        unsafe { F64Bytes { f: self }.b & 0x8000_0000_0000_0000 != 0 }
+    pub fn is_sign_negative(self) -> bool {
+        self.to_bits() & 0x8000_0000_0000_0000 != 0
     }
 
-    /// Returns the reciprocal (multiplicative inverse) of the number.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
     #[inline]
-    fn recip(self) -> f64 {
+    #[doc(hidden)]
+    pub fn is_negative(self) -> bool {
+        self.is_sign_negative()
+    }
+
+    /// Takes the reciprocal (inverse) of a number, `1/x`.
+    ///
+    /// ```
+    /// let x = 2.0_f64;
+    /// let abs_difference = (x.recip() - (1.0/x)).abs();
+    ///
+    /// assert!(abs_difference < 1e-10);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn recip(self) -> f64 {
         1.0 / self
     }
 
+    /// Converts radians to degrees.
+    ///
+    /// ```
+    /// use std::f64::consts;
+    ///
+    /// let angle = consts::PI;
+    ///
+    /// let abs_difference = (angle.to_degrees() - 180.0).abs();
+    ///
+    /// assert!(abs_difference < 1e-10);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn powi(self, n: i32) -> f64 {
-        unsafe { intrinsics::powif64(self, n) }
-    }
-
-    /// Converts to degrees, assuming the number is in radians.
-    #[inline]
-    fn to_degrees(self) -> f64 {
+    pub fn to_degrees(self) -> f64 {
+        // The division here is correctly rounded with respect to the true
+        // value of 180/π. (This differs from f32, where a constant must be
+        // used to ensure a correctly rounded result.)
         self * (180.0f64 / consts::PI)
     }
 
-    /// Converts to radians, assuming the number is in degrees.
+    /// Converts degrees to radians.
+    ///
+    /// ```
+    /// use std::f64::consts;
+    ///
+    /// let angle = 180.0_f64;
+    ///
+    /// let abs_difference = (angle.to_radians() - consts::PI).abs();
+    ///
+    /// assert!(abs_difference < 1e-10);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn to_radians(self) -> f64 {
+    pub fn to_radians(self) -> f64 {
         let value: f64 = consts::PI;
         self * (value / 180.0)
     }
 
     /// Returns the maximum of the two numbers.
+    ///
+    /// ```
+    /// let x = 1.0_f64;
+    /// let y = 2.0_f64;
+    ///
+    /// assert_eq!(x.max(y), y);
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn max(self, other: f64) -> f64 {
+    pub fn max(self, other: f64) -> f64 {
         // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the
         // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
         // is either x or y, canonicalized (this means results might differ among implementations).
@@ -265,8 +397,18 @@ impl Float for f64 {
     }
 
     /// Returns the minimum of the two numbers.
+    ///
+    /// ```
+    /// let x = 1.0_f64;
+    /// let y = 2.0_f64;
+    ///
+    /// assert_eq!(x.min(y), x);
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn min(self, other: f64) -> f64 {
+    pub fn min(self, other: f64) -> f64 {
         // IEEE754 says: minNum(x, y) is the canonicalized number x if x < y, y if y < x, the
         // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
         // is either x or y, canonicalized (this means results might differ among implementations).
@@ -276,5 +418,73 @@ impl Float for f64 {
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
         (if other.is_nan() || self < other { self } else { other }) * 1.0
+    }
+
+    /// Raw transmutation to `u64`.
+    ///
+    /// This is currently identical to `transmute::<f64, u64>(self)` on all platforms.
+    ///
+    /// See `from_bits` for some discussion of the portability of this operation
+    /// (there are almost no issues).
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
+    /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
+    ///
+    /// ```
+    #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[inline]
+    pub fn to_bits(self) -> u64 {
+        unsafe { mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u64`.
+    ///
+    /// This is currently identical to `transmute::<u64, f64>(v)` on all platforms.
+    /// It turns out this is incredibly portable, for two reasons:
+    ///
+    /// * Floats and Ints have the same endianness on all supported platforms.
+    /// * IEEE-754 very precisely specifies the bit layout of floats.
+    ///
+    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
+    /// (notably x86 and ARM) picked the interpretation that was ultimately
+    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
+    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    ///
+    /// Rather than trying to preserve signaling-ness cross-platform, this
+    /// implementation favours preserving the exact bits. This means that
+    /// any payloads encoded in NaNs will be preserved even if the result of
+    /// this method is sent over the network from an x86 machine to a MIPS one.
+    ///
+    /// If the results of this method are only manipulated by the same
+    /// architecture that produced them, then there is no portability concern.
+    ///
+    /// If the input isn't NaN, then there is no portability concern.
+    ///
+    /// If you don't care about signalingness (very likely), then there is no
+    /// portability concern.
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::f64;
+    /// let v = f64::from_bits(0x4029000000000000);
+    /// let difference = (v - 12.5).abs();
+    /// assert!(difference <= 1e-5);
+    /// ```
+    #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[inline]
+    pub fn from_bits(v: u64) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        unsafe { mem::transmute(v) }
     }
 }

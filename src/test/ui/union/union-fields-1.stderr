@@ -1,31 +1,31 @@
 error: field is never used: `c`
   --> $DIR/union-fields-1.rs:16:5
    |
-16 |     c: u8, //~ ERROR field is never used
+LL |     c: u8, //~ ERROR field is never used
    |     ^^^^^
    |
 note: lint level defined here
   --> $DIR/union-fields-1.rs:11:9
    |
-11 | #![deny(dead_code)]
+LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: field is never used: `a`
   --> $DIR/union-fields-1.rs:19:5
    |
-19 |     a: u8, //~ ERROR field is never used
+LL |     a: u8, //~ ERROR field is never used
    |     ^^^^^
 
 error: field is never used: `a`
   --> $DIR/union-fields-1.rs:23:20
    |
-23 | union NoDropLike { a: u8 } //~ ERROR field is never used
+LL | union NoDropLike { a: u8 } //~ ERROR field is never used
    |                    ^^^^^
 
 error: field is never used: `c`
   --> $DIR/union-fields-1.rs:28:5
    |
-28 |     c: u8, //~ ERROR field is never used
+LL |     c: u8, //~ ERROR field is never used
    |     ^^^^^
 
 error: aborting due to 4 previous errors

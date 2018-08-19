@@ -14,12 +14,13 @@ use core::convert::TryInto;
 use cmp;
 use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 
-/// A `Cursor` wraps another type and provides it with a
+/// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
 ///
-/// `Cursor`s are typically used with in-memory buffers to allow them to
-/// implement [`Read`] and/or [`Write`], allowing these buffers to be used
-/// anywhere you might use a reader or writer that does actual I/O.
+/// `Cursor`s are used with in-memory buffers, anything implementing
+/// `AsRef<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
+/// allowing these buffers to be used anywhere you might use a reader or writer
+/// that does actual I/O.
 ///
 /// The standard library implements some I/O traits on various types which
 /// are commonly used as a buffer, like `Cursor<`[`Vec`]`<u8>>` and
@@ -87,11 +88,11 @@ pub struct Cursor<T> {
 }
 
 impl<T> Cursor<T> {
-    /// Creates a new cursor wrapping the provided underlying I/O object.
+    /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying object (e.
-    /// g. `Vec`) is not empty. So writing to cursor starts with
-    /// overwriting `Vec` content, not with appending to it.
+    /// Cursor initial position is `0` even if underlying buffer (e.g. `Vec`)
+    /// is not empty. So writing to cursor starts with overwriting `Vec`
+    /// content, not with appending to it.
     ///
     /// # Examples
     ///
@@ -296,7 +297,7 @@ impl<'a> Write for Cursor<&'a mut [u8]> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[unstable(feature = "cursor_mut_vec", issue = "30132")]
+#[stable(feature = "cursor_mut_vec", since = "1.25.0")]
 impl<'a> Write for Cursor<&'a mut Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
@@ -547,24 +548,6 @@ mod tests {
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-    }
-
-    #[test]
-    fn test_read_char() {
-        let b = &b"Vi\xE1\xBB\x87t"[..];
-        let mut c = Cursor::new(b).chars();
-        assert_eq!(c.next().unwrap().unwrap(), 'V');
-        assert_eq!(c.next().unwrap().unwrap(), 'i');
-        assert_eq!(c.next().unwrap().unwrap(), 'ệ');
-        assert_eq!(c.next().unwrap().unwrap(), 't');
-        assert!(c.next().is_none());
-    }
-
-    #[test]
-    fn test_read_bad_char() {
-        let b = &b"\x80"[..];
-        let mut c = Cursor::new(b).chars();
-        assert!(c.next().unwrap().is_err());
     }
 
     #[test]

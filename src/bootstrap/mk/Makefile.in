@@ -16,6 +16,12 @@ Q := @
 BOOTSTRAP_ARGS :=
 endif
 
+ifdef EXCLUDE_CARGO
+AUX_ARGS :=
+else
+AUX_ARGS := src/tools/cargo src/tools/cargotest
+endif
+
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
@@ -52,14 +58,13 @@ check:
 	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
-		src/tools/cargo \
-		src/tools/cargotest \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \
 		src/test/run-pass-valgrind/pretty \
 		src/test/run-pass-fulldeps/pretty \
 		src/test/run-fail-fulldeps/pretty \
+		$(AUX_ARGS) \
 		$(BOOTSTRAP_ARGS)
 check-bootstrap:
 	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
@@ -79,6 +84,13 @@ check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
 check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-musl
+
+TESTS_IN_2 := src/test/run-pass src/test/compile-fail src/test/run-pass-fulldeps
+
+appveyor-subset-1:
+	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
+appveyor-subset-2:
+	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
 
 
 .PHONY: dist

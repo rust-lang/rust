@@ -17,14 +17,14 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(rustc_diagnostic_macros)]
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_const_eval;
-extern crate rustc_const_math;
+extern crate rustc_mir;
+extern crate rustc_data_structures;
 
 #[macro_use]
 extern crate log;
@@ -33,20 +33,18 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 mod diagnostics;
 
 pub mod ast_validation;
-pub mod consts;
+pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod loops;
 mod mir_stats;
-pub mod static_recursion;
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
 pub fn provide(providers: &mut Providers) {
-    consts::provide(providers);
+    rvalue_promotion::provide(providers);
 }

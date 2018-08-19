@@ -150,7 +150,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// [`lock`]: struct.Mutex.html#method.lock
 /// [`try_lock`]: struct.Mutex.html#method.try_lock
 /// [`Mutex`]: struct.Mutex.html
-#[must_use]
+#[must_use = "if unused the Mutex will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
@@ -227,7 +227,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe {
-            self.inner.lock();
+            self.inner.raw_lock();
             MutexGuard::new(self)
         }
     }
@@ -454,7 +454,7 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     fn drop(&mut self) {
         unsafe {
             self.__lock.poison.done(&self.__poison);
-            self.__lock.inner.unlock();
+            self.__lock.inner.raw_unlock();
         }
     }
 }

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // This file illustrates how niche-filling enums are handled,
 // modelled after cases like `Option<&u32>`, `Option<bool>` and such.
 //
-// It uses NonZero directly, rather than `&_` or `Unique<_>`, because
+// It uses NonZeroU32 rather than `&_` or `Unique<_>`, because
 // the test is not set up to deal with target-dependent pointer width.
 //
 // It avoids using u64/i64 because on some targets that is only 4-byte
@@ -22,11 +22,9 @@
 // padding and overall computed sizes can be quite different.
 
 #![feature(start)]
-#![feature(nonzero)]
 #![allow(dead_code)]
 
-extern crate core;
-use core::nonzero::{NonZero, Zeroable};
+use std::num::NonZeroU32;
 
 pub enum MyOption<T> { None, Some(T) }
 
@@ -36,7 +34,7 @@ impl<T> Default for MyOption<T> {
 
 pub enum EmbeddedDiscr {
     None,
-    Record { pre: u8, val: NonZero<u32>, post: u16 },
+    Record { pre: u8, val: NonZeroU32, post: u16 },
 }
 
 impl Default for EmbeddedDiscr {
@@ -44,30 +42,22 @@ impl Default for EmbeddedDiscr {
 }
 
 #[derive(Default)]
-pub struct IndirectNonZero<T: Zeroable + One> {
+pub struct IndirectNonZero {
     pre: u8,
-    nested: NestedNonZero<T>,
+    nested: NestedNonZero,
     post: u16,
 }
 
-pub struct NestedNonZero<T: Zeroable> {
+pub struct NestedNonZero {
     pre: u8,
-    val: NonZero<T>,
+    val: NonZeroU32,
     post: u16,
 }
 
-impl<T: Zeroable+One> Default for NestedNonZero<T> {
+impl Default for NestedNonZero {
     fn default() -> Self {
-        NestedNonZero { pre: 0, val: NonZero::new(T::one()).unwrap(), post: 0 }
+        NestedNonZero { pre: 0, val: NonZeroU32::new(1).unwrap(), post: 0 }
     }
-}
-
-pub trait One {
-    fn one() -> Self;
-}
-
-impl One for u32 {
-    fn one() -> Self { 1 }
 }
 
 pub enum Enum4<A, B, C, D> {
@@ -79,9 +69,9 @@ pub enum Enum4<A, B, C, D> {
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    let _x: MyOption<NonZero<u32>> = Default::default();
+    let _x: MyOption<NonZeroU32> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
-    let _z: MyOption<IndirectNonZero<u32>> = Default::default();
+    let _z: MyOption<IndirectNonZero> = Default::default();
     let _a: MyOption<bool> = Default::default();
     let _b: MyOption<char> = Default::default();
     let _c: MyOption<std::cmp::Ordering> = Default::default();

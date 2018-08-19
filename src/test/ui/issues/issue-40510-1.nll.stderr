@@ -1,0 +1,15 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-40510-1.rs:18:9
+   |
+LL |     || {
+   |     --
+   |     ||
+   |     |return type of closure is &'2 mut std::boxed::Box<()>
+   |     lifetime `'1` represents this closure's body
+LL |         &mut x
+   |         ^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: aborting due to previous error
+

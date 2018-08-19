@@ -1,0 +1,2 @@
+error: incorrect value `foo` for codegen option `panic` - either `panic` or `abort` was expected
+

@@ -17,7 +17,7 @@
 // `use` directives.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the acutal check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -31,8 +31,8 @@ use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
 
-struct UnusedImportCheckVisitor<'a, 'b: 'a> {
-    resolver: &'a mut Resolver<'b>,
+struct UnusedImportCheckVisitor<'a, 'b: 'a, 'd: 'b> {
+    resolver: &'a mut Resolver<'b, 'd>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: NodeMap<NodeMap<Span>>,
     base_id: ast::NodeId,
@@ -40,21 +40,21 @@ struct UnusedImportCheckVisitor<'a, 'b: 'a> {
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
-impl<'a, 'b> Deref for UnusedImportCheckVisitor<'a, 'b> {
-    type Target = Resolver<'b>;
+impl<'a, 'b, 'd> Deref for UnusedImportCheckVisitor<'a, 'b, 'd> {
+    type Target = Resolver<'b, 'd>;
 
-    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'd> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b> DerefMut for UnusedImportCheckVisitor<'a, 'b> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
+impl<'a, 'b, 'd> DerefMut for UnusedImportCheckVisitor<'a, 'b, 'd> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'd> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'd> UnusedImportCheckVisitor<'a, 'b, 'd> {
     // We have information about whether `use` (import) directives are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, item_id: ast::NodeId, id: ast::NodeId, span: Span) {
@@ -65,7 +65,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
                 // Check later.
                 return;
             }
-            self.unused_imports.entry(item_id).or_insert_with(NodeMap).insert(id, span);
+            self.unused_imports.entry(item_id).or_default().insert(id, span);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
@@ -77,7 +77,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'cl> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'cl> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span;
 
@@ -86,7 +86,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if let ast::ItemKind::Use(..) = item.node {
-            if item.vis == ast::Visibility::Public || item.span.source_equal(&DUMMY_SP) {
+            if item.vis.node.is_pub() || item.span.is_dummy() {
                 return;
             }
         }
@@ -102,11 +102,18 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         }
 
         if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // If it's the parent group, cover the entire use item
+            let span = if nested {
+                use_tree.span
+            } else {
+                self.item_span
+            };
+
             if items.len() == 0 {
                 self.unused_imports
                     .entry(self.base_id)
-                    .or_insert_with(NodeMap)
-                    .insert(id, self.item_span);
+                    .or_default()
+                    .insert(id, span);
             }
         } else {
             let base_id = self.base_id;
@@ -122,7 +129,21 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         match directive.subclass {
             _ if directive.used.get() ||
                  directive.vis.get() == ty::Visibility::Public ||
-                 directive.span.source_equal(&DUMMY_SP) => {}
+                 directive.span.is_dummy() => {
+                if let ImportDirectiveSubclass::MacroUse = directive.subclass {
+                    if !directive.span.is_dummy() {
+                        resolver.session.buffer_lint(
+                            lint::builtin::MACRO_USE_EXTERN_CRATE,
+                            directive.id,
+                            directive.span,
+                            "deprecated `#[macro_use]` directive used to \
+                             import macros should be replaced at use sites \
+                             with a `use` statement to import the macro \
+                             instead",
+                        );
+                    }
+                }
+            }
             ImportDirectiveSubclass::ExternCrate(_) => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
@@ -133,6 +154,10 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
             }
             _ => {}
         }
+    }
+
+    for (id, span) in resolver.unused_labels.iter() {
+        resolver.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
     }
 
     let mut visitor = UnusedImportCheckVisitor {

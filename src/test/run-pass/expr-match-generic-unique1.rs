@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 fn test_generic<T: Clone, F>(expected: Box<T>, eq: F) where F: FnOnce(Box<T>, Box<T>) -> bool {

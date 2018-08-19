@@ -11,5 +11,5 @@
 // compile-flags: -Z parse-only
 
 static s: &'static str =
-    r#x"#"x# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
+    r#~"#"~# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
 ;

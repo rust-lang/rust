@@ -29,9 +29,12 @@ doc = false
 #
 # See https://github.com/rust-lang/rfcs/pull/1133.
 core = { path = "../../libcore" }
+compiler_builtins = { path = "../compiler_builtins_shim" }
+
 
 [features]
 # Certain parts of libc are conditionally compiled differently than when used
 # outside rustc. See https://github.com/rust-lang/libc/search?l=Rust&q=stdbuild&type=&utf8=%E2%9C%93.
 stdbuild = []
-default = ["stdbuild"]
+default = ["stdbuild", "align"]
+align = []

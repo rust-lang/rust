@@ -1,82 +1,84 @@
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:15:13
    |
-15 |           1.fake() //~ ERROR no method
+LL |           1.fake() //~ ERROR no method
    |             ^^^^
 ...
-62 |     fake_method_stmt!();
+LL |     fake_method_stmt!();
    |     -------------------- in this macro invocation
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:21:13
    |
-21 |           1.fake //~ ERROR doesn't have fields
+LL |           1.fake //~ ERROR doesn't have fields
    |             ^^^^
 ...
-63 |     fake_field_stmt!();
+LL |     fake_field_stmt!();
    |     ------------------- in this macro invocation
 
-error[E0609]: no field `0` on type `{integer}`
-  --> $DIR/macro-backtrace-invalid-internals.rs:27:11
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:27:15
    |
-27 |           (1).0 //~ ERROR no field
-   |           ^^^^^
+LL |           (1).0 //~ ERROR doesn't have fields
+   |               ^
 ...
-64 |     fake_anon_field_stmt!();
+LL |     fake_anon_field_stmt!();
    |     ------------------------ in this macro invocation
 
-error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:51:15
    |
-51 |           2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
-   |               ^^^^
+LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+   |               ^^^
 ...
-65 |     real_method_stmt!();
+LL |     real_method_stmt!();
    |     -------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-51 |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:33:13
    |
-33 |           1.fake() //~ ERROR no method
+LL |           1.fake() //~ ERROR no method
    |             ^^^^
 ...
-67 |     let _ = fake_method_expr!();
+LL |     let _ = fake_method_expr!();
    |             ------------------- in this macro invocation
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:39:13
    |
-39 |           1.fake //~ ERROR doesn't have fields
+LL |           1.fake //~ ERROR doesn't have fields
    |             ^^^^
 ...
-68 |     let _ = fake_field_expr!();
+LL |     let _ = fake_field_expr!();
    |             ------------------ in this macro invocation
 
-error[E0609]: no field `0` on type `{integer}`
-  --> $DIR/macro-backtrace-invalid-internals.rs:45:11
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:45:15
    |
-45 |           (1).0 //~ ERROR no field
-   |           ^^^^^
+LL |           (1).0 //~ ERROR doesn't have fields
+   |               ^
 ...
-69 |     let _ = fake_anon_field_expr!();
+LL |     let _ = fake_anon_field_expr!();
    |             ----------------------- in this macro invocation
 
-error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:57:15
    |
-57 |           2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
-   |               ^^^^
+LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+   |               ^^^
 ...
-70 |     let _ = real_method_expr!();
+LL |     let _ = real_method_expr!();
    |             ------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-57 |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error: aborting due to 8 previous errors
 
+Some errors occurred: E0599, E0610, E0689.
+For more information about an error, try `rustc --explain E0599`.

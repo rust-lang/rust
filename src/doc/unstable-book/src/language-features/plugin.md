@@ -183,6 +183,8 @@ that warns about any item named `lintme`.
 ```rust,ignore
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
+#![feature(macro_vis_matcher)]
+#![feature(macro_at_most_once_rep)]
 
 extern crate syntax;
 
@@ -208,7 +210,7 @@ impl LintPass for Pass {
 
 impl EarlyLintPass for Pass {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
-        if it.ident.name.as_str() == "lintme" {
+        if it.ident.as_str() == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }

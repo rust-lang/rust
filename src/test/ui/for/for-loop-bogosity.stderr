@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `MyStruct: std::iter::Iterator` is not satisfied
+  --> $DIR/for-loop-bogosity.rs:27:14
+   |
+LL |     for x in bogus { //~ ERROR `MyStruct: std::iter::Iterator` is not satisfied
+   |              ^^^^^ `MyStruct` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `MyStruct`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -10,7 +10,6 @@
 
 // aux-build:cci_borrow_lib.rs
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 extern crate cci_borrow_lib;

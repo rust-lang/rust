@@ -1,0 +1,512 @@
+error: `$p:pat` is followed by `(`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:17:14
+   |
+LL |     ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`
+   |              ^
+
+error: `$p:pat` is followed by `[`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:18:14
+   |
+LL |     ($p:pat []) => {};       //~ERROR  `$p:pat` is followed by `[`
+   |              ^
+
+error: `$p:pat` is followed by `{`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:19:14
+   |
+LL |     ($p:pat {}) => {};       //~ERROR  `$p:pat` is followed by `{`
+   |              ^
+
+error: `$p:pat` is followed by `:`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:20:13
+   |
+LL |     ($p:pat :) => {};        //~ERROR `$p:pat` is followed by `:`
+   |             ^
+
+error: `$p:pat` is followed by `>`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:21:13
+   |
+LL |     ($p:pat >) => {};        //~ERROR `$p:pat` is followed by `>`
+   |             ^
+
+error: `$p:pat` is followed by `+`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:22:13
+   |
+LL |     ($p:pat +) => {};        //~ERROR `$p:pat` is followed by `+`
+   |             ^
+
+error: `$p:pat` is followed by `ident`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:23:13
+   |
+LL |     ($p:pat ident) => {};    //~ERROR `$p:pat` is followed by `ident`
+   |             ^^^^^
+
+error: `$p:pat` is followed by `$p:pat`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:24:13
+   |
+LL |     ($p:pat $p:pat) => {};   //~ERROR `$p:pat` is followed by `$p:pat`
+   |             ^^^^^^
+
+error: `$p:pat` is followed by `$e:expr`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:25:13
+   |
+LL |     ($p:pat $e:expr) => {};  //~ERROR `$p:pat` is followed by `$e:expr`
+   |             ^^^^^^^
+
+error: `$p:pat` is followed by `$t:ty`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:26:13
+   |
+LL |     ($p:pat $t:ty) => {};    //~ERROR `$p:pat` is followed by `$t:ty`
+   |             ^^^^^
+
+error: `$p:pat` is followed by `$s:stmt`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:27:13
+   |
+LL |     ($p:pat $s:stmt) => {};  //~ERROR `$p:pat` is followed by `$s:stmt`
+   |             ^^^^^^^
+
+error: `$p:pat` is followed by `$p:path`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:28:13
+   |
+LL |     ($p:pat $p:path) => {};  //~ERROR `$p:pat` is followed by `$p:path`
+   |             ^^^^^^^
+
+error: `$p:pat` is followed by `$b:block`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:29:13
+   |
+LL |     ($p:pat $b:block) => {}; //~ERROR `$p:pat` is followed by `$b:block`
+   |             ^^^^^^^^
+
+error: `$p:pat` is followed by `$i:ident`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:30:13
+   |
+LL |     ($p:pat $i:ident) => {}; //~ERROR `$p:pat` is followed by `$i:ident`
+   |             ^^^^^^^^
+
+error: `$p:pat` is followed by `$t:tt`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:31:13
+   |
+LL |     ($p:pat $t:tt) => {};    //~ERROR `$p:pat` is followed by `$t:tt`
+   |             ^^^^^
+
+error: `$p:pat` is followed by `$i:item`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:32:13
+   |
+LL |     ($p:pat $i:item) => {};  //~ERROR `$p:pat` is followed by `$i:item`
+   |             ^^^^^^^
+
+error: `$p:pat` is followed by `$m:meta`, which is not allowed for `pat` fragments
+  --> $DIR/macro-follow.rs:33:13
+   |
+LL |     ($p:pat $m:meta) => {};  //~ERROR `$p:pat` is followed by `$m:meta`
+   |             ^^^^^^^
+
+error: `$e:expr` is followed by `(`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:37:15
+   |
+LL |     ($e:expr ()) => {};       //~ERROR  `$e:expr` is followed by `(`
+   |               ^
+
+error: `$e:expr` is followed by `[`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:38:15
+   |
+LL |     ($e:expr []) => {};       //~ERROR  `$e:expr` is followed by `[`
+   |               ^
+
+error: `$e:expr` is followed by `{`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:39:15
+   |
+LL |     ($e:expr {}) => {};       //~ERROR  `$e:expr` is followed by `{`
+   |               ^
+
+error: `$e:expr` is followed by `=`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:40:14
+   |
+LL |     ($e:expr =) => {};        //~ERROR `$e:expr` is followed by `=`
+   |              ^
+
+error: `$e:expr` is followed by `|`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:41:14
+   |
+LL |     ($e:expr |) => {};        //~ERROR `$e:expr` is followed by `|`
+   |              ^
+
+error: `$e:expr` is followed by `:`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:42:14
+   |
+LL |     ($e:expr :) => {};        //~ERROR `$e:expr` is followed by `:`
+   |              ^
+
+error: `$e:expr` is followed by `>`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:43:14
+   |
+LL |     ($e:expr >) => {};        //~ERROR `$e:expr` is followed by `>`
+   |              ^
+
+error: `$e:expr` is followed by `+`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:44:14
+   |
+LL |     ($e:expr +) => {};        //~ERROR `$e:expr` is followed by `+`
+   |              ^
+
+error: `$e:expr` is followed by `ident`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:45:14
+   |
+LL |     ($e:expr ident) => {};    //~ERROR `$e:expr` is followed by `ident`
+   |              ^^^^^
+
+error: `$e:expr` is followed by `if`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:46:14
+   |
+LL |     ($e:expr if) => {};       //~ERROR `$e:expr` is followed by `if`
+   |              ^^
+
+error: `$e:expr` is followed by `in`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:47:14
+   |
+LL |     ($e:expr in) => {};       //~ERROR `$e:expr` is followed by `in`
+   |              ^^
+
+error: `$e:expr` is followed by `$p:pat`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:48:14
+   |
+LL |     ($e:expr $p:pat) => {};   //~ERROR `$e:expr` is followed by `$p:pat`
+   |              ^^^^^^
+
+error: `$e:expr` is followed by `$e:expr`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:49:14
+   |
+LL |     ($e:expr $e:expr) => {};  //~ERROR `$e:expr` is followed by `$e:expr`
+   |              ^^^^^^^
+
+error: `$e:expr` is followed by `$t:ty`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:50:14
+   |
+LL |     ($e:expr $t:ty) => {};    //~ERROR `$e:expr` is followed by `$t:ty`
+   |              ^^^^^
+
+error: `$e:expr` is followed by `$s:stmt`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:51:14
+   |
+LL |     ($e:expr $s:stmt) => {};  //~ERROR `$e:expr` is followed by `$s:stmt`
+   |              ^^^^^^^
+
+error: `$e:expr` is followed by `$p:path`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:52:14
+   |
+LL |     ($e:expr $p:path) => {};  //~ERROR `$e:expr` is followed by `$p:path`
+   |              ^^^^^^^
+
+error: `$e:expr` is followed by `$b:block`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:53:14
+   |
+LL |     ($e:expr $b:block) => {}; //~ERROR `$e:expr` is followed by `$b:block`
+   |              ^^^^^^^^
+
+error: `$e:expr` is followed by `$i:ident`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:54:14
+   |
+LL |     ($e:expr $i:ident) => {}; //~ERROR `$e:expr` is followed by `$i:ident`
+   |              ^^^^^^^^
+
+error: `$e:expr` is followed by `$t:tt`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:55:14
+   |
+LL |     ($e:expr $t:tt) => {};    //~ERROR `$e:expr` is followed by `$t:tt`
+   |              ^^^^^
+
+error: `$e:expr` is followed by `$i:item`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:56:14
+   |
+LL |     ($e:expr $i:item) => {};  //~ERROR `$e:expr` is followed by `$i:item`
+   |              ^^^^^^^
+
+error: `$e:expr` is followed by `$m:meta`, which is not allowed for `expr` fragments
+  --> $DIR/macro-follow.rs:57:14
+   |
+LL |     ($e:expr $m:meta) => {};  //~ERROR `$e:expr` is followed by `$m:meta`
+   |              ^^^^^^^
+
+error: `$t:ty` is followed by `(`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:62:13
+   |
+LL |     ($t:ty ()) => {};       //~ERROR  `$t:ty` is followed by `(`
+   |             ^
+
+error: `$t:ty` is followed by `+`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:64:12
+   |
+LL |     ($t:ty +) => {};        //~ERROR `$t:ty` is followed by `+`
+   |            ^
+
+error: `$t:ty` is followed by `ident`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:65:12
+   |
+LL |     ($t:ty ident) => {};    //~ERROR `$t:ty` is followed by `ident`
+   |            ^^^^^
+
+error: `$t:ty` is followed by `if`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:66:12
+   |
+LL |     ($t:ty if) => {};       //~ERROR `$t:ty` is followed by `if`
+   |            ^^
+
+error: `$t:ty` is followed by `$p:pat`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:67:12
+   |
+LL |     ($t:ty $p:pat) => {};   //~ERROR `$t:ty` is followed by `$p:pat`
+   |            ^^^^^^
+
+error: `$t:ty` is followed by `$e:expr`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:68:12
+   |
+LL |     ($t:ty $e:expr) => {};  //~ERROR `$t:ty` is followed by `$e:expr`
+   |            ^^^^^^^
+
+error: `$t:ty` is followed by `$t:ty`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:69:12
+   |
+LL |     ($t:ty $t:ty) => {};    //~ERROR `$t:ty` is followed by `$t:ty`
+   |            ^^^^^
+
+error: `$t:ty` is followed by `$s:stmt`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:70:12
+   |
+LL |     ($t:ty $s:stmt) => {};  //~ERROR `$t:ty` is followed by `$s:stmt`
+   |            ^^^^^^^
+
+error: `$t:ty` is followed by `$p:path`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:71:12
+   |
+LL |     ($t:ty $p:path) => {};  //~ERROR `$t:ty` is followed by `$p:path`
+   |            ^^^^^^^
+
+error: `$t:ty` is followed by `$i:ident`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:73:12
+   |
+LL |     ($t:ty $i:ident) => {}; //~ERROR `$t:ty` is followed by `$i:ident`
+   |            ^^^^^^^^
+
+error: `$t:ty` is followed by `$t:tt`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:74:12
+   |
+LL |     ($t:ty $t:tt) => {};    //~ERROR `$t:ty` is followed by `$t:tt`
+   |            ^^^^^
+
+error: `$t:ty` is followed by `$i:item`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:75:12
+   |
+LL |     ($t:ty $i:item) => {};  //~ERROR `$t:ty` is followed by `$i:item`
+   |            ^^^^^^^
+
+error: `$t:ty` is followed by `$m:meta`, which is not allowed for `ty` fragments
+  --> $DIR/macro-follow.rs:76:12
+   |
+LL |     ($t:ty $m:meta) => {};  //~ERROR `$t:ty` is followed by `$m:meta`
+   |            ^^^^^^^
+
+error: `$s:stmt` is followed by `(`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:80:15
+   |
+LL |     ($s:stmt ()) => {};       //~ERROR  `$s:stmt` is followed by `(`
+   |               ^
+
+error: `$s:stmt` is followed by `[`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:81:15
+   |
+LL |     ($s:stmt []) => {};       //~ERROR  `$s:stmt` is followed by `[`
+   |               ^
+
+error: `$s:stmt` is followed by `{`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:82:15
+   |
+LL |     ($s:stmt {}) => {};       //~ERROR  `$s:stmt` is followed by `{`
+   |               ^
+
+error: `$s:stmt` is followed by `=`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:83:14
+   |
+LL |     ($s:stmt =) => {};        //~ERROR `$s:stmt` is followed by `=`
+   |              ^
+
+error: `$s:stmt` is followed by `|`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:84:14
+   |
+LL |     ($s:stmt |) => {};        //~ERROR `$s:stmt` is followed by `|`
+   |              ^
+
+error: `$s:stmt` is followed by `:`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:85:14
+   |
+LL |     ($s:stmt :) => {};        //~ERROR `$s:stmt` is followed by `:`
+   |              ^
+
+error: `$s:stmt` is followed by `>`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:86:14
+   |
+LL |     ($s:stmt >) => {};        //~ERROR `$s:stmt` is followed by `>`
+   |              ^
+
+error: `$s:stmt` is followed by `+`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:87:14
+   |
+LL |     ($s:stmt +) => {};        //~ERROR `$s:stmt` is followed by `+`
+   |              ^
+
+error: `$s:stmt` is followed by `ident`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:88:14
+   |
+LL |     ($s:stmt ident) => {};    //~ERROR `$s:stmt` is followed by `ident`
+   |              ^^^^^
+
+error: `$s:stmt` is followed by `if`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:89:14
+   |
+LL |     ($s:stmt if) => {};       //~ERROR `$s:stmt` is followed by `if`
+   |              ^^
+
+error: `$s:stmt` is followed by `in`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:90:14
+   |
+LL |     ($s:stmt in) => {};       //~ERROR `$s:stmt` is followed by `in`
+   |              ^^
+
+error: `$s:stmt` is followed by `$p:pat`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:91:14
+   |
+LL |     ($s:stmt $p:pat) => {};   //~ERROR `$s:stmt` is followed by `$p:pat`
+   |              ^^^^^^
+
+error: `$s:stmt` is followed by `$e:expr`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:92:14
+   |
+LL |     ($s:stmt $e:expr) => {};  //~ERROR `$s:stmt` is followed by `$e:expr`
+   |              ^^^^^^^
+
+error: `$s:stmt` is followed by `$t:ty`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:93:14
+   |
+LL |     ($s:stmt $t:ty) => {};    //~ERROR `$s:stmt` is followed by `$t:ty`
+   |              ^^^^^
+
+error: `$s:stmt` is followed by `$s:stmt`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:94:14
+   |
+LL |     ($s:stmt $s:stmt) => {};  //~ERROR `$s:stmt` is followed by `$s:stmt`
+   |              ^^^^^^^
+
+error: `$s:stmt` is followed by `$p:path`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:95:14
+   |
+LL |     ($s:stmt $p:path) => {};  //~ERROR `$s:stmt` is followed by `$p:path`
+   |              ^^^^^^^
+
+error: `$s:stmt` is followed by `$b:block`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:96:14
+   |
+LL |     ($s:stmt $b:block) => {}; //~ERROR `$s:stmt` is followed by `$b:block`
+   |              ^^^^^^^^
+
+error: `$s:stmt` is followed by `$i:ident`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:97:14
+   |
+LL |     ($s:stmt $i:ident) => {}; //~ERROR `$s:stmt` is followed by `$i:ident`
+   |              ^^^^^^^^
+
+error: `$s:stmt` is followed by `$t:tt`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:98:14
+   |
+LL |     ($s:stmt $t:tt) => {};    //~ERROR `$s:stmt` is followed by `$t:tt`
+   |              ^^^^^
+
+error: `$s:stmt` is followed by `$i:item`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:99:14
+   |
+LL |     ($s:stmt $i:item) => {};  //~ERROR `$s:stmt` is followed by `$i:item`
+   |              ^^^^^^^
+
+error: `$s:stmt` is followed by `$m:meta`, which is not allowed for `stmt` fragments
+  --> $DIR/macro-follow.rs:100:14
+   |
+LL |     ($s:stmt $m:meta) => {};  //~ERROR `$s:stmt` is followed by `$m:meta`
+   |              ^^^^^^^
+
+error: `$p:path` is followed by `(`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:104:15
+   |
+LL |     ($p:path ()) => {};       //~ERROR  `$p:path` is followed by `(`
+   |               ^
+
+error: `$p:path` is followed by `+`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:106:14
+   |
+LL |     ($p:path +) => {};        //~ERROR `$p:path` is followed by `+`
+   |              ^
+
+error: `$p:path` is followed by `ident`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:107:14
+   |
+LL |     ($p:path ident) => {};    //~ERROR `$p:path` is followed by `ident`
+   |              ^^^^^
+
+error: `$p:path` is followed by `if`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:108:14
+   |
+LL |     ($p:path if) => {};       //~ERROR `$p:path` is followed by `if`
+   |              ^^
+
+error: `$p:path` is followed by `$p:pat`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:109:14
+   |
+LL |     ($p:path $p:pat) => {};   //~ERROR `$p:path` is followed by `$p:pat`
+   |              ^^^^^^
+
+error: `$p:path` is followed by `$e:expr`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:110:14
+   |
+LL |     ($p:path $e:expr) => {};  //~ERROR `$p:path` is followed by `$e:expr`
+   |              ^^^^^^^
+
+error: `$p:path` is followed by `$t:ty`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:111:14
+   |
+LL |     ($p:path $t:ty) => {};    //~ERROR `$p:path` is followed by `$t:ty`
+   |              ^^^^^
+
+error: `$p:path` is followed by `$s:stmt`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:112:14
+   |
+LL |     ($p:path $s:stmt) => {};  //~ERROR `$p:path` is followed by `$s:stmt`
+   |              ^^^^^^^
+
+error: `$p:path` is followed by `$p:path`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:113:14
+   |
+LL |     ($p:path $p:path) => {};  //~ERROR `$p:path` is followed by `$p:path`
+   |              ^^^^^^^
+
+error: `$p:path` is followed by `$i:ident`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:115:14
+   |
+LL |     ($p:path $i:ident) => {}; //~ERROR `$p:path` is followed by `$i:ident`
+   |              ^^^^^^^^
+
+error: `$p:path` is followed by `$t:tt`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:116:14
+   |
+LL |     ($p:path $t:tt) => {};    //~ERROR `$p:path` is followed by `$t:tt`
+   |              ^^^^^
+
+error: `$p:path` is followed by `$i:item`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:117:14
+   |
+LL |     ($p:path $i:item) => {};  //~ERROR `$p:path` is followed by `$i:item`
+   |              ^^^^^^^
+
+error: `$p:path` is followed by `$m:meta`, which is not allowed for `path` fragments
+  --> $DIR/macro-follow.rs:118:14
+   |
+LL |     ($p:path $m:meta) => {};  //~ERROR `$p:path` is followed by `$m:meta`
+   |              ^^^^^^^
+
+error: aborting due to 85 previous errors
+

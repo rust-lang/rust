@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that an `&mut self` method, when invoked on an lvalue whose
-// type is `&mut [u8]`, passes in a pointer to the lvalue and not a
+// Test that an `&mut self` method, when invoked on a place whose
+// type is `&mut [u8]`, passes in a pointer to the place and not a
 // temporary. Issue #19147.
 
 use std::slice;

@@ -13,8 +13,7 @@
 // aux-build:attr_proc_macro.rs
 // aux-build:bang_proc_macro.rs
 
-#![feature(proc_macro)]
-#![allow(unused_macros)]
+#![feature(custom_attribute)]
 
 #[macro_use]
 extern crate derive_foo;
@@ -38,12 +37,10 @@ macro_rules! attr_proc_mac {
 //~^ ERROR cannot find
 struct Foo;
 
-#[attr_proc_macra]
-//~^ ERROR cannot find
+#[attr_proc_macra] // OK, interpreted as a custom attribute
 struct Bar;
 
-#[FooWithLongNan]
-//~^ ERROR cannot find
+#[FooWithLongNan]  // OK, interpreted as a custom attribute
 struct Asdf;
 
 #[derive(Dlone)]

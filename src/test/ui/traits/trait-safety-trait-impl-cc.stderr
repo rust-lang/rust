@@ -1,0 +1,13 @@
+error[E0200]: the trait `lib::Foo` requires an `unsafe impl` declaration
+  --> $DIR/trait-safety-trait-impl-cc.rs:19:1
+   |
+LL | / impl lib::Foo for Bar { //~ ERROR requires an `unsafe impl` declaration
+LL | |     fn foo(&self) -> isize {
+LL | |         panic!();
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0200`.

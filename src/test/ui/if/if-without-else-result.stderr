@@ -1,0 +1,12 @@
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-result.rs:12:13
+   |
+LL |     let a = if true { true };
+   |             ^^^^^^^^^^^^^^^^ expected (), found bool
+   |
+   = note: expected type `()`
+              found type `bool`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0317`.

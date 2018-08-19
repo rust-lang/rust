@@ -11,8 +11,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
-#![feature(io, process_capture)]
-
 use std::env;
 use std::io::prelude::*;
 use std::io;

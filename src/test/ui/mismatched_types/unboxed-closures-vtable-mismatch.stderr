@@ -1,12 +1,18 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/unboxed-closures-vtable-mismatch.rs:23:13
+  --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13
    |
-22 |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
+LL |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
    |                       ----------------------------- found signature of `fn(usize, isize) -> _`
-23 |     let z = call_it(3, f);
+LL |     //~^ NOTE found signature of `fn(usize, isize) -> _`
+LL |     let z = call_it(3, f);
    |             ^^^^^^^ expected signature of `fn(isize, isize) -> _`
    |
-   = note: required by `call_it`
+note: required by `call_it`
+  --> $DIR/unboxed-closures-vtable-mismatch.rs:17:1
+   |
+LL | fn call_it<F:FnMut(isize,isize)->isize>(y: isize, mut f: F) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0631`.

@@ -1,13 +1,13 @@
 error: unreachable expression
-  --> $DIR/expr_cast.rs:20:13
+  --> $DIR/expr_cast.rs:19:13
    |
-20 |     let x = {return} as !; //~ ERROR unreachable
+LL |     let x = {return} as !; //~ ERROR unreachable
    |             ^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/expr_cast.rs:14:9
    |
-14 | #![deny(unreachable_code)]
+LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

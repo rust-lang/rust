@@ -13,8 +13,6 @@
 // pretty-expanded FIXME #23616
 // ignore-emscripten no threads support
 
-#![feature(std_misc)]
-
 use std::thread;
 
 fn child2(_s: String) { }

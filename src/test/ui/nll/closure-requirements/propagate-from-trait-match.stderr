@@ -1,20 +1,20 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/propagate-from-trait-match.rs:55:9
    |
-55 |         require(value);
+LL |         require(value);
    |         ^^^^^^^
 
 note: External requirements
   --> $DIR/propagate-from-trait-match.rs:42:36
    |
-42 |       establish_relationships(value, |value| {
+LL |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         //~^ ERROR the parameter type `T` may not live long enough
-44 | |
-45 | |         // This function call requires that
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
+LL | |         // This function call requires that
 ...  |
-56 | |         //~^ WARNING not reporting region error due to -Znll
-57 | |     });
+LL | |         //~^ WARNING not reporting region error due to nll
+LL | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:16 ~ propagate_from_trait_match[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -23,34 +23,19 @@ note: External requirements
                i32,
                extern "rust-call" fn((T,))
            ]
-   = note: number of external vids: 2
+   = note: number of external vids: 3
    = note: where T: '_#1r
-
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/propagate-from-trait-match.rs:42:36
-   |
-42 |       establish_relationships(value, |value| {
-   |  ____________________________________^
-43 | |         //~^ ERROR the parameter type `T` may not live long enough
-44 | |
-45 | |         // This function call requires that
-...  |
-56 | |         //~^ WARNING not reporting region error due to -Znll
-57 | |     });
-   | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/propagate-from-trait-match.rs:38:1
    |
-38 | / fn supply<'a, T>(value: T)
-39 | | where
-40 | |     T: Trait<'a>,
-41 | | {
+LL | / fn supply<'a, T>(value: T)
+LL | | where
+LL | |     T: Trait<'a>,
+LL | | {
 ...  |
-57 | |     });
-58 | | }
+LL | |     });
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_from_trait_match[317d]::supply[0]) with substs [
@@ -58,5 +43,21 @@ note: No external requirements
                T
            ]
 
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/propagate-from-trait-match.rs:42:36
+   |
+LL |       establish_relationships(value, |value| {
+   |  ____________________________________^
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
+LL | |         // This function call requires that
+...  |
+LL | |         //~^ WARNING not reporting region error due to nll
+LL | |     });
+   | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0309`.

@@ -1,0 +1,48 @@
+error: this constant cannot be used
+  --> $DIR/const-err-early.rs:13:1
+   |
+LL | pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^-------------^
+   |                   |
+   |                   attempt to negate with overflow
+   |
+note: lint level defined here
+  --> $DIR/const-err-early.rs:11:9
+   |
+LL | #![deny(const_err)]
+   |         ^^^^^^^^^
+
+error: this constant cannot be used
+  --> $DIR/const-err-early.rs:14:1
+   |
+LL | pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^-------------^
+   |                   |
+   |                   attempt to add with overflow
+
+error: this constant cannot be used
+  --> $DIR/const-err-early.rs:15:1
+   |
+LL | pub const C: u8 = 200u8 * 4; //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^---------^
+   |                   |
+   |                   attempt to multiply with overflow
+
+error: this constant cannot be used
+  --> $DIR/const-err-early.rs:16:1
+   |
+LL | pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^-----------------^
+   |                   |
+   |                   attempt to subtract with overflow
+
+error: this constant cannot be used
+  --> $DIR/const-err-early.rs:17:1
+   |
+LL | pub const E: u8 = [5u8][1]; //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^--------^
+   |                   |
+   |                   index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 5 previous errors
+

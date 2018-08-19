@@ -11,16 +11,16 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
-#![feature(conservative_impl_trait)]
-#![feature(i128_type)]
+#![cfg_attr(not(stage0), feature(nll))]
+#![feature(optin_builtin_traits)]
 
-extern crate term;
+extern crate atty;
+extern crate termcolor;
 #[cfg(unix)]
 extern crate libc;
 extern crate rustc_data_structures;
@@ -34,16 +34,18 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
+use rustc_data_structures::sync::{self, Lrc, Lock, LockCell};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
-use std::cell::{RefCell, Cell};
-use std::mem;
-use std::rc::Rc;
+use std::cell::Cell;
 use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
+use std::panic;
+
+use termcolor::{ColorSpec, Color};
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -54,6 +56,14 @@ mod styled_buffer;
 mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
+
+#[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum Applicability {
+    MachineApplicable,
+    HasPlaceholders,
+    MaybeIncorrect,
+    Unspecified
+}
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
@@ -81,6 +91,12 @@ pub struct CodeSuggestion {
     pub substitutions: Vec<Substitution>,
     pub msg: String,
     pub show_code_when_inline: bool,
+    /// Whether or not the suggestion is approximate
+    ///
+    /// Sometimes we may show suggestions with placeholders,
+    /// which are useful for users but not useful for
+    /// tools like rustfix
+    pub applicability: Applicability,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -95,6 +111,8 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
+pub type CodeMapperDyn = dyn CodeMapper + sync::Send + sync::Sync;
+
 pub trait CodeMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
@@ -102,13 +120,14 @@ pub trait CodeMapper {
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool;
+    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool;
     fn doctest_offset_line(&self, line: usize) -> usize;
 }
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, Vec<SubstitutionPart>)> {
+    pub fn splice_lines(&self, cm: &CodeMapperDyn)
+                        -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -201,8 +220,20 @@ impl CodeSuggestion {
 #[must_use]
 pub struct FatalError;
 
+pub struct FatalErrorMarker;
+
+// Don't implement Send on FatalError. This makes it impossible to panic!(FatalError).
+// We don't want to invoke the panic handler and print a backtrace for fatal errors.
+impl !Send for FatalError {}
+
+impl FatalError {
+    pub fn raise(self) -> ! {
+        panic::resume_unwind(Box::new(FatalErrorMarker))
+    }
+}
+
 impl fmt::Display for FatalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "parser fatal error")
     }
 }
@@ -219,7 +250,7 @@ impl error::Error for FatalError {
 pub struct ExplicitBug;
 
 impl fmt::Display for ExplicitBug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "parser internal bug")
     }
 }
@@ -240,29 +271,57 @@ pub struct Handler {
     pub flags: HandlerFlags,
 
     err_count: AtomicUsize,
-    emitter: RefCell<Box<Emitter>>,
-    continue_after_error: Cell<bool>,
-    delayed_span_bug: RefCell<Option<Diagnostic>>,
-    tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
+    emitter: Lock<Box<dyn Emitter + sync::Send>>,
+    continue_after_error: LockCell<bool>,
+    delayed_span_bugs: Lock<Vec<Diagnostic>>,
+
+    // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
+    // emitting the same diagnostic with extended help (`--teach`) twice, which
+    // would be uneccessary repetition.
+    taught_diagnostics: Lock<FxHashSet<DiagnosticId>>,
+
+    /// Used to suggest rustc --explain <error code>
+    emitted_diagnostic_codes: Lock<FxHashSet<DiagnosticId>>,
 
     // This set contains a hash of every diagnostic that has been emitted by
     // this handler. These hashes is used to avoid emitting the same error
     // twice.
-    emitted_diagnostics: RefCell<FxHashSet<u128>>,
+    emitted_diagnostics: Lock<FxHashSet<u128>>,
 }
+
+fn default_track_diagnostic(_: &Diagnostic) {}
+
+thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
+                Cell::new(default_track_diagnostic));
 
 #[derive(Default)]
 pub struct HandlerFlags {
     pub can_emit_warnings: bool,
     pub treat_err_as_bug: bool,
+    pub report_delayed_bugs: bool,
     pub external_macro_backtrace: bool,
+}
+
+impl Drop for Handler {
+    fn drop(&mut self) {
+        if self.err_count() == 0 {
+            let mut bugs = self.delayed_span_bugs.borrow_mut();
+            let has_bugs = !bugs.is_empty();
+            for bug in bugs.drain(..) {
+                DiagnosticBuilder::new_diagnostic(self, bug).emit();
+            }
+            if has_bugs {
+                panic!("no errors encountered even though `delay_span_bug` issued");
+            }
+        }
+    }
 }
 
 impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Rc<CodeMapper>>)
+                            cm: Option<Lrc<CodeMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -275,16 +334,16 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Rc<CodeMapper>>,
+                                      cm: Option<Lrc<CodeMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false));
+        let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));
         Handler::with_emitter_and_flags(emitter, flags)
     }
 
     pub fn with_emitter(can_emit_warnings: bool,
                         treat_err_as_bug: bool,
-                        e: Box<Emitter>)
+                        e: Box<dyn Emitter + sync::Send>)
                         -> Handler {
         Handler::with_emitter_and_flags(
             e,
@@ -295,15 +354,17 @@ impl Handler {
             })
     }
 
-    pub fn with_emitter_and_flags(e: Box<Emitter>, flags: HandlerFlags) -> Handler {
+    pub fn with_emitter_and_flags(e: Box<dyn Emitter + sync::Send>, flags: HandlerFlags) -> Handler
+    {
         Handler {
             flags,
             err_count: AtomicUsize::new(0),
-            emitter: RefCell::new(e),
-            continue_after_error: Cell::new(true),
-            delayed_span_bug: RefCell::new(None),
-            tracked_diagnostics: RefCell::new(None),
-            emitted_diagnostics: RefCell::new(FxHashSet()),
+            emitter: Lock::new(e),
+            continue_after_error: LockCell::new(true),
+            delayed_span_bugs: Lock::new(Vec::new()),
+            taught_diagnostics: Lock::new(FxHashSet()),
+            emitted_diagnostic_codes: Lock::new(FxHashSet()),
+            emitted_diagnostics: Lock::new(FxHashSet()),
         }
     }
 
@@ -317,7 +378,7 @@ impl Handler {
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
-        self.emitted_diagnostics.replace(FxHashSet());
+        *self.emitted_diagnostics.borrow_mut() = FxHashSet();
         self.err_count.store(0, SeqCst);
     }
 
@@ -457,11 +518,18 @@ impl Handler {
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         if self.flags.treat_err_as_bug {
+            // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(Level::Bug, msg);
         diagnostic.set_span(sp.into());
-        *self.delayed_span_bug.borrow_mut() = Some(diagnostic);
+        self.delay_as_bug(diagnostic);
+    }
+    fn delay_as_bug(&self, diagnostic: Diagnostic) {
+        if self.flags.report_delayed_bugs {
+            DiagnosticBuilder::new_diagnostic(self, diagnostic.clone()).emit();
+        }
+        self.delayed_span_bugs.borrow_mut().push(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
@@ -480,12 +548,14 @@ impl Handler {
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }
+    pub fn failure(&self, msg: &str) {
+        DiagnosticBuilder::new(self, FailureNote, msg).emit()
+    }
     pub fn fatal(&self, msg: &str) -> FatalError {
         if self.flags.treat_err_as_bug {
             self.bug(msg);
         }
-        let mut db = DiagnosticBuilder::new(self, Fatal, msg);
-        db.emit();
+        DiagnosticBuilder::new(self, Fatal, msg).emit();
         FatalError
     }
     pub fn err(&self, msg: &str) {
@@ -524,22 +594,51 @@ impl Handler {
     pub fn has_errors(&self) -> bool {
         self.err_count() > 0
     }
-    pub fn abort_if_errors(&self) {
-        let s;
-        match self.err_count() {
-            0 => {
-                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
-                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
+
+    pub fn print_error_count(&self) {
+        let s = match self.err_count() {
+            0 => return,
+            1 => "aborting due to previous error".to_string(),
+            _ => format!("aborting due to {} previous errors", self.err_count())
+        };
+
+        let _ = self.fatal(&s);
+
+        let can_show_explain = self.emitter.borrow().should_show_explain();
+        let are_there_diagnostics = !self.emitted_diagnostic_codes.borrow().is_empty();
+        if can_show_explain && are_there_diagnostics {
+            let mut error_codes =
+                self.emitted_diagnostic_codes.borrow()
+                                             .iter()
+                                             .filter_map(|x| match *x {
+                                                 DiagnosticId::Error(ref s) => Some(s.clone()),
+                                                 _ => None,
+                                             })
+                                             .collect::<Vec<_>>();
+            if !error_codes.is_empty() {
+                error_codes.sort();
+                if error_codes.len() > 1 {
+                    let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
+                    self.failure(&format!("Some errors occurred: {}{}",
+                                          error_codes[..limit].join(", "),
+                                          if error_codes.len() > 9 { "..." } else { "." }));
+                    self.failure(&format!("For more information about an error, try \
+                                           `rustc --explain {}`.",
+                                          &error_codes[0]));
+                } else {
+                    self.failure(&format!("For more information about this error, try \
+                                           `rustc --explain {}`.",
+                                          &error_codes[0]));
                 }
-                return;
-            }
-            1 => s = "aborting due to previous error".to_string(),
-            _ => {
-                s = format!("aborting due to {} previous errors", self.err_count());
             }
         }
+    }
 
-        panic!(self.fatal(&s));
+    pub fn abort_if_errors(&self) {
+        if self.err_count() == 0 {
+            return;
+        }
+        FatalError.raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {
@@ -564,22 +663,29 @@ impl Handler {
         }
     }
 
-    pub fn track_diagnostics<F, R>(&self, f: F) -> (R, Vec<Diagnostic>)
-        where F: FnOnce() -> R
-    {
-        let prev = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(),
-                                Some(Vec::new()));
-        let ret = f();
-        let diagnostics = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(), prev)
-            .unwrap();
-        (ret, diagnostics)
+    /// `true` if we haven't taught a diagnostic with this code already.
+    /// The caller must then teach the user about such a diagnostic.
+    ///
+    /// Used to suppress emitting the same error multiple times with extended explanation when
+    /// calling `-Zteach`.
+    pub fn must_teach(&self, code: &DiagnosticId) -> bool {
+        self.taught_diagnostics.borrow_mut().insert(code.clone())
+    }
+
+    pub fn force_print_db(&self, mut db: DiagnosticBuilder) {
+        self.emitter.borrow_mut().emit(&db);
+        db.cancel();
     }
 
     fn emit_db(&self, db: &DiagnosticBuilder) {
         let diagnostic = &**db;
 
-        if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
-            list.push(diagnostic.clone());
+        TRACK_DIAGNOSTICS.with(|track_diagnostics| {
+            track_diagnostics.get()(diagnostic);
+        });
+
+        if let Some(ref code) = diagnostic.code {
+            self.emitted_diagnostic_codes.borrow_mut().insert(code.clone());
         }
 
         let diagnostic_hash = {
@@ -613,6 +719,7 @@ pub enum Level {
     Note,
     Help,
     Cancelled,
+    FailureNote,
 }
 
 impl fmt::Display for Level {
@@ -622,20 +729,29 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> term::color::Color {
+    fn color(self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
-            Warning => {
-                if cfg!(windows) {
-                    term::color::BRIGHT_YELLOW
-                } else {
-                    term::color::YELLOW
-                }
+            Bug | Fatal | PhaseFatal | Error => {
+                spec.set_fg(Some(Color::Red))
+                    .set_intense(true);
             }
-            Note => term::color::BRIGHT_GREEN,
-            Help => term::color::BRIGHT_CYAN,
+            Warning => {
+                spec.set_fg(Some(Color::Yellow))
+                    .set_intense(cfg!(windows));
+            }
+            Note => {
+                spec.set_fg(Some(Color::Green))
+                    .set_intense(true);
+            }
+            Help => {
+                spec.set_fg(Some(Color::Cyan))
+                    .set_intense(true);
+            }
+            FailureNote => {}
             Cancelled => unreachable!(),
         }
+        spec
     }
 
     pub fn to_str(self) -> &'static str {
@@ -645,7 +761,15 @@ impl Level {
             Warning => "warning",
             Note => "note",
             Help => "help",
+            FailureNote => "",
             Cancelled => panic!("Shouldn't call on cancelled error"),
+        }
+    }
+
+    pub fn is_failure_note(&self) -> bool {
+        match *self {
+            FailureNote => true,
+            _ => false,
         }
     }
 }

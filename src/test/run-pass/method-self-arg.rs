@@ -10,8 +10,6 @@
 
 // Test method calls with self as an argument
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 static mut COUNT: usize = 1;

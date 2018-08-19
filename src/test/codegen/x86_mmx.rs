@@ -11,6 +11,13 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-emscripten
+// ignore-mips
+// ignore-mips64
+// ignore-powerpc
+// ignore-powerpc64
+// ignore-powerpc64le
+// ignore-sparc
+// ignore-sparc64
 // compile-flags: -O
 
 #![feature(repr_simd)]
@@ -22,9 +29,7 @@ pub struct i8x8(u64);
 
 #[no_mangle]
 pub fn a(a: &mut i8x8, b: i8x8) -> i8x8 {
-    // CHECK-LABEL: define x86_mmx @a(x86_mmx*{{.*}}, x86_mmx{{.*}})
-    // CHECK: store x86_mmx %b, x86_mmx* %a
-    // CHECK: ret x86_mmx %b
+    // CHECK-LABEL: define void @a(x86_mmx*{{.*}}, x86_mmx*{{.*}}, x86_mmx*{{.*}})
     *a = b;
     return b
 }

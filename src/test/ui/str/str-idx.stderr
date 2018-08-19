@@ -1,0 +1,11 @@
+error[E0277]: the type `str` cannot be indexed by `{integer}`
+  --> $DIR/str-idx.rs:13:17
+   |
+LL |     let c: u8 = s[4]; //~ ERROR the type `str` cannot be indexed by `{integer}`
+   |                 ^^^^ `str` cannot be indexed by `{integer}`
+   |
+   = help: the trait `std::ops::Index<{integer}>` is not implemented for `str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

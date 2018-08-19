@@ -10,7 +10,7 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver};
 use syntax::ext::build::AstBuilder;
@@ -61,11 +61,11 @@ macro_rules! derive_traits {
             }
         }
 
-        pub fn register_builtin_derives(resolver: &mut Resolver) {
+        pub fn register_builtin_derives(resolver: &mut dyn Resolver) {
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Rc::new(SyntaxExtension::BuiltinDerive($func))
+                    Lrc::new(SyntaxExtension::BuiltinDerive($func))
                 );
             )*
         }
@@ -123,9 +123,12 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
         match item.node {
             ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
             ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
-                for param in params.iter() {
-                    if let ast::GenericParam::Type(ref ty) = *param{
-                        typaram.push_str(&ty.ident.name.as_str());
+                for param in params {
+                    match param.kind {
+                        ast::GenericParamKind::Type { .. } => {
+                            typaram.push_str(&param.ident.as_str());
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -143,11 +146,11 @@ fn call_intrinsic(cx: &ExtCtxt,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    if cx.current_expansion.mark.expn_info().unwrap().callee.allow_internal_unstable {
+    if cx.current_expansion.mark.expn_info().unwrap().allow_internal_unstable {
         span = span.with_ctxt(cx.backtrace());
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.callee.allow_internal_unstable = true;
+        info.allow_internal_unstable = true;
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
         span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));

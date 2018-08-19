@@ -161,15 +161,16 @@ impl StaticKey {
         // Additionally a 0-index of a tls key hasn't been seen on windows, so
         // we just simplify the whole branch.
         if imp::requires_synchronized_create() {
+            // We never call `INIT_LOCK.init()`, so it is UB to attempt to
+            // acquire this mutex reentrantly!
             static INIT_LOCK: Mutex = Mutex::new();
-            INIT_LOCK.lock();
+            let _guard = INIT_LOCK.lock();
             let mut key = self.key.load(Ordering::SeqCst);
             if key == 0 {
                 key = imp::create(self.dtor) as usize;
                 self.key.store(key, Ordering::SeqCst);
             }
-            INIT_LOCK.unlock();
-            assert!(key != 0);
+            rtassert!(key != 0);
             return key
         }
 
@@ -190,7 +191,7 @@ impl StaticKey {
             imp::destroy(key1);
             key2
         };
-        assert!(key != 0);
+        rtassert!(key != 0);
         match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
             0 => key as usize,

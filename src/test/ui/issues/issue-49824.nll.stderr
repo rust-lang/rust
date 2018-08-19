@@ -1,0 +1,17 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-49824.rs:22:9
+   |
+LL |       || {
+   |       --
+   |       ||
+   |       |return type of closure is [closure@$DIR/issue-49824.rs:22:9: 24:10 x:&'2 mut i32]
+   |       lifetime `'1` represents this closure's body
+LL | /         || {
+LL | |             let _y = &mut x;
+LL | |         }
+   | |_________^ returning this value requires that `'1` must outlive `'2`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: aborting due to previous error
+

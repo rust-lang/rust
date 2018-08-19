@@ -1,12 +1,13 @@
 error[E0422]: cannot find struct, variant or union type `E` in this scope
   --> $DIR/issue-17518.rs:16:5
    |
-16 |     E { name: "foobar" }; //~ ERROR cannot find struct, variant or union type `E`
+LL |     E { name: "foobar" }; //~ ERROR cannot find struct, variant or union type `E`
    |     ^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-11 | use SomeEnum::E;
+LL | use SomeEnum::E;
    |
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0422`.

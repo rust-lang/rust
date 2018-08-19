@@ -1,30 +1,32 @@
 error[E0560]: struct `submodule::Demo` has no field named `inocently_mispellable`
   --> $DIR/issue-42599_available_fields_note.rs:26:39
    |
-26 |             Self { secret_integer: 2, inocently_mispellable: () }
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^ field does not exist - did you mean `innocently_misspellable`?
+LL |             Self { secret_integer: 2, inocently_mispellable: () }
+   |                                       ^^^^^^^^^^^^^^^^^^^^^ field does not exist - did you mean `innocently_misspellable`?
 
 error[E0560]: struct `submodule::Demo` has no field named `egregiously_nonexistent_field`
   --> $DIR/issue-42599_available_fields_note.rs:31:39
    |
-31 |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `submodule::Demo` does not have this field
+LL |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `submodule::Demo` does not have this field
    |
    = note: available fields are: `favorite_integer`, `secret_integer`, `innocently_misspellable`, `another_field`, `yet_another_field` ... and 2 others
 
 error[E0609]: no field `inocently_mispellable` on type `submodule::Demo`
   --> $DIR/issue-42599_available_fields_note.rs:42:41
    |
-42 |     let innocent_field_misaccess = demo.inocently_mispellable;
+LL |     let innocent_field_misaccess = demo.inocently_mispellable;
    |                                         ^^^^^^^^^^^^^^^^^^^^^ did you mean `innocently_misspellable`?
 
 error[E0609]: no field `egregiously_nonexistent_field` on type `submodule::Demo`
   --> $DIR/issue-42599_available_fields_note.rs:45:42
    |
-45 |     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
+LL |     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown field
    |
    = note: available fields are: `favorite_integer`, `innocently_misspellable`
 
 error: aborting due to 4 previous errors
 
+Some errors occurred: E0560, E0609.
+For more information about an error, try `rustc --explain E0560`.

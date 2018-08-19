@@ -1,7 +1,7 @@
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
   --> $DIR/modrs_mod/inner_foors_mod.rs:11:9
    |
-11 | pub mod innest;
+LL | pub mod innest;
    |         ^^^^^^
    |
    = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
@@ -10,7 +10,7 @@ error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
   --> $DIR/foors_mod.rs:13:9
    |
-13 | pub mod inner_modrs_mod;
+LL | pub mod inner_modrs_mod;
    |         ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
@@ -19,7 +19,7 @@ error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
   --> $DIR/foors_mod.rs:14:9
    |
-14 | pub mod inner_foors_mod;
+LL | pub mod inner_foors_mod;
    |         ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
@@ -28,7 +28,7 @@ error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
   --> $DIR/foors_mod/inner_foors_mod.rs:11:9
    |
-11 | pub mod innest;
+LL | pub mod innest;
    |         ^^^^^^
    |
    = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
@@ -36,3 +36,4 @@ error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

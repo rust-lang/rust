@@ -1,0 +1,14 @@
+error: unreachable expression
+  --> $DIR/match-unreachable-warning-with-diverging-discrim.rs:15:5
+   |
+LL |     match (return) { } //~ ERROR unreachable expression
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-unreachable-warning-with-diverging-discrim.rs:12:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,32 @@
+error: OK
+  --> $DIR/dep-graph-trait-impl.rs:37:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-trait-impl.rs:42:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-trait-impl.rs:47:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: OK
+  --> $DIR/dep-graph-trait-impl.rs:52:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no path from `x::<impl Foo for char>` to `TypeckTables`
+  --> $DIR/dep-graph-trait-impl.rs:65:5
+   |
+LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

@@ -40,7 +40,7 @@ fn test_hash() {
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
-    where F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut FnMut(&i32) -> bool) -> bool
+    where F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool
 {
     let mut set_a = BTreeSet::new();
     let mut set_b = BTreeSet::new();

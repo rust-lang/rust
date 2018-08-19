@@ -19,19 +19,21 @@
 #![inline                     = "2100"]
 
 #[inline = "2100"]
-//~^ ERROR attribute should be applied to function
+//~^ ERROR attribute should be applied to function or closure
 mod inline {
     mod inner { #![inline="2100"] }
-    //~^ ERROR attribute should be applied to function
+    //~^ ERROR attribute should be applied to function or closure
 
     #[inline = "2100"] fn f() { }
 
     #[inline = "2100"] struct S;
-    //~^ ERROR attribute should be applied to function
+    //~^ ERROR attribute should be applied to function or closure
 
     #[inline = "2100"] type T = S;
-    //~^ ERROR attribute should be applied to function
+    //~^ ERROR attribute should be applied to function or closure
 
     #[inline = "2100"] impl S { }
-    //~^ ERROR attribute should be applied to function
+    //~^ ERROR attribute should be applied to function or closure
 }
+
+fn main() {}

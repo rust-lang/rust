@@ -18,7 +18,9 @@ use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
-/// Unix-specific extensions to the `std::process::Command` builder
+/// Unix-specific extensions to the [`process::Command`] builder.
+///
+/// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait CommandExt {
     /// Sets the child process's user id. This translates to a
@@ -117,7 +119,9 @@ impl CommandExt for process::Command {
     }
 }
 
-/// Unix-specific extensions to `std::process::ExitStatus`
+/// Unix-specific extensions to [`process::ExitStatus`].
+///
+/// [`process::ExitStatus`]: ../../../../std/process/struct.ExitStatus.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
@@ -193,7 +197,7 @@ impl IntoRawFd for process::ChildStderr {
 }
 
 /// Returns the OS-assigned process identifier associated with this process's parent.
-#[unstable(feature = "unix_ppid", issue = "46104")]
+#[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     ::sys::os::getppid()
 }

@@ -1,68 +1,69 @@
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:103:25
-    |
-103 |     b1.a[0].v.set(Some(&b2));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:103:25
+   |
+LL |     b1.a[0].v.set(Some(&b2));
+   |                         ^^ borrowed value does not live long enough
 ...
-115 | }
-    | - `b2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `b2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b3` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:105:25
-    |
-105 |     b1.a[1].v.set(Some(&b3));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:105:25
+   |
+LL |     b1.a[1].v.set(Some(&b3));
+   |                         ^^ borrowed value does not live long enough
 ...
-115 | }
-    | - `b3` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `b3` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:107:25
-    |
-107 |     b2.a[0].v.set(Some(&b2));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:107:25
+   |
+LL |     b2.a[0].v.set(Some(&b2));
+   |                         ^^ borrowed value does not live long enough
 ...
-115 | }
-    | - `b2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `b2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b3` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:25
-    |
-109 |     b2.a[1].v.set(Some(&b3));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:109:25
+   |
+LL |     b2.a[1].v.set(Some(&b3));
+   |                         ^^ borrowed value does not live long enough
 ...
-115 | }
-    | - `b3` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `b3` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b1` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:111:25
-    |
-111 |     b3.a[0].v.set(Some(&b1));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:111:25
+   |
+LL |     b3.a[0].v.set(Some(&b1));
+   |                         ^^ borrowed value does not live long enough
 ...
-115 | }
-    | - `b1` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `b1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:113:25
-    |
-113 |     b3.a[1].v.set(Some(&b2));
-    |                         ^^ borrowed value does not live long enough
-114 |     //~^ ERROR `b2` does not live long enough
-115 | }
-    | - `b2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+  --> $DIR/dropck_arr_cycle_checked.rs:113:25
+   |
+LL |     b3.a[1].v.set(Some(&b2));
+   |                         ^^ borrowed value does not live long enough
+LL |     //~^ ERROR `b2` does not live long enough
+LL | }
+   | - `b2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

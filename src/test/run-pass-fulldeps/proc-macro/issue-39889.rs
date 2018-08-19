@@ -11,9 +11,6 @@
 // aux-build:issue-39889.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
-#![allow(unused)]
-
 extern crate issue_39889;
 use issue_39889::Issue39889;
 

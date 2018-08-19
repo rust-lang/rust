@@ -1,0 +1,18 @@
+error[E0224]: at least one non-builtin trait is required for an object type
+  --> $DIR/trait-object-macro-matcher.rs:20:8
+   |
+LL |     m!('static +); //~ ERROR at least one non-builtin trait is required for an object type
+   |        ^^^^^^^^^
+
+error[E0038]: the trait `std::marker::Copy` cannot be made into an object
+  --> $DIR/trait-object-macro-matcher.rs:18:8
+   |
+LL |     m!(Copy + Send + 'static); //~ ERROR the trait `std::marker::Copy` cannot be made into an object
+   |        ^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0038, E0224.
+For more information about an error, try `rustc --explain E0038`.

@@ -26,7 +26,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
         ast::ExprKind::Match(..) |
-        ast::ExprKind::Block(_) |
+        ast::ExprKind::Block(..) |
         ast::ExprKind::While(..) |
         ast::ExprKind::WhileLet(..) |
         ast::ExprKind::Loop(..) |

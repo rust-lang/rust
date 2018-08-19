@@ -13,7 +13,7 @@ use marker::Unsize;
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.
 ///
-/// See the [DST coercion RfC][dst-coerce] and [the nomicon entry on coercion][nomicon-coerce]
+/// See the [DST coercion RFC][dst-coerce] and [the nomicon entry on coercion][nomicon-coerce]
 /// for more details.
 ///
 /// For builtin pointer types, pointers to `T` will coerce to pointers to `U` if `T: Unsize<U>`

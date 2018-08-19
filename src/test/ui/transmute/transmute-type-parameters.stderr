@@ -1,7 +1,7 @@
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:21:18
    |
-21 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: T (this type's size can vary)
@@ -10,7 +10,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:26:18
    |
-26 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: (T, i32) (size can vary because of T)
@@ -19,7 +19,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:31:18
    |
-31 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: [T; 10] (size can vary because of T)
@@ -28,7 +28,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:40:18
    |
-40 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: Bad<T> (size can vary because of T)
@@ -37,7 +37,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:50:18
    |
-50 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: Worse<T> (size can vary because of T)
@@ -46,7 +46,7 @@ error[E0512]: transmute called with types of different sizes
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-type-parameters.rs:55:18
    |
-55 |     let _: i32 = transmute(x);
+LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
    = note: source type: std::option::Option<T> (size can vary because of T)
@@ -54,3 +54,4 @@ error[E0512]: transmute called with types of different sizes
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0512`.

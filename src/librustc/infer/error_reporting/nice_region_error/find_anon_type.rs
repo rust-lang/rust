@@ -41,7 +41,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let fndecl = match self.tcx.hir.get(node_id) {
                     hir_map::NodeItem(&hir::Item {
-                        node: hir::ItemFn(ref fndecl, ..),
+                        node: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
                     }) => &fndecl,
                     hir_map::NodeTraitItem(&hir::TraitItem {
@@ -77,7 +77,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             tcx: self.tcx,
             bound_region: *br,
             found_type: None,
-            depth: 1,
+            current_index: ty::INNERMOST,
         };
         nested_visitor.visit_ty(arg);
         nested_visitor.found_type
@@ -99,7 +99,7 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // The type where the anonymous lifetime appears
     // for e.g. Vec<`&u8`> and <`&u8`>
     found_type: Option<&'gcx hir::Ty>,
-    depth: u32,
+    current_index: ty::DebruijnIndex,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
@@ -109,20 +109,20 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
         match arg.node {
-            hir::TyBareFn(_) => {
-                self.depth += 1;
+            hir::TyKind::BareFn(_) => {
+                self.current_index.shift_in(1);
                 intravisit::walk_ty(self, arg);
-                self.depth -= 1;
+                self.current_index.shift_out(1);
                 return;
             }
 
-            hir::TyTraitObject(ref bounds, _) => for bound in bounds {
-                self.depth += 1;
+            hir::TyKind::TraitObject(ref bounds, _) => for bound in bounds {
+                self.current_index.shift_in(1);
                 self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
-                self.depth -= 1;
+                self.current_index.shift_out(1);
             },
 
-            hir::TyRptr(ref lifetime, _) => {
+            hir::TyKind::Rptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
                 let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
                 match (self.tcx.named_region(hir_id), self.bound_region) {
@@ -135,11 +135,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     ) => {
                         debug!(
                             "LateBoundAnon depth = {:?} anon_index = {:?} br_index={:?}",
-                            debruijn_index.depth,
+                            debruijn_index,
                             anon_index,
                             br_index
                         );
-                        if debruijn_index.depth == self.depth && anon_index == br_index {
+                        if debruijn_index == self.current_index && anon_index == br_index {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
@@ -170,11 +170,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     ) => {
                         debug!(
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
-                            debruijn_index.depth
+                            debruijn_index
                         );
                         debug!("self.infcx.tcx.hir.local_def_id(id)={:?}", id);
                         debug!("def_id={:?}", def_id);
-                        if debruijn_index.depth == self.depth && id == def_id {
+                        if debruijn_index == self.current_index && id == def_id {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
@@ -190,13 +190,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            // Checks if it is of type `hir::TyPath` which corresponds to a struct.
-            hir::TyPath(_) => {
+            // Checks if it is of type `hir::TyKind::Path` which corresponds to a struct.
+            hir::TyKind::Path(_) => {
                 let subvisitor = &mut TyPathVisitor {
                     tcx: self.tcx,
                     found_it: false,
                     bound_region: self.bound_region,
-                    depth: self.depth,
+                    current_index: self.current_index,
                 };
                 intravisit::walk_ty(subvisitor, arg); // call walk_ty; as visit_ty is empty,
                                                       // this will visit only outermost type
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 }
 
 // The visitor captures the corresponding `hir::Ty` of the anonymous region
-// in the case of structs ie. `hir::TyPath`.
+// in the case of structs ie. `hir::TyKind::Path`.
 // This visitor would be invoked for each lifetime corresponding to a struct,
 // and would walk the types like Vec<Ref> in the above example and Ref looking for the HIR
 // where that lifetime appears. This allows us to highlight the
@@ -222,7 +222,7 @@ struct TyPathVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     found_it: bool,
     bound_region: ty::BoundRegion,
-    depth: u32,
+    current_index: ty::DebruijnIndex,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
         match (self.tcx.named_region(hir_id), self.bound_region) {
             // the lifetime of the TyPath!
             (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)), ty::BrAnon(br_index)) => {
-                if debruijn_index.depth == self.depth && anon_index == br_index {
+                if debruijn_index == self.current_index && anon_index == br_index {
                     self.found_it = true;
                     return;
                 }
@@ -257,11 +257,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
             (Some(rl::Region::LateBound(debruijn_index, id, _)), ty::BrNamed(def_id, _)) => {
                 debug!(
                     "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
-                    debruijn_index.depth
+                    debruijn_index,
                 );
                 debug!("id={:?}", id);
                 debug!("def_id={:?}", def_id);
-                if debruijn_index.depth == self.depth && id == def_id {
+                if debruijn_index == self.current_index && id == def_id {
                     self.found_it = true;
                     return; // we can stop visiting now
                 }

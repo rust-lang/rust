@@ -10,10 +10,10 @@
 
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
-#![deny(warnings)]
 
 #![feature(cfg_target_vendor)]
 #![feature(link_cfg)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
 #![feature(static_nobundle)]
@@ -35,7 +35,7 @@ cfg_if! {
     }
 }
 
-#[cfg(all(target_env = "musl", not(target_arch = "mips")))]
+#[cfg(target_env = "musl")]
 #[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern {}

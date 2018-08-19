@@ -10,11 +10,12 @@
 
 //! Code to save/load the dep-graph from files.
 
-use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph};
+use rustc_data_structures::fx::FxHashMap;
+use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::OnDiskCache;
-use rustc::util::common::time;
+use rustc::ty::query::OnDiskCache;
+use rustc::util::common::time_ext;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::path::Path;
@@ -32,51 +33,9 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     tcx.allocate_metadata_dep_nodes();
     tcx.precompute_in_scope_traits_hashes();
-
-    if tcx.sess.incr_comp_session_dir_opt().is_none() {
-        // If we are only building with -Zquery-dep-graph but without an actual
-        // incr. comp. session directory, we exit here. Otherwise we'd fail
-        // when trying to load work products.
-        return
-    }
-
-    let work_products_path = work_products_path(tcx.sess);
-    let load_result = load_data(tcx.sess.opts.debugging_opts.incremental_info, &work_products_path);
-
-    if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
-        // Decode the list of work_products
-        let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
-        let work_products: Vec<SerializedWorkProduct> =
-            RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
-                let msg = format!("Error decoding `work-products` from incremental \
-                                   compilation session directory: {}", e);
-                tcx.sess.fatal(&msg[..])
-            });
-
-        for swp in work_products {
-            let mut all_files_exist = true;
-            for &(_, ref file_name) in swp.work_product.saved_files.iter() {
-                let path = in_incr_comp_dir_sess(tcx.sess, file_name);
-                if !path.exists() {
-                    all_files_exist = false;
-
-                    if tcx.sess.opts.debugging_opts.incremental_info {
-                        eprintln!("incremental: could not find file for work \
-                                   product: {}", path.display());
-                    }
-                }
-            }
-
-            if all_files_exist {
-                debug!("reconcile_work_products: all files for {:?} exist", swp);
-                tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
-            } else {
-                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                delete_dirty_work_product(tcx, swp);
-            }
-        }
-    }
 }
+
+type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
 
 pub enum LoadResult<T> {
     Ok { data: T },
@@ -84,12 +43,12 @@ pub enum LoadResult<T> {
     Error { message: String },
 }
 
-
-impl LoadResult<PreviousDepGraph> {
-    pub fn open(self, sess: &Session) -> PreviousDepGraph {
+impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
+    pub fn open(self, sess: &Session) -> (PreviousDepGraph, WorkProductMap) {
         match self {
             LoadResult::Error { message } => {
-                sess.fatal(&message) /* never returns */
+                sess.warn(&message);
+                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
@@ -97,7 +56,7 @@ impl LoadResult<PreviousDepGraph> {
                                       incremental compilation session directory contents `{}`: {}.",
                                       dep_graph_path(sess).display(), err));
                 }
-                PreviousDepGraph::new(SerializedDepGraph::new())
+                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
             }
             LoadResult::Ok { data } => data
         }
@@ -124,10 +83,10 @@ fn load_data(report_incremental_info: bool, path: &Path) -> LoadResult<(Vec<u8>,
     }
 }
 
-fn delete_dirty_work_product(tcx: TyCtxt,
+fn delete_dirty_work_product(sess: &Session,
                              swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
-    work_product::delete_workproduct_files(tcx.sess, &swp.work_product);
+    work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
 /// Either a result that has already be computed or a
@@ -147,16 +106,18 @@ impl<T> MaybeAsync<T> {
 }
 
 /// Launch a thread and load the dependency graph in the background.
-pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
-    MaybeAsync<LoadResult<PreviousDepGraph>>
+pub fn load_dep_graph(sess: &Session) ->
+    MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap)>>
 {
     // Since `sess` isn't `Sync`, we perform all accesses to `sess`
     // before we fire the background thread.
 
+    let time_passes = sess.time_passes();
+
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
         return MaybeAsync::Sync(LoadResult::Ok {
-            data: PreviousDepGraph::new(SerializedDepGraph::new())
+            data: (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
         });
     }
 
@@ -166,8 +127,52 @@ pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
 
+    let mut prev_work_products = FxHashMap();
+
+    // If we are only building with -Zquery-dep-graph but without an actual
+    // incr. comp. session directory, we skip this. Otherwise we'd fail
+    // when trying to load work products.
+    if sess.incr_comp_session_dir_opt().is_some() {
+        let work_products_path = work_products_path(sess);
+        let load_result = load_data(report_incremental_info, &work_products_path);
+
+        if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
+            // Decode the list of work_products
+            let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
+            let work_products: Vec<SerializedWorkProduct> =
+                RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
+                    let msg = format!("Error decoding `work-products` from incremental \
+                                    compilation session directory: {}", e);
+                    sess.fatal(&msg[..])
+                });
+
+            for swp in work_products {
+                let mut all_files_exist = true;
+                for &(_, ref file_name) in swp.work_product.saved_files.iter() {
+                    let path = in_incr_comp_dir_sess(sess, file_name);
+                    if !path.exists() {
+                        all_files_exist = false;
+
+                        if sess.opts.debugging_opts.incremental_info {
+                            eprintln!("incremental: could not find file for work \
+                                    product: {}", path.display());
+                        }
+                    }
+                }
+
+                if all_files_exist {
+                    debug!("reconcile_work_products: all files for {:?} exist", swp);
+                    prev_work_products.insert(swp.id, swp.work_product);
+                } else {
+                    debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                    delete_dirty_work_product(sess, swp);
+                }
+            }
+        }
+    }
+
     MaybeAsync::Async(std::thread::spawn(move || {
-        time(time_passes, "background load prev dep-graph", move || {
+        time_ext(time_passes, None, "background load prev dep-graph", move || {
             match load_data(report_incremental_info, &path) {
                 LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
                 LoadResult::Error { message } => LoadResult::Error { message },
@@ -192,7 +197,7 @@ pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
                     let dep_graph = SerializedDepGraph::decode(&mut decoder)
                         .expect("Error reading cached dep-graph");
 
-                    LoadResult::Ok { data: PreviousDepGraph::new(dep_graph) }
+                    LoadResult::Ok { data: (PreviousDepGraph::new(dep_graph), prev_work_products) }
                 }
             }
         })

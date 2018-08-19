@@ -1,0 +1,34 @@
+error[E0070]: invalid left-hand side expression
+  --> $DIR/bad-expr-lhs.rs:12:5
+   |
+LL |     1 = 2; //~ ERROR invalid left-hand side expression
+   |     ^^^^^ left-hand of expression not valid
+
+error[E0067]: invalid left-hand side expression
+  --> $DIR/bad-expr-lhs.rs:13:5
+   |
+LL |     1 += 2; //~ ERROR invalid left-hand side expression
+   |     ^ invalid expression for left-hand side
+
+error[E0070]: invalid left-hand side expression
+  --> $DIR/bad-expr-lhs.rs:14:5
+   |
+LL |     (1, 2) = (3, 4); //~ ERROR invalid left-hand side expression
+   |     ^^^^^^^^^^^^^^^ left-hand of expression not valid
+
+error[E0070]: invalid left-hand side expression
+  --> $DIR/bad-expr-lhs.rs:17:5
+   |
+LL |     (a, b) = (3, 4); //~ ERROR invalid left-hand side expression
+   |     ^^^^^^^^^^^^^^^ left-hand of expression not valid
+
+error[E0070]: invalid left-hand side expression
+  --> $DIR/bad-expr-lhs.rs:19:5
+   |
+LL |     None = Some(3); //~ ERROR invalid left-hand side expression
+   |     ^^^^^^^^^^^^^^ left-hand of expression not valid
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0067, E0070.
+For more information about an error, try `rustc --explain E0067`.

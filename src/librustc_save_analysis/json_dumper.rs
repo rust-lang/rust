@@ -13,7 +13,7 @@ use std::io::Write;
 use rustc_serialize::json::as_json;
 
 use rls_data::{self, Analysis, CratePreludeData, Def, DefKind, Import, MacroRef, Ref, RefKind,
-               Relation};
+               Relation, Impl};
 use rls_data::config::Config;
 use rls_span::{Column, Row};
 
@@ -39,14 +39,14 @@ pub struct WriteOutput<'b, W: Write + 'b> {
 
 impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
     fn dump(&mut self, result: &Analysis) {
-        if let Err(_) = write!(self.output, "{}", as_json(&result)) {
+        if write!(self.output, "{}", as_json(&result)).is_err() {
             error!("Error writing output");
         }
     }
 }
 
 pub struct CallbackOutput<'b> {
-    callback: &'b mut FnMut(&Analysis),
+    callback: &'b mut dyn FnMut(&Analysis),
 }
 
 impl<'b> DumpOutput for CallbackOutput<'b> {
@@ -67,7 +67,7 @@ impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
     pub fn with_callback(
-        callback: &'b mut FnMut(&Analysis),
+        callback: &'b mut dyn FnMut(&Analysis),
         config: Config,
     ) -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper {
@@ -141,5 +141,9 @@ impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
 
     pub fn dump_relation(&mut self, data: Relation) {
         self.result.relations.push(data);
+    }
+
+    pub fn dump_impl(&mut self, data: Impl) {
+        self.result.impls.push(data);
     }
 }

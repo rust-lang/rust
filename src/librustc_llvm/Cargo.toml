@@ -7,14 +7,10 @@ build = "build.rs"
 [lib]
 name = "rustc_llvm"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [features]
 static-libstdcpp = []
-
-[dependencies]
-bitflags = "1.0"
-rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
+emscripten = []
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

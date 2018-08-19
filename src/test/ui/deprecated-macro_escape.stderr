@@ -1,6 +1,0 @@
-warning: macro_escape is a deprecated synonym for macro_use
-  --> $DIR/deprecated-macro_escape.rs:13:1
-   |
-13 | #[macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
-   | ^^^^^^^^^^^^^^^
-

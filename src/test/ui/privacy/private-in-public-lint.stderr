@@ -1,0 +1,21 @@
+error[E0446]: private type `m1::Priv` in public interface
+  --> $DIR/private-in-public-lint.rs:16:9
+   |
+LL |     struct Priv;
+   |     - `m1::Priv` declared as private
+...
+LL |         pub fn f() -> Priv {Priv} //~ ERROR private type `m1::Priv` in public interface
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `m2::Priv` in public interface
+  --> $DIR/private-in-public-lint.rs:25:9
+   |
+LL |     struct Priv;
+   |     - `m2::Priv` declared as private
+...
+LL |         pub fn f() -> Priv {Priv} //~ ERROR private type `m2::Priv` in public interface
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0446`.

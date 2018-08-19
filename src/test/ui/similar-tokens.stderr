@@ -1,8 +1,8 @@
-error: expected one of `,`, `::`, or `as`, found `.`
+error: expected one of `,`, `::`, `as`, or `}`, found `.`
   --> $DIR/similar-tokens.rs:17:10
    |
-17 | use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
-   |          ^ expected one of `,`, `::`, or `as` here
+LL | use x::{A. B}; //~ ERROR expected one of `,`, `::`, `as`, or `}`, found `.`
+   |          ^ expected one of `,`, `::`, `as`, or `}` here
 
 error: aborting due to previous error
 

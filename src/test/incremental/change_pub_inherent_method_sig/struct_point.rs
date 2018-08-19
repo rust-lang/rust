@@ -12,16 +12,16 @@
 
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
+// compile-pass
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
-// These are expected to require translation.
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_calls_changed_method", cfg="cfail2")]
+// These are expected to require codegen.
+#![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-fn_calls_changed_method", cfg="cfail2")]
 
 #![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="cfail2")]
 #![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="cfail2")]

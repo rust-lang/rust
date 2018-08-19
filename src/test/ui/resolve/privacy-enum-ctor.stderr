@@ -1,0 +1,227 @@
+error[E0423]: expected value, found enum `n::Z`
+  --> $DIR/privacy-enum-ctor.rs:33:9
+   |
+LL |         n::Z;
+   |         ^^^^
+   |
+   = note: did you mean to use one of the following variants?
+           - `m::Z::Fn`
+           - `m::Z::Struct`
+           - `m::Z::Unit`
+
+error[E0423]: expected value, found enum `Z`
+  --> $DIR/privacy-enum-ctor.rs:35:9
+   |
+LL |         Z;
+   |         ^ did you mean `f`?
+   |
+   = note: did you mean to use one of the following variants?
+           - `m::Z::Fn`
+           - `m::Z::Struct`
+           - `m::Z::Unit`
+
+error[E0423]: expected value, found struct variant `Z::Struct`
+  --> $DIR/privacy-enum-ctor.rs:39:20
+   |
+LL |         let _: Z = Z::Struct;
+   |                    ^^^^^^^^^ did you mean `Z::Struct { /* fields */ }`?
+
+error[E0423]: expected value, found enum `m::E`
+  --> $DIR/privacy-enum-ctor.rs:51:16
+   |
+LL |     let _: E = m::E;
+   |                ^^^-
+   |                   |
+   |                   did you mean `f`?
+   |
+   = note: did you mean to use one of the following variants?
+           - `E::Fn`
+           - `E::Struct`
+           - `E::Unit`
+help: possible better candidates are found in other modules, you can import them into scope
+   |
+LL | use std::f32::consts::E;
+   |
+LL | use std::f64::consts::E;
+   |
+
+error[E0423]: expected value, found struct variant `m::E::Struct`
+  --> $DIR/privacy-enum-ctor.rs:55:16
+   |
+LL |     let _: E = m::E::Struct;
+   |                ^^^^^^^^^^^^ did you mean `m::E::Struct { /* fields */ }`?
+
+error[E0423]: expected value, found enum `E`
+  --> $DIR/privacy-enum-ctor.rs:59:16
+   |
+LL |     let _: E = E;
+   |                ^
+   |
+   = note: did you mean to use one of the following variants?
+           - `E::Fn`
+           - `E::Struct`
+           - `E::Unit`
+help: possible better candidates are found in other modules, you can import them into scope
+   |
+LL | use std::f32::consts::E;
+   |
+LL | use std::f64::consts::E;
+   |
+
+error[E0423]: expected value, found struct variant `E::Struct`
+  --> $DIR/privacy-enum-ctor.rs:63:16
+   |
+LL |     let _: E = E::Struct;
+   |                ^^^^^^^^^ did you mean `E::Struct { /* fields */ }`?
+
+error[E0412]: cannot find type `Z` in this scope
+  --> $DIR/privacy-enum-ctor.rs:67:12
+   |
+LL |     let _: Z = m::n::Z;
+   |            ^ did you mean `E`?
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use m::n::Z;
+   |
+
+error[E0423]: expected value, found enum `m::n::Z`
+  --> $DIR/privacy-enum-ctor.rs:67:16
+   |
+LL |     let _: Z = m::n::Z;
+   |                ^^^^^^^
+   |
+   = note: did you mean to use one of the following variants?
+           - `m::Z::Fn`
+           - `m::Z::Struct`
+           - `m::Z::Unit`
+
+error[E0412]: cannot find type `Z` in this scope
+  --> $DIR/privacy-enum-ctor.rs:71:12
+   |
+LL |     let _: Z = m::n::Z::Fn;
+   |            ^ did you mean `E`?
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use m::n::Z;
+   |
+
+error[E0412]: cannot find type `Z` in this scope
+  --> $DIR/privacy-enum-ctor.rs:74:12
+   |
+LL |     let _: Z = m::n::Z::Struct;
+   |            ^ did you mean `E`?
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use m::n::Z;
+   |
+
+error[E0423]: expected value, found struct variant `m::n::Z::Struct`
+  --> $DIR/privacy-enum-ctor.rs:74:16
+   |
+LL |     let _: Z = m::n::Z::Struct;
+   |                ^^^^^^^^^^^^^^^ did you mean `m::n::Z::Struct { /* fields */ }`?
+
+error[E0412]: cannot find type `Z` in this scope
+  --> $DIR/privacy-enum-ctor.rs:78:12
+   |
+LL |     let _: Z = m::n::Z::Unit {};
+   |            ^ did you mean `E`?
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use m::n::Z;
+   |
+
+error[E0603]: enum `Z` is private
+  --> $DIR/privacy-enum-ctor.rs:67:16
+   |
+LL |     let _: Z = m::n::Z;
+   |                ^^^^^^^
+
+error[E0603]: enum `Z` is private
+  --> $DIR/privacy-enum-ctor.rs:71:16
+   |
+LL |     let _: Z = m::n::Z::Fn;
+   |                ^^^^^^^^^^^
+
+error[E0603]: enum `Z` is private
+  --> $DIR/privacy-enum-ctor.rs:74:16
+   |
+LL |     let _: Z = m::n::Z::Struct;
+   |                ^^^^^^^^^^^^^^^
+
+error[E0603]: enum `Z` is private
+  --> $DIR/privacy-enum-ctor.rs:78:16
+   |
+LL |     let _: Z = m::n::Z::Unit {};
+   |                ^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/privacy-enum-ctor.rs:37:20
+   |
+LL |         let _: Z = Z::Fn;
+   |                    ^^^^^ expected enum `m::n::Z`, found fn item
+   |
+   = note: expected type `m::n::Z`
+              found type `fn(u8) -> m::n::Z {m::n::Z::Fn}`
+
+error[E0618]: expected function, found enum variant `Z::Unit`
+  --> $DIR/privacy-enum-ctor.rs:41:17
+   |
+LL |             Unit,
+   |             ---- `Z::Unit` defined here
+...
+LL |         let _ = Z::Unit();
+   |                 ^^^^^^^^^ not a function
+help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
+   |
+LL |         let _ = Z::Unit;
+   |                 ^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/privacy-enum-ctor.rs:53:16
+   |
+LL |     let _: E = m::E::Fn;
+   |                ^^^^^^^^ expected enum `m::E`, found fn item
+   |
+   = note: expected type `m::E`
+              found type `fn(u8) -> m::E {m::E::Fn}`
+
+error[E0618]: expected function, found enum variant `m::E::Unit`
+  --> $DIR/privacy-enum-ctor.rs:57:16
+   |
+LL |         Unit,
+   |         ---- `m::E::Unit` defined here
+...
+LL |     let _: E = m::E::Unit();
+   |                ^^^^^^^^^^^^ not a function
+help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
+   |
+LL |     let _: E = m::E::Unit;
+   |                ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/privacy-enum-ctor.rs:61:16
+   |
+LL |     let _: E = E::Fn;
+   |                ^^^^^ expected enum `m::E`, found fn item
+   |
+   = note: expected type `m::E`
+              found type `fn(u8) -> m::E {m::E::Fn}`
+
+error[E0618]: expected function, found enum variant `E::Unit`
+  --> $DIR/privacy-enum-ctor.rs:65:16
+   |
+LL |         Unit,
+   |         ---- `E::Unit` defined here
+...
+LL |     let _: E = E::Unit();
+   |                ^^^^^^^^^ not a function
+help: `E::Unit` is a unit variant, you need to write it without the parenthesis
+   |
+LL |     let _: E = E::Unit;
+   |                ^^^^^^^
+
+error: aborting due to 23 previous errors
+
+Some errors occurred: E0308, E0412, E0423, E0603, E0618.
+For more information about an error, try `rustc --explain E0308`.

@@ -22,7 +22,7 @@ pub trait ToHex {
     fn to_hex(&self) -> String;
 }
 
-const CHARS: &'static [u8] = b"0123456789abcdef";
+const CHARS: &[u8] = b"0123456789abcdef";
 
 impl ToHex for [u8] {
     /// Turn a vector of `u8` bytes into a hexadecimal string.
@@ -125,9 +125,9 @@ impl FromHex for str {
             buf <<= 4;
 
             match byte {
-                b'A'...b'F' => buf |= byte - b'A' + 10,
-                b'a'...b'f' => buf |= byte - b'a' + 10,
-                b'0'...b'9' => buf |= byte - b'0',
+                b'A'..=b'F' => buf |= byte - b'A' + 10,
+                b'a'..=b'f' => buf |= byte - b'a' + 10,
+                b'0'..=b'9' => buf |= byte - b'0',
                 b' '|b'\r'|b'\n'|b'\t' => {
                     buf >>= 4;
                     continue

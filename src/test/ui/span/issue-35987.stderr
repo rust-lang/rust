@@ -1,14 +1,13 @@
 error[E0404]: expected trait, found type parameter `Add`
   --> $DIR/issue-35987.rs:15:21
    |
-15 | impl<T: Clone, Add> Add for Foo<T> {
+LL | impl<T: Clone, Add> Add for Foo<T> {
    |                     ^^^ not a trait
 help: possible better candidate is found in another module, you can import it into scope
    |
-13 | use std::ops::Add;
+LL | use std::ops::Add;
    |
 
-error[E0601]: main function not found
+error: aborting due to previous error
 
-error: cannot continue compilation due to previous error
-
+For more information about this error, try `rustc --explain E0404`.

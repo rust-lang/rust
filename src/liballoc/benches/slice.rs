@@ -284,6 +284,17 @@ macro_rules! sort_expensive {
     }
 }
 
+macro_rules! sort_lexicographic {
+    ($f:ident, $name:ident, $gen:expr, $len:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let v = $gen($len);
+            b.iter(|| v.clone().$f(|x| x.to_string()));
+            b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
+        }
+    }
+}
+
 sort!(sort, sort_small_ascending, gen_ascending, 10);
 sort!(sort, sort_small_descending, gen_descending, 10);
 sort!(sort, sort_small_random, gen_random, 10);
@@ -311,6 +322,10 @@ sort!(sort_unstable, sort_unstable_large_random, gen_random, 10000);
 sort!(sort_unstable, sort_unstable_large_big, gen_big_random, 10000);
 sort_strings!(sort_unstable, sort_unstable_large_strings, gen_strings, 10000);
 sort_expensive!(sort_unstable_by, sort_unstable_large_expensive, gen_random, 10000);
+
+sort_lexicographic!(sort_by_key, sort_by_key_lexicographic, gen_random, 10000);
+sort_lexicographic!(sort_unstable_by_key, sort_unstable_by_key_lexicographic, gen_random, 10000);
+sort_lexicographic!(sort_by_cached_key, sort_by_cached_key_lexicographic, gen_random, 10000);
 
 macro_rules! reverse {
     ($name:ident, $ty:ty, $f:expr) => {

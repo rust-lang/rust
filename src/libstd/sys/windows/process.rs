@@ -10,7 +10,6 @@
 
 #![unstable(feature = "process_internals", issue = "0")]
 
-use ascii::AsciiExt;
 use collections::BTreeMap;
 use env::split_paths;
 use env;
@@ -18,7 +17,7 @@ use ffi::{OsString, OsStr};
 use fmt;
 use fs;
 use io::{self, Error, ErrorKind};
-use libc::c_void;
+use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
 use mem;
 use os::windows::ffi::OsStrExt;
 use path::Path;
@@ -32,7 +31,7 @@ use sys::stdio;
 use sys::cvt;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::process::{CommandEnv, EnvKey};
-use alloc::borrow::Borrow;
+use borrow::Borrow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -408,6 +407,19 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(c::DWORD);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    #[inline]
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
+    }
+}
+
 fn zeroed_startupinfo() -> c::STARTUPINFO {
     c::STARTUPINFO {
         cb: 0,
@@ -475,9 +487,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
             } else {
                 if x == '"' as u16 {
                     // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    for _ in 0..(backslashes+1) {
-                        cmd.push('\\' as u16);
-                    }
+                    cmd.extend((0..(backslashes + 1)).map(|_| '\\' as u16));
                 }
                 backslashes = 0;
             }
@@ -486,9 +496,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
 
         if quote {
             // Add n backslashes to total 2n before ending '"'.
-            for _ in 0..backslashes {
-                cmd.push('\\' as u16);
-            }
+            cmd.extend((0..backslashes).map(|_| '\\' as u16));
             cmd.push('"' as u16);
         }
         Ok(())

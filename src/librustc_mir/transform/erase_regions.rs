@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! This pass erases all early-bound regions from the types occurring in the MIR.
-//! We want to do this once just before trans, so trans does not have to take
+//! We want to do this once just before codegen, so codegen does not have to take
 //! care erasing regions all over the place.
 //! NOTE:  We do NOT erase regions of statements that are relevant for
 //! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid, and EndRegion.
@@ -51,12 +51,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
-        *substs = self.tcx.erase_regions(substs);
-    }
-
-    fn visit_closure_substs(&mut self,
-                            substs: &mut ty::ClosureSubsts<'tcx>,
-                            _: Location) {
         *substs = self.tcx.erase_regions(substs);
     }
 

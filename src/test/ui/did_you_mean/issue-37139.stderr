@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
   --> $DIR/issue-37139.rs:22:23
    |
-22 |             test(&mut x); //~ ERROR cannot borrow immutable
+LL |             test(&mut x); //~ ERROR cannot borrow immutable
    |                       ^
    |                       |
    |                       cannot reborrow mutably
@@ -9,3 +9,4 @@ error[E0596]: cannot borrow immutable local variable `x` as mutable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0596`.

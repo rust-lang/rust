@@ -42,7 +42,6 @@ struct RustArchiveIterator {
 enum class LLVMRustArchiveKind {
   Other,
   GNU,
-  MIPS64,
   BSD,
   COFF,
 };
@@ -51,8 +50,6 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
   switch (Kind) {
   case LLVMRustArchiveKind::GNU:
     return Archive::K_GNU;
-  case LLVMRustArchiveKind::MIPS64:
-    return Archive::K_MIPS64;
   case LLVMRustArchiveKind::BSD:
     return Archive::K_BSD;
   case LLVMRustArchiveKind::COFF:
@@ -151,7 +148,7 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
 #if LLVM_VERSION_GE(4, 0)
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
-    // rustc_llvm currently doesn't use this error string, but it might be
+    // rustc_codegen_llvm currently doesn't use this error string, but it might be
     // useful in the future, and in the mean time this tells LLVM that the
     // error was not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
@@ -235,9 +232,16 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
       Members.push_back(std::move(*MOrErr));
     }
   }
-  auto Pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
-  if (!Pair.second)
+  auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
+#if LLVM_VERSION_GE(6, 0)
+  if (!Result)
     return LLVMRustResult::Success;
-  LLVMRustSetLastError(Pair.second.message().c_str());
+  LLVMRustSetLastError(toString(std::move(Result)).c_str());
+#else
+  if (!Result.second)
+    return LLVMRustResult::Success;
+  LLVMRustSetLastError(Result.second.message().c_str());
+#endif
+
   return LLVMRustResult::Failure;
 }

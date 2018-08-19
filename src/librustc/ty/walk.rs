@@ -11,7 +11,7 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use middle::const_val::{ConstVal, ConstAggregate};
+use mir::interpret::ConstValue;
 use ty::{self, Ty};
 use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -92,8 +92,11 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TySlice(ty) => {
             stack.push(ty);
         }
-        ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {
+        ty::TyRawPtr(ref mt) => {
             stack.push(mt.ty);
+        }
+        ty::TyRef(_, ty, _) => {
+            stack.push(ty);
         }
         ty::TyProjection(ref data) => {
             stack.extend(data.substs.types().rev());
@@ -118,11 +121,13 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyClosure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGenerator(_, ref substs, ref interior) => {
+        ty::TyGenerator(_, ref substs, _) => {
             stack.extend(substs.substs.types().rev());
-            stack.push(interior.witness);
         }
-        ty::TyTuple(ts, _) => {
+        ty::TyGeneratorWitness(ts) => {
+            stack.extend(ts.skip_binder().iter().cloned().rev());
+        }
+        ty::TyTuple(ts) => {
             stack.extend(ts.iter().cloned().rev());
         }
         ty::TyFnDef(_, substs) => {
@@ -136,34 +141,8 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
 }
 
 fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const<'tcx>) {
-    match constant.val {
-        ConstVal::Integral(_) |
-        ConstVal::Float(_) |
-        ConstVal::Str(_) |
-        ConstVal::ByteStr(_) |
-        ConstVal::Bool(_) |
-        ConstVal::Char(_) |
-        ConstVal::Variant(_) => {}
-        ConstVal::Function(_, substs) => {
-            stack.extend(substs.types().rev());
-        }
-        ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-            for &(_, v) in fields.iter().rev() {
-                push_const(stack, v);
-            }
-        }
-        ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-        ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-            for v in fields.iter().rev() {
-                push_const(stack, v);
-            }
-        }
-        ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-            push_const(stack, v);
-        }
-        ConstVal::Unevaluated(_, substs) => {
-            stack.extend(substs.types().rev());
-        }
+    if let ConstValue::Unevaluated(_, substs) = constant.val {
+        stack.extend(substs.types().rev());
     }
     stack.push(constant.ty);
 }

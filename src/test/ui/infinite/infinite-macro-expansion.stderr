@@ -1,0 +1,13 @@
+error: recursion limit reached while expanding the macro `recursive`
+  --> $DIR/infinite-macro-expansion.rs:12:12
+   |
+LL |     () => (recursive!()) //~ ERROR recursion limit reached while expanding the macro `recursive`
+   |            ^^^^^^^^^^^^
+...
+LL |     recursive!()
+   |     ------------ in this macro invocation
+   |
+   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+
+error: aborting due to previous error
+

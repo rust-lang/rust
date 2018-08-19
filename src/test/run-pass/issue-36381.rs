@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for #36381. The trans collector was asserting that
+// Regression test for #36381. The monomorphization collector was asserting that
 // there are no projection types, but the `<&str as
 // StreamOnce>::Position` projection contained a late-bound region,
 // and we don't currently normalize in that case until the function is

@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
+  --> $DIR/borrowck-borrow-mut-object-twice.rs:23:5
+   |
+LL |     let y = x.f1();
+   |             - first mutable borrow occurs here
+LL |     x.f2(); //~ ERROR cannot borrow `*x` as mutable
+   |     ^ second mutable borrow occurs here
+LL |     y.use_ref();
+LL | }
+   | - first borrow ends here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0499`.

@@ -1,0 +1,16 @@
+error: non-defining existential type use in defining scope
+  --> $DIR/bound_reduction2.rs:26:1
+   |
+LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> { //~ ERROR non-defining
+LL | |     ()
+LL | | }
+   | |_^
+   |
+note: used non-generic type <T as TraitWithAssoc>::Assoc for generic parameter
+  --> $DIR/bound_reduction2.rs:20:22
+   |
+LL | existential type Foo<V>: Trait<V>;
+   |                      ^
+
+error: aborting due to previous error
+

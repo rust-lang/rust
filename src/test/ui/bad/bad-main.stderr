@@ -1,0 +1,12 @@
+error[E0580]: main function has wrong type
+  --> $DIR/bad-main.rs:11:1
+   |
+LL | fn main(x: isize) { } //~ ERROR: main function has wrong type [E0580]
+   | ^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected type `fn()`
+              found type `fn(isize)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0580`.

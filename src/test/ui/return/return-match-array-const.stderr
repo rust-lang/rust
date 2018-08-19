@@ -1,0 +1,21 @@
+error[E0572]: return statement outside of function body
+  --> $DIR/return-match-array-const.rs:12:10
+   |
+LL |     [(); return match 0 { n => n }]; //~ ERROR: return statement outside of function body
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0572]: return statement outside of function body
+  --> $DIR/return-match-array-const.rs:14:10
+   |
+LL |     [(); return match 0 { 0 => 0 }]; //~ ERROR: return statement outside of function body
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0572]: return statement outside of function body
+  --> $DIR/return-match-array-const.rs:16:10
+   |
+LL |     [(); return match () { 'a' => 0, _ => 0 }]; //~ ERROR: return statement outside of function body
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0572`.

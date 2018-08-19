@@ -236,7 +236,7 @@ enum State {
 impl<'a> AsyncPipe<'a> {
     fn new(pipe: Handle, dst: &'a mut Vec<u8>) -> io::Result<AsyncPipe<'a>> {
         // Create an event which we'll use to coordinate our overlapped
-        // opreations, this event will be used in WaitForMultipleObjects
+        // operations, this event will be used in WaitForMultipleObjects
         // and passed as part of the OVERLAPPED handle.
         //
         // Note that we do a somewhat clever thing here by flagging the

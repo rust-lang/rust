@@ -1,32 +1,40 @@
-error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:22:37
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:11:12
    |
-22 |         + Deref<Target = Self::Item<'b>>;
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:23:37
+   |
+LL |         + Deref<Target = Self::Item<'b>>;
    |                                     ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'undeclared`
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:26:41
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:27:41
    |
-26 |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
    |                                         ^^^^^^^^^^^ undeclared lifetime
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:20:47
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:21:47
    |
-20 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>
-   |                                               ^^ lifetime parameter not allowed on this type
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>
+   |                                               ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:22:37
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:23:37
    |
-22 |         + Deref<Target = Self::Item<'b>>;
-   |                                     ^^ lifetime parameter not allowed on this type
+LL |         + Deref<Target = Self::Item<'b>>;
+   |                                     ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:26:41
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:27:41
    |
-26 |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
-   |                                         ^^^^^^^^^^^ lifetime parameter not allowed on this type
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
+   |                                         ^^^^^^^^^^^ lifetime parameter not allowed
 
 error: aborting due to 5 previous errors
 
+Some errors occurred: E0110, E0261.
+For more information about an error, try `rustc --explain E0110`.

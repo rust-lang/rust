@@ -1,13 +1,14 @@
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:38:19
    |
-38 |     _d = D_Child(&d1);
+LL |     _d = D_Child(&d1);
    |                   ^^ borrowed value does not live long enough
 ...
-43 | }
+LL | }
    | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

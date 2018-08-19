@@ -1,10 +1,11 @@
 error[E0606]: casting `*mut impl std::fmt::Debug+?Sized` as `*mut impl std::fmt::Debug+?Sized` is invalid
-  --> $DIR/casts-differing-anon.rs:33:13
+  --> $DIR/casts-differing-anon.rs:31:13
    |
-33 |     b_raw = f_raw as *mut _; //~ ERROR is invalid
+LL |     b_raw = f_raw as *mut _; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^
    |
    = note: vtable kinds may not match
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0606`.

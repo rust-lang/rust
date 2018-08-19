@@ -1,0 +1,22 @@
+error: unreachable expression
+  --> $DIR/unreachable-in-call.rs:24:10
+   |
+LL |          get_u8()); //~ ERROR unreachable expression
+   |          ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unreachable-in-call.rs:12:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable expression
+  --> $DIR/unreachable-in-call.rs:27:5
+   |
+LL | /     call( //~ ERROR unreachable expression
+LL | |         get_u8(),
+LL | |         diverge());
+   | |__________________^
+
+error: aborting due to 2 previous errors
+

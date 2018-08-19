@@ -1,0 +1,14 @@
+error: unreachable pattern
+  --> $DIR/issue-30240-b.rs:22:9
+   |
+LL |         "hello" => {} //~ ERROR unreachable pattern
+   |         ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-30240-b.rs:11:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

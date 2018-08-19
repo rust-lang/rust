@@ -1,48 +1,50 @@
 error[E0499]: cannot borrow `f` as mutable more than once at a time
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:22:16
    |
-22 |     f(Box::new(|| {
+LL |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
    |     |
    |     first mutable borrow occurs here
-23 |     //~^ ERROR: cannot borrow `f` as mutable more than once
-24 |         f((Box::new(|| {})))
+LL |     //~^ ERROR: cannot borrow `f` as mutable more than once
+LL |         f((Box::new(|| {})))
    |         - borrow occurs due to use of `f` in closure
-25 |     }));
+LL |     }));
    |       - first borrow ends here
 
 error[E0596]: cannot borrow immutable borrowed content `*f` as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
    |
-34 | fn test2<F>(f: &F) where F: FnMut() {
+LL | fn test2<F>(f: &F) where F: FnMut() {
    |                -- use `&mut F` here to make mutable
-35 |     (*f)();
+LL |     (*f)();
    |     ^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `Box` content `*f.f` of immutable binding as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
    |
-43 | fn test4(f: &Test) {
+LL | fn test4(f: &Test) {
    |             ----- use `&mut Test` here to make mutable
-44 |     f.f.call_mut(())
+LL |     f.f.call_mut(())
    |     ^^^ cannot borrow as mutable
 
 error[E0504]: cannot move `f` into closure because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
-62 |     f(Box::new(|a| {
+LL |     f(Box::new(|a| {
    |     - borrow of `f` occurs here
-63 |         foo(f);
+LL |         foo(f);
    |             ^ move into closure occurs here
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
-61 |     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
+LL |     let mut f = move |g: Box<FnMut(isize)>, b: isize| {
    |         ----- captured outer variable
-62 |     f(Box::new(|a| {
-63 |         foo(f);
+...
+LL |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 5 previous errors
 
+Some errors occurred: E0499, E0504, E0507, E0596.
+For more information about an error, try `rustc --explain E0499`.

@@ -26,10 +26,10 @@ As a reminder, all contributors are expected to follow our [Code of Conduct][coc
 ## Feature Requests
 [feature-requests]: #feature-requests
 
-To request a change to the way that the Rust language works, please open an
-issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
-rather than this one. New features and other significant language changes
-must go through the RFC process.
+To request a change to the way the Rust language works, please head over
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+[README](https://github.com/rust-lang/rfcs/blob/master/README.md)
+for instructions.
 
 ## Bug Reports
 [bug-reports]: #bug-reports
@@ -46,6 +46,12 @@ issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
 as it's possible that someone else has already reported your error. This doesn't
 always work, and sometimes it's hard to know what to search for, so consider this
 extra credit. We won't mind if you accidentally file a duplicate report.
+
+Similarly, to help others who encountered the bug find your issue,
+consider filing an issue with a descriptive title, which contains information that might be unique to it.
+This can be the language or compiler feature used, the conditions that trigger the bug,
+or part of the error message if there is any.
+An example could be: **"impossible case reached" on lifetime inference for impl Trait in return position**.
 
 Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
@@ -121,6 +127,7 @@ configuration used in the build process. Some options to note:
 #### `[rust]`:
 - `debuginfo = true` - Build a compiler with debuginfo. Makes building rustc slower, but then you can use a debugger to debug `rustc`.
 - `debuginfo-lines = true` - An alternative to `debuginfo = true` that doesn't let you use a debugger, but doesn't make building rustc slower and still gives you line numbers in backtraces.
+- `debuginfo-tools = true` - Build the extended tools with debuginfo.
 - `debug-assertions = true` - Makes the log output of `debug!` work.
 - `optimize = false` - Disable optimizations to speed up compilation of stage1 rust, but makes the stage1 compiler x100 slower.
 
@@ -134,6 +141,8 @@ file. If you still have a `config.mk` file in your directory - from
 
 ### Building
 [building]: #building
+
+A default configuration requires around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
 
 Dependencies
 - [build dependencies](README.md#building-from-source)
@@ -301,12 +310,12 @@ It's absolutely fine to have multiple build directories with different
 [pull-requests]: #pull-requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][pull-requests] on using the Pull Request feature.
+has some [great documentation][about-pull-requests] on using the Pull Request feature.
 We use the "fork and pull" model [described here][development-models], where
 contributors push changes to their personal fork and create pull requests to
 bring those changes into the source repository.
 
-[pull-requests]: https://help.github.com/articles/about-pull-requests/
+[about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
 Please make pull requests against the `master` branch.
@@ -594,7 +603,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
-[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
+[rfcbot]: https://github.com/anp/rfcbot-rs/
 
 ## Out-of-tree Contributions
 [out-of-tree-contributions]: #out-of-tree-contributions
@@ -623,6 +632,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
+* The [rustc guide] contains information about how various parts of the compiler work
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -635,6 +645,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org

@@ -12,7 +12,6 @@
 
 #![allow(dead_assignment)]
 #![allow(unused_variables)]
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 enum option<T> { some(Box<T>), none, }

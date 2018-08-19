@@ -1,0 +1,19 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-27592.rs:26:27
+   |
+LL |     write(|| format_args!("{}", String::from("Hello world")));
+   |                           ^^^^                             - temporary value only lives until here
+   |                           |
+   |                           temporary value does not live long enough
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-27592.rs:26:33
+   |
+LL |     write(|| format_args!("{}", String::from("Hello world")));
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
+   |                                 |
+   |                                 temporary value does not live long enough
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

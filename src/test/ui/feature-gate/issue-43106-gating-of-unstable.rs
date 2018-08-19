@@ -35,3 +35,5 @@ mod unstable {
     #[unstable = "1200"] impl S { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 }
+
+fn main() {}

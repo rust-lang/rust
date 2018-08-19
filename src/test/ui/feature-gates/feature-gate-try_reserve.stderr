@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'try_reserve': new API (see issue #48043)
+  --> $DIR/feature-gate-try_reserve.rs:13:7
+   |
+LL |     v.try_reserve(10); //~ ERROR: use of unstable library feature 'try_reserve'
+   |       ^^^^^^^^^^^
+   |
+   = help: add #![feature(try_reserve)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

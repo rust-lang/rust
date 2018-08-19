@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -A bad-style
-// must-compile-successfully
+// compile-pass
 
 fn main() {
     let _InappropriateCamelCasing = true;

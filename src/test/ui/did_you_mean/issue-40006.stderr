@@ -1,68 +1,69 @@
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:11:9
    |
-11 |   impl X { //~ ERROR cannot be made into an object
+LL |   impl X { //~ ERROR cannot be made into an object
    |  _________^
-12 | | //~^ ERROR missing
-13 | |     Y
+LL | | //~^ ERROR missing
+LL | |     Y
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:18:10
    |
-18 |   trait X { //~ ERROR missing
+LL |   trait X { //~ ERROR missing
    |  __________^
-19 | |     X() {}
+LL | |     X() {}
    | |____^ missing `fn`, `type`, or `const`
 
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:20:17
    |
-20 |     fn xxx() { ### } //~ ERROR missing
-   |                 ^
+LL |     fn xxx() { ### } //~ ERROR missing
+   |                 ^ expected `[`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:20:21
    |
-20 |       fn xxx() { ### } //~ ERROR missing
+LL |       fn xxx() { ### } //~ ERROR missing
    |  _____________________^
-21 | |     //~^ ERROR expected
-22 | |     L = M; //~ ERROR missing
+LL | |     //~^ ERROR expected
+LL | |     L = M; //~ ERROR missing
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:22:11
    |
-22 |       L = M; //~ ERROR missing
+LL |       L = M; //~ ERROR missing
    |  ___________^
-23 | |     Z = { 2 + 3 }; //~ ERROR expected one of
+LL | |     Z = { 2 + 3 }; //~ ERROR expected one of
    | |____^ missing `fn`, `type`, or `const`
 
-error: expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
   --> $DIR/issue-40006.rs:23:18
    |
-23 |     Z = { 2 + 3 }; //~ ERROR expected one of
-   |                  ^ expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}` here
+LL |     Z = { 2 + 3 }; //~ ERROR expected one of
+   |                  ^ expected one of 7 possible tokens here
 
 error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:24:9
    |
-24 |     ::Y (); //~ ERROR expected one of
+LL |     ::Y (); //~ ERROR expected one of
    |         ^ expected one of `!` or `::` here
 
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:28:8
    |
-28 |     pub hello_method(&self) { //~ ERROR missing
+LL |     pub hello_method(&self) { //~ ERROR missing
    |        ^ missing `fn`, `type`, or `const`
 
 error[E0038]: the trait `X` cannot be made into an object
   --> $DIR/issue-40006.rs:11:6
    |
-11 | impl X { //~ ERROR cannot be made into an object
+LL | impl X { //~ ERROR cannot be made into an object
    |      ^ the trait `X` cannot be made into an object
    |
    = note: method `xxx` has no receiver
 
 error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0038`.

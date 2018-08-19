@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
+  --> $DIR/wf-trait-default-fn-arg.rs:21:5
+   |
+LL | /     fn bar(&self, x: &Bar<Self>) {
+LL | |         //~^ ERROR E0277
+LL | |         //
+LL | |         // Here, Eq ought to be implemented.
+LL | |     }
+   | |_____^ the trait `std::cmp::Eq` is not implemented for `Self`
+   |
+   = help: consider adding a `where Self: std::cmp::Eq` bound
+note: required by `Bar`
+  --> $DIR/wf-trait-default-fn-arg.rs:18:1
+   |
+LL | struct Bar<T:Eq+?Sized> { value: Box<T> }
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

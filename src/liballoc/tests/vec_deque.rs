@@ -11,6 +11,9 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::collections::vec_deque::{Drain};
+use std::collections::CollectionAllocErr::*;
+use std::mem::size_of;
+use std::{usize, isize};
 
 use self::Taggy::*;
 use self::Taggypar::*;
@@ -926,6 +929,107 @@ fn test_append() {
 }
 
 #[test]
+fn test_append_permutations() {
+    fn construct_vec_deque(
+        push_back: usize,
+        pop_back: usize,
+        push_front: usize,
+        pop_front: usize,
+    ) -> VecDeque<usize> {
+        let mut out = VecDeque::new();
+        for a in 0..push_back {
+            out.push_back(a);
+        }
+        for b in 0..push_front {
+            out.push_front(push_back + b);
+        }
+        for _ in 0..pop_back {
+            out.pop_back();
+        }
+        for _ in 0..pop_front {
+            out.pop_front();
+        }
+        out
+    }
+
+    const MAX: usize = 5;
+
+    // Many different permutations of both the `VecDeque` getting appended to
+    // and the one getting appended are generated to check `append`.
+    // This ensures all 6 code paths of `append` are tested.
+    for src_push_back in 0..MAX {
+        for src_push_front in 0..MAX {
+            // doesn't pop more values than are pushed
+            for src_pop_back in 0..(src_push_back + src_push_front) {
+                for src_pop_front in 0..(src_push_back + src_push_front - src_pop_back) {
+
+                    let src = construct_vec_deque(
+                        src_push_back,
+                        src_pop_back,
+                        src_push_front,
+                        src_pop_front,
+                    );
+
+                    for dst_push_back in 0..MAX {
+                        for dst_push_front in 0..MAX {
+                            for dst_pop_back in 0..(dst_push_back + dst_push_front) {
+                                for dst_pop_front
+                                    in 0..(dst_push_back + dst_push_front - dst_pop_back)
+                                {
+                                    let mut dst = construct_vec_deque(
+                                        dst_push_back,
+                                        dst_pop_back,
+                                        dst_push_front,
+                                        dst_pop_front,
+                                    );
+                                    let mut src = src.clone();
+
+                                    // Assert that appending `src` to `dst` gives the same order
+                                    // of values as iterating over both in sequence.
+                                    let correct = dst
+                                        .iter()
+                                        .chain(src.iter())
+                                        .cloned()
+                                        .collect::<Vec<usize>>();
+                                    dst.append(&mut src);
+                                    assert_eq!(dst, correct);
+                                    assert!(src.is_empty());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct DropCounter<'a> {
+    count: &'a mut u32,
+}
+
+impl<'a> Drop for DropCounter<'a> {
+    fn drop(&mut self) {
+        *self.count += 1;
+    }
+}
+
+#[test]
+fn test_append_double_drop() {
+    let (mut count_a, mut count_b) = (0, 0);
+    {
+        let mut a = VecDeque::new();
+        let mut b = VecDeque::new();
+        a.push_back(DropCounter { count: &mut count_a });
+        b.push_back(DropCounter { count: &mut count_b });
+
+        a.append(&mut b);
+    }
+    assert_eq!(count_a, 1);
+    assert_eq!(count_b, 1);
+}
+
+#[test]
 fn test_retain() {
     let mut buf = VecDeque::new();
     buf.extend(1..5);
@@ -1002,23 +1106,206 @@ fn test_is_empty() {
 }
 
 #[test]
-fn test_placement_in() {
-    let mut buf: VecDeque<isize> = VecDeque::new();
-    buf.place_back() <- 1;
-    buf.place_back() <- 2;
-    assert_eq!(buf, [1,2]);
+fn test_reserve_exact_2() {
+    // This is all the same as test_reserve
 
-    buf.place_front() <- 3;
-    buf.place_front() <- 4;
-    assert_eq!(buf, [4,3,1,2]);
+    let mut v = VecDeque::new();
+
+    v.reserve_exact(2);
+    assert!(v.capacity() >= 2);
+
+    for i in 0..16 {
+        v.push_back(i);
+    }
+
+    assert!(v.capacity() >= 16);
+    v.reserve_exact(16);
+    assert!(v.capacity() >= 32);
+
+    v.push_back(16);
+
+    v.reserve_exact(16);
+    assert!(v.capacity() >= 48)
+}
+
+#[test]
+fn test_try_reserve() {
+
+    // These are the interesting cases:
+    // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
+    // * > isize::MAX should always fail
+    //    * On 16/32-bit should CapacityOverflow
+    //    * On 64-bit should OOM
+    // * overflow may trigger when adding `len` to `cap` (in number of elements)
+    // * overflow may trigger when multiplying `new_cap` by size_of::<T> (to get bytes)
+
+    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_USIZE: usize = usize::MAX;
+
+    // On 16/32-bit, we check that allocations don't exceed isize::MAX,
+    // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
+    // Any platform that succeeds for these requests is technically broken with
+    // ptr::offset because LLVM is the worst.
+    let guards_against_isize = size_of::<usize>() < 8;
 
     {
-        let ptr_head = buf.place_front() <- 5;
-        assert_eq!(*ptr_head, 5);
+        // Note: basic stuff is checked by test_reserve
+        let mut empty_bytes: VecDeque<u8> = VecDeque::new();
+
+        // Check isize::MAX doesn't count as an overflow
+        if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        // Play it again, frank! (just to be sure)
+        if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+
+        if guards_against_isize {
+            // Check isize::MAX + 1 does count as overflow
+            if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+
+            // Check usize::MAX does count as overflow
+            if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            // Check isize::MAX is an OOM
+            // VecDeque starts with capacity 7, always adds 1 to the capacity
+            // and also rounds the number to next power of 2 so this is the
+            // furthest we can go without triggering CapacityOverflow
+            if let Err(AllocErr) = empty_bytes.try_reserve(MAX_CAP) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
     }
+
+
     {
-        let ptr_tail = buf.place_back() <- 6;
-        assert_eq!(*ptr_tail, 6);
+        // Same basic idea, but with non-zero len
+        let mut ten_bytes: VecDeque<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        // Should always overflow in the add-to-len
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_USIZE) {
+        } else { panic!("usize::MAX should trigger an overflow!") }
     }
-    assert_eq!(buf, [5,4,3,1,2,6]);
+
+
+    {
+        // Same basic idea, but with interesting type size
+        let mut ten_u32s: VecDeque<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        // Should fail in the mul-by-size
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_USIZE - 20) {
+        } else {
+            panic!("usize::MAX should trigger an overflow!");
+        }
+    }
+
+}
+
+#[test]
+fn test_try_reserve_exact() {
+
+    // This is exactly the same as test_try_reserve with the method changed.
+    // See that test for comments.
+
+    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_USIZE: usize = usize::MAX;
+
+    let guards_against_isize = size_of::<usize>() < 8;
+
+    {
+        let mut empty_bytes: VecDeque<u8> = VecDeque::new();
+
+        if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+
+            if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            // Check isize::MAX is an OOM
+            // VecDeque starts with capacity 7, always adds 1 to the capacity
+            // and also rounds the number to next power of 2 so this is the
+            // furthest we can go without triggering CapacityOverflow
+            if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_CAP) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+    }
+
+
+    {
+        let mut ten_bytes: VecDeque<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_USIZE) {
+        } else { panic!("usize::MAX should trigger an overflow!") }
+    }
+
+
+    {
+        let mut ten_u32s: VecDeque<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_USIZE - 20) {
+        } else { panic!("usize::MAX should trigger an overflow!") }
+    }
+
 }

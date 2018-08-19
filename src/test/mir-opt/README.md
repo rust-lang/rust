@@ -26,7 +26,7 @@ other non-matched lines before and after, but not between $expected_lines,
 should you want to skip lines, you must include an elision comment, of the form
 (as a regex) `//\s*...\s*`. The lines will be skipped lazily, that is, if there
 are two identical lines in the output that match the line after the elision
-comment, the first one wil be matched.
+comment, the first one will be matched.
 
 Examples:
 

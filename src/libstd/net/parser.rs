@@ -53,15 +53,12 @@ impl<'a> Parser<'a> {
         F: FnOnce(&mut Parser) -> Option<T>,
     {
         self.read_atomically(move |p| {
-            match cb(p) {
-                Some(x) => if p.is_eof() {Some(x)} else {None},
-                None => None,
-            }
+            cb(p).filter(|_| p.is_eof())
         })
     }
 
     // Return result of first successful parser
-    fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T> + 'static>])
+    fn read_or<T>(&mut self, parsers: &mut [Box<dyn FnMut(&mut Parser) -> Option<T> + 'static>])
                -> Option<T> {
         for pf in parsers {
             if let Some(r) = self.read_atomically(|p: &mut Parser| pf(p)) {
@@ -371,6 +368,25 @@ impl FromStr for SocketAddr {
 /// This error is used as the error type for the [`FromStr`] implementation for
 /// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`SocketAddr`], [`SocketAddrV4`], and
 /// [`SocketAddrV6`].
+///
+/// # Potential causes
+///
+/// `AddrParseError` may be thrown because the provided string does not parse as the given type,
+/// often because it includes information only handled by a different address type.
+///
+/// ```should_panic
+/// use std::net::IpAddr;
+/// let _foo: IpAddr = "127.0.0.1:8080".parse().expect("Cannot handle the socket port");
+/// ```
+///
+/// [`IpAddr`] doesn't handle the port. Use [`SocketAddr`] instead.
+///
+/// ```
+/// use std::net::SocketAddr;
+///
+/// // No problem, the `panic!` message has disappeared.
+/// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
+/// ```
 ///
 /// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [`IpAddr`]: ../../std/net/enum.IpAddr.html

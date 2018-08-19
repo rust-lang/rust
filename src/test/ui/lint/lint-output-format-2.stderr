@@ -1,0 +1,26 @@
+warning: use of deprecated item 'lint_output_format::foo': text
+  --> $DIR/lint-output-format-2.rs:17:26
+   |
+LL | use lint_output_format::{foo, bar};
+   |                          ^^^
+   |
+   = note: #[warn(deprecated)] on by default
+
+warning: use of deprecated item 'lint_output_format::foo': text
+  --> $DIR/lint-output-format-2.rs:22:14
+   |
+LL |     let _x = foo();
+   |              ^^^
+
+error: compilation successful
+  --> $DIR/lint-output-format-2.rs:21:1
+   |
+LL | / fn main() { //~ ERROR: compilation successful
+LL | |     let _x = foo();
+LL | |     //~^ WARNING use of deprecated item 'lint_output_format::foo': text
+LL | |     let _y = bar();
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

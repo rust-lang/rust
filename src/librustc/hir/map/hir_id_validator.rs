@@ -96,7 +96,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                       .keys()
                       .map(|local_id| local_id.as_usize())
                       .max()
-                      .unwrap();
+                      .expect("owning item has no entry");
 
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
@@ -105,13 +105,15 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
               .collect();
 
             // Try to map those to something more useful
-            let mut missing_items = vec![];
+            let mut missing_items = Vec::with_capacity(missing.len());
 
             for local_id in missing {
                 let hir_id = HirId {
                     owner: owner_def_index,
                     local_id: ItemLocalId(local_id as u32),
                 };
+
+                trace!("missing hir id {:#?}", hir_id);
 
                 // We are already in ICE mode here, so doing a linear search
                 // should be fine.
@@ -121,7 +123,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                        .iter()
                                        .enumerate()
                                        .find(|&(_, &entry)| hir_id == entry)
-                                       .unwrap();
+                                       .expect("no node_to_hir_id entry");
                 let node_id = NodeId::new(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
@@ -146,7 +148,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     }
 
     fn visit_id(&mut self, node_id: NodeId) {
-        let owner = self.owner_def_index.unwrap();
+        let owner = self.owner_def_index.expect("no owner_def_index");
         let stable_id = self.hir_map.definitions().node_to_hir_id[node_id];
 
         if stable_id == hir::DUMMY_HIR_ID {
@@ -177,7 +179,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
     fn visit_impl_item_ref(&mut self, _: &'hir hir::ImplItemRef) {
         // Explicitly do nothing here. ImplItemRefs contain hir::Visibility
-        // values that actually belong to an ImplItem instead of the ItemImpl
+        // values that actually belong to an ImplItem instead of the ItemKind::Impl
         // we are currently in. So for those it's correct that they have a
         // different owner.
     }

@@ -1,0 +1,14 @@
+error: field is never used: `b`
+  --> $DIR/union-lint-dead-code.rs:15:5
+   |
+LL |     b: bool, //~ ERROR: field is never used
+   |     ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/union-lint-dead-code.rs:11:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

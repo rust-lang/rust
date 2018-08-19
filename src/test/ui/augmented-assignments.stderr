@@ -1,22 +1,24 @@
 error[E0596]: cannot borrow immutable local variable `y` as mutable
   --> $DIR/augmented-assignments.rs:30:5
    |
-28 |     let y = Int(2);
+LL |     let y = Int(2);
    |         - consider changing this to `mut y`
-29 |     //~^ consider changing this to `mut y`
-30 |     y   //~ error: cannot borrow immutable local variable `y` as mutable
+LL |     //~^ consider changing this to `mut y`
+LL |     y   //~ error: cannot borrow immutable local variable `y` as mutable
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `x`
   --> $DIR/augmented-assignments.rs:23:5
    |
-23 |     x   //~ error: use of moved value: `x`
+LL |     x   //~ error: use of moved value: `x`
    |     ^ value used here after move
 ...
-26 |     x;  //~ value moved here
+LL |     x;  //~ value moved here
    |     - value moved here
    |
    = note: move occurs because `x` has type `Int`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 
+Some errors occurred: E0382, E0596.
+For more information about an error, try `rustc --explain E0382`.

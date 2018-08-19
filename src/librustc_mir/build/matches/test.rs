@@ -19,12 +19,11 @@ use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
+use rustc_data_structures::bitvec::BitArray;
 use rustc::ty::{self, Ty};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
-use rustc::hir::RangeEnd;
+use rustc::hir::{RangeEnd, Mutability};
 use syntax_pos::Span;
 use std::cmp::Ordering;
 
@@ -39,7 +38,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
                         adt_def: adt_def.clone(),
-                        variants: BitVector::new(adt_def.variants.len()),
+                        variants: BitArray::new(adt_def.variants.len()),
                     },
                 }
             }
@@ -75,8 +74,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
-                        lo: Literal::Value { value: lo },
-                        hi: Literal::Value { value: hi },
+                        lo,
+                        hi,
                         ty: match_pair.pattern.ty.clone(),
                         end,
                     },
@@ -112,7 +111,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      test_place: &Place<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<&'tcx ty::Const<'tcx>>,
+                                     options: &mut Vec<u128>,
                                      indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
                                      -> bool
     {
@@ -123,12 +122,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatternKind::Constant { value } => {
-                // if the places match, the type should match
-                assert_eq!(match_pair.pattern.ty, switch_ty);
-
+                let switch_ty = ty::ParamEnv::empty().and(switch_ty);
                 indices.entry(value)
                        .or_insert_with(|| {
-                           options.push(value);
+                           options.push(value.unwrap_bits(self.hir.tcx(), switch_ty));
                            options.len() - 1
                        });
                 true
@@ -152,7 +149,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn add_variants_to_switch<'pat>(&mut self,
                                         test_place: &Place<'tcx>,
                                         candidate: &Candidate<'pat, 'tcx>,
-                                        variants: &mut BitVector)
+                                        variants: &mut BitArray<usize>)
                                         -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
@@ -180,6 +177,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         place: &Place<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
+        debug!("perform_test({:?}, {:?}: {:?}, {:?})",
+               block,
+               place,
+               place.ty(&self.local_decls, self.hir.tcx()),
+               test);
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
@@ -192,15 +194,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
                 for (idx, discr) in adt_def.discriminants(tcx).enumerate() {
-                    target_blocks.place_back() <- if variants.contains(idx) {
-                        values.push(discr);
-                        *(targets.place_back() <- self.cfg.start_new_block())
+                    target_blocks.push(if variants.contains(idx) {
+                        values.push(discr.val);
+                        targets.push(self.cfg.start_new_block());
+                        *targets.last().unwrap()
                     } else {
                         if otherwise_block.is_none() {
                             otherwise_block = Some(self.cfg.start_new_block());
                         }
                         otherwise_block.unwrap()
-                    };
+                    });
                 }
                 if let Some(otherwise_block) = otherwise_block {
                     targets.push(otherwise_block);
@@ -228,9 +231,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     assert!(options.len() > 0 && options.len() <= 2);
                     let (true_bb, false_bb) = (self.cfg.start_new_block(),
                                                self.cfg.start_new_block());
-                    let ret = match options[0].val {
-                        ConstVal::Bool(true) => vec![true_bb, false_bb],
-                        ConstVal::Bool(false) => vec![false_bb, true_bb],
+                    let ret = match options[0] {
+                        1 => vec![true_bb, false_bb],
+                        0 => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
                     (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Copy(place.clone()),
@@ -244,13 +247,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                .map(|_| self.cfg.start_new_block())
                                .chain(Some(otherwise))
                                .collect();
-                    let values: Vec<_> = options.iter().map(|v|
-                        v.val.to_const_int().expect("switching on integral")
-                    ).collect();
                     (targets.clone(), TerminatorKind::SwitchInt {
                         discr: Operand::Copy(place.clone()),
                         switch_ty,
-                        values: From::from(values),
+                        values: options.clone().into(),
                         targets,
                     })
                 };
@@ -259,49 +259,82 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, mut ty } => {
-                let mut val = Operand::Copy(place.clone());
-
-                // If we're using b"..." as a pattern, we need to insert an
-                // unsizing coercion, as the byte string has the type &[u8; N].
-                let expect = if let ConstVal::ByteStr(bytes) = value.val {
-                    let tcx = self.hir.tcx();
-
-                    // Unsize the place to &[u8], too, if necessary.
-                    if let ty::TyRef(region, mt) = ty.sty {
-                        if let ty::TyArray(_, _) = mt.ty.sty {
-                            ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
-                            let val_slice = self.temp(ty, test.span);
-                            self.cfg.push_assign(block, source_info, &val_slice,
-                                                 Rvalue::Cast(CastKind::Unsize, val, ty));
-                            val = Operand::Move(val_slice);
-                        }
-                    }
-
-                    assert!(ty.is_slice());
-
-                    let array_ty = tcx.mk_array(tcx.types.u8, bytes.data.len() as u64);
-                    let array_ref = tcx.mk_imm_ref(tcx.types.re_static, array_ty);
-                    let array = self.literal_operand(test.span, array_ref, Literal::Value {
-                        value
-                    });
-
-                    let slice = self.temp(ty, test.span);
-                    self.cfg.push_assign(block, source_info, &slice,
-                                         Rvalue::Cast(CastKind::Unsize, array, ty));
-                    Operand::Move(slice)
-                } else {
-                    self.literal_operand(test.span, ty, Literal::Value {
-                        value
-                    })
-                };
-
-                // Use PartialEq::eq for &str and &[u8] slices, instead of BinOp::Eq.
+                let val = Operand::Copy(place.clone());
+                let mut expect = self.literal_operand(test.span, ty, value);
+                // Use PartialEq::eq instead of BinOp::Eq
+                // (the binop can only handle primitives)
                 let fail = self.cfg.start_new_block();
-                if let ty::TyRef(_, mt) = ty.sty {
-                    assert!(ty.is_slice());
+                if !ty.is_scalar() {
+                    // If we're using b"..." as a pattern, we need to insert an
+                    // unsizing coercion, as the byte string has the type &[u8; N].
+                    //
+                    // We want to do this even when the scrutinee is a reference to an
+                    // array, so we can call `<[u8]>::eq` rather than having to find an
+                    // `<[u8; N]>::eq`.
+                    let unsize = |ty: Ty<'tcx>| match ty.sty {
+                        ty::TyRef(region, rty, _) => match rty.sty {
+                            ty::TyArray(inner_ty, n) => Some((region, inner_ty, n)),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    let opt_ref_ty = unsize(ty);
+                    let opt_ref_test_ty = unsize(value.ty);
+                    let mut place = place.clone();
+                    match (opt_ref_ty, opt_ref_test_ty) {
+                        // nothing to do, neither is an array
+                        (None, None) => {},
+                        (Some((region, elem_ty, _)), _) |
+                        (None, Some((region, elem_ty, _))) => {
+                            let tcx = self.hir.tcx();
+                            // make both a slice
+                            ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
+                            if opt_ref_ty.is_some() {
+                                place = self.temp(ty, test.span);
+                                self.cfg.push_assign(block, source_info, &place,
+                                                    Rvalue::Cast(CastKind::Unsize, val, ty));
+                            }
+                            if opt_ref_test_ty.is_some() {
+                                let array = self.literal_operand(
+                                    test.span,
+                                    value.ty,
+                                    value,
+                                );
+
+                                let slice = self.temp(ty, test.span);
+                                self.cfg.push_assign(block, source_info, &slice,
+                                                    Rvalue::Cast(CastKind::Unsize, array, ty));
+                                expect = Operand::Move(slice);
+                            }
+                        },
+                    }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
-                    let ty = mt.ty;
-                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty]);
+                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
+
+                    // take the argument by reference
+                    let region_scope = self.topmost_scope();
+                    let region = self.hir.tcx().mk_region(ty::ReScope(region_scope));
+                    let tam = ty::TypeAndMut {
+                        ty,
+                        mutbl: Mutability::MutImmutable,
+                    };
+                    let ref_ty = self.hir.tcx().mk_ref(region, tam);
+
+                    // let lhs_ref_place = &lhs;
+                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, place.clone());
+                    let lhs_ref_place = self.temp(ref_ty, test.span);
+                    self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
+                    let val = Operand::Move(lhs_ref_place);
+
+                    // let rhs_place = rhs;
+                    let rhs_place = self.temp(ty, test.span);
+                    self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
+
+                    // let rhs_ref_place = &rhs_place;
+                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, rhs_place);
+                    let rhs_ref_place = self.temp(ref_ty, test.span);
+                    self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
+                    let expect = Operand::Move(rhs_ref_place);
 
                     let bool_ty = self.hir.bool_ty();
                     let eq_result = self.temp(bool_ty, test.span);
@@ -598,6 +631,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
+            pat_index: candidate.pat_index,
             pre_binding_block: candidate.pre_binding_block,
             next_candidate_pre_binding_block: candidate.next_candidate_pre_binding_block,
         }
@@ -661,6 +695,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
+            pat_index: candidate.pat_index,
             pre_binding_block: candidate.pre_binding_block,
             next_candidate_pre_binding_block: candidate.next_candidate_pre_binding_block,
         }

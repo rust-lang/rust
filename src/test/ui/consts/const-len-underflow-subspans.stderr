@@ -1,0 +1,19 @@
+error: attempt to subtract with overflow
+  --> $DIR/const-len-underflow-subspans.rs:18:17
+   |
+LL |     let a: [i8; ONE - TWO] = unimplemented!();
+   |                 ^^^^^^^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error[E0080]: could not evaluate constant expression
+  --> $DIR/const-len-underflow-subspans.rs:18:12
+   |
+LL |     let a: [i8; ONE - TWO] = unimplemented!();
+   |            ^^^^^---------^
+   |                 |
+   |                 attempt to subtract with overflow
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

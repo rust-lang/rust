@@ -1,0 +1,20 @@
+warning: unnecessary path disambiguator
+  --> $DIR/issue-36116.rs:30:50
+   |
+LL |     let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>); //~ WARN unnecessary path disambiguator
+   |                                                  ^^ try removing `::`
+
+warning: unnecessary path disambiguator
+  --> $DIR/issue-36116.rs:31:15
+   |
+LL |     let g: Foo::<i32> = Foo { _a: 42 }; //~ WARN unnecessary path disambiguator
+   |               ^^ try removing `::`
+
+error: compilation successful
+  --> $DIR/issue-36116.rs:37:1
+   |
+LL | fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

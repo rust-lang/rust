@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve. There are too many initial `super`s.
+  --> $DIR/keyword-super-as-identifier.rs:12:9
+   |
+LL |     let super = 22; //~ ERROR failed to resolve. There are too many initial `super`s
+   |         ^^^^^ There are too many initial `super`s.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

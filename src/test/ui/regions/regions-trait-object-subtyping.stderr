@@ -1,0 +1,65 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/regions-trait-object-subtyping.rs:25:5
+   |
+LL |     x //~ ERROR lifetime bound not satisfied
+   |     ^
+   |
+note: lifetime parameter instantiated with the lifetime 'a as defined on the function body at 23:9
+  --> $DIR/regions-trait-object-subtyping.rs:23:9
+   |
+LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
+   |         ^^
+note: but lifetime parameter must outlive the lifetime 'b as defined on the function body at 23:12
+  --> $DIR/regions-trait-object-subtyping.rs:23:12
+   |
+LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
+   |            ^^
+
+error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to conflicting requirements
+  --> $DIR/regions-trait-object-subtyping.rs:25:5
+   |
+LL |     x //~ ERROR lifetime bound not satisfied
+   |     ^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 23:9...
+  --> $DIR/regions-trait-object-subtyping.rs:23:9
+   |
+LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
+   |         ^^
+note: ...so that the type `(dyn Dummy + 'a)` is not borrowed for too long
+  --> $DIR/regions-trait-object-subtyping.rs:25:5
+   |
+LL |     x //~ ERROR lifetime bound not satisfied
+   |     ^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 23:12...
+  --> $DIR/regions-trait-object-subtyping.rs:23:12
+   |
+LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
+   |            ^^
+   = note: ...so that the expression is assignable:
+           expected &'b mut (dyn Dummy + 'b)
+              found &mut (dyn Dummy + 'b)
+
+error[E0308]: mismatched types
+  --> $DIR/regions-trait-object-subtyping.rs:32:5
+   |
+LL |     x //~ ERROR mismatched types
+   |     ^ lifetime mismatch
+   |
+   = note: expected type `Wrapper<&'b mut (dyn Dummy + 'b)>`
+              found type `Wrapper<&'a mut (dyn Dummy + 'a)>`
+note: the lifetime 'b as defined on the function body at 30:15...
+  --> $DIR/regions-trait-object-subtyping.rs:30:15
+   |
+LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut Dummy>) -> Wrapper<&'b mut Dummy> {
+   |               ^^
+note: ...does not necessarily outlive the lifetime 'a as defined on the function body at 30:9
+  --> $DIR/regions-trait-object-subtyping.rs:30:9
+   |
+LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut Dummy>) -> Wrapper<&'b mut Dummy> {
+   |         ^^
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0308, E0478, E0495.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,17 @@
+error: This node does not have a stability attribute
+  --> $DIR/missing-stability.rs:18:1
+   |
+LL | / pub fn unmarked() {
+LL | |     //~^ ERROR This node does not have a stability attribute
+LL | |     ()
+LL | | }
+   | |_^
+
+error: This node does not have a stability attribute
+  --> $DIR/missing-stability.rs:32:5
+   |
+LL |     pub fn unmarked() {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

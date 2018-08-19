@@ -95,7 +95,7 @@
 pub trait Drop {
     /// Executes the destructor for this type.
     ///
-    /// This method is called implilcitly when the value goes out of scope,
+    /// This method is called implicitly when the value goes out of scope,
     /// and cannot be called explicitly (this is compiler error [E0040]).
     /// However, the [`std::mem::drop`] function in the prelude can be
     /// used to call the argument's `Drop` implementation.

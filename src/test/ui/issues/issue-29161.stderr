@@ -1,0 +1,16 @@
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/issue-29161.rs:15:9
+   |
+LL |         pub fn default() -> A { //~ ERROR unnecessary visibility qualifier
+   |         ^^^ `pub` not permitted here because it's implied
+
+error[E0603]: struct `A` is private
+  --> $DIR/issue-29161.rs:23:5
+   |
+LL |     a::A::default();
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0449, E0603.
+For more information about an error, try `rustc --explain E0449`.

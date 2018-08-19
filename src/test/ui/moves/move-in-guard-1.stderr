@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/move-in-guard-1.rs:20:24
+   |
+LL |         (1, _) if take(x) => (),
+   |                        - value moved here
+LL |         (_, 2) if take(x) => (), //~ ERROR use of moved value: `x`
+   |                        ^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

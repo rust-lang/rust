@@ -1,0 +1,11 @@
+error[E0391]: cycle detected when processing `x`
+  --> $DIR/infinite-vec-type-recursion.rs:11:14
+   |
+LL | type x = Vec<x>;
+   |              ^
+   |
+   = note: ...which again requires processing `x`, completing the cycle
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,0 +1,15 @@
+error[E0087]: too many type parameters provided: expected at most 0 type parameters, found 1 type parameter
+  --> $DIR/E0087.rs:15:11
+   |
+LL |     foo::<f64>(); //~ ERROR expected at most 0 type parameters, found 1 type parameter [E0087]
+   |           ^^^ expected 0 type parameters
+
+error[E0087]: too many type parameters provided: expected at most 1 type parameter, found 2 type parameters
+  --> $DIR/E0087.rs:17:16
+   |
+LL |     bar::<f64, u64>(); //~ ERROR expected at most 1 type parameter, found 2 type parameters [E0087]
+   |                ^^^ expected 1 type parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0087`.

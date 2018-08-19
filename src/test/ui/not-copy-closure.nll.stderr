@@ -1,0 +1,11 @@
+error[E0382]: use of moved value: `hello`
+  --> $DIR/not-copy-closure.rs:20:13
+   |
+LL |     let b = hello;
+   |             ----- value moved here
+LL |     let c = hello; //~ ERROR use of moved value: `hello` [E0382]
+   |             ^^^^^ value used here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

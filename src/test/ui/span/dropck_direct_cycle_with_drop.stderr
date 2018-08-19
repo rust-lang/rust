@@ -1,10 +1,10 @@
 error[E0597]: `d2` does not live long enough
   --> $DIR/dropck_direct_cycle_with_drop.rs:46:20
    |
-46 |     d1.p.set(Some(&d2));
+LL |     d1.p.set(Some(&d2));
    |                    ^^ borrowed value does not live long enough
 ...
-50 | }
+LL | }
    | - `d2` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -12,13 +12,14 @@ error[E0597]: `d2` does not live long enough
 error[E0597]: `d1` does not live long enough
   --> $DIR/dropck_direct_cycle_with_drop.rs:48:20
    |
-48 |     d2.p.set(Some(&d1));
+LL |     d2.p.set(Some(&d1));
    |                    ^^ borrowed value does not live long enough
-49 |     //~^ ERROR `d1` does not live long enough
-50 | }
+LL |     //~^ ERROR `d1` does not live long enough
+LL | }
    | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

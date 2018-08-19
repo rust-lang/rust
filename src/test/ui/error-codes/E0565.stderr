@@ -1,0 +1,9 @@
+error[E0565]: unsupported literal
+  --> $DIR/E0565.rs:14:8
+   |
+LL | #[repr("C")] //~ ERROR E0565
+   |        ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0565`.

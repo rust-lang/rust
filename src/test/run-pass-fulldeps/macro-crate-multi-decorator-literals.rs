@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#![feature(plugin, custom_attribute, attr_literals)]
+#![feature(plugin, rustc_attrs, attr_literals)]
 #![plugin(macro_crate_test)]
 
 #[macro_use]
@@ -30,16 +30,16 @@ extern crate macro_crate_test;
 // This results in a function named `simple` that calls `f(1, "hello", 3.14)`.
 // As a result, the expression `simple()` evaluates to `(1, "helllo", 3.14)`.
 
-#[caller(simple, 1, "hello", 3.14)]
-#[caller(simple1, 2, "bye", 6.28)]
-#[caller(simple2, 3, "hi", 1.01)]
+#[rustc_caller(simple, 1, "hello", 3.14)]
+#[rustc_caller(simple1, 2, "bye", 6.28)]
+#[rustc_caller(simple2, 3, "hi", 1.01)]
 fn f(num: isize, string: &'static str, float: f32) -> (isize, &'static str, f32) {
     (num, string, float)
 }
 
-#[caller(complex, true, 10)]
-#[caller(complex1, false, 15)]
-#[caller(complex2, true, 20)]
+#[rustc_caller(complex, true, 10)]
+#[rustc_caller(complex1, false, 15)]
+#[rustc_caller(complex2, true, 20)]
 fn g(emit: bool, num: i32) -> Option<i32> {
     match emit {
         true => Some(num),

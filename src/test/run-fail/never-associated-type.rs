@@ -10,9 +10,9 @@
 
 // Test that we can use ! as an associated type.
 
-#![feature(never_type)]
-
 // error-pattern:kapow!
+
+#![feature(never_type)]
 
 trait Foo {
     type Wow;

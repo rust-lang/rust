@@ -1,0 +1,24 @@
+error[E0506]: cannot assign to `a[..]` because it is borrowed (Ast)
+  --> $DIR/borrowck-vec-pattern-move-tail.rs:24:5
+   |
+LL |         [1, 2, ref tail..] => tail,
+   |                -------- borrow of `a[..]` occurs here
+...
+LL |     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowed
+   |     ^^^^^^^^ assignment to borrowed `a[..]` occurs here
+
+error[E0506]: cannot assign to `a[..]` because it is borrowed (Mir)
+  --> $DIR/borrowck-vec-pattern-move-tail.rs:24:5
+   |
+LL |         [1, 2, ref tail..] => tail,
+   |                -------- borrow of `a[..]` occurs here
+...
+LL |     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowed
+   |     ^^^^^^^^ assignment to borrowed `a[..]` occurs here
+...
+LL |     println!("t[0]: {}", t[0]);
+   |                          ---- borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0506`.

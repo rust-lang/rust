@@ -1,0 +1,28 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/issue-52213.rs:12:11
+   |
+LL |     match (&t,) { //~ ERROR cannot infer an appropriate lifetime
+   |           ^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 11:23...
+  --> $DIR/issue-52213.rs:11:23
+   |
+LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
+   |                       ^^
+   = note: ...so that the types are compatible:
+           expected (&&(T,),)
+              found (&&'a (T,),)
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 11:27...
+  --> $DIR/issue-52213.rs:11:27
+   |
+LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
+   |                           ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/issue-52213.rs:13:20
+   |
+LL |         ((u,),) => u,
+   |                    ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

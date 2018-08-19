@@ -177,7 +177,7 @@ fn start_qemu_emulator(target: &str,
         _ => panic!("cannot start emulator for: {}"< target),
     }
 
-    fn add_files(w: &mut Write, root: &Path, cur: &Path) {
+    fn add_files(w: &mut dyn Write, root: &Path, cur: &Path) {
         for entry in t!(cur.read_dir()) {
             let entry = t!(entry);
             let path = entry.path();
@@ -297,7 +297,7 @@ fn run(files: String, args: Vec<String>) {
     }
 }
 
-fn send(path: &Path, dst: &mut Write) {
+fn send(path: &Path, dst: &mut dyn Write) {
     t!(dst.write_all(path.file_name().unwrap().to_str().unwrap().as_bytes()));
     t!(dst.write_all(&[0]));
     let mut file = t!(File::open(&path));

@@ -12,7 +12,6 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn a() {
     // The match is considered unreachable here, because the `return`
@@ -23,6 +22,7 @@ fn a() {
 fn b() {
     match () { () => return }
     println!("I am dead");
+    //~^ ERROR unreachable statement
 }
 
 fn c() {
@@ -33,6 +33,7 @@ fn c() {
 fn d() {
     match () { () if false => return, () => return }
     println!("I am dead");
+    //~^ ERROR unreachable statement
 }
 
 fn e() {

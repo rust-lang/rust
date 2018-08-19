@@ -14,7 +14,7 @@
 // ignore-tidy-linelength
 // ignore-windows
 // ignore-macos
-// min-system-llvm-version 5.1
+// min-llvm-version 6.0
 
 // compile-flags: -g -C no-prepopulate-passes
 

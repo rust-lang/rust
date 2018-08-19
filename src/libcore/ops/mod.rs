@@ -161,7 +161,6 @@ mod drop;
 mod function;
 mod generator;
 mod index;
-mod place;
 mod range;
 mod try;
 mod unsize;
@@ -191,17 +190,14 @@ pub use self::index::{Index, IndexMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-pub use self::range::{RangeInclusive, RangeToInclusive};
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+pub use self::range::{RangeInclusive, RangeToInclusive, RangeBounds, Bound};
 
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::try::Try;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub use self::generator::{Generator, GeneratorState};
-
-#[unstable(feature = "placement_new_protocol", issue = "27779")]
-pub use self::place::{Place, Placer, InPlace, Boxed, BoxPlace};
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 pub use self::unsize::CoerceUnsized;

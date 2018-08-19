@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Error: std::clone::Clone` is not satisfied
+  --> $DIR/derives-span-Clone-struct.rs:18:5
+   |
+LL |     x: Error //~ ERROR
+   |     ^^^^^^^^ the trait `std::clone::Clone` is not implemented for `Error`
+   |
+   = note: required by `std::clone::Clone::clone`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

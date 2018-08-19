@@ -1,44 +1,44 @@
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, PrimVal, EvalResult, Pointer, MemoryPointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer, ScalarMaybeUndef};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Place {
-    /// An place referring to a value allocated in the `Memory` system.
+    /// A place referring to a value allocated in the `Memory` system.
     Ptr {
-        /// An place may have an invalid (integral or undef) pointer,
+        /// A place may have an invalid (integral or undef) pointer,
         /// since it might be turned back into a reference
         /// before ever being dereferenced.
-        ptr: Pointer,
+        ptr: ScalarMaybeUndef,
         align: Align,
         extra: PlaceExtra,
     },
 
-    /// An place referring to a value on the stack. Represented by a stack frame index paired with
+    /// A place referring to a value on the stack. Represented by a stack frame index paired with
     /// a Mir local index.
     Local { frame: usize, local: mir::Local },
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum PlaceExtra {
     None,
     Length(u64),
-    Vtable(MemoryPointer),
+    Vtable(Pointer),
     DowncastVariant(usize),
 }
 
 impl<'tcx> Place {
-    /// Produces an Place that will error if attempted to be read from
+    /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(PrimVal::Undef.into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(ScalarMaybeUndef::Undef, Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_primval_ptr(ptr: Pointer, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: ScalarMaybeUndef, align: Align) -> Self {
         Place::Ptr {
             ptr,
             align,
@@ -46,11 +46,11 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn from_ptr(ptr: MemoryPointer, align: Align) -> Self {
-        Self::from_primval_ptr(ptr.into(), align)
+    pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
+        Self::from_scalar_ptr(ScalarMaybeUndef::Scalar(ptr.into()), align)
     }
 
-    pub fn to_ptr_align_extra(self) -> (Pointer, Align, PlaceExtra) {
+    pub fn to_ptr_align_extra(self) -> (ScalarMaybeUndef, Align, PlaceExtra) {
         match self {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             _ => bug!("to_ptr_and_extra: expected Place::Ptr, got {:?}", self),
@@ -58,20 +58,24 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn to_ptr_align(self) -> (Pointer, Align) {
+    pub fn to_ptr_align(self) -> (ScalarMaybeUndef, Align) {
         let (ptr, align, _extra) = self.to_ptr_align_extra();
         (ptr, align)
     }
 
-    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
-        self.to_ptr_align().0.to_ptr()
+        self.to_ptr_align().0.unwrap_or_err()?.to_ptr()
     }
 
-    pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
+    pub(super) fn elem_ty_and_len(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'_, 'tcx, '_>
+    ) -> (Ty<'tcx>, u64) {
         match ty.sty {
-            ty::TyArray(elem, n) => (elem, n.val.to_const_int().unwrap().to_u64().unwrap() as u64),
+            ty::TyArray(elem, n) => (elem, n.unwrap_usize(tcx)),
 
             ty::TySlice(elem) => {
                 match self {
@@ -90,11 +94,11 @@ impl<'tcx> Place {
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Reads a value from the place without going through the intermediate step of obtaining
     /// a `miri::Place`
     pub fn try_read_place(
-        &mut self,
+        &self,
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::Place::*;
@@ -102,21 +106,57 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
             Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
             // Directly reading a local will always succeed
-            Local(local) => self.frame().get_local(local).map(Some),
-            // Directly reading a static will always succeed
-            Static(ref static_) => {
-                let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                Ok(Some(self.read_global_as_value(GlobalId {
-                    instance,
-                    promoted: None,
-                }, self.layout_of(self.place_ty(place))?)))
-            }
+            Local(local) => self.frame().locals[local].access().map(Some),
+            // No fast path for statics. Reading from statics is rare and would require another
+            // Machine function to handle differently in miri.
+            Promoted(_) |
+            Static(_) => Ok(None),
             Projection(ref proj) => self.try_read_place_projection(proj),
         }
     }
 
+    pub fn read_field(
+        &self,
+        base: Value,
+        variant: Option<usize>,
+        field: mir::Field,
+        mut base_layout: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Value, TyLayout<'tcx>)> {
+        if let Some(variant_index) = variant {
+            base_layout = base_layout.for_variant(self, variant_index);
+        }
+        let field_index = field.index();
+        let field = base_layout.field(self, field_index)?;
+        if field.size.bytes() == 0 {
+            return Ok((
+                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits: 0, size: 0 })),
+                field,
+            ));
+        }
+        let offset = base_layout.fields.offset(field_index);
+        let value = match base {
+            // the field covers the entire type
+            Value::ScalarPair(..) |
+            Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => base,
+            // extract fields from types with `ScalarPair` ABI
+            Value::ScalarPair(a, b) => {
+                let val = if offset.bytes() == 0 { a } else { b };
+                Value::Scalar(val)
+            },
+            Value::ByRef(base_ptr, align) => {
+                let offset = base_layout.fields.offset(field_index);
+                let ptr = base_ptr.ptr_offset(offset, self)?;
+                let align = align.min(base_layout.align).min(field.align);
+                assert!(!field.is_unsized());
+                Value::ByRef(ptr, align)
+            },
+            Value::Scalar(val) => bug!("field access on non aggregate {:#?}, {:#?}", val, base_layout),
+        };
+        Ok((value, field))
+    }
+
     fn try_read_place_projection(
-        &mut self,
+        &self,
         proj: &mir::PlaceProjection<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::ProjectionElem::*;
@@ -125,24 +165,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             None => return Ok(None),
         };
         let base_ty = self.place_ty(&proj.base);
+        let base_layout = self.layout_of(base_ty)?;
         match proj.elem {
-            Field(field, _) => {
-                let base_layout = self.layout_of(base_ty)?;
-                let field_index = field.index();
-                let field = base_layout.field(&self, field_index)?;
-                let offset = base_layout.fields.offset(field_index);
-                match base {
-                    // the field covers the entire type
-                    Value::ByValPair(..) |
-                    Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some(base)),
-                    // split fat pointers, 2 element tuples, ...
-                    Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
-                        let val = [a, b][field_index];
-                        Ok(Some(Value::ByVal(val)))
-                    },
-                    _ => Ok(None),
-                }
-            },
+            Field(field, _) => Ok(Some(self.read_field(base, None, field, base_layout)?.0)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |
@@ -159,7 +184,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         // Shortcut for things like accessing a fat pointer's field,
-        // which would otherwise (in the `eval_place` path) require moving a `ByValPair` to memory
+        // which would otherwise (in the `eval_place` path) require moving a `ScalarPair` to memory
         // and returning an `Place::Ptr` to it
         if let Some(val) = self.try_read_place(place)? {
             return Ok(val);
@@ -172,9 +197,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match place {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                Ok(Value::ByRef(ptr, align))
+                Ok(Value::ByRef(ptr.unwrap_or_err()?, align))
             }
-            Place::Local { frame, local } => self.stack[frame].get_local(local),
+            Place::Local { frame, local } => self.stack[frame].locals[local].access(),
         }
     }
 
@@ -187,16 +212,33 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 local,
             },
 
-            Static(ref static_) => {
-                let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                let gid = GlobalId {
+            Promoted(ref promoted) => {
+                let instance = self.frame().instance;
+                let val = self.read_global_as_value(GlobalId {
                     instance,
-                    promoted: None,
-                };
+                    promoted: Some(promoted.0),
+                })?;
+                if let Value::ByRef(ptr, align) = val {
+                    Place::Ptr {
+                        ptr: ptr.into(),
+                        align,
+                        extra: PlaceExtra::None,
+                    }
+                } else {
+                    bug!("evaluated promoted and got {:#?}", val);
+                }
+            }
+
+            Static(ref static_) => {
                 let layout = self.layout_of(self.place_ty(mir_place))?;
-                let alloc = self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global");
+                let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None
+                };
+                let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: MemoryPointer::new(alloc, 0).into(),
+                    ptr: ScalarMaybeUndef::Scalar(Scalar::Ptr(alloc.into())),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }
@@ -209,9 +251,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         };
 
-        if log_enabled!(::log::Level::Trace) {
-            self.dump_local(place);
-        }
+        self.dump_local(place);
 
         Ok(place)
     }
@@ -236,14 +276,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let (base_ptr, base_align, base_extra) = match base {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             Place::Local { frame, local } => {
-                match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
+                match (self.stack[frame].locals[local].access()?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
-                    (&Value::ByVal(_), &layout::Abi::Scalar(_)) |
-                    (&Value::ByValPair(..), &layout::Abi::ScalarPair(..))
-                        if offset.bytes() == 0 && field.size == base_layout.size =>
-                    {
-                        return Ok((base, field));
-                    }
+                    (Value::Scalar(_), &layout::Abi::Scalar(_)) |
+                    (Value::ScalarPair(..), &layout::Abi::ScalarPair(..))
+                    if offset.bytes() == 0 && field.size == base_layout.size => {
+                        return Ok((base, field))
+                    },
                     _ => self.force_allocation(base)?.to_ptr_align_extra(),
                 }
             }
@@ -255,12 +294,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     base_layout.ty,
                     base_ptr.to_value_with_vtable(tab),
                 )?;
-                offset.abi_align(align).bytes()
+                offset.abi_align(align)
             }
-            _ => offset.bytes(),
+            _ => offset,
         };
 
-        let ptr = base_ptr.offset(offset, &self)?;
+        let ptr = base_ptr.ptr_offset(offset, &self)?;
         let align = base_align.min(base_layout.align).min(field.align);
         let extra = if !field.is_unsized() {
             PlaceExtra::None
@@ -298,7 +337,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => Place::from_primval_ptr(self.into_ptr(val)?, layout.align),
+            _ => Place::from_scalar_ptr(self.into_ptr(val)?, layout.align),
         })
     }
 
@@ -312,15 +351,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let base = self.force_allocation(base)?;
         let (base_ptr, align) = base.to_ptr_align();
 
-        let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
-        let elem_size = self.layout_of(elem_ty)?.size.bytes();
+        let (elem_ty, len) = base.elem_ty_and_len(outer_ty, self.tcx.tcx);
+        let elem_size = self.layout_of(elem_ty)?.size;
         assert!(
             n < len,
             "Tried to access element {} of array/slice with length {}",
             n,
             len
         );
-        let ptr = base_ptr.offset(n * elem_size, &*self)?;
+        let ptr = base_ptr.ptr_offset(elem_size * n, &*self)?;
         Ok(Place::Ptr {
             ptr,
             align,
@@ -361,8 +400,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let val = self.read_place(base)?;
 
                 let pointee_type = match base_ty.sty {
-                    ty::TyRawPtr(ref tam) |
-                    ty::TyRef(_, ref tam) => tam.ty,
+                    ty::TyRawPtr(ref tam) => tam.ty,
+                    ty::TyRef(_, ty, _) => ty,
                     ty::TyAdt(def, _) if def.is_box() => base_ty.boxed_ty(),
                     _ => bug!("can only deref pointer types"),
                 };
@@ -373,10 +412,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             Index(local) => {
-                let value = self.frame().get_local(local)?;
+                let value = self.frame().locals[local].access()?;
                 let ty = self.tcx.types.usize;
-                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
-                self.place_index(base, base_ty, n)
+                let n = self
+                    .value_to_scalar(ValTy { value, ty })?
+                    .to_bits(self.tcx.data_layout.pointer_size)?;
+                self.place_index(base, base_ty, n as u64)
             }
 
             ConstantIndex {
@@ -388,8 +429,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let base = self.force_allocation(base)?;
                 let (base_ptr, align) = base.to_ptr_align();
 
-                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.layout_of(elem_ty)?.size.bytes();
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
+                let elem_size = self.layout_of(elem_ty)?.size;
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
@@ -398,7 +439,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     u64::from(offset)
                 };
 
-                let ptr = base_ptr.offset(index * elem_size, &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * index, &self)?;
                 Ok(Place::Ptr { ptr, align, extra: PlaceExtra::None })
             }
 
@@ -407,10 +448,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let base = self.force_allocation(base)?;
                 let (base_ptr, align) = base.to_ptr_align();
 
-                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.layout_of(elem_ty)?.size.bytes();
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
+                let elem_size = self.layout_of(elem_ty)?.size;
                 assert!(u64::from(from) <= n - u64::from(to));
-                let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * u64::from(from), &self)?;
                 // sublicing arrays produces arrays
                 let extra = if self.type_is_sized(base_ty) {
                     PlaceExtra::None
@@ -424,7 +465,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         self.monomorphize(
-            place.ty(self.mir(), self.tcx).to_ty(self.tcx),
+            place.ty(self.mir(), *self.tcx).to_ty(*self.tcx),
             self.substs(),
         )
     }

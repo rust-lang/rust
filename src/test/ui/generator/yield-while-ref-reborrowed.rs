@@ -13,7 +13,7 @@
 use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
 
-fn reborrow_shared_ref(x: &i32) {
+unsafe fn reborrow_shared_ref(x: &i32) {
     // This is OK -- we have a borrow live over the yield, but it's of
     // data that outlives the generator.
     let mut b = move || {
@@ -24,7 +24,7 @@ fn reborrow_shared_ref(x: &i32) {
     b.resume();
 }
 
-fn reborrow_mutable_ref(x: &mut i32) {
+unsafe fn reborrow_mutable_ref(x: &mut i32) {
     // This is OK -- we have a borrow live over the yield, but it's of
     // data that outlives the generator.
     let mut b = move || {
@@ -35,7 +35,7 @@ fn reborrow_mutable_ref(x: &mut i32) {
     b.resume();
 }
 
-fn reborrow_mutable_ref_2(x: &mut i32) {
+unsafe fn reborrow_mutable_ref_2(x: &mut i32) {
     // ...but not OK to go on using `x`.
     let mut b = || {
         let a = &mut *x;

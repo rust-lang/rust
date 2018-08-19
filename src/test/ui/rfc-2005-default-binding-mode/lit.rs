@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 // FIXME(tschottdorf): we want these to compile, but they don't.
 
 fn with_str() {

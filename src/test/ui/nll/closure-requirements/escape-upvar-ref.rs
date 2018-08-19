@@ -19,7 +19,7 @@
 // `'b`.  This relationship is propagated to the closure creator,
 // which reports an error.
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 

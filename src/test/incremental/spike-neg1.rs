@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // A variant of the first "spike" test that serves to test the
-// `rustc_partition_reused` and `rustc_partition_translated` tests.
+// `rustc_partition_reused` and `rustc_partition_codegened` tests.
 // Here we change and say that the `x` module will be reused (when in
 // fact it will not), and then indicate that the test itself
 // should-fail (because an error will be reported, and hence the

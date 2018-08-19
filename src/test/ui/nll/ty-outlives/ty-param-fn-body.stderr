@@ -1,16 +1,17 @@
-warning: not reporting region error due to -Znll
-  --> $DIR/ty-param-fn-body.rs:30:5
+warning: not reporting region error due to nll
+  --> $DIR/ty-param-fn-body.rs:29:5
    |
-30 |     outlives(cell, t)
+LL |     outlives(cell, t)
    |     ^^^^^^^^
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn-body.rs:30:5
+  --> $DIR/ty-param-fn-body.rs:29:5
    |
-30 |     outlives(cell, t)
+LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0309`.

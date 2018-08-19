@@ -1,0 +1,8 @@
+error: expected string literal
+  --> $DIR/extenv-not-string-literal.rs:11:18
+   |
+LL | fn main() { env!(10, "two"); } //~ ERROR: expected string literal
+   |                  ^^
+
+error: aborting due to previous error
+

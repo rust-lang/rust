@@ -1,26 +1,27 @@
 error: expected identifier, found keyword `return`
   --> $DIR/issue-15980.rs:20:13
    |
-18 |         Err(ref e) if e.kind == io::EndOfFile {
+LL |         Err(ref e) if e.kind == io::EndOfFile {
    |                                 ------------- while parsing this struct
-19 |             //~^ NOTE while parsing this struct
-20 |             return
+LL |             //~^ NOTE while parsing this struct
+LL |             return
    |             ^^^^^^ expected identifier, found keyword
 
 error: expected one of `.`, `=>`, `?`, or an operator, found `_`
   --> $DIR/issue-15980.rs:25:9
    |
-23 |         }
+LL |         }
    |          - expected one of `.`, `=>`, `?`, or an operator here
-24 |         //~^ NOTE expected one of `.`, `=>`, `?`, or an operator here
-25 |         _ => {}
+LL |         //~^ NOTE expected one of `.`, `=>`, `?`, or an operator here
+LL |         _ => {}
    |         ^ unexpected token
 
 error[E0412]: cannot find type `IoResult` in module `io`
   --> $DIR/issue-15980.rs:14:16
    |
-14 |     let x: io::IoResult<()> = Ok(());
+LL |     let x: io::IoResult<()> = Ok(());
    |                ^^^^^^^^ did you mean `Result`?
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0412`.

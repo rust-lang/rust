@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(drain, collections_bound, btree_range, vecmap)]
+#![feature(drain, collections_bound, btree_range)]
 
 use std::collections::BinaryHeap;
 use std::collections::{BTreeMap, BTreeSet};
@@ -18,8 +18,8 @@ use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use std::collections::Bound::Included;
 use std::mem;
+use std::ops::Bound::Included;
 
 fn is_sync<T>(_: T) where T: Sync {}
 fn is_send<T>(_: T) where T: Send {}

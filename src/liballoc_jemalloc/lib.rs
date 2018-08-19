@@ -11,32 +11,24 @@
 #![no_std]
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc_jemalloc",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "27783")]
-#![deny(warnings)]
-#![feature(alloc)]
-#![feature(alloc_system)]
+            reason = "implementation detail of std, does not provide any public API",
+            issue = "0")]
+#![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]
+#![cfg_attr(not(stage0), feature(nll))]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 #![rustc_alloc_kind = "exe"]
 
-extern crate alloc;
-extern crate alloc_system;
 extern crate libc;
 
 #[cfg(not(dummy_jemalloc))]
 pub use contents::*;
 #[cfg(not(dummy_jemalloc))]
 mod contents {
-    use core::ptr;
-
-    use alloc::heap::{Alloc, AllocErr, Layout};
-    use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 
     // Note that the symbols here are prefixed by default on macOS and Windows (we
@@ -57,16 +49,8 @@ mod contents {
         fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
                        target_os = "dragonfly", target_os = "windows", target_env = "musl"),
-                   link_name = "je_xallocx")]
-        fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
-        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_sdallocx")]
         fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
-        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
-                   link_name = "je_nallocx")]
-        fn nallocx(size: size_t, flags: c_int) -> size_t;
     }
 
     const MALLOCX_ZERO: c_int = 0x40;
@@ -107,23 +91,10 @@ mod contents {
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_alloc(size: usize,
-                                     align: usize,
-                                     err: *mut u8) -> *mut u8 {
+    pub unsafe extern fn __rde_alloc(size: usize, align: usize) -> *mut u8 {
         let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(size, align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_oom(err: *const u8) -> ! {
-        System.oom((*(err as *const AllocErr)).clone())
     }
 
     #[no_mangle]
@@ -137,116 +108,24 @@ mod contents {
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_usable_size(layout: *const u8,
-                                           min: *mut usize,
-                                           max: *mut usize) {
-        let layout = &*(layout as *const Layout);
-        let flags = align_to_flags(layout.align(), layout.size());
-        let size = nallocx(layout.size(), flags) as usize;
-        *min = layout.size();
-        if size > 0 {
-            *max = size;
-        } else {
-            *max = layout.size();
-        }
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_realloc(ptr: *mut u8,
                                        _old_size: usize,
-                                       old_align: usize,
-                                       new_size: usize,
-                                       new_align: usize,
-                                       err: *mut u8) -> *mut u8 {
-        if new_align != old_align {
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Unsupported { details: "can't change alignments" });
-            return 0 as *mut u8
-        }
-
-        let flags = align_to_flags(new_align, new_size);
+                                       align: usize,
+                                       new_size: usize) -> *mut u8 {
+        let flags = align_to_flags(align, new_size);
         let ptr = rallocx(ptr as *mut c_void, new_size, flags) as *mut u8;
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(new_size, new_align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
     }
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_alloc_zeroed(size: usize,
-                                            align: usize,
-                                            err: *mut u8) -> *mut u8 {
+    pub unsafe extern fn __rde_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let ptr = if align <= MIN_ALIGN && align <= size {
             calloc(size as size_t, 1) as *mut u8
         } else {
             let flags = align_to_flags(align, size) | MALLOCX_ZERO;
             mallocx(size as size_t, flags) as *mut u8
         };
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(size, align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_alloc_excess(size: usize,
-                                            align: usize,
-                                            excess: *mut usize,
-                                            err: *mut u8) -> *mut u8 {
-        let p = __rde_alloc(size, align, err);
-        if !p.is_null() {
-            let flags = align_to_flags(align, size);
-            *excess = nallocx(size, flags) as usize;
-        }
-        return p
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_realloc_excess(ptr: *mut u8,
-                                              old_size: usize,
-                                              old_align: usize,
-                                              new_size: usize,
-                                              new_align: usize,
-                                              excess: *mut usize,
-                                              err: *mut u8) -> *mut u8 {
-        let p = __rde_realloc(ptr, old_size, old_align, new_size, new_align, err);
-        if !p.is_null() {
-            let flags = align_to_flags(new_align, new_size);
-            *excess = nallocx(new_size, flags) as usize;
-        }
-        p
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_grow_in_place(ptr: *mut u8,
-                                             old_size: usize,
-                                             old_align: usize,
-                                             new_size: usize,
-                                             new_align: usize) -> u8 {
-        __rde_shrink_in_place(ptr, old_size, old_align, new_size, new_align)
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_shrink_in_place(ptr: *mut u8,
-                                               _old_size: usize,
-                                               old_align: usize,
-                                               new_size: usize,
-                                               new_align: usize) -> u8 {
-        if old_align == new_align {
-            let flags = align_to_flags(new_align, new_size);
-            (xallocx(ptr as *mut c_void, new_size, 0, flags) == new_size) as u8
-        } else {
-            0
-        }
     }
 }
