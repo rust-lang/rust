@@ -4944,13 +4944,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // `impl Trait` is treated as a normal generic parameter internally,
             // but we don't allow users to specify the parameter's value
             // explicitly, so we have to do some error-checking here.
-            suppress_errors.insert(index, AstConv::check_generic_arg_count_for_call(
+            let suppress = AstConv::check_generic_arg_count_for_call(
                 self.tcx,
                 span,
                 &generics,
                 &seg,
                 false, // `is_method_call`
-            ));
+            );
+            if suppress {
+                self.set_tainted_by_errors(); // See issue #53251.
+            }
+            suppress_errors.insert(index, suppress);
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
