@@ -226,6 +226,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Validate all fields
         match dest.layout.fields {
             // primitives are unions with zero fields
+            // FIXME: Use some other indicator instead, like `layout.abi`.
             layout::FieldPlacement::Union(0) => {
                 match dest.layout.abi {
                     // nothing to do, whatever the pointer points to, it is never going to be read
@@ -277,41 +278,47 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                // fat pointers need special treatment
-                match dest.layout.ty.builtin_deref(false).map(|tam| &tam.ty.sty) {
+                // Fat pointers need special treatment.
+                match dest.layout.ty.builtin_deref(true).map(|tam| &tam.ty.sty) {
                     | Some(ty::TyStr)
                     | Some(ty::TySlice(_)) => {
-                        // check the length (for nicer error messages)
+                        // check the length (for nicer error messages); must be valid even
+                        // for a raw pointer.
                         let len_mplace = self.mplace_field(dest, 1)?;
                         let len = self.read_scalar(len_mplace.into())?;
                         let len = match len.to_bits(len_mplace.layout.size) {
                             Err(_) => return validation_failure!("length is not a valid integer", path),
                             Ok(len) => len as u64,
                         };
-                        // get the fat ptr, and recursively check it
-                        let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                        assert_eq!(ptr.extra, PlaceExtra::Length(len));
-                        let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
-                        if seen.insert(unpacked_ptr) {
-                            todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                        // for safe ptrs, get the fat ptr, and recursively check it
+                        if !dest.layout.ty.is_unsafe_ptr() {
+                            let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
+                            assert_eq!(ptr.extra, PlaceExtra::Length(len));
+                            let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                            if seen.insert(unpacked_ptr) {
+                                todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                            }
                         }
                     },
                     Some(ty::TyDynamic(..)) => {
-                        // check the vtable (for nicer error messages)
+                        // check the vtable (for nicer error messages); must be valid even for a
+                        // raw ptr.
                         let vtable = self.read_scalar(self.mplace_field(dest, 1)?.into())?;
                         let vtable = match vtable.to_ptr() {
                             Err(_) => return validation_failure!("vtable address is not a pointer", path),
                             Ok(vtable) => vtable,
                         };
-                        // get the fat ptr, and recursively check it
-                        let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                        assert_eq!(ptr.extra, PlaceExtra::Vtable(vtable));
-                        let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
-                        if seen.insert(unpacked_ptr) {
-                            todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                        // for safe ptrs, get the fat ptr, and recursively check it
+                        if !dest.layout.ty.is_unsafe_ptr() {
+                            let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
+                            assert_eq!(ptr.extra, PlaceExtra::Vtable(vtable));
+                            let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                            if seen.insert(unpacked_ptr) {
+                                todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                            }
+                            // FIXME: More checks for the vtable... making sure it is exactly
+                            // the one one would expect for this type.
                         }
-                        // FIXME: More checks for the vtable... making sure it is exactly
-                        // the one one would expect for this type.
                     },
                     Some(ty) =>
                         bug!("Unexpected fat pointer target type {:?}", ty),
