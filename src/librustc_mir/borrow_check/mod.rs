@@ -798,12 +798,6 @@ enum LocalMutationIsAllowed {
     No,
 }
 
-struct AccessErrorsReported {
-    mutability_error: bool,
-    #[allow(dead_code)]
-    conflict_error: bool,
-}
-
 #[derive(Copy, Clone)]
 enum InitializationRequiringAction {
     Update,
@@ -1072,7 +1066,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind: (ShallowOrDeep, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
-    ) -> AccessErrorsReported {
+    ) {
         let (sd, rw) = kind;
 
         if let Activation(_, borrow_index) = rw {
@@ -1082,10 +1076,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      place: {:?} borrow_index: {:?}",
                     place_span.0, borrow_index
                 );
-                return AccessErrorsReported {
-                    mutability_error: false,
-                    conflict_error: true,
-                };
+                return;
             }
         }
 
@@ -1097,10 +1088,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 "access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
                 place_span, kind
             );
-            return AccessErrorsReported {
-                mutability_error: false,
-                conflict_error: true,
-            };
+            return;
         }
 
         let mutability_error =
@@ -1121,11 +1109,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
             self.access_place_error_reported
                 .insert((place_span.0.clone(), place_span.1));
-        }
-
-        AccessErrorsReported {
-            mutability_error,
-            conflict_error,
         }
     }
 
@@ -1275,23 +1258,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let errors_reported = self.access_place(
+        // Special case: you can assign a immutable local variable
+        // (e.g., `x = ...`) so long as it has never been initialized
+        // before (at this point in the flow).
+        if let &Place::Local(local) = place_span.0 {
+            if let Mutability::Not = self.mir.local_decls[local].mutability {
+                // check for reassignments to immutable local variables
+                self.check_if_reassignment_to_immutable_state(
+                    context,
+                    local,
+                    place_span,
+                    flow_state,
+                );
+                return;
+            }
+        }
+
+        // Otherwise, use the normal access permission rules.
+        self.access_place(
             context,
             place_span,
             (kind, Write(WriteKind::Mutate)),
-            // We want immutable upvars to cause an "assignment to immutable var"
-            // error, not an "reassignment of immutable var" error, because the
-            // latter can't find a good previous assignment span.
-            //
-            // There's probably a better way to do this.
-            LocalMutationIsAllowed::ExceptUpvars,
+            LocalMutationIsAllowed::No,
             flow_state,
         );
-
-        if !errors_reported.mutability_error {
-            // check for reassignments to immutable local variables
-            self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
-        }
     }
 
     fn consume_rvalue(
@@ -1590,27 +1580,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn check_if_reassignment_to_immutable_state(
         &mut self,
         context: Context,
-        (place, span): (&Place<'tcx>, Span),
+        local: Local,
+        place_span: (&Place<'tcx>, Span),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        debug!("check_if_reassignment_to_immutable_state({:?})", place);
-        // determine if this path has a non-mut owner (and thus needs checking).
-        let err_place = match self.is_mutable(place, LocalMutationIsAllowed::No) {
-            Ok(..) => return,
-            Err(place) => place,
-        };
-        debug!(
-            "check_if_reassignment_to_immutable_state({:?}) - is an imm local",
-            place
-        );
+        debug!("check_if_reassignment_to_immutable_state({:?})", local);
 
-        for i in flow_state.ever_inits.iter_incoming() {
-            let init = self.move_data.inits[i];
-            let init_place = &self.move_data.move_paths[init.path].place;
-            if places_conflict::places_conflict(self.tcx, self.mir, &init_place, place, Deep) {
-                self.report_illegal_reassignment(context, (place, span), init.span, err_place);
-                break;
-            }
+        // Check if any of the initializiations of `local` have happened yet:
+        let mpi = self.move_data.rev_lookup.find_local(local);
+        let init_indices = &self.move_data.init_path_map[mpi];
+        let first_init_index = init_indices.iter().find(|ii| flow_state.ever_inits.contains(ii));
+        if let Some(&init_index) = first_init_index {
+            // And, if so, report an error.
+            let init = &self.move_data.inits[init_index];
+            self.report_illegal_reassignment(context, place_span, init.span, place_span.0);
         }
     }
 

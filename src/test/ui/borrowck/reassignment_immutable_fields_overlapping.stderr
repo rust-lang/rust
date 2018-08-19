@@ -1,0 +1,20 @@
+error[E0594]: cannot assign to field `x.a` of immutable binding
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:22:5
+   |
+LL |     let x: Foo;
+   |         - consider changing this to `mut x`
+LL |     x.a = 1;  //~ ERROR
+   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+
+error[E0594]: cannot assign to field `x.b` of immutable binding
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:23:5
+   |
+LL |     let x: Foo;
+   |         - consider changing this to `mut x`
+LL |     x.a = 1;  //~ ERROR
+LL |     x.b = 22; //~ ERROR
+   |     ^^^^^^^^ cannot mutably borrow field of immutable binding
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0594`.
