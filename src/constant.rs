@@ -109,7 +109,8 @@ fn trans_const_value<'a, 'tcx: 'a>(
             let func_ref = fx.get_function_ref(
                 Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             );
-            CValue::Func(func_ref, layout)
+            let func_addr = fx.bcx.ins().func_addr(types::I64, func_ref);
+            CValue::ByVal(func_addr, layout)
         }
         _ => trans_const_place(fx, const_).to_cvalue(fx),
     }

@@ -472,9 +472,15 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             }
         })).collect::<Vec<_>>();
 
-    let inst = match trans_operand(fx, func) {
-        CValue::Func(func, _) => fx.bcx.ins().call(func, &call_args),
-        func => {
+    let call_inst = match fn_ty.sty {
+        TypeVariants::TyFnDef(def_id, substs) => {
+            let func_ref = fx.get_function_ref(
+                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
+            );
+            fx.bcx.ins().call(func_ref, &call_args)
+        }
+        _ => {
+            let func = trans_operand(fx, func);
             let func = func.load_value(fx);
             let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
             fx.bcx.ins().call_indirect(sig, func, &call_args)
@@ -485,7 +491,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         PassMode::NoPass => {}
         PassMode::ByVal(_) => {
             if let Some((ret_place, _)) = destination {
-                let results = fx.bcx.inst_results(inst);
+                let results = fx.bcx.inst_results(call_inst);
                 ret_place.write_cvalue(fx, CValue::ByVal(results[0], ret_layout));
             }
         }

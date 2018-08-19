@@ -71,13 +71,12 @@ fn codegen_field<'a, 'tcx: 'a>(
 pub enum CValue<'tcx> {
     ByRef(Value, TyLayout<'tcx>),
     ByVal(Value, TyLayout<'tcx>),
-    Func(FuncRef, TyLayout<'tcx>),
 }
 
 impl<'tcx> CValue<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
-            CValue::ByRef(_, layout) | CValue::ByVal(_, layout) | CValue::Func(_, layout) => layout,
+            CValue::ByRef(_, layout) | CValue::ByVal(_, layout) => layout,
         }
     }
 
@@ -96,10 +95,6 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().stack_store(value, stack_slot, 0);
                 fx.bcx.ins().stack_addr(types::I64, stack_slot, 0)
             }
-            CValue::Func(func, ty) => {
-                let func = fx.bcx.ins().func_addr(types::I64, func);
-                CValue::ByVal(func, ty).force_stack(fx)
-            }
         }
     }
 
@@ -115,7 +110,6 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
-            CValue::Func(func, _layout) => fx.bcx.ins().func_addr(types::I64, func),
         }
     }
 
@@ -123,7 +117,6 @@ impl<'tcx> CValue<'tcx> {
         match self {
             CValue::ByRef(value, layout) => (value, layout),
             CValue::ByVal(_, _) => bug!("Expected CValue::ByRef, found CValue::ByVal: {:?}", self),
-            CValue::Func(_, _) => bug!("Expected CValue::ByRef, found CValue::Func: {:?}", self),
         }
     }
 
@@ -161,7 +154,6 @@ impl<'tcx> CValue<'tcx> {
         match self {
             CValue::ByRef(addr, _) => CValue::ByRef(addr, layout),
             CValue::ByVal(val, _) => CValue::ByVal(val, layout),
-            CValue::Func(fun, _) => CValue::Func(fun, layout),
         }
     }
 }
