@@ -28,6 +28,20 @@ use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
 use util::liveness::LiveVariableMap;
 
+/// This is the heart of the liveness computation. For each variable X
+/// that requires a liveness computation, it walks over all the uses
+/// of X and does a reverse depth-first search ("trace") through the
+/// MIR. This search stops when we find a definition of that variable.
+/// The points visited in this search is the USE-LIVE set for the variable;
+/// of those points is added to all the regions that appear in the variable's
+/// type.
+///
+/// We then also walks through each *drop* of those variables and does
+/// another search, stopping when we reach a use or definition. This
+/// is the DROP-LIVE set of points. Each of the points in the
+/// DROP-LIVE set are to the liveness sets for regions found in the
+/// `dropck_outlives` result of the variable's type (in particular,
+/// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
