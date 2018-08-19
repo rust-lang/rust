@@ -104,8 +104,9 @@
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
 #[unstable(feature = "convert_id", issue = "0")]
+#[rustc_const_unstable(feature = "const_convert_id")]
 #[inline]
-pub fn identity<T>(x: T) -> T { x }
+pub const fn identity<T>(x: T) -> T { x }
 
 /// A cheap reference-to-reference conversion. Used to convert a value to a
 /// reference value within generic code.
