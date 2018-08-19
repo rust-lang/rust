@@ -61,6 +61,8 @@ pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
 pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathBuf, Command) {
+    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
+
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
     // emscripten where the linker is `emcc.bat` and needs to be spawned as
@@ -73,11 +75,12 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
         Some(linker) if cfg!(windows) && linker.ends_with(".bat") => Command::bat_script(linker),
         _ => match flavor {
             LinkerFlavor::Lld(f) => Command::lld(linker, f),
+            LinkerFlavor::Msvc => {
+                Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
+            },
             _ => Command::new(linker),
         }
     };
-
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
