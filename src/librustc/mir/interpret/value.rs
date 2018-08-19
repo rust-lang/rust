@@ -178,6 +178,7 @@ impl<'tcx> Scalar {
 }
 
 impl From<Pointer> for Scalar {
+    #[inline(always)]
     fn from(ptr: Pointer) -> Self {
         Scalar::Ptr(ptr)
     }
@@ -210,6 +211,7 @@ pub enum ScalarMaybeUndef {
 }
 
 impl From<Scalar> for ScalarMaybeUndef {
+    #[inline(always)]
     fn from(s: Scalar) -> Self {
         ScalarMaybeUndef::Scalar(s)
     }

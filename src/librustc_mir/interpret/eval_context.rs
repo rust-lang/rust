@@ -288,6 +288,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'm
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
+    #[inline]
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
             .map_err(|layout| EvalErrorKind::Layout(layout).into())
@@ -559,7 +560,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             // value we use for things that we know are initially dead.
             let dummy =
                 LocalValue::Live(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
-            self.frame_mut().locals = IndexVec::from_elem(dummy, &mir.local_decls);
+            let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
@@ -572,8 +573,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             match stmt.kind {
                                 StorageLive(local) |
                                 StorageDead(local) => {
-                                    // Worst case we are overwriting a dummy, no deallocation needed
-                                    self.storage_dead(local);
+                                    locals[local] = LocalValue::Dead;
                                 }
                                 _ => {}
                             }
@@ -582,11 +582,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 },
             }
             // Finally, properly initialize all those that still have the dummy value
-            for local in mir.local_decls.indices() {
-                if self.frame().locals[local] == dummy {
-                    self.storage_live(local)?;
+            for (local, decl) in locals.iter_mut().zip(mir.local_decls.iter()) {
+                match *local {
+                    LocalValue::Live(_) => {
+                        // This needs to be peoperly initialized.
+                        let layout = self.layout_of(self.monomorphize(decl.ty, instance.substs))?;
+                        *local = LocalValue::Live(self.uninit_operand(layout)?);
+                    }
+                    LocalValue::Dead => {
+                        // Nothing to do
+                    }
                 }
             }
+            // done
+            self.frame_mut().locals = locals;
         }
 
         if self.stack.len() > self.stack_limit {
