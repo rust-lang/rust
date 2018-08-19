@@ -139,8 +139,12 @@ pub fn from_fn_attrs(
     llfn: &'ll Value,
     id: Option<DefId>,
 ) {
-    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
-        .unwrap_or(CodegenFnAttrs::new());
+    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id));
+    let default = CodegenFnAttrs::new();
+    let codegen_fn_attrs = codegen_fn_attrs
+        .as_ref()
+        .map(|s| &**s)
+        .unwrap_or(&default);
 
     inline(llfn, codegen_fn_attrs.inline);
 

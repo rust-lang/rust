@@ -51,7 +51,7 @@ fn generics_require_inlining(generics: &ty::Generics) -> bool {
 // true for functions.
 fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          item: &hir::Item,
-                         attrs: CodegenFnAttrs) -> bool {
+                         attrs: &CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -77,7 +77,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
             Some(hir_map::NodeItem(item)) =>
-                item_might_be_inlined(tcx, &item, codegen_fn_attrs),
+                item_might_be_inlined(tcx, &item, &codegen_fn_attrs),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
         }
@@ -171,7 +171,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
                     hir::ItemKind::Fn(..) =>
-                        item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id)),
+                        item_might_be_inlined(self.tcx, &item, &self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
                 }
             }
@@ -264,7 +264,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         if item_might_be_inlined(self.tcx,
                                                  &item,
-                                                 self.tcx.codegen_fn_attrs(def_id)) {
+                                                 &self.tcx.codegen_fn_attrs(def_id)) {
                             self.visit_nested_body(body);
                         }
                     }

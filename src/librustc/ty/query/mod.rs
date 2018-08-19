@@ -321,7 +321,7 @@ define_queries! { <'tcx>
     },
 
     Codegen {
-        [] fn codegen_fn_attrs: codegen_fn_attrs(DefId) -> CodegenFnAttrs,
+        [] fn codegen_fn_attrs: codegen_fn_attrs(DefId) -> Lrc<CodegenFnAttrs>,
     },
 
     Other {
