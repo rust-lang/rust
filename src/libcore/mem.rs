@@ -514,7 +514,7 @@ pub fn needs_drop<T>() -> bool {
 /// assert_eq!(0, x);
 /// ```
 #[inline]
-#[rustc_deprecated(since = "1.30.0", reason = "use `mem::MaybeUninit::zeroed` instead")]
+#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::zeroed` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
@@ -609,7 +609,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
 #[inline]
-#[rustc_deprecated(since = "1.30.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
+#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
@@ -1030,6 +1030,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// A newtype to construct uninitialized instances of `T`
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
+// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
