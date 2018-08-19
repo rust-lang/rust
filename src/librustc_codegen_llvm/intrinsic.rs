@@ -90,7 +90,7 @@ pub fn codegen_intrinsic_call(
     bx: &Builder<'a, 'll, 'tcx>,
     callee_ty: Ty<'tcx>,
     fn_ty: &FnType<'tcx, Ty<'tcx>>,
-    args: &[OperandRef<'ll, 'tcx>],
+    args: &[OperandRef<'tcx, &'ll Value>],
     llresult: &'ll Value,
     span: Span,
 ) {
@@ -593,7 +593,7 @@ pub fn codegen_intrinsic_call(
             fn modify_as_needed(
                 bx: &Builder<'a, 'll, 'tcx>,
                 t: &intrinsics::Type,
-                arg: &OperandRef<'ll, 'tcx>,
+                arg: &OperandRef<'tcx, &'ll Value>,
             ) -> Vec<&'ll Value> {
                 match *t {
                     intrinsics::Type::Aggregate(true, ref contents) => {
@@ -987,7 +987,7 @@ fn generic_simd_intrinsic(
     bx: &Builder<'a, 'll, 'tcx>,
     name: &str,
     callee_ty: Ty<'tcx>,
-    args: &[OperandRef<'ll, 'tcx>],
+    args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,
     span: Span
@@ -1168,7 +1168,7 @@ fn generic_simd_intrinsic(
         in_len: usize,
         bx: &Builder<'a, 'll, 'tcx>,
         span: Span,
-        args: &[OperandRef<'ll, 'tcx>],
+        args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
         macro_rules! emit_error {
             ($msg: tt) => {
