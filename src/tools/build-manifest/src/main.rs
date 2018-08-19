@@ -273,7 +273,8 @@ impl Builder {
         self.clippy_version = self.version("clippy", "x86_64-unknown-linux-gnu");
         self.rustfmt_version = self.version("rustfmt", "x86_64-unknown-linux-gnu");
         self.llvm_tools_version = self.version("llvm-tools", "x86_64-unknown-linux-gnu");
-        self.lldb_version = self.version("lldb", "x86_64-unknown-linux-gnu");
+        // lldb is only built for macOS.
+        self.lldb_version = self.version("lldb", "x86_64-apple-darwin");
 
         self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
