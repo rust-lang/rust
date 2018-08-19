@@ -112,7 +112,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.push_assign(block, source_info, &Place::local(result), box_);
 
                 // initialize the box contents:
-                unpack!(block = this.into(&Place::local(result).deref(this.hir.tcx()), block, value));
+                let tcx = this.hir.tcx();
+                unpack!(block = this.into(&Place::local(result).deref(tcx), block, value));
                 block.and(Rvalue::Use(Operand::Move(Place::local(result))))
             }
             ExprKind::Cast { source } => {
@@ -438,7 +439,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
-        let mutability = if let Some((base_place, projection)) = arg_place.split_projection(tcx) {
+        let mutability = if let (base_place, Some(projection)) = arg_place.final_projection(tcx) {
             match projection {
                 ProjectionElem::Deref => {
                     if let PlaceBase::Local(local) = base_place.base {
@@ -452,17 +453,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             "Unexpected capture place",
                         );
                         this.local_decls[local].mutability
-                    } else if let Some((base_place, projection)) = base_place.split_projection(tcx) {
+                    } else if let (base_place, Some(projection)) = base_place.final_projection(tcx)
+                    {
                        if let ProjectionElem::Field(upvar_index, _) = projection {
                             // Not projected from the implicit `self` in a closure.
                             debug_assert!(
-                                if let Some((base_place, projection)) = base_place.split_projection(tcx) {
-                                    PlaceBase::Local(Local::new(1)) == base_place.base
-                                } else {
-                                    match base_place.base {
-                                        PlaceBase::Local(local) => local == Local::new(1),
-                                        _ => false,
-                                    }
+                                match base_place.base {
+                                    PlaceBase::Local(local) => local == Local::new(1),
+                                    _ => false,
                                 },
                                 "Unexpected capture place"
                             );
@@ -472,6 +470,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 "Unexpected capture place"
                             );
                             this.upvar_decls[upvar_index.index()].mutability
+                        } else {
+                            bug!("Unexpected capture place");
                         }
                     } else {
                         bug!("Unexpected capture place");
@@ -480,13 +480,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ProjectionElem::Field(upvar_index, _) => {
                     // Not projected from the implicit `self` in a closure.
                     debug_assert!(
-                        if let Some((base_place, projection)) = base_place.split_projection(tcx) {
-                            PlaceBase::Local(Local::new(1)) == base_place.base
-                        } else {
-                            match base_place.base {
-                                PlaceBase::Local(local) => local == Local::new(1),
-                                _ => false,
-                            }
+                        match base_place.base {
+                            PlaceBase::Local(local) => local == Local::new(1),
+                            _ => false,
                         },
                         "Unexpected capture place"
                     );
@@ -496,6 +492,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         "Unexpected capture place"
                     );
                     this.upvar_decls[upvar_index.index()].mutability
+                }
+                _ => {
+                    bug!("Unexpected capture place");
                 }
             }
         } else {

@@ -12,8 +12,8 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{IndexVec};
-use syntax_pos::{Span};
+use rustc_data_structures::indexed_vec::IndexVec;
+use syntax_pos::Span;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -248,26 +248,28 @@ impl<'tcx> MovePathLookup<'tcx> {
     // parent.
     pub fn find<'a>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         place: &Place<'tcx>
     ) -> LookupResult {
-        if let Some((base_place, projection)) = place.split_projection(tcx) {
-            match self.find(tcx, &base_place) {
-                LookupResult::Exact(base_path) => {
-                    match self.projections.get(&(base_path, projection.lift())) {
-                        Some(subpath) => LookupResult::Exact(*subpath),
-                        None => LookupResult::Parent(Some(base_path)),
+        let mut result = match place.base {
+            PlaceBase::Local(local) => LookupResult::Exact(self.locals[local]),
+            PlaceBase::Promoted(_) |
+            PlaceBase::Static(..) => LookupResult::Parent(None),
+        };
+        if !place.elems.is_empty() {
+            for elem in place.elems.iter() {
+                result = match result {
+                    LookupResult::Exact(base_path) => {
+                        match self.projections.get(&(base_path, elem.lift())) {
+                            Some(subpath) => LookupResult::Exact(*subpath),
+                            None => LookupResult::Parent(Some(base_path)),
+                        }
                     }
-                }
-                inexact => inexact,
-            }
-        } else {
-            match place.base {
-                PlaceBase::Local(local) => LookupResult::Exact(self.locals[local]),
-                PlaceBase::Promoted(_) |
-                PlaceBase::Static(..) => LookupResult::Parent(None),
+                    inexact => inexact,
+                };
             }
         }
+
+        result
     }
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {

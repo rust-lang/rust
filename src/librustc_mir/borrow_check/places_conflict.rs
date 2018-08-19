@@ -42,7 +42,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
         loop {
             if let Some((i, borrow_elem)) = borrow_elems.next() {
                 let base_place = Place {
-                    base: borrow_place.base,
+                    base: borrow_place.clone().base,
                     elems: if i > 0 {
                         tcx.mk_place_elems(borrow_place.elems.iter().cloned().take(i))
                     } else {
@@ -85,7 +85,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
                             return true;
                         }
                         Overlap::EqualOrDisjoint => {
-                            // This is the recursive case - proceed to the next element.
+                            // proceed to the next element.
                         }
                         Overlap::Disjoint => {
                             // We have proven the borrow disjoint - further

@@ -45,25 +45,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             prefix.iter()
                   .enumerate()
                   .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: idx as u32,
+                      let place = place.clone().constant_index(
+                          self.hir.tcx(),
+                          idx as u32,
                           min_length,
-                          from_end: false,
-                      };
-                      let place = place.clone().elem(self.hir.tcx(), elem);
+                          false,
+                      );
                       MatchPair::new(place, subpattern)
                   })
         );
 
         if let Some(subslice_pat) = opt_slice {
-            let subslice = place.clone().elem(
+            let place = place.clone().subslice(
                 self.hir.tcx(),
-                ProjectionElem::Subslice {
-                    from: prefix.len() as u32,
-                    to: suffix.len() as u32
-                }
+                prefix.len() as u32,
+                suffix.len() as u32,
             );
-            match_pairs.push(MatchPair::new(subslice, subslice_pat));
+            match_pairs.push(MatchPair::new(place, subslice_pat));
         }
 
         match_pairs.extend(
@@ -71,12 +69,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                   .rev()
                   .enumerate()
                   .map(|(idx, subpattern)| {
-                      let elem = ProjectionElem::ConstantIndex {
-                          offset: (idx+1) as u32,
+                      let place = place.clone().constant_index(
+                          self.hir.tcx(),
+                          (idx + 1) as u32,
                           min_length,
-                          from_end: true,
-                      };
-                      let place = place.clone().elem(self.hir.tcx(), elem);
+                          true,
+                      );
                       MatchPair::new(place, subpattern)
                   })
         );

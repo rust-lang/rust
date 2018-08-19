@@ -121,7 +121,7 @@ fn find_dead_unwinds<'a, 'tcx>(
             init_data.apply_location(tcx, mir, env, loc);
         }
 
-        let path = match env.move_data.rev_lookup.find(tcx, location) {
+        let path = match env.move_data.rev_lookup.find(location) {
             LookupResult::Exact(e) => e,
             LookupResult::Parent(..) => {
                 debug!("find_dead_unwinds: has parent; skipping");
@@ -375,7 +375,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 statement_index: data.statements.len()
             });
 
-            let path = self.move_data().rev_lookup.find(self.tcx, location);
+            let path = self.move_data().rev_lookup.find(location);
             debug!("collect_drop_flags: {:?}, place {:?} ({:?})",
                    bb, location, path);
 
@@ -414,7 +414,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             match terminator.kind {
                 TerminatorKind::Drop { ref location, target, unwind } => {
                     let init_data = self.initialization_data_at(loc);
-                    match self.move_data().rev_lookup.find(self.tcx, location) {
+                    match self.move_data().rev_lookup.find(location) {
                         LookupResult::Exact(path) => {
                             elaborate_drop(
                                 &mut Elaborator {
@@ -503,7 +503,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             is_cleanup: false,
         });
 
-        match self.move_data().rev_lookup.find(self.tcx, location) {
+        match self.move_data().rev_lookup.find(location) {
             LookupResult::Exact(path) => {
                 debug!("elaborate_drop_and_replace({:?}) - tracked {:?}", terminator, path);
                 let init_data = self.initialization_data_at(loc);
@@ -572,7 +572,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(self.tcx, place);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)
@@ -646,7 +646,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(self.tcx, place);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)

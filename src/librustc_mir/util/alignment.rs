@@ -8,24 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
+use rustc::ty::{self, TyCtxt};
 
 /// Return `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  local_decls: &L,
-                                  param_env: ty::ParamEnv<'tcx>,
-                                  place: &Place<'tcx>)
-                                  -> bool
-    where L: HasLocalDecls<'tcx>
+pub fn is_disaligned<'a, 'tcx, L>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    local_decls: &L,
+    param_env: ty::ParamEnv<'tcx>,
+    place: &Place<'tcx>,
+) -> bool
+where
+    L: HasLocalDecls<'tcx>,
 {
     debug!("is_disaligned({:?})", place);
     if !is_within_packed(tcx, local_decls, place) {
         debug!("is_disaligned({:?}) - not within packed", place);
-        return false
+        return false;
     }
 
     let ty = place.ty(local_decls, tcx).to_ty(tcx);
@@ -43,29 +44,30 @@ pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 local_decls: &L,
-                                 place: &Place<'tcx>)
-                                 -> bool
-    where L: HasLocalDecls<'tcx>
+fn is_within_packed<'a, 'tcx, L>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    local_decls: &L,
+    place: &Place<'tcx>,
+) -> bool
+where
+    L: HasLocalDecls<'tcx>,
 {
-    let mut place = place;
-    while let Some((base_place, projection)) = place.split_projection(tcx) {
-        match projection {
-            // encountered a Deref, which is ABI-aligned
-            ProjectionElem::Deref => break,
-            ProjectionElem::Field(..) => {
-                let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
-                match ty.sty {
-                    ty::TyAdt(def, _) if def.repr.packed() => {
-                        return true
+    if !place.elems.is_empty() {
+        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+            match elem {
+                // encountered a Deref, which is ABI-aligned
+                ProjectionElem::Deref => break,
+                ProjectionElem::Field(..) => {
+                    let base_place = place.elem_base(tcx, i);
+                    let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
+                    match ty.sty {
+                        ty::TyAdt(def, _) if def.repr.packed() => return true,
+                        _ => continue,
                     }
-                    _ => {}
                 }
+                _ => continue,
             }
-            _ => {}
         }
-        place = &base_place;
     }
 
     false

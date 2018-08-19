@@ -41,10 +41,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let reason;
         let access_place_desc = self.describe_place(access_place);
 
-        if let Some((base_place, projection)) = the_place_err.split_projection(self.tcx) {
+        if let (base_place, Some(projection)) = the_place_err.final_projection(self.tcx) {
             match projection {
                 ProjectionElem::Deref => {
-                    if base_place.base == PlaceBase::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() {
+                    if base_place.base == PlaceBase::Local(Local::new(1))
+                        && !self.mir.upvar_decls.is_empty() {
                         item_msg = format!("`{}`", access_place_desc.unwrap());
                         debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                         debug_assert!(is_closure_or_generator(
@@ -81,7 +82,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             item_msg = format!("`{}`", desc);
                             reason = match error_access {
                                 AccessKind::Move |
-                                AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
+                                AccessKind::Mutate =>
+                                    format!(" which is behind a {}", pointer_type),
                                 AccessKind::MutableBorrow => {
                                     format!(", as it is behind a {}", pointer_type)
                                 }
@@ -127,7 +129,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
                 PlaceBase::Static(box Static { def_id, ty: _ }) => {
                     if let PlaceBase::Static(_) = access_place.base {
-                        item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
+                        item_msg = format!(
+                            "immutable static item `{}`",
+                            access_place_desc.unwrap()
+                        );
                         reason = "".to_string();
                     } else {
                         item_msg = format!("`{}`", access_place_desc.unwrap());
@@ -183,7 +188,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        if let Some((base_place, projection)) = the_place_err.split_projection(self.tcx) {
+        if let (base_place, Some(projection)) = the_place_err.final_projection(self.tcx) {
             match projection {
                 ProjectionElem::Deref => {
                     if let PlaceBase::Local(local) = base_place.base {
@@ -191,7 +196,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => {
                                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                                 err.note(
-                                    "variables bound in patterns are immutable until the end of the pattern guard",
+                                    "variables bound in patterns are \
+                                    immutable until the end of the pattern guard",
                                 );
                             },
                             Some(_) => {
@@ -201,16 +207,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 // FIXME: can this case be generalized to work for an
                                 // arbitrary base for the projection?
                                 let local_decl = &self.mir.local_decls[local];
-                                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
+                                let suggestion =
+                                    match local_decl.is_user_variable.as_ref().unwrap() {
                                     ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
                                         Some(suggest_ampmut_self(self.tcx, local_decl))
                                     }
 
-                                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                                                                                   binding_mode: ty::BindingMode::BindByValue(_),
-                                                                                   opt_ty_info,
-                                                                                   ..
-                                                                               })) => Some(suggest_ampmut(
+                                    ClearCrossCrate::Set(
+                                        mir::BindingForm::Var(
+                                            mir::VarBindingForm {
+                                                binding_mode: ty::BindingMode::BindByValue(_),
+                                                opt_ty_info,
+                                                ..
+                                            })) => Some(suggest_ampmut(
                                         self.tcx,
                                         self.mir,
                                         local,
@@ -218,18 +227,23 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         *opt_ty_info,
                                     )),
 
-                                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                                                                                   binding_mode: ty::BindingMode::BindByReference(_),
-                                                                                   ..
-                                                                               })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+                                    ClearCrossCrate::Set(
+                                        mir::BindingForm::Var(
+                                            mir::VarBindingForm {
+                                                binding_mode: ty::BindingMode::BindByReference(_),
+                                                ..
+                                            })
+                                    ) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
 
-                                    //
-                                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
+                                    ClearCrossCrate::Set(
+                                        mir::BindingForm::RefForGuard
+                                    ) => unreachable!(),
 
                                     ClearCrossCrate::Clear => bug!("saw cleared local state"),
                                 };
 
-                                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
+                                let (pointer_sigil, pointer_desc) =
+                                    if local_decl.ty.is_region_ptr() {
                                     ("&", "reference")
                                 } else {
                                     ("*const", "pointer")
@@ -238,7 +252,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 if let Some((err_help_span, suggested_code)) = suggestion {
                                     err.span_suggestion(
                                         err_help_span,
-                                        &format!("consider changing this to be a mutable {}", pointer_desc),
+                                        &format!(
+                                            "consider changing this to be a mutable {}",
+                                            pointer_desc
+                                        ),
                                         suggested_code,
                                     );
                                 }
@@ -343,25 +360,25 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
     // Does this place refer to what the user sees as an upvar
     fn is_upvar(&self, place: &Place<'tcx>) -> bool {
-        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
             match projection {
                 ProjectionElem::Field(_, _) => {
                     let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     is_closure_or_generator(base_ty)
                 }
                 ProjectionElem::Deref => {
-                    if let Some((base_place, projection)) = base_place.split_projection(self.tcx) {
-                        if let ProjectionElem::Field(upvar_index, _) = projection {
-                            let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
-                            is_closure_or_generator(base_ty) && self.mir.upvar_decls[upvar_index.index()].by_ref
-                        } else {
-                            unreachable!{}
-                        }
+                    if let (
+                        ref base_place,
+                        Some(ProjectionElem::Field(upvar_index, _)),
+                    ) = base_place.final_projection(self.tcx) {
+                        let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        is_closure_or_generator(base_ty)
+                            && self.mir.upvar_decls[upvar_index.index()].by_ref
                     } else {
-                        unreachable!{}
+                        false
                     }
                 }
-                _ => unreachable!{},
+                _ => false,
             }
         } else {
             false

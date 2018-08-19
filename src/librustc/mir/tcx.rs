@@ -13,11 +13,11 @@
  * building is complete.
  */
 
+use hir;
 use mir::*;
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, Ty, TyCtxt};
-use hir;
 use ty::util::IntTypeExt;
+use ty::{self, AdtDef, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug)]
 pub enum PlaceTy<'tcx> {
@@ -25,9 +25,11 @@ pub enum PlaceTy<'tcx> {
     Ty { ty: Ty<'tcx> },
 
     /// Downcast to a particular variant of an enum.
-    Downcast { adt_def: &'tcx AdtDef,
-               substs: &'tcx Substs<'tcx>,
-               variant_index: usize },
+    Downcast {
+        adt_def: &'tcx AdtDef,
+        substs: &'tcx Substs<'tcx>,
+        variant_index: usize,
+    },
 }
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
@@ -37,65 +39,73 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
-            PlaceTy::Ty { ty } =>
-                ty,
-            PlaceTy::Downcast { adt_def, substs, variant_index: _ } =>
-                tcx.mk_adt(adt_def, substs),
+            PlaceTy::Ty { ty } => ty,
+            PlaceTy::Downcast {
+                adt_def,
+                substs,
+                variant_index: _,
+            } => tcx.mk_adt(adt_def, substs),
+        }
+    }
+
+    fn base_ty<T>(local_decls: &T, base: &PlaceBase<'tcx>) -> PlaceTy<'tcx>
+    where
+        T: HasLocalDecls<'tcx>,
+    {
+        match base {
+            PlaceBase::Local(index) => PlaceTy::Ty {
+                ty: local_decls.local_decls()[*index].ty,
+            },
+            PlaceBase::Promoted(data) => PlaceTy::Ty { ty: data.1 },
+            PlaceBase::Static(data) => PlaceTy::Ty { ty: data.ty },
         }
     }
 
     pub fn projection_ty(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        elem: &PlaceElem<'tcx>
+        elem: &PlaceElem<'tcx>,
     ) -> PlaceTy<'tcx> {
-        match *elem {
+        match elem {
             ProjectionElem::Deref => {
-                let ty = self.to_ty(tcx)
-                             .builtin_deref(true)
-                             .unwrap_or_else(|| {
-                                 bug!("deref projection of non-dereferencable ty {:?}", self)
-                             })
-                             .ty;
-                PlaceTy::Ty {
-                    ty,
-                }
+                let ty = self
+                    .to_ty(tcx)
+                    .builtin_deref(true)
+                    .unwrap_or_else(|| bug!("deref projection of non-dereferencable ty {:?}", self))
+                    .ty;
+                PlaceTy::Ty { ty }
             }
-            ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
-                PlaceTy::Ty {
-                    ty: self.to_ty(tcx).builtin_index().unwrap()
-                },
+            ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => PlaceTy::Ty {
+                ty: self.to_ty(tcx).builtin_index().unwrap(),
+            },
             ProjectionElem::Subslice { from, to } => {
                 let ty = self.to_ty(tcx);
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
                             let size = size.unwrap_usize(tcx);
-                            let len = size - (from as u64) - (to as u64);
+                            let len = size - (*from as u64) - (*to as u64);
                             tcx.mk_array(inner, len)
                         }
                         ty::TySlice(..) => ty,
-                        _ => {
-                            bug!("cannot subslice non-array type: `{:?}`", self)
-                        }
-                    }
+                        _ => bug!("cannot subslice non-array type: `{:?}`", self),
+                    },
                 }
             }
-            ProjectionElem::Downcast(adt_def1, index) =>
-                match self.to_ty(tcx).sty {
-                    ty::TyAdt(adt_def, substs) => {
-                        assert!(adt_def.is_enum());
-                        assert!(index < adt_def.variants.len());
-                        assert_eq!(adt_def, adt_def1);
-                        PlaceTy::Downcast { adt_def,
-                                             substs,
-                                             variant_index: index }
+            ProjectionElem::Downcast(adt_def1, index) => match self.to_ty(tcx).sty {
+                ty::TyAdt(adt_def, substs) => {
+                    assert!(adt_def.is_enum());
+                    assert!(*index < adt_def.variants.len());
+                    assert_eq!(adt_def, *adt_def1);
+                    PlaceTy::Downcast {
+                        adt_def,
+                        substs,
+                        variant_index: *index,
                     }
-                    _ => {
-                        bug!("cannot downcast non-ADT type: `{:?}`", self)
-                    }
-                },
-            ProjectionElem::Field(_, fty) => PlaceTy::Ty { ty: fty }
+                }
+                _ => bug!("cannot downcast non-ADT type: `{:?}`", self),
+            },
+            ProjectionElem::Field(_, fty) => PlaceTy::Ty { ty: fty },
         }
     }
 }
@@ -109,7 +119,8 @@ EnumTypeFoldableImpl! {
 
 impl<'tcx> Place<'tcx> {
     pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
-        where D: HasLocalDecls<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         // the PlaceTy is the *final* type with all projection applied
         // if there is no projection, that just refers to `base`:
@@ -121,16 +132,17 @@ impl<'tcx> Place<'tcx> {
         // Place: base.[]
         //             ^^-- no projection
         //        ^^^^-- PlaceTy
-        if let Some(projection) = self.elems.last() {
-             self.ty(local_decls, tcx).projection_ty(tcx, projection)
-        } else {
-            match self.base {
-                PlaceBase::Local(index) =>
-                    PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
-                PlaceBase::Promoted(ref data) => PlaceTy::Ty { ty: data.1 },
-                PlaceBase::Static(ref data) => PlaceTy::Ty { ty: data.ty },
+
+        let mut place_ty = PlaceTy::base_ty(local_decls, &self.base);
+
+        // apply .projection_ty() to all elems but only returns the final one.
+        if !self.elems.is_empty() {
+            for elem in self.elems.iter() {
+                place_ty = place_ty.projection_ty(tcx, elem);
             }
         }
+
+        place_ty
     }
 
     /// If this is a field projection, and the field is being projected from a closure type,
@@ -146,17 +158,18 @@ impl<'tcx> Place<'tcx> {
         let mut place = self;
         let mut by_ref = false;
 
-        base_place = place.base_place(*tcx);
+        base_place = place.projection_base(*tcx);
 
         if let Some(ProjectionElem::Deref) = place.projection() {
             place = &base_place;
             by_ref = true;
         }
         if let Some(ProjectionElem::Field(field, _ty)) = place.projection() {
-            let base_ty = place.base_place(*tcx).ty(mir, *tcx).to_ty(*tcx);
+            let base_ty = place.projection_base(*tcx).ty(mir, *tcx).to_ty(*tcx);
 
-            if base_ty.is_closure() || base_ty.is_generator()
-                && (!(by_ref && !mir.upvar_decls[field.index()].by_ref)) {
+            if base_ty.is_closure()
+                || base_ty.is_generator() && (!(by_ref && !mir.upvar_decls[field.index()].by_ref))
+            {
                 Some(*field)
             } else {
                 None
@@ -167,28 +180,30 @@ impl<'tcx> Place<'tcx> {
     }
 
     // for Place:
-    //     Base.[a, b, c]
-    //                 ^-- projection
-    // => (Base.[a, b], c])
-    //     ^^^^^^^^^^   ^-- projection
+    //    (Base.[a, b, c])
+    //     ^^^^^^^^^^  ^-- projection
     //     |-- base_place
-    pub fn split_projection<'cx, 'gcx>(
+    //
+    //     Base.[]
+    //     ^^^^ ^^-- no projection(empty)
+    //     |-- base_place
+    pub fn final_projection<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    ) -> Option<(Place<'tcx>, &PlaceElem<'tcx>)> {
+    ) -> (Place<'tcx>, Option<&'tcx PlaceElem<'tcx>>) {
         // split place_elems
         // Base.[a, b, c]
         //       ^^^^  ^-- projection(projection lives in the last elem)
         //       |-- place_elems
         match self.elems.split_last() {
-            Some((projection, place_elems)) => Some((
+            Some((projection, place_elems)) => (
                 Place {
                     base: self.clone().base,
                     elems: tcx.intern_place_elems(place_elems),
                 },
-                projection,
-            )),
-            _ => None,
+                Some(projection),
+            ),
+            _ => (self.clone(), None)
         }
     }
 
@@ -198,38 +213,64 @@ impl<'tcx> Place<'tcx> {
     // if no projection returns the place itself,
     //     Base.[] => Base.[]
     //          ^^-- no projection
-    pub fn base_place<'cx, 'gcx>(
+    pub fn projection_base<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Place<'tcx> {
+        match self.final_projection(tcx) {
+            (place, Some(_)) => place,
+            (_, None) => self.clone(),
+        }
+    }
+
+    // for a place_elem returns it's base projection
+    // Base.[a, b, c]
+    //          ^-- place_elem
+    // ^^^^^^^-- base
+    pub fn elem_base<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        elem_index: usize,
     ) -> Place<'tcx> {
-        match self.split_projection(tcx) {
-            Some((place, _)) => place,
-            _ => self.clone(),
+        // only works for place with projections
+        assert!(!self.elems.is_empty());
+
+        if elem_index < 1 {
+            // Base.[a]
+            //       ^-- elems[0]
+            Place {
+                base: self.clone().base,
+                elems: Slice::empty(),
+            }
+        } else {
+            Place {
+                base: self.clone().base,
+                elems: tcx.mk_place_elems(
+                    self.elems.iter().cloned().take(elem_index)
+                )
+            }
         }
     }
 }
 
 pub enum RvalueInitializationState {
     Shallow,
-    Deep
+    Deep,
 }
 
 impl<'tcx> Rvalue<'tcx> {
     pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
-        where D: HasLocalDecls<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array(operand.ty(local_decls, tcx), count)
-            }
+            Rvalue::Repeat(ref operand, count) => tcx.mk_array(operand.ty(local_decls, tcx), count),
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
-                tcx.mk_ref(reg,
+                tcx.mk_ref(
+                    reg,
                     ty::TypeAndMut {
                         ty: place_ty,
-                        mutbl: bk.to_mutbl_lossy()
-                    }
+                        mutbl: bk.to_mutbl_lossy(),
+                    },
                 )
             }
             Rvalue::Len(..) => tcx.types.usize,
@@ -245,8 +286,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
-            Rvalue::UnaryOp(UnOp::Not, ref operand) |
-            Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
+            Rvalue::UnaryOp(UnOp::Not, ref operand) | Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
                 operand.ty(local_decls, tcx)
             }
             Rvalue::Discriminant(ref place) => {
@@ -260,25 +300,15 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
             Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
-            Rvalue::Aggregate(ref ak, ref ops) => {
-                match **ak {
-                    AggregateKind::Array(ty) => {
-                        tcx.mk_array(ty, ops.len() as u64)
-                    }
-                    AggregateKind::Tuple => {
-                        tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
-                    }
-                    AggregateKind::Adt(def, _, substs, _) => {
-                        tcx.type_of(def.did).subst(tcx, substs)
-                    }
-                    AggregateKind::Closure(did, substs) => {
-                        tcx.mk_closure(did, substs)
-                    }
-                    AggregateKind::Generator(did, substs, movability) => {
-                        tcx.mk_generator(did, substs, movability)
-                    }
+            Rvalue::Aggregate(ref ak, ref ops) => match **ak {
+                AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
+                AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
+                AggregateKind::Adt(def, _, substs, _) => tcx.type_of(def.did).subst(tcx, substs),
+                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
+                AggregateKind::Generator(did, substs, movability) => {
+                    tcx.mk_generator(did, substs, movability)
                 }
-            }
+            },
         }
     }
 
@@ -288,32 +318,40 @@ impl<'tcx> Rvalue<'tcx> {
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {
             Rvalue::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
-            _ => RvalueInitializationState::Deep
+            _ => RvalueInitializationState::Deep,
         }
     }
 }
 
 impl<'tcx> Operand<'tcx> {
     pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
-        where D: HasLocalDecls<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         match self {
-            &Operand::Copy(ref l) |
-            &Operand::Move(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
+            &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
             &Operand::Constant(ref c) => c.ty,
         }
     }
 }
 
 impl<'tcx> BinOp {
-      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    lhs_ty: Ty<'tcx>,
-                    rhs_ty: Ty<'tcx>)
-                    -> Ty<'tcx> {
+    pub fn ty<'a, 'gcx>(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
         // FIXME: handle SIMD correctly
         match self {
-            &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |
-            &BinOp::BitXor | &BinOp::BitAnd | &BinOp::BitOr => {
+            &BinOp::Add
+            | &BinOp::Sub
+            | &BinOp::Mul
+            | &BinOp::Div
+            | &BinOp::Rem
+            | &BinOp::BitXor
+            | &BinOp::BitAnd
+            | &BinOp::BitOr => {
                 // these should be integers or floats of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
@@ -321,8 +359,7 @@ impl<'tcx> BinOp {
             &BinOp::Shl | &BinOp::Shr | &BinOp::Offset => {
                 lhs_ty // lhs_ty can be != rhs_ty
             }
-            &BinOp::Eq | &BinOp::Lt | &BinOp::Le |
-            &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
+            &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool
             }
         }
@@ -362,7 +399,7 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
-            BinOp::Offset => unreachable!()
+            BinOp::Offset => unreachable!(),
         }
     }
 }

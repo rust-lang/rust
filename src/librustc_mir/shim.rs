@@ -589,8 +589,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
         // BB #7 (cleanup)
         // `drop(dest[beg])`;
+        let tcx = self.tcx;
         self.block(vec![], TerminatorKind::Drop {
-            location: dest.index(self.tcx, beg),
+            location: dest.index(tcx, beg),
             target: BasicBlock::new(8),
             unwind: None,
         }, true);

@@ -1,5 +1,5 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright 2015 The Rust Project Developers. See
+// the COPYRIGHT file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -75,7 +75,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
         location: Location
     ) {
         if let Rvalue::Use(Operand::Move(src_place)) = rvalue {
-            if let Some((base_place, projection)) = src_place.split_projection(self.tcx) {
+            if let (base_place, Some(projection)) = src_place.final_projection(self.tcx) {
                 if let ProjectionElem::ConstantIndex {
                     offset: _,
                     min_length: _,
@@ -93,7 +93,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                                 location,
                                 dst_place,
                                 &base_place,
-                                projection,
+                                &projection,
                                 item_ty,
                                 size as u32,
                             );
@@ -211,7 +211,11 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                             if let Operand::Move(place) = item {
                                 if let PlaceBase::Local(local) = place.base {
                                     let local_use = &visitor.locals_use[local];
-                                    let opt_index_and_place = Self::try_get_item_source(tcx, local_use, mir);
+                                    let opt_index_and_place = Self::try_get_item_source(
+                                        tcx,
+                                        local_use,
+                                        mir
+                                    );
                                     // each local should be used twice:
                                     //  in assign and in aggregate statments
                                     if local_use.use_count == 2 && opt_index_and_place.is_some() {
@@ -223,7 +227,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                             None
                         }).collect();
 
-                        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
+                        let opt_src_place = items.first().and_then(|x| x.clone()).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
                             let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
                             if let ty::TyArray(_, ref size_o) = src_ty.sty {
@@ -232,7 +236,9 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                                 None
                             }
                         });
-                        Self::check_and_patch(tcx, *candidate, &items, opt_size, &mut patch, dst_place);
+                        Self::check_and_patch(tcx, *candidate, &items,
+                                              opt_size, &mut patch, dst_place
+                        );
                     }
                 }
             }
@@ -245,20 +251,20 @@ impl RestoreSubsliceArrayMoveOut {
     // Checks that source has size, all locals are inited from same source place and
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
-    fn check_and_patch<'a, 'tcx>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn check_and_patch<'tcx>(
+        tcx: TyCtxt<'_, '_, 'tcx>,
         candidate: Location,
-        items: &[Option<(&LocalUse, u32, &Place<'tcx>)>],
+        items: &[Option<(&LocalUse, u32, Place<'tcx>)>],
         opt_size: Option<u64>,
         patch: &mut MirPatch<'tcx>,
         dst_place: &Place<'tcx>
     ) {
-        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
+        let opt_src_place = items.first().and_then(|x| x.clone()).map(|x| x.2);
 
-        if opt_size.is_some() && items.iter().all(
-            |l| l.is_some() && l.unwrap().2 == opt_src_place.unwrap()) {
+        if opt_size.is_some() && items.iter().cloned().all(
+            |l| l.is_some() && l.unwrap().2 == opt_src_place.clone().unwrap()) {
 
-            let indicies: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
+            let indicies: Vec<_> = items.iter().map(|x| x.clone().unwrap().1).collect();
             for i in 1..indicies.len() {
                 if indicies[i - 1] + 1 != indicies[i] {
                     return;
@@ -268,7 +274,7 @@ impl RestoreSubsliceArrayMoveOut {
             let min = *indicies.first().unwrap();
             let max = *indicies.last().unwrap();
 
-            for item in items {
+            for item in items.iter().cloned() {
                 let locals_use = item.unwrap().0;
                 patch.make_nop(locals_use.alive.unwrap());
                 patch.make_nop(locals_use.dead.unwrap());
@@ -293,26 +299,28 @@ impl RestoreSubsliceArrayMoveOut {
     }
 
     fn try_get_item_source<'a, 'tcx>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         local_use: &LocalUse,
         mir: &'a Mir<'tcx>
-    ) -> Option<(u32, &'a Place<'tcx>)> {
+    ) -> Option<(u32, Place<'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &mir[location.block];
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    place1,
-                    Rvalue::Use(Operand::Move(place2)),
+                    ref place1,
+                    Rvalue::Use(Operand::Move(ref place2)),
                 ) = statement.kind {
                     if let PlaceBase::Local(_) = place1.base {
-                        if let Some((base_place, projection)) = place2.split_projection(tcx) {
-                            if let ProjectionElem::ConstantIndex {
-                                offset,
-                                min_length: _,
-                                from_end: false,
-                            } = projection {
-                                return Some((*offset, &base_place));
+                        if place1.elems.is_empty() {
+                            if let Some(projection) = place2.elems.last() {
+                                if let ProjectionElem::ConstantIndex {
+                                    offset,
+                                    min_length: _,
+                                    from_end: false,
+                                } = projection {
+                                    return Some((*offset, place2.projection_base(tcx)));
+                                }
                             }
                         }
                     }

@@ -40,28 +40,27 @@ impl MirPass for InstCombine {
         };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_mir(&mut InstCombineVisitor { tcx, optimizations }, mir);
+        MutVisitor::visit_mir(&mut InstCombineVisitor { optimizations }, mir);
     }
 }
 
-pub struct InstCombineVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct InstCombineVisitor<'tcx> {
     optimizations: OptimizationList<'tcx>,
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for InstCombineVisitor<'a, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
+            let local = Place::local(Local::new(0));
             debug!("Replacing `&*`: {:?}", rvalue);
-            let new_place = match *rvalue {
+            let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
                     // Replace with dummy
-                    let base_place = place.base_place(self.tcx);
-                    mem::replace(&mut base_place, Place::local(Local::new(0)))
+                    mem::replace(&mut place.clone(), local)
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
-            *rvalue = Rvalue::Use(Operand::Copy(new_place))
+            *rvalue = Rvalue::Use(Operand::Copy(new_place.clone()))
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
@@ -92,11 +91,13 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, place) = *rvalue {
-            if let Some((base_place, projection)) = place.split_projection(self.tcx) {
-                if let ProjectionElem::Deref = projection {
-                    if base_place.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
-                        self.optimizations.and_stars.insert(location);
+        if let Rvalue::Ref(_, _, ref place) = *rvalue {
+            if !place.elems.is_empty() {
+                for elem in place.elems.iter() {
+                    if let ProjectionElem::Deref = elem {
+                        if place.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                            self.optimizations.and_stars.insert(location);
+                        }
                     }
                 }
             }

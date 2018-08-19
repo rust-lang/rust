@@ -301,9 +301,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         );
                         trace!("args: {:#?}", args);
                         let local = arg_locals.nth(1).unwrap();
+                        let tcx = *self.tcx;
                         for (i, &valty) in args.into_iter().enumerate() {
                             let dest = self.eval_place(&mir::Place::local(local).field(
-                                *self.tcx,
+                                tcx,
                                 mir::Field::new(i),
                                 valty.ty,
                             ))?;

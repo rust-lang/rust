@@ -164,7 +164,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
         }
 
-        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
             let old_source_info = self.source_info;
             if let PlaceBase::Local(local) = place.base {
                 if self.mir.local_decls[local].internal {
@@ -178,9 +178,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             match base_ty.sty {
                 ty::TyRawPtr(..) => {
                     self.require_unsafe("dereference of raw pointer",
-                                        "raw pointers may be NULL, dangling or unaligned; they can violate \
-                             aliasing rules and cause data races: all of these are undefined \
-                             behavior")
+                                        "raw pointers may be NULL, dangling or unaligned; \
+                                        they can violate aliasing rules and cause data races: \
+                                        all of these are undefined behavior")
                 }
                 ty::TyAdt(adt, _) => {
                     if adt.is_union() {
@@ -226,8 +226,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 PlaceBase::Static(box Static { def_id, ty: _ }) => {
                     if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                         self.require_unsafe("use of mutable static",
-                                            "mutable statics can be mutated by multiple threads: aliasing violations \
-                         or data races will cause undefined behavior");
+                                            "mutable statics can be mutated by \
+                                             multiple threads: aliasing violations \
+                                             or data races will cause undefined behavior");
                     } else if self.tcx.is_foreign_item(def_id) {
                         let source_info = self.source_info;
                         let lint_root =

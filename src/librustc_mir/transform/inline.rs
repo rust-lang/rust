@@ -415,28 +415,31 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow<'a, 'tcx>(
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                fn dest_needs_borrow<'tcx>(
                     place: &Place<'tcx>,
                 ) -> bool {
-                    if let Some((base_place, projection)) = place.split_projection(tcx) {
-                        match projection {
-                            ProjectionElem::Deref |
-                            ProjectionElem::Index(_) => true,
-                            _ => dest_needs_borrow(tcx, &base_place)
-                        }
+                    let mut dest_needs_borrow =  if let PlaceBase::Static(_) = place.base {
+                        // Static variables need a borrow because the callee
+                        // might modify the same static.
+                        true
                     } else {
-                        if let PlaceBase::Static(_) = place.base {
-                            // Static variables need a borrow because the callee
-                            // might modify the same static.
-                            true
-                        } else {
-                            false
-                        }
+                        false
+                    };
+                    if !place.elems.is_empty() {
+                       for elem in place.elems.iter() {
+                           match elem {
+                               ProjectionElem::Deref
+                               | ProjectionElem::Index(_) => {
+                                   dest_needs_borrow = true;
+                               }
+                               _ => continue,
+                           }
+                       }
                     }
+                    dest_needs_borrow
                 }
 
-                let dest = if dest_needs_borrow(self.tcx, &destination.0) {
+                let dest = if dest_needs_borrow(&destination.0) {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.types.re_erased,
@@ -581,7 +584,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(place) = arg {
+        if let Operand::Move(ref place) = arg {
             if let PlaceBase::Local(local) = place.base {
                 if caller_mir.local_kind(local) == LocalKind::Temp {
                     // Reuse the operand if it's a temporary already
@@ -653,7 +656,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *local = l;
                     return;
                 },
-                place => bug!("Return place is {:?}, not local", place)
+                ref place => bug!("Return place is {:?}, not local", place)
             }
         }
         let idx = local.index() - 1;

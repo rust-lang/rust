@@ -365,52 +365,34 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         &mut self,
         place: &Place<'tcx>,
         location: Location,
-        context: PlaceContext,
+        mut context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
-
-        let place_ty = if let Some((base_place, projection)) = place.split_projection(self.tcx()) {
-                let base_context = if context.is_mutating_use() {
-                    PlaceContext::Projection(Mutability::Mut)
-                } else {
-                    PlaceContext::Projection(Mutability::Not)
-                };
-                let base_ty = self.sanitize_place(&base_place, location, base_context);
-                if let PlaceTy::Ty { ty } = base_ty {
-                    if ty.references_error() {
-                        assert!(self.errors_reported);
-                        return PlaceTy::Ty {
-                            ty: self.tcx().types.err,
-                        };
-                    }
-                }
-                self.sanitize_projection(base_ty, &projection, place, location)
-        } else {
-            match place.base {
-                PlaceBase::Local(index) => PlaceTy::Ty {
-                ty: self.mir.local_decls[index].ty,
+        let mut place_ty = match place.base {
+            PlaceBase::Local(index) => PlaceTy::Ty {
+                ty: self.mir.local_decls[index].ty
             },
-                PlaceBase::Promoted(box (_index, sty)) => {
-                    let sty = self.sanitize_type(place, sty);
-                    // FIXME -- promoted MIR return types reference
-                    // various "free regions" (e.g., scopes and things)
-                    // that they ought not to do. We have to figure out
-                    // how best to handle that -- probably we want treat
-                    // promoted MIR much like closures, renumbering all
-                    // their free regions and propagating constraints
-                    // upwards. We have the same acyclic guarantees, so
-                    // that should be possible. But for now, ignore them.
-                    //
-                    // let promoted_mir = &self.mir.promoted[index];
-                    // promoted_mir.return_ty()
-                    PlaceTy::Ty { ty: sty }
-                }
-                PlaceBase::Static(box Static { def_id, ty: sty }) => {
-                    let sty = self.sanitize_type(place, sty);
-                    let ty = self.tcx().type_of(def_id);
-                    let ty = self.cx.normalize(ty, location);
-                    if let Err(terr) = self.cx.eq_types(ty, sty, location.boring()) {
-                        span_mirbug!(
+            PlaceBase::Promoted(box (_index, sty)) => {
+                let sty = self.sanitize_type(place, sty);
+                // FIXME -- promoted MIR return types reference
+                // various "free regions" (e.g., scopes and things)
+                // that they ought not to do. We have to figure out
+                // how best to handle that -- probably we want treat
+                // promoted MIR much like closures, renumbering all
+                // their free regions and propagating constraints
+                // upwards. We have the same acyclic guarantees, so
+                // that should be possible. But for now, ignore them.
+                //
+                // let promoted_mir = &self.mir.promoted[index];
+                // promoted_mir.return_ty()
+                PlaceTy::Ty { ty: sty }
+            }
+            PlaceBase::Static(box Static { def_id, ty: sty }) => {
+                let sty = self.sanitize_type(place, sty);
+                let ty = self.tcx().type_of(def_id);
+                let ty = self.cx.normalize(ty, location);
+                if let Err(terr) = self.cx.eq_types(ty, sty, location.boring()) {
+                    span_mirbug!(
                         self,
                         place,
                         "bad static type ({:?}: {:?}): {:?}",
@@ -418,9 +400,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         sty,
                         terr
                     );
-                    }
-                    PlaceTy::Ty { ty: sty }
                 }
+
+                PlaceTy::Ty { ty: sty }
             }
         };
         if let PlaceContext::Copy = context {
@@ -439,20 +421,43 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             // Copy, then it must.
             self.cx.prove_trait_ref(trait_ref, location.interesting());
         }
+
+        if !place.elems.is_empty() {
+
+            for elem in place.elems.iter(){
+                context = if context.is_mutating_use() {
+                    PlaceContext::Projection(Mutability::Mut)
+                } else {
+                    PlaceContext::Projection(Mutability::Not)
+                };
+                let base_ty = place_ty;
+                if let PlaceTy::Ty { ty } = base_ty {
+                    if ty.references_error() {
+                        assert!(self.errors_reported);
+                        place_ty = PlaceTy::Ty {
+                            ty: self.tcx().types.err,
+                        };
+                        break;
+                    }
+                }
+                place_ty = self.sanitize_projection(base_ty, elem, place, location);
+            }
+        };
+
         place_ty
     }
 
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
-        pi: &PlaceElem<'tcx>,
+        proj: &PlaceElem<'tcx>,
         place: &Place<'tcx>,
         location: Location,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
+        debug!("sanitize_projection: {:?} {:?} {:?}", base, proj, place);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
-        match *pi {
+        match *proj {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true);
                 PlaceTy::Ty {
@@ -1593,19 +1598,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        let mut borrowed_place = borrowed_place;
-
         debug!(
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        while let Some((base_place, projection)) = borrowed_place.split_projection(self.infcx.tcx) {
+
+        for elem in borrowed_place.elems.iter() {
             debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
 
-            match projection {
+            match elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base_place.ty(self.mir, tcx).to_ty(tcx);
+                    let base_ty = borrowed_place.ty(self.mir, tcx).to_ty(tcx);
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
@@ -1674,10 +1678,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // other field access
                 }
             }
-
-            // The "propagate" case. We need to check that our base is valid
-            // for the borrow's lifetime.
-            borrowed_place = &base_place;
         }
     }
 

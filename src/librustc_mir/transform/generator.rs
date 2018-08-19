@@ -97,7 +97,7 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     }
 }
 
-struct DerefArgVisitor<'a, 'tcx> {
+struct DerefArgVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
@@ -329,42 +329,28 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
-struct BorrowedLocals<'a, 'tcx>{
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    local_live: liveness::LiveVarSet<Local>,
-}
+struct BorrowedLocals(liveness::LiveVarSet<Local>);
 
-impl<'a, 'tcx> BorrowedLocals<'a, 'tcx> {
+impl<'tcx> BorrowedLocals {
     fn mark_as_borrowed(
         &mut self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         place: &Place<'tcx>,
     ) {
-        if let Some((base_place, projection)) = place.split_projection(tcx) {
-            if let ProjectionElem::Deref = projection {
-                // For derefs we don't look any further.
-                // If it pointed to a Local, it would already be borrowed elsewhere
-                ()
-            } else {
-                self.mark_as_borrowed(self.tcx, &base_place)
-            }
-        } else {
-            match place.base {
-                PlaceBase::Local(l) => { self.local_live.add(&l); }
-                _ => (),
-            }
+        match place.base {
+            PlaceBase::Local(l) => { self.0.add(&l); }
+            _ => (),
         }
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for BorrowedLocals<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BorrowedLocals {
     fn visit_rvalue(
         &mut self,
         rvalue: &Rvalue<'tcx>,
         location: Location,
     ) {
         if let Rvalue::Ref(_, _, place) = rvalue {
-            self.mark_as_borrowed(self.tcx, place);
+            self.mark_as_borrowed(place);
         }
 
         self.super_rvalue(rvalue, location)
@@ -396,7 +382,7 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // borrowed (even if they are still active).
     // This is only used for immovable generators.
     let borrowed_locals = if !movable {
-        let analysis = HaveBeenBorrowedLocals::new(tcx, mir);
+        let analysis = HaveBeenBorrowedLocals::new(mir);
         let result =
             do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
                         |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
@@ -596,7 +582,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: place,
+                    location: ref place,
                     target,
                     unwind
                 }
@@ -956,3 +942,4 @@ impl MirPass for StateTransform {
         create_generator_resume_function(tcx, transform, def_id, source, mir);
     }
 }
+

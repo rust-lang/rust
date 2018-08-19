@@ -102,22 +102,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::PlaceBase::*;
-
-        if let Some((base_place, projection)) = place.split_projection(self.tcx.tcx) {
-            self.try_read_place(&base_place);
-            self.try_read_place_projection(&base_place, projection)
-        } else {
-            match place.base {
-                // Might allow this in the future, right now there's no way to do this from Rust code anyway
-                Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
-                // Directly reading a local will always succeed
-                Local(local) => self.frame().locals[local].access().map(Some),
-                // No fast path for statics. Reading from statics is rare and would require another
-                // Machine function to handle differently in miri.
-                Promoted(_) |
-                Static(_) => Ok(None),
+        let mut result = match place.base {
+            Local(local) => {
+                if local == mir::RETURN_PLACE {
+                    // Might allow this in the future, right now there's no way to do this from Rust code anyway
+                    err!(ReadFromReturnPointer)
+                } else {
+                    // Directly reading a local will always succeed
+                    self.frame().locals[local].access().map(Some)
+                }
+            },
+            // No fast path for statics. Reading from statics is rare and would require another
+            // Machine function to handle differently in miri.
+            Promoted(_) | Static(_) => Ok(None),
+        };
+        if !place.elems.is_empty() {
+            for elem in place.elems.iter() {
+                result = self.try_read_place_projection(place, elem);
             }
         }
+
+        result
     }
 
     pub fn read_field(
@@ -212,51 +217,54 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, Place> {
         use rustc::mir::PlaceBase::*;
 
-        let place = if let Some((base_place, projection)) = mir_place.split_projection(self.tcx.tcx) {
-            let ty = self.place_ty(&base_place);
-            let place = self.eval_place(&base_place)?;
-            self.eval_place_projection(place, ty, projection)?
-        } else {
-            match mir_place.base {
-                Local(mir::RETURN_PLACE) => self.frame().return_place,
-                Local(local) => Place::Local {
-                    frame: self.cur_frame(),
-                    local,
-                },
+        let mut place = match mir_place.base {
+            Local(mir::RETURN_PLACE) => self.frame().return_place,
+            Local(local) => Place::Local {
+                frame: self.cur_frame(),
+                local,
+            },
 
-                Promoted(ref promoted) => {
-                    let instance = self.frame().instance;
-                    let val = self.read_global_as_value(GlobalId {
-                        instance,
-                        promoted: Some(promoted.0),
-                    })?;
-                    if let Value::ByRef(ptr, align) = val {
-                        Place::Ptr {
-                            ptr: ptr.into(),
-                            align,
-                            extra: PlaceExtra::None,
-                        }
-                    } else {
-                        bug!("evaluated promoted and got {:#?}", val);
-                    }
-                }
-
-                Static(ref static_) => {
-                    let layout = self.layout_of(self.place_ty(mir_place))?;
-                    let instance = ty::Instance::mono(*self.tcx, static_.def_id);
-                    let cid = GlobalId {
-                        instance,
-                        promoted: None
-                    };
-                    let alloc = Machine::init_static(self, cid)?;
+            Promoted(ref promoted) => {
+                let instance = self.frame().instance;
+                let val = self.read_global_as_value(GlobalId {
+                    instance,
+                    promoted: Some(promoted.0),
+                })?;
+                if let Value::ByRef(ptr, align) = val {
                     Place::Ptr {
-                        ptr: ScalarMaybeUndef::Scalar(Scalar::Ptr(alloc.into())),
-                        align: layout.align,
+                        ptr: ptr.into(),
+                        align,
                         extra: PlaceExtra::None,
                     }
+                } else {
+                    bug!("evaluated promoted and got {:#?}", val);
+                }
+            }
+
+            Static(ref static_) => {
+                let layout = self.layout_of(self.place_ty(mir_place))?;
+                let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None
+                };
+                let alloc = Machine::init_static(self, cid)?;
+                Place::Ptr {
+                    ptr: ScalarMaybeUndef::Scalar(Scalar::Ptr(alloc.into())),
+                    align: layout.align,
+                    extra: PlaceExtra::None,
                 }
             }
         };
+
+        if !mir_place.elems.is_empty() {
+             let ty = self.place_ty(mir_place);
+             let place1 = self.eval_place(mir_place)?;
+             for elem in mir_place.elems.iter() {
+                place = self.eval_place_projection(place1,  ty,  elem)?;
+             }
+        }
+
         self.dump_local(place);
 
         Ok(place)

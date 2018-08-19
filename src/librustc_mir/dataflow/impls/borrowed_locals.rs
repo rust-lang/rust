@@ -22,21 +22,16 @@ use rustc::mir::*;
 /// immovable generators.
 #[derive(Copy, Clone)]
 pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
-        HaveBeenBorrowedLocals { tcx, mir }
+    pub fn new(mir: &'a Mir<'tcx>) -> Self {
+        HaveBeenBorrowedLocals { mir }
     }
 
     pub fn mir(&self) -> &Mir<'tcx> {
         self.mir
-    }
-
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.tcx
     }
 }
 
@@ -59,7 +54,6 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
         BorrowedLocalsVisitor {
-            tcx: self.tcx(),
             sets,
         }.visit_statement(loc.block, stmt, loc);
 
@@ -72,7 +66,6 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
 
     fn terminator_effect(&self, sets: &mut BlockSets<Local>, loc: Location) {
         BorrowedLocalsVisitor {
-            tcx: self.tcx(),
             sets,
         }.visit_terminator(loc.block, self.mir[loc.block].terminator(), loc);
     }
@@ -102,31 +95,31 @@ impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-struct BorrowedLocalsVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    sets: &'a mut BlockSets<'tcx, Local>,
+struct BorrowedLocalsVisitor<'b, 'c: 'b> {
+    sets: &'b mut BlockSets<'c, Local>,
 }
 
-impl<'a, 'tcx: 'a> BorrowedLocalsVisitor<'a, 'tcx> {
+impl<'b, 'c, 'tcx> BorrowedLocalsVisitor<'b, 'c> {
     fn find_local(&self, place: &Place<'tcx>) -> Option<Local> {
-        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
-            if let ProjectionElem::Deref = projection {
-                None
-            } else {
-                self.find_local(&base_place)
-            }
-        } else {
-            match place.base {
-                PlaceBase::Local(l) => Some(l),
-                PlaceBase::Promoted(_) | PlaceBase::Static(..) => None,
+        let mut local = match place.base {
+            PlaceBase::Local(local) => Some(local),
+            PlaceBase::Promoted(_) | PlaceBase::Static(..) => None,
+        };
+        if !place.elems.is_empty() {
+            for elem in place.elems.iter() {
+                match elem {
+                    ProjectionElem::Deref => local = None,
+                    _ => continue,
+                }
             }
         }
+        local
     }
 }
 
 impl<'tcx, 'b, 'c> Visitor<'tcx> for BorrowedLocalsVisitor<'b, 'c> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, place) = *rvalue {
+        if let Rvalue::Ref(_, _, ref place) = *rvalue {
             if let Some(local) = self.find_local(&place) {
                 self.sets.gen(&local);
             }

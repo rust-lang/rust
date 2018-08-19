@@ -154,7 +154,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let from_simple_let = match_place.is_none();
         let match_place = match_place.as_ref().unwrap_or(move_from);
 
-        match self.move_data.rev_lookup.find(self.tcx, match_place) {
+        match self.move_data.rev_lookup.find(match_place) {
             // Error with the match place
             LookupResult::Parent(_) => {
                 for ge in &mut *grouped_errors {
@@ -185,7 +185,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let mpi = match self.move_data.rev_lookup.find(self.tcx, move_from) {
+                let mpi = match self.move_data.rev_lookup.find(move_from) {
                     LookupResult::Parent(Some(mpi)) => mpi,
                     // move_from should be a projection from match_place.
                     _ => unreachable!("Probably not unreachable..."),
@@ -240,14 +240,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
                             ty::TyClosure(def_id, closure_substs)
                                 if !self.mir.upvar_decls.is_empty()
-                                    && {
-                                        if let Some((base_place, _)) = place.split_projection(self.tcx) {
-                                            PlaceBase::Local(Local::new(1)) == base_place.base
-                                        } else {
-                                            false
-                                        }
-                                    } =>
-                            {
+                                    && PlaceBase::Local(Local::new(1)) == place.base
+                            => {
                                 let closure_kind_ty =
                                     closure_substs.closure_kind_ty(def_id, self.tcx);
                                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
@@ -301,7 +295,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // Ok to suggest a borrow, since the target can't be moved from
                 // anyway.
                 if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                    if let Some((base_place, proj)) = move_from.split_projection(self.tcx) {
+                    if let (base_place, Some(proj)) = move_from.final_projection(self.tcx) {
                         if self.suitable_to_remove_deref(&base_place, proj, &snippet) {
                             err.span_suggestion(
                                 span,
@@ -387,7 +381,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         };
 
         *proj == ProjectionElem::Deref && snippet.starts_with('*')
-            && if let Some(projection) = place.projection() {
+            && if let Some(projection) = place.elems.last() {
             if let ProjectionElem::Field(_, ty) = projection {
                 is_shared_ref(ty)
             } else {

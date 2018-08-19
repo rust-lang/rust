@@ -165,7 +165,7 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
 }
 
 pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     mut callback: F)
@@ -174,7 +174,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
         let place = mir::Place::local(arg);
-        let lookup_result = move_data.rev_lookup.find(tcx, &place);
+        let lookup_result = move_data.rev_lookup.find(&place);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
                               |mpi| callback(mpi, DropFlagState::Present));
@@ -214,7 +214,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
 }
 
 pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
     loc: Location,

@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             self.insert_as_pending_if_two_phase(location, &assigned_place, region, kind, idx);
 
             insert(&mut self.region_map, &region, idx);
-            if let Some(local) = borrowed_place.root_local(self.tcx) {
+            if let Some(local) = borrowed_place.root_local() {
                 insert(&mut self.local_map, &local, idx);
             }
         }

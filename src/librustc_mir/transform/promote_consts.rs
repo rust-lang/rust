@@ -287,6 +287,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
+        let tcx = self.tcx;
         let mut operand = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(self.source.promoted.len());
@@ -299,27 +300,31 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(_, Rvalue::Ref(_, _, ref mut place)) => {
+                        StatementKind::Assign(_, Rvalue::Ref(_, _, ref place)) => {
                             // Find the underlying local for this (necessarilly interior) borrow.
-                            // HACK(eddyb) using a recursive function because of mutable borrows.
-                            fn interior_base<'a, 'tcx>(
-                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                place: &'a mut Place<'tcx>
-                            ) -> &'a mut Place<'tcx> {
-                                if let Some((base_place, projection)) = place.split_projection(tcx) {
-                                    assert_ne!(*projection, ProjectionElem::Deref);
-                                    return interior_base(tcx, &mut base_place);
+                            let mut place = place.clone();
+                            if !place.elems.is_empty() {
+                                // for Place:
+                                //     Base.[a, b, Deref, c]
+                                //     ^^^^^^^^^^  ^^^^^  ^
+                                //     |-- new_place      |-- skip
+                                //
+                                for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                                    if elem == ProjectionElem::Deref {
+                                        place = place.elem_base(tcx, i);
+                                        break;
+                                    } else {
+                                        continue;
+                                    }
                                 }
-                                place
                             }
-                            let place = interior_base(self.tcx, place);
 
                             let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
                             let span = statement.source_info.span;
 
-                            Operand::Move(mem::replace(place, promoted_place(ty, span)))
+                            Operand::Move(mem::replace(&mut place, promoted_place(ty, span)))
                         }
                         _ => bug!()
                     }
@@ -374,7 +379,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         match candidate {
             Candidate::Ref(Location { block, statement_index }) => {
                 match mir[block].statements[statement_index].kind {
-                    StatementKind::Assign(place, _) => {
+                    StatementKind::Assign(ref place, _) => {
                         if let PlaceBase::Local(local) = place.base {
                             if temps[local] == TempState::PromotedOut {
                                 // Already promoted.

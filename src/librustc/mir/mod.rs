@@ -1779,33 +1779,33 @@ impl<'a, 'tcx> Place<'tcx> {
 
     pub fn field(
         self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         f: Field,
         ty: Ty<'tcx>,
     ) -> Self {
         self.elem(tcx, ProjectionElem::Field(f, ty))
     }
 
-    pub fn deref(self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub fn deref(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
         self.elem(tcx, ProjectionElem::Deref)
     }
 
     pub fn downcast(
         self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         adt_def: &'tcx AdtDef,
         variant_index: usize,
     ) -> Self {
         self.elem(tcx, ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, index: Local) -> Self {
+    pub fn index(self, tcx: TyCtxt<'_, '_, 'tcx>, index: Local) -> Self {
         self.elem(tcx, ProjectionElem::Index(index))
     }
 
     pub fn constant_index(
         self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         offset: u32,
         min_length: u32,
         from_end: bool,
@@ -1817,7 +1817,7 @@ impl<'a, 'tcx> Place<'tcx> {
 
     pub fn subslice(
         self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         from: u32,
         to: u32,
     ) -> Self {

@@ -125,13 +125,13 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(args.len() == 1);
     let peek_arg_place = match args[0] {
         mir::Operand::Copy(
-            place @ Place {
+            ref place @ Place {
                 base: PlaceBase::Local(_),
                 elems: _,
             }
         ) |
         mir::Operand::Move(
-            place @ Place {
+            ref place @ Place {
                 base: PlaceBase::Local(_),
                 elems: _,
             }
@@ -181,10 +181,10 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
-        if *place == peek_arg_place {
+        if place == peek_arg_place {
             if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
                 // Okay, our search is over.
-                match move_data.rev_lookup.find(tcx, peeking_at_place) {
+                match move_data.rev_lookup.find(peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {
                         let bit_state = sets.on_entry.contains(&peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
@@ -208,7 +208,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(tcx, place);
+        let lhs_mpi = move_data.rev_lookup.find(place);
 
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);

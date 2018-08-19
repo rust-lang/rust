@@ -244,7 +244,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        if let Some((base_place, projection)) =  dest.split_projection(self.tcx){
+        if let Some(projection) =  dest.elems.last() {
            if let ProjectionElem::Deref = projection {
                if let PlaceBase::Local(index) = dest.base {
                    if self.mir.local_kind(index) == LocalKind::Temp
@@ -274,7 +274,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 PlaceBase::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
                     self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                     debug!("store to {:?} (temp or return pointer)", index);
-                    store(&mut self.local_qualif[index])
+                    store(&mut self.local_qualif[index]);
                 }
                 _ => {
                     // Catch more errors in the destination.
@@ -459,11 +459,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_place(&mut self,
-                    place: &Place<'tcx>,
-                    context: PlaceContext<'tcx>,
-                    location: Location) {
-        if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+    fn visit_place(
+        &mut self,
+        place: &Place<'tcx>,
+        context: PlaceContext<'tcx>,
+        location: Location,
+    ) {
+        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
             self.nest(|this| {
                 this.super_place(place, context, location);
                 match projection {
@@ -553,8 +555,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                                     a constant instead", self.mode);
                         if self.tcx.sess.teach(&err.get_code().unwrap()) {
                             err.note(
-                                "Static and const variables can refer to other const variables. But a \
-                             const variable cannot refer to a static variable."
+                                "Static and const variables can refer to other const variables. \
+                                But a const variable cannot refer to a static variable."
                             );
                             err.help(
                                 "To fix this, the value can be extracted as a const and then used."
@@ -574,7 +576,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Operand::Copy(_) |
             Operand::Move(_) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Operand::Move(place) = *operand {
+                if let Operand::Move(ref place) = *operand {
                     if let PlaceBase::Local(local) = place.base {
                         self.local_qualif[local] = self.local_qualif[local].map(|q|
                             q - Qualif::NEEDS_DROP
@@ -605,9 +607,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         // Recurse through operands and places.
-        if let Rvalue::Ref(region, kind, place) = *rvalue {
+        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             let mut is_reborrow = false;
-            if let Some((base_place, projection)) = place.split_projection(self.tcx) {
+            if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
                 if let ProjectionElem::Deref = projection {
                     let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::TyRef(..) = base_ty.sty {
@@ -642,7 +644,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) => {}
 
-            Rvalue::Ref(_, kind, place) => {
+            Rvalue::Ref(_, kind, ref place) => {
                 let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
 
                 // Default to forbidding the borrow and/or its promotion,
@@ -715,12 +717,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
                     // We can only promote interior borrows of promotable temps.
-                    let mut place = place;
-                    while let Some((base_place, projection)) = place.split_projection(self.tcx) {
-                        if *projection == ProjectionElem::Deref {
-                            break;
+                    let mut place = place.clone();
+                    if !place.elems.is_empty() {
+                        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                            match elem {
+                                ProjectionElem::Deref => break,
+                                _ => {
+                                    place = place.elem_base(self.tcx, i);
+                                    continue;
+                                }
+                            }
                         }
-                        place = base_place;
                     }
                     if let PlaceBase::Local(local) = place.base {
                         if self.mir.local_kind(local) == LocalKind::Temp {
@@ -1016,9 +1023,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, PlaceBase::Local(index)) = (self.mode, dest.base) {
-            if self.mir.local_kind(index) == LocalKind::Var &&
-               self.const_fn_arg_vars.insert(index) &&
+        if let (Mode::ConstFn, PlaceBase::Local(ref index)) = (self.mode, dest.clone().base) {
+            if self.mir.local_kind(*index) == LocalKind::Var &&
+               self.const_fn_arg_vars.insert(*index) &&
                !self.tcx.sess.features_untracked().const_let {
 
                 // Direct use of an argument is permitted.
@@ -1048,7 +1055,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.contains(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.local_decls[index];
+                    let decl = &self.mir.local_decls[*index];
                     let mut err = feature_err(
                         &self.tcx.sess.parse_sess,
                         "const_let",

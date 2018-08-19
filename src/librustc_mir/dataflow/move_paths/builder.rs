@@ -106,17 +106,19 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                      -> Result<MovePathIndex, MoveError<'tcx>>
     {
         debug!("lookup({:?})", place);
-        if let Some((base_place, projection)) = place.split_projection(self.builder.tcx) {
-            self.move_path_for_projection(place, &base_place, projection)
-        } else {
-            match place.base {
-                PlaceBase::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
-                PlaceBase::Promoted(..) |
-                PlaceBase::Static(..) => {
-                    Err(MoveError::cannot_move_out_of(self.loc, Static))
-                }
+        let mut result = match place.base {
+            PlaceBase::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
+            PlaceBase::Promoted(..) |
+            PlaceBase::Static(..) => {
+                Err(MoveError::cannot_move_out_of(self.loc, Static))
+            }
+        };
+        if !place.elems.is_empty() {
+            for elem in place.elems.iter() {
+                result = self.move_path_for_projection(place,  place, elem);
             }
         }
+        result
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
@@ -273,10 +275,11 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
-                    self.create_move_path(&place.clone().deref(self.builder.tcx));
-                    self.gather_init(self.builder.tcx, place, InitKind::Shallow);
+                    let tcx = self.builder.tcx;
+                    self.create_move_path(&place.clone().deref(tcx));
+                    self.gather_init(place, InitKind::Shallow);
                 } else {
-                    self.gather_init(self.builder.tcx, place, InitKind::Deep);
+                    self.gather_init(place, InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }
@@ -286,7 +289,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
                 for (output, kind) in outputs.iter().zip(&asm.outputs) {
                     if !kind.is_indirect {
-                        self.gather_init(self.builder.tcx, output, InitKind::Deep);
+                        self.gather_init(output, InitKind::Deep);
                     }
                 }
                 for input in inputs {
@@ -377,7 +380,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(value);
-                self.gather_init(self.builder.tcx, location, InitKind::Deep);
+                self.gather_init(location, InitKind::Deep);
             }
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 self.gather_operand(func);
@@ -386,7 +389,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 if let Some((ref destination, _bb)) = *destination {
                     self.create_move_path(destination);
-                    self.gather_init(self.builder.tcx, destination, InitKind::NonPanicPathOnly);
+                    self.gather_init(destination, InitKind::NonPanicPathOnly);
                 }
             }
         }
@@ -421,10 +424,10 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         self.builder.data.loc_map[self.loc].push(move_out);
     }
 
-    fn gather_init(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, place: &Place<'tcx>, kind: InitKind) {
+    fn gather_init(&mut self, place: &Place<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
-        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(tcx, place) {
+        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
             let init = self.builder.data.inits.push(Init {
                 span: self.builder.mir.source_info(self.loc).span,
                 path,

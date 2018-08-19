@@ -420,9 +420,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             let subpath = self.elaborator.downcast_subpath(
                 self.path, variant_index);
             if let Some(variant_path) = subpath {
-                let base_place = self.place.clone().elem(
+                let base_place = self.place.clone().downcast(
                     self.tcx(),
-                    ProjectionElem::Downcast(adt, variant_index)
+                    adt,
+                    variant_index,
                 );
                 let fields = self.move_paths_for_fields(
                     &base_place,
@@ -629,9 +630,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             })
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
+        let tcx = self.tcx();
 
         self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            location: ptr.clone().deref(self.tcx()),
+            location: ptr.clone().deref(tcx),
             target: loop_block,
             unwind: unwind.into_option()
         });
@@ -653,15 +655,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     "move out check doesn't implemented for array bigger then u32");
             let size = size as u32;
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size).map(|i| {
-                (self.place.clone().elem(
-                    self.tcx(),
-                    ProjectionElem::ConstantIndex{
-                        offset: i,
-                        min_length: size,
-                        from_end: false
-                    }
-                ),
-                 self.elaborator.array_subpath(self.path, i, size))
+                (self.place.clone().constant_index(self.tcx(), i, size, false),
+                self.elaborator.array_subpath(self.path, i, size))
             }).collect();
 
             if fields.iter().any(|(_,path)| path.is_some()) {

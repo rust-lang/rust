@@ -645,13 +645,14 @@ macro_rules! make_mir_visitor {
                         self.visit_ty(& $($mutability)* promoted.1, TyContext::Location(location));
                     },
                 }
-
-                for elem in elems.iter() {
-                    self.visit_projection_elem(
-                        &$($mutability)* (*elem).clone(),
-                        context,
-                        location
-                    )
+                if !elems.is_empty() {
+                    for elem in elems.iter().cloned().rev() {
+                        self.visit_projection_elem(
+                            &$($mutability)* elem.clone(),
+                            context,
+                            location
+                        );
+                    }
                 }
             }
 
