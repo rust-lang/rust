@@ -736,7 +736,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
                         debug!(
                             "instantiate_opaque_types_in_map: \
-                             encountered opaque outside it's definition scope \
+                             encountered opaque outside its definition scope \
                              def_id={:?}",
                             def_id,
                         );
@@ -808,8 +808,8 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         for predicate in bounds.predicates {
             // Change the predicate to refer to the type variable,
-            // which will be the concrete type, instead of the Opaque.
-            // This also instantiates nested `impl Trait`.
+            // which will be the concrete type instead of the opaque type.
+            // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(&predicate);
 
             let cause = traits::ObligationCause::new(span, self.body_id, traits::SizedReturnType);

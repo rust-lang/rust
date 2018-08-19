@@ -14,7 +14,7 @@
 //! are supplied to us before normalization and may contain existential
 //! `impl Trait` instances. In contrast, the input/output types found in
 //! the MIR (specifically, in the special local variables for the
-//! `RETURN_PLACE` the MIR arguments) are always fully normalize (and
+//! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
 use borrow_check::nll::renumber;

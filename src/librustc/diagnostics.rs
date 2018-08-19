@@ -1739,7 +1739,7 @@ specified exit code, use `std::process::exit`.
 
 E0562: r##"
 Abstract return types (written `impl Trait` for some trait `Trait`) are only
-allowed as function return types.
+allowed as function and inherent impl return types or binding types.
 
 Erroneous code example:
 
@@ -1754,7 +1754,8 @@ fn main() {
 }
 ```
 
-Make sure `impl Trait` only appears in return-type position.
+Make sure `impl Trait` only appears in return-type position or as the type of a
+binding.
 
 ```
 fn count_to_n(n: usize) -> impl Iterator<Item=usize> {

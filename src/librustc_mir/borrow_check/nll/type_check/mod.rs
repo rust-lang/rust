@@ -98,7 +98,7 @@ mod relate_tys;
 ///   to outlive; should represent the fn body
 /// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
 ///   the types of the input parameters found in the MIR itself will be equated with these
-/// - `output_ty` -- fully liberaetd, but **not** normalized, expected return type;
+/// - `output_ty` -- fully liberated, but **not** normalized, expected return type;
 ///   the type for the RETURN_PLACE will be equated with this
 /// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
 ///   constraints for the regions in the types of variables

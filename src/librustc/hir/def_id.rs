@@ -131,7 +131,6 @@ pub struct DefIndex(u32);
 /// thanks to `NodeCollector::new`.
 pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
 
-
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,

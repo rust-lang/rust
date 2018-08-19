@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .pat_binding_modes_mut()
                     .insert(pat.hir_id, bm);
                 debug!("check_pat_walk: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
-                let typ = self.local_ty(pat.span, pat.id);
+                let local_ty = self.local_ty(pat.span, pat.id).decl_ty;
                 match bm {
                     ty::BindByReference(mutbl) => {
                         // if the binding is like
@@ -249,28 +249,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
                         // required. However, we use equality, which is stronger. See (*) for
                         // an explanation.
-                        self.demand_eqtype(pat.span, region_ty, typ);
+                        self.demand_eqtype(pat.span, region_ty, local_ty);
                     }
                     // otherwise the type of x is the expected type T
                     ty::BindByValue(_) => {
                         // As above, `T <: typeof(x)` is required but we
                         // use equality, see (*) below.
-                        self.demand_eqtype(pat.span, expected, typ);
+                        self.demand_eqtype(pat.span, expected, local_ty);
                     }
                 }
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
                 if var_id != pat.id {
-                    let vt = self.local_ty(pat.span, var_id);
-                    self.demand_eqtype(pat.span, vt, typ);
+                    let vt = self.local_ty(pat.span, var_id).decl_ty;
+                    self.demand_eqtype(pat.span, vt, local_ty);
                 }
 
                 if let Some(ref p) = *sub {
                     self.check_pat_walk(&p, expected, def_bm, true);
                 }
 
-                typ
+                local_ty
             }
             PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, &subpats, ddpos, expected, def_bm)

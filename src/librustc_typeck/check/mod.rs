@@ -154,6 +154,13 @@ mod generator_interior;
 mod intrinsic;
 mod op;
 
+/// The type of a local binding, including the revealed type for anon types.
+#[derive(Copy, Clone)]
+pub struct LocalTy<'tcx> {
+    decl_ty: Ty<'tcx>,
+    revealed_ty: Ty<'tcx>
+}
+
 /// A wrapper for InferCtxt's `in_progress_tables` field.
 #[derive(Copy, Clone)]
 struct MaybeInProgressTables<'a, 'tcx: 'a> {
@@ -180,7 +187,6 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
     }
 }
 
-
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
@@ -195,7 +201,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     tables: MaybeInProgressTables<'a, 'tcx>,
 
-    locals: RefCell<NodeMap<Ty<'tcx>>>,
+    locals: RefCell<NodeMap<LocalTy<'tcx>>>,
 
     fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
@@ -864,7 +870,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor { fcx: &fcx }.visit_body(body);
+            GatherLocalsVisitor { fcx: &fcx, parent_id: id, }.visit_body(body);
 
             fcx.check_expr_coercable_to_type(&body.value, expected_type);
 
@@ -914,22 +920,26 @@ fn check_abi<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, abi: Abi) {
 }
 
 struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+    parent_id: ast::NodeId,
 }
 
 impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
-    fn assign(&mut self, span: Span, nid: ast::NodeId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: ast::NodeId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
                 let var_ty = self.fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
-                self.fcx.locals.borrow_mut().insert(nid, var_ty);
+                self.fcx.locals.borrow_mut().insert(nid, LocalTy {
+                    decl_ty: var_ty,
+                    revealed_ty: var_ty
+                });
                 var_ty
             }
             Some(typ) => {
                 // take type that the user specified
                 self.fcx.locals.borrow_mut().insert(nid, typ);
-                typ
+                typ.revealed_ty
             }
         }
     }
@@ -942,24 +952,28 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'gcx hir::Local) {
-        let o_ty = match local.ty {
+        let local_ty = match local.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
+                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, 1);
 
-                let c_ty = self.fcx.inh.infcx.canonicalize_response(&o_ty);
-                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
+                let revealed_ty = self.fcx.instantiate_opaque_types_from_value(
+                    self.parent_id,
+                    &o_ty);
+
+                let c_ty = self.fcx.inh.infcx.canonicalize_response(&revealed_ty);
                 self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
 
-                Some(o_ty)
+                Some(LocalTy { decl_ty: o_ty, revealed_ty })
             },
             None => None,
         };
-        self.assign(local.span, local.id, o_ty);
+        self.assign(local.span, local.id, local_ty);
 
         debug!("Local variable {:?} is assigned type {}",
                local.pat,
                self.fcx.ty_to_string(
-                   self.fcx.locals.borrow().get(&local.id).unwrap().clone()));
+                   self.fcx.locals.borrow().get(&local.id).unwrap().clone().decl_ty));
         intravisit::walk_local(self, local);
     }
 
@@ -976,7 +990,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
             debug!("Pattern binding {} is assigned to {} with type {:?}",
                    ident,
                    self.fcx.ty_to_string(
-                       self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
+                       self.fcx.locals.borrow().get(&p.id).unwrap().clone().decl_ty),
                    var_ty);
         }
         intravisit::walk_pat(self, p);
@@ -1027,7 +1041,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let declared_ret_ty = fn_sig.output();
     fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-    let revealed_ret_ty = fcx.instantiate_opaque_types_from_return_value(fn_id, &declared_ret_ty);
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(fn_id, &declared_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -1045,7 +1059,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.yield_ty = Some(yield_ty);
     }
 
-    GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
+    GatherLocalsVisitor { fcx: &fcx, parent_id: fn_id, }.visit_body(body);
 
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
@@ -2040,7 +2054,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         format!("{:?}", self_ptr)
     }
 
-    pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> Ty<'tcx> {
+    pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> LocalTy<'tcx> {
         match self.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
@@ -2225,18 +2239,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Replace the opaque types from the return value of the
-    /// function with type variables and records the `OpaqueTypeMap` for
-    /// later use during writeback. See
+    /// Replace the opaque types from the given value with type variables,
+    /// and records the `OpaqueTypeMap` for later use during writeback. See
     /// `InferCtxt::instantiate_opaque_types` for more details.
-    fn instantiate_opaque_types_from_return_value<T: TypeFoldable<'tcx>>(
+    fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
         fn_id: ast::NodeId,
         value: &T,
     ) -> T {
         let fn_def_id = self.tcx.hir.local_def_id(fn_id);
         debug!(
-            "instantiate_opaque_types_from_return_value(fn_def_id={:?}, value={:?})",
+            "instantiate_opaque_types_from_value(fn_def_id={:?}, value={:?})",
             fn_def_id,
             value
         );
@@ -2889,7 +2902,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
-                self.demand_coerce(&arg, checked_ty, coerce_ty,  AllowTwoPhase::Yes);
+                self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -3048,7 +3061,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
     }
 
-    fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
+    fn check_expr_with_hint(&self,
+                            expr: &'gcx hir::Expr,
                             expected: Ty<'tcx>) -> Ty<'tcx> {
         self.check_expr_with_expectation(expr, ExpectHasType(expected))
     }
@@ -3196,7 +3210,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             return_expr,
                             return_expr_ty);
     }
-
 
     // A generic function for checking the then and else in an if
     // or if-else.
@@ -3739,9 +3752,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
     fn check_expr_with_expectation_and_needs(&self,
-                                                   expr: &'gcx hir::Expr,
-                                                   expected: Expectation<'tcx>,
-                                                   needs: Needs) -> Ty<'tcx> {
+                                             expr: &'gcx hir::Expr,
+                                             expected: Expectation<'tcx>,
+                                             needs: Needs) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
 
@@ -3827,8 +3840,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => Needs::None
                 };
                 let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
-                                                                                    expected_inner,
-                                                                                    needs);
+                                                                             expected_inner,
+                                                                             needs);
 
                 if !oprnd_t.references_error() {
                     oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
@@ -3858,8 +3871,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 self.write_method_call(expr.hir_id, method);
                             } else {
                                 type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
-                                                    "type `{}` cannot be dereferenced",
-                                                    oprnd_t).emit();
+                                                   "type `{}` cannot be dereferenced",
+                                                   oprnd_t).emit();
                                 oprnd_t = tcx.types.err;
                             }
                         }
@@ -3923,6 +3936,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::ExprKind::Path(ref qpath) => {
                 let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
+                debug!("path_foo: {:?} {:?}", def, opt_ty);
                 let ty = if def != Def::Err {
                     self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0
                 } else {
@@ -4083,7 +4097,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
                 self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
-                                    expr.span, expected)
+                                     expr.span, expected)
             }
             hir::ExprKind::While(ref cond, ref body, _) => {
                 let ctxt = BreakableCtxt {
@@ -4471,7 +4485,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // See #44848.
         let ref_bindings = local.pat.contains_explicit_ref_binding();
 
-        let local_ty = self.local_ty(init.span, local.id);
+        let local_ty = self.local_ty(init.span, local.id).revealed_ty;
         if let Some(m) = ref_bindings {
             // Somewhat subtle: if we have a `ref` binding in the pattern,
             // we want to avoid introducing coercions for the RHS. This is
@@ -4490,7 +4504,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
-        let t = self.local_ty(local.span, local.id);
+        let t = self.local_ty(local.span, local.id).decl_ty;
         self.write_ty(local.hir_id, t);
 
         if let Some(ref init) = local.init {
@@ -4827,7 +4841,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-
     /// A possible error is to forget to add a return type that is needed:
     ///
     /// ```
@@ -5069,7 +5082,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let ty = self.local_ty(span, nid);
+                let ty = self.local_ty(span, nid).decl_ty;
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);
                 return (ty, def);
