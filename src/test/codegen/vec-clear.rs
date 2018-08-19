@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-debug: the debug assertions get in the way
 // compile-flags: -O
 
 #![crate_type = "lib"]

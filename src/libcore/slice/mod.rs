@@ -1785,6 +1785,7 @@ impl<T> [T] {
             (self, &[], &[])
         } else {
             let (left, rest) = self.split_at(offset);
+            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             (left,
              from_raw_parts(rest.as_ptr() as *const U, us_len),
@@ -1837,6 +1838,7 @@ impl<T> [T] {
             (self, &mut [], &mut [])
         } else {
             let (left, rest) = self.split_at_mut(offset);
+            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let mut_ptr = rest.as_mut_ptr();
             (left,
@@ -3878,6 +3880,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
+    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     Repr { raw: FatPtr { data, len } }.rust
 }
 
@@ -3891,6 +3894,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
+    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     Repr { raw: FatPtr { data, len} }.rust_mut
 }
 

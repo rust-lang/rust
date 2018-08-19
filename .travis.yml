@@ -46,6 +46,8 @@ matrix:
     # slow to run.
 
     # OSX builders running tests, these run the full test suite.
+    # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+    # runners that run `//ignore-debug` tests.
     #
     # Note that the compiler is compiled to target 10.8 here because the Xcode
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
