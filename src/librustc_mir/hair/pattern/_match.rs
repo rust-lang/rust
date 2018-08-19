@@ -62,7 +62,7 @@
 ///        The specialisation of a row vector is computed by `specialize`.
 ///
 ///        It is computed as follows. For each row `p_i` of P, we have four cases:
-///             1.1. `p_(i,1)= c(r_1, .., r_a)`. Then `S(c, P)` has a corresponding row:
+///             1.1. `p_(i,1) = c(r_1, .., r_a)`. Then `S(c, P)` has a corresponding row:
 ///                     r_1, .., r_a, p_(i,2), .., p_(i,n)
 ///             1.2. `p_(i,1) = c'(r_1, .., r_a')` where `c ≠ c'`. Then `S(c, P)` has no
 ///                  corresponding row.
@@ -85,6 +85,9 @@
 ///                     D((r_1, p_(i,2), .., p_(i,n)))
 ///                     D((r_2, p_(i,2), .., p_(i,n)))
 ///
+///     Note that the OR-patterns are not always used directly in Rust, but are used to derive
+///     the exhaustive integer matching rules, so they're written here for posterity.
+///
 /// The algorithm for computing `U`
 /// -------------------------------
 /// The algorithm is inductive (on the number of columns: i.e. components of tuple patterns).
@@ -97,7 +100,8 @@
 ///       then `U(P, p_{m + 1})` is false.
 ///     - Otherwise, `P` must be empty, so `U(P, p_{m + 1})` is true.
 ///
-/// Inductive step. (`n > 0`, i.e. 1 or more tuple pattern components)
+/// Inductive step. (`n > 0`, i.e. whether there's at least one column
+///                  [which may then be expanded into further columns later])
 ///     We're going to match on the new pattern, `p_{m + 1}`.
 ///         - If `p_{m + 1} == c(r_1, .., r_a)`, then we have a constructor pattern.
 ///           Thus, the usefulness of `p_{m + 1}` can be reduced to whether it is useful when
@@ -926,6 +930,46 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
+// Find those constructors that are not matched by any non-wildcard patterns in the current column.
+fn compute_missing_ctors<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    all_ctors: &Vec<Constructor<'tcx>>,
+    used_ctors: &Vec<Constructor<'tcx>>,
+) -> Vec<Constructor<'tcx>> {
+    let mut missing_ctors = vec![];
+
+    for req_ctor in all_ctors {
+        let mut refined_ctors = vec![req_ctor.clone()];
+        for used_ctor in used_ctors {
+            if used_ctor == req_ctor {
+                // If a constructor appears in a `match` arm, we can
+                // eliminate it straight away.
+                refined_ctors = vec![]
+            } else if tcx.features().exhaustive_integer_patterns {
+                if let Some(interval) = IntRange::from_ctor(tcx, used_ctor) {
+                    // Refine the required constructors for the type by subtracting
+                    // the range defined by the current constructor pattern.
+                    refined_ctors = interval.subtract_from(tcx, refined_ctors);
+                }
+            }
+
+            // If the constructor patterns that have been considered so far
+            // already cover the entire range of values, then we the
+            // constructor is not missing, and we can move on to the next one.
+            if refined_ctors.is_empty() {
+                break;
+            }
+        }
+        // If a constructor has not been matched, then it is missing.
+        // We add `refined_ctors` instead of `req_ctor`, because then we can
+        // provide more detailed error information about precisely which
+        // ranges have been omitted.
+        missing_ctors.extend(refined_ctors);
+    }
+
+    missing_ctors
+}
+
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
@@ -1017,38 +1061,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let all_ctors = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
-        // `missing_ctors` are those that should have appeared
-        // as patterns in the `match` expression, but did not.
-        let mut missing_ctors = vec![];
-        for req_ctor in &all_ctors {
-            let mut refined_ctors = vec![req_ctor.clone()];
-            for used_ctor in &used_ctors {
-                if used_ctor == req_ctor {
-                    // If a constructor appears in a `match` arm, we can
-                    // eliminate it straight away.
-                    refined_ctors = vec![]
-                } else if cx.tcx.features().exhaustive_integer_patterns {
-                    if let Some(interval) = IntRange::from_ctor(cx.tcx, used_ctor) {
-                        // Refine the required constructors for the type by subtracting
-                        // the range defined by the current constructor pattern.
-                        refined_ctors = interval.subtract_from(cx.tcx, refined_ctors);
-                    }
-                }
-
-                // If the constructor patterns that have been considered so far
-                // already cover the entire range of values, then we the
-                // constructor is not missing, and we can move on to the next one.
-                if refined_ctors.is_empty() {
-                    break;
-                }
-            }
-            // If a constructor has not been matched, then it is missing.
-            // We add `refined_ctors` instead of `req_ctor`, because then we can
-            // provide more detailed error information about precisely which
-            // ranges have been omitted.
-            missing_ctors.extend(refined_ctors);
-        }
-
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
         // from the first column.
@@ -1067,11 +1079,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // be a privately-empty enum is when the exhaustive_patterns
         // feature flag is not present, so this is only
         // needed for that case.
+        let missing_ctors = compute_missing_ctors(cx.tcx, &all_ctors, &used_ctors);
 
-        let is_privately_empty =
-            all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-        let is_declared_nonexhaustive =
-            cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
+        let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+        let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
         debug!("missing_ctors={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
                missing_ctors, is_privately_empty, is_declared_nonexhaustive);
 
