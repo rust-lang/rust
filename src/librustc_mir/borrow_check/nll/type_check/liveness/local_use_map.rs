@@ -32,11 +32,12 @@ crate struct LocalUseMap<'me> {
     /// Head of a linked list of **uses** of each variable -- use in
     /// this context means that the existing value of the variable is
     /// read or modified. e.g., `y` is used in `x = y` but not `x`.
+    /// Note that `DROP(x)` terminators are excluded from this list.
     first_use_at: IndexVec<LocalWithRegion, Option<AppearanceIndex>>,
 
-    /// Head of a linked list of **uses** of each variable -- use in
-    /// this context means that the existing value of the variable is
-    /// read or modified. e.g., `y` is used in `x = y` but not `x`.
+    /// Head of a linked list of **drops** of each variable -- these
+    /// are a special category of uses corresponding to the drop that
+    /// we add for each local variable.
     first_drop_at: IndexVec<LocalWithRegion, Option<AppearanceIndex>>,
 
     appearances: IndexVec<AppearanceIndex, Appearance>,
