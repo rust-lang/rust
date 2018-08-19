@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug};
-use mem;
+use mem::MaybeUninit;
 use num::flt2dec;
 
 // Don't inline this so callers don't use the stack space this function
@@ -20,11 +20,11 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     unsafe {
-        let mut buf: [u8; 1024] = mem::uninitialized(); // enough for f32 and f64
-        let mut parts: [flt2dec::Part; 4] = mem::uninitialized();
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
         let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
                                                     *num, sign, precision,
-                                                    false, &mut buf, &mut parts);
+                                                    false, buf.get_mut(), parts.get_mut());
         fmt.pad_formatted_parts(&formatted)
     }
 }
@@ -38,10 +38,11 @@ fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter, num: &T,
 {
     unsafe {
         // enough for f32 and f64
-        let mut buf: [u8; flt2dec::MAX_SIG_DIGITS] = mem::uninitialized();
-        let mut parts: [flt2dec::Part; 4] = mem::uninitialized();
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
+        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
         let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
-                                                 sign, precision, false, &mut buf, &mut parts);
+                                                 sign, precision, false, buf.get_mut(),
+                                                 parts.get_mut());
         fmt.pad_formatted_parts(&formatted)
     }
 }
@@ -75,11 +76,11 @@ fn float_to_exponential_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     unsafe {
-        let mut buf: [u8; 1024] = mem::uninitialized(); // enough for f32 and f64
-        let mut parts: [flt2dec::Part; 6] = mem::uninitialized();
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
         let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
                                                   *num, sign, precision,
-                                                  upper, &mut buf, &mut parts);
+                                                  upper, buf.get_mut(), parts.get_mut());
         fmt.pad_formatted_parts(&formatted)
     }
 }
@@ -94,11 +95,11 @@ fn float_to_exponential_common_shortest<T>(fmt: &mut Formatter,
 {
     unsafe {
         // enough for f32 and f64
-        let mut buf: [u8; flt2dec::MAX_SIG_DIGITS] = mem::uninitialized();
-        let mut parts: [flt2dec::Part; 6] = mem::uninitialized();
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
+        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
         let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest,
                                                      *num, sign, (0, 0), upper,
-                                                     &mut buf, &mut parts);
+                                                     buf.get_mut(), parts.get_mut());
         fmt.pad_formatted_parts(&formatted)
     }
 }
