@@ -21,7 +21,7 @@
 use rustc_data_structures::small_vec::OneVector;
 
 use syntax::ast;
-use syntax::codemap::respan;
+use syntax::source_map::respan;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;

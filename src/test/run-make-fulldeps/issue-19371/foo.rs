@@ -24,7 +24,7 @@ use rustc::session::config::{Input, Options,
 use rustc_driver::driver::{self, compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
-use syntax::codemap::FileName;
+use syntax::source_map::FileName;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
 use std::path::PathBuf;

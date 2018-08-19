@@ -23,7 +23,7 @@ use ty;
 use std::fmt;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap;
+use syntax::source_map;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::TyCtxt;
@@ -943,11 +943,15 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
 
-            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::And, .. }, _, ref r) |
-            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::Or, .. }, _, ref r) => {
-                // For shortcircuiting operators, mark the RHS as a terminating
-                // scope since it only executes conditionally.
-                terminating(r.hir_id.local_id);
+            hir::ExprKind::Binary(
+                source_map::Spanned { node: hir::BinOpKind::And, .. },
+                _, ref r) |
+            hir::ExprKind::Binary(
+                source_map::Spanned { node: hir::BinOpKind::Or, .. },
+                _, ref r) => {
+                    // For shortcircuiting operators, mark the RHS as a terminating
+                    // scope since it only executes conditionally.
+                    terminating(r.hir_id.local_id);
             }
 
             hir::ExprKind::If(ref expr, ref then, Some(ref otherwise)) => {
@@ -1310,7 +1314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         debug!("visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
                owner_id,
-               self.tcx.sess.codemap().span_to_string(body.value.span),
+               self.tcx.sess.source_map().span_to_string(body.value.span),
                body_id,
                self.cx.parent);
 

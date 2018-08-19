@@ -848,7 +848,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             let sp = self.tcx.hir.span(node_id);
                             let fn_closure_msg = "`Fn` closures cannot capture their enclosing \
                                                   environment for modifications";
-                            match (self.tcx.sess.codemap().span_to_snippet(sp), &err.cmt.cat) {
+                            match (self.tcx.sess.source_map().span_to_snippet(sp), &err.cmt.cat) {
                                 (_, &Categorization::Upvar(mc::Upvar {
                                     kind: ty::ClosureKind::Fn, ..
                                 })) => {
@@ -1160,13 +1160,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             ref ty
         }) = pty.node {
             // Account for existing lifetimes when generating the message
-            let pointee_snippet = match self.tcx.sess.codemap().span_to_snippet(ty.span) {
+            let pointee_snippet = match self.tcx.sess.source_map().span_to_snippet(ty.span) {
                 Ok(snippet) => snippet,
                 _ => return None
             };
 
             let lifetime_snippet = if !lifetime.is_elided() {
-                format!("{} ", match self.tcx.sess.codemap().span_to_snippet(lifetime.span) {
+                format!("{} ", match self.tcx.sess.source_map().span_to_snippet(lifetime.span) {
                     Ok(lifetime_snippet) => lifetime_snippet,
                     _ => return None
                 })
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             binding_node_id: ast::NodeId) {
         let let_span = self.tcx.hir.span(binding_node_id);
         if let ty::BindByValue(..) = self.local_binding_mode(binding_node_id) {
-            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(let_span) {
                 let (ty, is_implicit_self) = self.local_ty(binding_node_id);
                 if is_implicit_self && snippet != "self" {
                     // avoid suggesting `mut &self`.
@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         let cmt_path_or_string = self.cmt_to_path_or_string(&err.cmt);
 
         let suggestion =
-            match self.tcx.sess.codemap().span_to_snippet(err.span) {
+            match self.tcx.sess.source_map().span_to_snippet(err.span) {
                 Ok(string) => format!("move {}", string),
                 Err(_) => "move |<args>| <body>".to_string()
             };
@@ -1337,7 +1337,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                Some(self.tcx.sess.codemap().end_point(
+                Some(self.tcx.sess.source_map().end_point(
                         scope.span(self.tcx, &self.region_scope_tree)))
             }
             _ => None
@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     db.span_label(*error_span, "cannot borrow as mutable");
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
                     let span = self.tcx.hir.span(local_id);
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
                             db.span_label(*error_span, "cannot reborrow mutably");
                             db.span_label(*error_span, "try removing `&mut` here");

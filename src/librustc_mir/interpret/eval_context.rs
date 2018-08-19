@@ -18,7 +18,7 @@ use rustc::mir::interpret::{
     ScalarMaybeUndef,
 };
 
-use syntax::codemap::{self, Span};
+use syntax::source_map::{self, Span};
 use syntax::ast::Mutability;
 
 use super::{Place, PlaceExtra, Memory,
@@ -91,7 +91,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub instance: ty::Instance<'tcx>,
 
     /// The span of the call site.
-    pub span: codemap::Span,
+    pub span: source_map::Span,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
@@ -545,7 +545,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        span: codemap::Span,
+        span: source_map::Span,
         mir: &'mir mir::Mir<'tcx>,
         return_place: Place,
         return_to_block: StackPopCleanup,

@@ -75,7 +75,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
             }
 
             let (hir_id, span) = ids[0];
-            let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
 
             // Ok, every name wasn't used mutably, so issue a warning that this
             // didn't need to be mutable.

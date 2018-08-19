@@ -14,7 +14,7 @@ use errors;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::codemap::{ExpnInfo, MacroAttribute, hygiene, respan};
+use syntax::source_map::{ExpnInfo, MacroAttribute, hygiene, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;

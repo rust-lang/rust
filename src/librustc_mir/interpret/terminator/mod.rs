@@ -1,7 +1,7 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{LayoutOf, Size};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, Scalar, Value};

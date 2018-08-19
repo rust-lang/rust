@@ -145,7 +145,7 @@ pub mod syntax {
 
 pub mod ast;
 pub mod attr;
-pub mod codemap;
+pub mod source_map;
 #[macro_use]
 pub mod config;
 pub mod entry;

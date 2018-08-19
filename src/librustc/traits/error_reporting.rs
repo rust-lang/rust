@@ -528,12 +528,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         -> DiagnosticBuilder<'tcx>
     {
         let msg = "impl has stricter requirements than trait";
-        let sp = self.tcx.sess.codemap().def_span(error_span);
+        let sp = self.tcx.sess.source_map().def_span(error_span);
 
         let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
-            let span = self.tcx.sess.codemap().def_span(trait_item_span);
+            let span = self.tcx.sess.source_map().def_span(trait_item_span);
             err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
@@ -715,7 +715,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
                         let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
-                        let closure_span = self.tcx.sess.codemap()
+                        let closure_span = self.tcx.sess.source_map()
                             .def_span(self.tcx.hir.span_if_local(closure_def_id).unwrap());
                         let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
@@ -792,7 +792,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 };
                 let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
-                }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def
+                }).map(|sp| self.tcx.sess.source_map().def_span(sp)); // the sp could be an fn def
 
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).sty {
                     ty::TyTuple(ref tys) => tys.iter()
@@ -867,7 +867,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let Some(hir::map::NodeLocal(ref local)) = self.tcx.hir.find(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
-                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                             err.span_suggestion_with_applicability(
                                 expr.span,
                                 "consider borrowing here",
@@ -890,7 +890,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let trait_ref = trait_ref.skip_binder();
         let span = obligation.cause.span;
 
-        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number = snippet.chars()
                 .filter(|c| !c.is_whitespace())
                 .take_while(|c| *c == '&')
@@ -909,7 +909,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                          new_trait_ref.to_predicate());
 
                     if self.predicate_may_hold(&new_obligation) {
-                        let sp = self.tcx.sess.codemap()
+                        let sp = self.tcx.sess.source_map()
                             .span_take_while(span, |c| c.is_whitespace() || *c == '&');
 
                         let remove_refs = refs_remaining + 1;
@@ -938,7 +938,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
-                (self.tcx.sess.codemap().def_span(span), self.tcx.hir.body(id).arguments.iter()
+                (self.tcx.sess.source_map().def_span(span), self.tcx.hir.body(id).arguments.iter()
                     .map(|arg| {
                         if let hir::Pat {
                             node: hir::PatKind::Tuple(args, _),
@@ -948,13 +948,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             ArgKind::Tuple(
                                 Some(span),
                                 args.iter().map(|pat| {
-                                    let snippet = self.tcx.sess.codemap()
+                                    let snippet = self.tcx.sess.source_map()
                                         .span_to_snippet(pat.span).unwrap();
                                     (snippet, "_".to_owned())
                                 }).collect::<Vec<_>>(),
                             )
                         } else {
-                            let name = self.tcx.sess.codemap()
+                            let name = self.tcx.sess.source_map()
                                 .span_to_snippet(arg.pat.span).unwrap();
                             ArgKind::Arg(name, "_".to_owned())
                         }
@@ -976,7 +976,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 node: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) => {
-                (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
+                (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()
                         .map(|arg| match arg.clone().node {
                     hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
@@ -995,13 +995,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 ..
             }) => {
-                (self.tcx.sess.codemap().def_span(span),
+                (self.tcx.sess.source_map().def_span(span),
                  fields.iter().map(|field| {
                      ArgKind::Arg(field.ident.to_string(), "_".to_string())
                  }).collect::<Vec<_>>())
             }
             hir::map::NodeStructCtor(ref variant_data) => {
-                (self.tcx.sess.codemap().def_span(self.tcx.hir.span(variant_data.id())),
+                (self.tcx.sess.source_map().def_span(self.tcx.hir.span(variant_data.id())),
                  variant_data.fields()
                     .iter().map(|_| ArgKind::Arg("_".to_owned(), "_".to_owned()))
                     .collect())
@@ -1192,7 +1192,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         assert!(type_def_id.is_local());
         let span = self.hir.span_if_local(type_def_id).unwrap();
-        let span = self.sess.codemap().def_span(span);
+        let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
                                        self.item_path_str(type_def_id));
@@ -1210,7 +1210,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                       -> DiagnosticBuilder<'tcx>
     {
         let trait_str = self.item_path_str(trait_def_id);
-        let span = self.sess.codemap().def_span(span);
+        let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(
             self.sess, span, E0038,
             "the trait `{}` cannot be made into an object",
@@ -1438,7 +1438,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let item_name = tcx.item_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
                 if let Some(sp) = tcx.hir.span_if_local(item_def_id) {
-                    let sp = tcx.sess.codemap().def_span(sp);
+                    let sp = tcx.sess.source_map().def_span(sp);
                     err.span_note(sp, &msg);
                 } else {
                     err.note(&msg);

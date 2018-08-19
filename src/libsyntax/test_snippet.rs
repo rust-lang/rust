@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::{CodeMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;
@@ -50,8 +50,8 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     with_globals(|| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
-        let code_map = Lrc::new(CodeMap::new(FilePathMapping::empty()));
-        code_map.new_filemap(Path::new("test.rs").to_owned().into(), file_text.to_owned());
+        let code_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        code_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
         let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
         let mut msp = MultiSpan::from_span(primary_span);

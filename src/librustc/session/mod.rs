@@ -35,7 +35,7 @@ use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 use util::profiling::SelfProfiler;
@@ -484,8 +484,8 @@ impl Session {
         );
     }
 
-    pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
-        self.parse_sess.codemap()
+    pub fn source_map<'a>(&'a self) -> &'a source_map::SourceMap {
+        self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
         self.opts.debugging_opts.verbose
@@ -980,20 +980,20 @@ pub fn build_session(
 ) -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
-    build_session_with_codemap(
+    build_session_with_source_map(
         sopts,
         local_crate_source_file,
         registry,
-        Lrc::new(codemap::CodeMap::new(file_path_mapping)),
+        Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         None,
     )
 }
 
-pub fn build_session_with_codemap(
+pub fn build_session_with_source_map(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
-    codemap: Lrc<codemap::CodeMap>,
+    source_map: Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1020,19 +1020,19 @@ pub fn build_session_with_codemap(
             (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
                 EmitterWriter::stderr(
                     color_config,
-                    Some(codemap.clone()),
+                    Some(source_map.clone()),
                     false,
                     sopts.debugging_opts.teach,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
-                EmitterWriter::new(dst, Some(codemap.clone()), false, false)
+                EmitterWriter::new(dst, Some(source_map.clone()), false, false)
                     .ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Json(pretty), None) => Box::new(
                 JsonEmitter::stderr(
                     Some(registry),
-                    codemap.clone(),
+                    source_map.clone(),
                     pretty,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
@@ -1040,15 +1040,15 @@ pub fn build_session_with_codemap(
                 JsonEmitter::new(
                     dst,
                     Some(registry),
-                    codemap.clone(),
+                    source_map.clone(),
                     pretty,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Short(color_config), None) => Box::new(
-                EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false),
+                EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
             ),
             (config::ErrorOutputType::Short(_), Some(dst)) => {
-                Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true, false))
+                Box::new(EmitterWriter::new(dst, Some(source_map.clone()), true, false))
             }
         };
 
@@ -1063,14 +1063,14 @@ pub fn build_session_with_codemap(
         },
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap)
+    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map)
 }
 
 pub fn build_session_(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
-    codemap: Lrc<codemap::CodeMap>,
+    source_map: Lrc<source_map::SourceMap>,
 ) -> Session {
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = match Target::search(&host_triple) {
@@ -1083,7 +1083,7 @@ pub fn build_session_(
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
-    let p_s = parse::ParseSess::with_span_handler(span_diagnostic, codemap);
+    let p_s = parse::ParseSess::with_span_handler(span_diagnostic, source_map);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot()),

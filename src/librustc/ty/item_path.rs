@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.push_item_path(buffer, parent_def_id);
         let node_id = self.hir.as_local_node_id(impl_def_id).unwrap();
         let item = self.hir.expect_item(node_id);
-        let span_str = self.sess.codemap().span_to_string(item.span);
+        let span_str = self.sess.source_map().span_to_string(item.span);
         buffer.push(&format!("<impl at {}>", span_str));
     }
 

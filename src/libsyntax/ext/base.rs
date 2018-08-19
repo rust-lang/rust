@@ -12,7 +12,7 @@ pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use codemap::{self, CodeMap, Spanned, respan};
+use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -481,7 +481,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
+            node: ast::ExprKind::Lit(P(source_map::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -836,7 +836,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
         parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect())
     }
-    pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
+    pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {

@@ -43,7 +43,7 @@ use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::MetaItemKind;
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax::feature_gate;
 use syntax_pos::{Span, DUMMY_SP};

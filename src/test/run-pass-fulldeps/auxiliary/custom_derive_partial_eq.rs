@@ -22,7 +22,7 @@ use deriving::generic::ty::*;
 
 use rustc_plugin::Registry;
 use syntax::ast::*;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;

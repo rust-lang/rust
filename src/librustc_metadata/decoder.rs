@@ -39,7 +39,7 @@ use std::u32;
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
-use syntax::codemap;
+use syntax::source_map;
 use syntax::symbol::InternedString;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
@@ -50,8 +50,8 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     sess: Option<&'a Session>,
     tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
 
-    // Cache the last used filemap for translating spans as an optimization.
-    last_filemap_index: usize,
+    // Cache the last used source_file for translating spans as an optimization.
+    last_source_file_index: usize,
 
     lazy_state: LazyState,
 
@@ -73,7 +73,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             cdata: self.cdata(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
-            last_filemap_index: 0,
+            last_source_file_index: 0,
             lazy_state: LazyState::NoNode,
             alloc_decoding_session: self.cdata().map(|cdata| {
                 cdata.alloc_decoding_state.new_decoding_session()
@@ -314,43 +314,45 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             bug!("Cannot decode Span without Session.")
         };
 
-        let imported_filemaps = self.cdata().imported_filemaps(&sess.codemap());
-        let filemap = {
+        let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
+        let source_file = {
             // Optimize for the case that most spans within a translated item
-            // originate from the same filemap.
-            let last_filemap = &imported_filemaps[self.last_filemap_index];
+            // originate from the same source_file.
+            let last_source_file = &imported_source_files[self.last_source_file_index];
 
-            if lo >= last_filemap.original_start_pos &&
-               lo <= last_filemap.original_end_pos {
-                last_filemap
+            if lo >= last_source_file.original_start_pos &&
+               lo <= last_source_file.original_end_pos {
+                last_source_file
             } else {
                 let mut a = 0;
-                let mut b = imported_filemaps.len();
+                let mut b = imported_source_files.len();
 
                 while b - a > 1 {
                     let m = (a + b) / 2;
-                    if imported_filemaps[m].original_start_pos > lo {
+                    if imported_source_files[m].original_start_pos > lo {
                         b = m;
                     } else {
                         a = m;
                     }
                 }
 
-                self.last_filemap_index = a;
-                &imported_filemaps[a]
+                self.last_source_file_index = a;
+                &imported_source_files[a]
             }
         };
 
         // Make sure our binary search above is correct.
-        debug_assert!(lo >= filemap.original_start_pos &&
-                      lo <= filemap.original_end_pos);
+        debug_assert!(lo >= source_file.original_start_pos &&
+                      lo <= source_file.original_end_pos);
 
         // Make sure we correctly filtered out invalid spans during encoding
-        debug_assert!(hi >= filemap.original_start_pos &&
-                      hi <= filemap.original_end_pos);
+        debug_assert!(hi >= source_file.original_start_pos &&
+                      hi <= source_file.original_end_pos);
 
-        let lo = (lo + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
-        let hi = (hi + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
+        let lo = (lo + source_file.translated_source_file.start_pos)
+                 - source_file.original_start_pos;
+        let hi = (hi + source_file.translated_source_file.start_pos)
+                 - source_file.original_start_pos;
 
         Ok(Span::new(lo, hi, NO_EXPANSION))
     }
@@ -1094,52 +1096,52 @@ impl<'a, 'tcx> CrateMetadata {
         self.def_path_table.def_path_hash(index)
     }
 
-    /// Imports the codemap from an external crate into the codemap of the crate
+    /// Imports the source_map from an external crate into the source_map of the crate
     /// currently being compiled (the "local crate").
     ///
     /// The import algorithm works analogous to how AST items are inlined from an
     /// external crate's metadata:
-    /// For every FileMap in the external codemap an 'inline' copy is created in the
-    /// local codemap. The correspondence relation between external and local
-    /// FileMaps is recorded in the `ImportedFileMap` objects returned from this
+    /// For every SourceFile in the external source_map an 'inline' copy is created in the
+    /// local source_map. The correspondence relation between external and local
+    /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
     /// function. When an item from an external crate is later inlined into this
     /// crate, this correspondence information is used to translate the span
     /// information of the inlined item so that it refers the correct positions in
-    /// the local codemap (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
+    /// the local source_map (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
     ///
-    /// The import algorithm in the function below will reuse FileMaps already
-    /// existing in the local codemap. For example, even if the FileMap of some
+    /// The import algorithm in the function below will reuse SourceFiles already
+    /// existing in the local source_map. For example, even if the SourceFile of some
     /// source file of libstd gets imported many times, there will only ever be
-    /// one FileMap object for the corresponding file in the local codemap.
+    /// one SourceFile object for the corresponding file in the local source_map.
     ///
-    /// Note that imported FileMaps do not actually contain the source code of the
+    /// Note that imported SourceFiles do not actually contain the source code of the
     /// file they represent, just information about length, line breaks, and
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
-    pub fn imported_filemaps(&'a self,
-                             local_codemap: &codemap::CodeMap)
-                             -> ReadGuard<'a, Vec<cstore::ImportedFileMap>> {
+    pub fn imported_source_files(&'a self,
+                             local_source_map: &source_map::SourceMap)
+                             -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
         {
-            let filemaps = self.codemap_import_info.borrow();
-            if !filemaps.is_empty() {
-                return filemaps;
+            let source_files = self.source_map_import_info.borrow();
+            if !source_files.is_empty() {
+                return source_files;
             }
         }
 
-        // Lock the codemap_import_info to ensure this only happens once
-        let mut codemap_import_info = self.codemap_import_info.borrow_mut();
+        // Lock the source_map_import_info to ensure this only happens once
+        let mut source_map_import_info = self.source_map_import_info.borrow_mut();
 
-        if !codemap_import_info.is_empty() {
-            drop(codemap_import_info);
-            return self.codemap_import_info.borrow();
+        if !source_map_import_info.is_empty() {
+            drop(source_map_import_info);
+            return self.source_map_import_info.borrow();
         }
 
-        let external_codemap = self.root.codemap.decode(self);
+        let external_source_map = self.root.source_map.decode(self);
 
-        let imported_filemaps = external_codemap.map(|filemap_to_import| {
-            // We can't reuse an existing FileMap, so allocate a new one
+        let imported_source_files = external_source_map.map(|source_file_to_import| {
+            // We can't reuse an existing SourceFile, so allocate a new one
             // containing the information we need.
-            let syntax_pos::FileMap { name,
+            let syntax_pos::SourceFile { name,
                                       name_was_remapped,
                                       src_hash,
                                       start_pos,
@@ -1148,15 +1150,15 @@ impl<'a, 'tcx> CrateMetadata {
                                       mut multibyte_chars,
                                       mut non_narrow_chars,
                                       name_hash,
-                                      .. } = filemap_to_import;
+                                      .. } = source_file_to_import;
 
             let source_length = (end_pos - start_pos).to_usize();
 
             // Translate line-start positions and multibyte character
             // position into frame of reference local to file.
-            // `CodeMap::new_imported_filemap()` will then translate those
+            // `SourceMap::new_imported_source_file()` will then translate those
             // coordinates to their new global frame of reference when the
-            // offset of the FileMap is known.
+            // offset of the SourceFile is known.
             for pos in &mut lines {
                 *pos = *pos - start_pos;
             }
@@ -1167,7 +1169,7 @@ impl<'a, 'tcx> CrateMetadata {
                 *swc = *swc - start_pos;
             }
 
-            let local_version = local_codemap.new_imported_filemap(name,
+            let local_version = local_source_map.new_imported_source_file(name,
                                                                    name_was_remapped,
                                                                    self.cnum.as_u32(),
                                                                    src_hash,
@@ -1176,23 +1178,23 @@ impl<'a, 'tcx> CrateMetadata {
                                                                    lines,
                                                                    multibyte_chars,
                                                                    non_narrow_chars);
-            debug!("CrateMetaData::imported_filemaps alloc \
-                    filemap {:?} original (start_pos {:?} end_pos {:?}) \
+            debug!("CrateMetaData::imported_source_files alloc \
+                    source_file {:?} original (start_pos {:?} end_pos {:?}) \
                     translated (start_pos {:?} end_pos {:?})",
                    local_version.name, start_pos, end_pos,
                    local_version.start_pos, local_version.end_pos);
 
-            cstore::ImportedFileMap {
+            cstore::ImportedSourceFile {
                 original_start_pos: start_pos,
                 original_end_pos: end_pos,
-                translated_filemap: local_version,
+                translated_source_file: local_version,
             }
         }).collect();
 
-        *codemap_import_info = imported_filemaps;
-        drop(codemap_import_info);
+        *source_map_import_info = imported_source_files;
+        drop(source_map_import_info);
 
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-        self.codemap_import_info.borrow()
+        self.source_map_import_info.borrow()
     }
 }

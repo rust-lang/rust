@@ -20,9 +20,9 @@ use std::slice;
 use std::mem;
 use std::vec;
 use attr::{self, HasAttrs};
-use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
+use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
-use codemap::{self, CodeMap, ExpnInfo, MacroAttribute, dummy_spanned};
+use source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned};
 use errors;
 use config;
 use entry::{self, EntryPointType};
@@ -324,7 +324,7 @@ fn generate_test_harness(sess: &ParseSess,
 }
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's `is_internal` check.
+/// call to source_map's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     sp.with_ctxt(cx.ctxt)
@@ -616,8 +616,8 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     (item, reexport)
 }
 
-fn nospan<T>(t: T) -> codemap::Spanned<T> {
-    codemap::Spanned { node: t, span: DUMMY_SP }
+fn nospan<T>(t: T) -> source_map::Spanned<T> {
+    source_map::Spanned { node: t, span: DUMMY_SP }
 }
 
 fn path_node(ids: Vec<Ident>) -> ast::Path {

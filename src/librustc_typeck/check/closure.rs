@@ -24,7 +24,7 @@ use rustc::ty::subst::Substs;
 use std::cmp;
 use std::iter;
 use rustc_target::spec::abi::Abi;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use rustc::hir;
 
 /// What signature do we *expect* the closure to have from context?

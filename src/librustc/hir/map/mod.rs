@@ -24,7 +24,7 @@ use middle::cstore::CrateStore;
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -1202,7 +1202,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         let cmdline_args = sess.opts.dep_tracking_hash();
         collector.finalize_and_compute_crate_hash(crate_disambiguator,
                                                   cstore,
-                                                  sess.codemap(),
+                                                  sess.source_map(),
                                                   cmdline_args)
     };
 

@@ -73,7 +73,7 @@ use std::sync::Arc;
 use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
-use syntax::codemap::MultiSpan;
+use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
@@ -1818,7 +1818,7 @@ pub mod tls {
     /// in librustc otherwise
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
-            write!(f, "{}", tcx.sess.codemap().span_to_string(span))
+            write!(f, "{}", tcx.sess.source_map().span_to_string(span))
         })
     }
 

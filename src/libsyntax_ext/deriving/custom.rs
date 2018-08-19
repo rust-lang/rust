@@ -14,7 +14,7 @@ use errors::FatalError;
 use proc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::ext::base::*;
 use syntax::visit::Visitor;
 

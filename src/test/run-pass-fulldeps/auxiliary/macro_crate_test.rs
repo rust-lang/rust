@@ -18,7 +18,7 @@ extern crate rustc_plugin;
 extern crate syntax_pos;
 
 use syntax::ast::{self, Item, MetaItem, ItemKind};
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 use syntax::ext::base::*;
 use syntax::ext::quote::rt::ToTokens;
 use syntax::parse::{self, token};

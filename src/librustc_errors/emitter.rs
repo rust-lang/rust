@@ -10,9 +10,9 @@
 
 use self::Destination::*;
 
-use syntax_pos::{FileMap, Span, MultiSpan};
+use syntax_pos::{SourceFile, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapperDyn, DiagnosticId};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -120,21 +120,21 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    cm: Option<Lrc<CodeMapperDyn>>,
+    cm: Option<Lrc<SourceMapperDyn>>,
     short_message: bool,
     teach: bool,
     ui_testing: bool,
 }
 
 struct FileWithAnnotatedLines {
-    file: Lrc<FileMap>,
+    file: Lrc<SourceFile>,
     lines: Vec<Line>,
     multiline_depth: usize,
 }
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Lrc<CodeMapperDyn>>,
+                  code_map: Option<Lrc<SourceMapperDyn>>,
                   short_message: bool,
                   teach: bool)
                   -> EmitterWriter {
@@ -149,7 +149,7 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<dyn Write + Send>,
-               code_map: Option<Lrc<CodeMapperDyn>>,
+               code_map: Option<Lrc<SourceMapperDyn>>,
                short_message: bool,
                teach: bool)
                -> EmitterWriter {
@@ -177,7 +177,7 @@ impl EmitterWriter {
 
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Lrc<FileMap>,
+                                  file: Lrc<SourceFile>,
                                   line_index: usize,
                                   ann: Annotation) {
 
@@ -307,7 +307,7 @@ impl EmitterWriter {
 
     fn render_source_line(&self,
                           buffer: &mut StyledBuffer,
-                          file: Lrc<FileMap>,
+                          file: Lrc<SourceFile>,
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
@@ -1021,7 +1021,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if !cm.ensure_filemap_source_present(annotated_file.file.clone()) {
+            if !cm.ensure_source_file_source_present(annotated_file.file.clone()) {
                 continue;
             }
 

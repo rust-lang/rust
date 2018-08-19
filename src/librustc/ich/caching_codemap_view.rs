@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap::CodeMap;
-use syntax_pos::{BytePos, FileMap};
+use syntax::source_map::SourceMap;
+use syntax_pos::{BytePos, SourceFile};
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -18,20 +18,20 @@ struct CacheEntry {
     line_number: usize,
     line_start: BytePos,
     line_end: BytePos,
-    file: Lrc<FileMap>,
+    file: Lrc<SourceFile>,
     file_index: usize,
 }
 
 #[derive(Clone)]
-pub struct CachingCodemapView<'cm> {
-    codemap: &'cm CodeMap,
+pub struct CachingSourceMapView<'cm> {
+    source_map: &'cm SourceMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
 }
 
-impl<'cm> CachingCodemapView<'cm> {
-    pub fn new(codemap: &'cm CodeMap) -> CachingCodemapView<'cm> {
-        let files = codemap.files();
+impl<'cm> CachingSourceMapView<'cm> {
+    pub fn new(source_map: &'cm SourceMap) -> CachingSourceMapView<'cm> {
+        let files = source_map.files();
         let first_file = files[0].clone();
         let entry = CacheEntry {
             time_stamp: 0,
@@ -42,8 +42,8 @@ impl<'cm> CachingCodemapView<'cm> {
             file_index: 0,
         };
 
-        CachingCodemapView {
-            codemap,
+        CachingSourceMapView {
+            source_map,
             line_cache: [entry.clone(), entry.clone(), entry.clone()],
             time_stamp: 0,
         }
@@ -51,7 +51,7 @@ impl<'cm> CachingCodemapView<'cm> {
 
     pub fn byte_pos_to_line_and_col(&mut self,
                                     pos: BytePos)
-                                    -> Option<(Lrc<FileMap>, usize, BytePos)> {
+                                    -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
@@ -78,9 +78,9 @@ impl<'cm> CachingCodemapView<'cm> {
         // If the entry doesn't point to the correct file, fix it up
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
             let file_valid;
-            if self.codemap.files().len() > 0 {
-                let file_index = self.codemap.lookup_filemap_idx(pos);
-                let file = self.codemap.files()[file_index].clone();
+            if self.source_map.files().len() > 0 {
+                let file_index = self.source_map.lookup_source_file_idx(pos);
+                let file = self.source_map.files()[file_index].clone();
 
                 if pos >= file.start_pos && pos < file.end_pos {
                     cache_entry.file = file;

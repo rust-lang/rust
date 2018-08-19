@@ -42,7 +42,7 @@ use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
-use codemap::{self, CodeMap, Spanned, respan};
+use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
@@ -577,7 +577,7 @@ impl<'a> Parser<'a> {
         if let Some(directory) = directory {
             parser.directory = directory;
         } else if !parser.span.is_dummy() {
-            if let FileName::Real(mut path) = sess.codemap().span_to_unmapped_path(parser.span) {
+            if let FileName::Real(mut path) = sess.source_map().span_to_unmapped_path(parser.span) {
                 path.pop();
                 parser.directory.path = Cow::from(path);
             }
@@ -652,10 +652,10 @@ impl<'a> Parser<'a> {
                     // EOF, don't want to point at the following char, but rather the last token
                     self.prev_span
                 } else {
-                    self.sess.codemap().next_point(self.prev_span)
+                    self.sess.source_map().next_point(self.prev_span)
                 };
                 let label_exp = format!("expected `{}`", token_str);
-                let cm = self.sess.codemap();
+                let cm = self.sess.source_map();
                 match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
                     (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                         // When the spans are in the same line, it means that the only content
@@ -720,14 +720,14 @@ impl<'a> Parser<'a> {
                     expect.clone()
                 };
                 (format!("expected one of {}, found `{}`", expect, actual),
-                 (self.sess.codemap().next_point(self.prev_span),
+                 (self.sess.source_map().next_point(self.prev_span),
                   format!("expected one of {} here", short_expect)))
             } else if expected.is_empty() {
                 (format!("unexpected token: `{}`", actual),
                  (self.prev_span, "unexpected token after this".to_string()))
             } else {
                 (format!("expected {}, found `{}`", expect, actual),
-                 (self.sess.codemap().next_point(self.prev_span),
+                 (self.sess.source_map().next_point(self.prev_span),
                   format!("expected {} here", expect)))
             };
             let mut err = self.fatal(&msg_exp);
@@ -738,7 +738,7 @@ impl<'a> Parser<'a> {
                 label_sp
             };
 
-            let cm = self.sess.codemap();
+            let cm = self.sess.source_map();
             match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
                 (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                     // When the spans are in the same line, it means that the only content between
@@ -1879,7 +1879,7 @@ impl<'a> Parser<'a> {
             let lit = self.parse_lit_token()?;
             lit
         };
-        Ok(codemap::Spanned { node: lit, span: lo.to(self.prev_span) })
+        Ok(source_map::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
 
     /// matches '-' lit | lit (cf. ast_validation::AstValidator::check_expr_within_pat)
@@ -2185,7 +2185,7 @@ impl<'a> Parser<'a> {
     pub fn mk_mac_expr(&mut self, span: Span, m: Mac_, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ExprKind::Mac(codemap::Spanned {node: m, span: span}),
+            node: ExprKind::Mac(source_map::Spanned {node: m, span: span}),
             span,
             attrs,
         })
@@ -2902,7 +2902,7 @@ impl<'a> Parser<'a> {
                                                   self.this_token_descr()));
                     // span the `not` plus trailing whitespace to avoid
                     // trailing whitespace after the `!` in our suggestion
-                    let to_replace = self.sess.codemap()
+                    let to_replace = self.sess.source_map()
                         .span_until_non_whitespace(lo.to(self.span));
                     err.span_suggestion_short_with_applicability(
                         to_replace,
@@ -3000,7 +3000,7 @@ impl<'a> Parser<'a> {
                     Err(mut err) => {
                         err.span_label(self.span,
                                        "expecting a type here because of type ascription");
-                        let cm = self.sess.codemap();
+                        let cm = self.sess.source_map();
                         let cur_pos = cm.lookup_char_pos(self.span.lo());
                         let op_pos = cm.lookup_char_pos(cur_op_span.hi());
                         if cur_pos.line != op_pos.line {
@@ -3074,7 +3074,7 @@ impl<'a> Parser<'a> {
                 AssocOp::Equal | AssocOp::Less | AssocOp::LessEqual | AssocOp::NotEqual |
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
-                    let binary = self.mk_binary(codemap::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary, ThinVec::new())
                 }
                 AssocOp::Assign =>
@@ -3094,7 +3094,7 @@ impl<'a> Parser<'a> {
                         token::Shl =>     BinOpKind::Shl,
                         token::Shr =>     BinOpKind::Shr,
                     };
-                    let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr, ThinVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
@@ -3161,7 +3161,7 @@ impl<'a> Parser<'a> {
                             id: ast::DUMMY_NODE_ID
                         }));
 
-                        let expr_str = self.sess.codemap().span_to_snippet(expr.span)
+                        let expr_str = self.sess.source_map().span_to_snippet(expr.span)
                                                 .unwrap_or(pprust::expr_to_string(&expr));
                         err.span_suggestion_with_applicability(
                             expr.span,
@@ -3277,7 +3277,7 @@ impl<'a> Parser<'a> {
         // return. This won't catch blocks with an explicit `return`, but that would be caught by
         // the dead code lint.
         if self.eat_keyword(keywords::Else) || !cond.returns() {
-            let sp = self.sess.codemap().next_point(lo);
+            let sp = self.sess.source_map().next_point(lo);
             let mut err = self.diagnostic()
                 .struct_span_err(sp, "missing condition for `if` statemement");
             err.span_label(sp, "expected if condition here");
@@ -3527,7 +3527,7 @@ impl<'a> Parser<'a> {
             && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
-            let cm = self.sess.codemap();
+            let cm = self.sess.source_map();
             self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)])
                 .map_err(|mut err| {
                     match (cm.span_to_lines(expr.span), cm.span_to_lines(arm_start_span)) {
@@ -3736,7 +3736,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         attrs: Vec<Attribute>
-    ) -> PResult<'a, codemap::Spanned<ast::FieldPat>> {
+    ) -> PResult<'a, source_map::Spanned<ast::FieldPat>> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
@@ -3779,7 +3779,7 @@ impl<'a> Parser<'a> {
             (subpat, fieldname, true)
         };
 
-        Ok(codemap::Spanned {
+        Ok(source_map::Spanned {
             span: lo.to(hi),
             node: ast::FieldPat {
                 ident: fieldname,
@@ -3791,7 +3791,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the fields of a struct-like pattern
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<source_map::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
@@ -3837,7 +3837,7 @@ impl<'a> Parser<'a> {
                 err.span_label(self.span, "expected `}`");
                 let mut comma_sp = None;
                 if self.token == token::Comma { // Issue #49257
-                    etc_sp = etc_sp.to(self.sess.codemap().span_until_non_whitespace(self.span));
+                    etc_sp = etc_sp.to(self.sess.source_map().span_until_non_whitespace(self.span));
                     err.span_label(etc_sp,
                                    "`..` must be at the end and cannot have a trailing comma");
                     comma_sp = Some(self.span);
@@ -3955,7 +3955,7 @@ impl<'a> Parser<'a> {
             let seq_span = pat.span.to(self.prev_span);
             let mut err = self.struct_span_err(comma_span,
                                                "unexpected `,` in pattern");
-            if let Ok(seq_snippet) = self.sess.codemap().span_to_snippet(seq_span) {
+            if let Ok(seq_snippet) = self.sess.source_map().span_to_snippet(seq_span) {
                 err.span_suggestion_with_applicability(
                     seq_span,
                     "try adding parentheses",
@@ -4220,7 +4220,7 @@ impl<'a> Parser<'a> {
                     let parser_snapshot_after_type = self.clone();
                     mem::replace(self, parser_snapshot_before_type);
 
-                    let snippet = self.sess.codemap().span_to_snippet(pat.span).unwrap();
+                    let snippet = self.sess.source_map().span_to_snippet(pat.span).unwrap();
                     err.span_label(pat.span, format!("while parsing the type for `{}`", snippet));
                     (Some((parser_snapshot_after_type, colon_sp, err)), None)
                 }
@@ -4518,7 +4518,7 @@ impl<'a> Parser<'a> {
             }
         } else if let Some(macro_def) = self.eat_macro_def(
             &attrs,
-            &codemap::respan(lo, VisibilityKind::Inherited),
+            &source_map::respan(lo, VisibilityKind::Inherited),
             lo,
         )? {
             Stmt {
@@ -5398,7 +5398,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = codemap::respan(eself_lo.to(eself_hi), eself);
+        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
         Ok(Some(Arg::from_self(eself, eself_ident)))
     }
 
@@ -6039,7 +6039,7 @@ impl<'a> Parser<'a> {
                     err.emit();
                 } else {
                     if seen_comma == false {
-                        let sp = self.sess.codemap().next_point(previous_span);
+                        let sp = self.sess.source_map().next_point(previous_span);
                         err.span_suggestion_with_applicability(
                             sp,
                             "missing comma here",
@@ -6051,7 +6051,7 @@ impl<'a> Parser<'a> {
                 }
             }
             _ => {
-                let sp = self.sess.codemap().next_point(self.prev_span);
+                let sp = self.sess.source_map().next_point(self.prev_span);
                 let mut err = self.struct_span_err(sp, &format!("expected `,`, or `}}`, found `{}`",
                                                                 self.this_token_to_string()));
                 if self.token.is_ident() {
@@ -6322,7 +6322,7 @@ impl<'a> Parser<'a> {
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
-        codemap: &CodeMap) -> ModulePath
+        source_map: &SourceMap) -> ModulePath
     {
         // If we're in a foo.rs file instead of a mod.rs file,
         // we need to look for submodules in
@@ -6342,8 +6342,8 @@ impl<'a> Parser<'a> {
                                          relative_prefix, mod_name, path::MAIN_SEPARATOR);
         let default_path = dir_path.join(&default_path_str);
         let secondary_path = dir_path.join(&secondary_path_str);
-        let default_exists = codemap.file_exists(&default_path);
-        let secondary_exists = codemap.file_exists(&secondary_path);
+        let default_exists = source_map.file_exists(&default_path);
+        let secondary_exists = source_map.file_exists(&secondary_path);
 
         let result = match (default_exists, secondary_exists) {
             (true, false) => Ok(ModulePathSuccess {
@@ -6418,7 +6418,7 @@ impl<'a> Parser<'a> {
             DirectoryOwnership::UnownedViaMod(_) => None,
         };
         let paths = Parser::default_submod_path(
-                        id, relative, &self.directory.path, self.sess.codemap());
+                        id, relative, &self.directory.path, self.sess.source_map());
 
         match self.directory.ownership {
             DirectoryOwnership::Owned { .. } => {
@@ -6445,7 +6445,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.diagnostic().struct_span_err(id_sp,
                     "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
-                    let src_path = self.sess.codemap().span_to_filename(id_sp);
+                    let src_path = self.sess.source_map().span_to_filename(id_sp);
                     if let FileName::Real(src_path) = src_path {
                         if let Some(stem) = src_path.file_stem() {
                             let mut dest_path = src_path.clone();
@@ -7207,7 +7207,7 @@ impl<'a> Parser<'a> {
                         sp, &suggestion, format!(" {} ", kw), Applicability::MachineApplicable
                     );
                 } else {
-                    if let Ok(snippet) = self.sess.codemap().span_to_snippet(ident_sp) {
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(ident_sp) {
                         err.span_suggestion_with_applicability(
                             full_sp,
                             "if you meant to call a macro, try",

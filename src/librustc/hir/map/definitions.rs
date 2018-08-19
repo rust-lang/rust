@@ -739,7 +739,7 @@ define_global_metadata_kind!(pub enum GlobalMetaDataKind {
     LangItems,
     LangItemsMissing,
     NativeLibraries,
-    CodeMap,
+    SourceMap,
     Impls,
     ExportedSymbols
 });

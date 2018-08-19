@@ -17,7 +17,7 @@ extern crate syntax;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
-use syntax::codemap::{FilePathMapping, FileName};
+use syntax::source_map::{FilePathMapping, FileName};
 use syntax::parse;
 use syntax::parse::{ParseSess, PResult};
 use syntax::parse::new_parser_from_source_str;

@@ -10,7 +10,7 @@
 
 use infer::InferCtxt;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use rustc_data_structures::small_vec::SmallVec;
 use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;

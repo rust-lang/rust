@@ -21,7 +21,7 @@ use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
 use syntax::ast::DUMMY_NODE_ID;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
 
 use rustc_data_structures::sync::Lrc;

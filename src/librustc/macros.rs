@@ -147,7 +147,7 @@ macro_rules! impl_stable_hash_for {
 macro_rules! impl_stable_hash_for_spanned {
     ($T:path) => (
 
-        impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ::syntax::codemap::Spanned<$T>
+        impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ::syntax::source_map::Spanned<$T>
         {
             #[inline]
             fn hash_stable<W: StableHasherResult>(&self,

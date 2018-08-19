@@ -21,7 +21,7 @@ use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::symbol::{InternedString, LocalInternedString};
 use syntax::tokenstream;
-use syntax_pos::FileMap;
+use syntax_pos::SourceFile;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
@@ -427,11 +427,11 @@ impl_stable_hash_for!(enum ::syntax_pos::FileName {
     Custom(s)
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for FileMap {
+impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let FileMap {
+        let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
             name_was_remapped,
@@ -458,13 +458,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for FileMap {
 
         src_hash.hash_stable(hcx, hasher);
 
-        // We only hash the relative position within this filemap
+        // We only hash the relative position within this source_file
         lines.len().hash_stable(hcx, hasher);
         for &line in lines.iter() {
             stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
         }
 
-        // We only hash the relative position within this filemap
+        // We only hash the relative position within this source_file
         multibyte_chars.len().hash_stable(hcx, hasher);
         for &char_pos in multibyte_chars.iter() {
             stable_multibyte_char(char_pos, start_pos).hash_stable(hcx, hasher);
@@ -478,29 +478,29 @@ impl<'a> HashStable<StableHashingContext<'a>> for FileMap {
 }
 
 fn stable_byte_pos(pos: ::syntax_pos::BytePos,
-                   filemap_start: ::syntax_pos::BytePos)
+                   source_file_start: ::syntax_pos::BytePos)
                    -> u32 {
-    pos.0 - filemap_start.0
+    pos.0 - source_file_start.0
 }
 
 fn stable_multibyte_char(mbc: ::syntax_pos::MultiByteChar,
-                         filemap_start: ::syntax_pos::BytePos)
+                         source_file_start: ::syntax_pos::BytePos)
                          -> (u32, u32) {
     let ::syntax_pos::MultiByteChar {
         pos,
         bytes,
     } = mbc;
 
-    (pos.0 - filemap_start.0, bytes as u32)
+    (pos.0 - source_file_start.0, bytes as u32)
 }
 
 fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
-                          filemap_start: ::syntax_pos::BytePos)
+                          source_file_start: ::syntax_pos::BytePos)
                           -> (u32, u32) {
     let pos = swc.pos();
     let width = swc.width();
 
-    (pos.0 - filemap_start.0, width as u32)
+    (pos.0 - source_file_start.0, width as u32)
 }
 
 

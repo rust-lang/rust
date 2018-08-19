@@ -245,7 +245,7 @@ impl<'a> CrateLoader<'a> {
             cnum_map,
             cnum,
             dependencies: Lock::new(dependencies),
-            codemap_import_info: RwLock::new(vec![]),
+            source_map_import_info: RwLock::new(vec![]),
             alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
             dep_kind: Lock::new(dep_kind),
             source: cstore::CrateSource {

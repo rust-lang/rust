@@ -40,7 +40,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                        self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
-                let cm = self.tcx.sess.codemap();
+                let cm = self.tcx.sess.source_map();
                 let sp = cm.def_span(item.span);
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => {}

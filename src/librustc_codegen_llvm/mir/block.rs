@@ -359,7 +359,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 self.set_debug_loc(&bx, terminator.source_info);
 
                 // Get the location information.
-                let loc = bx.sess().codemap().lookup_char_pos(span.lo());
+                let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
                 let filename = C_str_slice(bx.cx, filename);
                 let line = C_u32(bx.cx, loc.line as u32);

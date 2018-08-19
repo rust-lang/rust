@@ -24,7 +24,7 @@ use interpret::EvalContext;
 use interpret::CompileTimeEvaluator;
 use interpret::{eval_promoted, mk_borrowck_eval_cx, ValTy};
 use transform::{MirPass, MirSource};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;

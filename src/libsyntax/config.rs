@@ -12,7 +12,7 @@ use attr::HasAttrs;
 use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use {fold, attr};
 use ast;
-use codemap::Spanned;
+use source_map::Spanned;
 use edition::Edition;
 use parse::{token, ParseSess};
 use OneVector;

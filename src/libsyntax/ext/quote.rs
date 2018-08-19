@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, Ty};
-use codemap::respan;
+use source_map::respan;
 use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -28,7 +28,7 @@ use tokenstream::{TokenStream, TokenTree};
 
 pub mod rt {
     use ast;
-    use codemap::Spanned;
+    use source_map::Spanned;
     use ext::base::ExtCtxt;
     use parse::{self, classify};
     use parse::token::{self, Token};
@@ -40,7 +40,7 @@ pub mod rt {
 
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP, FileName};
-    pub use codemap::{dummy_spanned};
+    pub use source_map::{dummy_spanned};
 
     pub trait ToTokens {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree>;
@@ -802,7 +802,7 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
     // they happen to have a compiler on hand). Over all, the phase distinction
     // just makes quotes "hard to attribute". Possibly this could be fixed
     // by recreating some of the original qq machinery in the tt regime
-    // (pushing fake FileMaps onto the parser to account for original sites
+    // (pushing fake SourceFiles onto the parser to account for original sites
     // of quotes, for example) but at this point it seems not likely to be
     // worth the hassle.
 

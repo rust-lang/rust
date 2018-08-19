@@ -685,7 +685,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 let msp: MultiSpan = span.into();
-                let cm = &self.sess.parse_sess.codemap();
+                let cm = &self.sess.parse_sess.source_map();
                 let span_key = msp.primary_span().and_then(|sp: Span|
                     if !sp.is_dummy() {
                         let file = cm.lookup_char_pos(sp.lo()).file;

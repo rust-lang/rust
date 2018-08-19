@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                format!("cannot cast `{}` as `{}`",
                                         fcx.ty_to_string(self.expr_ty),
                                         cast_ty));
-                if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
+                if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
                     err.span_help(self.expr.span,
                                    &format!("did you mean `*{}`?", snippet));
                 }
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     hir::MutImmutable => "",
                 };
                 if self.cast_ty.is_trait() {
-                    match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
+                    match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {
                             err.span_suggestion(self.cast_span,
                                                 "try casting to a reference instead",
@@ -344,7 +344,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 }
             }
             ty::TyAdt(def, ..) if def.is_box() => {
-                match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
+                match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                     Ok(s) => {
                         err.span_suggestion(self.cast_span,
                                             "try casting to a `Box` instead",

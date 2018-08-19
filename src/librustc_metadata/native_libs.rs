@@ -16,7 +16,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
 

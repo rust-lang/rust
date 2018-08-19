@@ -417,7 +417,7 @@ mod test {
 
     use syntax::symbol::Symbol;
     use syntax::ast::*;
-    use syntax::codemap::dummy_spanned;
+    use syntax::source_map::dummy_spanned;
     use syntax_pos::DUMMY_SP;
     use syntax::with_globals;
 

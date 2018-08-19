@@ -18,7 +18,7 @@ use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
-use syntax::codemap::CodeMap;
+use syntax::source_map::SourceMap;
 use syntax_pos::Span;
 
 use ich::StableHashingContext;
@@ -122,7 +122,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn finalize_and_compute_crate_hash(mut self,
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &dyn CrateStore,
-                                                  codemap: &CodeMap,
+                                                  source_map: &SourceMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
         self
@@ -155,11 +155,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // If we included the full mapping in the SVH, we could only have
         // reproducible builds by compiling from the same directory. So we just
         // hash the result of the mapping instead of the mapping itself.
-        let mut source_file_names: Vec<_> = codemap
+        let mut source_file_names: Vec<_> = source_map
             .files()
             .iter()
-            .filter(|filemap| CrateNum::from_u32(filemap.crate_of_origin) == LOCAL_CRATE)
-            .map(|filemap| filemap.name_hash)
+            .filter(|source_file| CrateNum::from_u32(source_file.crate_of_origin) == LOCAL_CRATE)
+            .map(|source_file| source_file.name_hash)
             .collect();
 
         source_file_names.sort_unstable();

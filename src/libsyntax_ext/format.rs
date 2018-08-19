@@ -801,7 +801,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         }
     };
 
-    let is_literal = match ecx.codemap().span_to_snippet(fmt_sp) {
+    let is_literal = match ecx.source_map().span_to_snippet(fmt_sp) {
         Ok(ref s) if s.starts_with("\"") || s.starts_with("r#") => true,
         _ => false,
     };

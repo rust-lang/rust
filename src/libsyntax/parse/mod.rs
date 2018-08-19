@@ -13,8 +13,8 @@
 use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use codemap::{CodeMap, FilePathMapping};
-use syntax_pos::{Span, FileMap, FileName, MultiSpan};
+use source_map::{SourceMap, FilePathMapping};
+use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -57,13 +57,13 @@ pub struct ParseSess {
     pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
-    code_map: Lrc<CodeMap>,
+    code_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
 }
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Lrc::new(CodeMap::new(file_path_mapping));
+        let cm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
@@ -71,7 +71,7 @@ impl ParseSess {
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<SourceMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -86,7 +86,7 @@ impl ParseSess {
         }
     }
 
-    pub fn codemap(&self) -> &CodeMap {
+    pub fn source_map(&self) -> &SourceMap {
         &self.code_map
     }
 
@@ -171,13 +171,13 @@ crate fn parse_stmt_from_source_str(name: FileName, source: String, sess: &Parse
 pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
                                     override_span: Option<Span>)
                                     -> TokenStream {
-    filemap_to_stream(sess, sess.codemap().new_filemap(name, source), override_span)
+    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
                                       -> Parser {
-    let mut parser = filemap_to_parser(sess, sess.codemap().new_filemap(name, source));
+    let mut parser = source_file_to_parser(sess, sess.source_map().new_source_file(name, source));
     parser.recurse_into_file_modules = false;
     parser
 }
@@ -185,27 +185,27 @@ pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: Stri
 /// Create a new parser, handling errors as appropriate
 /// if the file doesn't exist
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> {
-    filemap_to_parser(sess, file_to_filemap(sess, path, None))
+    source_file_to_parser(sess, file_to_source_file(sess, path, None))
 }
 
 /// Given a session, a crate config, a path, and a span, add
-/// the file at the given path to the codemap, and return a parser.
+/// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
 crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
                                     directory_ownership: DirectoryOwnership,
                                     module_name: Option<String>,
                                     sp: Span) -> Parser<'a> {
-    let mut p = filemap_to_parser(sess, file_to_filemap(sess, path, Some(sp)));
+    let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
     p.directory.ownership = directory_ownership;
     p.root_module_name = module_name;
     p
 }
 
-/// Given a filemap and config, return a parser
-fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
-    let end_pos = filemap.end_pos;
-    let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
+/// Given a source_file and config, return a parser
+fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Parser {
+    let end_pos = source_file.end_pos;
+    let mut parser = stream_to_parser(sess, source_file_to_stream(sess, source_file, None));
 
     if parser.token == token::Eof && parser.span.is_dummy() {
         parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
@@ -224,11 +224,11 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 // base abstractions
 
 /// Given a session and a path and an optional span (for error reporting),
-/// add the path to the session's codemap and return the new filemap.
-fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Lrc<FileMap> {
-    match sess.codemap().load_file(path) {
-        Ok(filemap) => filemap,
+/// add the path to the session's source_map and return the new source_file.
+fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
+                   -> Lrc<SourceFile> {
+    match sess.source_map().load_file(path) {
+        Ok(source_file) => source_file,
         Err(e) => {
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
             match spanopt {
@@ -239,10 +239,11 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     }
 }
 
-/// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
-                         -> TokenStream {
-    let mut srdr = lexer::StringReader::new(sess, filemap, override_span);
+/// Given a source_file, produce a sequence of token-trees
+pub fn source_file_to_stream(sess: &ParseSess,
+                             source_file: Lrc<SourceFile>,
+                             override_span: Option<Span>) -> TokenStream {
+    let mut srdr = lexer::StringReader::new(sess, source_file, override_span);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
@@ -969,7 +970,7 @@ mod tests {
 
             let span = tts.iter().rev().next().unwrap().span();
 
-            match sess.codemap().span_to_snippet(span) {
+            match sess.source_map().span_to_snippet(span) {
                 Ok(s) => assert_eq!(&s[..], "{ body }"),
                 Err(_) => panic!("could not get snippet"),
             }

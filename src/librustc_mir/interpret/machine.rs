@@ -10,7 +10,7 @@ use super::{EvalContext, Place, ValTy, Memory};
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::Size;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::ast::Mutability;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail

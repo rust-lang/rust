@@ -122,7 +122,7 @@ use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::original_sp;
+use syntax::source_map::original_sp;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, LocalInternedString, keywords};
@@ -1447,7 +1447,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             impl_id: DefId,
                                             impl_trait_ref: ty::TraitRef<'tcx>,
                                             impl_item_refs: &[hir::ImplItemRef]) {
-    let impl_span = tcx.sess.codemap().def_span(impl_span);
+    let impl_span = tcx.sess.source_map().def_span(impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -2668,11 +2668,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 DiagnosticId::Error(error_code.to_owned()));
 
-            if let Some(def_s) = def_span.map(|sp| tcx.sess.codemap().def_span(sp)) {
+            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().def_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = tcx.sess.codemap().end_point(expr_sp);
+                let sugg_span = tcx.sess.source_map().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -2937,8 +2937,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (ExpectIfCondition, &hir::ExprKind::Assign(ref lhs, ref rhs)) => {
                     let msg = "try comparing for equality";
                     if let (Ok(left), Ok(right)) = (
-                        self.tcx.sess.codemap().span_to_snippet(lhs.span),
-                        self.tcx.sess.codemap().span_to_snippet(rhs.span))
+                        self.tcx.sess.source_map().span_to_snippet(lhs.span),
+                        self.tcx.sess.source_map().span_to_snippet(rhs.span))
                     {
                         err.span_suggestion(expr.span, msg, format!("{} == {}", left, right));
                     } else {
@@ -4232,7 +4232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let hir::ExprKind::Lit(ref lit) = idx.node {
                                     if let ast::LitKind::Int(i,
                                             ast::LitIntType::Unsuffixed) = lit.node {
-                                        let snip = tcx.sess.codemap().span_to_snippet(base.span);
+                                        let snip = tcx.sess.source_map().span_to_snippet(base.span);
                                         if let Ok(snip) = snip {
                                             err.span_suggestion(expr.span,
                                                                 "to access tuple elements, use",
@@ -4629,7 +4629,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             err.span_suggestion(sp, msg, suggestion);
         } else if !self.check_for_cast(err, expr, found, expected) {
             let methods = self.get_conversion_methods(expr.span, expected, found);
-            if let Ok(expr_text) = self.sess().codemap().span_to_snippet(expr.span) {
+            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
                     .filter_map(|(receiver, method)| {
                         let method_call = format!(".{}()", method.ident);
@@ -4673,7 +4673,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::ExprKind::Loop(..) |
                 hir::ExprKind::Match(..) |
                 hir::ExprKind::Block(..) => {
-                    let sp = self.tcx.sess.codemap().next_point(cause_span);
+                    let sp = self.tcx.sess.source_map().next_point(cause_span);
                     err.span_suggestion(sp,
                                         "try adding a semicolon",
                                         ";".to_string());

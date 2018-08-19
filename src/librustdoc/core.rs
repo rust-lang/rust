@@ -27,7 +27,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
 use syntax::ast::{self, Ident};
-use syntax::codemap;
+use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
@@ -258,9 +258,9 @@ impl DocAccessLevels for AccessLevels<DefId> {
 
 /// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
 ///
-/// If the given `error_format` is `ErrorOutputType::Json` and no `CodeMap` is given, a new one
+/// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
-pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::CodeMap>>)
+pub fn new_handler(error_format: ErrorOutputType, source_map: Option<Lrc<source_map::SourceMap>>)
     -> errors::Handler
 {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
@@ -270,18 +270,18 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
         ErrorOutputType::HumanReadable(color_config) => Box::new(
             EmitterWriter::stderr(
                 color_config,
-                codemap.map(|cm| cm as _),
+                source_map.map(|cm| cm as _),
                 false,
                 sessopts.debugging_opts.teach,
             ).ui_testing(sessopts.debugging_opts.ui_testing)
         ),
         ErrorOutputType::Json(pretty) => {
-            let codemap = codemap.unwrap_or_else(
-                || Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping())));
+            let source_map = source_map.unwrap_or_else(
+                || Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping())));
             Box::new(
                 JsonEmitter::stderr(
                     None,
-                    codemap,
+                    source_map,
                     pretty,
                 ).ui_testing(sessopts.debugging_opts.ui_testing)
             )
@@ -289,7 +289,7 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
         ErrorOutputType::Short(color_config) => Box::new(
             EmitterWriter::stderr(
                 color_config,
-                codemap.map(|cm| cm as _),
+                source_map.map(|cm| cm as _),
                 true,
                 false)
         ),
@@ -387,11 +387,11 @@ pub fn run_core(search_paths: SearchPaths,
         ..Options::default()
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
-        let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
-        let diagnostic_handler = new_handler(error_format, Some(codemap.clone()));
+        let source_map = Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()));
+        let diagnostic_handler = new_handler(error_format, Some(source_map.clone()));
 
         let mut sess = session::build_session_(
-            sessopts, cpath, diagnostic_handler, codemap,
+            sessopts, cpath, diagnostic_handler, source_map,
         );
 
         lint::builtin::HardwiredLints.get_lints()

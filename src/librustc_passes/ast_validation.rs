@@ -20,7 +20,7 @@ use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;

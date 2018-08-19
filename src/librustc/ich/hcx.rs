@@ -12,7 +12,7 @@ use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
-use ich::{self, CachingCodemapView, Fingerprint};
+use ich::{self, CachingSourceMapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
 use mir::interpret::AllocId;
@@ -25,7 +25,7 @@ use std::cell::RefCell;
 
 use syntax::ast;
 
-use syntax::codemap::CodeMap;
+use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
@@ -57,9 +57,9 @@ pub struct StableHashingContext<'a> {
     node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
-    // CachingCodemapView, so we initialize it lazily.
-    raw_codemap: &'a CodeMap,
-    caching_codemap: Option<CachingCodemapView<'a>>,
+    // CachingSourceMapView, so we initialize it lazily.
+    raw_source_map: &'a SourceMap,
+    caching_source_map: Option<CachingSourceMapView<'a>>,
 
     pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
 }
@@ -100,8 +100,8 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver(krate),
             definitions,
             cstore,
-            caching_codemap: None,
-            raw_codemap: sess.codemap(),
+            caching_source_map: None,
+            raw_source_map: sess.source_map(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
@@ -169,13 +169,13 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn codemap(&mut self) -> &mut CachingCodemapView<'a> {
-        match self.caching_codemap {
+    pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
+        match self.caching_source_map {
             Some(ref mut cm) => {
                 cm
             }
             ref mut none => {
-                *none = Some(CachingCodemapView::new(self.raw_codemap));
+                *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
             }
         }
@@ -308,9 +308,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
-    // offsets into the CodeMap). Instead, we hash the (file name, line, column)
-    // triple, which stays the same even if the containing FileMap has moved
-    // within the CodeMap.
+    // offsets into the SourceMap). Instead, we hash the (file name, line, column)
+    // triple, which stays the same even if the containing SourceFile has moved
+    // within the SourceMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
     // Also, hashing filenames is expensive so we avoid doing it twice when the
@@ -340,7 +340,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
-        let (file_lo, line_lo, col_lo) = match hcx.codemap()
+        let (file_lo, line_lo, col_lo) = match hcx.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {

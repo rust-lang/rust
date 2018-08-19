@@ -441,7 +441,7 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
     format!(
         "scope {} at {}",
         scope.index(),
-        tcx.sess.codemap().span_to_string(span)
+        tcx.sess.source_map().span_to_string(span)
     )
 }
 

@@ -37,7 +37,7 @@ use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use std::ops::Index;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
 use ty::{self, CanonicalVar, Lift, Region, Slice, TyCtxt};

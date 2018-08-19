@@ -316,7 +316,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             }
 
             let span = local_decl.source_info.span;
-            let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
 
             let mut err = tcx.struct_span_lint_node(
                 UNUSED_MUT,
@@ -1509,7 +1509,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
-            let span = self.tcx.sess.codemap().end_point(span);
+            let span = self.tcx.sess.source_map().end_point(span);
             self.report_borrowed_value_does_not_live_long_enough(
                 context,
                 borrow,

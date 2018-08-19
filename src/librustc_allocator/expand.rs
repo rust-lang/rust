@@ -17,7 +17,7 @@ use syntax::{
         Mac, Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind,
     },
     attr,
-    codemap::{
+    source_map::{
         respan, ExpnInfo, MacroAttribute,
     },
     ext::{

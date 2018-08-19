@@ -11,7 +11,7 @@
 use infer::InferCtxt;
 use infer::lexical_region_resolve::RegionResolutionError;
 use infer::lexical_region_resolve::RegionResolutionError::*;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use ty::{self, TyCtxt};
 use util::common::ErrorReported;
 

@@ -10,8 +10,8 @@ use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 
 use syntax::ast::Mutability;
-use syntax::codemap::Span;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::Span;
+use syntax::source_map::DUMMY_SP;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,

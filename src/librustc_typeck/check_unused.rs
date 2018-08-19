@@ -71,7 +71,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
             return;
         }
 
-        let msg = if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+        let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             format!("unused import: `{}`", snippet)
         } else {
             "unused import".to_string()

@@ -16,12 +16,12 @@ use edition::Edition;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use codemap::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
+use source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use ptr::P;
 use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's `is_internal` check.
+/// call to source_map's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
 fn ignored_span(sp: Span) -> Span {
     let mark = Mark::fresh(Mark::root());

@@ -29,7 +29,7 @@ use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc::ty;
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
                 _: intravisit::FnKind<'tcx>,
                 _: &'tcx hir::FnDecl,
                 _: &'tcx hir::Body,
-                span: codemap::Span,
+                span: source_map::Span,
                 id: ast::NodeId) {
 
         let item = match cx.tcx.hir.get(id) {

@@ -1205,8 +1205,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                             let enum_span = enum_resolution.borrow()
                                 .binding.expect("binding should exist")
                                 .span;
-                            let enum_def_span = self.session.codemap().def_span(enum_span);
-                            let enum_def_snippet = self.session.codemap()
+                            let enum_def_span = self.session.source_map().def_span(enum_span);
+                            let enum_def_snippet = self.session.source_map()
                                 .span_to_snippet(enum_def_span).expect("snippet should exist");
                             // potentially need to strip extant `crate`/`pub(path)` for suggestion
                             let after_vis_index = enum_def_snippet.find("enum")

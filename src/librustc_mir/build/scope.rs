@@ -732,7 +732,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let region_scope_span = region_scope.span(self.hir.tcx(),
                                                           &self.hir.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
-                let scope_end = self.hir.tcx().sess.codemap().end_point(region_scope_span);
+                let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
 
                 scope.drops.push(DropData {
                     span: scope_end,

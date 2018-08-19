@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The CodeMap tracks all the source code used within a single crate, mapping
+//! The SourceMap tracks all the source code used within a single crate, mapping
 //! from integer byte positions to the original source code location. Each bit
 //! of source parsed during crate parsing (typically files, in-memory strings,
 //! or various bits of macro expansion) cover a continuous range of bytes in the
-//! CodeMap and are represented by FileMaps. Byte positions are stored in
+//! SourceMap and are represented by SourceFiles. Byte positions are stored in
 //! `spans` and used pervasively in the compiler. They are absolute positions
-//! within the CodeMap, which upon request can be converted to line and column
+//! within the SourceMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
 
@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
 use std::io::{self, Read};
-use errors::CodeMapper;
+use errors::SourceMapper;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -62,7 +62,7 @@ pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
 }
 
 // _____________________________________________________________________________
-// FileMap, MultiByteChar, FileName, FileLines
+// SourceFile, MultiByteChar, FileName, FileLines
 //
 
 /// An abstraction over the fs operations used by the Parser.
@@ -102,50 +102,50 @@ impl FileLoader for RealFileLoader {
     }
 }
 
-// This is a FileMap identifier that is used to correlate FileMaps between
+// This is a SourceFile identifier that is used to correlate SourceFiles between
 // subsequent compilation sessions (which is something we need to do during
 // incremental compilation).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct StableFilemapId(u128);
 
 impl StableFilemapId {
-    pub fn new(filemap: &FileMap) -> StableFilemapId {
+    pub fn new(source_file: &SourceFile) -> StableFilemapId {
         let mut hasher = StableHasher::new();
 
-        filemap.name.hash(&mut hasher);
-        filemap.name_was_remapped.hash(&mut hasher);
-        filemap.unmapped_path.hash(&mut hasher);
+        source_file.name.hash(&mut hasher);
+        source_file.name_was_remapped.hash(&mut hasher);
+        source_file.unmapped_path.hash(&mut hasher);
 
         StableFilemapId(hasher.finish())
     }
 }
 
 // _____________________________________________________________________________
-// CodeMap
+// SourceMap
 //
 
-pub(super) struct CodeMapFiles {
-    pub(super) file_maps: Vec<Lrc<FileMap>>,
-    stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<FileMap>>
+pub(super) struct SourceMapFiles {
+    pub(super) file_maps: Vec<Lrc<SourceFile>>,
+    stable_id_to_source_file: FxHashMap<StableFilemapId, Lrc<SourceFile>>
 }
 
-pub struct CodeMap {
-    pub(super) files: Lock<CodeMapFiles>,
+pub struct SourceMap {
+    pub(super) files: Lock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
-    // --remap-path-prefix to all FileMaps allocated within this CodeMap.
+    // --remap-path-prefix to all SourceFiles allocated within this SourceMap.
     path_mapping: FilePathMapping,
     /// In case we are in a doctest, replace all file names with the PathBuf,
     /// and add the given offsets to the line info
     doctest_offset: Option<(FileName, isize)>,
 }
 
-impl CodeMap {
-    pub fn new(path_mapping: FilePathMapping) -> CodeMap {
-        CodeMap {
-            files: Lock::new(CodeMapFiles {
+impl SourceMap {
+    pub fn new(path_mapping: FilePathMapping) -> SourceMap {
+        SourceMap {
+            files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_filemap: FxHashMap(),
+                stable_id_to_source_file: FxHashMap(),
             }),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
@@ -154,21 +154,21 @@ impl CodeMap {
     }
 
     pub fn new_doctest(path_mapping: FilePathMapping,
-                       file: FileName, line: isize) -> CodeMap {
-        CodeMap {
+                       file: FileName, line: isize) -> SourceMap {
+        SourceMap {
             doctest_offset: Some((file, line)),
-            ..CodeMap::new(path_mapping)
+            ..SourceMap::new(path_mapping)
         }
 
     }
 
     pub fn with_file_loader(file_loader: Box<dyn FileLoader + Sync + Send>,
                             path_mapping: FilePathMapping)
-                            -> CodeMap {
-        CodeMap {
-            files: Lock::new(CodeMapFiles {
+                            -> SourceMap {
+        SourceMap {
+            files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_filemap: FxHashMap(),
+                stable_id_to_source_file: FxHashMap(),
             }),
             file_loader: file_loader,
             path_mapping,
@@ -184,36 +184,36 @@ impl CodeMap {
         self.file_loader.file_exists(path)
     }
 
-    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<FileMap>> {
+    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
         let filename = if let Some((ref name, _)) = self.doctest_offset {
             name.clone()
         } else {
             path.to_owned().into()
         };
-        Ok(self.new_filemap(filename, src))
+        Ok(self.new_source_file(filename, src))
     }
 
-    pub fn files(&self) -> LockGuard<Vec<Lrc<FileMap>>> {
+    pub fn files(&self) -> LockGuard<Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.file_maps)
     }
 
-    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<FileMap>> {
-        self.files.borrow().stable_id_to_filemap.get(&stable_id).map(|fm| fm.clone())
+    pub fn source_file_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<SourceFile>> {
+        self.files.borrow().stable_id_to_source_file.get(&stable_id).map(|fm| fm.clone())
     }
 
     fn next_start_pos(&self) -> usize {
         match self.files.borrow().file_maps.last() {
             None => 0,
             // Add one so there is some space between files. This lets us distinguish
-            // positions in the codemap, even in the presence of zero-length files.
+            // positions in the source_map, even in the presence of zero-length files.
             Some(last) => last.end_pos.to_usize() + 1,
         }
     }
 
-    /// Creates a new filemap.
-    /// This does not ensure that only one FileMap exists per file name.
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
+    /// Creates a new source_file.
+    /// This does not ensure that only one SourceFile exists per file name.
+    pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         // The path is used to determine the directory for loading submodules and
@@ -230,7 +230,7 @@ impl CodeMap {
             },
             other => (other, false),
         };
-        let filemap = Lrc::new(FileMap::new(
+        let source_file = Lrc::new(SourceFile::new(
             filename,
             was_remapped,
             unmapped_path,
@@ -240,17 +240,18 @@ impl CodeMap {
 
         let mut files = self.files.borrow_mut();
 
-        files.file_maps.push(filemap.clone());
-        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file),
+                                              source_file.clone());
 
-        filemap
+        source_file
     }
 
-    /// Allocates a new FileMap representing a source file from an external
-    /// crate. The source code of such an "imported filemap" is not available,
+    /// Allocates a new SourceFile representing a source file from an external
+    /// crate. The source code of such an "imported source_file" is not available,
     /// but we still know enough to generate accurate debuginfo location
     /// information for things inlined from other crates.
-    pub fn new_imported_filemap(&self,
+    pub fn new_imported_source_file(&self,
                                 filename: FileName,
                                 name_was_remapped: bool,
                                 crate_of_origin: u32,
@@ -260,7 +261,7 @@ impl CodeMap {
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>,
                                 mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
-                                -> Lrc<FileMap> {
+                                -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         let end_pos = Pos::from_usize(start_pos + source_len);
@@ -278,7 +279,7 @@ impl CodeMap {
             *swc = *swc + start_pos;
         }
 
-        let filemap = Lrc::new(FileMap {
+        let source_file = Lrc::new(SourceFile {
             name: filename,
             name_was_remapped,
             unmapped_path: None,
@@ -296,10 +297,11 @@ impl CodeMap {
 
         let mut files = self.files.borrow_mut();
 
-        files.file_maps.push(filemap.clone());
-        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(source_file.clone());
+        files.stable_id_to_source_file.insert(StableFilemapId::new(&source_file),
+                                              source_file.clone());
 
-        filemap
+        source_file
     }
 
     pub fn mk_substr_filename(&self, sp: Span) -> String {
@@ -326,7 +328,7 @@ impl CodeMap {
     pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         let chpos = self.bytepos_to_file_charpos(pos);
         match self.lookup_line(pos) {
-            Ok(FileMapAndLine { fm: f, line: a }) => {
+            Ok(SourceFileAndLine { fm: f, line: a }) => {
                 let line = a + 1; // Line numbers start at 1
                 let linebpos = f.lines[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
@@ -385,14 +387,14 @@ impl CodeMap {
         }
     }
 
-    // If the relevant filemap is empty, we don't return a line number.
-    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Lrc<FileMap>> {
-        let idx = self.lookup_filemap_idx(pos);
+    // If the relevant source_file is empty, we don't return a line number.
+    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
+        let idx = self.lookup_source_file_idx(pos);
 
         let f = (*self.files.borrow().file_maps)[idx].clone();
 
         match f.lookup_line(pos) {
-            Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
+            Some(line) => Ok(SourceFileAndLine { fm: f, line: line }),
             None => Err(f)
         }
     }
@@ -463,7 +465,7 @@ impl CodeMap {
 
     pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
-            .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
+            .expect("SourceMap::span_to_unmapped_path called for imported SourceFile?")
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -541,7 +543,7 @@ impl CodeMap {
                       local_end.fm.start_pos)
             }));
         } else {
-            self.ensure_filemap_source_present(local_begin.fm.clone());
+            self.ensure_source_file_source_present(local_begin.fm.clone());
 
             let start_index = local_begin.pos.to_usize();
             let end_index = local_end.pos.to_usize();
@@ -798,7 +800,7 @@ impl CodeMap {
         }
     }
 
-    pub fn get_filemap(&self, filename: &FileName) -> Option<Lrc<FileMap>> {
+    pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
         for fm in self.files.borrow().file_maps.iter() {
             if *filename == fm.name {
                 return Some(fm.clone());
@@ -807,20 +809,20 @@ impl CodeMap {
         None
     }
 
-    /// For a global BytePos compute the local offset within the containing FileMap
-    pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
-        let idx = self.lookup_filemap_idx(bpos);
+    /// For a global BytePos compute the local offset within the containing SourceFile
+    pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
+        let idx = self.lookup_source_file_idx(bpos);
         let fm = (*self.files.borrow().file_maps)[idx].clone();
         let offset = bpos - fm.start_pos;
-        FileMapAndBytePos {fm: fm, pos: offset}
+        SourceFileAndBytePos {fm: fm, pos: offset}
     }
 
-    /// Converts an absolute BytePos to a CharPos relative to the filemap.
+    /// Converts an absolute BytePos to a CharPos relative to the source_file.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
-        let idx = self.lookup_filemap_idx(bpos);
+        let idx = self.lookup_source_file_idx(bpos);
         let map = &(*self.files.borrow().file_maps)[idx];
 
-        // The number of extra bytes due to multibyte chars in the FileMap
+        // The number of extra bytes due to multibyte chars in the SourceFile
         let mut total_extra_bytes = 0;
 
         for mbc in map.multibyte_chars.iter() {
@@ -841,13 +843,13 @@ impl CodeMap {
         CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
     }
 
-    // Return the index of the filemap (in self.files) which contains pos.
-    pub fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
+    // Return the index of the source_file (in self.files) which contains pos.
+    pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
         let files = &files.file_maps;
         let count = files.len();
 
-        // Binary search for the filemap.
+        // Binary search for the source_file.
         let mut a = 0;
         let mut b = count;
         while b - a > 1 {
@@ -895,7 +897,7 @@ impl CodeMap {
     ///
     /// Attention: The method used is very fragile since it essentially duplicates the work of the
     /// parser. If you need to use this function or something similar, please consider updating the
-    /// codemap functions and this function to something more robust.
+    /// source_map functions and this function to something more robust.
     pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
         // Try to extend the span to the previous "fn" keyword to retrieve the function
         // signature
@@ -941,7 +943,7 @@ impl CodeMap {
     }
 }
 
-impl CodeMapper for CodeMap {
+impl SourceMapper for SourceMap {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         self.lookup_char_pos(pos)
     }
@@ -966,7 +968,7 @@ impl CodeMapper for CodeMap {
         }
         sp
     }
-    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool {
+    fn ensure_source_file_source_present(&self, file_map: Lrc<SourceFile>) -> bool {
         file_map.add_external_src(
             || match file_map.name {
                 FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
@@ -1023,13 +1025,13 @@ mod tests {
     use super::*;
     use rustc_data_structures::sync::Lrc;
 
-    fn init_code_map() -> CodeMap {
-        let cm = CodeMap::new(FilePathMapping::empty());
-        cm.new_filemap(PathBuf::from("blork.rs").into(),
+    fn init_code_map() -> SourceMap {
+        let cm = SourceMap::new(FilePathMapping::empty());
+        cm.new_source_file(PathBuf::from("blork.rs").into(),
                        "first line.\nsecond line".to_string());
-        cm.new_filemap(PathBuf::from("empty.rs").into(),
+        cm.new_source_file(PathBuf::from("empty.rs").into(),
                        "".to_string());
-        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+        cm.new_source_file(PathBuf::from("blork2.rs").into(),
                        "first line.\nsecond line".to_string());
         cm
     }
@@ -1066,7 +1068,7 @@ mod tests {
 
     #[test]
     fn t5() {
-        // Test zero-length filemaps.
+        // Test zero-length source_files.
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
@@ -1080,12 +1082,12 @@ mod tests {
         assert_eq!(loc2.col, CharPos(0));
     }
 
-    fn init_code_map_mbc() -> CodeMap {
-        let cm = CodeMap::new(FilePathMapping::empty());
+    fn init_code_map_mbc() -> SourceMap {
+        let cm = SourceMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
-        cm.new_filemap(PathBuf::from("blork.rs").into(),
+        cm.new_source_file(PathBuf::from("blork.rs").into(),
                        "fir€st €€€€ line.\nsecond line".to_string());
-        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+        cm.new_source_file(PathBuf::from("blork2.rs").into(),
                        "first line€€.\n€ second line".to_string());
         cm
     }
@@ -1110,7 +1112,7 @@ mod tests {
 
     #[test]
     fn t7() {
-        // Test span_to_lines for a span ending at the end of filemap
+        // Test span_to_lines for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let file_lines = cm.span_to_lines(span).unwrap();
@@ -1135,10 +1137,10 @@ mod tests {
     /// lines in the middle of a file.
     #[test]
     fn span_to_snippet_and_lines_spanning_multiple_lines() {
-        let cm = CodeMap::new(FilePathMapping::empty());
+        let cm = SourceMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
+        cm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -1156,7 +1158,7 @@ mod tests {
 
     #[test]
     fn t8() {
-        // Test span_to_snippet for a span ending at the end of filemap
+        // Test span_to_snippet for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let snippet = cm.span_to_snippet(span);
@@ -1166,7 +1168,7 @@ mod tests {
 
     #[test]
     fn t9() {
-        // Test span_to_str for a span ending at the end of filemap
+        // Test span_to_str for a span ending at the end of source_file
         let cm = init_code_map();
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let sstr =  cm.span_to_string(span);
@@ -1177,11 +1179,11 @@ mod tests {
     /// Test failing to merge two spans on different lines
     #[test]
     fn span_merging_fail() {
-        let cm = CodeMap::new(FilePathMapping::empty());
+        let cm = SourceMap::new(FilePathMapping::empty());
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
+        cm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 
@@ -1190,18 +1192,18 @@ mod tests {
 
     /// Returns the span corresponding to the `n`th occurrence of
     /// `substring` in `source_text`.
-    trait CodeMapExtension {
+    trait SourceMapExtension {
         fn span_substr(&self,
-                    file: &Lrc<FileMap>,
+                    file: &Lrc<SourceFile>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
                     -> Span;
     }
 
-    impl CodeMapExtension for CodeMap {
+    impl SourceMapExtension for SourceMap {
         fn span_substr(&self,
-                    file: &Lrc<FileMap>,
+                    file: &Lrc<SourceFile>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
