@@ -455,14 +455,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         // Iterate over each segment of the path.
         while let Some((def_id, defs)) = stack.pop() {
-            let mut params = defs.params.iter();
-            let mut next_param = params.next();
+            let mut params = defs.params.iter().peekable();
 
             // If we have already computed substitutions for parents, we can use those directly.
-            while let Some(param) = next_param {
+            while let Some(&param) = params.peek() {
                 if let Some(&kind) = parent_substs.get(param.index as usize) {
                     push_kind(&mut substs, kind);
-                    next_param = params.next();
+                    params.next();
                 } else {
                     break;
                 }
@@ -470,12 +469,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
             // (Unless it's been handled in `parent_substs`) `Self` is handled first.
             if has_self {
-                if let Some(param) = next_param {
+                if let Some(&param) = params.peek() {
                     if param.index == 0 {
                         if let GenericParamDefKind::Type { .. } = param.kind {
                             push_kind(&mut substs, self_ty.map(|ty| ty.into())
                                 .unwrap_or_else(|| inferred_kind(None, param, true)));
-                            next_param = params.next();
+                            params.next();
                         }
                     }
                 }
@@ -484,8 +483,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             // Check whether this segment takes generic arguments and the user has provided any.
             let (generic_args, infer_types) = args_for_def_id(def_id);
 
-            let mut args = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
-            let mut next_arg = args.next();
+            let mut args = generic_args.iter().flat_map(|generic_args| generic_args.args.iter())
+                .peekable();
 
             loop {
                 // We're going to iterate through the generic arguments that the user
@@ -493,12 +492,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 // Mismatches can occur as a result of elided lifetimes, or for malformed
                 // input. We try to handle both sensibly.
                 let mut progress_arg = true;
-                match (next_arg, next_param) {
-                    (Some(arg), Some(param)) => {
+                match (args.peek(), params.peek()) {
+                    (Some(&arg), Some(&param)) => {
                         match (arg, &param.kind) {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
-                                next_param = params.next();
+                                params.next();
                             }
                             (GenericArg::Lifetime(_), GenericParamDefKind::Type { .. }) => {
                                 // We expected a type argument, but got a lifetime
@@ -510,13 +509,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                             }
                             (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
-                                next_param = params.next();
+                                params.next();
                             }
                             (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
                                 // We expected a lifetime argument, but got a type
                                 // argument. That means we're inferring the lifetimes.
                                 push_kind(&mut substs, inferred_kind(None, param, infer_types));
-                                next_param = params.next();
+                                params.next();
                                 progress_arg = false;
                             }
                         }
@@ -526,7 +525,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         // Getting to this point means the user supplied more arguments than
                         // there are parameters.
                     }
-                    (None, Some(param)) => {
+                    (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
                         match param.kind {
@@ -538,12 +537,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                 push_kind(&mut substs, kind);
                             }
                         }
-                        next_param = params.next();
+                        params.next();
                     }
                     (None, None) => break,
                 }
                 if progress_arg {
-                    next_arg = args.next();
+                    args.next();
                 }
             }
         }

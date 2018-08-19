@@ -4832,7 +4832,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::VariantCtor(def_id, ..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                let mut generics = self.tcx.generics_of(def_id);
+                let generics = self.tcx.generics_of(def_id);
                 // Variant and struct constructors use the
                 // generics of their parent type definition.
                 let generics_def_id = generics.parent.unwrap_or(def_id);
