@@ -21,6 +21,8 @@ use common::{CodegenCx, C_undef, C_usize};
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
+use type_::Type;
+use glue;
 
 use std::fmt;
 
@@ -35,7 +37,9 @@ use super::place::PlaceRef;
 pub enum OperandValue<'ll> {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    Ref(&'ll Value, Align),
+    /// The second value, if any, is the extra data (vtable or length)
+    /// which indicates that it refers to an unsized rvalue.
+    Ref(&'ll Value, Option<&'ll Value>, Align),
     /// A single LLVM value.
     Immediate(&'ll Value),
     /// A pair of immediate LLVM values. Used by fat pointers too.
@@ -283,9 +287,12 @@ impl OperandValue<'ll> {
             return;
         }
         match self {
-            OperandValue::Ref(r, source_align) => {
+            OperandValue::Ref(r, None, source_align) => {
                 base::memcpy_ty(bx, dest.llval, r, dest.layout,
                                 source_align.min(dest.align), flags)
+            }
+            OperandValue::Ref(_, Some(_), _) => {
+                bug!("cannot directly store unsized values");
             }
             OperandValue::Immediate(s) => {
                 let val = base::from_immediate(bx, s);
@@ -299,6 +306,35 @@ impl OperandValue<'ll> {
                 }
             }
         }
+    }
+
+    pub fn store_unsized(self, bx: &Builder<'a, 'll, 'tcx>, indirect_dest: PlaceRef<'ll, 'tcx>) {
+        debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
+        let flags = MemFlags::empty();
+
+        // `indirect_dest` must have `*mut T` type. We extract `T` out of it.
+        let unsized_ty = indirect_dest.layout.ty.builtin_deref(true)
+            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest)).ty;
+
+        let (llptr, llextra) =
+            if let OperandValue::Ref(llptr, Some(llextra), _) = self {
+                (llptr, llextra)
+            } else {
+                bug!("store_unsized called with a sized value")
+            };
+
+        // FIXME: choose an appropriate alignment, or use dynamic align somehow
+        let max_align = Align::from_bits(128, 128).unwrap();
+        let min_align = Align::from_bits(8, 8).unwrap();
+
+        // Allocate an appropriate region on the stack, and copy the value into it
+        let (llsize, _) = glue::size_and_align_of_dst(&bx, unsized_ty, Some(llextra));
+        let lldst = bx.array_alloca(Type::i8(bx.cx), llsize, "unsized_tmp", max_align);
+        base::call_memcpy(&bx, lldst, llptr, llsize, min_align, flags);
+
+        // Store the allocated region and the extra to the indirect place.
+        let indirect_operand = OperandValue::Pair(lldst, llextra);
+        indirect_operand.store(&bx, indirect_dest);
     }
 }
 
@@ -320,7 +356,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 LocalRef::Operand(None) => {
                     bug!("use of {:?} before def", place);
                 }
-                LocalRef::Place(..) => {
+                LocalRef::Place(..) | LocalRef::UnsizedPlace(..) => {
                     // use path below
                 }
             }

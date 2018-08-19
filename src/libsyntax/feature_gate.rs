@@ -503,6 +503,9 @@ declare_features! (
 
     // Allows `Self` in type definitions
     (active, self_in_typedefs, "1.30.0", Some(49303), None),
+
+    // unsized rvalues at arguments and parameters
+    (active, unsized_locals, "1.30.0", Some(48055), None),
 );
 
 declare_features! (

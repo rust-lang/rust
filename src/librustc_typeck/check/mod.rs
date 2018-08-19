@@ -961,8 +961,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.id, None);
 
-            self.fcx.require_type_is_sized(var_ty, p.span,
-                                           traits::VariableType(p.id));
+            if !self.fcx.tcx.features().unsized_locals {
+                self.fcx.require_type_is_sized(var_ty, p.span,
+                                               traits::VariableType(p.id));
+            }
 
             debug!("Pattern binding {} is assigned to {} with type {:?}",
                    ident,
@@ -1048,8 +1050,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if arg.pat.simple_ident().is_none() {
-            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
+        if arg.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
+            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
         fcx.write_ty(arg.hir_id, arg_ty);

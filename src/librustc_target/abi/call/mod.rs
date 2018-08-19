@@ -44,7 +44,9 @@ pub enum PassMode {
     /// a single uniform or a pair of registers.
     Cast(CastTarget),
     /// Pass the argument indirectly via a hidden pointer.
-    Indirect(ArgAttributes),
+    /// The second value, if any, is for the extra data (vtable or length)
+    /// which indicates that it refers to an unsized rvalue.
+    Indirect(ArgAttributes, Option<ArgAttributes>),
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -368,13 +370,19 @@ impl<'a, Ty> ArgType<'a, Ty> {
         // i686-pc-windows-msvc, it results in wrong stack offsets.
         // attrs.pointee_align = Some(self.layout.align);
 
-        self.mode = PassMode::Indirect(attrs);
+        let extra_attrs = if self.layout.is_unsized() {
+            Some(ArgAttributes::new())
+        } else {
+            None
+        };
+
+        self.mode = PassMode::Indirect(attrs, extra_attrs);
     }
 
     pub fn make_indirect_byval(&mut self) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect(ref mut attrs) => {
+            PassMode::Indirect(ref mut attrs, _) => {
                 attrs.set(ArgAttribute::ByVal);
             }
             _ => unreachable!()
@@ -409,7 +417,21 @@ impl<'a, Ty> ArgType<'a, Ty> {
 
     pub fn is_indirect(&self) -> bool {
         match self.mode {
-            PassMode::Indirect(_) => true,
+            PassMode::Indirect(..) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_sized_indirect(&self) -> bool {
+        match self.mode {
+            PassMode::Indirect(_, None) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_unsized_indirect(&self) -> bool {
+        match self.mode {
+            PassMode::Indirect(_, Some(_)) => true,
             _ => false
         }
     }
@@ -506,7 +528,7 @@ impl<'a, Ty> FnType<'a, Ty> {
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
         }
 
-        if let PassMode::Indirect(ref mut attrs) = self.ret.mode {
+        if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
             attrs.set(ArgAttribute::StructRet);
         }
 

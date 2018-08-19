@@ -1454,6 +1454,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
+                if !self.tcx.features().unsized_locals {
+                    err.help("unsized locals are gated as an unstable feature");
+                }
+            }
+            ObligationCauseCode::SizedArgumentType => {
+                err.note("all function arguments must have a statically known size");
+                if !self.tcx.features().unsized_locals {
+                    err.help("unsized locals are gated as an unstable feature");
+                }
             }
             ObligationCauseCode::SizedReturnType => {
                 err.note("the return type of a function must have a \

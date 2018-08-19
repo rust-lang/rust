@@ -31,6 +31,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)
                         }
+                        LocalRef::UnsizedPlace(cg_indirect_dest) => {
+                            self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
+                        }
                         LocalRef::Operand(None) => {
                             let (bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
                             self.locals[index] = LocalRef::Operand(Some(operand));
@@ -61,12 +64,16 @@ impl FunctionCx<'a, 'll, 'tcx> {
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(&bx);
+                } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
+                    cg_indirect_place.storage_live(&bx);
                 }
                 bx
             }
             mir::StatementKind::StorageDead(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_dead(&bx);
+                } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
+                    cg_indirect_place.storage_dead(&bx);
                 }
                 bx
             }

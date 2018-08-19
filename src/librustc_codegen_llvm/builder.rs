@@ -445,6 +445,25 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
+    pub fn array_alloca(&self,
+                        ty: &'ll Type,
+                        len: &'ll Value,
+                        name: &str,
+                        align: Align) -> &'ll Value {
+        self.count_insn("alloca");
+        unsafe {
+            let alloca = if name.is_empty() {
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, noname())
+            } else {
+                let name = SmallCStr::new(name);
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
+                                           name.as_ptr())
+            };
+            llvm::LLVMSetAlignment(alloca, align.abi() as c_uint);
+            alloca
+        }
+    }
+
     pub fn load(&self, ptr: &'ll Value, align: Align) -> &'ll Value {
         self.count_insn("load");
         unsafe {

@@ -83,9 +83,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         base::coerce_unsized_into(&bx, scratch, dest);
                         scratch.storage_dead(&bx);
                     }
-                    OperandValue::Ref(llref, align) => {
+                    OperandValue::Ref(llref, None, align) => {
                         let source = PlaceRef::new_sized(llref, operand.layout, align);
                         base::coerce_unsized_into(&bx, source, dest);
+                    }
+                    OperandValue::Ref(_, Some(_), _) => {
+                        bug!("unsized coercion on an unsized rvalue")
                     }
                 }
                 bx
@@ -172,6 +175,26 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 temp.val.store(&bx, dest);
                 bx
             }
+        }
+    }
+
+    pub fn codegen_rvalue_unsized(&mut self,
+                        bx: Builder<'a, 'll, 'tcx>,
+                        indirect_dest: PlaceRef<'ll, 'tcx>,
+                        rvalue: &mir::Rvalue<'tcx>)
+                        -> Builder<'a, 'll, 'tcx>
+    {
+        debug!("codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
+               indirect_dest.llval, rvalue);
+
+        match *rvalue {
+            mir::Rvalue::Use(ref operand) => {
+                let cg_operand = self.codegen_operand(&bx, operand);
+                cg_operand.val.store_unsized(&bx, indirect_dest);
+                bx
+            }
+
+            _ => bug!("unsized assignment other than Rvalue::Use"),
         }
     }
 

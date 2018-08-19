@@ -225,14 +225,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
             mir::TerminatorKind::Return => {
                 let llval = match self.fn_ty.ret.mode {
-                    PassMode::Ignore | PassMode::Indirect(_) => {
+                    PassMode::Ignore | PassMode::Indirect(..) => {
                         bx.ret_void();
                         return;
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
                         let op = self.codegen_consume(&bx, &mir::Place::Local(mir::RETURN_PLACE));
-                        if let Ref(llval, align) = op.val {
+                        if let Ref(llval, _, align) = op.val {
                             bx.load(llval, align)
                         } else {
                             op.immediate_or_packed_pair(&bx)
@@ -245,10 +245,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             LocalRef::Operand(None) => bug!("use of return before def"),
                             LocalRef::Place(cg_place) => {
                                 OperandRef {
-                                    val: Ref(cg_place.llval, cg_place.align),
+                                    val: Ref(cg_place.llval, None, cg_place.align),
                                     layout: cg_place.layout
                                 }
                             }
+                            LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                         };
                         let llslot = match op.val {
                             Immediate(_) | Pair(..) => {
@@ -256,7 +257,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 op.val.store(&bx, scratch);
                                 scratch.llval
                             }
-                            Ref(llval, align) => {
+                            Ref(llval, _, align) => {
                                 assert_eq!(align.abi(), op.layout.align.abi(),
                                            "return place is unaligned!");
                                 llval
@@ -601,11 +602,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     // The callee needs to own the argument memory if we pass it
                     // by-ref, so make a local copy of non-immediate constants.
                     match (arg, op.val) {
-                        (&mir::Operand::Copy(_), Ref(..)) |
-                        (&mir::Operand::Constant(_), Ref(..)) => {
+                        (&mir::Operand::Copy(_), Ref(_, None, _)) |
+                        (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                             let tmp = PlaceRef::alloca(&bx, op.layout, "const");
                             op.val.store(&bx, tmp);
-                            op.val = Ref(tmp.llval, tmp.align);
+                            op.val = Ref(tmp.llval, None, tmp.align);
                         }
                         _ => {}
                     }
@@ -657,13 +658,22 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair arugment", op)
             }
+        } else if arg.is_unsized_indirect() {
+            match op.val {
+                Ref(a, Some(b), _) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                    return;
+                }
+                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op)
+            }
         }
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 match arg.mode {
-                    PassMode::Indirect(_) | PassMode::Cast(_) => {
+                    PassMode::Indirect(..) | PassMode::Cast(_) => {
                         let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
                         op.val.store(bx, scratch);
                         (scratch.llval, scratch.align, true)
@@ -673,7 +683,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                 }
             }
-            Ref(llval, align) => {
+            Ref(llval, _, align) => {
                 if arg.is_indirect() && align.abi() < arg.layout.align.abi() {
                     // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
@@ -721,12 +731,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
-        if let Ref(llval, align) = tuple.val {
+        if let Ref(llval, None, align) = tuple.val {
             let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 self.codegen_argument(bx, field_ptr.load(bx), llargs, &args[i]);
             }
+        } else if let Ref(_, Some(_), _) = tuple.val {
+            bug!("closure arguments must be sized")
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
@@ -820,6 +832,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let dest = if let mir::Place::Local(index) = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
+                LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 LocalRef::Operand(None) => {
                     // Handle temporary places, specifically Operand ones, as
                     // they don't have allocas
@@ -871,6 +884,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         if let mir::Place::Local(index) = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
+                LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.cx.layout_of(self.monomorphized_place_ty(dst));
                     assert!(!dst_layout.ty.has_erasable_regions());

@@ -203,6 +203,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::StructInitializerSized => Some(super::StructInitializerSized),
             super::VariableType(id) => Some(super::VariableType(id)),
             super::ReturnType(id) => Some(super::ReturnType(id)),
+            super::SizedArgumentType => Some(super::SizedArgumentType),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
             super::RepeatVec => Some(super::RepeatVec),
