@@ -254,7 +254,6 @@
 #![feature(const_fn)]
 #![feature(const_int_ops)]
 #![feature(const_ip)]
-#![feature(convert_id)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
