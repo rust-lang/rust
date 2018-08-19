@@ -2034,13 +2034,18 @@ impl<'a> Parser<'a> {
             is_args_start(&this.token, include_paren)
         };
 
-        let expr_without_disambig = style == PathStyle::Expr && check_args_start(self, false);
-        let parser_snapshot_before_generics = self.clone();
+        let mut parser_snapshot_before_generics = None;
 
-        Ok(if style == PathStyle::Type && check_args_start(self, true) ||
-              style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t, true))
-                                      || expr_without_disambig {
+        Ok(if style == PathStyle::Type && check_args_start(self, true)
+            || style != PathStyle::Mod && self.check(&token::ModSep)
+                                       && self.look_ahead(1, |t| is_args_start(t, true))
+            || style == PathStyle::Expr && check_args_start(self, false) && {
+                // Check for generic arguments in an expression without a disambiguating `::`.
+                // We have to save a snapshot, because it could end up being an expression
+                // instead.
+                parser_snapshot_before_generics = Some(self.clone());
+                true
+            } {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
@@ -2059,9 +2064,9 @@ impl<'a> Parser<'a> {
 
                 match args {
                     Err(mut err) => {
-                        if expr_without_disambig {
+                        if let Some(snapshot) = parser_snapshot_before_generics {
                             err.cancel();
-                            mem::replace(self, parser_snapshot_before_generics);
+                            mem::replace(self, snapshot);
                             return Ok(PathSegment::from_ident(ident));
                         }
                         return Err(err);
