@@ -561,7 +561,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             value.push_highlighted("<");
         }
 
-        // Output the lifetimes fot the first type
+        // Output the lifetimes for the first type
         let lifetimes = sub.regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();

@@ -49,7 +49,7 @@ pub mod query_result;
 mod substitute;
 
 /// A "canonicalized" type `V` is one where all free inference
-/// variables have been rewriten to "canonical vars". These are
+/// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Canonical<'gcx, V> {

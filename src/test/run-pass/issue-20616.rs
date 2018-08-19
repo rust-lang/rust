@@ -26,7 +26,7 @@ type TypeD = TypeA<'static>;
 // trailing comma on lifetime bounds
 type TypeE = TypeA<'static,>;
 
-// normal type arugment
+// normal type argument
 type TypeF<T> = Box<T>;
 
 // type argument with trailing comma

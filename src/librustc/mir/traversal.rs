@@ -171,7 +171,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         //      (A, [C])]
         //
         // Now that the top of the stack has no successors we can traverse, each item will
-        // be popped off during iteration until we get back to `A`. This yeilds [E, D, B].
+        // be popped off during iteration until we get back to `A`. This yields [E, D, B].
         //
         // When we yield `B` and call `traverse_successor`, we push `C` to the stack, but
         // since we've already visited `E`, that child isn't added to the stack. The last

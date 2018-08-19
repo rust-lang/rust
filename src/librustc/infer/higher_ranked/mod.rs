@@ -527,7 +527,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          * we're not careful, it will succeed.
          *
          * The reason is that when we walk through the subtyping
-         * algorith, we begin by replacing `'a` with a skolemized
+         * algorithm, we begin by replacing `'a` with a skolemized
          * variable `'1`. We then have `fn(_#0t) <: fn(&'1 int)`. This
          * can be made true by unifying `_#0t` with `&'1 int`. In the
          * process, we create a fresh variable for the skolemized

@@ -327,7 +327,7 @@ struct AssemblerCommand {
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
 pub struct CodegenContext {
-    // Resouces needed when running LTO
+    // Resources needed when running LTO
     pub time_passes: bool,
     pub lto: Lto,
     pub no_landing_pads: bool,
@@ -595,7 +595,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
                                      -C passes=name-anon-globals to the compiler command line.");
                 } else {
                     bug!("We are using thin LTO buffers without running the NameAnonGlobals pass. \
-                         This will likely cause errors in LLVM and shoud never happen.");
+                         This will likely cause errors in LLVM and should never happen.");
                 }
             }
         }

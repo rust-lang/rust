@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "raw_vec_internals", reason = "implemention detail", issue = "0")]
+#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "0")]
 #![doc(hidden)]
 
 use core::cmp;

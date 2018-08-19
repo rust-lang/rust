@@ -462,7 +462,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
-    /// Return the size and aligment of the value at the given type.
+    /// Return the size and alignment of the value at the given type.
     /// Note that the value does not matter if the type is sized. For unsized types,
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
     pub fn size_and_align_of_dst(

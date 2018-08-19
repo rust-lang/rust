@@ -207,7 +207,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             }
         }
 
-        // Update kind and, optionally, the name of all native libaries
+        // Update kind and, optionally, the name of all native libraries
         // (there may be more than one) with the specified name.
         for &(ref name, ref new_name, kind) in &self.tcx.sess.opts.libs {
             let mut found = false;

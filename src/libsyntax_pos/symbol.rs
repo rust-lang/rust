@@ -586,7 +586,7 @@ impl InternedString {
         });
         // This is safe because the interner keeps string alive until it is dropped.
         // We can access it because we know the interner is still alive since we use a
-        // scoped thread local to access it, and it was alive at the begining of this scope
+        // scoped thread local to access it, and it was alive at the beginning of this scope
         unsafe { f(&*str) }
     }
 

@@ -605,7 +605,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// `sets.on_entry` to that local clone into `statement_effect` and
     /// `terminator_effect`).
     ///
-    /// When its false, no local clone is constucted; instead a
+    /// When it's false, no local clone is constructed; instead a
     /// reference directly into `on_entry` is passed along via
     /// `sets.on_entry` instead, which represents the flow state at
     /// the block's start, not necessarily the state immediately prior

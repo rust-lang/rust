@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This crate attempts to enumerate the various scenarios for how a
-// type can define fields and methods with various visiblities and
+// type can define fields and methods with various visibilities and
 // stabilities.
 //
 // The basic stability pattern in this file has four cases:
@@ -23,7 +23,7 @@
 //
 // However, since stability attributes can only be observed in
 // cross-crate linkage scenarios, there is little reason to take the
-// cross-product (4 stability cases * 4 visiblity cases), because the
+// cross-product (4 stability cases * 4 visibility cases), because the
 // first three visibility cases cannot be accessed outside this crate,
 // and therefore stability is only relevant when the visibility is pub
 // to the whole universe.

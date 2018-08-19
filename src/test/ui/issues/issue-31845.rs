@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Checks lexical scopes cannot see through normal module boundries
+// Checks lexical scopes cannot see through normal module boundaries
 
 fn f() {
     fn g() {}

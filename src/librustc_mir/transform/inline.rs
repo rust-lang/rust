@@ -704,7 +704,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *unwind = Some(self.update_target(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this drop is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
+                    // the original call's cleanup block
                     *unwind = self.cleanup_block;
                 }
             }
@@ -716,7 +716,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *cleanup = Some(self.update_target(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this call is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
+                    // the original call's cleanup block
                     *cleanup = self.cleanup_block;
                 }
             }
@@ -726,7 +726,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *cleanup = Some(self.update_target(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this assert is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
+                    // the original call's cleanup block
                     *cleanup = self.cleanup_block;
                 }
             }

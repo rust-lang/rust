@@ -32,7 +32,7 @@ shift
 
 export CFLAGS="-fPIC $CFLAGS"
 
-# FIXME: remove the patch when upate to 1.1.20
+# FIXME: remove the patch when updating to 1.1.20
 MUSL=musl-1.1.19
 
 # may have been downloaded in a previous run

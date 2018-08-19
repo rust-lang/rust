@@ -599,7 +599,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Some(MemoryKind::Stack) => {},
         }
         if let Some(mut alloc) = alloc {
-            // ensure llvm knows not to put this into immutable memroy
+            // ensure llvm knows not to put this into immutable memory
             alloc.runtime_mutability = mutability;
             let alloc = self.tcx.intern_const_alloc(alloc);
             self.tcx.alloc_map.lock().set_id_memory(alloc_id, alloc);

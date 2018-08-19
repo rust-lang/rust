@@ -321,7 +321,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // we'll be able to immediately resolve most of imported macros.
         self.resolve_imports();
 
-        // Resolve paths in all invocations and produce ouput expanded fragments for them, but
+        // Resolve paths in all invocations and produce output expanded fragments for them, but
         // do not insert them into our input AST fragment yet, only store in `expanded_fragments`.
         // The output fragments also go through expansion recursively until no invocations are left.
         // Unresolved macros produce dummy outputs as a recovery measure.

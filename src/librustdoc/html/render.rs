@@ -315,7 +315,7 @@ pub struct Cache {
     // the access levels from crateanalysis.
     pub access_levels: Arc<AccessLevels<DefId>>,
 
-    /// The version of the crate being documented, if given fron the `--crate-version` flag.
+    /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub crate_version: Option<String>,
 
     // Private fields only used when initially crawling a crate to build a cache

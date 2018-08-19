@@ -637,7 +637,7 @@ pub fn parse(
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
-    // processes all of these possible matcher positions and produces posible next positions into
+    // processes all of these possible matcher positions and produces possible next positions into
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
     //
@@ -726,7 +726,7 @@ pub fn parse(
                 ),
             );
         }
-        // If there are no posible next positions AND we aren't waiting for the black-box parser,
+        // If there are no possible next positions AND we aren't waiting for the black-box parser,
         // then their is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.span, parser.token);

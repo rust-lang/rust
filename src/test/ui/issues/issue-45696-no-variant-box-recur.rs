@@ -24,7 +24,7 @@
 
 // run-pass
 
-// This test has structs and functions that are by definiton unusable
+// This test has structs and functions that are by definition unusable
 // all over the place, so just go ahead and allow dead_code
 #![allow(dead_code)]
 

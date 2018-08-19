@@ -190,7 +190,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                                 let local_use = &visitor.locals_use[*local];
                                 let opt_index_and_place = Self::try_get_item_source(local_use, mir);
                                 // each local should be used twice:
-                                //  in assign and in aggregate statments
+                                //  in assign and in aggregate statements
                                 if local_use.use_count == 2 && opt_index_and_place.is_some() {
                                     let (index, src_place) = opt_index_and_place.unwrap();
                                     return Some((local_use, index, src_place));
@@ -231,15 +231,15 @@ impl RestoreSubsliceArrayMoveOut {
         if opt_size.is_some() && items.iter().all(
             |l| l.is_some() && l.unwrap().2 == opt_src_place.unwrap()) {
 
-            let indicies: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
-            for i in 1..indicies.len() {
-                if indicies[i - 1] + 1 != indicies[i] {
+            let indices: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
+            for i in 1..indices.len() {
+                if indices[i - 1] + 1 != indices[i] {
                     return;
                 }
             }
 
-            let min = *indicies.first().unwrap();
-            let max = *indicies.last().unwrap();
+            let min = *indices.first().unwrap();
+            let max = *indices.last().unwrap();
 
             for item in items {
                 let locals_use = item.unwrap().0;

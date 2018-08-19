@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `#[macro_export] macro_rules` that doen't originate from macro expansions can be placed
+// `#[macro_export] macro_rules` that doesn't originate from macro expansions can be placed
 // into the root module soon enough to act as usual items and shadow globs and preludes.
 
 #![feature(decl_macro)]

@@ -83,7 +83,7 @@ fn place_components_conflict<'gcx, 'tcx>(
     // Our invariant is, that at each step of the iteration:
     //  - If we didn't run out of access to match, our borrow and access are comparable
     //    and either equal or disjoint.
-    //  - If we did run out of accesss, the borrow can access a part of it.
+    //  - If we did run out of access, the borrow can access a part of it.
     loop {
         // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
         if let Some(borrow_c) = borrow_components.next() {

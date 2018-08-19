@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:runned an unexported test
+// error-pattern:ran an unexported test
 // compile-flags:--test
 // check-stdout
 
@@ -17,6 +17,6 @@ mod m {
 
     #[test]
     fn unexported() {
-        panic!("runned an unexported test");
+        panic!("ran an unexported test");
     }
 }

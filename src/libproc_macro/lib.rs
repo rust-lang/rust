@@ -12,7 +12,7 @@
 //!
 //! This library, provided by the standard distribution, provides the types
 //! consumed in the interfaces of procedurally defined macro definitions such as
-//! function-like macros `#[proc_macro]`, macro attribures `#[proc_macro_attribute]` and
+//! function-like macros `#[proc_macro]`, macro attributes `#[proc_macro_attribute]` and
 //! custom derive attributes`#[proc_macro_derive]`.
 //!
 //! Note that this crate is intentionally bare-bones currently.

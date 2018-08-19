@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we are able to reinitilize box with moved referent
+// Test that we are able to reinitialize box with moved referent
 #![feature(nll)]
 static mut ORDER: [usize; 3] = [0, 0, 0];
 static mut INDEX: usize = 0;
