@@ -1,14 +1,14 @@
-error[E0087]: too many type parameters provided: expected at most 0 type parameters, found 1 type parameter
-  --> $DIR/trait-test-2.rs:18:14
+error[E0087]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/trait-test-2.rs:18:8
    |
-LL |     10.dup::<i32>(); //~ ERROR expected at most 0 type parameters, found 1 type parameter
-   |              ^^^ expected 0 type parameters
+LL |     10.dup::<i32>(); //~ ERROR wrong number of type arguments: expected 0, found 1
+   |        ^^^ unexpected type argument
 
-error[E0087]: too many type parameters provided: expected at most 1 type parameter, found 2 type parameters
-  --> $DIR/trait-test-2.rs:19:20
+error[E0087]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/trait-test-2.rs:19:8
    |
-LL |     10.blah::<i32, i32>(); //~ ERROR expected at most 1 type parameter, found 2 type parameters
-   |                    ^^^ expected 1 type parameter
+LL |     10.blah::<i32, i32>(); //~ ERROR wrong number of type arguments: expected 1, found 2
+   |        ^^^^ unexpected type argument
 
 error[E0277]: the trait bound `dyn bar: bar` is not satisfied
   --> $DIR/trait-test-2.rs:20:26

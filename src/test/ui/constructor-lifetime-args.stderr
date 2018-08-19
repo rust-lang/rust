@@ -1,26 +1,26 @@
-error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+error[E0090]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/constructor-lifetime-args.rs:27:5
    |
 LL |     S::<'static>(&0, &0);
-   |     ^^^^^^^^^^^^ expected 2 lifetime parameters
+   |     ^^^^^^^^^^^^ expected 2 lifetime arguments
 
-error[E0088]: too many lifetime parameters provided: expected at most 2 lifetime parameters, found 3 lifetime parameters
-  --> $DIR/constructor-lifetime-args.rs:29:27
+error[E0088]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:29:5
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
-   |                           ^^^^^^^ expected 2 lifetime parameters
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
 
-error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+error[E0090]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/constructor-lifetime-args.rs:32:5
    |
 LL |     E::V::<'static>(&0);
-   |     ^^^^^^^^^^^^^^^ expected 2 lifetime parameters
+   |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
-error[E0088]: too many lifetime parameters provided: expected at most 2 lifetime parameters, found 3 lifetime parameters
-  --> $DIR/constructor-lifetime-args.rs:34:30
+error[E0088]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:34:5
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |                              ^^^^^^^ expected 2 lifetime parameters
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
 
 error: aborting due to 4 previous errors
 
