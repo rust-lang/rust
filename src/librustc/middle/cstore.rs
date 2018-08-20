@@ -42,11 +42,6 @@ pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
-#[derive(Clone, Debug, Copy)]
-pub struct LinkMeta {
-    pub crate_hash: Svh,
-}
-
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
 #[derive(PartialEq, Clone, Debug)]
@@ -233,8 +228,7 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }

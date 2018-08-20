@@ -19,7 +19,7 @@ use base;
 use consts;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
-use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
+use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
@@ -32,6 +32,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::common::{time_ext, time_depth, set_time_depth, print_time_passes_entry};
 use rustc_fs_util::{path2cstr, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::svh::Svh;
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
 use syntax::attr;
@@ -912,13 +913,13 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 
 pub fn start_async_codegen(tcx: TyCtxt,
                                time_graph: Option<TimeGraph>,
-                               link: LinkMeta,
                                metadata: EncodedMetadata,
                                coordinator_receive: Receiver<Box<dyn Any + Send>>,
                                total_cgus: usize)
                                -> OngoingCodegen {
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
+    let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir.krate().attrs, "no_builtins");
     let subsystem = attr::first_attr_value_str_by_name(&tcx.hir.krate().attrs,
                                                        "windows_subsystem");
@@ -1037,7 +1038,7 @@ pub fn start_async_codegen(tcx: TyCtxt,
 
     OngoingCodegen {
         crate_name,
-        link,
+        crate_hash,
         metadata,
         windows_subsystem,
         linker_info,
@@ -2270,7 +2271,7 @@ impl SharedEmitterMain {
 
 pub struct OngoingCodegen {
     crate_name: Symbol,
-    link: LinkMeta,
+    crate_hash: Svh,
     metadata: EncodedMetadata,
     windows_subsystem: Option<String>,
     linker_info: LinkerInfo,
@@ -2321,7 +2322,7 @@ impl OngoingCodegen {
 
         (CodegenResults {
             crate_name: self.crate_name,
-            link: self.link,
+            crate_hash: self.crate_hash,
             metadata: self.metadata,
             windows_subsystem: self.windows_subsystem,
             linker_info: self.linker_info,

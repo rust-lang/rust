@@ -44,7 +44,7 @@ use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
-use link::{build_link_meta, out_filename};
+use link::out_filename;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -180,8 +180,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         }
         tcx.sess.abort_if_errors();
 
-        let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
-        let metadata = tcx.encode_metadata(&link_meta);
+        let metadata = tcx.encode_metadata();
 
         box OngoingCodegen {
             metadata: metadata,

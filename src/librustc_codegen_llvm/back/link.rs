@@ -47,8 +47,7 @@ use std::str;
 use syntax::attr;
 
 pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
-                                  invalid_output_for_target, build_link_meta, out_filename,
-                                  check_file_is_writeable};
+                                  invalid_output_for_target, out_filename, check_file_is_writeable};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
