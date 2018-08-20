@@ -141,7 +141,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let op = self.eval_operand(operand)?;
+                // Avoid recomputing the layout
+                let op = self.eval_operand(operand, Some(dest.layout))?;
                 self.copy_op(op, dest)?;
             }
 
@@ -187,7 +188,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
 
                 for (i, operand) in operands.iter().enumerate() {
-                    let op = self.eval_operand(operand)?;
+                    let op = self.eval_operand(operand, None)?;
                     // Ignore zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
@@ -198,7 +199,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             Repeat(ref operand, _) => {
-                let op = self.eval_operand(operand)?;
+                let op = self.eval_operand(operand, None)?;
                 let dest = self.force_allocation(dest)?;
                 let length = dest.len();
 
@@ -260,7 +261,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest.layout.ty);
-                let src = self.eval_operand(operand)?;
+                let src = self.eval_operand(operand, None)?;
                 self.cast(src, kind, dest)?;
             }
 

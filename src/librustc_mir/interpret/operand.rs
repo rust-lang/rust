@@ -189,6 +189,22 @@ impl<'tcx> OpTy<'tcx> {
     }
 }
 
+// Use the existing layout if given (but sanity check in debug mode),
+// or compute the layout.
+#[inline(always)]
+fn from_known_layout<'tcx>(
+    layout: Option<TyLayout<'tcx>>,
+    compute: impl FnOnce() -> EvalResult<'tcx, TyLayout<'tcx>>
+) -> EvalResult<'tcx, TyLayout<'tcx>> {
+    match layout {
+        None => compute(),
+        Some(layout) => {
+            debug_assert_eq!(layout.ty, compute()?.ty);
+            Ok(layout)
+        }
+    }
+}
+
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularily for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
@@ -377,21 +393,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
-    // avoid allocations.
+    // avoid allocations.  If you already know the layout, you can pass it in
+    // to avoid looking it up again.
     fn eval_place_to_op(
         &mut self,
         mir_place: &mir::Place<'tcx>,
+        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
         use rustc::mir::Place::*;
         Ok(match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
             Local(local) => {
                 let op = *self.frame().locals[local].access()?;
-                OpTy { op, layout: self.layout_of_local(self.cur_frame(), local)? }
+                let layout = from_known_layout(layout,
+                    || self.layout_of_local(self.cur_frame(), local))?;
+                OpTy { op, layout }
             },
 
             Projection(ref proj) => {
-                let op = self.eval_place_to_op(&proj.base)?;
+                let op = self.eval_place_to_op(&proj.base, None)?;
                 self.operand_projection(op, &proj.elem)?
             }
 
@@ -406,17 +426,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
-    pub fn eval_operand(&mut self, mir_op: &mir::Operand<'tcx>) -> EvalResult<'tcx, OpTy<'tcx>> {
+    /// if you already know the layout, you can save two some table lookups
+    /// by passing it in here.
+    pub fn eval_operand(
+        &mut self,
+        mir_op: &mir::Operand<'tcx>,
+        layout: Option<TyLayout<'tcx>>,
+    ) -> EvalResult<'tcx, OpTy<'tcx>> {
         use rustc::mir::Operand::*;
         let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) |
             Move(ref place) =>
-                self.eval_place_to_op(place)?,
+                self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
-                let layout = self.layout_of(ty)?;
+                let layout = from_known_layout(layout, || {
+                    let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
+                    self.layout_of(ty)
+                })?;
                 let op = self.const_value_to_op(constant.literal.val)?;
                 OpTy { op, layout }
             }
@@ -431,7 +459,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         ops: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, Vec<OpTy<'tcx>>> {
         ops.into_iter()
-            .map(|op| self.eval_operand(op))
+            .map(|op| self.eval_operand(op, None))
             .collect()
     }
 
@@ -473,7 +501,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &mut self,
         op: &mir::Operand<'tcx>,
     ) -> EvalResult<'tcx, ValTy<'tcx>> {
-        let op = self.eval_operand(op)?;
+        let op = self.eval_operand(op, None)?;
         self.read_value(op)
     }
     pub fn eval_operand_and_read_scalar(

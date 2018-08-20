@@ -36,7 +36,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ref targets,
                 ..
             } => {
-                let discr_val = self.eval_operand(discr)?;
+                let discr_val = self.eval_operand(discr, None)?;
                 let discr = self.read_value(discr_val)?;
                 trace!("SwitchInt({:?})", *discr);
 
@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     None => None,
                 };
 
-                let func = self.eval_operand(func)?;
+                let func = self.eval_operand(func, None)?;
                 let (fn_def, sig) = match func.layout.ty.sty {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.read_scalar(func)?.to_ptr()?;
