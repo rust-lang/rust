@@ -184,28 +184,30 @@ pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> 
 pub fn run<F>(run_compiler: F) -> isize
     where F: FnOnce() -> (CompileResult, Option<Session>) + Send + 'static
 {
-    let result = monitor(move || {
-        let (result, session) = run_compiler();
-        if let Err(CompileIncomplete::Errored(_)) = result {
-            match session {
-                Some(sess) => {
-                    sess.abort_if_errors();
-                    panic!("error reported but abort_if_errors didn't abort???");
-                }
-                None => {
-                    let emitter =
-                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                               None,
-                                                               true,
-                                                               false);
-                    let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
-                    handler.emit(&MultiSpan::new(),
-                                 "aborting due to previous error(s)",
-                                 errors::Level::Fatal);
-                    panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+    let result = syntax::with_globals(|| {
+        monitor(move || {
+            let (result, session) = run_compiler();
+            if let Err(CompileIncomplete::Errored(_)) = result {
+                match session {
+                    Some(sess) => {
+                        sess.abort_if_errors();
+                        panic!("error reported but abort_if_errors didn't abort???");
+                    }
+                    None => {
+                        let emitter =
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                None,
+                                                                true,
+                                                                false);
+                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                        handler.emit(&MultiSpan::new(),
+                                    "aborting due to previous error(s)",
+                                    errors::Level::Fatal);
+                        panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+                    }
                 }
             }
-        }
+        })
     });
 
     match result {
