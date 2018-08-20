@@ -3,7 +3,7 @@ use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use std::mem;
 

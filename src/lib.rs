@@ -25,7 +25,7 @@ use rustc::mir;
 use rustc_data_structures::fx::FxHasher;
 
 use syntax::ast::Mutability;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use std::marker::PhantomData;
 use std::collections::{HashMap, BTreeMap};
@@ -57,7 +57,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     start_wrapper: Option<DefId>,
 ) -> EvalResult<'tcx, (EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>, Option<Pointer>)> {
     let mut ecx = EvalContext::new(
-        tcx.at(syntax::codemap::DUMMY_SP),
+        tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Default::default(),
         MemoryData::new()
