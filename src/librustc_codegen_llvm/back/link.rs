@@ -53,7 +53,9 @@ pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
+pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathBuf, Command) {
+    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
+
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
     // emscripten where the linker is `emcc.bat` and needs to be spawned as
@@ -62,35 +64,18 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
     // This worked historically but is needed manually since #42436 (regression
     // was tagged as #42791) and some more info can be found on #44443 for
     // emscripten itself.
-    let cmd = |linker: &Path| {
-        if let Some(linker) = linker.to_str() {
-            if cfg!(windows) && linker.ends_with(".bat") {
-                return Command::bat_script(linker)
-            }
-        }
-        match sess.linker_flavor() {
+    let mut cmd = match linker.to_str() {
+        Some(linker) if cfg!(windows) && linker.ends_with(".bat") => Command::bat_script(linker),
+        _ => match flavor {
             LinkerFlavor::Lld(f) => Command::lld(linker, f),
+            LinkerFlavor::Msvc
+                if sess.opts.cg.linker.is_none() && sess.target.target.options.linker.is_none() =>
+            {
+                Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
+            },
             _ => Command::new(linker),
-
         }
     };
-
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
-
-    let linker_path = sess.opts.cg.linker.as_ref().map(|s| &**s)
-        .or(sess.target.target.options.linker.as_ref().map(|s| s.as_ref()))
-        .unwrap_or(match sess.linker_flavor() {
-            LinkerFlavor::Msvc => {
-                msvc_tool.as_ref().map(|t| t.path()).unwrap_or("link.exe".as_ref())
-            }
-            LinkerFlavor::Em if cfg!(windows) => "emcc.bat".as_ref(),
-            LinkerFlavor::Em => "emcc".as_ref(),
-            LinkerFlavor::Gcc => "cc".as_ref(),
-            LinkerFlavor::Ld => "ld".as_ref(),
-            LinkerFlavor::Lld(_) => "lld".as_ref(),
-        });
-
-    let mut cmd = cmd(linker_path);
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
@@ -118,7 +103,7 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
-    (linker_path.to_path_buf(), cmd)
+    (linker.to_path_buf(), cmd)
 }
 
 pub fn remove(sess: &Session, path: &Path) {
@@ -608,6 +593,69 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
     }
 }
 
+pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
+    fn infer_from(
+        sess: &Session,
+        linker: Option<PathBuf>,
+        flavor: Option<LinkerFlavor>,
+    ) -> Option<(PathBuf, LinkerFlavor)> {
+        match (linker, flavor) {
+            (Some(linker), Some(flavor)) => Some((linker, flavor)),
+            // only the linker flavor is known; use the default linker for the selected flavor
+            (None, Some(flavor)) => Some((PathBuf::from(match flavor {
+                LinkerFlavor::Em  => if cfg!(windows) { "emcc.bat" } else { "emcc" },
+                LinkerFlavor::Gcc => "cc",
+                LinkerFlavor::Ld => "ld",
+                LinkerFlavor::Msvc => "link.exe",
+                LinkerFlavor::Lld(_) => "lld",
+            }), flavor)),
+            (Some(linker), None) => {
+                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
+                    sess.fatal("couldn't extract file stem from specified linker");
+                }).to_owned();
+
+                let flavor = if stem == "emcc" {
+                    LinkerFlavor::Em
+                } else if stem == "gcc" || stem.ends_with("-gcc") {
+                    LinkerFlavor::Gcc
+                } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
+                    LinkerFlavor::Ld
+                } else if stem == "link" || stem == "lld-link" {
+                    LinkerFlavor::Msvc
+                } else if stem == "lld" || stem == "rust-lld" {
+                    LinkerFlavor::Lld(sess.target.target.options.lld_flavor)
+                } else {
+                    // fall back to the value in the target spec
+                    sess.target.target.linker_flavor
+                };
+
+                Some((linker, flavor))
+            },
+            (None, None) => None,
+        }
+    }
+
+    // linker and linker flavor specified via command line have precedence over what the target
+    // specification specifies
+    if let Some(ret) = infer_from(
+        sess,
+        sess.opts.cg.linker.clone(),
+        sess.opts.debugging_opts.linker_flavor,
+    ) {
+        return ret;
+    }
+
+    if let Some(ret) = infer_from(
+        sess,
+        sess.target.target.options.linker.clone().map(PathBuf::from),
+        Some(sess.target.target.linker_flavor),
+    ) {
+        return ret;
+    }
+
+    bug!("Not enough information provided to determine how to invoke the linker");
+}
+
 // Create a dynamic library or executable
 //
 // This will invoke the system linker/cc to create the resulting file. This
@@ -618,10 +666,10 @@ fn link_natively(sess: &Session,
                  codegen_results: &CodegenResults,
                  tmpdir: &Path) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
-    let flavor = sess.linker_flavor();
+    let (linker, flavor) = linker_and_flavor(sess);
 
     // The invocations of cc share some flags across platforms
-    let (pname, mut cmd) = get_linker(sess);
+    let (pname, mut cmd) = get_linker(sess, &linker, flavor);
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
@@ -662,8 +710,8 @@ fn link_natively(sess: &Session,
     }
 
     {
-        let mut linker = codegen_results.linker_info.to_linker(cmd, &sess);
-        link_args(&mut *linker, sess, crate_type, tmpdir,
+        let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor);
+        link_args(&mut *linker, flavor, sess, crate_type, tmpdir,
                   out_filename, codegen_results);
         cmd = linker.finalize();
     }
@@ -735,7 +783,7 @@ fn link_natively(sess: &Session,
         // linking executables as pie. Different versions of gcc seem to use
         // different quotes in the error message so don't check for them.
         if sess.target.target.options.linker_is_gnu &&
-           sess.linker_flavor() != LinkerFlavor::Ld &&
+           flavor != LinkerFlavor::Ld &&
            (out.contains("unrecognized command line option") ||
             out.contains("unknown argument")) &&
            out.contains("-no-pie") &&
@@ -984,6 +1032,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
 }
 
 fn link_args(cmd: &mut dyn Linker,
+             flavor: LinkerFlavor,
              sess: &Session,
              crate_type: config::CrateType,
              tmpdir: &Path,
@@ -1068,7 +1117,7 @@ fn link_args(cmd: &mut dyn Linker,
             // independent executables by default. We have to pass -no-pie to
             // explicitly turn that off. Not applicable to ld.
             if sess.target.target.options.linker_is_gnu
-                && sess.linker_flavor() != LinkerFlavor::Ld {
+                && flavor != LinkerFlavor::Ld {
                 cmd.no_position_independent_executable();
             }
         }

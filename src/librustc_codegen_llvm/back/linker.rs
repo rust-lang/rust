@@ -44,8 +44,9 @@ impl LinkerInfo {
 
     pub fn to_linker<'a>(&'a self,
                          cmd: Command,
-                         sess: &'a Session) -> Box<dyn Linker+'a> {
-        match sess.linker_flavor() {
+                         sess: &'a Session,
+                         flavor: LinkerFlavor) -> Box<dyn Linker+'a> {
+        match flavor {
             LinkerFlavor::Lld(LldFlavor::Link) |
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {

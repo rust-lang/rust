@@ -94,6 +94,29 @@ pub enum LldFlavor {
     Link,
 }
 
+impl LldFlavor {
+    fn from_str(s: &str) -> Option<Self> {
+        Some(match s {
+            "darwin" => LldFlavor::Ld64,
+            "gnu" => LldFlavor::Ld,
+            "link" => LldFlavor::Link,
+            "wasm" => LldFlavor::Wasm,
+            _ => return None,
+        })
+    }
+}
+
+impl ToJson for LldFlavor {
+    fn to_json(&self) -> Json {
+        match *self {
+            LldFlavor::Ld64 => "darwin",
+            LldFlavor::Ld => "gnu",
+            LldFlavor::Link => "link",
+            LldFlavor::Wasm => "wasm",
+        }.to_json()
+    }
+}
+
 impl ToJson for LinkerFlavor {
     fn to_json(&self) -> Json {
         self.desc().to_json()
@@ -437,6 +460,9 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<String>,
 
+    /// LLD flavor
+    pub lld_flavor: LldFlavor,
+
     /// Linker arguments that are passed *before* any user-defined libraries.
     pub pre_link_args: LinkArgs, // ... unconditionally
     pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
@@ -654,6 +680,7 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
+            lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
             pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
@@ -856,6 +883,20 @@ impl Target {
                         .map(|s| s.to_string() );
                 }
             } );
+            ($key_name:ident, LldFlavor) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    if let Some(flavor) = LldFlavor::from_str(&s) {
+                        base.options.$key_name = flavor;
+                    } else {
+                        return Some(Err(format!(
+                            "'{}' is not a valid value for lld-flavor. \
+                             Use 'darwin', 'gnu', 'link' or 'wasm.",
+                            s)))
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, LinkerFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
@@ -911,6 +952,7 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker, optional);
+        try!(key!(lld_flavor, LldFlavor));
         key!(pre_link_args, link_args);
         key!(pre_link_args_crt, link_args);
         key!(pre_link_objects_exe, list);
@@ -1118,6 +1160,7 @@ impl ToJson for Target {
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
+        target_option_val!(lld_flavor);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(link_args - pre_link_args_crt);
         target_option_val!(pre_link_objects_exe);

@@ -53,6 +53,7 @@ pub fn target() -> Result<Target, String> {
 
         // we use the LLD shipped with the Rust toolchain by default
         linker: Some("rust-lld".to_owned()),
+        lld_flavor: LldFlavor::Wasm,
 
         .. Default::default()
     };

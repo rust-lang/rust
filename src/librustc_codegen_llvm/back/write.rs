@@ -1502,7 +1502,9 @@ fn start_executing_work(tcx: TyCtxt,
 
     let assembler_cmd = if modules_config.no_integrated_as {
         // HACK: currently we use linker (gcc) as our assembler
-        let (name, mut cmd) = get_linker(sess);
+        let (linker, flavor) = link::linker_and_flavor(sess);
+
+        let (name, mut cmd) = get_linker(sess, &linker, flavor);
         cmd.args(&sess.target.target.options.asm_args);
         Some(Arc::new(AssemblerCommand {
             name,
