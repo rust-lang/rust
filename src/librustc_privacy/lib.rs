@@ -159,16 +159,22 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::ForeignMod(..) => {
                 self.prev_level
             }
+            // Impl trait return types mark their parent function.
+            // It (and its children) are revisited if the change applies.
+            hir::ItemKind::Existential(ref ty_data) => {
+                if let Some(impl_trait_fn) = ty_data.impl_trait_fn {
+                    if let Some(node_id) = self.tcx.hir.as_local_node_id(impl_trait_fn) {
+                        self.update(node_id, Some(AccessLevel::Reachable));
+                    }
+                }
+                if item.vis.node.is_pub() { self.prev_level } else { None }
+            }
             // Other `pub` items inherit levels from parents
             hir::ItemKind::Const(..) | hir::ItemKind::Enum(..) | hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Fn(..) | hir::ItemKind::Mod(..) |
             hir::ItemKind::Static(..) | hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
-            hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
-                if let hir::ItemKind::Fn(ref _decl, ref _header, ref _generics, ref _body) = item.node {
-                    debug!("Walked function");
-                }
                 if item.vis.node.is_pub() { self.prev_level } else { None }
             }
         };
@@ -176,7 +182,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // Update level of the item itself
         let item_level = self.update(item.id, inherited_item_level);
 
-        debug!("believed to be: {:?}", item_level);
+        debug!("Its privacy is believed to be: {:?}", item_level);
 
         // Update levels of nested things
         match item.node {
