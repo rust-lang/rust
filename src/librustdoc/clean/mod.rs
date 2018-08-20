@@ -2378,6 +2378,7 @@ impl From<ast::FloatTy> for PrimitiveType {
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
+
         match self.node {
             TyKind::Never => Never,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
@@ -2414,6 +2415,14 @@ impl Clean<Type> for hir::Ty {
                 if let Def::TyParam(did) = path.def {
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
+                    }
+                } else if let Def::Existential(did) = path.def {
+                    // This block is for returned impl trait only.
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(did) {
+                        let item = cx.tcx.hir.expect_item(node_id);
+                        if let hir::ItemKind::Existential(ref ty) = item.node {
+                            return ImplTrait(ty.bounds.clean(cx));
+                        }
                     }
                 }
 
