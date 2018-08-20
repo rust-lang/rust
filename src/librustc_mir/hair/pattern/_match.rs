@@ -1047,7 +1047,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
-        split_grouped_constructors(cx.tcx, constructors, matrix, v, pcx.ty).into_iter().map(|c|
+        split_grouped_constructors(cx.tcx, constructors, matrix, pcx.ty).into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
         ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
@@ -1095,7 +1095,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
-            split_grouped_constructors(cx.tcx, all_ctors, matrix, v, pcx.ty).into_iter().map(|c| {
+            split_grouped_constructors(cx.tcx, all_ctors, matrix, pcx.ty).into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
         } else {
@@ -1411,11 +1411,8 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
-    p: &[&'p Pattern<'tcx>],
     ty: Ty<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
-    let pat = &p[0];
-
     let mut split_ctors = Vec::with_capacity(ctors.len());
 
     for ctor in ctors.into_iter() {
@@ -1427,27 +1424,8 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                 // of the new pattern `p_({m + 1},1)` (here `pat`) and the constructor range.
                 // Anything else is irrelevant, because it is guaranteed to result in `NotUseful`,
                 // which is the default case anyway, and can be ignored.
-                let mut ctor_range = IntRange::from_ctor(tcx, &ctor).unwrap();
-                if let Some(pat_range) = IntRange::from_pat(tcx, pat) {
-                    if let Some(new_range) = ctor_range.intersection(&pat_range) {
-                        ctor_range = new_range;
-                    } else {
-                        // If the intersection between `pat` and the constructor is empty, the
-                        // entire range is `NotUseful`.
-                        continue;
-                    }
-                } else {
-                    match pat.kind {
-                        box PatternKind::Wild => {
-                            // A wild pattern matches the entire range of values,
-                            // so the current values are fine.
-                        }
-                        // If the pattern is not a value (i.e. a degenerate range), a range or a
-                        // wildcard (which stands for the entire range), then it's guaranteed to
-                        // be `NotUseful`.
-                        _ => continue,
-                    }
-                }
+                let ctor_range = IntRange::from_ctor(tcx, &ctor).unwrap();
+
                 // We're going to collect all the endpoints in the new pattern so we can create
                 // subranges between them.
                 // If there's a single point, we need to identify it as belonging
