@@ -48,6 +48,66 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+/// An identity function.
+///
+/// Two things are important to note about this function:
+///
+/// - It is not always equivalent to a closure like `|x| x` since the
+///   closure may coerce `x` into a different type.
+///
+/// - It moves the input `x` passed to the function.
+///
+/// While it might seem strange to have a function that just returns back the
+/// input, there are some interesting uses.
+///
+/// # Examples
+///
+/// Using `identity` to do nothing among other interesting functions:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::identity;
+///
+/// fn manipulation(x: u32) -> u32 {
+///     // Let's assume that this function does something interesting.
+///     x + 1
+/// }
+///
+/// let _arr = &[identity, manipulation];
+/// ```
+///
+/// Using `identity` to get a function that changes nothing in a conditional:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::identity;
+///
+/// # let condition = true;
+///
+/// # fn manipulation(x: u32) -> u32 { x + 1 }
+///
+/// let do_stuff = if condition { manipulation } else { identity };
+///
+/// // do more interesting stuff..
+///
+/// let _results = do_stuff(42);
+/// ```
+///
+/// Using `identity` to keep the `Some` variants of an iterator of `Option<T>`:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::identity;
+///
+/// let iter = vec![Some(1), None, Some(3)].into_iter();
+/// let filtered = iter.filter_map(identity).collect::<Vec<_>>();
+/// assert_eq!(vec![1, 3], filtered);
+/// ```
+#[unstable(feature = "convert_id", issue = "53500")]
+#[rustc_const_unstable(feature = "const_convert_id")]
+#[inline]
+pub const fn identity<T>(x: T) -> T { x }
+
 /// A cheap reference-to-reference conversion. Used to convert a value to a
 /// reference value within generic code.
 ///
