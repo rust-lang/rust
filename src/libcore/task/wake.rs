@@ -119,7 +119,7 @@ impl LocalWaker {
     /// For this function to be used safely, it must be sound to call `inner.wake_local()`
     /// on the current thread.
     #[inline]
-    pub unsafe fn new(inner: NonNull<dyn UnsafeWake>) -> Self {
+    pub const unsafe fn new(inner: NonNull<dyn UnsafeWake>) -> Self {
         LocalWaker { inner }
     }
 
