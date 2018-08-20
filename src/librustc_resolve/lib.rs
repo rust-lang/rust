@@ -1889,12 +1889,13 @@ impl<'a> Resolver<'a> {
         }
 
         ident.span = ident.span.modern();
+        let mut poisoned = None;
         loop {
-            let (opt_module, poisoned) = if let Some(node_id) = record_used_id {
+            let opt_module = if let Some(node_id) = record_used_id {
                 self.hygienic_lexical_parent_with_compatibility_fallback(module, &mut ident.span,
-                                                                         node_id)
+                                                                         node_id, &mut poisoned)
             } else {
-                (self.hygienic_lexical_parent(module, &mut ident.span), None)
+                self.hygienic_lexical_parent(module, &mut ident.span)
             };
             module = unwrap_or!(opt_module, break);
             let orig_current_module = self.current_module;
@@ -1917,9 +1918,9 @@ impl<'a> Resolver<'a> {
                     }
                     return Some(LexicalScopeBinding::Item(binding))
                 }
-                _ if poisoned.is_some() => break,
-                Err(Undetermined) => return None,
-                Err(Determined) => {}
+                Err(Determined) => continue,
+                Err(Undetermined) =>
+                    span_bug!(ident.span, "undetermined resolution during main resolution pass"),
             }
         }
 
@@ -1965,12 +1966,12 @@ impl<'a> Resolver<'a> {
         None
     }
 
-    fn hygienic_lexical_parent_with_compatibility_fallback(
-        &mut self, module: Module<'a>, span: &mut Span, node_id: NodeId
-    ) -> (Option<Module<'a>>, /* poisoned */ Option<NodeId>)
-    {
+    fn hygienic_lexical_parent_with_compatibility_fallback(&mut self, module: Module<'a>,
+                                                           span: &mut Span, node_id: NodeId,
+                                                           poisoned: &mut Option<NodeId>)
+                                                           -> Option<Module<'a>> {
         if let module @ Some(..) = self.hygienic_lexical_parent(module, span) {
-            return (module, None);
+            return module;
         }
 
         // We need to support the next case under a deprecation warning
@@ -1991,13 +1992,14 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
                     if parent.expansion.is_descendant_of(span.ctxt().outer()) {
-                        return (module.parent, Some(node_id));
+                        *poisoned = Some(node_id);
+                        return module.parent;
                     }
                 }
             }
         }
 
-        (None, None)
+        None
     }
 
     fn resolve_ident_in_module(&mut self,
