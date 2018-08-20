@@ -38,4 +38,4 @@ be found.
 > cargo install mdbook-linkcheck
 ```
 You will need `mdbook` version `>= 0.1`. `linkcheck` will be run automatically
-when you run `mdbook build`.
+when you run `mdbook build`. We are currently using `mdbook 0.2`.
