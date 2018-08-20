@@ -1406,11 +1406,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let node_id = tcx.hir.as_local_node_id(did).unwrap();
-                let item_id = tcx.hir.get_parent_node(node_id);
-                let item_def_id = tcx.hir.local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
+                let param_owner_def_id = tcx.ty_param_owner(did);
+                let generics = tcx.generics_of(param_owner_def_id);
+                let index = generics.param_def_id_to_index[&did];
                 tcx.mk_ty_param(generics.param_at(index, tcx))
             }
             Def::SelfTy(_, Some(def_id)) => {

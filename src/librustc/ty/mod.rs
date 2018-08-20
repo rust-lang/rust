@@ -2637,25 +2637,39 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn ty_param_name(&self, id: DefId) -> InternedString {
+    pub fn ty_param_name(self, id: DefId) -> InternedString {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
+            DefPathData::TypeParam(name) => name,
+            DefPathData::ImplTrait => {
+                let param_owner_def_id = DefId {
+                    krate: id.krate,
+                    index: def_key.parent.unwrap()
+                };
+                let generics = self.generics_of(param_owner_def_id);
+                let index = generics.param_def_id_to_index[&id];
+                generics.param_at(index, self).name
+            }
             DefPathData::Trait(_) => {
                 keywords::SelfType.name().as_interned_str()
             }
-            DefPathData::TypeParam(name) => name,
+            DefPathData::ClosureExpr => {
+                Symbol::intern("<synthetic closure param>").as_interned_str()
+            }
             _ => bug!("ty_param_name: {:?} not a type parameter", id),
         }
     }
 
-    pub fn ty_param_owner(&self, id: DefId) -> DefId {
+    pub fn ty_param_owner(self, id: DefId) -> DefId {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
-            DefPathData::Trait(_) => id,
+            DefPathData::ImplTrait |
             DefPathData::TypeParam(_) => DefId {
                 krate: id.krate,
                 index: def_key.parent.unwrap()
             },
+            DefPathData::Trait(_) |
+            DefPathData::ClosureExpr => id,
             _ => bug!("ty_param_owner: {:?} not a type parameter", id),
         }
     }

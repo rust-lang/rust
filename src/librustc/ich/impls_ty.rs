@@ -940,8 +940,7 @@ for ty::FloatVid
 
 impl_stable_hash_for!(struct ty::ParamTy {
     idx,
-    def_id,
-    name
+    def_id
 });
 
 impl_stable_hash_for!(struct ty::TypeAndMut<'tcx> {

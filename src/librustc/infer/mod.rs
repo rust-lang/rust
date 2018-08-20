@@ -942,12 +942,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // used in a path such as `Foo::<T, U>::new()` will
                 // use an inference variable for `C` with `[T, U]`
                 // as the substitutions for the default, `(T, U)`.
-                let ty_var_id =
-                    self.type_variables
-                        .borrow_mut()
-                        .new_var(self.universe(),
-                                    false,
-                                    TypeVariableOrigin::TypeParameterDefinition(span, param.name));
+                let ty_var_id = self.type_variables.borrow_mut().new_var(
+                    self.universe(),
+                    false,
+                    TypeVariableOrigin::TypeParameterDefinition(span, param.def_id),
+                );
 
                 self.tcx.mk_var(ty_var_id).into()
             }

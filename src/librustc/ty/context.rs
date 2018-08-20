@@ -76,7 +76,7 @@ use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
 use syntax::feature_gate;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use hir;
@@ -2560,7 +2560,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(ty::Param(ty::ParamTy {
             idx: def.index,
             def_id: def.def_id,
-            name: def.name,
         }))
     }
 
@@ -2568,7 +2567,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(ty::Param(ty::ParamTy {
             idx: 0,
             def_id: trait_def_id,
-            name: keywords::SelfType.name().as_interned_str(),
         }))
     }
 

@@ -964,7 +964,6 @@ impl<'tcx> PolyFnSig<'tcx> {
 pub struct ParamTy {
     pub idx: u32,
     pub def_id: DefId,
-    pub name: InternedString,
 }
 
 /// A [De Bruijn index][dbi] is a standard means of representing

@@ -2668,7 +2668,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Projection(ref data) => data.clean(cx),
 
-            ty::Param(ref p) => Generic(p.name.to_string()),
+            ty::Param(ref p) => Generic(p.to_string()),
 
             ty::Anon(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,

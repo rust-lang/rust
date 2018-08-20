@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::symbol::InternedString;
 use syntax_pos::Span;
+use hir::def_id::DefId;
 use ty::{self, Ty};
 
 use std::cmp;
@@ -53,7 +53,7 @@ pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
     TypeInference(Span),
-    TypeParameterDefinition(Span, InternedString),
+    TypeParameterDefinition(Span, DefId),
 
     /// one of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined)

@@ -313,11 +313,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
         let def_id = self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID);
-        let name = format!("T{}", index);
         self.infcx.tcx.mk_ty(ty::TyParam(ty::ParamTy {
             idx: index,
             def_id,
-            name: Symbol::intern(&name).as_interned_str()
         }))
     }
 
