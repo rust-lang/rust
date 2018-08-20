@@ -188,6 +188,13 @@ impl LocalWaker {
 }
 
 impl From<LocalWaker> for Waker {
+    /// Converts a [`LocalWaker`] into a [`Waker`].
+    ///
+    /// This conversion forgets local waker and allocates a new waker with
+    /// the same inner.
+    ///
+    /// [`LocalWaker`]: struct.LocalWaker.html
+    /// [`Waker`]: struct.Waker.html
     #[inline]
     fn from(local_waker: LocalWaker) -> Self {
         local_waker.0
