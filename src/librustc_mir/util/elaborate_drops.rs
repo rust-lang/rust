@@ -562,7 +562,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///    if can_go then succ else drop-block
     /// drop-block:
     ///    if ptr_based {
-    ///        ptr = cur
+    ///        ptr = &mut *cur
     ///        cur = cur.offset(1)
     ///    } else {
     ///        ptr = &mut P[cur]
@@ -591,7 +591,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Use(copy(&Place::Local(cur))),
+            (Rvalue::Ref(
+                tcx.types.re_erased,
+                BorrowKind::Mut { allow_two_phase_borrow: false },
+                Place::Projection(Box::new(Projection {
+                    base: Place::Local(cur),
+                    elem: ProjectionElem::Deref,
+                }))
+             ),
              Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Local(cur)), one))
         } else {
             (Rvalue::Ref(
@@ -736,7 +743,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::Local(self.new_temp(tmp_ty));
-            // tmp = &P;
+            // tmp = &mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
