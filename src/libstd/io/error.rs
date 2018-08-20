@@ -212,6 +212,12 @@ impl ErrorKind {
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
 impl From<ErrorKind> for Error {
+    /// Converts a [`ErrorKind`] into a [`Error`].
+    ///
+    /// This conversion allocates a new error with simple repr.
+    ///
+    /// [`ErrorKind`]: enum.ErrorKind.html
+    /// [`Error`]: struct.Error.html
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {
