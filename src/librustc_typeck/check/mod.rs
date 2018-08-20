@@ -109,11 +109,11 @@ use session::{CompileIncomplete, config, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use rustc_data_structures::sync::Lrc;
-use std::collections::{hash_map::Entry, HashSet};
+use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
 use std::iter;
@@ -4908,7 +4908,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
 
-        let mut generic_segs = HashSet::new();
+        let mut generic_segs = FxHashSet::default();
         for PathSeg(_, index) in &path_segs {
             generic_segs.insert(index);
         }
@@ -4937,24 +4937,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
 
-        let mut suppress_errors = FxHashMap();
+        let mut infer_args_for_err = FxHashSet::default();
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = self.tcx.generics_of(def_id);
-            // `impl Trait` is treated as a normal generic parameter internally,
-            // but we don't allow users to specify the parameter's value
-            // explicitly, so we have to do some error-checking here.
-            let suppress = AstConv::check_generic_arg_count_for_call(
+            // Argument-position `impl Trait` is treated as a normal generic
+            // parameter internally, but we don't allow users to specify the
+            // parameter's value explicitly, so we have to do some error-
+            // checking here.
+            let suppress_errors = AstConv::check_generic_arg_count_for_call(
                 self.tcx,
                 span,
                 &generics,
                 &seg,
                 false, // `is_method_call`
             );
-            if suppress {
+            if suppress_errors {
+                infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
-            suppress_errors.insert(index, suppress);
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
@@ -4976,7 +4977,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }) {
                     // If we've encountered an `impl Trait`-related error, we're just
                     // going to infer the arguments for better error messages.
-                    if !suppress_errors[&index] {
+                    if !infer_args_for_err.contains(&index) {
                         // Check whether the user has provided generic arguments.
                         if let Some(ref data) = segments[index].args {
                             return (Some(data), segments[index].infer_types);
@@ -4989,17 +4990,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             },
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => match arg {
-                        GenericArg::Lifetime(lt) => {
-                            AstConv::ast_region_to_region(self, lt, Some(param)).into()
-                        }
-                        _ => unreachable!(),
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        AstConv::ast_region_to_region(self, lt, Some(param)).into()
                     }
-                    GenericParamDefKind::Type { .. } => match arg {
-                        GenericArg::Type(ty) => self.to_ty(ty).into(),
-                        _ => unreachable!(),
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.to_ty(ty).into()
                     }
+                    _ => unreachable!(),
                 }
             },
             // Provide substitutions for parameters for which arguments are inferred.

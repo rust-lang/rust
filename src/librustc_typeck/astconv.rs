@@ -94,11 +94,12 @@ struct ConvertedBinding<'tcx> {
 
 #[derive(PartialEq)]
 enum GenericArgPosition {
-    Datatype,
-    Function,
-    Method,
+    Type,
+    Value, // e.g. functions
+    MethodCall,
 }
 
+// FIXME(#53525): these error codes should all be unified.
 struct GenericArgMismatchErrorCode {
     lifetimes: (&'static str, &'static str),
     types: (&'static str, &'static str),
@@ -255,9 +256,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 &empty_args
             },
             if is_method_call {
-                GenericArgPosition::Method
+                GenericArgPosition::MethodCall
             } else {
-                GenericArgPosition::Function
+                GenericArgPosition::Value
             },
             def.parent.is_none() && def.has_self, // `has_self`
             seg.infer_types || suppress_mismatch, // `infer_types`
@@ -285,7 +286,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         // arguments in order to validate them with respect to the generic parameters.
         let param_counts = def.own_counts();
         let arg_counts = args.own_counts();
-        let infer_lifetimes = position != GenericArgPosition::Datatype && arg_counts.lifetimes == 0;
+        let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
 
         let mut defaults: ty::GenericParamCount = Default::default();
         for param in &def.params {
@@ -297,7 +298,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             };
         }
 
-        if position != GenericArgPosition::Datatype && !args.bindings.is_empty() {
+        if position != GenericArgPosition::Type && !args.bindings.is_empty() {
             AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
         }
 
@@ -308,7 +309,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                            if late bound lifetime parameters are present";
                 let note = "the late bound lifetime parameter is introduced here";
                 let span = args.args[0].span();
-                if position == GenericArgPosition::Function
+                if position == GenericArgPosition::Value
                     && arg_counts.lifetimes != param_counts.lifetimes {
                     let mut err = tcx.sess.struct_span_err(span, msg);
                     err.span_note(span_late, note);
@@ -328,7 +329,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                 kind,
                                 required,
                                 permitted,
-                                provided| {
+                                provided,
+                                offset| {
             // We enforce the following: `required` <= `provided` <= `permitted`.
             // For kinds without defaults (i.e. lifetimes), `required == permitted`.
             // For other kinds (i.e. types), `permitted` may be greater than `required`.
@@ -348,8 +350,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 (required, "")
             };
 
+            let mut span = span;
             let label = if required == permitted && provided > permitted {
                 let diff = provided - permitted;
+                if diff == 1 {
+                    // In the case when the user has provided too many arguments,
+                    // we want to point to the first unexpected argument.
+                    let first_superfluous_arg: &GenericArg = &args.args[offset + permitted];
+                    span = first_superfluous_arg.span();
+                }
                 format!(
                     "{}unexpected {} argument{}",
                     if diff != 1 { format!("{} ", diff) } else { String::new() },
@@ -394,6 +403,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 param_counts.lifetimes,
                 param_counts.lifetimes,
                 arg_counts.lifetimes,
+                0,
             );
         }
         if !infer_types
@@ -404,6 +414,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
                 arg_counts.types,
+                arg_counts.lifetimes,
             )
         } else {
             false
@@ -491,32 +502,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 // provided, matching them with the generic parameters we expect.
                 // Mismatches can occur as a result of elided lifetimes, or for malformed
                 // input. We try to handle both sensibly.
-                let mut progress_arg = true;
                 match (args.peek(), params.peek()) {
                     (Some(&arg), Some(&param)) => {
                         match (arg, &param.kind) {
-                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime) => {
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime)
+                            | (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
+                                args.next();
                                 params.next();
                             }
                             (GenericArg::Lifetime(_), GenericParamDefKind::Type { .. }) => {
                                 // We expected a type argument, but got a lifetime
                                 // argument. This is an error, but we need to handle it
                                 // gracefully so we can report sensible errors. In this
-                                // case, we're simply going to infer the remaining
-                                // arguments.
-                                args.by_ref().for_each(drop); // Exhaust the iterator.
-                            }
-                            (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
-                                push_kind(&mut substs, provided_kind(param, arg));
-                                params.next();
+                                // case, we're simply going to infer this argument.
+                                args.next();
                             }
                             (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
                                 // We expected a lifetime argument, but got a type
                                 // argument. That means we're inferring the lifetimes.
                                 push_kind(&mut substs, inferred_kind(None, param, infer_types));
                                 params.next();
-                                progress_arg = false;
                             }
                         }
                     }
@@ -524,25 +530,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         // We should never be able to reach this point with well-formed input.
                         // Getting to this point means the user supplied more arguments than
                         // there are parameters.
+                        args.next();
                     }
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
                         match param.kind {
-                            GenericParamDefKind::Lifetime => {
-                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
-                            }
-                            GenericParamDefKind::Type { .. } => {
+                            GenericParamDefKind::Lifetime | GenericParamDefKind::Type { .. } => {
                                 let kind = inferred_kind(Some(&substs), param, infer_types);
                                 push_kind(&mut substs, kind);
                             }
                         }
+                        args.next();
                         params.next();
                     }
                     (None, None) => break,
-                }
-                if progress_arg {
-                    args.next();
                 }
             }
         }
@@ -582,12 +584,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             span,
             &generic_params,
             &generic_args,
-            GenericArgPosition::Datatype,
+            GenericArgPosition::Type,
             has_self,
             infer_types,
             GenericArgMismatchErrorCode {
                 lifetimes: ("E0107", "E0107"),
-                types: ("E0243", "E0244"), // FIXME: E0243 and E0244 should be unified.
+                types: ("E0243", "E0244"),
             },
         );
 
@@ -616,17 +618,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             |_| (Some(generic_args), infer_types),
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => match arg {
-                        GenericArg::Lifetime(lt) => {
-                            self.ast_region_to_region(&lt, Some(param)).into()
-                        }
-                        _ => unreachable!(),
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        self.ast_region_to_region(&lt, Some(param)).into()
                     }
-                    GenericParamDefKind::Type { .. } => match arg {
-                        GenericArg::Type(ty) => self.ast_ty_to_ty(&ty).into(),
-                        _ => unreachable!(),
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.ast_ty_to_ty(&ty).into()
                     }
+                    _ => unreachable!(),
                 }
             },
             // Provide substitutions for parameters for which arguments are inferred.

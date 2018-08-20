@@ -11,10 +11,10 @@ LL |     let _: S<'static, 'static +>;
    |                       ^^^^^^^^^
 
 error[E0107]: wrong number of lifetime arguments: expected 1, found 2
-  --> $DIR/trait-object-vs-lifetime.rs:23:12
+  --> $DIR/trait-object-vs-lifetime.rs:23:23
    |
 LL |     let _: S<'static, 'static>;
-   |            ^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                       ^^^^^^^ unexpected lifetime argument
 
 error[E0243]: wrong number of type arguments: expected 1, found 0
   --> $DIR/trait-object-vs-lifetime.rs:23:12

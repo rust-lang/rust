@@ -539,7 +539,9 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
-                data.args.iter().for_each(|arg| self.visit_generic_arg(arg));
+                for arg in &data.args {
+                    self.visit_generic_arg(arg)
+                }
                 for type_binding in &data.bindings {
                     // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                     // are allowed to contain nested `impl Trait`.

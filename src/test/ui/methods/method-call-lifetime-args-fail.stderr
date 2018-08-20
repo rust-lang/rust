@@ -5,10 +5,10 @@ LL |     S.early::<'static>();
    |       ^^^^^ expected 2 lifetime arguments
 
 error[E0088]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/method-call-lifetime-args-fail.rs:28:7
+  --> $DIR/method-call-lifetime-args-fail.rs:28:33
    |
 LL |     S.early::<'static, 'static, 'static>();
-   |       ^^^^^ unexpected lifetime argument
+   |                                 ^^^^^^^ unexpected lifetime argument
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:37:15
@@ -185,10 +185,10 @@ LL |     S::early::<'static>(S);
    |     ^^^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0088]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/method-call-lifetime-args-fail.rs:75:5
+  --> $DIR/method-call-lifetime-args-fail.rs:75:34
    |
 LL |     S::early::<'static, 'static, 'static>(S);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                                  ^^^^^^^ unexpected lifetime argument
 
 error: aborting due to 18 previous errors
 

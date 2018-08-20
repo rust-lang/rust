@@ -1,26 +1,26 @@
 error[E0087]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/bad-mid-path-type-params.rs:40:13
+  --> $DIR/bad-mid-path-type-params.rs:40:28
    |
 LL |     let _ = S::new::<isize,f64>(1, 1.0);
-   |             ^^^^^^^^^^^^^^^^^^^ unexpected type argument
+   |                            ^^^ unexpected type argument
 
 error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/bad-mid-path-type-params.rs:43:13
+  --> $DIR/bad-mid-path-type-params.rs:43:17
    |
 LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                 ^^ unexpected lifetime argument
 
 error[E0087]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/bad-mid-path-type-params.rs:46:17
+  --> $DIR/bad-mid-path-type-params.rs:46:36
    |
 LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^ unexpected type argument
+   |                                    ^^^ unexpected type argument
 
 error[E0088]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/bad-mid-path-type-params.rs:49:17
+  --> $DIR/bad-mid-path-type-params.rs:49:25
    |
 LL |     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                         ^^ unexpected lifetime argument
 
 error: aborting due to 4 previous errors
 

@@ -5,10 +5,10 @@ LL |     S::<'static>(&0, &0);
    |     ^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0088]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/constructor-lifetime-args.rs:29:5
+  --> $DIR/constructor-lifetime-args.rs:29:27
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                           ^^^^^^^ unexpected lifetime argument
 
 error[E0090]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/constructor-lifetime-args.rs:32:5
@@ -17,10 +17,10 @@ LL |     E::V::<'static>(&0);
    |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0088]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/constructor-lifetime-args.rs:34:5
+  --> $DIR/constructor-lifetime-args.rs:34:30
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected lifetime argument
+   |                              ^^^^^^^ unexpected lifetime argument
 
 error: aborting due to 4 previous errors
 

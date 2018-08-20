@@ -1,8 +1,8 @@
 error[E0087]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/issue-53251.rs:21:17
+  --> $DIR/issue-53251.rs:21:24
    |
 LL |                 S::f::<i64>();
-   |                 ^^^^^^^^^^^ unexpected type argument
+   |                        ^^^ unexpected type argument
 ...
 LL | impl_add!(a b);
    | --------------- in this macro invocation

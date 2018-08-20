@@ -5,10 +5,10 @@ LL |     buzz: Buzz<'a>,
    |           ^^^^^^^^ expected 2 lifetime arguments
 
 error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/E0107.rs:24:10
+  --> $DIR/E0107.rs:24:14
    |
 LL |     bar: Bar<'a>,
-   |          ^^^^^^^ unexpected lifetime argument
+   |              ^^ unexpected lifetime argument
 
 error[E0107]: wrong number of lifetime arguments: expected 1, found 3
   --> $DIR/E0107.rs:27:11
