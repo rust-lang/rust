@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::values::{PointIndex, RegionValueElements};
-use borrow_check::nll::type_check::liveness::liveness_map::{LocalWithRegion, NllLivenessMap};
+use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -27,18 +27,18 @@ crate struct LocalUseMap<'me> {
     /// defined in `x = y` but not `y`; that first def is the head of
     /// a linked list that lets you enumerate all places the variable
     /// is assigned.
-    first_def_at: IndexVec<LocalWithRegion, Option<AppearanceIndex>>,
+    first_def_at: IndexVec<LiveVar, Option<AppearanceIndex>>,
 
     /// Head of a linked list of **uses** of each variable -- use in
     /// this context means that the existing value of the variable is
     /// read or modified. e.g., `y` is used in `x = y` but not `x`.
     /// Note that `DROP(x)` terminators are excluded from this list.
-    first_use_at: IndexVec<LocalWithRegion, Option<AppearanceIndex>>,
+    first_use_at: IndexVec<LiveVar, Option<AppearanceIndex>>,
 
     /// Head of a linked list of **drops** of each variable -- these
     /// are a special category of uses corresponding to the drop that
     /// we add for each local variable.
-    first_drop_at: IndexVec<LocalWithRegion, Option<AppearanceIndex>>,
+    first_drop_at: IndexVec<LiveVar, Option<AppearanceIndex>>,
 
     appearances: IndexVec<AppearanceIndex, Appearance>,
 }
@@ -81,17 +81,17 @@ impl LocalUseMap<'me> {
         local_use_map
     }
 
-    crate fn defs(&self, local: LocalWithRegion) -> impl Iterator<Item = PointIndex> + '_ {
+    crate fn defs(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_def_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn uses(&self, local: LocalWithRegion) -> impl Iterator<Item = PointIndex> + '_ {
+    crate fn uses(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_use_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn drops(&self, local: LocalWithRegion) -> impl Iterator<Item = PointIndex> + '_ {
+    crate fn drops(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_drop_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
@@ -103,7 +103,7 @@ struct LocalUseMapBuild<'me, 'map> {
 }
 
 impl LocalUseMapBuild<'_, '_> {
-    fn insert_def(&mut self, local: LocalWithRegion, location: Location) {
+    fn insert_def(&mut self, local: LiveVar, location: Location) {
         Self::insert(
             self.elements,
             &mut self.local_use_map.first_def_at[local],
@@ -112,7 +112,7 @@ impl LocalUseMapBuild<'_, '_> {
         );
     }
 
-    fn insert_use(&mut self, local: LocalWithRegion, location: Location) {
+    fn insert_use(&mut self, local: LiveVar, location: Location) {
         Self::insert(
             self.elements,
             &mut self.local_use_map.first_use_at[local],
@@ -121,7 +121,7 @@ impl LocalUseMapBuild<'_, '_> {
         );
     }
 
-    fn insert_drop(&mut self, local: LocalWithRegion, location: Location) {
+    fn insert_drop(&mut self, local: LiveVar, location: Location) {
         Self::insert(
             self.elements,
             &mut self.local_use_map.first_drop_at[local],

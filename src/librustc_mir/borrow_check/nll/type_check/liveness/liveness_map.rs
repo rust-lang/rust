@@ -10,9 +10,9 @@
 
 //! For the NLL computation, we need to compute liveness, but only for those
 //! local variables whose types contain regions. The others are not of interest
-//! to us. This file defines a new index type (LocalWithRegion) that indexes into
+//! to us. This file defines a new index type (LiveVar) that indexes into
 //! a list of "variables whose type contain regions". It also defines a map from
-//! Local to LocalWithRegion and vice versa -- this map can be given to the
+//! Local to LiveVar and vice versa -- this map can be given to the
 //! liveness code so that it only operates over variables with regions in their
 //! types, instead of all variables.
 
@@ -23,7 +23,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use util::liveness::LiveVariableMap;
 
-/// Map between Local and LocalWithRegion indices: the purpose of this
+/// Map between Local and LiveVar indices: the purpose of this
 /// map is to define the subset of local variables for which we need
 /// to do a liveness computation. We only need to compute whether a
 /// variable `X` is live if that variable contains some region `R` in
@@ -32,10 +32,10 @@ use util::liveness::LiveVariableMap;
 crate struct NllLivenessMap {
     /// For each local variable, contains `Some(i)` if liveness is
     /// needed for this variable.
-    pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
+    pub from_local: IndexVec<Local, Option<LiveVar>>,
 
-    /// For each `LocalWithRegion`, maps back to the original `Local` index.
-    pub to_local: IndexVec<LocalWithRegion, Local>,
+    /// For each `LiveVar`, maps back to the original `Local` index.
+    pub to_local: IndexVec<LiveVar, Local>,
 }
 
 impl LiveVariableMap for NllLivenessMap {
@@ -43,7 +43,7 @@ impl LiveVariableMap for NllLivenessMap {
         self.from_local[local]
     }
 
-    type LiveVar = LocalWithRegion;
+    type LiveVar = LiveVar;
 
     fn from_live_var(&self, local: Self::LiveVar) -> Local {
         self.to_local[local]
@@ -94,4 +94,4 @@ impl NllLivenessMap {
 }
 
 /// Index given to each local variable whose type contains a region.
-newtype_index!(LocalWithRegion);
+newtype_index!(LiveVar);

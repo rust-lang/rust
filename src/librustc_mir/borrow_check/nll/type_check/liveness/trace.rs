@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
-use borrow_check::nll::type_check::liveness::liveness_map::{LocalWithRegion, NllLivenessMap};
+use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
 use borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
 use borrow_check::nll::type_check::liveness::point_index_map::PointIndexMap;
 use borrow_check::nll::type_check::AtLocation;
@@ -194,7 +194,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
     }
 
     /// Adds the definitions of `local` into `self.defs`.
-    fn add_defs_for(&mut self, live_local: LocalWithRegion) {
+    fn add_defs_for(&mut self, live_local: LiveVar) {
         for def in self.cx.local_use_map.defs(live_local) {
             debug!("- defined at {:?}", def);
             self.defs.insert(def);
@@ -207,7 +207,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
     /// find a `def` of local.
     ///
     /// Requires `add_defs_for(live_local)` to have been executed.
-    fn compute_use_live_points_for(&mut self, live_local: LocalWithRegion) {
+    fn compute_use_live_points_for(&mut self, live_local: LiveVar) {
         debug!("compute_use_live_points_for(live_local={:?})", live_local);
 
         self.stack.extend(self.cx.local_use_map.uses(live_local));
@@ -233,7 +233,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
     ///
     /// Requires `compute_use_live_points_for` and `add_defs_for` to
     /// have been executed.
-    fn compute_drop_live_points_for(&mut self, live_local: LocalWithRegion) {
+    fn compute_drop_live_points_for(&mut self, live_local: LiveVar) {
         debug!("compute_drop_live_points_for(live_local={:?})", live_local);
 
         let local = self.cx.liveness_map.from_live_var(live_local);
