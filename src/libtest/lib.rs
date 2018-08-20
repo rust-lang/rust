@@ -1296,54 +1296,34 @@ fn get_concurrency() -> usize {
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
-    // Remove tests that don't match the test filter
-    filtered = match opts.filter {
-        None => filtered,
-        Some(ref filter) => filtered
-            .into_iter()
-            .filter(|test| {
-                if opts.filter_exact {
-                    test.desc.name.as_slice() == &filter[..]
-                } else {
-                    test.desc.name.as_slice().contains(&filter[..])
-                }
-            })
-            .collect(),
+    let matches_filter = |test: &TestDescAndFn, filter: &str| {
+        let test_name = test.desc.name.as_slice();
+
+        match opts.filter_exact {
+            true => test_name == filter,
+            false => test_name.contains(filter),
+        }
     };
 
+    // Remove tests that don't match the test filter
+    if let Some(ref filter) = opts.filter {
+        filtered.retain(|test| matches_filter(test, filter));
+    }
+
     // Skip tests that match any of the skip filters
-    filtered = filtered
-        .into_iter()
-        .filter(|t| {
-            !opts.skip.iter().any(|sf| {
-                if opts.filter_exact {
-                    t.desc.name.as_slice() == &sf[..]
-                } else {
-                    t.desc.name.as_slice().contains(&sf[..])
-                }
-            })
-        })
-        .collect();
+    filtered.retain(|test| {
+        !opts.skip.iter().any(|sf| matches_filter(test, sf))
+    });
 
     // Maybe pull out the ignored test and unignore them
-    filtered = if !opts.run_ignored {
-        filtered
-    } else {
-        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
-            if test.desc.ignore {
-                let TestDescAndFn { desc, testfn } = test;
-                Some(TestDescAndFn {
-                    desc: TestDesc {
-                        ignore: false,
-                        ..desc
-                    },
-                    testfn,
-                })
-            } else {
-                None
-            }
-        }
-        filtered.into_iter().filter_map(filter).collect()
+    if opts.run_ignored {
+        filtered = filtered.into_iter()
+            .filter(|test| test.desc.ignore)
+            .map(|mut test| {
+                test.desc.ignore = false;
+                test
+            })
+            .collect();
     };
 
     // Sort the tests alphabetically
