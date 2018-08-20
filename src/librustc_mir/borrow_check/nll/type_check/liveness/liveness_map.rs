@@ -93,5 +93,10 @@ impl NllLivenessMap {
     }
 }
 
-/// Index given to each local variable whose type contains a region.
-newtype_index!(LiveVar);
+/// Index given to each local variable for which we need to
+/// compute liveness information. For many locals, we are able to
+/// skip liveness information: for example, those variables whose
+/// types contain no regions.
+newtype_index!(
+    LiveVar
+);
