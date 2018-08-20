@@ -796,6 +796,9 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// For example, the pattern `-128...127i8` is encoded as `0..=255`.
 /// This makes comparisons and arithmetic on interval endpoints much more
 /// straightforward. See `signed_bias` for details.
+///
+/// `IntRange` is never used to encode an empty range or a "range" that wraps
+/// around the (offset) space: i.e. `range.lo <= range.hi`.
 struct IntRange<'tcx> {
     pub range: RangeInclusive<u128>,
     pub ty: Ty<'tcx>,
@@ -882,10 +885,8 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Given an `IntRange` corresponding to a pattern in a `match` and a collection of
-    /// ranges corresponding to the domain of values of a type (say, an integer), return
-    /// a new collection of ranges corresponding to the original ranges minus the ranges
-    /// covered by the `IntRange`.
+    /// Return a collection of ranges that spans the values covered by `ranges`, subtracted
+    /// by the values covered by `self`: i.e. `ranges \ self` (in set notation).
     fn subtract_from(self,
                      tcx: TyCtxt<'_, 'tcx, 'tcx>,
                      ranges: Vec<Constructor<'tcx>>)
@@ -930,7 +931,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
-// Find those constructors that are not matched by any non-wildcard patterns in the current column.
+// Return a set of constructors equivalent to `all_ctors \ used_ctors`.
 fn compute_missing_ctors<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     all_ctors: &Vec<Constructor<'tcx>>,
@@ -1079,6 +1080,9 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // be a privately-empty enum is when the exhaustive_patterns
         // feature flag is not present, so this is only
         // needed for that case.
+
+        // Find those constructors that are not matched by any non-wildcard patterns in the
+        // current column.
         let missing_ctors = compute_missing_ctors(cx.tcx, &all_ctors, &used_ctors);
 
         let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
