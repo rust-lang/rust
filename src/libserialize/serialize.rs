@@ -119,6 +119,7 @@ pub trait Encoder {
         self.emit_enum("Option", f)
     }
 
+    #[inline]
     fn emit_option_none(&mut self) -> Result<(), Self::Error> {
         self.emit_enum_variant("None", 0, 0, |_| Ok(()))
     }
@@ -560,14 +561,12 @@ impl< T: Decodable> Decodable for Box<[T]> {
 }
 
 impl<T:Encodable> Encodable for Rc<T> {
-    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 
 impl<T:Decodable> Decodable for Rc<T> {
-    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Rc<T>, D::Error> {
         Ok(Rc::new(Decodable::decode(d)?))
     }
@@ -618,7 +617,9 @@ impl<'a, T:Encodable> Encodable for Cow<'a, [T]> where [T]: ToOwned<Owned = Vec<
     }
 }
 
-impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]> where [T]: ToOwned<Owned = Vec<T>> {
+impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]>
+    where [T]: ToOwned<Owned = Vec<T>>
+{
     fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
