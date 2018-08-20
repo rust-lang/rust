@@ -103,6 +103,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 self.write_scalar(out_val, dest)?;
             }
+            "transmute" => {
+                // Go through an allocation, to make sure the completely different layouts
+                // do not pose a problem.  (When the user transmutes through a union,
+                // there will not be a layout mismatch.)
+                let dest = self.force_allocation(dest)?;
+                self.copy_op(args[0], dest.into())?;
+            }
 
             _ => return Ok(false),
         }

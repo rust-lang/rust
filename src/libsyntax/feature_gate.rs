@@ -221,6 +221,9 @@ declare_features! (
     // Allows dereferencing raw pointers during const eval
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
+    // Allows reinterpretation of the bits of a value of one type as another type during const eval
+    (active, const_transmute, "1.29.0", Some(53605), None),
+
     // Allows comparing raw pointers during const eval
     (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
 
