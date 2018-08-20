@@ -55,7 +55,8 @@ bitflags! {
     }
 }
 
-impl BuilderMethods<'a, 'll, 'tcx, Value> for Builder<'a, 'll, 'tcx, &'ll Value> {
+impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
+    for Builder<'a, 'll, 'tcx, &'ll Value> {
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
         llfn: &'ll Value,

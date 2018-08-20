@@ -10,7 +10,7 @@
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{IntPredicate, RealPredicate, OperandBundleDef};
-use llvm::{self, BasicBlock};
+use llvm;
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -23,7 +23,11 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll, Value : ?Sized> {
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
+    Value : ?Sized,
+    BasicBlock: ?Sized
+    > {
+
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
         llfn: &'ll Value,
