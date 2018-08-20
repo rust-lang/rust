@@ -24,9 +24,9 @@
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
-use super::ModuleSource;
 use super::ModuleCodegen;
 use super::ModuleKind;
+use super::CachedModuleCodegen;
 
 use abi;
 use back::lto;
@@ -41,7 +41,6 @@ use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::query::Providers;
-use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
@@ -699,6 +698,79 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
+#[derive(Debug, PartialEq)]
+enum CguReUsable {
+    No,
+    PreThinLto,
+    PostThinLto,
+    PostThinLtoButImportedFrom,
+}
+
+fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 codegen_units: &[Arc<CodegenUnit<'tcx>>])
+                                 -> FxHashMap<InternedString, CguReUsable> {
+    if !tcx.dep_graph.is_fully_enabled() {
+        return codegen_units.iter()
+                            .map(|cgu| (cgu.name().clone(), CguReUsable::No))
+                            .collect();
+    }
+
+    let thin_lto_imports = load_thin_lto_imports(tcx.sess);
+
+    let mut reusable_cgus = FxHashMap();
+    let mut green_cgus = FxHashMap();
+    let mut need_for_importing = FxHashSet();
+
+    for cgu in codegen_units {
+        let work_product_id = &cgu.work_product_id();
+        if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+            // We don't have anything cached for this CGU. This can happen
+            // if the CGU did not exist in the previous session.
+            reusable_cgus.insert(cgu.name().clone(), CguReUsable::No);
+            continue
+        };
+        // Try to mark the CGU as green
+        let dep_node = cgu.codegen_dep_node(tcx);
+        assert!(!tcx.dep_graph.dep_node_exists(&dep_node),
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name());
+
+        if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
+            // We can re-use either the pre- or the post-thinlto state
+            green_cgus.insert(cgu.name().to_string(), cgu);
+        } else {
+            // We definitely cannot re-use this CGU
+            reusable_cgus.insert(cgu.name().clone(), CguReUsable::No);
+
+            let imported_cgus = thin_lto_imports.modules_imported_by(&cgu.name().as_str());
+            need_for_importing.extend(imported_cgus.iter().cloned());
+        }
+    }
+
+    // Now we know all CGUs that have not changed themselves. Next we need to
+    // check if anything they imported via ThinLTO has changed.
+    for (cgu_name, cgu) in &green_cgus {
+        let imported_cgus = thin_lto_imports.modules_imported_by(cgu_name);
+        let all_imports_green = imported_cgus.iter().all(|imported_cgu| {
+            green_cgus.contains_key(&imported_cgu[..])
+        });
+        if all_imports_green {
+            reusable_cgus.insert(cgu.name().clone(), CguReUsable::PostThinLto);
+        } else {
+            reusable_cgus.insert(cgu.name().clone(), CguReUsable::PreThinLto);
+            need_for_importing.extend(imported_cgus.iter().cloned());
+        }
+    }
+
+    for (name, state) in reusable_cgus.iter_mut() {
+        if *state == CguReUsable::PostThinLto && need_for_importing.contains(&name.as_str()[..]) {
+            *state = CguReUsable::PostThinLtoButImportedFrom;
+        }
+    }
+
+    reusable_cgus
+}
+
 pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              rx: mpsc::Receiver<Box<dyn Any + Send>>)
                              -> OngoingCodegen {
@@ -735,7 +807,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let metadata_module = ModuleCodegen {
         name: metadata_cgu_name,
-        source: ModuleSource::Codegened(metadata_llvm_module),
+        module_llvm: metadata_llvm_module,
         kind: ModuleKind::Metadata,
     };
 
@@ -824,7 +896,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         Some(ModuleCodegen {
             name: llmod_id,
-            source: ModuleSource::Codegened(modules),
+            module_llvm: modules,
             kind: ModuleKind::Allocator,
         })
     } else {
@@ -848,52 +920,53 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut total_codegen_time = Duration::new(0, 0);
     let mut all_stats = Stats::default();
 
+    let cgu_reuse = determine_cgu_reuse(tcx, &codegen_units);
+
     for cgu in codegen_units.into_iter() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        // First, if incremental compilation is enabled, we try to re-use the
-        // codegen unit from the cache.
-        if tcx.dep_graph.is_fully_enabled() {
-            let cgu_id = cgu.work_product_id();
-
-            // Check whether there is a previous work-product we can
-            // re-use.  Not only must the file exist, and the inputs not
-            // be dirty, but the hash of the symbols we will generate must
-            // be the same.
-            if let Some(buf) = tcx.dep_graph.previous_work_product(&cgu_id) {
-                let dep_node = &DepNode::new(tcx,
-                    DepConstructor::CompileCodegenUnit(cgu.name().clone()));
-
-                // We try to mark the DepNode::CompileCodegenUnit green. If we
-                // succeed it means that none of the dependencies has changed
-                // and we can safely re-use.
-                if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, dep_node) {
-                    let module = ModuleCodegen {
-                        name: cgu.name().to_string(),
-                        source: ModuleSource::Preexisting(buf),
-                        kind: ModuleKind::Regular,
-                    };
-                    tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
-                    write::submit_codegened_module_to_llvm(tcx, module, 0);
-                    // Continue to next cgu, this one is done.
-                    continue
-                }
-            } else {
-                // This can happen if files were  deleted from the cache
-                // directory for some reason. We just re-compile then.
+        let loaded_from_cache = match cgu_reuse[cgu.name()] {
+            CguReUsable::No => {
+                let _timing_guard = time_graph.as_ref().map(|time_graph| {
+                    time_graph.start(write::CODEGEN_WORKER_TIMELINE,
+                                     write::CODEGEN_WORK_PACKAGE_KIND,
+                                     &format!("codegen {}", cgu.name()))
+                });
+                let start_time = Instant::now();
+                let stats = compile_codegen_unit(tcx, *cgu.name());
+                all_stats.extend(stats);
+                total_codegen_time += start_time.elapsed();
+                false
             }
-        }
+            CguReUsable::PreThinLto => {
+                write::submit_pre_lto_module_to_llvm(tcx, CachedModuleCodegen {
+                    name: cgu.name().to_string(),
+                    source: cgu.work_product(tcx),
+                });
+                true
+            }
+            CguReUsable::PostThinLtoButImportedFrom => {
+                write::submit_import_only_module_to_llvm(tcx, CachedModuleCodegen {
+                    name: cgu.name().to_string(),
+                    source: cgu.work_product(tcx),
+                });
+                true
+            }
+            CguReUsable::PostThinLto => {
+                write::submit_post_lto_module_to_llvm(tcx, CachedModuleCodegen {
+                    name: cgu.name().to_string(),
+                    source: cgu.work_product(tcx),
+                });
+                true
+            }
+        };
 
-        let _timing_guard = time_graph.as_ref().map(|time_graph| {
-            time_graph.start(write::CODEGEN_WORKER_TIMELINE,
-                             write::CODEGEN_WORK_PACKAGE_KIND,
-                             &format!("codegen {}", cgu.name()))
-        });
-        let start_time = Instant::now();
-        all_stats.extend(compile_codegen_unit(tcx, *cgu.name()));
-        total_codegen_time += start_time.elapsed();
-        ongoing_codegen.check_for_errors(tcx.sess);
+        if tcx.dep_graph.is_fully_enabled() {
+            let dep_node = cgu.codegen_dep_node(tcx);
+            let dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
+            tcx.dep_graph.mark_loaded_from_cache(dep_node_index, loaded_from_cache);
+        }
     }
 
     ongoing_codegen.codegen_finished(tcx);
@@ -1176,12 +1249,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     write::submit_codegened_module_to_llvm(tcx,
                                            module,
                                            cost);
-
-    if tcx.dep_graph.is_fully_enabled() {
-        let dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
-        tcx.dep_graph.mark_loaded_from_cache(dep_node_index, false);
-    }
-
     return stats;
 
     fn module_codegen<'a, 'tcx>(
@@ -1246,7 +1313,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         (stats, ModuleCodegen {
             name: cgu_name.to_string(),
-            source: ModuleSource::Codegened(llvm_module),
+            module_llvm: llvm_module,
             kind: ModuleKind::Regular,
         })
     }
@@ -1324,8 +1391,11 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
     }
 }
 
-#[allow(unused)]
 fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
+    if sess.opts.incremental.is_none() {
+        return lto::ThinLTOImports::new();
+    }
+
     let path = rustc_incremental::in_incr_comp_dir_sess(
         sess,
         lto::THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME

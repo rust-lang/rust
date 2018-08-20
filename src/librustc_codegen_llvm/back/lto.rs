@@ -16,13 +16,14 @@ use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;
 use llvm::{True, False};
 use llvm;
+use memmap;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use time_graph::Timeline;
-use {ModuleCodegen, ModuleLlvm, ModuleKind, ModuleSource};
+use {ModuleCodegen, ModuleLlvm, ModuleKind};
 
 use libc;
 
@@ -82,8 +83,8 @@ impl LtoModuleCodegen {
                 let module = module.take().unwrap();
                 {
                     let config = cgcx.config(module.kind);
-                    let llmod = module.llvm().unwrap().llmod();
-                    let tm = &*module.llvm().unwrap().tm;
+                    let llmod = module.module_llvm.llmod();
+                    let tm = &*module.module_llvm.tm;
                     run_pass_manager(cgcx, tm, llmod, config, false);
                     timeline.record("fat-done");
                 }
@@ -106,6 +107,7 @@ impl LtoModuleCodegen {
 
 pub(crate) fn run(cgcx: &CodegenContext,
                   modules: Vec<ModuleCodegen>,
+                  import_only_modules: Vec<(SerializedModule, CString)>,
                   timeline: &mut Timeline)
     -> Result<Vec<LtoModuleCodegen>, FatalError>
 {
@@ -194,11 +196,19 @@ pub(crate) fn run(cgcx: &CodegenContext,
         }
     }
 
-    let arr = symbol_white_list.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
+    let symbol_white_list = symbol_white_list.iter()
+                                             .map(|c| c.as_ptr())
+                                             .collect::<Vec<_>>();
     match cgcx.lto {
         Lto::Yes | // `-C lto` == fat LTO by default
         Lto::Fat => {
-            fat_lto(cgcx, &diag_handler, modules, upstream_modules, &arr, timeline)
+            assert!(import_only_modules.is_empty());
+            fat_lto(cgcx,
+                    &diag_handler,
+                    modules,
+                    upstream_modules,
+                    &symbol_white_list,
+                    timeline)
         }
         Lto::Thin |
         Lto::ThinLocal => {
@@ -206,7 +216,13 @@ pub(crate) fn run(cgcx: &CodegenContext,
                 unreachable!("We should never reach this case if the LTO step \
                               is deferred to the linker");
             }
-            thin_lto(cgcx, &diag_handler, modules, upstream_modules, &arr, timeline)
+            thin_lto(cgcx,
+                     &diag_handler,
+                     modules,
+                     upstream_modules,
+                     import_only_modules,
+                     &symbol_white_list,
+                     timeline)
         }
         Lto::No => unreachable!(),
     }
@@ -236,7 +252,7 @@ fn fat_lto(cgcx: &CodegenContext,
         .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, module)| {
             let cost = unsafe {
-                llvm::LLVMRustModuleCost(module.llvm().unwrap().llmod())
+                llvm::LLVMRustModuleCost(module.module_llvm.llmod())
             };
             (cost, i)
         })
@@ -246,7 +262,7 @@ fn fat_lto(cgcx: &CodegenContext,
     let mut serialized_bitcode = Vec::new();
     {
         let (llcx, llmod) = {
-            let llvm = module.llvm().expect("can't lto pre-codegened modules");
+            let llvm = &module.module_llvm;
             (&llvm.llcx, llvm.llmod())
         };
         info!("using {:?} as a base module", module.name);
@@ -262,8 +278,7 @@ fn fat_lto(cgcx: &CodegenContext,
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
         for module in modules {
-            let llvm = module.llvm().expect("can't lto pre-codegened modules");
-            let buffer = ModuleBuffer::new(llvm.llmod());
+            let buffer = ModuleBuffer::new(module.module_llvm.llmod());
             let llmod_id = CString::new(&module.name[..]).unwrap();
             serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
         }
@@ -373,6 +388,7 @@ fn thin_lto(cgcx: &CodegenContext,
             diag_handler: &Handler,
             modules: Vec<ModuleCodegen>,
             serialized_modules: Vec<(SerializedModule, CString)>,
+            import_only_modules: Vec<(SerializedModule, CString)>,
             symbol_white_list: &[*const libc::c_char],
             timeline: &mut Timeline)
     -> Result<Vec<LtoModuleCodegen>, FatalError>
@@ -393,9 +409,8 @@ fn thin_lto(cgcx: &CodegenContext,
         //        analysis!
         for (i, module) in modules.iter().enumerate() {
             info!("local module: {} - {}", i, module.name);
-            let llvm = module.llvm().expect("can't lto precodegened module");
             let name = CString::new(module.name.clone()).unwrap();
-            let buffer = ThinBuffer::new(llvm.llmod());
+            let buffer = ThinBuffer::new(module.module_llvm.llmod());
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
                 data: buffer.data().as_ptr(),
@@ -434,6 +449,22 @@ fn thin_lto(cgcx: &CodegenContext,
             module_names.push(name);
         }
 
+        // All the modules collected up to this point we actually want to
+        // optimize. The `import_only_modules` below need to be in the list of
+        // available modules but we don't need to run optimizations for them
+        // since we already have their optimized version cached.
+        let modules_to_optimize = module_names.len();
+        for (module, name) in import_only_modules {
+            info!("foreign module {:?}", name);
+            thin_modules.push(llvm::ThinLTOModule {
+                identifier: name.as_ptr(),
+                data: module.data().as_ptr(),
+                len: module.data().len(),
+            });
+            serialized.push(module);
+            module_names.push(name);
+        }
+
         // Delegate to the C++ bindings to create some data here. Once this is a
         // tried-and-true interface we may wish to try to upstream some of this
         // to LLVM itself, right now we reimplement a lot of what they do
@@ -450,7 +481,21 @@ fn thin_lto(cgcx: &CodegenContext,
         // Save the ThinLTO import information for incremental compilation.
         if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir {
             let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
-            let imports = ThinLTOImports::from_thin_lto_data(data);
+
+            // The import information from the current compilation session. It
+            // does not contain info about modules that have been loaded from
+            // the cache instead of having been recompiled...
+            let current_imports = ThinLTOImports::from_thin_lto_data(data);
+
+            // ... so we load this additional information from the previous
+            // cache file if necessary.
+            let imports = if path.exists() {
+                let prev_imports = ThinLTOImports::load_from_file(&path).unwrap();
+                prev_imports.update(current_imports, &module_names)
+            } else {
+                current_imports
+            };
+
             if let Err(err) = imports.save_to_file(&path) {
                 let msg = format!("Error while writing ThinLTO import data: {}",
                                   err);
@@ -472,7 +517,7 @@ fn thin_lto(cgcx: &CodegenContext,
             serialized_modules: serialized,
             module_names,
         });
-        Ok((0..shared.module_names.len()).map(|i| {
+        Ok((0..modules_to_optimize).map(|i| {
             LtoModuleCodegen::Thin(ThinModule {
                 shared: shared.clone(),
                 idx: i,
@@ -546,6 +591,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
 pub enum SerializedModule {
     Local(ModuleBuffer),
     FromRlib(Vec<u8>),
+    FromUncompressedFile(memmap::Mmap, File),
 }
 
 impl SerializedModule {
@@ -553,6 +599,7 @@ impl SerializedModule {
         match *self {
             SerializedModule::Local(ref m) => m.data(),
             SerializedModule::FromRlib(ref m) => m,
+            SerializedModule::FromUncompressedFile(ref m, _) => m,
         }
     }
 }
@@ -682,16 +729,16 @@ impl ThinModule {
             write::llvm_err(&diag_handler, msg)
         })? as *const _;
         let module = ModuleCodegen {
-            source: ModuleSource::Codegened(ModuleLlvm {
+            module_llvm: ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm,
-            }),
+            },
             name: self.name().to_string(),
             kind: ModuleKind::Regular,
         };
         {
-            let llmod = module.llvm().unwrap().llmod();
+            let llmod = module.module_llvm.llmod();
             cgcx.save_temp_bitcode(&module, "thin-lto-input");
 
             // Before we do much else find the "main" `DICompileUnit` that we'll be
@@ -787,7 +834,7 @@ impl ThinModule {
             // little differently.
             info!("running thin lto passes over {}", module.name);
             let config = cgcx.config(module.kind);
-            run_pass_manager(cgcx, module.llvm().unwrap().tm, llmod, config, true);
+            run_pass_manager(cgcx, module.module_llvm.tm, llmod, config, true);
             cgcx.save_temp_bitcode(&module, "thin-lto-after-pm");
             timeline.record("thin-done");
         }
@@ -807,6 +854,26 @@ impl ThinLTOImports {
         ThinLTOImports {
             imports: FxHashMap(),
         }
+    }
+
+    pub fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
+        self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
+    }
+
+    pub fn update(mut self, new: ThinLTOImports, module_names: &[CString]) -> ThinLTOImports {
+        let module_names: FxHashSet<_> = module_names.iter().map(|name| {
+            name.clone().into_string().unwrap()
+        }).collect();
+
+        // Remove all modules that don't exist anymore.
+        self.imports.retain(|k, _| module_names.contains(k));
+
+        // Overwrite old values
+        for (importing_module, imported_modules) in new.imports {
+            self.imports.insert(importing_module, imported_modules);
+        }
+
+        self
     }
 
     /// Load the ThinLTO import map from ThinLTOData.
@@ -832,6 +899,7 @@ impl ThinLTOImports {
             if !map.imports.contains_key(importing_module_name) {
                 map.imports.insert(importing_module_name.to_owned(), vec![]);
             }
+
             map.imports
                .get_mut(importing_module_name)
                .unwrap()

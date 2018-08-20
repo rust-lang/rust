@@ -68,7 +68,7 @@ pub enum OptLevel {
     SizeMin,    // -Oz
 }
 
-#[derive(Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Lto {
     /// Don't do any LTO whatsoever
     No,
