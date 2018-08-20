@@ -34,7 +34,7 @@ impl<T: Write> TerseFormatter<T> {
             max_name_len,
             is_multithreaded,
             test_count: 0,
-            total_test_count: 0,
+            total_test_count: 0, // initialized later, when write_run_start is called
         }
     }
 
