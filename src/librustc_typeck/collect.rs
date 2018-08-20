@@ -39,6 +39,7 @@ use rustc::ty::util::Discr;
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::abi;
+use rustc_data_structures::sync::Lrc;
 
 use syntax::ast;
 use syntax::ast::MetaItemKind;
@@ -1979,7 +1980,7 @@ fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &
     }
 }
 
-fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> CodegenFnAttrs {
+fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Lrc<CodegenFnAttrs> {
     let attrs = tcx.get_attrs(id);
 
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
@@ -2096,5 +2097,5 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
         }
     }
 
-    codegen_fn_attrs
+    Lrc::new(codegen_fn_attrs)
 }
