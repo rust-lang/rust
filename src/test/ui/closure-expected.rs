@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-
-extern crate libc;
-
 fn main() {
-    let ptr: *mut () = 0 as *mut _;
-    let _: &mut Fn() = unsafe {
-        &mut *(ptr as *mut Fn())
-        //~^ ERROR expected a `std::ops::Fn<()>` closure, found `()`
-    };
+    let x = Some(1);
+    let y = x.or_else(4);
+    //~^ ERROR expected a `std::ops::FnOnce<()>` closure, found `{integer}`
 }

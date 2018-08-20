@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `S: std::ops::Fn<(isize,)>` is not satisfied
+error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `S`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:38:13
    |
 LL |     let x = call_it(&S, 22);
-   |             ^^^^^^^ the trait `std::ops::Fn<(isize,)>` is not implemented for `S`
+   |             ^^^^^^^ expected an `Fn<(isize,)>` closure, found `S`
    |
+   = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `S`
 note: required by `call_it`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:33:1
    |

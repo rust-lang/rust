@@ -27,5 +27,5 @@ fn main() {
     //~| found type `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
 
     needs_fn(1);
-    //~^ ERROR : std::ops::Fn<(isize,)>`
+    //~^ ERROR expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
 }
