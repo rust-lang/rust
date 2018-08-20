@@ -76,7 +76,7 @@ use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, keywords, InternedString};
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use hir;
@@ -2556,22 +2556,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(Infer(it))
     }
 
-    pub fn mk_ty_param(self,
-                    index: u32,
-                    name: InternedString) -> Ty<'tcx> {
-        self.mk_ty(Param(ParamTy { idx: index, name: name }))
+    pub fn mk_ty_param(self, def: &ty::GenericParamDef) -> Ty<'tcx> {
+        ParamTy::for_def(def).to_ty(self)
     }
 
-    pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
+    pub fn mk_self_type(self, trait_def_id: DefId) -> Ty<'tcx> {
+        ParamTy::for_self(trait_def_id).to_ty(self)
     }
 
-    pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
+    pub fn mk_param(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
-            GenericParamDefKind::Type {..} => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Type {..} => self.mk_ty_param(param).into(),
         }
     }
 

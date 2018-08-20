@@ -183,7 +183,7 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let item = fcx.tcx.associated_item(fcx.tcx.hir.local_def_id(item_id));
 
         let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer(_) => (vec![], fcx.tcx.mk_self_type()),
+            ty::TraitContainer(def_id) => (vec![], fcx.tcx.mk_self_type(def_id)),
             ty::ImplContainer(def_id) => (fcx.impl_implied_bounds(def_id, span),
                                             fcx.tcx.type_of(def_id))
         };
@@ -431,7 +431,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
-                fcx.tcx.mk_param_from_def(param)
+                fcx.tcx.mk_param(param)
             }
             GenericParamDefKind::Type {..} => {
                 // If the param has a default,

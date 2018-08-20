@@ -963,24 +963,25 @@ impl<'tcx> PolyFnSig<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct ParamTy {
     pub idx: u32,
+    pub def_id: DefId,
     pub name: InternedString,
 }
 
-impl<'a, 'gcx, 'tcx> ParamTy {
-    pub fn new(index: u32, name: InternedString) -> ParamTy {
-        ParamTy { idx: index, name: name }
+impl ParamTy {
+    pub fn new(idx: u32, def_id: DefId, name: ast::Name) -> ParamTy {
+        ParamTy { idx, def_id, name: name.as_interned_str() }
     }
 
-    pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name().as_interned_str())
+    pub fn for_self(trait_def_id: DefId) -> ParamTy {
+        ParamTy::new(0, trait_def_id, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
-        ParamTy::new(def.index, def.name)
+        ParamTy { idx: def.index, def_id: def.def_id, name: def.name }
     }
 
-    pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty_param(self.idx, self.name)
+    pub fn to_ty(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Ty<'tcx> {
+        tcx.mk_ty(ty::Param(self))
     }
 }
 

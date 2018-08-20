@@ -59,8 +59,10 @@ LL | |         // See `correct_region`, which explains the point of this
 LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
+help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:14), 'a))`...
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:14), 'a))`...
+LL | fn no_region<'a, T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:14), 'a))>(a: Cell<&'a ()>, b: T) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:54:26
@@ -150,8 +152,10 @@ LL | |         require(&x, &y)
 LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
+help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:20), 'a))`...
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:20), 'a))`...
+LL | fn wrong_region<'a, 'b, T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:20), 'a))>(a: Cell<&'a ()>, b: T)
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:89:26

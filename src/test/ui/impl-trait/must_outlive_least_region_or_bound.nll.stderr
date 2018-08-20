@@ -62,10 +62,11 @@ LL |     move |_| println!("{}", y)
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:34:5
    |
+LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
+   |                                 -- help: consider adding an explicit lifetime bound `T: 'static`...
+LL |     //~^ ERROR the parameter type `T` may not live long enough
 LL |     x
    |     ^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
 
 error: aborting due to 5 previous errors
 

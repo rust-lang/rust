@@ -169,7 +169,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         supertraits_only: bool) -> bool
     {
-        let trait_self_ty = self.mk_self_type();
+        let trait_self_ty = self.mk_self_type(trait_def_id);
         let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
         let predicates = if supertraits_only {
             self.super_predicates_of(trait_def_id)
@@ -203,11 +203,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn trait_has_sized_self(self, trait_def_id: DefId) -> bool {
-        self.generics_require_sized_self(trait_def_id)
+        self.generics_require_sized_self(trait_def_id, trait_def_id)
     }
 
-    fn generics_require_sized_self(self, def_id: DefId) -> bool {
-        let trait_self_ty = self.mk_self_type();
+    fn generics_require_sized_self(self, trait_def_id: DefId, def_id: DefId) -> bool {
+        let trait_self_ty = self.mk_self_type(trait_def_id);
         let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         // Any method that has a `Self : Sized` requisite is otherwise
         // exempt from the regulations.
-        if self.generics_require_sized_self(method.def_id) {
+        if self.generics_require_sized_self(trait_def_id, method.def_id) {
             return None;
         }
 
@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  -> bool
     {
         // Any method that has a `Self : Sized` requisite can't be called.
-        if self.generics_require_sized_self(method.def_id) {
+        if self.generics_require_sized_self(trait_def_id, method.def_id) {
             return false;
         }
 
@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let sig = self.fn_sig(method.def_id);
 
-        let self_ty = self.mk_self_type();
+        let self_ty = self.mk_self_type(trait_def_id);
         let self_arg_ty = sig.skip_binder().inputs()[0];
         if let ExplicitSelf::Other = ExplicitSelf::determine(self_arg_ty, |ty| ty == self_ty) {
             return Some(MethodViolationCode::NonStandardSelfType);
@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // object type, and we cannot resolve `Self as SomeOtherTrait`
         // without knowing what `Self` is.
 
-        let trait_self_ty = self.mk_self_type();
+        let trait_self_ty = self.mk_self_type(trait_def_id);
         let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
         let mut error = false;
         ty.maybe_walk(|ty| {

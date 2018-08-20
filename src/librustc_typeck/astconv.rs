@@ -597,7 +597,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
                 if is_object && has_default {
-                    let trait_self_ty = tcx.mk_self_type();
+                    let trait_self_ty = tcx.mk_self_type(def_id);
                     let default = tcx.at(span).type_of(param.def_id);
                     if default.walk().any(|ty| ty == trait_self_ty) {
                         // There is no suitable inference default for a type parameter
@@ -1412,7 +1412,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
-                tcx.mk_ty_param(index, tcx.hir.name(node_id).as_interned_str())
+                ty::ParamTy::new(index, did, tcx.hir.name(node_id)).to_ty(tcx)
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
@@ -1422,11 +1422,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
                 tcx.at(span).type_of(def_id)
             }
-            Def::SelfTy(Some(_), None) => {
+            Def::SelfTy(Some(trait_def_id), None) => {
                 // Self in trait.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
-                tcx.mk_self_type()
+                tcx.mk_self_type(trait_def_id)
             }
             Def::AssociatedTy(def_id) => {
                 self.prohibit_generics(&path.segments[..path.segments.len()-2]);
@@ -1572,7 +1572,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     GenericParamDefKind::Lifetime => {
                         tcx.types.re_static.into()
                     }
-                    _ => tcx.mk_param_from_def(param)
+                    _ => tcx.mk_param(param)
                 }
             }
         });

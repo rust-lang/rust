@@ -185,9 +185,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a Substs that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
                              -> &'tcx Substs<'tcx> {
-        Substs::for_item(tcx, def_id, |param, _| {
-            tcx.mk_param_from_def(param)
-        })
+        Substs::for_item(tcx, def_id, |param, _| tcx.mk_param(param))
     }
 
     /// Creates a Substs for generic parameter definitions,

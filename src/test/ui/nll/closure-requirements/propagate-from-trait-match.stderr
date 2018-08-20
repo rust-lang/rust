@@ -46,6 +46,9 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/propagate-from-trait-match.rs:42:36
    |
+LL |   fn supply<'a, T>(value: T)
+   |                 - help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+...
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
@@ -55,8 +58,6 @@ LL | |         // This function call requires that
 LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
    | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error: aborting due to previous error
 

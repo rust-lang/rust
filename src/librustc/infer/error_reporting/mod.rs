@@ -1112,36 +1112,30 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let type_param_span = match (self.in_progress_tables, bound_kind) {
-            (Some(ref table), GenericKind::Param(ref param)) => {
-                let table = table.borrow();
-                table.local_id_root.and_then(|did| {
-                    let generics = self.tcx.generics_of(did);
-                    let type_param = generics.type_param(param, self.tcx);
-                    let hir = &self.tcx.hir;
-                    hir.as_local_node_id(type_param.def_id).and_then(|id| {
-                        // Get the `hir::Param` to verify whether it already has any bounds.
-                        // We do this to avoid suggesting code that ends up as `T: 'a'b`,
-                        // instead we suggest `T: 'a + 'b` in that case.
-                        // Also, `Self` isn't in the HIR so we rule it out here.
-                        if let hir_map::NodeGenericParam(ref hir_param) = hir.get(id) {
-                            let has_bounds = !hir_param.bounds.is_empty();
-                            let sp = hir.span(id);
-                            // `sp` only covers `T`, change it so that it covers
-                            // `T:` when appropriate
-                            let sp = if has_bounds {
-                                sp.to(self.tcx
-                                    .sess
-                                    .source_map()
-                                    .next_point(self.tcx.sess.source_map().next_point(sp)))
-                            } else {
-                                sp
-                            };
-                            Some((sp, has_bounds))
+        let type_param_span = match bound_kind {
+            GenericKind::Param(ref param) => {
+                self.tcx.hir.as_local_node_id(param.def_id).and_then(|id| {
+                    // Get the `hir::Param` to verify whether it already has any bounds.
+                    // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                    // instead we suggest `T: 'a + 'b` in that case.
+                    // Also, `Self` isn't in the HIR so we rule it out here.
+                    if let hir_map::NodeGenericParam(ref hir_param) = self.tcx.hir.get(id) {
+                        let has_bounds = !hir_param.bounds.is_empty();
+                        let sp = self.tcx.hir.span(id);
+                        // `sp` only covers `T`, change it so that it covers
+                        // `T:` when appropriate
+                        let sp = if has_bounds {
+                            sp.to(self.tcx
+                                .sess
+                                .source_map()
+                                .next_point(self.tcx.sess.source_map().next_point(sp)))
                         } else {
-                            None
-                        }
-                    })
+                            sp
+                        };
+                        Some((sp, has_bounds))
+                    } else {
+                        None
+                    }
                 })
             }
             _ => None,

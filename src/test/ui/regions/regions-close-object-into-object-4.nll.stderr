@@ -42,18 +42,18 @@ LL | | }
 error[E0310]: the parameter type `U` may not live long enough
   --> $DIR/regions-close-object-into-object-4.rs:20:5
    |
+LL | fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+   |             - help: consider adding an explicit lifetime bound `U: 'static`...
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |     ^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `U: 'static`...
 
 error[E0310]: the parameter type `U` may not live long enough
   --> $DIR/regions-close-object-into-object-4.rs:20:9
    |
+LL | fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+   |             - help: consider adding an explicit lifetime bound `U: 'static`...
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |         ^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `U: 'static`...
 
 error[E0597]: `*v` does not live long enough
   --> $DIR/regions-close-object-into-object-4.rs:20:11

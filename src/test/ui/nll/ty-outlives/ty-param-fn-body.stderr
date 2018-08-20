@@ -7,10 +7,10 @@ LL |     outlives(cell, t)
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn-body.rs:29:5
    |
+LL | fn region_static<'a, T>(cell: Cell<&'a usize>, t: T) {
+   |                      - help: consider adding an explicit lifetime bound `T: 'a`...
 LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to previous error
 

@@ -80,8 +80,10 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
+help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
+LL | fn generic_fail<'a, T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))>(cell: Cell<&'a ()>, value: T) {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

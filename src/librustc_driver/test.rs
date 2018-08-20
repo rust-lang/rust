@@ -312,8 +312,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
+        let def_id = self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID);
         let name = format!("T{}", index);
-        self.infcx.tcx.mk_ty_param(index, Symbol::intern(&name).as_interned_str())
+        ty::ParamTy::new(index, def_id, Symbol::intern(&name)).to_ty(self.infcx.tcx)
     }
 
     pub fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
