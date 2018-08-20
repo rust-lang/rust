@@ -1517,7 +1517,14 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
 ) -> Option<Vec<&'p Pattern<'tcx>>> {
     if should_treat_range_exhaustively(tcx, ctor) {
         match (IntRange::from_ctor(tcx, ctor), IntRange::from_pat(tcx, pat)) {
-            (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| vec![]),
+            (Some(ctor), Some(pat)) => {
+                ctor.intersection(&pat).map(|_| {
+                    let (pat_lo, pat_hi) = pat.range.into_inner();
+                    let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+                    assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+                    Some(vec![])
+                })
+            }
             _ => None,
         }
     } else {
@@ -1656,21 +1663,18 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     }
                 }
                 _ => {
-                    // If the constructor is a single value, we add a row to the specialised matrix
-                    // if the pattern is equal to the constructor. If the constructor is a range of
-                    // values, we add a row to the specialised matrix if the pattern is contained
-                    // within the constructor. These two cases (for a single value pattern) can be
-                    // treated as intersection.
+                    // If the constructor is a:
+                    //      Single value: add a row if the constructor equals the pattern.
+                    //      Range: add a row if the constructor contains the pattern.
                     constructor_intersects_pattern(cx.tcx, constructor, pat)
                 }
             }
         }
 
         PatternKind::Range { .. } => {
-            // If the constructor is a single value, we add a row to the specialised matrix if the
-            // pattern contains the constructor. If the constructor is a range of values, we add a
-            // row to the specialised matrix if there exists any value that lies both within the
-            // pattern and the constructor. These two cases reduce to intersection.
+            // If the constructor is a:
+            //      Single value: add a row if the pattern contains the constructor.
+            //      Range: add a row if the constructor intersects the pattern.
             constructor_intersects_pattern(cx.tcx, constructor, pat)
         }
 
