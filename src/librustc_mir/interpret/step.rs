@@ -8,6 +8,33 @@ use rustc::mir::interpret::{EvalResult, Scalar};
 
 use super::{EvalContext, Machine};
 
+/// Classify whether an operator is "left-homogeneous", i.e. the LHS has the
+/// same type as the result.
+#[inline]
+fn binop_left_homogeneous(op: mir::BinOp) -> bool {
+    use rustc::mir::BinOp::*;
+    match op {
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
+        Offset | Shl | Shr =>
+            true,
+        Eq | Ne | Lt | Le | Gt | Ge =>
+            false,
+    }
+}
+/// Classify whether an operator is "right-homogeneous", i.e. the RHS has the
+/// same type as the LHS.
+#[inline]
+fn binop_right_homogeneous(op: mir::BinOp) -> bool {
+    use rustc::mir::BinOp::*;
+    match op {
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr |
+        Eq | Ne | Lt | Le | Gt | Ge =>
+            true,
+        Offset | Shl | Shr =>
+            false,
+    }
+}
+
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn inc_step_counter_and_detect_loops(&mut self) -> EvalResult<'tcx, ()> {
         /// The number of steps between loop detector snapshots.
@@ -147,8 +174,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let left = self.eval_operand_and_read_valty(left)?;
-                let right = self.eval_operand_and_read_valty(right)?;
+                let layout = if binop_left_homogeneous(bin_op) { Some(dest.layout) } else { None };
+                let left = self.eval_operand_and_read_value(left, layout)?;
+                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let right = self.eval_operand_and_read_value(right, layout)?;
                 self.binop_ignore_overflow(
                     bin_op,
                     left,
@@ -158,8 +187,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
-                let left = self.eval_operand_and_read_valty(left)?;
-                let right = self.eval_operand_and_read_valty(right)?;
+                // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
+                let left = self.eval_operand_and_read_value(left, None)?;
+                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let right = self.eval_operand_and_read_value(right, layout)?;
                 self.binop_with_overflow(
                     bin_op,
                     left,
@@ -169,8 +200,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                let val = self.eval_operand_and_read_scalar(operand)?;
-                let val = self.unary_op(un_op, val.not_undef()?, dest.layout)?;
+                // The operand always has the same type as the result.
+                let val = self.eval_operand_and_read_value(operand, Some(dest.layout))?;
+                let val = self.unary_op(un_op, val.to_scalar()?, dest.layout)?;
                 self.write_scalar(val, dest)?;
             }
 

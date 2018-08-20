@@ -497,18 +497,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     /// We cannot do self.read_value(self.eval_operand) due to eval_operand taking &mut self,
     /// so this helps avoid unnecessary let.
-    pub fn eval_operand_and_read_valty(
+    #[inline]
+    pub fn eval_operand_and_read_value(
         &mut self,
         op: &mir::Operand<'tcx>,
+        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, ValTy<'tcx>> {
-        let op = self.eval_operand(op, None)?;
+        let op = self.eval_operand(op, layout)?;
         self.read_value(op)
-    }
-    pub fn eval_operand_and_read_scalar(
-        &mut self,
-        op: &mir::Operand<'tcx>,
-    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        Ok(self.eval_operand_and_read_valty(op)?.to_scalar_or_undef())
     }
 
     /// reads a tag and produces the corresponding variant index

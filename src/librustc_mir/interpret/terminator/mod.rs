@@ -144,18 +144,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_and_read_scalar(cond)?.not_undef()?.to_bool()?;
+                let cond_val = self.eval_operand_and_read_value(cond, None)?.to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_and_read_scalar(len)
-                                .expect("can't eval len")
+                            let len = self.eval_operand_and_read_value(len, None)
+                                .expect("can't eval len").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.eval_operand_and_read_scalar(index)
-                                .expect("can't eval index")
+                            let index = self.eval_operand_and_read_value(index, None)
+                                .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })
                         }
