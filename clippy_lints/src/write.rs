@@ -3,6 +3,7 @@ use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::tokenstream::{ThinTokenStream, TokenStream};
 use syntax::parse::{token, parser};
+use std::borrow::Cow;
 use crate::utils::{span_lint, span_lint_and_sugg, snippet};
 
 /// **What it does:** This lint warns when you use `println!("")` to
@@ -212,7 +213,7 @@ impl EarlyLintPass for Pass {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
-                    let suggestion = check_tts.1.map_or("v", |expr| snippet(cx, expr.span, "v").into_owned().as_str());
+                    let suggestion = check_tts.1.map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
 
                     span_lint_and_sugg(
                         cx,
@@ -220,7 +221,7 @@ impl EarlyLintPass for Pass {
                         mac.span,
                         format!("using writeln!({}, \"\")", suggestion).as_str(),
                         "replace it with",
-                        format!("writeln!({})", "v"),
+                        format!("writeln!({})", suggestion),
                     );
                 }
             }
@@ -239,20 +240,19 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     );
     let mut expr: Option<Expr> = None;
     if is_write {
-        // skip the initial write target
-        expr = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
-            Some(p) => Some(p.and_then(|expr| expr)),
-            None => return (None, None),
+        expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+            Ok(p) => Some(p.into_inner()),
+            Err(_) => return (None, None),
         };
         // might be `writeln!(foo)`
-        if let None = parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok() {
+        if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
             return (None, expr);
         }
     }
 
-    let fmtstr = match parser.parse_str().map_err(|mut err| err.cancel()).ok() {
-        Some(token) => token.0.to_string(),
-        None => return (None, expr),
+    let fmtstr = match parser.parse_str().map_err(|mut err| err.cancel()) {
+        Ok(token) => token.0.to_string(),
+        Err(_) => return (None, expr),
     };
     use fmt_macros::*;
     let tmp = fmtstr.clone();
@@ -281,9 +281,9 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             assert!(parser.eat(&token::Eof));
             return (Some(fmtstr), expr);
         }
-        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
-            Some(expr) => expr,
-            None => return (Some(fmtstr), None),
+        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+            Ok(expr) => expr,
+            Err(_) => return (Some(fmtstr), None),
         };
         const SIMPLE: FormatSpec<'_> = FormatSpec {
             fill: None,
