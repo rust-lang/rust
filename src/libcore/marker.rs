@@ -511,7 +511,7 @@ macro_rules! impls{
 ///     let ptr = vec.as_ptr();
 ///     Slice {
 ///         start: ptr,
-///         end: unsafe { ptr.offset(vec.len() as isize) },
+///         end: unsafe { ptr.add(vec.len()) },
 ///         phantom: PhantomData,
 ///     }
 /// }

@@ -245,7 +245,7 @@ mod tests {
                 .unwrap_or_else(|_| handle_alloc_error(layout));
 
             let mut i = ptr.cast::<u8>().as_ptr();
-            let end = i.offset(layout.size() as isize);
+            let end = i.add(layout.size());
             while i < end {
                 assert_eq!(*i, 0);
                 i = i.offset(1);

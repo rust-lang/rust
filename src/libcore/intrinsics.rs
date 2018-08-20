@@ -918,7 +918,7 @@ extern "rust-intrinsic" {
     ///         // treat it as "dead", and therefore, you only have two real
     ///         // mutable slices.
     ///         (slice::from_raw_parts_mut(ptr, mid),
-    ///          slice::from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+    ///          slice::from_raw_parts_mut(ptr.add(mid), len - mid))
     ///     }
     /// }
     /// ```

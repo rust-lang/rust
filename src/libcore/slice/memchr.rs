@@ -72,8 +72,8 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     if len >= 2 * usize_bytes {
         while offset <= len - 2 * usize_bytes {
             unsafe {
-                let u = *(ptr.offset(offset as isize) as *const usize);
-                let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
+                let u = *(ptr.add(offset) as *const usize);
+                let v = *(ptr.add(offset + usize_bytes) as *const usize);
 
                 // break if there is a matching byte
                 let zu = contains_zero_byte(u ^ repeated_x);

@@ -692,7 +692,7 @@ impl<T> Vec<T> {
     pub fn truncate(&mut self, len: usize) {
         let current_len = self.len;
         unsafe {
-            let mut ptr = self.as_mut_ptr().offset(self.len as isize);
+            let mut ptr = self.as_mut_ptr().add(self.len);
             // Set the final length at the end, keeping in mind that
             // dropping an element might panic. Works around a missed
             // optimization, as seen in the following issue:
@@ -856,7 +856,7 @@ impl<T> Vec<T> {
             // infallible
             // The spot to put the new value
             {
-                let p = self.as_mut_ptr().offset(index as isize);
+                let p = self.as_mut_ptr().add(index);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy(p, p.offset(1), len - index);
@@ -891,7 +891,7 @@ impl<T> Vec<T> {
             let ret;
             {
                 // the place we are taking from.
-                let ptr = self.as_mut_ptr().offset(index as isize);
+                let ptr = self.as_mut_ptr().add(index);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
                 ret = ptr::read(ptr);
@@ -1034,8 +1034,8 @@ impl<T> Vec<T> {
             let mut w: usize = 1;
 
             while r < ln {
-                let p_r = p.offset(r as isize);
-                let p_wm1 = p.offset((w - 1) as isize);
+                let p_r = p.add(r);
+                let p_wm1 = p.add(w - 1);
                 if !same_bucket(&mut *p_r, &mut *p_wm1) {
                     if r != w {
                         let p_w = p_wm1.offset(1);
@@ -1072,7 +1072,7 @@ impl<T> Vec<T> {
             self.reserve(1);
         }
         unsafe {
-            let end = self.as_mut_ptr().offset(self.len as isize);
+            let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
             self.len += 1;
         }
@@ -1196,7 +1196,7 @@ impl<T> Vec<T> {
             self.set_len(start);
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().offset(start as isize),
+            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(start),
                                                         end - start);
             Drain {
                 tail_start: end,
@@ -1290,7 +1290,7 @@ impl<T> Vec<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping(self.as_ptr().offset(at as isize),
+            ptr::copy_nonoverlapping(self.as_ptr().add(at),
                                      other.as_mut_ptr(),
                                      other.len());
         }
@@ -1473,7 +1473,7 @@ impl<T> Vec<T> {
         self.reserve(n);
 
         unsafe {
-            let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+            let mut ptr = self.as_mut_ptr().add(self.len());
             // Use SetLenOnDrop to work around bug where compiler
             // may not realize the store through `ptr` through self.set_len()
             // don't alias.
@@ -1799,7 +1799,7 @@ impl<T> IntoIterator for Vec<T> {
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, self.len() as isize) as *const T
             } else {
-                begin.offset(self.len() as isize) as *const T
+                begin.add(self.len()) as *const T
             };
             let cap = self.buf.cap();
             mem::forget(self);
@@ -1898,7 +1898,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         if let Some(additional) = high {
             self.reserve(additional);
             unsafe {
-                let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+                let mut ptr = self.as_mut_ptr().add(self.len());
                 let mut local_len = SetLenOnDrop::new(&mut self.len);
                 for element in iterator {
                     ptr::write(ptr, element);
@@ -2561,8 +2561,8 @@ impl<'a, T> Drop for Drain<'a, T> {
                 let start = source_vec.len();
                 let tail = self.tail_start;
                 if tail != start {
-                    let src = source_vec.as_ptr().offset(tail as isize);
-                    let dst = source_vec.as_mut_ptr().offset(start as isize);
+                    let src = source_vec.as_ptr().add(tail);
+                    let dst = source_vec.as_mut_ptr().add(start);
                     ptr::copy(src, dst, self.tail_len);
                 }
                 source_vec.set_len(start + self.tail_len);
@@ -2672,7 +2672,7 @@ impl<'a, T> Drain<'a, T> {
         let range_start = vec.len;
         let range_end = self.tail_start;
         let range_slice = slice::from_raw_parts_mut(
-            vec.as_mut_ptr().offset(range_start as isize),
+            vec.as_mut_ptr().add(range_start),
             range_end - range_start);
 
         for place in range_slice {
@@ -2693,8 +2693,8 @@ impl<'a, T> Drain<'a, T> {
         vec.buf.reserve(used_capacity, extra_capacity);
 
         let new_tail_start = self.tail_start + extra_capacity;
-        let src = vec.as_ptr().offset(self.tail_start as isize);
-        let dst = vec.as_mut_ptr().offset(new_tail_start as isize);
+        let src = vec.as_ptr().add(self.tail_start);
+        let dst = vec.as_mut_ptr().add(new_tail_start);
         ptr::copy(src, dst, self.tail_len);
         self.tail_start = new_tail_start;
     }

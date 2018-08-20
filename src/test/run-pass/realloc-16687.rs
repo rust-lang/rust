@@ -37,8 +37,8 @@ unsafe fn test_triangle() -> bool {
         for i in 0..COUNT / 2 {
             let (p0, p1, size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             for j in 0..size {
-                assert_eq!(*p0.offset(j as isize), i as u8);
-                assert_eq!(*p1.offset(j as isize), i as u8);
+                assert_eq!(*p0.add(j), i as u8);
+                assert_eq!(*p1.add(j), i as u8);
             }
         }
     }
@@ -100,8 +100,8 @@ unsafe fn test_triangle() -> bool {
     for i in 0..COUNT / 2 {
         let (p0, p1, size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
         for j in 0..size {
-            *p0.offset(j as isize) = i as u8;
-            *p1.offset(j as isize) = i as u8;
+            *p0.add(j) = i as u8;
+            *p1.add(j) = i as u8;
         }
     }
 
