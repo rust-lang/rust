@@ -2039,6 +2039,14 @@ impl<'a> Parser<'a> {
         Ok(if style == PathStyle::Type && check_args_start(self, true)
             || style != PathStyle::Mod && self.check(&token::ModSep)
                                        && self.look_ahead(1, |t| is_args_start(t, true))
+                                       && {
+                if style == PathStyle::Expr {
+                    // Simulate every occurrence of `::<>` actually being `<>`.
+                    self.eat(&token::ModSep);
+                    parser_snapshot_before_generics = Some(self.clone());
+                }
+                true
+            }
             || style == PathStyle::Expr && check_args_start(self, false) && {
                 // Check for generic arguments in an expression without a disambiguating `::`.
                 // We have to save a snapshot, because it could end up being an expression
