@@ -1132,8 +1132,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             traits::transitive_bounds(tcx, &bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
-        let param_node_id = tcx.hir.as_local_node_id(ty_param_def_id).unwrap();
-        let param_name = tcx.hir.ty_param_name(param_node_id);
+        let param_name = tcx.ty_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
                                       assoc_name,
@@ -1412,7 +1411,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
-                ty::ParamTy::new(index, did, tcx.hir.name(node_id)).to_ty(tcx)
+                tcx.mk_ty_param(generics.param_at(index, tcx))
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).

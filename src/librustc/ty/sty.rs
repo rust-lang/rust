@@ -26,7 +26,7 @@ use std::iter;
 use std::cmp::Ordering;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{keywords, InternedString};
+use syntax::symbol::InternedString;
 
 use serialize;
 
@@ -965,24 +965,6 @@ pub struct ParamTy {
     pub idx: u32,
     pub def_id: DefId,
     pub name: InternedString,
-}
-
-impl ParamTy {
-    pub fn new(idx: u32, def_id: DefId, name: ast::Name) -> ParamTy {
-        ParamTy { idx, def_id, name: name.as_interned_str() }
-    }
-
-    pub fn for_self(trait_def_id: DefId) -> ParamTy {
-        ParamTy::new(0, trait_def_id, keywords::SelfType.name())
-    }
-
-    pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
-        ParamTy { idx: def.index, def_id: def.def_id, name: def.name }
-    }
-
-    pub fn to_ty(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty(ty::Param(self))
-    }
 }
 
 /// A [De Bruijn index][dbi] is a standard means of representing

@@ -602,27 +602,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
-        match self.get(id) {
-            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => id,
-            NodeGenericParam(_) => self.get_parent_node(id),
-            _ => {
-                bug!("ty_param_owner: {} not a type parameter",
-                    self.node_to_string(id))
-            }
-        }
-    }
-
-    pub fn ty_param_name(&self, id: NodeId) -> Name {
-        match self.get(id) {
-            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => {
-                keywords::SelfType.name()
-            }
-            NodeGenericParam(param) => param.name.ident().name,
-            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
-        }
-    }
-
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 

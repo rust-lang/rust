@@ -875,8 +875,8 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
 impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
-            GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
+            GenericKind::Param(p) => tcx.mk_ty(ty::Param(p)),
+            GenericKind::Projection(p) => tcx.mk_projection(p.item_def_id, p.substs),
         }
     }
 }

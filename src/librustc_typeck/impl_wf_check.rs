@@ -26,8 +26,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use syntax_pos::Span;
-
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self-type (or are constrained by a
 /// where-clause). These rules are needed to ensure that, given a
@@ -114,28 +112,28 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }).collect();
 
     for param in &impl_generics.params {
-        match param.kind {
-            // Disallow ANY unconstrained type parameters.
-            ty::GenericParamDefKind::Type {..} => {
-                let param_ty = ty::ParamTy::for_def(param);
-                if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx,
-                                            tcx.def_span(param.def_id),
-                                            "type",
-                                            &param_ty.to_string());
-                }
-            }
-            ty::GenericParamDefKind::Lifetime => {
-                let param_lt = ctp::Parameter::from(param.to_early_bound_region_data());
-                if lifetimes_in_associated_types.contains(&param_lt) && // (*)
-                    !input_parameters.contains(&param_lt) {
-                    report_unused_parameter(tcx,
-                                            tcx.def_span(param.def_id),
-                                            "lifetime",
-                                            &param.name.to_string());
-                }
-            }
+        let ctp_param = ctp::Parameter(param.index);
+        if input_parameters.contains(&ctp_param) {
+            continue;
         }
+        let kind = match param.kind {
+            // Disallow ANY unconstrained type parameters.
+            ty::GenericParamDefKind::Type {..} => "type",
+            ty::GenericParamDefKind::Lifetime => {
+                if !lifetimes_in_associated_types.contains(&ctp_param) { // (*)
+                    continue;
+                }
+                "lifetime"
+            }
+        };
+        let span = tcx.def_span(param.def_id);
+        struct_span_err!(
+            tcx.sess, span, E0207,
+            "the {} parameter `{}` is not constrained by the \
+            impl trait, self type, or predicates",
+            kind, param.name)
+            .span_label(span, format!("unconstrained {} parameter", kind))
+            .emit();
     }
 
     // (*) This is a horrible concession to reality. I think it'd be
@@ -156,20 +154,6 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // permit those, so long as the lifetimes aren't used in
     // associated types. I believe this is sound, because lifetimes
     // used elsewhere are not projected back out.
-}
-
-fn report_unused_parameter(tcx: TyCtxt,
-                           span: Span,
-                           kind: &str,
-                           name: &str)
-{
-    struct_span_err!(
-        tcx.sess, span, E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind, name)
-        .span_label(span, format!("unconstrained {} parameter", kind))
-        .emit();
 }
 
 /// Enforce that we do not have two items in an impl with the same name.

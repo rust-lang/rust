@@ -40,7 +40,7 @@ use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TyKind, List};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
-use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
+use ty::{PolyFnSig, InferTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TyKind::*;
@@ -76,7 +76,7 @@ use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
 use syntax::feature_gate;
-use syntax::symbol::Symbol;
+use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
 
 use hir;
@@ -2557,11 +2557,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_ty_param(self, def: &ty::GenericParamDef) -> Ty<'tcx> {
-        ParamTy::for_def(def).to_ty(self)
+        self.mk_ty(ty::Param(ty::ParamTy {
+            idx: def.index,
+            def_id: def.def_id,
+            name: def.name,
+        }))
     }
 
     pub fn mk_self_type(self, trait_def_id: DefId) -> Ty<'tcx> {
-        ParamTy::for_self(trait_def_id).to_ty(self)
+        self.mk_ty(ty::Param(ty::ParamTy {
+            idx: 0,
+            def_id: trait_def_id,
+            name: keywords::SelfType.name().as_interned_str(),
+        }))
     }
 
     pub fn mk_param(self, param: &ty::GenericParamDef) -> Kind<'tcx> {

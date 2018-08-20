@@ -2637,6 +2637,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn ty_param_name(&self, id: DefId) -> InternedString {
+        let def_key = self.def_key(id);
+        match def_key.disambiguated_data.data {
+            DefPathData::Trait(_) => {
+                keywords::SelfType.name().as_interned_str()
+            }
+            DefPathData::TypeParam(name) => name,
+            _ => bug!("ty_param_name: {:?} not a type parameter", id),
+        }
+    }
+
+    pub fn ty_param_owner(&self, id: DefId) -> DefId {
+        let def_key = self.def_key(id);
+        match def_key.disambiguated_data.data {
+            DefPathData::Trait(_) => id,
+            DefPathData::TypeParam(_) => DefId {
+                krate: id.krate,
+                index: def_key.parent.unwrap()
+            },
+            _ => bug!("ty_param_owner: {:?} not a type parameter", id),
+        }
+    }
+
     /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
                         -> &'gcx Mir<'gcx>

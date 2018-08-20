@@ -1825,9 +1825,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                  -> ty::GenericPredicates<'tcx>
     {
         let tcx = self.tcx;
-        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let item_id = tcx.hir.ty_param_owner(node_id);
-        let item_def_id = tcx.hir.local_def_id(item_id);
+        let item_def_id = tcx.ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
         ty::GenericPredicates {

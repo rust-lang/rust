@@ -77,7 +77,7 @@ pub fn insert_outlives_predicate<'tcx>(
                         // Vec<U>`.  Decomposing `Vec<U>` into
                         // components would yield `U`, and we add the
                         // where clause that `U: 'a`.
-                        let ty: Ty<'tcx> = param_ty.to_ty(tcx);
+                        let ty = tcx.mk_ty(ty::Param(param_ty));
                         required_predicates
                             .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
                     }

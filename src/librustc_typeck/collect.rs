@@ -244,12 +244,10 @@ fn type_param_predicates<'a, 'tcx>(
     // written inline like `<T:Foo>` or in a where clause like
     // `where T:Foo`.
 
-    let param_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let param_owner = tcx.hir.ty_param_owner(param_id);
-    let param_owner_def_id = tcx.hir.local_def_id(param_owner);
+    let param_owner_def_id = tcx.ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.param_def_id_to_index[&def_id];
-    let ty = ty::ParamTy::new(index, def_id, tcx.hir.ty_param_name(param_id)).to_ty(tcx);
+    let ty = tcx.mk_ty_param(generics.param_at(index, tcx));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner_def_id {
@@ -290,7 +288,7 @@ fn type_param_predicates<'a, 'tcx>(
                 | ItemKind::Union(_, ref generics) => generics,
                 ItemKind::Trait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
-                    if param_id == item_node_id {
+                    if def_id == item_def_id {
                         result
                             .predicates
                             .push(ty::TraitRef::identity(tcx, item_def_id).to_predicate());
@@ -310,6 +308,7 @@ fn type_param_predicates<'a, 'tcx>(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
+    let param_id = tcx.hir.as_local_node_id(def_id).unwrap();
     result
         .predicates
         .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty));
@@ -1773,9 +1772,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     for param in &ast_generics.params {
         match param.kind {
             GenericParamKind::Type { .. } => {
-                let def_id = tcx.hir.local_def_id(param.id);
-                let name = param.name.ident().name;
-                let param_ty = ty::ParamTy::new(index, def_id, name).to_ty(tcx);
+                let param_ty = tcx.mk_ty_param(generics.param_at(index, tcx));
                 index += 1;
 
                 let sized = SizedByDefault::Yes;
