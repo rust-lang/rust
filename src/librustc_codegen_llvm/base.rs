@@ -891,7 +891,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              &format!("codegen {}", cgu.name()))
         });
         let start_time = Instant::now();
-        all_stats.extend(tcx.compile_codegen_unit(*cgu.name()));
+        all_stats.extend(compile_codegen_unit(tcx, *cgu.name()));
         total_codegen_time += start_time.elapsed();
         ongoing_codegen.check_for_errors(tcx.sess);
     }
@@ -1157,11 +1157,15 @@ fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
 }
 
 fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  cgu: InternedString) -> Stats {
-    let cgu = tcx.codegen_unit(cgu);
-
+                                  cgu_name: InternedString)
+                                  -> Stats {
     let start_time = Instant::now();
-    let (stats, module) = module_codegen(tcx, cgu);
+
+    let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
+    let ((stats, module), _) = tcx.dep_graph.with_task(dep_node,
+                                                       tcx,
+                                                       cgu_name,
+                                                       module_codegen);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -1170,23 +1174,29 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                time_to_codegen.subsec_nanos() as u64;
 
     write::submit_codegened_module_to_llvm(tcx,
-                                            module,
-                                            cost);
+                                           module,
+                                           cost);
+
+    if tcx.dep_graph.is_fully_enabled() {
+        let dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
+        tcx.dep_graph.mark_loaded_from_cache(dep_node_index, false);
+    }
+
     return stats;
 
     fn module_codegen<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        cgu: Arc<CodegenUnit<'tcx>>)
+        cgu_name: InternedString)
         -> (Stats, ModuleCodegen)
     {
-        let cgu_name = cgu.name().to_string();
+        let cgu = tcx.codegen_unit(cgu_name);
 
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx.sess, &cgu_name);
+        let llvm_module = ModuleLlvm::new(tcx.sess, &cgu_name.as_str());
         let stats = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
-                                 .items_in_deterministic_order(cx.tcx);
+                               .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine(&cx, linkage, visibility);
             }
@@ -1235,7 +1245,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         (stats, ModuleCodegen {
-            name: cgu_name,
+            name: cgu_name.to_string(),
             source: ModuleSource::Codegened(llvm_module),
             kind: ModuleKind::Regular,
         })
@@ -1255,7 +1265,6 @@ pub fn provide(providers: &mut Providers) {
             .cloned()
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
     };
-    providers.compile_codegen_unit = compile_codegen_unit;
 
     provide_extern(providers);
 }

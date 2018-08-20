@@ -722,12 +722,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::codegen_unit<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::compile_codegen_unit<'tcx> {
-    fn describe(_tcx: TyCtxt, _: InternedString) -> String {
-        "compile_codegen_unit".to_string()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         "output_filenames".to_string()

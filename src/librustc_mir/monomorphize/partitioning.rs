@@ -103,7 +103,7 @@
 //! inlining, even when they are not marked #[inline].
 
 use monomorphize::collector::InliningMap;
-use rustc::dep_graph::WorkProductId;
+use rustc::dep_graph::{WorkProductId, DepNode, DepConstructor};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
@@ -193,6 +193,10 @@ pub trait CodegenUnitExt<'tcx> {
         let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
+    }
+
+    fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
+        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
     }
 }
 
