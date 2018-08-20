@@ -168,7 +168,7 @@ pub trait Error: Debug + Display {
     ///         "I'm the superhero of errors"
     ///     }
     ///
-    ///     fn source(&self) -> Option<&dyn (Error + 'static)> {
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
     ///         Some(&self.side)
     ///     }
     /// }
