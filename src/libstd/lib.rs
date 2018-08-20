@@ -270,7 +270,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![feature(macro_vis_matcher)]
+#![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![cfg_attr(not(stage0), feature(nll))]
