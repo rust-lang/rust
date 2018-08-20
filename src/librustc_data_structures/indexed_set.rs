@@ -19,6 +19,20 @@ use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
 use rustc_serialize;
 
+/// This is implemented by all the index sets so that IdxSet::union() can be
+/// passed any type of index set.
+pub trait UnionIntoIdxSet<T: Idx> {
+    // Performs `other = other | self`.
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool;
+}
+
+/// This is implemented by all the index sets so that IdxSet::subtract() can be
+/// passed any type of index set.
+pub trait SubtractFromIdxSet<T: Idx> {
+    // Performs `other = other - self`.
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool;
+}
+
 /// Represents a set of some element type E, where each E is identified by some
 /// unique index type `T`.
 ///
@@ -164,48 +178,14 @@ impl<T: Idx> IdxSet<T> {
 
     /// Set `self = self | other` and return true if `self` changed
     /// (i.e., if new bits were added).
-    pub fn union(&mut self, other: &IdxSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), &Union)
-    }
-
-    /// Like `union()`, but takes a `SparseIdxSet` argument.
-    fn union_sparse(&mut self, other: &SparseIdxSet<T>) -> bool {
-        let mut changed = false;
-        for elem in other.iter() {
-            changed |= self.add(&elem);
-        }
-        changed
-    }
-
-    /// Like `union()`, but takes a `HybridIdxSet` argument.
-    pub fn union_hybrid(&mut self, other: &HybridIdxSet<T>) -> bool {
-        match other {
-            HybridIdxSet::Sparse(sparse, _) => self.union_sparse(sparse),
-            HybridIdxSet::Dense(dense, _) => self.union(dense),
-        }
+    pub fn union(&mut self, other: &impl UnionIntoIdxSet<T>) -> bool {
+        other.union_into(self)
     }
 
     /// Set `self = self - other` and return true if `self` changed.
     /// (i.e., if any bits were removed).
-    pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), &Subtract)
-    }
-
-    /// Like `subtract()`, but takes a `SparseIdxSet` argument.
-    fn subtract_sparse(&mut self, other: &SparseIdxSet<T>) -> bool {
-        let mut changed = false;
-        for elem in other.iter() {
-            changed |= self.remove(&elem);
-        }
-        changed
-    }
-
-    /// Like `subtract()`, but takes a `HybridIdxSet` argument.
-    pub fn subtract_hybrid(&mut self, other: &HybridIdxSet<T>) -> bool {
-        match other {
-            HybridIdxSet::Sparse(sparse, _) => self.subtract_sparse(sparse),
-            HybridIdxSet::Dense(dense, _) => self.subtract(dense),
-        }
+    pub fn subtract(&mut self, other: &impl SubtractFromIdxSet<T>) -> bool {
+        other.subtract_from(self)
     }
 
     /// Set `self = self & other` and return true if `self` changed.
@@ -220,6 +200,18 @@ impl<T: Idx> IdxSet<T> {
             iter: self.words().iter().enumerate(),
             _pd: PhantomData,
         }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for IdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        bitwise(other.words_mut(), self.words(), &Union)
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for IdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        bitwise(other.words_mut(), self.words(), &Subtract)
     }
 }
 
@@ -305,6 +297,26 @@ impl<T: Idx> SparseIdxSet<T> {
         SparseIter {
             iter: self.0.iter(),
         }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for SparseIdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        let mut changed = false;
+        for elem in self.iter() {
+            changed |= other.add(&elem);
+        }
+        changed
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for SparseIdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        let mut changed = false;
+        for elem in self.iter() {
+            changed |= other.remove(&elem);
+        }
+        changed
     }
 }
 
@@ -407,6 +419,24 @@ impl<T: Idx> HybridIdxSet<T> {
         match self {
             HybridIdxSet::Sparse(sparse, _) => HybridIter::Sparse(sparse.iter()),
             HybridIdxSet::Dense(dense, _) => HybridIter::Dense(dense.iter()),
+        }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for HybridIdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        match self {
+            HybridIdxSet::Sparse(sparse, _) => sparse.union_into(other),
+            HybridIdxSet::Dense(dense, _) => dense.union_into(other),
+        }
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for HybridIdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        match self {
+            HybridIdxSet::Sparse(sparse, _) => sparse.subtract_from(other),
+            HybridIdxSet::Dense(dense, _) => dense.subtract_from(other),
         }
     }
 }
