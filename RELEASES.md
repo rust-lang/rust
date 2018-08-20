@@ -1,3 +1,78 @@
+Version 1.29.0 (2018-09-13)
+==========================
+
+Compiler
+--------
+- [Bumped minimum LLVM version to 5.0.][51899]
+- [Added `powerpc64le-unknown-linux-musl` target.][51619]
+- [Added `aarch64-unknown-hermit` and `x86_64-unknown-hermit` targets.][52861]
+
+Libraries
+---------
+- [`Once::call_once` now no longer requires `Once` to be `'static`.][52239]
+- [`BuildHasherDefault` now implements `PartialEq` and `Eq`.][52402]
+- [`Box<CStr>`, `Box<OsStr>`, and `Box<Path>` now implement `Clone`.][51912]
+- [Implemented `PartialEq<&str>` for `OsString` and `PartialEq<OsString>`
+  for `&str`.][51178]
+- [`Cell<T>` now allows `T` to be unsized.][50494]
+- [`SocketAddr` is now stable on Redox.][52656]
+
+Stabilized APIs
+---------------
+- [`Arc::downcast`]
+- [`Iterator::flatten`]
+- [`Rc::downcast`]
+
+Cargo
+-----
+- [Cargo can silently fix some bad lockfiles ][cargo/5831] You can use
+  `--locked` to disable this behaviour.
+- [`cargo-install` will now allow you to cross compile an install
+  using `--target`][cargo/5614]
+- [Added the `cargo-fix` subcommand to automatically move project code from
+  2015 edition to 2018.][cargo/5723]
+
+Misc
+----
+- [`rustdoc` now has the `--cap-lints` option which demotes all lints above
+  the specified level to that level.][52354] For example `--cap-lints warn`
+  will demote `deny` and `forbid` lints to `warn`.
+- [`rustc` and `rustdoc` will now have the exit code of `1` if compilation
+  fails, and `101` if there is a panic.][52197]
+
+Compatibility Notes
+-------------------
+- [`str::{slice_unchecked, slice_unchecked_mut}` are now deprecated.][51807]
+  Use `str::get_unchecked(begin..end)` instead.
+- [`std::env::home_dir` is now deprecated for its unintuitive behaviour.][51656]
+  Consider using the `home_dir` function from
+  https://crates.io/crates/dirs instead.
+- [`rustc` will no longer silently ignore invalid data in target spec.][52330]
+
+[52861]: https://github.com/rust-lang/rust/pull/52861/
+[52656]: https://github.com/rust-lang/rust/pull/52656/
+[52239]: https://github.com/rust-lang/rust/pull/52239/
+[52330]: https://github.com/rust-lang/rust/pull/52330/
+[52354]: https://github.com/rust-lang/rust/pull/52354/
+[52402]: https://github.com/rust-lang/rust/pull/52402/
+[52103]: https://github.com/rust-lang/rust/pull/52103/
+[52197]: https://github.com/rust-lang/rust/pull/52197/
+[51807]: https://github.com/rust-lang/rust/pull/51807/
+[51899]: https://github.com/rust-lang/rust/pull/51899/
+[51912]: https://github.com/rust-lang/rust/pull/51912/
+[51511]: https://github.com/rust-lang/rust/pull/51511/
+[51619]: https://github.com/rust-lang/rust/pull/51619/
+[51656]: https://github.com/rust-lang/rust/pull/51656/
+[51178]: https://github.com/rust-lang/rust/pull/51178/
+[50494]: https://github.com/rust-lang/rust/pull/50494/
+[cargo/5614]: https://github.com/rust-lang/cargo/pull/5614/
+[cargo/5723]: https://github.com/rust-lang/cargo/pull/5723/
+[cargo/5831]: https://github.com/rust-lang/cargo/pull/5831/
+[`Arc::downcast`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.downcast
+[`Iterator::flatten`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.flatten
+[`Rc::downcast`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downcast
+
+
 Version 1.28.0 (2018-08-02)
 ===========================
 
