@@ -3,7 +3,7 @@ use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::tokenstream::{ThinTokenStream, TokenStream};
 use syntax::parse::{token, parser};
-use crate::utils::{span_lint, span_lint_and_sugg};
+use crate::utils::{span_lint, span_lint_and_sugg, snippet};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -212,13 +212,15 @@ impl EarlyLintPass for Pass {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
+                    let suggestion = check_tts.1.map_or("v", |expr| snippet(cx, expr.span, "v").into_owned().as_str());
+
                     span_lint_and_sugg(
                         cx,
                         WRITELN_EMPTY_STRING,
                         mac.span,
-                        format!("using `writeln!({}, \"\")`", check_tts.1).as_str(),
+                        format!("using writeln!({}, \"\")", suggestion).as_str(),
                         "replace it with",
-                        format!("using `writeln!({})`", check_tts.1),
+                        format!("writeln!({})", "v"),
                     );
                 }
             }
@@ -235,15 +237,23 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
         false,
         false,
     );
-    // skip the initial write target
-    let expr: Option<Expr> = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
-        Some(p) => Some(p.into_vec().0),
-        None => None,
-    };
-    // might be `writeln!(foo)`
-    parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok()?;
+    let mut expr: Option<Expr> = None;
+    if is_write {
+        // skip the initial write target
+        expr = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
+            Some(p) => Some(p.and_then(|expr| expr)),
+            None => return (None, None),
+        };
+        // might be `writeln!(foo)`
+        if let None = parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok() {
+            return (None, expr);
+        }
+    }
 
-    let fmtstr = parser.parse_str().map_err(|mut err| err.cancel()).ok()?.0.to_string();
+    let fmtstr = match parser.parse_str().map_err(|mut err| err.cancel()).ok() {
+        Some(token) => token.0.to_string(),
+        None => return (None, expr),
+    };
     use fmt_macros::*;
     let tmp = fmtstr.clone();
     let mut args = vec![];
@@ -271,7 +281,10 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             assert!(parser.eat(&token::Eof));
             return (Some(fmtstr), expr);
         }
-        let expr = parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
+        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()).ok() {
+            Some(expr) => expr,
+            None => return (Some(fmtstr), None),
+        };
         const SIMPLE: FormatSpec<'_> = FormatSpec {
             fill: None,
             align: AlignUnknown,
@@ -280,7 +293,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             width: CountImplied,
             ty: "",
         };
-        match &expr.node {
+        match &token_expr.node {
             ExprKind::Lit(_) => {
                 let mut all_simple = true;
                 let mut seen = false;
@@ -296,7 +309,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                     }
                 }
                 if all_simple && seen {
-                    span_lint(cx, lint, expr.span, "literal with an empty format string");
+                    span_lint(cx, lint, token_expr.span, "literal with an empty format string");
                 }
                 idx += 1;
             },
