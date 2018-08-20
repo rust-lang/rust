@@ -23,7 +23,7 @@ extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
-use rustc::hir::{self, GenericParamKind, PatKind};
+use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -1270,14 +1270,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        generics.params.iter().for_each(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => {}
-            GenericParamKind::Type { .. } => {
-                for bound in &param.bounds {
-                    self.check_generic_bound(bound);
-                }
+        for param in &generics.params {
+            for bound in &param.bounds {
+                self.check_generic_bound(bound);
             }
-        });
+        }
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(ref bound_pred) => {

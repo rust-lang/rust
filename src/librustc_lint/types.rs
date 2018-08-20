@@ -819,14 +819,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
             let item_def_id = cx.tcx.hir.local_def_id(it.id);
-            let generics = cx.tcx.generics_of(item_def_id);
-            for param in &generics.params {
-                match param.kind {
-                    ty::GenericParamDefKind::Lifetime { .. } => {},
-                    ty::GenericParamDefKind::Type { .. } => return,
-                }
-            }
-            // Sizes only make sense for non-generic types.
             let t = cx.tcx.type_of(item_def_id);
             let ty = cx.tcx.erase_regions(&t);
             match cx.layout_of(ty) {

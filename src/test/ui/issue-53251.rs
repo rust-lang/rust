@@ -19,10 +19,12 @@ macro_rules! impl_add {
         $(
             fn $n() {
                 S::f::<i64>();
-                //~^ ERROR too many type parameters provided
+                //~^ ERROR wrong number of type arguments
             }
         )*
     }
 }
 
 impl_add!(a b);
+
+fn main() {}

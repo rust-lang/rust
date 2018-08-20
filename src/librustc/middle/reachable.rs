@@ -20,7 +20,7 @@ use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
-use ty::{self, TyCtxt, GenericParamDefKind};
+use ty::{self, TyCtxt};
 use ty::query::Providers;
 use middle::privacy;
 use session::config;
@@ -33,18 +33,6 @@ use hir::def_id::LOCAL_CRATE;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
-
-// Returns true if the given set of generics implies that the item it's
-// associated with must be inlined.
-fn generics_require_inlining(generics: &ty::Generics) -> bool {
-    for param in &generics.params {
-        match param.kind {
-            GenericParamDefKind::Lifetime { .. } => {}
-            GenericParamDefKind::Type { .. } => return true,
-        }
-    }
-    false
-}
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
@@ -60,7 +48,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ItemKind::Impl(..) |
         hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-            generics_require_inlining(generics)
+            generics.requires_monomorphization(tcx)
         }
         _ => false,
     }
@@ -71,7 +59,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_src: DefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
     let generics = tcx.generics_of(tcx.hir.local_def_id(impl_item.id));
-    if codegen_fn_attrs.requests_inline() || generics_require_inlining(generics) {
+    if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
@@ -189,8 +177,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Method(..) => {
                         let attrs = self.tcx.codegen_fn_attrs(def_id);
                         let generics = self.tcx.generics_of(def_id);
-                        if generics_require_inlining(&generics) ||
-                                attrs.requests_inline() {
+                        if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
                             true
                         } else {
                             let impl_did = self.tcx
@@ -203,7 +190,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             match self.tcx.hir.expect_item(impl_node_id).node {
                                 hir::ItemKind::Impl(..) => {
                                     let generics = self.tcx.generics_of(impl_did);
-                                    generics_require_inlining(&generics)
+                                    generics.requires_monomorphization(self.tcx)
                                 }
                                 _ => false
                             }

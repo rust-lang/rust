@@ -1,8 +1,8 @@
-error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+error[E0090]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/E0090.rs:14:5
    |
-LL |     foo::<'static>(); //~ ERROR expected 2 lifetime parameters, found 1 lifetime parameter [E0090]
-   |     ^^^^^^^^^^^^^^ expected 2 lifetime parameters
+LL |     foo::<'static>(); //~ ERROR wrong number of lifetime arguments: expected 2, found 1 [E0090]
+   |     ^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error: aborting due to previous error
 

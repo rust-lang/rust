@@ -13,27 +13,31 @@
 //! is parameterized by an instance of `AstConv`.
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use hir::{self, GenericArg};
+use rustc_data_structures::array_vec::ArrayVec;
+use hir::{self, GenericArg, GenericArgs};
 use hir::def::Def;
 use hir::def_id::DefId;
+use hir::HirVec;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
-use rustc::ty::GenericParamDefKind;
+use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
 use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
-use errors::FatalError;
+use errors::{FatalError, DiagnosticId};
+use lint;
 
 use std::iter;
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax_pos::Span;
+use syntax_pos::{Span, MultiSpan};
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -88,9 +92,17 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
-struct ParamRange {
-    required: usize,
-    accepted: usize
+#[derive(PartialEq)]
+enum GenericArgPosition {
+    Type,
+    Value, // e.g. functions
+    MethodCall,
+}
+
+// FIXME(#53525): these error codes should all be unified.
+struct GenericArgMismatchErrorCode {
+    lifetimes: (&'static str, &'static str),
+    types: (&'static str, &'static str),
 }
 
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
@@ -176,19 +188,368 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         -> &'tcx Substs<'tcx>
     {
 
-        let (substs, assoc_bindings) =
-            item_segment.with_generic_args(|generic_args| {
-                self.create_substs_for_ast_path(
-                    span,
-                    def_id,
-                    generic_args,
-                    item_segment.infer_types,
-                    None)
-            });
+        let (substs, assoc_bindings) = item_segment.with_generic_args(|generic_args| {
+            self.create_substs_for_ast_path(
+                span,
+                def_id,
+                generic_args,
+                item_segment.infer_types,
+                None,
+            )
+        });
 
-        assoc_bindings.first().map(|b| self.prohibit_projection(b.span));
+        assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
 
         substs
+    }
+
+    /// Report error if there is an explicit type parameter when using `impl Trait`.
+    fn check_impl_trait(
+        tcx: TyCtxt,
+        span: Span,
+        seg: &hir::PathSegment,
+        generics: &ty::Generics,
+    ) -> bool {
+        let explicit = !seg.infer_types;
+        let impl_trait = generics.params.iter().any(|param| match param.kind {
+            ty::GenericParamDefKind::Type {
+                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+            } => true,
+            _ => false,
+        });
+
+        if explicit && impl_trait {
+            let mut err = struct_span_err! {
+                tcx.sess,
+                span,
+                E0632,
+                "cannot provide explicit type parameters when `impl Trait` is \
+                used in argument position."
+            };
+
+            err.emit();
+        }
+
+        impl_trait
+    }
+
+    /// Check that the correct number of generic arguments have been provided.
+    /// Used specifically for function calls.
+    pub fn check_generic_arg_count_for_call(
+        tcx: TyCtxt,
+        span: Span,
+        def: &ty::Generics,
+        seg: &hir::PathSegment,
+        is_method_call: bool,
+    ) -> bool {
+        let empty_args = P(hir::GenericArgs {
+            args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
+        });
+        let suppress_mismatch = Self::check_impl_trait(tcx, span, seg, &def);
+        Self::check_generic_arg_count(
+            tcx,
+            span,
+            def,
+            if let Some(ref args) = seg.args {
+                args
+            } else {
+                &empty_args
+            },
+            if is_method_call {
+                GenericArgPosition::MethodCall
+            } else {
+                GenericArgPosition::Value
+            },
+            def.parent.is_none() && def.has_self, // `has_self`
+            seg.infer_types || suppress_mismatch, // `infer_types`
+            GenericArgMismatchErrorCode {
+                lifetimes: ("E0090", "E0088"),
+                types: ("E0089", "E0087"),
+            },
+        )
+    }
+
+    /// Check that the correct number of generic arguments have been provided.
+    /// This is used both for datatypes and function calls.
+    fn check_generic_arg_count(
+        tcx: TyCtxt,
+        span: Span,
+        def: &ty::Generics,
+        args: &hir::GenericArgs,
+        position: GenericArgPosition,
+        has_self: bool,
+        infer_types: bool,
+        error_codes: GenericArgMismatchErrorCode,
+    ) -> bool {
+        // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
+        // that lifetimes will proceed types. So it suffices to check the number of each generic
+        // arguments in order to validate them with respect to the generic parameters.
+        let param_counts = def.own_counts();
+        let arg_counts = args.own_counts();
+        let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
+
+        let mut defaults: ty::GenericParamCount = Default::default();
+        for param in &def.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Type { has_default, .. } => {
+                    defaults.types += has_default as usize
+                }
+            };
+        }
+
+        if position != GenericArgPosition::Type && !args.bindings.is_empty() {
+            AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
+        }
+
+        // Prohibit explicit lifetime arguments if late-bound lifetime parameters are present.
+        if !infer_lifetimes {
+            if let Some(span_late) = def.has_late_bound_regions {
+                let msg = "cannot specify lifetime arguments explicitly \
+                           if late bound lifetime parameters are present";
+                let note = "the late bound lifetime parameter is introduced here";
+                let span = args.args[0].span();
+                if position == GenericArgPosition::Value
+                    && arg_counts.lifetimes != param_counts.lifetimes {
+                    let mut err = tcx.sess.struct_span_err(span, msg);
+                    err.span_note(span_late, note);
+                    err.emit();
+                    return true;
+                } else {
+                    let mut multispan = MultiSpan::from_span(span);
+                    multispan.push_span_label(span_late, note.to_string());
+                    tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                  args.args[0].id(), multispan, msg);
+                    return false;
+                }
+            }
+        }
+
+        let check_kind_count = |error_code: (&str, &str),
+                                kind,
+                                required,
+                                permitted,
+                                provided,
+                                offset| {
+            // We enforce the following: `required` <= `provided` <= `permitted`.
+            // For kinds without defaults (i.e. lifetimes), `required == permitted`.
+            // For other kinds (i.e. types), `permitted` may be greater than `required`.
+            if required <= provided && provided <= permitted {
+                return false;
+            }
+
+            // Unfortunately lifetime and type parameter mismatches are typically styled
+            // differently in diagnostics, which means we have a few cases to consider here.
+            let (bound, quantifier) = if required != permitted {
+                if provided < required {
+                    (required, "at least ")
+                } else { // provided > permitted
+                    (permitted, "at most ")
+                }
+            } else {
+                (required, "")
+            };
+
+            let mut span = span;
+            let label = if required == permitted && provided > permitted {
+                let diff = provided - permitted;
+                if diff == 1 {
+                    // In the case when the user has provided too many arguments,
+                    // we want to point to the first unexpected argument.
+                    let first_superfluous_arg: &GenericArg = &args.args[offset + permitted];
+                    span = first_superfluous_arg.span();
+                }
+                format!(
+                    "{}unexpected {} argument{}",
+                    if diff != 1 { format!("{} ", diff) } else { String::new() },
+                    kind,
+                    if diff != 1 { "s" } else { "" },
+                )
+            } else {
+                format!(
+                    "expected {}{} {} argument{}",
+                    quantifier,
+                    bound,
+                    kind,
+                    if required != 1 { "s" } else { "" },
+                )
+            };
+
+            tcx.sess.struct_span_err_with_code(
+                span,
+                &format!(
+                    "wrong number of {} arguments: expected {}{}, found {}",
+                    kind,
+                    quantifier,
+                    bound,
+                    provided,
+                ),
+                DiagnosticId::Error({
+                    if provided <= permitted {
+                        error_code.0
+                    } else {
+                        error_code.1
+                    }
+                }.into())
+            ).span_label(span, label).emit();
+
+            provided > required // `suppress_error`
+        };
+
+        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
+            check_kind_count(
+                error_codes.lifetimes,
+                "lifetime",
+                param_counts.lifetimes,
+                param_counts.lifetimes,
+                arg_counts.lifetimes,
+                0,
+            );
+        }
+        if !infer_types
+            || arg_counts.types > param_counts.types - defaults.types - has_self as usize {
+            check_kind_count(
+                error_codes.types,
+                "type",
+                param_counts.types - defaults.types - has_self as usize,
+                param_counts.types - has_self as usize,
+                arg_counts.types,
+                arg_counts.lifetimes,
+            )
+        } else {
+            false
+        }
+    }
+
+    /// Creates the relevant generic argument substitutions
+    /// corresponding to a set of generic parameters.
+    pub fn create_substs_for_generic_args<'a, 'b, A, P, I>(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        def_id: DefId,
+        parent_substs: &[Kind<'tcx>],
+        has_self: bool,
+        self_ty: Option<Ty<'tcx>>,
+        args_for_def_id: A,
+        provided_kind: P,
+        inferred_kind: I,
+    ) -> &'tcx Substs<'tcx> where
+        A: Fn(DefId) -> (Option<&'b GenericArgs>, bool),
+        P: Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
+        I: Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>
+    {
+        // Collect the segments of the path: we need to substitute arguments
+        // for parameters throughout the entire path (wherever there are
+        // generic parameters).
+        let mut parent_defs = tcx.generics_of(def_id);
+        let count = parent_defs.count();
+        let mut stack = vec![(def_id, parent_defs)];
+        while let Some(def_id) = parent_defs.parent {
+            parent_defs = tcx.generics_of(def_id);
+            stack.push((def_id, parent_defs));
+        }
+
+        // We manually build up the substitution, rather than using convenience
+        // methods in subst.rs so that we can iterate over the arguments and
+        // parameters in lock-step linearly, rather than trying to match each pair.
+        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
+            AccumulateVec::Array(ArrayVec::new())
+        } else {
+            AccumulateVec::Heap(Vec::with_capacity(count))
+        };
+
+        fn push_kind<'tcx>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>, kind: Kind<'tcx>) {
+            match substs {
+                AccumulateVec::Array(ref mut arr) => arr.push(kind),
+                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
+            }
+        }
+
+        // Iterate over each segment of the path.
+        while let Some((def_id, defs)) = stack.pop() {
+            let mut params = defs.params.iter().peekable();
+
+            // If we have already computed substitutions for parents, we can use those directly.
+            while let Some(&param) = params.peek() {
+                if let Some(&kind) = parent_substs.get(param.index as usize) {
+                    push_kind(&mut substs, kind);
+                    params.next();
+                } else {
+                    break;
+                }
+            }
+
+            // (Unless it's been handled in `parent_substs`) `Self` is handled first.
+            if has_self {
+                if let Some(&param) = params.peek() {
+                    if param.index == 0 {
+                        if let GenericParamDefKind::Type { .. } = param.kind {
+                            push_kind(&mut substs, self_ty.map(|ty| ty.into())
+                                .unwrap_or_else(|| inferred_kind(None, param, true)));
+                            params.next();
+                        }
+                    }
+                }
+            }
+
+            // Check whether this segment takes generic arguments and the user has provided any.
+            let (generic_args, infer_types) = args_for_def_id(def_id);
+
+            let mut args = generic_args.iter().flat_map(|generic_args| generic_args.args.iter())
+                .peekable();
+
+            loop {
+                // We're going to iterate through the generic arguments that the user
+                // provided, matching them with the generic parameters we expect.
+                // Mismatches can occur as a result of elided lifetimes, or for malformed
+                // input. We try to handle both sensibly.
+                match (args.peek(), params.peek()) {
+                    (Some(&arg), Some(&param)) => {
+                        match (arg, &param.kind) {
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime)
+                            | (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
+                                push_kind(&mut substs, provided_kind(param, arg));
+                                args.next();
+                                params.next();
+                            }
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Type { .. }) => {
+                                // We expected a type argument, but got a lifetime
+                                // argument. This is an error, but we need to handle it
+                                // gracefully so we can report sensible errors. In this
+                                // case, we're simply going to infer this argument.
+                                args.next();
+                            }
+                            (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
+                                // We expected a lifetime argument, but got a type
+                                // argument. That means we're inferring the lifetimes.
+                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
+                                params.next();
+                            }
+                        }
+                    }
+                    (Some(_), None) => {
+                        // We should never be able to reach this point with well-formed input.
+                        // Getting to this point means the user supplied more arguments than
+                        // there are parameters.
+                        args.next();
+                    }
+                    (None, Some(&param)) => {
+                        // If there are fewer arguments than parameters, it means
+                        // we're inferring the remaining arguments.
+                        match param.kind {
+                            GenericParamDefKind::Lifetime | GenericParamDefKind::Type { .. } => {
+                                let kind = inferred_kind(Some(&substs), param, infer_types);
+                                push_kind(&mut substs, kind);
+                            }
+                        }
+                        args.next();
+                        params.next();
+                    }
+                    (None, None) => break,
+                }
+            }
+        }
+
+        tcx.intern_substs(&substs)
     }
 
     /// Given the type/region arguments provided to some path (along with
@@ -204,60 +565,33 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
     {
-        let tcx = self.tcx();
-
+        // If the type is parameterized by this region, then replace this
+        // region with the current anon region binding (in other words,
+        // whatever & would get replaced with).
         debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, \
                generic_args={:?})",
                def_id, self_ty, generic_args);
 
-        // If the type is parameterized by this region, then replace this
-        // region with the current anon region binding (in other words,
-        // whatever & would get replaced with).
-
-        // FIXME(varkor): Separating out the parameters is messy.
-        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Lifetime(lt) => Some(lt),
-            _ => None,
-        }).collect();
-        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        }).collect();
-        let lt_provided = lifetimes.len();
-        let ty_provided = types.len();
-
-        let decl_generics = tcx.generics_of(def_id);
-        let mut lt_accepted = 0;
-        let mut ty_params = ParamRange { required: 0, accepted: 0 };
-        for param in &decl_generics.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    lt_accepted += 1;
-                }
-                GenericParamDefKind::Type { has_default, .. } => {
-                    ty_params.accepted += 1;
-                    if !has_default {
-                        ty_params.required += 1;
-                    }
-                }
-            };
-        }
-        if self_ty.is_some() {
-            ty_params.required -= 1;
-            ty_params.accepted -= 1;
-        }
-
-        if lt_accepted != lt_provided {
-            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
-        }
+        let tcx = self.tcx();
+        let generic_params = tcx.generics_of(def_id);
 
         // If a self-type was declared, one should be provided.
-        assert_eq!(decl_generics.has_self, self_ty.is_some());
+        assert_eq!(generic_params.has_self, self_ty.is_some());
 
-        // Check the number of type parameters supplied by the user.
-        if !infer_types || ty_provided > ty_params.required {
-            check_type_argument_count(tcx, span, ty_provided, ty_params);
-        }
+        let has_self = generic_params.has_self;
+        Self::check_generic_arg_count(
+            self.tcx(),
+            span,
+            &generic_params,
+            &generic_args,
+            GenericArgPosition::Type,
+            has_self,
+            infer_types,
+            GenericArgMismatchErrorCode {
+                lifetimes: ("E0107", "E0107"),
+                types: ("E0243", "E0244"),
+            },
+        );
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |param: &ty::GenericParamDef| {
@@ -274,71 +608,74 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             false
         };
 
-        let own_self = self_ty.is_some() as usize;
-        let substs = Substs::for_item(tcx, def_id, |param, substs| {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    let i = param.index as usize - own_self;
-                    if let Some(lt) = lifetimes.get(i) {
-                        self.ast_region_to_region(lt, Some(param)).into()
-                    } else {
-                        tcx.types.re_static.into()
+        let substs = Self::create_substs_for_generic_args(
+            self.tcx(),
+            def_id,
+            &[][..],
+            self_ty.is_some(),
+            self_ty,
+            // Provide the generic args, and whether types should be inferred.
+            |_| (Some(generic_args), infer_types),
+            // Provide substitutions for parameters for which (valid) arguments have been provided.
+            |param, arg| {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        self.ast_region_to_region(&lt, Some(param)).into()
                     }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.ast_ty_to_ty(&ty).into()
+                    }
+                    _ => unreachable!(),
                 }
-                GenericParamDefKind::Type { has_default, .. } => {
-                    let i = param.index as usize;
+            },
+            // Provide substitutions for parameters for which arguments are inferred.
+            |substs, param, infer_types| {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => tcx.types.re_static.into(),
+                    GenericParamDefKind::Type { has_default, .. } => {
+                        if !infer_types && has_default {
+                            // No type parameter provided, but a default exists.
 
-                    // Handle Self first, so we can adjust the index to match the AST.
-                    if let (0, Some(ty)) = (i, self_ty) {
-                        return ty.into();
-                    }
-
-                    let i = i - (lt_accepted + own_self);
-                    if i < ty_provided {
-                        // A provided type parameter.
-                        self.ast_ty_to_ty(&types[i]).into()
-                    } else if infer_types {
-                        // No type parameters were provided, we can infer all.
-                        if !default_needs_object_self(param) {
-                            self.ty_infer_for_def(param, span).into()
+                            // If we are converting an object type, then the
+                            // `Self` parameter is unknown. However, some of the
+                            // other type parameters may reference `Self` in their
+                            // defaults. This will lead to an ICE if we are not
+                            // careful!
+                            if default_needs_object_self(param) {
+                                struct_span_err!(tcx.sess, span, E0393,
+                                                    "the type parameter `{}` must be explicitly \
+                                                    specified",
+                                                    param.name)
+                                    .span_label(span,
+                                                format!("missing reference to `{}`", param.name))
+                                    .note(&format!("because of the default `Self` reference, \
+                                                    type parameters must be specified on object \
+                                                    types"))
+                                    .emit();
+                                tcx.types.err.into()
+                            } else {
+                                // This is a default type parameter.
+                                self.normalize_ty(
+                                    span,
+                                    tcx.at(span).type_of(param.def_id)
+                                        .subst_spanned(tcx, substs.unwrap(), Some(span))
+                                ).into()
+                            }
+                        } else if infer_types {
+                            // No type parameters were provided, we can infer all.
+                            if !default_needs_object_self(param) {
+                                self.ty_infer_for_def(param, span).into()
+                            } else {
+                                self.ty_infer(span).into()
+                            }
                         } else {
-                            self.ty_infer(span).into()
-                        }
-                    } else if has_default {
-                        // No type parameter provided, but a default exists.
-
-                        // If we are converting an object type, then the
-                        // `Self` parameter is unknown. However, some of the
-                        // other type parameters may reference `Self` in their
-                        // defaults. This will lead to an ICE if we are not
-                        // careful!
-                        if default_needs_object_self(param) {
-                            struct_span_err!(tcx.sess, span, E0393,
-                                             "the type parameter `{}` must be explicitly \
-                                             specified",
-                                             param.name)
-                                .span_label(span,
-                                            format!("missing reference to `{}`", param.name))
-                                .note(&format!("because of the default `Self` reference, \
-                                                type parameters must be specified on object \
-                                                types"))
-                                .emit();
+                            // We've already errored above about the mismatch.
                             tcx.types.err.into()
-                        } else {
-                            // This is a default type parameter.
-                            self.normalize_ty(
-                                span,
-                                tcx.at(span).type_of(param.def_id)
-                                    .subst_spanned(tcx, substs, Some(span))
-                            ).into()
                         }
-                    } else {
-                        // We've already errored above about the mismatch.
-                        tcx.types.err.into()
                     }
                 }
-            }
-        });
+            },
+        );
 
         let assoc_bindings = generic_args.bindings.iter().map(|binding| {
             ConvertedBinding {
@@ -348,8 +685,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }).collect();
 
-        debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}) -> {:?}",
-               decl_generics, self_ty, substs);
+        debug!("create_substs_for_ast_path(generic_params={:?}, self_ty={:?}) -> {:?}",
+               generic_params, self_ty, substs);
 
         (substs, assoc_bindings)
     }
@@ -444,7 +781,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                                  trait_def_id,
                                                  self_ty,
                                                  trait_segment);
-        assoc_bindings.first().map(|b| self.prohibit_projection(b.span));
+        assoc_bindings.first().map(|b| AstConv::prohibit_assoc_ty_binding(self.tcx(), b.span));
         ty::TraitRef::new(trait_def_id, substs)
     }
 
@@ -978,7 +1315,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_generics(&self, segments: &[hir::PathSegment]) {
+    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment>>(&self, segments: T) {
         for segment in segments {
             segment.with_generic_args(|generic_args| {
                 let (mut err_for_lt, mut err_for_ty) = (false, false);
@@ -1009,15 +1346,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     }
                 }
                 for binding in &generic_args.bindings {
-                    self.prohibit_projection(binding.span);
+                    Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
                     break;
                 }
             })
         }
     }
 
-    pub fn prohibit_projection(&self, span: Span) {
-        let mut err = struct_span_err!(self.tcx().sess, span, E0229,
+    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt, span: Span) {
+        let mut err = struct_span_err!(tcx.sess, span, E0229,
                                        "associated type bindings are not allowed here");
         err.span_label(span, "associated type not allowed here").emit();
     }
@@ -1391,72 +1728,6 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }).collect::<Vec<_>>();
 
     (auto_traits, trait_bounds)
-}
-
-fn check_type_argument_count(tcx: TyCtxt,
-                             span: Span,
-                             supplied: usize,
-                             ty_params: ParamRange)
-{
-    let (required, accepted) = (ty_params.required, ty_params.accepted);
-    if supplied < required {
-        let expected = if required < accepted {
-            "expected at least"
-        } else {
-            "expected"
-        };
-        let arguments_plural = if required == 1 { "" } else { "s" };
-
-        struct_span_err!(tcx.sess, span, E0243,
-                "wrong number of type arguments: {} {}, found {}",
-                expected, required, supplied)
-            .span_label(span,
-                format!("{} {} type argument{}",
-                    expected,
-                    required,
-                    arguments_plural))
-            .emit();
-    } else if supplied > accepted {
-        let expected = if required < accepted {
-            format!("expected at most {}", accepted)
-        } else {
-            format!("expected {}", accepted)
-        };
-        let arguments_plural = if accepted == 1 { "" } else { "s" };
-
-        struct_span_err!(tcx.sess, span, E0244,
-                "wrong number of type arguments: {}, found {}",
-                expected, supplied)
-            .span_label(
-                span,
-                format!("{} type argument{}",
-                    if accepted == 0 { "expected no" } else { &expected },
-                    arguments_plural)
-            )
-            .emit();
-    }
-}
-
-fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected: usize) {
-    let label = if number < expected {
-        if expected == 1 {
-            format!("expected {} lifetime parameter", expected)
-        } else {
-            format!("expected {} lifetime parameters", expected)
-        }
-    } else {
-        let additional = number - expected;
-        if additional == 1 {
-            "unexpected lifetime parameter".to_string()
-        } else {
-            format!("{} unexpected lifetime parameters", additional)
-        }
-    };
-    struct_span_err!(tcx.sess, span, E0107,
-                     "wrong number of lifetime parameters: expected {}, found {}",
-                     expected, number)
-        .span_label(span, label)
-        .emit();
 }
 
 // A helper struct for conveniently grouping a set of bounds which we pass to

@@ -21,7 +21,7 @@ fn main() {
     let _: S<'static, 'static +>;
     //~^ at least one non-builtin trait is required for an object type
     let _: S<'static, 'static>;
-    //~^ ERROR wrong number of lifetime parameters: expected 1, found 2
+    //~^ ERROR wrong number of lifetime arguments: expected 1, found 2
     //~| ERROR wrong number of type arguments: expected 1, found 0
     let _: S<'static +, 'static>;
     //~^ ERROR lifetime parameters must be declared prior to type parameters

@@ -1,38 +1,38 @@
 error[E0244]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:11:11
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:11:16
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
-   |           ^^^^^^^ expected no type arguments
+   |                ^ unexpected type argument
 
 error[E0244]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:14:14
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:14:19
    |
 LL | trait Trait: Copy<Send> {}
-   |              ^^^^^^^^^^ expected no type arguments
+   |                   ^^^^ unexpected type argument
 
 error[E0244]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:17:21
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:17:26
    |
 LL | struct MyStruct1<T: Copy<T>>;
-   |                     ^^^^^^^ expected no type arguments
+   |                          ^ unexpected type argument
 
-error[E0107]: wrong number of lifetime parameters: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:20:25
+error[E0107]: wrong number of lifetime arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:20:30
    |
 LL | struct MyStruct2<'a, T: Copy<'a>>;
-   |                         ^^^^^^^^ unexpected lifetime parameter
+   |                              ^^ unexpected lifetime argument
 
-error[E0107]: wrong number of lifetime parameters: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:15
+error[E0107]: wrong number of lifetime arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:20
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^^^^^^^^ unexpected lifetime parameter
+   |                    ^^ unexpected lifetime argument
 
 error[E0244]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:15
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:24
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^^^^^^^^ expected no type arguments
+   |                        ^ unexpected type argument
 
 error: aborting due to 6 previous errors
 

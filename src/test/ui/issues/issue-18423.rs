@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that `Box` cannot be used with a lifetime parameter.
+// Test that `Box` cannot be used with a lifetime argument.
 
 struct Foo<'a> {
-    x: Box<'a, isize> //~ ERROR wrong number of lifetime parameters
+    x: Box<'a, isize> //~ ERROR wrong number of lifetime arguments
 }
 
 pub fn main() {

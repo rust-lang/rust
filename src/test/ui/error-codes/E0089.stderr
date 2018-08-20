@@ -1,8 +1,8 @@
-error[E0089]: too few type parameters provided: expected 2 type parameters, found 1 type parameter
+error[E0089]: wrong number of type arguments: expected 2, found 1
   --> $DIR/E0089.rs:14:5
    |
-LL |     foo::<f64>(); //~ ERROR expected 2 type parameters, found 1 type parameter [E0089]
-   |     ^^^^^^^^^^ expected 2 type parameters
+LL |     foo::<f64>(); //~ ERROR wrong number of type arguments: expected 2, found 1 [E0089]
+   |     ^^^^^^^^^^ expected 2 type arguments
 
 error: aborting due to previous error
 

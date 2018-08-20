@@ -2432,10 +2432,7 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     provided_params.with_generic_args(|generic_args| {
-                        let mut indices = ty::GenericParamCount {
-                            lifetimes: 0,
-                            types: 0
-                        };
+                        let mut indices: GenericParamCount = Default::default();
                         for param in generics.params.iter() {
                             match param.kind {
                                 hir::GenericParamKind::Lifetime { .. } => {

@@ -24,9 +24,9 @@ impl S {
 fn method_call() {
     S.early(); // OK
     S.early::<'static>();
-    //~^ ERROR expected 2 lifetime parameters, found 1 lifetime parameter
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     S.early::<'static, 'static, 'static>();
-    //~^ ERROR expected at most 2 lifetime parameters, found 3 lifetime parameters
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
     let _: &u8 = S.life_and_type::<'static>();
     S.life_and_type::<u8>();
     S.life_and_type::<'static, u8>();
@@ -71,9 +71,9 @@ fn ufcs() {
 
     S::early(S); // OK
     S::early::<'static>(S);
-    //~^ ERROR expected 2 lifetime parameters, found 1 lifetime parameter
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     S::early::<'static, 'static, 'static>(S);
-    //~^ ERROR expected at most 2 lifetime parameters, found 3 lifetime parameters
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
     let _: &u8 = S::life_and_type::<'static>(S);
     S::life_and_type::<u8>(S);
     S::life_and_type::<'static, u8>(S);

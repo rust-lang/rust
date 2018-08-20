@@ -22,8 +22,8 @@ use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
-use syntax_pos::Span;
 use rustc::hir;
+use syntax_pos::Span;
 
 use std::ops::Deref;
 
@@ -308,55 +308,55 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        seg: &hir::PathSegment,
         parent_substs: &Substs<'tcx>,
     ) -> &'tcx Substs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
-        let method_generics = self.tcx.generics_of(pick.item.def_id);
-        let mut fn_segment = Some((segment, method_generics));
-        let supress_mismatch = self.fcx.check_impl_trait(self.span, fn_segment);
-        self.fcx.check_generic_arg_count(self.span, &mut fn_segment, true, supress_mismatch);
+        let generics = self.tcx.generics_of(pick.item.def_id);
+        AstConv::check_generic_arg_count_for_call(
+            self.tcx,
+            self.span,
+            &generics,
+            &seg,
+            true, // `is_method_call`
+        );
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        assert_eq!(method_generics.parent_count, parent_substs.len());
-        let provided = &segment.args;
-        let own_counts = method_generics.own_counts();
-        Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
-            let mut i = param.index as usize;
-            if i < parent_substs.len() {
-                parent_substs[i]
-            } else {
-                let (is_lt, is_ty) = match param.kind {
-                    GenericParamDefKind::Lifetime => (true, false),
-                    GenericParamDefKind::Type { .. } => (false, true),
-                };
-                provided.as_ref().and_then(|data| {
-                    for arg in &data.args {
-                        match arg {
-                            GenericArg::Lifetime(lt) if is_lt => {
-                                if i == parent_substs.len() {
-                                    return Some(AstConv::ast_region_to_region(
-                                        self.fcx, lt, Some(param)).into());
-                                }
-                                i -= 1;
-                            }
-                            GenericArg::Lifetime(_) => {}
-                            GenericArg::Type(ty) if is_ty => {
-                                if i == parent_substs.len() + own_counts.lifetimes {
-                                    return Some(self.to_ty(ty).into());
-                                }
-                                i -= 1;
-                            }
-                            GenericArg::Type(_) => {}
-                        }
+        assert_eq!(generics.parent_count, parent_substs.len());
+
+        AstConv::create_substs_for_generic_args(
+            self.tcx,
+            pick.item.def_id,
+            parent_substs,
+            false,
+            None,
+            // Provide the generic args, and whether types should be inferred.
+            |_| {
+                // The last argument of the returned tuple here is unimportant.
+                if let Some(ref data) = seg.args {
+                    (Some(data), false)
+                } else {
+                    (None, false)
+                }
+            },
+            // Provide substitutions for parameters for which (valid) arguments have been provided.
+            |param, arg| {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
                     }
-                    None
-                }).unwrap_or_else(|| self.var_for_def(self.span, param))
-            }
-        })
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.to_ty(ty).into()
+                    }
+                    _ => unreachable!(),
+                }
+            },
+            // Provide substitutions for parameters for which arguments are inferred.
+            |_, param, _| self.var_for_def(self.span, param),
+        )
     }
 
     fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
