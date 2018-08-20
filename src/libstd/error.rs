@@ -202,7 +202,7 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.30.0")]
+    #[stable(feature = "error_source", since = "1.30.0")]
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
     /// Get the `TypeId` of `self`
