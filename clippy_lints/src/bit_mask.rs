@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast::LitKind;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{span_lint, span_lint_and_then};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};

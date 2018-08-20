@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::visit::FnKind;
 
 use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};

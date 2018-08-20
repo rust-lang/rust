@@ -13,7 +13,7 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 /// **What it does:** it lints if an exported function, method, trait method with default impl,
 /// or trait method impl is not `#[inline]`.

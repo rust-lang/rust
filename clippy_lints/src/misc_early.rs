@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use std::collections::HashMap;
 use std::char;
 use syntax::ast::*;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 
@@ -235,7 +235,7 @@ impl EarlyLintPass for MiscEarly {
                 for field in pfields {
                     match field.node.pat.node {
                         PatKind::Wild => {},
-                        _ => if let Ok(n) = cx.sess().codemap().span_to_snippet(field.span) {
+                        _ => if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
                             normal.push(n);
                         },
                     }

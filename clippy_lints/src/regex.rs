@@ -5,7 +5,7 @@ use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
 use crate::consts::{constant, Constant};
 

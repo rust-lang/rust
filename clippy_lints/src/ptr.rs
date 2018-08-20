@@ -9,7 +9,7 @@ use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax_pos::MultiSpan;
 use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use crate::utils::ptr::get_spans;

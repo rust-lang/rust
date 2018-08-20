@@ -30,7 +30,7 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast;
-use syntax::codemap::{original_sp, DUMMY_SP};
+use syntax::source_map::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 
 use crate::utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};

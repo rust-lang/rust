@@ -5,7 +5,7 @@ use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast::{Lit, LitKind, Name};
-use syntax::codemap::{Span, Spanned};
+use syntax::source_map::{Span, Spanned};
 use crate::utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for getting the length of something via `.len()`

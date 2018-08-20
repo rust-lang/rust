@@ -12,7 +12,7 @@ use if_chain::if_chain;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.

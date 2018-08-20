@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::{LitKind, NodeId};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
 use crate::utils::{is_allowed, snippet, span_help_and_lint};
 

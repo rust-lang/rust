@@ -24,7 +24,7 @@ use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::in_macro;
 
 /// **What it does:** Warns if there is missing doc for any documentable item

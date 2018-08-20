@@ -4,7 +4,7 @@ use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use crate::utils::paths;
 

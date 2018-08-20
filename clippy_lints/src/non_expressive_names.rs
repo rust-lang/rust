@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 use syntax::ast::*;
 use syntax::attr;

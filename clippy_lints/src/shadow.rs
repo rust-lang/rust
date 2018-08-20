@@ -4,7 +4,7 @@ use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
