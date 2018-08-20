@@ -226,7 +226,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Validate all fields
         match dest.layout.fields {
             // primitives are unions with zero fields
-            // FIXME: Use some other indicator instead, like `layout.abi`.
+            // We still check `layout.fields`, not `layout.abi`, because `layout.abi`
+            // is `Scalar` for newtypes around scalars, but we want to descend through the
+            // fields to get a proper `path`.
             layout::FieldPlacement::Union(0) => {
                 match dest.layout.abi {
                     // nothing to do, whatever the pointer points to, it is never going to be read
