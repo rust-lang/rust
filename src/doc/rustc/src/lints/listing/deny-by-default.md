@@ -56,7 +56,7 @@ mod m {
     pub struct S(u8);
     
     fn f() {
-        // this is trying to use S from the 'use' line, but becuase the `u8` is
+        // this is trying to use S from the 'use' line, but because the `u8` is
         // not pub, it is private
         ::S;
     }
@@ -103,7 +103,7 @@ This warning can always be fixed by removing the unused pattern in the
 
 ## mutable-transmutes
 
-This lint catches transmuting from `&T` to `&mut T` becuase it is undefined
+This lint catches transmuting from `&T` to `&mut T` because it is undefined
 behavior. Some example code that triggers this lint:
 
 ```rust,ignore

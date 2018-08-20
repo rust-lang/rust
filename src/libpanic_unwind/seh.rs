@@ -142,7 +142,7 @@ mod imp {
 
 #[repr(C)]
 pub struct _ThrowInfo {
-    pub attribues: c_uint,
+    pub attributes: c_uint,
     pub pnfnUnwind: imp::ptr_t,
     pub pForwardCompat: imp::ptr_t,
     pub pCatchableTypeArray: imp::ptr_t,
@@ -178,7 +178,7 @@ pub struct _TypeDescriptor {
 }
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
-    attribues: 0,
+    attributes: 0,
     pnfnUnwind: ptr!(0),
     pForwardCompat: ptr!(0),
     pCatchableTypeArray: ptr!(0),

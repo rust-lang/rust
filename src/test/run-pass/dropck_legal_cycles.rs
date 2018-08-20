@@ -385,7 +385,7 @@ pub fn main() {
     // RwLock (since we can grab the child pointers in read-only
     // mode), but we cannot lock a std::sync::Mutex to guard reading
     // from each node via the same pattern, since once you hit the
-    // cycle, you'll be trying to acquring the same lock twice.
+    // cycle, you'll be trying to acquiring the same lock twice.
     // (We deal with this by exiting the traversal early if try_lock fails.)
 
     // Cycle 12: { arc0 -> (arc1, arc2), arc1 -> (), arc2 -> arc0 }, refcells

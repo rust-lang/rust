@@ -656,7 +656,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     llargs.push(b);
                     return;
                 }
-                _ => bug!("codegen_argument: {:?} invalid for pair arugment", op)
+                _ => bug!("codegen_argument: {:?} invalid for pair argument", op)
             }
         } else if arg.is_unsized_indirect() {
             match op.val {

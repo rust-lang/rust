@@ -121,7 +121,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
     // which means that none of the regions inside relate to any other, even if
-    // typeck had previously found contraints that would cause them to be related.
+    // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
     let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
         counter += 1;

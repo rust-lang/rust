@@ -1284,7 +1284,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // how all the types get adjusted.)
         match ref_kind {
             ty::ImmBorrow => {
-                // The reference being reborrowed is a sharable ref of
+                // The reference being reborrowed is a shareable ref of
                 // type `&'a T`. In this case, it doesn't matter where we
                 // *found* the `&T` pointer, the memory it references will
                 // be valid and immutable for `'a`. So we can stop here.

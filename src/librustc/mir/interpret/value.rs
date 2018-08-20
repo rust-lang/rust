@@ -68,7 +68,7 @@ impl<'tcx> ConstValue<'tcx> {
 
 /// A `Value` represents a single self-contained Rust value.
 ///
-/// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
+/// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitive
 /// value held directly, outside of any allocation (`Scalar`).  For `ByRef`-values, we remember
 /// whether the pointer is supposed to be aligned or not (also see Place).
 ///

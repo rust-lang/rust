@@ -201,7 +201,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                     if let Some(impl_span) = maybe_impl_defid.map_or(None,
                             |def_id| resolver.definitions.opt_span(def_id)) {
                         err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
-                                    "`Self` type implicitely declared here, on the `impl`");
+                                    "`Self` type implicitly declared here, on the `impl`");
                     }
                 },
                 Def::TyParam(typaram_defid) => {

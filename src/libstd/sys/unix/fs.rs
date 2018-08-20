@@ -857,7 +857,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use sync::atomic::{AtomicBool, Ordering};
 
     // Kernel prior to 4.5 don't have copy_file_range
-    // We store the availability in a global to avoid unneccessary syscalls
+    // We store the availability in a global to avoid unnecessary syscalls
     static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
 
     unsafe fn copy_file_range(

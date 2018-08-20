@@ -28,7 +28,7 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _: (char, u32) = Trait::without_default_impl(0);
 
     // Currently, no object code is generated for trait methods with default
-    // implemenations, unless they are actually called from somewhere. Therefore
+    // implementations, unless they are actually called from somewhere. Therefore
     // we cannot import the implementations and have to create our own inline.
     //~ MONO_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl[0]<u32>
     let _ = Trait::with_default_impl(0u32);

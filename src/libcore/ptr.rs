@@ -2291,7 +2291,7 @@ impl<T: ?Sized> *mut T {
 ///
 /// If we ever decide to make it possible to call the intrinsic with `a` that is not a
 /// power-of-two, it will probably be more prudent to just change to a naive implementation rather
-/// than trying to adapt this to accomodate that change.
+/// than trying to adapt this to accommodate that change.
 ///
 /// Any questions go to @nagisa.
 #[lang="align_offset"]

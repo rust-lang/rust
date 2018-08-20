@@ -57,7 +57,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    // test the implementations for the current plattform
+    // test the implementations for the current platform
     use super::{memchr, memrchr};
 
     #[test]

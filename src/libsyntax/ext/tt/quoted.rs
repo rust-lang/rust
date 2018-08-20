@@ -323,7 +323,7 @@ where
             }
 
             // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate` special
-            // metavariable that names the crate of the invokation.
+            // metavariable that names the crate of the invocation.
             Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
                 let (ident, is_raw) = token.ident().unwrap();
                 let span = ident_span.with_lo(span.lo());

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// We need to opt inot the `!` feature in order to trigger the
+// We need to opt into the `!` feature in order to trigger the
 // requirement that this is testing.
 #![feature(never_type)]
 

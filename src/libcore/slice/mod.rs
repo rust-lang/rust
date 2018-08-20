@@ -1680,7 +1680,7 @@ impl<T> [T] {
         }
     }
 
-    /// Function to calculate lenghts of the middle and trailing slice for `align_to{,_mut}`.
+    /// Function to calculate lengths of the middle and trailing slice for `align_to{,_mut}`.
     fn align_to_offsets<U>(&self) -> (usize, usize) {
         // What we gonna do about `rest` is figure out what multiple of `U`s we can put in a
         // lowest number of `T`s. And how many `T`s we need for each such "multiple".
@@ -1740,7 +1740,7 @@ impl<T> [T] {
         (us_len, ts_len)
     }
 
-    /// Transmute the slice to a slice of another type, ensuring aligment of the types is
+    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
@@ -1793,7 +1793,7 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the slice to a slice of another type, ensuring aligment of the types is
+    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle

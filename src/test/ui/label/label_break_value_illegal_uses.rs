@@ -10,7 +10,7 @@
 
 #![feature(label_break_value)]
 
-// These are forbidden occurences of label-break-value
+// These are forbidden occurrences of label-break-value
 
 fn labeled_unsafe() {
     unsafe 'b: {} //~ ERROR expected one of `extern`, `fn`, or `{`

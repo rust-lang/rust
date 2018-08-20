@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Confirm that we don't accidently divide or mod by zero in llvm_type
+// Confirm that we don't accidentally divide or mod by zero in llvm_type
 
 // compile-pass
 

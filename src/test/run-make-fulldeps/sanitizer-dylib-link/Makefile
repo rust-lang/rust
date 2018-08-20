@@ -3,7 +3,7 @@
 LOG := $(TMPDIR)/log.txt
 
 # This test builds a shared object, then an executable that links it as a native
-# rust library (constrast to an rlib). The shared library and executable both
+# rust library (contrast to an rlib). The shared library and executable both
 # are compiled with address sanitizer, and we assert that a fault in the dylib
 # is correctly detected.
 

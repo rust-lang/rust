@@ -35,7 +35,7 @@ use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
-// Another conditional contant for name resolution: Macos et iOS use
+// Another conditional constant for name resolution: Macos et iOS use
 // SO_NOSIGPIPE as a setsockopt flag to disable SIGPIPE emission on socket.
 // Other platforms do otherwise.
 #[cfg(target_vendor = "apple")]

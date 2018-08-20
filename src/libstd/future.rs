@@ -88,7 +88,7 @@ where
 /// This function acquires exclusive access to the task context.
 ///
 /// Panics if no task has been set or if the task context has already been
-/// retrived by a surrounding call to get_task_cx.
+/// retrieved by a surrounding call to get_task_cx.
 pub fn get_task_cx<F, R>(f: F) -> R
 where
     F: FnOnce(&mut task::Context) -> R

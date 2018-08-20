@@ -152,7 +152,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // }
     // ```
     //
-    // In a concession to backwards compatbility, we continue to
+    // In a concession to backwards compatibility, we continue to
     // permit those, so long as the lifetimes aren't used in
     // associated types. I believe this is sound, because lifetimes
     // used elsewhere are not projected back out.

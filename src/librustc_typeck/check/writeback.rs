@@ -516,7 +516,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
-        // Export associated path extensions and method resultions.
+        // Export associated path extensions and method resolutions.
         if let Some(def) = self.fcx
             .tables
             .borrow_mut()

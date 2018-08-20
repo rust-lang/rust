@@ -486,7 +486,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
         // FIXME: A recursion limit is necessary as well, for irregular
-        // recusive types.
+        // recursive types.
         if !cache.insert(ty) {
             return FfiSafe;
         }

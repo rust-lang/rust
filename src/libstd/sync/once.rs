@@ -176,7 +176,7 @@ impl Once {
     /// happens-before relation between the closure and code executing after the
     /// return).
     ///
-    /// If the given closure recusively invokes `call_once` on the same `Once`
+    /// If the given closure recursively invokes `call_once` on the same `Once`
     /// instance the exact behavior is not specified, allowed outcomes are
     /// a panic or a deadlock.
     ///

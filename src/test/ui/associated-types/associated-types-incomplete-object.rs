@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that the user gets an errror if they omit a binding from an
+// Check that the user gets an error if they omit a binding from an
 // object type.
 
 pub trait Foo {

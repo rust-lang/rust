@@ -892,7 +892,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub(crate) queries: query::Queries<'tcx>,
 
-    // Records the free variables refrenced by every closure
+    // Records the free variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
     freevars: FxHashMap<DefId, Lrc<Vec<hir::Freevar>>>,

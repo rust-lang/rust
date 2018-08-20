@@ -10,7 +10,7 @@
 
 #![crate_name = "qwop"]
 
-/// (writen on a spider's web) Some Macro
+/// (written on a spider's web) Some Macro
 #[macro_export]
 macro_rules! some_macro {
     () => {
