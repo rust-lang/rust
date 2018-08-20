@@ -10,15 +10,19 @@ version = "0.1.0"
 build = "build.rs"
 default-run = "miri"
 
-[[bin]]
-doc = false
-name = "miri"
-path = "src/bin/miri.rs"
+[lib]
+test = true # we have unit tests
+doctest = false # but no doc tests
 
 [[bin]]
-doc = false
+name = "miri"
+test = false # we have no unit tests
+doctest = false # and no doc tests
+
+[[bin]]
 name = "cargo-miri"
-path = "src/bin/cargo-miri.rs"
+test = false # we have no unit tests
+doctest = false # and no doc tests
 required-features = ["cargo_miri"]
 
 [dependencies]

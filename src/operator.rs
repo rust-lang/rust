@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
         &self,
         bin_op: mir::BinOp,
         left: Pointer,
-        right: i128,
+        right: u128,
         signed: bool,
     ) -> EvalResult<'tcx, (Scalar, bool)>;
 
@@ -135,18 +135,19 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     err!(InvalidPointerMath)
                 }
             }
-            // These work if one operand is a pointer, the other an integer
-            Add | BitAnd | Sub
+            // These work if the left operand is a pointer, the right an integer
+            Add | BitAnd | Sub | Rem
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
                        left.is_ptr() && right.is_bits() => {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized
                 self.ptr_int_arithmetic(
                     bin_op,
                     left.to_ptr()?,
-                    right.to_bits(self.memory.pointer_size())? as i128,
+                    right.to_bits(self.memory.pointer_size())?,
                     left_kind == isize,
                 ).map(Some)
             }
+            // Commutative operators also work if the integer is on the left
             Add | BitAnd
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
                        left.is_bits() && right.is_ptr() => {
@@ -154,7 +155,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.ptr_int_arithmetic(
                     bin_op,
                     right.to_ptr()?,
-                    left.to_bits(self.memory.pointer_size())? as i128,
+                    left.to_bits(self.memory.pointer_size())?,
                     left_kind == isize,
                 ).map(Some)
             }
@@ -166,7 +167,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         &self,
         bin_op: mir::BinOp,
         left: Pointer,
-        right: i128,
+        right: u128,
         signed: bool,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
@@ -178,22 +179,49 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         Ok(match bin_op {
             Sub =>
                 // The only way this can overflow is by underflowing, so signdeness of the right operands does not matter
-                map_to_primval(left.overflowing_signed_offset(-right, self)),
+                map_to_primval(left.overflowing_signed_offset(-(right as i128), self)),
             Add if signed =>
-                map_to_primval(left.overflowing_signed_offset(right, self)),
+                map_to_primval(left.overflowing_signed_offset(right as i128, self)),
             Add if !signed =>
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align.abi() - 1);
-                let right = right as u64;
+                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let base_mask = {
+                    // FIXME: Use interpret::truncate, once that takes a Size instead of a Layout
+                    let shift = 128 - self.memory.pointer_size().bits();
+                    let value = !(ptr_base_align as u128 - 1);
+                    // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+                    (value << shift) >> shift
+                };
                 let ptr_size = self.memory.pointer_size().bytes() as u8;
+                trace!("Ptr BitAnd, align {}, operand {:#010x}, base_mask {:#010x}",
+                    ptr_base_align, right, base_mask);
                 if right & base_mask == base_mask {
                     // Case 1: The base address bits are all preserved, i.e., right is all-1 there
-                    (Scalar::Ptr(Pointer::new(left.alloc_id, Size::from_bytes(left.offset.bytes() & right))), false)
+                    let offset = (left.offset.bytes() as u128 & right) as u64;
+                    (Scalar::Ptr(Pointer::new(left.alloc_id, Size::from_bytes(offset))), false)
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
-                    (Scalar::Bits { bits: (left.offset.bytes() & right) as u128, size: ptr_size }, false)
+                    (Scalar::Bits { bits: (left.offset.bytes() as u128) & right, size: ptr_size }, false)
+                } else {
+                    return err!(ReadPointerAsBytes);
+                }
+            }
+
+            Rem if !signed => {
+                // Doing modulo a divisor of the alignment is allowed.
+                // (Intuition: Modulo a divisor leaks less information.)
+                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let right = right as u64;
+                let ptr_size = self.memory.pointer_size().bytes() as u8;
+                if right == 1 {
+                    // modulo 1 is always 0
+                    (Scalar::Bits { bits: 0, size: ptr_size }, false)
+                } else if ptr_base_align % right == 0 {
+                    // the base address would be cancelled out by the modulo operation, so we can
+                    // just take the modulo of the offset
+                    (Scalar::Bits { bits: (left.offset.bytes() % right) as u128, size: ptr_size }, false)
                 } else {
                     return err!(ReadPointerAsBytes);
                 }
