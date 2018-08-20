@@ -1396,9 +1396,9 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
 /// impractical. However, observe that for some ranges of integers, the specialisation will be
 /// identical across all values in that range (i.e. there are equivalence classes of ranges of
 /// constructors based on their `is_useful_specialised` outcome). These classes are grouped by
-/// the patterns that apply to them (both in the matrix `P` and in the new row `p_{m + 1}`). We
-/// can split the range whenever the patterns that apply to that range (specifically: the patterns
-/// that *intersect* with that range) change.
+/// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
+/// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
+/// change.
 /// Our solution, therefore, is to split the range constructor into subranges at every single point
 /// the group of intersecting patterns changes, which we can compute by converting each pattern to
 /// a range and recording its endpoints, then creating subranges between each consecutive pair of
@@ -1407,6 +1407,21 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
 /// on actual integers. The nice thing about this is that the number of subranges is linear in the
 /// number of rows in the matrix (i.e. the number of cases in the `match` statement), so we don't
 /// need to be worried about matching over gargantuan ranges.
+///
+/// Essentially, given the first column of a matrix representing ranges, looking like the following:
+///
+/// |------|  |----------| |-------|    ||
+///    |-------| |-------|            |----| ||
+///       |---------|
+///
+/// We truncate the ranges so that they lie inside each range constructor and then split them
+/// up into equivalence classes so the ranges are no longer overlapping:
+///
+/// |--|--|||-||||--||---|||-------|  |-|||| ||
+///
+/// The logic for determining how to split the ranges is a little involved: we need to make sure
+/// that we have a new range for each subrange for which a different set of rows coïncides, but
+/// essentially reduces to case analysis on the endpoints of the ranges.
 fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctors: Vec<Constructor<'tcx>>,
@@ -1420,10 +1435,9 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
             // For now, only ranges may denote groups of "subconstructors", so we only need to
             // special-case constant ranges.
             ConstantRange(..) if should_treat_range_exhaustively(tcx, &ctor) => {
-                // We only care about finding all the subranges within the range of the intersection
-                // of the new pattern `p_({m + 1},1)` (here `pat`) and the constructor range.
-                // Anything else is irrelevant, because it is guaranteed to result in `NotUseful`,
-                // which is the default case anyway, and can be ignored.
+                // We only care about finding all the subranges within the range of the constructor
+                // range. Anything else is irrelevant, because it is guaranteed to result in
+                // `NotUseful`, which is the default case anyway, and can be ignored.
                 let ctor_range = IntRange::from_ctor(tcx, &ctor).unwrap();
 
                 // We're going to collect all the endpoints in the new pattern so we can create
@@ -1479,6 +1493,9 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                 // sure we're enumerating precisely the correct ranges. Too few and the matching is
                 // actually incorrect. Too many and our diagnostics are poorer. This involves some
                 // case analysis.
+                // In essence, we need to ensure that every time the set of row-ranges that are
+                // overlapping changes (as we go through the values covered by the ranges), we split
+                // into a new subrange.
                 while let Some(b) = points.next() {
                     // a < b (strictly)
                     if let Endpoint::Both = a.1 {
@@ -1522,7 +1539,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
                     let (pat_lo, pat_hi) = pat.range.into_inner();
                     let (ctor_lo, ctor_hi) = ctor.range.into_inner();
                     assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                    Some(vec![])
+                    vec![]
                 })
             }
             _ => None,
