@@ -26,8 +26,8 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(str_escape)]
+#![feature(try_trait)]
 #![feature(unicode_internals)]
-#![feature(catch_expr)]
 
 #![recursion_limit="256"]
 

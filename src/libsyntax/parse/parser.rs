@@ -1756,9 +1756,17 @@ impl<'a> Parser<'a> {
 
             let parser_snapshot_before_pat = self.clone();
 
+            // Once we can use edition 2018 in the compiler,
+            // replace this with real try blocks.
+            macro_rules! try_block {
+                ($($inside:tt)*) => (
+                    (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
+                )
+            }
+
             // We're going to try parsing the argument as a pattern (even though it's not
             // allowed). This way we can provide better errors to the user.
-            let pat_arg: PResult<'a, _> = do catch {
+            let pat_arg: PResult<'a, _> = try_block! {
                 let pat = self.parse_pat()?;
                 self.expect(&token::Colon)?;
                 (pat, self.parse_ty()?)
