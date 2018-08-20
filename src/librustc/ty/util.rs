@@ -498,21 +498,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let result = item_substs.iter().zip(impl_substs.iter())
             .filter(|&(_, &k)| {
-                match k.unpack() {
-                    UnpackedKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
-                        !impl_generics.region_param(ebr, self).pure_wrt_drop
-                    }
+                let index = match k.unpack() {
+                    UnpackedKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) =>
+                        ebr.index,
                     UnpackedKind::Type(&ty::TyS {
                         sty: ty::Param(ref pt), ..
-                    }) => {
-                        !impl_generics.type_param(pt, self).pure_wrt_drop
-                    }
+                    }) => pt.idx,
                     UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
                         // not a type or region param - this should be reported
                         // as an error.
-                        false
+                        return false;
                     }
-                }
+                };
+                !impl_generics.param_at(index, self).pure_wrt_drop
             }).map(|(&item_param, _)| item_param).collect();
         debug!("destructor_constraint({:?}) = {:?}", def.did, result);
         result

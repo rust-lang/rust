@@ -939,37 +939,12 @@ impl<'a, 'gcx, 'tcx> Generics {
         }
     }
 
-    pub fn region_param(&'tcx self,
-                        param: &EarlyBoundRegion,
-                        tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                        -> &'tcx GenericParamDef
-    {
-        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            let param = &self.params[index as usize];
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => param,
-                _ => bug!("expected lifetime parameter, but found another generic parameter")
-            }
+    pub fn param_at(&'tcx self, index: u32, tcx: TyCtxt<'_, '_, 'tcx>) -> &'tcx GenericParamDef {
+        if let Some(index) = index.checked_sub(self.parent_count as u32) {
+            &self.params[index as usize]
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
-                .region_param(param, tcx)
-        }
-    }
-
-    /// Returns the `GenericParamDef` associated with this `ParamTy`.
-    pub fn type_param(&'tcx self,
-                      param: &ParamTy,
-                      tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                      -> &'tcx GenericParamDef {
-        if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
-            let param = &self.params[index as usize];
-            match param.kind {
-                ty::GenericParamDefKind::Type {..} => param,
-                _ => bug!("expected type parameter, but found another generic parameter")
-            }
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
-                .type_param(param, tcx)
+                .param_at(index, tcx)
         }
     }
 }
