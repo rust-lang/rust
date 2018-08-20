@@ -9,7 +9,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutOf;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::span_lint;
 
 pub struct Pass {

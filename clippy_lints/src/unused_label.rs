@@ -4,7 +4,7 @@ use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use std::collections::HashMap;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 use crate::utils::{in_macro, span_lint};
 

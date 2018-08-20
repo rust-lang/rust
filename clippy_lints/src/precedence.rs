@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use crate::utils::{in_macro, snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear

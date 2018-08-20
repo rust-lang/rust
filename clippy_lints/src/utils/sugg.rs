@@ -10,7 +10,7 @@ use rustc_errors;
 use std::borrow::Cow;
 use std::fmt::Display;
 use std;
-use syntax::codemap::{CharPos, Span};
+use syntax::source_map::{CharPos, Span};
 use syntax::parse::token;
 use syntax::print::pprust::token_to_string;
 use syntax::util::parser::AssocOp;
@@ -432,7 +432,7 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 /// Return the indentation before `span` if there are nothing but `[ \t]`
 /// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
-    let lo = cx.sess().codemap().lookup_char_pos(span.lo());
+    let lo = cx.sess().source_map().lookup_char_pos(span.lo());
     if let Some(line) = lo.file
         .get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */)
     {
@@ -524,8 +524,8 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
 
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str) {
         let mut remove_span = item;
-        let hi = cx.sess().codemap().next_point(remove_span).hi();
-        let fmpos = cx.sess().codemap().lookup_byte_offset(hi);
+        let hi = cx.sess().source_map().next_point(remove_span).hi();
+        let fmpos = cx.sess().source_map().lookup_byte_offset(hi);
 
         if let Some(ref src) = fmpos.fm.src {
             let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');

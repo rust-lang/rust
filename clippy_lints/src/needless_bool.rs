@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::LitKind;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use crate::utils::{snippet, span_lint, span_lint_and_sugg};
 use crate::utils::sugg::Sugg;
 

@@ -4,7 +4,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
 use crate::utils::sugg::DiagnosticBuilderExt;

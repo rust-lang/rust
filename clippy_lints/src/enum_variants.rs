@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 use crate::utils::{span_help_and_lint, span_lint};
 use crate::utils::{camel_case_from, camel_case_until, in_macro};

@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::errors::DiagnosticBuilder;
 use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_macro, last_path_segment, match_def_path, match_path,
             match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,

@@ -5,14 +5,14 @@
 use lazy_static::lazy_static;
 use std::{env, fmt, fs, io, path};
 use std::io::Read;
-use syntax::{ast, codemap};
+use syntax::{ast, source_map};
 use toml;
 use std::sync::Mutex;
 
 /// Get the configuration file from arguments.
 pub fn file_from_args(
-    args: &[codemap::Spanned<ast::NestedMetaItemKind>],
-) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
+    args: &[source_map::Spanned<ast::NestedMetaItemKind>],
+) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
         if arg.name() == "conf_file" {
             return match arg.node {

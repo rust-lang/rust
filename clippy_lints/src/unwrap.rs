@@ -6,7 +6,7 @@ use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_po
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
 ///

@@ -19,7 +19,7 @@ use std::str::FromStr;
 use std::rc::Rc;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::source_map::{Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -365,7 +365,7 @@ pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str)
 
 /// Convert a span to a code snippet. Returns `None` if not available.
 pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
-    cx.sess().codemap().span_to_snippet(span).ok()
+    cx.sess().source_map().span_to_snippet(span).ok()
 }
 
 /// Convert a span (from a block) to a code snippet if available, otherwise use
@@ -385,7 +385,7 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
 
 /// Returns a new Span that covers the full last line of the given Span
 pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
-    let file_map_and_line = cx.sess().codemap().lookup_line(span.lo()).unwrap();
+    let file_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = file_map_and_line.line;
     let line_start = &file_map_and_line.fm.lines[line_no];
     Span::new(*line_start, span.hi(), span.ctxt())

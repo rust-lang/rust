@@ -2,7 +2,7 @@ use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for erasing operations, e.g. `x * 0`.

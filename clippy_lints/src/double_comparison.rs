@@ -3,7 +3,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use crate::utils::{snippet, span_lint_and_sugg, SpanlessEq};
 

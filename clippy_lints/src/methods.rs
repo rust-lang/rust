@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 use syntax::ast;
-use syntax::codemap::{Span, BytePos};
+use syntax::source_map::{Span, BytePos};
 use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self,
             is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
@@ -1311,7 +1311,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
 
             then {
                 // Span containing `.fold(...)`
-                let next_point = cx.sess().codemap().next_point(fold_args[0].span);
+                let next_point = cx.sess().source_map().next_point(fold_args[0].span);
                 let fold_span = next_point.with_hi(fold_args[2].span.hi() + BytePos(1));
 
                 let sugg = if replacement_has_args {

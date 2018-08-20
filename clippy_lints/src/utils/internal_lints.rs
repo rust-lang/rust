@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
 use syntax::symbol::LocalInternedString;
 use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use std::collections::{HashMap, HashSet};
 
 

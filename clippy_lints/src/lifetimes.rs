@@ -6,7 +6,7 @@ use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use std::collections::{HashMap, HashSet};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{last_path_segment, span_lint};
 use syntax::symbol::keywords;
 

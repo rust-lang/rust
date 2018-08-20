@@ -8,7 +8,7 @@ use rustc::hir::def::Def;
 use std::collections::HashSet;
 use syntax::ast;
 use rustc_target::spec::abi::Abi;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
 
 /// **What it does:** Checks for functions with too many parameters.

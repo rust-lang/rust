@@ -3,7 +3,7 @@ use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
-use syntax::codemap::{dummy_spanned, Span, DUMMY_SP};
+use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 use rustc_data_structures::thin_vec::ThinVec;
 use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq, get_trait_def_id, implements_trait};
 

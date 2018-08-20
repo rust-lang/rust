@@ -6,7 +6,7 @@ use rustc::ty::{self, Ty};
 use std::cmp::Ordering;
 use std::collections::Bound;
 use syntax::ast::LitKind;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
             remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};

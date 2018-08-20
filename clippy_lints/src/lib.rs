@@ -12,7 +12,6 @@
 #![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
 #![feature(tool_attributes)]
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 
 use toml;

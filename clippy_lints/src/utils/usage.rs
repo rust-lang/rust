@@ -8,7 +8,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 /// Returns a set of mutated local variable ids or None if mutations could not be determined.
 pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<HashSet<NodeId>> {

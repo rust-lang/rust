@@ -7,7 +7,7 @@ use rustc::hir::*;
 use rustc::ty;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use syntax::ast::{Attribute, NodeId};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 

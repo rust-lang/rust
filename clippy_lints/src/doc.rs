@@ -3,7 +3,7 @@ use pulldown_cmark;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast;
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
 use crate::utils::span_lint;
 use url::Url;

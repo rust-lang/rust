@@ -18,7 +18,7 @@ use rustc::ty::subst::Subst;
 use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use crate::utils::{sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
