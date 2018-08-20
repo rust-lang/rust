@@ -1,10 +1,10 @@
-error: `panic` is ambiguous
+error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:43:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
    |     ^^^^^
    |
-note: `panic` could refer to the macro defined here
+note: `panic` could refer to the name defined here
   --> $DIR/shadow_builtin_macros.rs:40:9
    |
 LL |         macro_rules! panic { () => {} }
@@ -12,7 +12,8 @@ LL |         macro_rules! panic { () => {} }
 LL |     } }
 LL |     m!();
    |     ----- in this macro invocation
-note: `panic` could also refer to the macro imported here
+   = note: `panic` is also a builtin macro
+   = note: macro-expanded macros do not shadow
 
 error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:25:14

@@ -871,16 +871,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
-                (Some((legacy_binding, _)), Ok((binding, FromPrelude(false)))) |
-                (Some((legacy_binding, FromExpansion(true))), Ok((binding, FromPrelude(true)))) => {
+                (Some((legacy_binding, FromExpansion(from_expansion))),
+                 Ok((binding, FromPrelude(false)))) |
+                (Some((legacy_binding, FromExpansion(from_expansion @ true))),
+                 Ok((binding, FromPrelude(true)))) => {
                     if legacy_binding.def() != binding.def_ignoring_ambiguity() {
-                        let msg1 = format!("`{}` could refer to the macro defined here", ident);
-                        let msg2 =
-                            format!("`{}` could also refer to the macro imported here", ident);
-                        self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
-                            .span_note(legacy_binding.span, &msg1)
-                            .span_note(binding.span, &msg2)
-                            .emit();
+                        self.report_ambiguity_error(
+                            ident.name, span, true,
+                            legacy_binding.def(), false, false,
+                            from_expansion, legacy_binding.span,
+                            binding.def(), binding.is_import(), binding.is_glob_import(),
+                            binding.expansion != Mark::root(), binding.span,
+                        );
                     }
                 },
                 // OK, non-macro-expanded legacy wins over macro prelude even if defs are different
