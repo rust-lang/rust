@@ -267,6 +267,11 @@ pub fn check_explicit_predicates<'tcx>(
     debug!("required_predicates = {:?}", required_predicates);
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
 
+    let ignore_self_ty = if ignore_self_ty {
+        Some(tcx.mk_self_type())
+    } else {
+        None
+    };
     for outlives_predicate in explicit_predicates.iter() {
         debug!("outlives_predicate = {:?}", &outlives_predicate);
 
@@ -297,7 +302,7 @@ pub fn check_explicit_predicates<'tcx>(
         // to apply the substs, and not filter this predicate, we might then falsely
         // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
         if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
-            if ty.is_self() && ignore_self_ty {
+            if Some(ty) == ignore_self_ty {
                 debug!("skipping self ty = {:?}", &ty);
                 continue;
             }

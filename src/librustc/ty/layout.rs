@@ -1130,7 +1130,6 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         if
             !self.tcx.sess.opts.debugging_opts.print_type_sizes ||
             layout.ty.has_param_types() ||
-            layout.ty.has_self_ty() ||
             !self.param_env.caller_bounds.is_empty()
         {
             return;
@@ -1300,7 +1299,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail(pointee);
                 match tail.sty {
                     ty::Param(_) | ty::Projection(_) => {
-                        debug_assert!(tail.has_param_types() || tail.has_self_ty());
+                        debug_assert!(tail.has_param_types());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
                             tail: tcx.erase_regions(&tail)

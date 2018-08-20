@@ -169,6 +169,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         supertraits_only: bool) -> bool
     {
+        let trait_self_ty = self.mk_self_type();
         let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
         let predicates = if supertraits_only {
             self.super_predicates_of(trait_def_id)
@@ -183,7 +184,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
-                        data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
+                        data.skip_binder().input_types().skip(1).any(|t| {
+                            t.walk().any(|ty| ty == trait_self_ty)
+                        })
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::WellFormed(..) |
@@ -204,6 +207,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
+        let trait_self_ty = self.mk_self_type();
         let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
@@ -216,7 +220,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .any(|predicate| {
                 match predicate {
                     ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                        trait_pred.skip_binder().self_ty().is_self()
+                        trait_pred.skip_binder().self_ty() == trait_self_ty
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
@@ -367,12 +371,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // object type, and we cannot resolve `Self as SomeOtherTrait`
         // without knowing what `Self` is.
 
+        let trait_self_ty = self.mk_self_type();
         let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
         let mut error = false;
         ty.maybe_walk(|ty| {
             match ty.sty {
-                ty::Param(ref param_ty) => {
-                    if param_ty.is_self() {
+                ty::Param(_) => {
+                    if ty == trait_self_ty {
                         error = true;
                     }
 

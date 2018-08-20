@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn foo<Foo, Bar>(x: Foo) -> Bar {
    |                             --- expected `Bar` because of return type
 LL |     x
-   |     ^ expected type parameter, found a different type parameter
+   |     ^ expected `Bar` parameter, found `Foo` parameter
    |
    = note: expected type `Bar`
               found type `Foo`

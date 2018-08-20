@@ -2286,15 +2286,6 @@ impl<'a> LoweringContext<'a> {
                 param
             }
             GenericParamKind::Type { ref default, .. } => {
-                // Don't expose `Self` (recovered "keyword used as ident" parse error).
-                // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
-                // Instead, use gensym("Self") to create a distinct name that looks the same.
-                let ident = if param.ident.name == keywords::SelfType.name() {
-                    param.ident.gensym()
-                } else {
-                    param.ident
-                };
-
                 let add_bounds = add_bounds.get(&param.id).map_or(&[][..], |x| &x);
                 if !add_bounds.is_empty() {
                     let params = self.lower_param_bounds(add_bounds, itctx.reborrow()).into_iter();
@@ -2305,11 +2296,11 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: self.lower_node_id(param.id).node_id,
-                    name: hir::ParamName::Plain(ident),
+                    name: hir::ParamName::Plain(param.ident),
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     attrs: self.lower_attrs(&param.attrs),
                     bounds,
-                    span: ident.span,
+                    span: param.ident.span,
                     kind: hir::GenericParamKind::Type {
                         default: default.as_ref().map(|x| {
                             self.lower_ty(x, ImplTraitContext::Disallowed)

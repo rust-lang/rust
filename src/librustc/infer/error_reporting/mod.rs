@@ -1117,19 +1117,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let table = table.borrow();
                 table.local_id_root.and_then(|did| {
                     let generics = self.tcx.generics_of(did);
-                    // Account for the case where `did` corresponds to `Self`, which doesn't have
-                    // the expected type argument.
-                    if !param.is_self() {
-                        let type_param = generics.type_param(param, self.tcx);
-                        let hir = &self.tcx.hir;
-                        hir.as_local_node_id(type_param.def_id).map(|id| {
-                            // Get the `hir::Param` to verify whether it already has any bounds.
-                            // We do this to avoid suggesting code that ends up as `T: 'a'b`,
-                            // instead we suggest `T: 'a + 'b` in that case.
-                            let mut has_bounds = false;
-                            if let hir_map::NodeGenericParam(ref param) = hir.get(id) {
-                                has_bounds = !param.bounds.is_empty();
-                            }
+                    let type_param = generics.type_param(param, self.tcx);
+                    let hir = &self.tcx.hir;
+                    hir.as_local_node_id(type_param.def_id).and_then(|id| {
+                        // Get the `hir::Param` to verify whether it already has any bounds.
+                        // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                        // instead we suggest `T: 'a + 'b` in that case.
+                        // Also, `Self` isn't in the HIR so we rule it out here.
+                        if let hir_map::NodeGenericParam(ref hir_param) = hir.get(id) {
+                            let has_bounds = !hir_param.bounds.is_empty();
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
@@ -1141,11 +1137,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 sp
                             };
-                            (sp, has_bounds)
-                        })
-                    } else {
-                        None
-                    }
+                            Some((sp, has_bounds))
+                        } else {
+                            None
+                        }
+                    })
                 })
             }
             _ => None,

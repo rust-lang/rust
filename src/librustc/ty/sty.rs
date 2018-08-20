@@ -982,17 +982,6 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.idx, self.name)
     }
-
-    pub fn is_self(&self) -> bool {
-        // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
-        // but this should only be possible when using `-Z continue-parse-after-error` like
-        // `compile-fail/issue-36638.rs`.
-        if self.name == keywords::SelfType.name().as_str() && self.idx == 0 {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 /// A [De Bruijn index][dbi] is a standard means of representing
@@ -1515,13 +1504,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
             ty::Param(ref data) => data.idx == index,
-            _ => false,
-        }
-    }
-
-    pub fn is_self(&self) -> bool {
-        match self.sty {
-            Param(ref p) => p.is_self(),
             _ => false,
         }
     }

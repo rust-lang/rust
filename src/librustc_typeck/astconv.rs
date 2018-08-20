@@ -597,7 +597,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
                 if is_object && has_default {
-                    if tcx.at(span).type_of(param.def_id).has_self_ty() {
+                    let trait_self_ty = tcx.mk_self_type();
+                    let default = tcx.at(span).type_of(param.def_id);
+                    if default.walk().any(|ty| ty == trait_self_ty) {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
                         return true;
