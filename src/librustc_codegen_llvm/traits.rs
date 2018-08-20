@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::{IntPredicate, RealPredicate, OperandBundleDef};
-use llvm;
+use llvm::{RealPredicate, OperandBundleDef};
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -21,6 +20,23 @@ use builder::MemFlags;
 
 use std::borrow::Cow;
 use std::ops::Range;
+
+pub enum IntPredicate {
+    IntEQ,
+    IntNE,
+    IntUGT,
+    IntUGE,
+    IntULT,
+    IntULE,
+    IntSGT,
+    IntSGE,
+    IntSLT,
+    IntSLE,
+}
+
+pub trait IntPredicateMethods {
+    fn convert_to_backend_specific(intpre : IntPredicate) -> Self;
+}
 
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
@@ -243,7 +259,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
         src: &'ll Value,
         order: AtomicOrdering,
         failure_order: AtomicOrdering,
-        weak: llvm::Bool,
+        weak: bool,
     ) -> &'ll Value;
     fn atomic_rmw(
         &self,

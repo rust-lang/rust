@@ -16,12 +16,11 @@ use std;
 
 use builder::Builder;
 use common::*;
-use llvm;
 use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
-use traits::BuilderMethods;
+use traits::{IntPredicate,BuilderMethods};
 
 pub fn size_and_align_of_dst(
     bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
@@ -100,7 +99,7 @@ pub fn size_and_align_of_dst(
                     // pick the correct alignment statically.
                     C_usize(cx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
-                _ => bx.select(bx.icmp(llvm::IntUGT, sized_align, unsized_align),
+                _ => bx.select(bx.icmp(IntPredicate::IntUGT, sized_align, unsized_align),
                                sized_align,
                                unsized_align)
             };

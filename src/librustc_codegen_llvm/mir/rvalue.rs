@@ -28,7 +28,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use traits::BuilderMethods;
+use traits::{IntPredicate,BuilderMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -135,7 +135,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 bx.br(header_bx.llbb());
                 let current = header_bx.phi(common::val_ty(start), &[start], &[bx.llbb()]);
 
-                let keep_going = header_bx.icmp(llvm::IntNE, current, end);
+                let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
                 header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
 
                 cg_elem.val.store(&body_bx,
@@ -337,7 +337,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                     // convenient place to put the `assume`.
 
                                     base::call_assume(&bx, bx.icmp(
-                                        llvm::IntULE,
+                                        IntPredicate::IntULE,
                                         llval,
                                         C_uint_big(ll_t_in, *scalar.valid_range.end())
                                     ));
@@ -639,31 +639,31 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         match op {
             mir::BinOp::Eq => {
                 bx.and(
-                    bx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
-                    bx.icmp(llvm::IntEQ, lhs_extra, rhs_extra)
+                    bx.icmp(IntPredicate::IntEQ, lhs_addr, rhs_addr),
+                    bx.icmp(IntPredicate::IntEQ, lhs_extra, rhs_extra)
                 )
             }
             mir::BinOp::Ne => {
                 bx.or(
-                    bx.icmp(llvm::IntNE, lhs_addr, rhs_addr),
-                    bx.icmp(llvm::IntNE, lhs_extra, rhs_extra)
+                    bx.icmp(IntPredicate::IntNE, lhs_addr, rhs_addr),
+                    bx.icmp(IntPredicate::IntNE, lhs_extra, rhs_extra)
                 )
             }
             mir::BinOp::Le | mir::BinOp::Lt |
             mir::BinOp::Ge | mir::BinOp::Gt => {
                 // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
                 let (op, strict_op) = match op {
-                    mir::BinOp::Lt => (llvm::IntULT, llvm::IntULT),
-                    mir::BinOp::Le => (llvm::IntULE, llvm::IntULT),
-                    mir::BinOp::Gt => (llvm::IntUGT, llvm::IntUGT),
-                    mir::BinOp::Ge => (llvm::IntUGE, llvm::IntUGT),
+                    mir::BinOp::Lt => (IntPredicate::IntULT, IntPredicate::IntULT),
+                    mir::BinOp::Le => (IntPredicate::IntULE, IntPredicate::IntULT),
+                    mir::BinOp::Gt => (IntPredicate::IntUGT, IntPredicate::IntUGT),
+                    mir::BinOp::Ge => (IntPredicate::IntUGE, IntPredicate::IntUGT),
                     _ => bug!(),
                 };
 
                 bx.or(
                     bx.icmp(strict_op, lhs_addr, rhs_addr),
                     bx.and(
-                        bx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
+                        bx.icmp(IntPredicate::IntEQ, lhs_addr, rhs_addr),
                         bx.icmp(op, lhs_extra, rhs_extra)
                     )
                 )
@@ -710,7 +710,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 let invert_mask = common::shift_mask_val(&bx, lhs_llty, rhs_llty, true);
                 let outer_bits = bx.and(rhs, invert_mask);
 
-                let of = bx.icmp(llvm::IntNE, outer_bits, C_null(rhs_llty));
+                let of = bx.icmp(IntPredicate::IntNE, outer_bits, C_null(rhs_llty));
                 let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
 
                 (val, of)
@@ -838,7 +838,7 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
         const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
                                             << (Single::MAX_EXP - Single::PRECISION as i16);
         let max = C_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
-        let overflow = bx.icmp(llvm::IntUGE, x, max);
+        let overflow = bx.icmp(IntPredicate::IntUGE, x, max);
         let infinity_bits = C_u32(bx.cx, ieee::Single::INFINITY.to_bits() as u32);
         let infinity = consts::bitcast(infinity_bits, float_ty);
         bx.select(overflow, infinity, bx.uitofp(x, float_ty))

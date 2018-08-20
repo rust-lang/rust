@@ -23,7 +23,7 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use traits::BuilderMethods;
+use traits::{IntPredicate,BuilderMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -331,7 +331,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                     } else {
                         C_uint_big(niche_llty, niche_start)
                     };
-                    bx.select(bx.icmp(llvm::IntEQ, lldiscr, niche_llval),
+                    bx.select(bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval),
                         C_uint(cast_to, *niche_variants.start() as u64),
                         C_uint(cast_to, dataful_variant as u64))
                 } else {
@@ -339,7 +339,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                     let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
                     let lldiscr = bx.sub(lldiscr, C_uint_big(niche_llty, delta));
                     let lldiscr_max = C_uint(niche_llty, *niche_variants.end() as u64);
-                    bx.select(bx.icmp(llvm::IntULE, lldiscr, lldiscr_max),
+                    bx.select(bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max),
                         bx.intcast(lldiscr, cast_to, false),
                         C_uint(cast_to, dataful_variant as u64))
                 }
