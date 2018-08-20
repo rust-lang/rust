@@ -199,7 +199,12 @@ fn from_known_layout<'tcx>(
     match layout {
         None => compute(),
         Some(layout) => {
-            debug_assert_eq!(layout.ty, compute()?.ty);
+            if cfg!(debug_assertions) {
+                let layout2 = compute()?;
+                assert_eq!(layout.details, layout2.details,
+                    "Mismatch in layout of supposedly equal-layout types {:?} and {:?}",
+                    layout.ty, layout2.ty);
+            }
             Ok(layout)
         }
     }
