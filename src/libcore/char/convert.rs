@@ -115,6 +115,10 @@ pub unsafe fn from_u32_unchecked(i: u32) -> char {
 
 #[stable(feature = "char_convert", since = "1.13.0")]
 impl From<char> for u32 {
+    /// Converts a [`char`] into a [`u32`].
+    ///
+    /// [`char`]: primitive.char.html
+    /// [`u32`]: primitive.u32.html
     #[inline]
     fn from(c: char) -> Self {
         c as u32
@@ -141,6 +145,10 @@ impl From<char> for u32 {
 /// C0 and C1 control codes.
 #[stable(feature = "char_convert", since = "1.13.0")]
 impl From<u8> for char {
+    /// Converts a [`u8`] into a [`char`].
+    ///
+    /// [`u8`]: primitive.u8.html
+    /// [`char`]: primitive.char.html
     #[inline]
     fn from(i: u8) -> Self {
         i as char
