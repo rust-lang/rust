@@ -478,7 +478,7 @@ pub fn codegen_intrinsic_call(
                 "cxchg" | "cxchgweak" => {
                     let ty = substs.type_at(0);
                     if int_type_width_signed(ty, cx).is_some() {
-                        let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
+                        let weak = split[1] == "cxchgweak";
                         let pair = bx.atomic_cmpxchg(
                             args[0].immediate(),
                             args[1].immediate(),

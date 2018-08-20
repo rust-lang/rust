@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::{IntPredicate, RealPredicate, False, OperandBundleDef};
+use llvm::{RealPredicate, False, OperandBundleDef};
 use llvm::{self, BasicBlock};
 use common::*;
 use type_::Type;
@@ -19,7 +19,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use traits::BuilderMethods;
+use traits::{self, BuilderMethods};
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -689,8 +689,9 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     }
 
     /* Comparisons */
-    fn icmp(&self, op: IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    fn icmp(&self, op: traits::IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("icmp");
+        let op : llvm::IntPredicate = traits::IntPredicateMethods::convert_to_backend_specific(op);
         unsafe {
             llvm::LLVMBuildICmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
         }
@@ -1048,8 +1049,9 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         src: &'ll Value,
         order: AtomicOrdering,
         failure_order: AtomicOrdering,
-        weak: llvm::Bool,
+        weak: bool,
     ) -> &'ll Value {
+        let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
             llvm::LLVMRustBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
                                              order, failure_order, weak)

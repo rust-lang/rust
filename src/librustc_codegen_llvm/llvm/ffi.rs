@@ -19,6 +19,7 @@ use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
+use traits;
 
 use super::RustString;
 
@@ -139,6 +140,23 @@ pub enum IntPredicate {
     IntSGE = 39,
     IntSLT = 40,
     IntSLE = 41,
+}
+
+impl traits::IntPredicateMethods for IntPredicate {
+    fn convert_to_backend_specific(intpre: traits::IntPredicate) -> Self {
+        match intpre {
+            traits::IntPredicate::IntEQ => IntPredicate::IntEQ,
+            traits::IntPredicate::IntNE => IntPredicate::IntNE,
+            traits::IntPredicate::IntUGT => IntPredicate::IntUGT,
+            traits::IntPredicate::IntUGE => IntPredicate::IntUGE,
+            traits::IntPredicate::IntULT => IntPredicate::IntULT,
+            traits::IntPredicate::IntULE => IntPredicate::IntULE,
+            traits::IntPredicate::IntSGT => IntPredicate::IntSGT,
+            traits::IntPredicate::IntSGE => IntPredicate::IntSGE,
+            traits::IntPredicate::IntSLT => IntPredicate::IntSLT,
+            traits::IntPredicate::IntSLE => IntPredicate::IntSLE,
+        }
+    }
 }
 
 /// LLVMRealPredicate

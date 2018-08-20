@@ -26,7 +26,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use traits::BuilderMethods;
+use traits::{IntPredicate,BuilderMethods};
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -210,7 +210,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     } else {
                         let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
                         let llval = C_uint_big(switch_llty, values[0]);
-                        let cmp = bx.icmp(llvm::IntEQ, discr.immediate(), llval);
+                        let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                         bx.cond_br(cmp, lltrue, llfalse);
                     }
                 } else {
