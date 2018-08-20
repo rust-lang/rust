@@ -219,7 +219,7 @@ impl EarlyLintPass for Pass {
                         cx,
                         WRITELN_EMPTY_STRING,
                         mac.span,
-                        format!("using writeln!({}, \"\")", suggestion).as_str(),
+                        format!("using `writeln!({}, \"\")`", suggestion).as_str(),
                         "replace it with",
                         format!("writeln!({})", suggestion),
                     );
