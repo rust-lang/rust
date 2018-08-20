@@ -556,7 +556,8 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
   }
 
 #if LLVM_VERSION_GE(7, 0)
-  unwrap(Target)->addPassesToEmitFile(*PM, OS, nullptr, FileType, false);
+  buffer_ostream BOS(OS);
+  unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
 #else
   unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
 #endif
