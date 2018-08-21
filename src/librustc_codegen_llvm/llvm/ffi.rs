@@ -277,6 +277,22 @@ pub enum AtomicOrdering {
     SequentiallyConsistent = 7,
 }
 
+impl AtomicOrdering {
+    pub fn from_generic(ao : traits::AtomicOrdering) -> Self {
+        match ao {
+            traits::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
+            traits::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
+            traits::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            traits::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
+            traits::AtomicOrdering::Release => AtomicOrdering::Release,
+            traits::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
+            traits::AtomicOrdering::SequentiallyConsistent =>
+                AtomicOrdering::SequentiallyConsistent
+        }
+    }
+}
+
+
 /// LLVMRustSynchronizationScope
 #[derive(Copy, Clone)]
 #[repr(C)]

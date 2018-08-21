@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{SynchronizationScope, AsmDialect};
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -81,6 +81,19 @@ pub enum AtomicRmwBinOp {
     AtomicUMax,
     AtomicUMin
 }
+
+pub enum AtomicOrdering {
+    #[allow(dead_code)]
+    NotAtomic,
+    Unordered,
+    Monotonic,
+    // Consume,  // Not specified yet.
+    Acquire,
+    Release,
+    AcquireRelease,
+    SequentiallyConsistent,
+}
+
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
     Value : ?Sized,
