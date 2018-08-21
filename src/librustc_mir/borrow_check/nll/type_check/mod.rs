@@ -38,7 +38,6 @@ use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
-use rustc_errors::Diagnostic;
 use std::fmt;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -106,8 +105,7 @@ mod relate_tys;
 /// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
-/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
-/// - `errors_buffer` -- errors are sent here for future reporting
+/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysiss
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
@@ -120,7 +118,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
-    errors_buffer: &mut Vec<Diagnostic>,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
@@ -161,7 +158,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             &region_bound_pairs,
             Some(implicit_region_bound),
             Some(&mut borrowck_context),
-            Some(errors_buffer),
             |cx| {
                 cx.equate_inputs_and_outputs(
                     mir,
@@ -191,7 +187,6 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
-    errors_buffer: Option<&mut Vec<Diagnostic>>,
     mut extra: impl FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>) -> R,
 ) -> R where {
     let mut checker = TypeChecker::new(
@@ -211,7 +206,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
 
     if !errors_reported {
         // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(mir, errors_buffer);
+        checker.typeck_mir(mir);
     }
 
     extra(&mut checker)
@@ -964,7 +959,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &Mir<'tcx>,
         term: &Terminator<'tcx>,
         term_location: Location,
-        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
     ) {
         debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
@@ -1044,7 +1038,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     &sig,
                 );
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(mir, term, &sig, destination, term_location, errors_buffer);
+                self.check_call_dest(mir, term, &sig, destination, term_location);
 
                 self.prove_predicates(
                     sig.inputs().iter().map(|ty| ty::Predicate::WellFormed(ty)),
@@ -1118,7 +1112,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sig: &ty::FnSig<'tcx>,
         destination: &Option<(Place<'tcx>, BasicBlock)>,
         term_location: Location,
-        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
     ) {
         let tcx = self.tcx();
         match *destination {
@@ -1152,7 +1145,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // this check is done at `check_local`.
                 if self.tcx().features().unsized_locals {
                     let span = term.source_info.span;
-                    self.ensure_place_sized(dest_ty, span, errors_buffer);
+                    self.ensure_place_sized(dest_ty, span);
                 }
             }
             None => {
@@ -1305,7 +1298,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &Mir<'tcx>,
         local: Local,
         local_decl: &LocalDecl<'tcx>,
-        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
     ) {
         match mir.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
@@ -1321,18 +1313,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
 
         // When `#![feature(unsized_locals)]` is enabled, only function calls
-        // are checked in `check_call_dest`.
+        // and nullary ops are checked in `check_call_dest`.
         if !self.tcx().features().unsized_locals {
             let span = local_decl.source_info.span;
             let ty = local_decl.ty;
-            self.ensure_place_sized(ty, span, errors_buffer);
+            self.ensure_place_sized(ty, span);
         }
     }
 
-    fn ensure_place_sized(&mut self,
-                          ty: Ty<'tcx>,
-                          span: Span,
-                          errors_buffer: &mut Option<&mut Vec<Diagnostic>>) {
+    fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: Span) {
         let tcx = self.tcx();
 
         // Erase the regions from `ty` to get a global type.  The
@@ -1354,15 +1343,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                      cannot be statically determined",
                     ty
                 );
-                if let Some(ref mut errors_buffer) = *errors_buffer {
-                    diag.buffer(errors_buffer);
-                } else {
-                    // we're allowed to use emit() here because the
-                    // NLL migration will be turned on (and thus
-                    // errors will need to be buffered) *only if*
-                    // errors_buffer is Some.
-                    diag.emit();
-                }
+
+                // While this is located in `nll::typeck` this error is not
+                // an NLL error, it's a required check to prevent creation
+                // of unsized rvalues in certain cases:
+                // * operand of a box expression
+                // * callee in a call expression
+                diag.emit();
             }
         }
     }
@@ -1437,6 +1424,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             },
 
             Rvalue::NullaryOp(_, ty) => {
+                // Even with unsized locals cannot box an unsized value.
+                if self.tcx().features().unsized_locals {
+                    let span = mir.source_info(location).span;
+                    self.ensure_place_sized(ty, span);
+                }
+
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.lang_items().sized_trait().unwrap(),
                     substs: tcx.mk_substs_trait(ty, &[]),
@@ -1840,12 +1833,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, mir: &Mir<'tcx>, mut errors_buffer: Option<&mut Vec<Diagnostic>>) {
+    fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
 
         for (local, local_decl) in mir.local_decls.iter_enumerated() {
-            self.check_local(mir, local, local_decl, &mut errors_buffer);
+            self.check_local(mir, local, local_decl);
         }
 
         for (block, block_data) in mir.basic_blocks().iter_enumerated() {
@@ -1861,7 +1854,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(mir, block_data.terminator(), location, &mut errors_buffer);
+            self.check_terminator(mir, block_data.terminator(), location);
             self.check_iscleanup(mir, block_data);
         }
     }
@@ -1916,7 +1909,6 @@ impl MirPass for TypeckMir {
                 param_env,
                 mir,
                 &[],
-                None,
                 None,
                 None,
                 |_| (),
