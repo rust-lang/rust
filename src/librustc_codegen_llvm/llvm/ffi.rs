@@ -142,8 +142,8 @@ pub enum IntPredicate {
     IntSLE = 41,
 }
 
-impl traits::IntPredicateMethods for IntPredicate {
-    fn convert_to_backend_specific(intpre: traits::IntPredicate) -> Self {
+impl IntPredicate {
+    pub fn from_generic(intpre: traits::IntPredicate) -> Self {
         match intpre {
             traits::IntPredicate::IntEQ => IntPredicate::IntEQ,
             traits::IntPredicate::IntNE => IntPredicate::IntNE,
@@ -181,8 +181,8 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
-impl traits::RealPredicateMethods for RealPredicate {
-    fn convert_to_backend_specific(realpred: traits::RealPredicate) -> Self {
+impl RealPredicate {
+    pub fn from_generic(realpred: traits::RealPredicate) -> Self {
         match realpred {
             traits::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
             traits::RealPredicate::RealOEQ => RealPredicate::RealOEQ,

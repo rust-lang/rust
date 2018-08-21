@@ -34,10 +34,6 @@ pub enum IntPredicate {
     IntSLE,
 }
 
-pub trait IntPredicateMethods {
-    fn convert_to_backend_specific(intpre : IntPredicate) -> Self;
-}
-
 #[allow(dead_code)]
 pub enum RealPredicate {
     RealPredicateFalse,
@@ -57,11 +53,6 @@ pub enum RealPredicate {
     RealUNE,
     RealPredicateTrue,
 }
-
-pub trait RealPredicateMethods {
-    fn convert_to_backend_specific(realpred : RealPredicate) -> Self;
-}
-
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
     Value : ?Sized,
