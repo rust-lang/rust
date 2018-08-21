@@ -158,8 +158,8 @@ fn main() {
         _ => {}
     }
 
-    const lim: u128 = u128::MAX - 1;
+    const LIM: u128 = u128::MAX - 1;
     match 0u128 { //~ ERROR non-exhaustive patterns
-        0 ..= lim => {}
+        0 ..= LIM => {}
     }
 }
