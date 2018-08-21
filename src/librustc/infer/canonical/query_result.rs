@@ -24,19 +24,18 @@ use infer::canonical::{
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
-use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
+use infer::{InferCtxt, InferOk, InferResult};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
-use syntax::ast;
 use syntax_pos::DUMMY_SP;
 use traits::query::{Fallible, NoSolution};
 use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
-use ty::{self, CanonicalVar, Lift, TyCtxt};
+use ty::{self, CanonicalVar, Lift, Ty, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
@@ -157,7 +156,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         let region_obligations = self.take_registered_region_obligations();
         let region_constraints = self.with_region_constraints(|region_constraints| {
-            make_query_outlives(tcx, region_obligations, region_constraints)
+            make_query_outlives(
+                tcx,
+                region_obligations
+                    .iter()
+                    .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region)),
+                region_constraints)
         });
 
         let certainty = if ambig_errors.is_empty() {
@@ -567,7 +571,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// creates query region constraints.
 pub fn make_query_outlives<'tcx>(
     tcx: TyCtxt<'_, '_, 'tcx>,
-    region_obligations: Vec<(ast::NodeId, RegionObligation<'tcx>)>,
+    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> Vec<QueryRegionConstraint<'tcx>> {
     let RegionConstraintData {
@@ -600,9 +604,8 @@ pub fn make_query_outlives<'tcx>(
             .collect();
 
     outlives.extend(
-        region_obligations
-            .into_iter()
-            .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
+        outlives_obligations
+            .map(|(ty, r)| ty::OutlivesPredicate(ty.into(), r))
             .map(ty::Binder::dummy), // no bound regions in the code above
     );
 
