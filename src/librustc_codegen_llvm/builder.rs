@@ -191,7 +191,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                   args: &[&'ll Value],
                   then: &'ll BasicBlock,
                   catch: &'ll BasicBlock,
-                  bundle: Option<&OperandBundleDef<'ll>>) -> &'ll Value {
+                  bundle: Option<&traits::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -199,7 +199,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                args);
 
         let args = self.check_call("invoke", llfn, args);
-        let bundle = bundle.map(|b| &*b.raw);
+        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
 
         unsafe {
             llvm::LLVMRustBuildInvoke(self.llbuilder,
@@ -1191,7 +1191,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&OperandBundleDef<'ll>>) -> &'ll Value {
+                bundle: Option<&traits::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",
@@ -1199,7 +1199,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                args);
 
         let args = self.check_call("call", llfn, args);
-        let bundle = bundle.map(|b| &*b.raw);
+        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
 
         unsafe {
             llvm::LLVMRustBuildCall(
