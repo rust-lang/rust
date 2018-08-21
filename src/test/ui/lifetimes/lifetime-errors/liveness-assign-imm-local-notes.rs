@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // FIXME: Change to UI Test
-// Check notes are placed on an assignment that can actually precede the current assigmnent
-// Don't emmit a first assignment for assignment in a loop.
+// Check notes are placed on an assignment that can actually precede the current assignment
+// Don't emit a first assignment for assignment in a loop.
 
 // compile-flags: -Zborrowck=compare
 

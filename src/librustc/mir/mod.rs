@@ -927,11 +927,11 @@ pub enum TerminatorKind<'tcx> {
     ///   Drop(P, goto BB1, unwind BB2)
     /// }
     /// BB1 {
-    ///   // P is now unitialized
+    ///   // P is now uninitialized
     ///   P <- V
     /// }
     /// BB2 {
-    ///   // P is now unitialized -- its dtor panicked
+    ///   // P is now uninitialized -- its dtor panicked
     ///   P <- V
     /// }
     /// ```

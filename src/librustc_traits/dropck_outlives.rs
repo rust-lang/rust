@@ -81,7 +81,7 @@ fn dropck_outlives<'tcx>(
         // into the types of its fields `(B, Vec<A>)`. These will get
         // pushed onto the stack. Eventually, expanding `Vec<A>` will
         // lead to us trying to push `A` a second time -- to prevent
-        // infinite recusion, we notice that `A` was already pushed
+        // infinite recursion, we notice that `A` was already pushed
         // once and stop.
         let mut ty_stack = vec![(for_ty, 0)];
 

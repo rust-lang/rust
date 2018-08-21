@@ -1501,7 +1501,7 @@ impl UniverseIndex {
 
     /// Creates a universe index from the given integer.  Not to be
     /// used lightly lest you pick a bad value. But sometimes we
-    /// convert universe indicies into integers and back for various
+    /// convert universe indices into integers and back for various
     /// reasons.
     pub fn from_u32(index: u32) -> Self {
         UniverseIndex(index)

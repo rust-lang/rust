@@ -357,15 +357,12 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
     /// ```
-    #[unstable(feature = "ip_constructors",
-               reason = "requires greater scrutiny before stabilization",
-               issue = "44582")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
 
     /// An IPv4 address representing an unspecified address: 0.0.0.0
@@ -373,15 +370,12 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
-    #[unstable(feature = "ip_constructors",
-               reason = "requires greater scrutiny before stabilization",
-               issue = "44582")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
     /// An IPv4 address representing the broadcast address: 255.255.255.255
@@ -389,15 +383,12 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::BROADCAST;
     /// assert_eq!(addr, Ipv4Addr::new(255, 255, 255, 255));
     /// ```
-    #[unstable(feature = "ip_constructors",
-               reason = "requires greater scrutiny before stabilization",
-               issue = "44582")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const BROADCAST: Self = Ipv4Addr::new(255, 255, 255, 255);
 
     /// Returns the four eight-bit integers that make up this address.
@@ -896,15 +887,12 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
-    #[unstable(feature = "ip_constructors",
-               reason = "requires greater scrutiny before stabilization",
-               issue = "44582")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
     /// An IPv6 address representing the unspecified address: `::`
@@ -912,15 +900,12 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
-    #[unstable(feature = "ip_constructors",
-               reason = "requires greater scrutiny before stabilization",
-               issue = "44582")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
 
     /// Returns the eight 16-bit segments that make up this address.

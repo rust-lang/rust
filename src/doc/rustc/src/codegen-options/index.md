@@ -153,7 +153,7 @@ This option allows you to put extra data in each output filename.
 This flag lets you control how many threads are used when doing
 code generation.
 
-Increasing paralellism may speed up compile times, but may also
+Increasing parallelism may speed up compile times, but may also
 produce slower code.
 
 ## remark

@@ -533,7 +533,7 @@ fn byte_lit(lit: &str) -> (u8, usize) {
 fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
-    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
+    let error = |i| panic!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
     fn eat<I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
@@ -552,12 +552,11 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     loop {
         match chars.next() {
             Some((i, b'\\')) => {
-                let em = error(i);
-                match chars.peek().expect(&em).1 {
+                match chars.peek().unwrap_or_else(|| error(i)).1 {
                     b'\n' => eat(&mut chars),
                     b'\r' => {
                         chars.next();
-                        if chars.peek().expect(&em).1 != b'\n' {
+                        if chars.peek().unwrap_or_else(|| error(i)).1 != b'\n' {
                             panic!("lexer accepted bare CR");
                         }
                         eat(&mut chars);
@@ -574,8 +573,7 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
                 }
             },
             Some((i, b'\r')) => {
-                let em = error(i);
-                if chars.peek().expect(&em).1 != b'\n' {
+                if chars.peek().unwrap_or_else(|| error(i)).1 != b'\n' {
                     panic!("lexer accepted bare CR");
                 }
                 chars.next();

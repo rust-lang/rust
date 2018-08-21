@@ -3535,8 +3535,8 @@ impl<'a> Parser<'a> {
                         if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                             && expr_lines.lines.len() == 2
                             && self.token == token::FatArrow => {
-                            // We check wether there's any trailing code in the parse span, if there
-                            // isn't, we very likely have the following:
+                            // We check whether there's any trailing code in the parse span,
+                            // if there isn't, we very likely have the following:
                             //
                             // X |     &Y => "y"
                             //   |        --    - missing comma
@@ -3934,7 +3934,7 @@ impl<'a> Parser<'a> {
     }
 
     /// A wrapper around `parse_pat` with some special error handling for the
-    /// "top-level" patterns in a match arm, `for` loop, `let`, &c. (in contast
+    /// "top-level" patterns in a match arm, `for` loop, `let`, &c. (in contrast
     /// to subpatterns within such).
     fn parse_top_level_pat(&mut self) -> PResult<'a, P<Pat>> {
         let pat = self.parse_pat()?;
@@ -4322,7 +4322,7 @@ impl<'a> Parser<'a> {
     // If `break_on_semi` is `Break`, then we will stop consuming tokens after
     // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
     // approximate - it can mean we break too early due to macros, but that
-    // shoud only lead to sub-optimal recovery, not inaccurate parsing).
+    // should only lead to sub-optimal recovery, not inaccurate parsing).
     //
     // If `break_on_block` is `Break`, then we will stop consuming tokens
     // after finding (and consuming) a brace-delimited block.
@@ -4887,7 +4887,7 @@ impl<'a> Parser<'a> {
     fn parse_generic_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         loop {
-            // This needs to be syncronized with `Token::can_begin_bound`.
+            // This needs to be synchronized with `Token::can_begin_bound`.
             let is_bound_start = self.check_path() || self.check_lifetime() ||
                                  self.check(&token::Question) ||
                                  self.check_keyword(keywords::For) ||

@@ -35,7 +35,7 @@ use lint_unused_extern_crate2::foo as bar;
 use other::*;
 
 mod foo {
-    // Test that this is unused even though an earler `extern crate` is used.
+    // Test that this is unused even though an earlier `extern crate` is used.
     extern crate lint_unused_extern_crate2; //~ ERROR unused extern crate
 }
 

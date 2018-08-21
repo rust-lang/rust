@@ -226,8 +226,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         // Declaring `t` here avoids aligning the stack when this loop is unused
         let mut t: Block = mem::uninitialized();
         let t = &mut t as *mut _ as *mut u8;
-        let x = x.offset(i as isize);
-        let y = y.offset(i as isize);
+        let x = x.add(i);
+        let y = y.add(i);
 
         // Swap a block of bytes of x & y, using t as a temporary buffer
         // This should be optimized into efficient SIMD operations where available
@@ -243,8 +243,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         let rem = len - i;
 
         let t = &mut t as *mut _ as *mut u8;
-        let x = x.offset(i as isize);
-        let y = y.offset(i as isize);
+        let x = x.add(i);
+        let y = y.add(i);
 
         copy_nonoverlapping(x, t, rem);
         copy_nonoverlapping(y, x, rem);
@@ -613,7 +613,7 @@ impl<T: ?Sized> *const T {
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
     /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    /// `vec.as_ptr().add(vec.len())` is always safe.
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
@@ -1231,7 +1231,7 @@ impl<T: ?Sized> *const T {
     /// let ptr = &x[n] as *const u8;
     /// let offset = ptr.align_offset(align_of::<u16>());
     /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     let u16_ptr = ptr.add(offset) as *const u16;
     ///     assert_ne!(*u16_ptr, 500);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
@@ -1334,7 +1334,7 @@ impl<T: ?Sized> *mut T {
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
     /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    /// `vec.as_ptr().add(vec.len())` is always safe.
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
@@ -2261,7 +2261,7 @@ impl<T: ?Sized> *mut T {
     /// let ptr = &x[n] as *const u8;
     /// let offset = ptr.align_offset(align_of::<u16>());
     /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     let u16_ptr = ptr.add(offset) as *const u16;
     ///     assert_ne!(*u16_ptr, 500);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
@@ -2291,7 +2291,7 @@ impl<T: ?Sized> *mut T {
 ///
 /// If we ever decide to make it possible to call the intrinsic with `a` that is not a
 /// power-of-two, it will probably be more prudent to just change to a naive implementation rather
-/// than trying to adapt this to accomodate that change.
+/// than trying to adapt this to accommodate that change.
 ///
 /// Any questions go to @nagisa.
 #[lang="align_offset"]

@@ -82,7 +82,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         // Errors and ambiuity in dropck occur in two cases:
         // - unresolved inference variables at the end of typeck
         // - non well-formed types where projections cannot be resolved
-        // Either of these should hvae created an error before.
+        // Either of these should have created an error before.
         tcx.sess
             .delay_span_bug(span, "dtorck encountered internal error");
         return InferOk {

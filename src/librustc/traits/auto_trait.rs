@@ -264,12 +264,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // The core logic responsible for computing the bounds for our synthesized impl.
     //
     // To calculate the bounds, we call SelectionContext.select in a loop. Like FulfillmentContext,
-    // we recursively select the nested obligations of predicates we encounter. However, whenver we
+    // we recursively select the nested obligations of predicates we encounter. However, whenever we
     // encounter an UnimplementedError involving a type parameter, we add it to our ParamEnv. Since
     // our goal is to determine when a particular type implements an auto trait, Unimplemented
     // errors tell us what conditions need to be met.
     //
-    // This method ends up working somewhat similary to FulfillmentContext, but with a few key
+    // This method ends up working somewhat similarly to FulfillmentContext, but with a few key
     // differences. FulfillmentContext works under the assumption that it's dealing with concrete
     // user code. According, it considers all possible ways that a Predicate could be met - which
     // isn't always what we want for a synthesized impl. For example, given the predicate 'T:
@@ -289,11 +289,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // we'll pick up any nested bounds, without ever inferring that 'T: IntoIterator' needs to
     // hold.
     //
-    // One additonal consideration is supertrait bounds. Normally, a ParamEnv is only ever
+    // One additional consideration is supertrait bounds. Normally, a ParamEnv is only ever
     // consutrcted once for a given type. As part of the construction process, the ParamEnv will
     // have any supertrait bounds normalized - e.g. if we have a type 'struct Foo<T: Copy>', the
     // ParamEnv will contain 'T: Copy' and 'T: Clone', since 'Copy: Clone'. When we construct our
-    // own ParamEnv, we need to do this outselves, through traits::elaborate_predicates, or else
+    // own ParamEnv, we need to do this ourselves, through traits::elaborate_predicates, or else
     // SelectionContext will choke on the missing predicates. However, this should never show up in
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate

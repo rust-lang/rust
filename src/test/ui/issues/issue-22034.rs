@@ -16,6 +16,6 @@ fn main() {
     let ptr: *mut () = 0 as *mut _;
     let _: &mut Fn() = unsafe {
         &mut *(ptr as *mut Fn())
-        //~^ ERROR `(): std::ops::Fn<()>` is not satisfied
+        //~^ ERROR expected a `std::ops::Fn<()>` closure, found `()`
     };
 }

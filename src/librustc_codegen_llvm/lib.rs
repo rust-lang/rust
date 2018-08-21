@@ -88,6 +88,7 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::svh::Svh;
 
 mod diagnostics;
 
@@ -251,7 +252,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, ongoing_codegen.link.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, ongoing_codegen.crate_hash);
 
         Ok(())
     }
@@ -389,7 +390,7 @@ struct CodegenResults {
     modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
     metadata_module: CompiledModule,
-    link: rustc::middle::cstore::LinkMeta,
+    crate_hash: Svh,
     metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
     linker_info: back::linker::LinkerInfo,

@@ -47,7 +47,7 @@
 #![feature(drain_filter)]
 #![feature(iterator_find_map)]
 #![cfg_attr(windows, feature(libc))]
-#![feature(macro_vis_matcher)]
+#![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]

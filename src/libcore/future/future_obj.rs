@@ -27,7 +27,7 @@ use task::{Context, Poll};
 /// - The `Future` trait is currently not object safe: The `Future::poll`
 ///   method makes uses the arbitrary self types feature and traits in which
 ///   this feature is used are currently not object safe due to current compiler
-///   limitations. (See tracking issue for arbitray self types for more
+///   limitations. (See tracking issue for arbitrary self types for more
 ///   information #44874)
 pub struct LocalFutureObj<'a, T> {
     ptr: *mut (),
@@ -102,7 +102,7 @@ impl<'a, T> Drop for LocalFutureObj<'a, T> {
 /// - The `Future` trait is currently not object safe: The `Future::poll`
 ///   method makes uses the arbitrary self types feature and traits in which
 ///   this feature is used are currently not object safe due to current compiler
-///   limitations. (See tracking issue for arbitray self types for more
+///   limitations. (See tracking issue for arbitrary self types for more
 ///   information #44874)
 pub struct FutureObj<'a, T>(LocalFutureObj<'a, T>);
 

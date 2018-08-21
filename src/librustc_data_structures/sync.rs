@@ -26,7 +26,7 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
 //!
-//! `MTRef` is a immutable refernce if cfg!(parallel_queries), and an mutable reference otherwise.
+//! `MTRef` is a immutable reference if cfg!(parallel_queries), and an mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
@@ -432,7 +432,7 @@ impl<T> Once<T> {
     /// closures may concurrently be computing a value which the inner value should take.
     /// Only one of these closures are used to actually initialize the value.
     /// If some other closure already set the value, we assert that it our closure computed
-    /// a value equal to the value aready set and then
+    /// a value equal to the value already set and then
     /// we return the value our closure computed wrapped in a `Option`.
     /// If our closure set the value, `None` is returned.
     /// If the value is already initialized, the closure is not called and `None` is returned.

@@ -52,6 +52,8 @@
 
     var themesWidth = null;
 
+    var titleBeforeSearch = document.title;
+
     if (!String.prototype.startsWith) {
         String.prototype.startsWith = function(searchString, position) {
             position = position || 0;
@@ -267,6 +269,7 @@
             ev.preventDefault();
             addClass(search, "hidden");
             removeClass(document.getElementById("main"), "hidden");
+            document.title = titleBeforeSearch;
         }
         defocusSearchBar();
     }

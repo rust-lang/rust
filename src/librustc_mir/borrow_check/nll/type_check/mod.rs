@@ -783,7 +783,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// predicates, or otherwise uses the inference context, executes
     /// `op` and then executes all the further obligations that `op`
     /// returns. This will yield a set of outlives constraints amongst
-    /// regions which are extracted and stored as having occured at
+    /// regions which are extracted and stored as having occurred at
     /// `locations`.
     ///
     /// **Any `rustc::infer` operations that might generate region

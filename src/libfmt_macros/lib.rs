@@ -154,7 +154,7 @@ pub struct Parser<'a> {
     style: Option<usize>,
     /// How many newlines have been seen in the string so far, to adjust the error spans
     seen_newlines: usize,
-    /// Start and end byte offset of every successfuly parsed argument
+    /// Start and end byte offset of every successfully parsed argument
     pub arg_places: Vec<(usize, usize)>,
 }
 

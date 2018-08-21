@@ -16,7 +16,7 @@
 
 // compile-pass
 
-#![feature(macro_vis_matcher)]
+#![cfg_attr(stage0, feature(macro_vis_matcher))]
 
 #![allow(unused)]
 #![warn(unreachable_pub)]

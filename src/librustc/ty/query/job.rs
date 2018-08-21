@@ -262,7 +262,7 @@ where
         }
     }
 
-    // Visit the explict waiters which use condvars and are resumable
+    // Visit the explicit waiters which use condvars and are resumable
     for (i, waiter) in query.latch.info.lock().waiters.iter().enumerate() {
         if let Some(ref waiter_query) = waiter.query {
             if visit(waiter.span, waiter_query.clone()).is_some() {

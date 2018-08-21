@@ -17,5 +17,5 @@ fn main() {
     // extern functions are extern "C" fn
     let _x: extern "C" fn() = f; // OK
     is_fn(f);
-    //~^ ERROR `extern "C" fn() {f}: std::ops::Fn<()>` is not satisfied
+    //~^ ERROR expected a `std::ops::Fn<()>` closure, found `extern "C" fn() {f}`
 }

@@ -234,10 +234,10 @@ fn can_alias_safehash_as_hash() {
 // make a RawBucket point to invalid memory using safe code.
 impl<K, V> RawBucket<K, V> {
     unsafe fn hash(&self) -> *mut HashUint {
-        self.hash_start.offset(self.idx as isize)
+        self.hash_start.add(self.idx)
     }
     unsafe fn pair(&self) -> *mut (K, V) {
-        self.pair_start.offset(self.idx as isize) as *mut (K, V)
+        self.pair_start.add(self.idx) as *mut (K, V)
     }
     unsafe fn hash_pair(&self) -> (*mut HashUint, *mut (K, V)) {
         (self.hash(), self.pair())

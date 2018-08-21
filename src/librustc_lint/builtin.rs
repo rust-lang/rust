@@ -889,7 +889,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // NB. this has an edge case with non-returning statements,
         // like `loop {}` or `panic!()`: control flow never reaches
         // the exit node through these, so one can have a function
-        // that never actually calls itselfs but is still picked up by
+        // that never actually calls itself but is still picked up by
         // this lint:
         //
         //     fn f(cond: bool) {

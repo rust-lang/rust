@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the MSP430 interrupt ABI cannot be used when msp430_interrupt
-// feature gate is not used.
-
-macro_rules! m { ($v:vis) => {} }
-//~^ ERROR :vis fragment specifier is experimental and subject to change
-
 fn main() {
-    m!(pub);
+    let x = Some(1);
+    let y = x.or_else(4);
+    //~^ ERROR expected a `std::ops::FnOnce<()>` closure, found `{integer}`
 }

@@ -117,7 +117,7 @@ struct Context<'a, 'b: 'a> {
     invalid_refs: Vec<(usize, usize)>,
     /// Spans of all the formatting arguments, in order.
     arg_spans: Vec<Span>,
-    /// Wether this formatting string is a literal or it comes from a macro.
+    /// Whether this formatting string is a literal or it comes from a macro.
     is_literal: bool,
 }
 

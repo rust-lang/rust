@@ -541,7 +541,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                             // unique or mutable borrows are invalidated by writes.
                             // Reservations count as writes since we need to check
                             // that activating the borrow will be OK
-                            // TOOD(bob_twinkles) is this actually the right thing to do?
+                            // FIXME(bob_twinkles) is this actually the right thing to do?
                             this.generate_invalidates(borrow_index, context.loc);
                         }
                 }

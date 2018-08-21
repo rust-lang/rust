@@ -31,7 +31,7 @@ pub enum Cfg {
     True,
     /// Denies all configurations.
     False,
-    /// A generic configration option, e.g. `test` or `target_os = "linux"`.
+    /// A generic configuration option, e.g. `test` or `target_os = "linux"`.
     Cfg(Symbol, Option<Symbol>),
     /// Negate a configuration requirement, i.e. `not(x)`.
     Not(Box<Cfg>),

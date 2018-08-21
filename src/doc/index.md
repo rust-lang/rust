@@ -34,7 +34,7 @@ minimum. It also includes exercises!
 
 # Use Rust
 
-Once you've gotten familliar with the language, these resources can help you
+Once you've gotten familiar with the language, these resources can help you
 when you're actually using it day-to-day.
 
 ## The Standard Library

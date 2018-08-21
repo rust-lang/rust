@@ -26,7 +26,7 @@ use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
-use middle::cstore::{CrateStoreDyn, LinkMeta};
+use middle::cstore::CrateStoreDyn;
 use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -892,7 +892,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub(crate) queries: query::Queries<'tcx>,
 
-    // Records the free variables refrenced by every closure
+    // Records the free variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
     freevars: FxHashMap<DefId, Lrc<Vec<hir::Freevar>>>,
@@ -1490,10 +1490,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    pub fn encode_metadata(self, link_meta: &LinkMeta)
+    pub fn encode_metadata(self)
         -> EncodedMetadata
     {
-        self.cstore.encode_metadata(self, link_meta)
+        self.cstore.encode_metadata(self)
     }
 }
 

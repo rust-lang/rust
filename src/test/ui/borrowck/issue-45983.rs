@@ -19,7 +19,7 @@
 // revisions: ast migrate nll
 
 // Since we are testing nll (and migration) explicitly as a separate
-// revisions, dont worry about the --compare-mode=nll on this test.
+// revisions, don't worry about the --compare-mode=nll on this test.
 
 // ignore-compare-mode-nll
 

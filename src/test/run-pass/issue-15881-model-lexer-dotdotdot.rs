@@ -27,7 +27,7 @@ pub fn main() {
     }
     match 'c' {
       'a'...'z' => {}
-      _ => panic!("should suppport char ranges")
+      _ => panic!("should support char ranges")
     }
     match -3_isize {
       -7...5 => {}

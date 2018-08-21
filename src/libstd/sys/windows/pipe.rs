@@ -359,6 +359,6 @@ unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
     if v.capacity() == v.len() {
         v.reserve(1);
     }
-    slice::from_raw_parts_mut(v.as_mut_ptr().offset(v.len() as isize),
+    slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()),
                               v.capacity() - v.len())
 }

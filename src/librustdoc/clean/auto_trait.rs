@@ -824,7 +824,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
     // In fact, the iteration of an FxHashMap can even vary between platforms,
     // since FxHasher has different behavior for 32-bit and 64-bit platforms.
     //
-    // Obviously, it's extremely undesireable for documentation rendering
+    // Obviously, it's extremely undesirable for documentation rendering
     // to be depndent on the platform it's run on. Apart from being confusing
     // to end users, it makes writing tests much more difficult, as predicates
     // can appear in any order in the final result.
@@ -836,7 +836,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
     // predicates and bounds, however, we ensure that for a given codebase, all
     // auto-trait impls always render in exactly the same way.
     //
-    // Using the Debug impementation for sorting prevents us from needing to
+    // Using the Debug implementation for sorting prevents us from needing to
     // write quite a bit of almost entirely useless code (e.g. how should two
     // Types be sorted relative to each other). It also allows us to solve the
     // problem for both WherePredicates and GenericBounds at the same time. This

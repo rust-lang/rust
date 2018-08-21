@@ -38,7 +38,7 @@ impl DwarfReader {
     // telling the backend to generate "misalignment-safe" code.
     pub unsafe fn read<T: Copy>(&mut self) -> T {
         let Unaligned(result) = *(self.ptr as *const Unaligned<T>);
-        self.ptr = self.ptr.offset(mem::size_of::<T>() as isize);
+        self.ptr = self.ptr.add(mem::size_of::<T>());
         result
     }
 

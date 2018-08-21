@@ -221,15 +221,15 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     // 3. `end` - End pointer into the `offsets` array.
     // 4. `offsets - Indices of out-of-order elements within the block.
 
-    // The current block on the left side (from `l` to `l.offset(block_l)`).
+    // The current block on the left side (from `l` to `l.add(block_l)`).
     let mut l = v.as_mut_ptr();
     let mut block_l = BLOCK;
     let mut start_l = ptr::null_mut();
     let mut end_l = ptr::null_mut();
     let mut offsets_l: [u8; BLOCK] = unsafe { mem::uninitialized() };
 
-    // The current block on the right side (from `r.offset(-block_r)` to `r`).
-    let mut r = unsafe { l.offset(v.len() as isize) };
+    // The current block on the right side (from `r.sub(block_r)` to `r`).
+    let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
     let mut end_r = ptr::null_mut();

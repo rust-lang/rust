@@ -249,7 +249,7 @@ mod platform {
     }
 
     unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
-        let aligned = ptr.offset((align - (ptr as usize & (align - 1))) as isize);
+        let aligned = ptr.add(align - (ptr as usize & (align - 1)));
         *get_header(aligned) = Header(ptr);
         aligned
     }
