@@ -1988,11 +1988,11 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         f.debug_tuple("Iter")
-         .field(&self.ring)
-         .field(&self.tail)
-         .field(&self.head)
-         .finish()
+            .field(&front)
+            .field(&back)
+            .finish()
     }
 }
 
@@ -2085,11 +2085,11 @@ pub struct IterMut<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
         f.debug_tuple("IterMut")
-         .field(&self.ring)
-         .field(&self.tail)
-         .field(&self.head)
-         .finish()
+            .field(&front)
+            .field(&back)
+            .finish()
     }
 }
 
