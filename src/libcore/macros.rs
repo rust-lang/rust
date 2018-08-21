@@ -350,8 +350,8 @@ macro_rules! try {
 /// assert_eq!(v, b"s = \"abc 123\"");
 /// ```
 ///
-/// Note : This macro can be used in no_std setups as well
-/// In a no_std setup you are responsible for the
+/// Note: This macro can be used in no_std setups as well
+/// In a `no_std` setup you are responsible for the
 /// implementation details of the components.
 ///
 /// ```no_run
