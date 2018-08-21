@@ -13,7 +13,7 @@
 //! Code that is useful in various codegen modules.
 
 use llvm::{self, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef};
+use llvm::{True, False, Bool};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use abi;
@@ -28,7 +28,7 @@ use value::{Value, ValueTrait};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
-use traits::BuilderMethods;
+use traits::{BuilderMethods, OperandBundleDef};
 
 use libc::{c_uint, c_char};
 use std::iter;
@@ -93,14 +93,14 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
 /// the `OperandBundleDef` value created for MSVC landing pads.
 pub struct Funclet<'ll> {
     cleanuppad: &'ll Value,
-    operand: OperandBundleDef<'ll>,
+    operand: OperandBundleDef<'ll, &'ll Value>,
 }
 
 impl Funclet<'ll> {
     pub fn new(cleanuppad: &'ll Value) -> Self {
         Funclet {
             cleanuppad,
-            operand: OperandBundleDef::new("funclet", &[cleanuppad]),
+            operand: OperandBundleDef::new("funclet", cleanuppad),
         }
     }
 
@@ -108,7 +108,7 @@ impl Funclet<'ll> {
         self.cleanuppad
     }
 
-    pub fn bundle(&self) -> &OperandBundleDef<'ll> {
+    pub fn bundle(&self) -> &OperandBundleDef<'ll, &'ll Value> {
         &self.operand
     }
 }

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::OperandBundleDef;
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -17,9 +16,24 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
 use builder::MemFlags;
+use value::Value;
 
 use std::borrow::Cow;
 use std::ops::Range;
+
+pub struct OperandBundleDef<'a, Value : 'a> {
+    pub name: &'a str,
+    pub val: Value
+}
+
+impl OperandBundleDef<'ll, &'ll Value> {
+    pub fn new(name: &'ll str, val: &'ll Value) -> Self {
+        OperandBundleDef {
+            name,
+            val,
+        }
+    }
+}
 
 pub enum IntPredicate {
     IntEQ,
@@ -97,7 +111,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
-        bundle: Option<&OperandBundleDef<'ll>>
+        bundle: Option<&OperandBundleDef<'ll, &'ll Value>>
     ) -> &'ll Value;
     fn unreachable(&self);
     fn add(&self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value;
@@ -305,6 +319,6 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: &'ll Value, size: Size);
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&OperandBundleDef<'ll>>) -> &'ll Value;
+                bundle: Option<&OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value;
     fn zext(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value;
 }
