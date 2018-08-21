@@ -244,6 +244,24 @@ pub enum AtomicRmwBinOp {
     AtomicUMin = 10,
 }
 
+impl AtomicRmwBinOp {
+    pub fn from_generic(op : traits::AtomicRmwBinOp) -> Self {
+        match op {
+            traits::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
+            traits::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
+            traits::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
+            traits::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
+            traits::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
+            traits::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
+            traits::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
+            traits::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
+            traits::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
+            traits::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
+            traits::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin
+        }
+    }
+}
+
 /// LLVMAtomicOrdering
 #[derive(Copy, Clone)]
 #[repr(C)]

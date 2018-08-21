@@ -1075,13 +1075,19 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     }
     fn atomic_rmw(
         &self,
-        op: AtomicRmwBinOp,
+        op: traits::AtomicRmwBinOp,
         dst: &'ll Value,
         src: &'ll Value,
         order: AtomicOrdering,
     ) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildAtomicRMW(self.llbuilder, op, dst, src, order, False)
+            llvm::LLVMBuildAtomicRMW(
+                self.llbuilder,
+                AtomicRmwBinOp::from_generic(op),
+                dst,
+                src,
+                order,
+                False)
         }
     }
 
