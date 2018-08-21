@@ -36,7 +36,7 @@ pub(super) fn sub_types<'tcx>(
         ty::Variance::Covariant,
         locations,
         borrowck_context,
-        ty::Slice::empty(),
+        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }
@@ -54,7 +54,7 @@ pub(super) fn eq_types<'tcx>(
         ty::Variance::Invariant,
         locations,
         borrowck_context,
-        ty::Slice::empty(),
+        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }

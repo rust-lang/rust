@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         &self,
         indices: &UniversalRegionIndices<'tcx>,
         defining_ty: DefiningTy<'tcx>,
-    ) -> ty::Binder<&'tcx ty::Slice<Ty<'tcx>>> {
+    ) -> ty::Binder<&'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {

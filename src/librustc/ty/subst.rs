@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, Slice, Ty, TyCtxt};
+use ty::{self, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -177,7 +177,7 @@ impl<'tcx> Decodable for Kind<'tcx> {
 }
 
 /// A substitution mapping generic parameters to new values.
-pub type Substs<'tcx> = Slice<Kind<'tcx>>;
+pub type Substs<'tcx> = List<Kind<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a Substs that maps each generic parameter to itself.

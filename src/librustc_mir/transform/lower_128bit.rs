@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use rustc::mir::*;
-use rustc::ty::{Slice, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{List, Ty, TyCtxt, TypeVariants};
 use rustc_data_structures::indexed_vec::{Idx};
 use transform::{MirPass, MirSource};
 use syntax;
@@ -114,7 +114,7 @@ impl Lower128Bit {
                         source_info,
                         kind: TerminatorKind::Call {
                             func: Operand::function_handle(tcx, call_did,
-                                Slice::empty(), source_info.span),
+                                List::empty(), source_info.span),
                             args: vec![lhs, rhs],
                             destination: Some((place, bb)),
                             cleanup: None,

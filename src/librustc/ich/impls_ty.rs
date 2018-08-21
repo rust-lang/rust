@@ -25,7 +25,7 @@ use ty;
 use mir;
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
-for &'gcx ty::Slice<T>
+for &'gcx ty::List<T>
     where T: HashStable<StableHashingContext<'a>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -53,7 +53,7 @@ for &'gcx ty::Slice<T>
     }
 }
 
-impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::Slice<T>
+impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T>
     where T: HashStable<StableHashingContext<'a>>
 {
     type KeyType = Fingerprint;

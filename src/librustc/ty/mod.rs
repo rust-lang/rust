@@ -596,8 +596,8 @@ impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
 
 extern {
-    /// A dummy type used to force Slice to by unsized without requiring fat pointers
-    type OpaqueSliceContents;
+    /// A dummy type used to force List to by unsized without requiring fat pointers
+    type OpaqueListContents;
 }
 
 /// A wrapper for slices with the additional invariant
@@ -605,18 +605,19 @@ extern {
 /// the same contents can exist in the same context.
 /// This means we can use pointer for both
 /// equality comparisons and hashing.
+/// Note: `Slice` was already taken by the `Ty`.
 #[repr(C)]
-pub struct Slice<T> {
+pub struct List<T> {
     len: usize,
     data: [T; 0],
-    opaque: OpaqueSliceContents,
+    opaque: OpaqueListContents,
 }
 
-unsafe impl<T: Sync> Sync for Slice<T> {}
+unsafe impl<T: Sync> Sync for List<T> {}
 
-impl<T: Copy> Slice<T> {
+impl<T: Copy> List<T> {
     #[inline]
-    fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx Slice<T> {
+    fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx List<T> {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
@@ -633,7 +634,7 @@ impl<T: Copy> Slice<T> {
             size,
             cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
         unsafe {
-            let result = &mut *(mem.as_mut_ptr() as *mut Slice<T>);
+            let result = &mut *(mem.as_mut_ptr() as *mut List<T>);
             // Write the length
             result.len = slice.len();
 
@@ -646,51 +647,51 @@ impl<T: Copy> Slice<T> {
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for Slice<T> {
+impl<T: fmt::Debug> fmt::Debug for List<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
 }
 
-impl<T: Encodable> Encodable for Slice<T> {
+impl<T: Encodable> Encodable for List<T> {
     #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 
-impl<T> Ord for Slice<T> where T: Ord {
-    fn cmp(&self, other: &Slice<T>) -> Ordering {
+impl<T> Ord for List<T> where T: Ord {
+    fn cmp(&self, other: &List<T>) -> Ordering {
         if self == other { Ordering::Equal } else {
             <[T] as Ord>::cmp(&**self, &**other)
         }
     }
 }
 
-impl<T> PartialOrd for Slice<T> where T: PartialOrd {
-    fn partial_cmp(&self, other: &Slice<T>) -> Option<Ordering> {
+impl<T> PartialOrd for List<T> where T: PartialOrd {
+    fn partial_cmp(&self, other: &List<T>) -> Option<Ordering> {
         if self == other { Some(Ordering::Equal) } else {
             <[T] as PartialOrd>::partial_cmp(&**self, &**other)
         }
     }
 }
 
-impl<T: PartialEq> PartialEq for Slice<T> {
+impl<T: PartialEq> PartialEq for List<T> {
     #[inline]
-    fn eq(&self, other: &Slice<T>) -> bool {
+    fn eq(&self, other: &List<T>) -> bool {
         ptr::eq(self, other)
     }
 }
-impl<T: Eq> Eq for Slice<T> {}
+impl<T: Eq> Eq for List<T> {}
 
-impl<T> Hash for Slice<T> {
+impl<T> Hash for List<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const Slice<T>).hash(s)
+        (self as *const List<T>).hash(s)
     }
 }
 
-impl<T> Deref for Slice<T> {
+impl<T> Deref for List<T> {
     type Target = [T];
     #[inline(always)]
     fn deref(&self) -> &[T] {
@@ -700,7 +701,7 @@ impl<T> Deref for Slice<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a Slice<T> {
+impl<'a, T> IntoIterator for &'a List<T> {
     type Item = &'a T;
     type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
     #[inline(always)]
@@ -709,17 +710,17 @@ impl<'a, T> IntoIterator for &'a Slice<T> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<Ty<'tcx>> {}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<Ty<'tcx>> {}
 
-impl<T> Slice<T> {
+impl<T> List<T> {
     #[inline(always)]
-    pub fn empty<'a>() -> &'a Slice<T> {
+    pub fn empty<'a>() -> &'a List<T> {
         #[repr(align(64), C)]
         struct EmptySlice([u8; 64]);
         static EMPTY_SLICE: EmptySlice = EmptySlice([0; 64]);
         assert!(mem::align_of::<T>() <= 64);
         unsafe {
-            &*(&EMPTY_SLICE as *const _ as *const Slice<T>)
+            &*(&EMPTY_SLICE as *const _ as *const List<T>)
         }
     }
 }
@@ -1556,7 +1557,7 @@ pub struct ParamEnv<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
-    pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
+    pub caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All` -- note that this is always paired with an
@@ -1570,7 +1571,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Trait`) are left hidden, so this is suitable for ordinary
     /// type-checking.
     pub fn empty() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::UserFacing)
+        Self::new(List::empty(), Reveal::UserFacing)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1581,11 +1582,11 @@ impl<'tcx> ParamEnv<'tcx> {
     /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
     pub fn reveal_all() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::All)
+        Self::new(List::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+    pub fn new(caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
                reveal: Reveal)
                -> Self {
         ty::ParamEnv { caller_bounds, reveal }
@@ -1603,7 +1604,7 @@ impl<'tcx> ParamEnv<'tcx> {
 
     /// Returns this same environment but with no caller bounds.
     pub fn without_caller_bounds(self) -> Self {
-        ty::ParamEnv { caller_bounds: ty::Slice::empty(), ..self }
+        ty::ParamEnv { caller_bounds: List::empty(), ..self }
     }
 
     /// Creates a suitable environment in which to perform trait

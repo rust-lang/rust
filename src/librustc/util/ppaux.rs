@@ -586,7 +586,7 @@ impl<'a, T: Print> Print for &'a T {
 }
 
 define_print! {
-    ('tcx) &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
+    ('tcx) &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
         display {
             // Generate the main trait ref, including associated types.
             ty::tls::with(|tcx| {
@@ -672,7 +672,7 @@ impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
 }
 
 define_print! {
-    ('tcx) &'tcx ty::Slice<Ty<'tcx>>, (self, f, cx) {
+    ('tcx) &'tcx ty::List<Ty<'tcx>>, (self, f, cx) {
         display {
             write!(f, "{{")?;
             let mut tys = self.iter();
@@ -993,7 +993,7 @@ impl fmt::Debug for ty::FloatVarValue {
 
 define_print_multi! {
     [
-    ('tcx) ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
+    ('tcx) ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
     ('tcx) ty::Binder<ty::TraitRef<'tcx>>,
     ('tcx) ty::Binder<ty::FnSig<'tcx>>,
     ('tcx) ty::Binder<ty::TraitPredicate<'tcx>>,

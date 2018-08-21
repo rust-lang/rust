@@ -1666,7 +1666,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     /// we return `None`.
     fn compute_object_lifetime_bound(&self,
         span: Span,
-        existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
+        existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>)
         -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();

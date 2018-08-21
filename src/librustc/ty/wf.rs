@@ -453,7 +453,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     }
 
     fn from_object_ty(&mut self, ty: Ty<'tcx>,
-                      data: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
+                      data: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
                       region: ty::Region<'tcx>) {
         // Imagine a type like this:
         //
@@ -513,7 +513,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
+    existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>)
     -> Vec<ty::Region<'tcx>>
 {
     // Since we don't actually *know* the self type for an object,

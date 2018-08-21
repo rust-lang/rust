@@ -40,7 +40,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
-use ty::{self, CanonicalVar, Lift, Region, Slice, TyCtxt};
+use ty::{self, CanonicalVar, Lift, Region, List, TyCtxt};
 
 mod canonicalizer;
 
@@ -57,7 +57,7 @@ pub struct Canonical<'gcx, V> {
     pub value: V,
 }
 
-pub type CanonicalVarInfos<'gcx> = &'gcx Slice<CanonicalVarInfo>;
+pub type CanonicalVarInfos<'gcx> = &'gcx List<CanonicalVarInfo>;
 
 impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 
@@ -221,7 +221,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     fn fresh_inference_vars_for_canonical_vars(
         &self,
         span: Span,
-        variables: &Slice<CanonicalVarInfo>,
+        variables: &List<CanonicalVarInfo>,
     ) -> CanonicalVarValues<'tcx> {
         let var_values: IndexVec<CanonicalVar, Kind<'tcx>> = variables
             .iter()

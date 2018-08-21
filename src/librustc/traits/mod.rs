@@ -24,7 +24,7 @@ use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use mir::interpret::ConstEvalErr;
 use ty::subst::Substs;
-use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
+use ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
 use infer::{InferCtxt};
@@ -325,7 +325,7 @@ pub enum Goal<'tcx> {
     CannotProve,
 }
 
-pub type Goals<'tcx> = &'tcx Slice<Goal<'tcx>>;
+pub type Goals<'tcx> = &'tcx List<Goal<'tcx>>;
 
 impl<'tcx> DomainGoal<'tcx> {
     pub fn into_goal(self) -> Goal<'tcx> {
@@ -357,7 +357,7 @@ pub enum Clause<'tcx> {
 }
 
 /// Multiple clauses.
-pub type Clauses<'tcx> = &'tcx Slice<Clause<'tcx>>;
+pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 
 /// A "program clause" has the form `D :- G1, ..., Gn`. It is saying
 /// that the domain goal `D` is true if `G1...Gn` are provable. This

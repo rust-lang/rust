@@ -316,7 +316,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
 }
 
 #[derive(Debug, Clone)]
-struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
+struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
 TupleStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
@@ -578,7 +578,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
     }
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &Self,
                            b: &Self)

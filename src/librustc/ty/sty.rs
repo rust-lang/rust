@@ -18,7 +18,7 @@ use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
-use ty::{Slice, TyS, ParamEnvAnd, ParamEnv};
+use ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use util::captures::Captures;
 use mir::interpret::{Scalar, Pointer};
 
@@ -133,7 +133,7 @@ pub enum TypeVariants<'tcx> {
     TyFnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
-    TyDynamic(Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
+    TyDynamic(Binder<&'tcx List<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -145,13 +145,13 @@ pub enum TypeVariants<'tcx> {
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
-    TyGeneratorWitness(Binder<&'tcx Slice<Ty<'tcx>>>),
+    TyGeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
 
     /// The never type `!`
     TyNever,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    TyTuple(&'tcx Slice<Ty<'tcx>>),
+    TyTuple(&'tcx List<Ty<'tcx>>),
 
     /// The projection of an associated type.  For example,
     /// `<T as Trait<..>>::N`.
@@ -536,9 +536,9 @@ impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<ExistentialPredicate<'tcx>> {}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
-impl<'tcx> Slice<ExistentialPredicate<'tcx>> {
+impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self.get(0) {
             Some(&ExistentialPredicate::Trait(tr)) => Some(tr),
@@ -568,7 +568,7 @@ impl<'tcx> Slice<ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> Binder<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn principal(&self) -> Option<PolyExistentialTraitRef<'tcx>> {
         self.skip_binder().principal().map(Binder::bind)
     }
@@ -918,7 +918,7 @@ impl<'tcx> PolyGenSig<'tcx> {
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
-    pub inputs_and_output: &'tcx Slice<Ty<'tcx>>,
+    pub inputs_and_output: &'tcx List<Ty<'tcx>>,
     pub variadic: bool,
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
@@ -943,7 +943,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
-    pub fn inputs_and_output(&self) -> ty::Binder<&'tcx Slice<Ty<'tcx>>> {
+    pub fn inputs_and_output(&self) -> ty::Binder<&'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {

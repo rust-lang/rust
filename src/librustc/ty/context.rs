@@ -38,7 +38,7 @@ use ty::ReprOptions;
 use traits;
 use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
-use ty::{TyS, TypeVariants, Slice};
+use ty::{TyS, TypeVariants, List};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
@@ -135,15 +135,15 @@ pub struct CtxtInterners<'tcx> {
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
     type_: InternedSet<'tcx, TyS<'tcx>>,
-    type_list: InternedSet<'tcx, Slice<Ty<'tcx>>>,
+    type_list: InternedSet<'tcx, List<Ty<'tcx>>>,
     substs: InternedSet<'tcx, Substs<'tcx>>,
-    canonical_var_infos: InternedSet<'tcx, Slice<CanonicalVarInfo>>,
+    canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
-    existential_predicates: InternedSet<'tcx, Slice<ExistentialPredicate<'tcx>>>,
-    predicates: InternedSet<'tcx, Slice<Predicate<'tcx>>>,
+    existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
+    predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
-    clauses: InternedSet<'tcx, Slice<Clause<'tcx>>>,
-    goals: InternedSet<'tcx, Slice<Goal<'tcx>>>,
+    clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
+    goals: InternedSet<'tcx, List<Goal<'tcx>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -1593,12 +1593,12 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Goal<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Goal<'a>> {
-    type Lifted = &'tcx Slice<Goal<'tcx>>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<Goal<'a>> {
+    type Lifted = &'tcx List<Goal<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(
         &self,
         tcx: TyCtxt<'b, 'gcx, 'tcx>,
-    ) -> Option<&'tcx Slice<Goal<'tcx>>> {
+    ) -> Option<&'tcx List<Goal<'tcx>>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1611,12 +1611,12 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Goal<'a>> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Clause<'a>> {
-    type Lifted = &'tcx Slice<Clause<'tcx>>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<Clause<'a>> {
+    type Lifted = &'tcx List<Clause<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(
         &self,
         tcx: TyCtxt<'b, 'gcx, 'tcx>,
-    ) -> Option<&'tcx Slice<Clause<'tcx>>> {
+    ) -> Option<&'tcx List<Clause<'tcx>>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1648,7 +1648,7 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
         if self.len() == 0 {
-            return Some(Slice::empty());
+            return Some(List::empty());
         }
         if tcx.interners.arena.in_arena(&self[..] as *const _) {
             return Some(unsafe { mem::transmute(*self) });
@@ -1662,12 +1662,12 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
-    type Lifted = &'tcx Slice<Ty<'tcx>>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
+    type Lifted = &'tcx List<Ty<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-                             -> Option<&'tcx Slice<Ty<'tcx>>> {
+                             -> Option<&'tcx List<Ty<'tcx>>> {
         if self.len() == 0 {
-            return Some(Slice::empty());
+            return Some(List::empty());
         }
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
@@ -1681,12 +1681,12 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
-    type Lifted = &'tcx Slice<ExistentialPredicate<'tcx>>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<ExistentialPredicate<'a>> {
+    type Lifted = &'tcx List<ExistentialPredicate<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-        -> Option<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+        -> Option<&'tcx List<ExistentialPredicate<'tcx>>> {
         if self.is_empty() {
-            return Some(Slice::empty());
+            return Some(List::empty());
         }
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
@@ -1700,12 +1700,12 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
-    type Lifted = &'tcx Slice<Predicate<'tcx>>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<Predicate<'a>> {
+    type Lifted = &'tcx List<Predicate<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-        -> Option<&'tcx Slice<Predicate<'tcx>>> {
+        -> Option<&'tcx List<Predicate<'tcx>>> {
         if self.is_empty() {
-            return Some(Slice::empty());
+            return Some(List::empty());
         }
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
@@ -1719,11 +1719,11 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
-    type Lifted = &'tcx Slice<CanonicalVarInfo>;
+impl<'a, 'tcx> Lift<'tcx> for &'a List<CanonicalVarInfo> {
+    type Lifted = &'tcx List<CanonicalVarInfo>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         if self.len() == 0 {
-            return Some(Slice::empty());
+            return Some(List::empty());
         }
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
@@ -2113,28 +2113,28 @@ impl<'tcx: 'lcx, 'lcx> Borrow<TypeVariants<'lcx>> for Interned<'tcx, TyS<'tcx>> 
     }
 }
 
-// NB: An Interned<Slice<T>> compares and hashes as its elements.
-impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, Slice<T>> {
-    fn eq(&self, other: &Interned<'tcx, Slice<T>>) -> bool {
+// NB: An Interned<List<T>> compares and hashes as its elements.
+impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
+    fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
         self.0[..] == other.0[..]
     }
 }
 
-impl<'tcx, T: Eq> Eq for Interned<'tcx, Slice<T>> {}
+impl<'tcx, T: Eq> Eq for Interned<'tcx, List<T>> {}
 
-impl<'tcx, T: Hash> Hash for Interned<'tcx, Slice<T>> {
+impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         self.0[..].hash(s)
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
+impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, List<Ty<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Ty<'lcx>] {
         &self.0[..]
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, Slice<CanonicalVarInfo>> {
+impl<'tcx: 'lcx, 'lcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<CanonicalVarInfo>> {
     fn borrow<'a>(&'a self) -> &'a [CanonicalVarInfo] {
         &self.0[..]
     }
@@ -2153,14 +2153,14 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
 }
 
 impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
-    for Interned<'tcx, Slice<ExistentialPredicate<'tcx>>> {
+    for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
         &self.0[..]
     }
 }
 
 impl<'tcx: 'lcx, 'lcx> Borrow<[Predicate<'lcx>]>
-    for Interned<'tcx, Slice<Predicate<'tcx>>> {
+    for Interned<'tcx, List<Predicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Predicate<'lcx>] {
         &self.0[..]
     }
@@ -2173,14 +2173,14 @@ impl<'tcx: 'lcx, 'lcx> Borrow<Const<'lcx>> for Interned<'tcx, Const<'tcx>> {
 }
 
 impl<'tcx: 'lcx, 'lcx> Borrow<[Clause<'lcx>]>
-for Interned<'tcx, Slice<Clause<'tcx>>> {
+for Interned<'tcx, List<Clause<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Clause<'lcx>] {
         &self.0[..]
     }
 }
 
 impl<'tcx: 'lcx, 'lcx> Borrow<[Goal<'lcx>]>
-for Interned<'tcx, Slice<Goal<'tcx>>> {
+for Interned<'tcx, List<Goal<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Goal<'lcx>] {
         &self.0[..]
     }
@@ -2274,9 +2274,9 @@ macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ident)),+) => (
         $(intern_method!( 'tcx, $field: $method(
             &[$ty<'tcx>],
-            |a, v| Slice::from_arena(a, v),
+            |a, v| List::from_arena(a, v),
             Deref::deref,
-            |xs: &[$ty]| xs.iter().any(keep_local)) -> Slice<$ty<'tcx>>);)+
+            |xs: &[$ty]| xs.iter().any(keep_local)) -> List<$ty<'tcx>>);)+
     )
 }
 
@@ -2298,10 +2298,10 @@ intern_method! {
     'tcx,
     canonical_var_infos: _intern_canonical_var_infos(
         &[CanonicalVarInfo],
-        |a, v| Slice::from_arena(a, v),
+        |a, v| List::from_arena(a, v),
         Deref::deref,
         |_xs: &[CanonicalVarInfo]| -> bool { false }
-    ) -> Slice<CanonicalVarInfo>
+    ) -> List<CanonicalVarInfo>
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -2480,7 +2480,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_dynamic(
         self,
-        obj: ty::Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>,
+        obj: ty::Binder<&'tcx List<ExistentialPredicate<'tcx>>>,
         reg: ty::Region<'tcx>
     ) -> Ty<'tcx> {
         self.mk_ty(TyDynamic(obj, reg))
@@ -2509,7 +2509,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyGenerator(id, generator_substs, movability))
     }
 
-    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx Slice<Ty<'tcx>>>) -> Ty<'tcx> {
+    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
         self.mk_ty(TyGeneratorWitness(types))
     }
 
@@ -2553,36 +2553,36 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
-        -> &'tcx Slice<ExistentialPredicate<'tcx>> {
+        -> &'tcx List<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
         assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
         self._intern_existential_predicates(eps)
     }
 
     pub fn intern_predicates(self, preds: &[Predicate<'tcx>])
-        -> &'tcx Slice<Predicate<'tcx>> {
+        -> &'tcx List<Predicate<'tcx>> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
         if preds.len() == 0 {
             // The macro-generated method below asserts we don't intern an empty slice.
-            Slice::empty()
+            List::empty()
         } else {
             self._intern_predicates(preds)
         }
     }
 
-    pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx Slice<Ty<'tcx>> {
+    pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
         if ts.len() == 0 {
-            Slice::empty()
+            List::empty()
         } else {
             self._intern_type_list(ts)
         }
     }
 
-    pub fn intern_substs(self, ts: &[Kind<'tcx>]) -> &'tcx Slice<Kind<'tcx>> {
+    pub fn intern_substs(self, ts: &[Kind<'tcx>]) -> &'tcx List<Kind<'tcx>> {
         if ts.len() == 0 {
-            Slice::empty()
+            List::empty()
         } else {
             self._intern_substs(ts)
         }
@@ -2590,7 +2590,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_canonical_var_infos(self, ts: &[CanonicalVarInfo]) -> CanonicalVarInfos<'gcx> {
         if ts.len() == 0 {
-            Slice::empty()
+            List::empty()
         } else {
             self.global_tcx()._intern_canonical_var_infos(ts)
         }
@@ -2598,7 +2598,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> Clauses<'tcx> {
         if ts.len() == 0 {
-            Slice::empty()
+            List::empty()
         } else {
             self._intern_clauses(ts)
         }
@@ -2606,7 +2606,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> Goals<'tcx> {
         if ts.len() == 0 {
-            Slice::empty()
+            List::empty()
         } else {
             self._intern_goals(ts)
         }
@@ -2629,24 +2629,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_existential_predicates<I: InternAs<[ExistentialPredicate<'tcx>],
-                                     &'tcx Slice<ExistentialPredicate<'tcx>>>>(self, iter: I)
+                                     &'tcx List<ExistentialPredicate<'tcx>>>>(self, iter: I)
                                      -> I::Output {
         iter.intern_with(|xs| self.intern_existential_predicates(xs))
     }
 
     pub fn mk_predicates<I: InternAs<[Predicate<'tcx>],
-                                     &'tcx Slice<Predicate<'tcx>>>>(self, iter: I)
+                                     &'tcx List<Predicate<'tcx>>>>(self, iter: I)
                                      -> I::Output {
         iter.intern_with(|xs| self.intern_predicates(xs))
     }
 
     pub fn mk_type_list<I: InternAs<[Ty<'tcx>],
-                        &'tcx Slice<Ty<'tcx>>>>(self, iter: I) -> I::Output {
+                        &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_type_list(xs))
     }
 
     pub fn mk_substs<I: InternAs<[Kind<'tcx>],
-                     &'tcx Slice<Kind<'tcx>>>>(self, iter: I) -> I::Output {
+                     &'tcx List<Kind<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 

@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, CanonicalVar, Lift, Slice, Ty, TyCtxt, TypeFlags};
+use ty::{self, CanonicalVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -327,7 +327,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         if !value.has_type_flags(needs_canonical_flags) {
             let out_value = gcx.lift(value).unwrap();
             let canon_value = Canonical {
-                variables: Slice::empty(),
+                variables: List::empty(),
                 value: out_value,
             };
             return canon_value;
