@@ -62,7 +62,7 @@ impl EarlyLintPass for ElseIfWithoutElse {
                     els.span,
                     "if expression with an `else if`, but without a final `else`",
                     "add an `else` block here",
-                    "".to_string()
+                    String::new()
                 );
             }
 

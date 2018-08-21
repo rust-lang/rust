@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     expr.span,
                     "an inclusive range would be more readable",
                     |db| {
-                        let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                        let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
                         if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
                             if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
@@ -175,7 +175,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     expr.span,
                     "an exclusive range would be more readable",
                     |db| {
-                        let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                        let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
                         db.span_suggestion(expr.span,
                                            "use",

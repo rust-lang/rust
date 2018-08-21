@@ -119,7 +119,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                  snippet(cx, idx1.span, ".."),
                                  snippet(cx, idx2.span, "..")))
                     } else {
-                        (false, "".to_owned(), "".to_owned())
+                        (false, String::new(), String::new())
                     }
                 } else if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
                     (true, format!(" `{}` and `{}`", first, second),
@@ -169,7 +169,7 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
                         second.mut_addr().to_string(),
                     )
                 } else {
-                    ("".to_owned(), "".to_owned(), "".to_owned())
+                    (String::new(), String::new(), String::new())
                 };
 
                 let span = first.span.to(second.span);
