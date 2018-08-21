@@ -694,7 +694,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     /* Comparisons */
     fn icmp(&self, op: traits::IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("icmp");
-        let op : llvm::IntPredicate = traits::IntPredicateMethods::convert_to_backend_specific(op);
+        let op = llvm::IntPredicate::from_generic(op);
         unsafe {
             llvm::LLVMBuildICmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
         }
