@@ -17,7 +17,7 @@
 use ty::TyCtxt;
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;
@@ -152,11 +152,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
-    for &cnum in tcx.crates().iter() {
-        for &(feature, since) in tcx.defined_lib_features(cnum).iter() {
-            collector.collect_feature(feature, since, DUMMY_SP);
-        }
-    }
     intravisit::walk_crate(&mut collector, tcx.hir.krate());
     collector.lib_features
 }

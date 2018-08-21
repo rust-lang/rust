@@ -846,14 +846,34 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     remaining_lib_features.remove(&Symbol::intern("libc"));
     remaining_lib_features.remove(&Symbol::intern("test"));
 
-    for (feature, stable) in tcx.lib_features().to_vec() {
-        if let Some(since) = stable {
-            if let Some(span) = remaining_lib_features.get(&feature) {
-                // Warn if the user has enabled an already-stable lib feature.
-                unnecessary_stable_feature_lint(tcx, *span, feature, since);
+    let check_features =
+        |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &Vec<_>| {
+            for &(feature, since) in defined_features {
+                if let Some(since) = since {
+                    if let Some(span) = remaining_lib_features.get(&feature) {
+                        // Warn if the user has enabled an already-stable lib feature.
+                        unnecessary_stable_feature_lint(tcx, *span, feature, since);
+                    }
+                }
+                remaining_lib_features.remove(&feature);
+                if remaining_lib_features.is_empty() {
+                    break;
+                }
             }
+        };
+
+    // We always collect the lib features declared in the current crate, even if there are
+    // no unknown features, because the collection also does feature attribute validation.
+    let local_defined_features = tcx.lib_features().to_vec();
+    if !remaining_lib_features.is_empty() {
+        check_features(&mut remaining_lib_features, &local_defined_features);
+
+        for &cnum in &*tcx.crates() {
+            if remaining_lib_features.is_empty() {
+                break;
+            }
+            check_features(&mut remaining_lib_features, &tcx.defined_lib_features(cnum));
         }
-        remaining_lib_features.remove(&feature);
     }
 
     for (feature, span) in remaining_lib_features {
