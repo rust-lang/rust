@@ -369,7 +369,9 @@ fn rewrite_tuple_pat(
         shape,
         span,
         context.config.max_width(),
-        if add_comma {
+        if dotdot_pos.is_some() {
+            Some(SeparatorTactic::Never)
+        } else if add_comma {
             Some(SeparatorTactic::Always)
         } else {
             None
