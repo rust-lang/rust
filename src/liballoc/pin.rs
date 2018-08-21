@@ -18,19 +18,26 @@
 //! which could cause undefined behavior.
 //!
 //! In order to prevent objects from moving, they must be *pinned*,
-//! by wrapping the data in special pointer types, such as [`PinMut`] and [`PinBox`].
-//! On top of ensuring the data cannot be taked by value by being pointers,
-//! these types restrict access to the underlying data such that it cannot be moved out of them,
-//! unless the type implements the [`Unpin`] trait,
-//! which indicates that it can be used safely without these restrictions.
+//! by wrapping the data in pinning pointer types, such as [`PinMut`] and [`PinBox`],
+//! which are otherwise equivalent to `& mut` and [`Box`], respectively.
 //!
-//! A type may be moved out of a reference to it using a function like [`swap`],
-//! which replaces the contents of the references, and thus changes their place in memory.
+//! First of all, these are pointer types because pinned data mustn't be passed around by value
+//! (that would change its location in memory).
+//! Secondly, since data can be moved out of `&mut` and [`Box`] with functions such as [`swap`],
+//! which causes their contents to swap places in memory,
+//! we need dedicated types that prohibit such operations.
+//!
+//! However, these restrictions are usually not necessary,
+//! so most types implement the [`Unpin`] auto-trait,
+//! which indicates that the type can be moved out safely.
+//! Doing so removes the limitations of pinning types,
+//! making them the same as their non-pinning counterparts.
 //!
 //! [`PinMut`]: struct.PinMut.html
 //! [`PinBox`]: struct.PinBox.html
 //! [`Unpin`]: ../../core/marker/trait.Unpin.html
 //! [`swap`]: ../../core/mem/fn.swap.html
+//! [`Box`]: ../boxed/struct.Box.html
 //!
 //! # Examples
 //!
