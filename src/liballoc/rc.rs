@@ -771,7 +771,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             };
 
             for (i, item) in v.iter().enumerate() {
-                ptr::write(elems.offset(i as isize), item.clone());
+                ptr::write(elems.add(i), item.clone());
                 guard.n_elems += 1;
             }
 

@@ -383,7 +383,7 @@ impl<T> [T] {
     ///
     /// unsafe {
     ///     for i in 0..x.len() {
-    ///         assert_eq!(x.get_unchecked(i), &*x_ptr.offset(i as isize));
+    ///         assert_eq!(x.get_unchecked(i), &*x_ptr.add(i));
     ///     }
     /// }
     /// ```
@@ -410,7 +410,7 @@ impl<T> [T] {
     ///
     /// unsafe {
     ///     for i in 0..x.len() {
-    ///         *x_ptr.offset(i as isize) += 2;
+    ///         *x_ptr.add(i) += 2;
     ///     }
     /// }
     /// assert_eq!(x, &[3, 4, 6]);
@@ -546,9 +546,9 @@ impl<T> [T] {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as *const u8).wrapping_offset(self.len() as isize) as *const T
+                (ptr as *const u8).wrapping_add(self.len()) as *const T
             } else {
-                ptr.offset(self.len() as isize)
+                ptr.add(self.len())
             };
 
             Iter {
@@ -578,9 +578,9 @@ impl<T> [T] {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as *mut u8).wrapping_offset(self.len() as isize) as *mut T
+                (ptr as *mut u8).wrapping_add(self.len()) as *mut T
             } else {
-                ptr.offset(self.len() as isize)
+                ptr.add(self.len())
             };
 
             IterMut {
@@ -842,7 +842,7 @@ impl<T> [T] {
             assert!(mid <= len);
 
             (from_raw_parts_mut(ptr, mid),
-             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+             from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
 
@@ -1444,7 +1444,7 @@ impl<T> [T] {
 
         unsafe {
             let p = self.as_mut_ptr();
-            rotate::ptr_rotate(mid, p.offset(mid as isize), k);
+            rotate::ptr_rotate(mid, p.add(mid), k);
         }
     }
 
@@ -1485,7 +1485,7 @@ impl<T> [T] {
 
         unsafe {
             let p = self.as_mut_ptr();
-            rotate::ptr_rotate(mid, p.offset(mid as isize), k);
+            rotate::ptr_rotate(mid, p.add(mid), k);
         }
     }
 
@@ -1789,7 +1789,7 @@ impl<T> [T] {
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             (left,
              from_raw_parts(rest.as_ptr() as *const U, us_len),
-             from_raw_parts(rest.as_ptr().offset((rest.len() - ts_len) as isize), ts_len))
+             from_raw_parts(rest.as_ptr().add(rest.len() - ts_len), ts_len))
         }
     }
 
@@ -1843,7 +1843,7 @@ impl<T> [T] {
             let mut_ptr = rest.as_mut_ptr();
             (left,
              from_raw_parts_mut(mut_ptr as *mut U, us_len),
-             from_raw_parts_mut(mut_ptr.offset((rest.len() - ts_len) as isize), ts_len))
+             from_raw_parts_mut(mut_ptr.add(rest.len() - ts_len), ts_len))
         }
     }
 }
@@ -2037,12 +2037,12 @@ impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &T {
-        &*slice.as_ptr().offset(self as isize)
+        &*slice.as_ptr().add(self)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut T {
-        &mut *slice.as_mut_ptr().offset(self as isize)
+        &mut *slice.as_mut_ptr().add(self)
     }
 
     #[inline]
@@ -2086,12 +2086,12 @@ impl<T> SliceIndex<[T]> for  ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        from_raw_parts(slice.as_ptr().offset(self.start as isize), self.end - self.start)
+        from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        from_raw_parts_mut(slice.as_mut_ptr().offset(self.start as isize), self.end - self.start)
+        from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
     }
 
     #[inline]
@@ -2467,7 +2467,7 @@ macro_rules! iterator {
                 }
                 // We are in bounds. `offset` does the right thing even for ZSTs.
                 unsafe {
-                    let elem = Some(& $( $mut_ )* *self.ptr.offset(n as isize));
+                    let elem = Some(& $( $mut_ )* *self.ptr.add(n));
                     self.post_inc_start((n as isize).wrapping_add(1));
                     elem
                 }
@@ -3347,7 +3347,7 @@ impl<'a, T> FusedIterator for Windows<'a, T> {}
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
-        from_raw_parts(self.v.as_ptr().offset(i as isize), self.size)
+        from_raw_parts(self.v.as_ptr().add(i), self.size)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -3474,7 +3474,7 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
             None => self.v.len(),
             Some(end) => cmp::min(end, self.v.len()),
         };
-        from_raw_parts(self.v.as_ptr().offset(start as isize), end - start)
+        from_raw_parts(self.v.as_ptr().add(start), end - start)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -3593,7 +3593,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
             None => self.v.len(),
             Some(end) => cmp::min(end, self.v.len()),
         };
-        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), end - start)
+        from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -3716,7 +3716,7 @@ impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
         let start = i * self.chunk_size;
-        from_raw_parts(self.v.as_ptr().offset(start as isize), self.chunk_size)
+        from_raw_parts(self.v.as_ptr().add(start), self.chunk_size)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -3831,7 +3831,7 @@ impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
         let start = i * self.chunk_size;
-        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), self.chunk_size)
+        from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -4116,7 +4116,7 @@ impl_marker_for!(BytewiseEquality,
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a T {
-        &*self.ptr.offset(i as isize)
+        &*self.ptr.add(i)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -4124,7 +4124,7 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut T {
-        &mut *self.ptr.offset(i as isize)
+        &mut *self.ptr.add(i)
     }
     fn may_have_side_effect() -> bool { false }
 }

@@ -1190,8 +1190,8 @@ impl String {
         let next = idx + ch.len_utf8();
         let len = self.len();
         unsafe {
-            ptr::copy(self.vec.as_ptr().offset(next as isize),
-                      self.vec.as_mut_ptr().offset(idx as isize),
+            ptr::copy(self.vec.as_ptr().add(next),
+                      self.vec.as_mut_ptr().add(idx),
                       len - next);
             self.vec.set_len(len - (next - idx));
         }
@@ -1232,8 +1232,8 @@ impl String {
                 del_bytes += ch_len;
             } else if del_bytes > 0 {
                 unsafe {
-                    ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                              self.vec.as_mut_ptr().offset((idx - del_bytes) as isize),
+                    ptr::copy(self.vec.as_ptr().add(idx),
+                              self.vec.as_mut_ptr().add(idx - del_bytes),
                               ch_len);
                 }
             }
@@ -1289,11 +1289,11 @@ impl String {
         let amt = bytes.len();
         self.vec.reserve(amt);
 
-        ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                  self.vec.as_mut_ptr().offset((idx + amt) as isize),
+        ptr::copy(self.vec.as_ptr().add(idx),
+                  self.vec.as_mut_ptr().add(idx + amt),
                   len - idx);
         ptr::copy(bytes.as_ptr(),
-                  self.vec.as_mut_ptr().offset(idx as isize),
+                  self.vec.as_mut_ptr().add(idx),
                   amt);
         self.vec.set_len(len + amt);
     }

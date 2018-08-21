@@ -1151,12 +1151,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
             let new_len = self.node.len() - self.idx - 1;
 
             ptr::copy_nonoverlapping(
-                self.node.keys().as_ptr().offset(self.idx as isize + 1),
+                self.node.keys().as_ptr().add(self.idx + 1),
                 new_node.keys.as_mut_ptr(),
                 new_len
             );
             ptr::copy_nonoverlapping(
-                self.node.vals().as_ptr().offset(self.idx as isize + 1),
+                self.node.vals().as_ptr().add(self.idx + 1),
                 new_node.vals.as_mut_ptr(),
                 new_len
             );
@@ -1209,17 +1209,17 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let new_len = self.node.len() - self.idx - 1;
 
             ptr::copy_nonoverlapping(
-                self.node.keys().as_ptr().offset(self.idx as isize + 1),
+                self.node.keys().as_ptr().add(self.idx + 1),
                 new_node.data.keys.as_mut_ptr(),
                 new_len
             );
             ptr::copy_nonoverlapping(
-                self.node.vals().as_ptr().offset(self.idx as isize + 1),
+                self.node.vals().as_ptr().add(self.idx + 1),
                 new_node.data.vals.as_mut_ptr(),
                 new_len
             );
             ptr::copy_nonoverlapping(
-                self.node.as_internal().edges.as_ptr().offset(self.idx as isize + 1),
+                self.node.as_internal().edges.as_ptr().add(self.idx + 1),
                 new_node.edges.as_mut_ptr(),
                 new_len + 1
             );
@@ -1283,14 +1283,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                        slice_remove(self.node.keys_mut(), self.idx));
             ptr::copy_nonoverlapping(
                 right_node.keys().as_ptr(),
-                left_node.keys_mut().as_mut_ptr().offset(left_len as isize + 1),
+                left_node.keys_mut().as_mut_ptr().add(left_len + 1),
                 right_len
             );
             ptr::write(left_node.vals_mut().get_unchecked_mut(left_len),
                        slice_remove(self.node.vals_mut(), self.idx));
             ptr::copy_nonoverlapping(
                 right_node.vals().as_ptr(),
-                left_node.vals_mut().as_mut_ptr().offset(left_len as isize + 1),
+                left_node.vals_mut().as_mut_ptr().add(left_len + 1),
                 right_len
             );
 
@@ -1309,7 +1309,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                              .as_internal_mut()
                              .edges
                              .as_mut_ptr()
-                             .offset(left_len as isize + 1),
+                             .add(left_len + 1),
                     right_len + 1
                 );
 
@@ -1394,10 +1394,10 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
                 // Make room for stolen elements in the right child.
                 ptr::copy(right_kv.0,
-                          right_kv.0.offset(count as isize),
+                          right_kv.0.add(count),
                           right_len);
                 ptr::copy(right_kv.1,
-                          right_kv.1.offset(count as isize),
+                          right_kv.1.add(count),
                           right_len);
 
                 // Move elements from the left child to the right one.
@@ -1418,7 +1418,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     // Make room for stolen edges.
                     let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
                     ptr::copy(right_edges,
-                              right_edges.offset(count as isize),
+                              right_edges.add(count),
                               right_len + 1);
                     right.correct_childrens_parent_links(count, count + right_len + 1);
 
@@ -1463,10 +1463,10 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 move_kv(right_kv, count - 1, parent_kv, 0, 1);
 
                 // Fix right indexing
-                ptr::copy(right_kv.0.offset(count as isize),
+                ptr::copy(right_kv.0.add(count),
                           right_kv.0,
                           new_right_len);
-                ptr::copy(right_kv.1.offset(count as isize),
+                ptr::copy(right_kv.1.add(count),
                           right_kv.1,
                           new_right_len);
             }
@@ -1480,7 +1480,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
                     // Fix right indexing.
                     let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
-                    ptr::copy(right_edges.offset(count as isize),
+                    ptr::copy(right_edges.add(count),
                               right_edges,
                               new_right_len + 1);
                     right.correct_childrens_parent_links(0, new_right_len + 1);
@@ -1497,11 +1497,11 @@ unsafe fn move_kv<K, V>(
     dest: (*mut K, *mut V), dest_offset: usize,
     count: usize)
 {
-    ptr::copy_nonoverlapping(source.0.offset(source_offset as isize),
-                             dest.0.offset(dest_offset as isize),
+    ptr::copy_nonoverlapping(source.0.add(source_offset),
+                             dest.0.add(dest_offset),
                              count);
-    ptr::copy_nonoverlapping(source.1.offset(source_offset as isize),
-                             dest.1.offset(dest_offset as isize),
+    ptr::copy_nonoverlapping(source.1.add(source_offset),
+                             dest.1.add(dest_offset),
                              count);
 }
 
@@ -1513,8 +1513,8 @@ unsafe fn move_edges<K, V>(
 {
     let source_ptr = source.as_internal_mut().edges.as_mut_ptr();
     let dest_ptr = dest.as_internal_mut().edges.as_mut_ptr();
-    ptr::copy_nonoverlapping(source_ptr.offset(source_offset as isize),
-                             dest_ptr.offset(dest_offset as isize),
+    ptr::copy_nonoverlapping(source_ptr.add(source_offset),
+                             dest_ptr.add(dest_offset),
                              count);
     dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
 }
@@ -1604,8 +1604,8 @@ pub mod marker {
 
 unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
     ptr::copy(
-        slice.as_ptr().offset(idx as isize),
-        slice.as_mut_ptr().offset(idx as isize + 1),
+        slice.as_ptr().add(idx),
+        slice.as_mut_ptr().add(idx + 1),
         slice.len() - idx
     );
     ptr::write(slice.get_unchecked_mut(idx), val);
@@ -1614,8 +1614,8 @@ unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
 unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
     let ret = ptr::read(slice.get_unchecked(idx));
     ptr::copy(
-        slice.as_ptr().offset(idx as isize + 1),
-        slice.as_mut_ptr().offset(idx as isize),
+        slice.as_ptr().add(idx + 1),
+        slice.as_mut_ptr().add(idx),
         slice.len() - idx - 1
     );
     ret

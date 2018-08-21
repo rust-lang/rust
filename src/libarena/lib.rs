@@ -106,7 +106,7 @@ impl<T> TypedArenaChunk<T> {
                 // A pointer as large as possible for zero-sized elements.
                 !0 as *mut T
             } else {
-                self.start().offset(self.storage.cap() as isize)
+                self.start().add(self.storage.cap())
             }
         }
     }
@@ -179,7 +179,7 @@ impl<T> TypedArena<T> {
         unsafe {
             let start_ptr = self.ptr.get();
             let arena_slice = slice::from_raw_parts_mut(start_ptr, slice.len());
-            self.ptr.set(start_ptr.offset(arena_slice.len() as isize));
+            self.ptr.set(start_ptr.add(arena_slice.len()));
             arena_slice.copy_from_slice(slice);
             arena_slice
         }

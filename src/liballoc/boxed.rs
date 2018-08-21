@@ -706,7 +706,7 @@ impl<T: Clone> Clone for Box<[T]> {
         impl<T> Drop for BoxBuilder<T> {
             fn drop(&mut self) {
                 let mut data = self.data.ptr();
-                let max = unsafe { data.offset(self.len as isize) };
+                let max = unsafe { data.add(self.len) };
 
                 while data != max {
                     unsafe {

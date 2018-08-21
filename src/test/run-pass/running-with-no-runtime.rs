@@ -36,7 +36,7 @@ fn start(argc: isize, argv: *const *const u8) -> isize {
 
     let args = unsafe {
         (0..argc as usize).map(|i| {
-            let ptr = *argv.offset(i as isize) as *const _;
+            let ptr = *argv.add(i) as *const _;
             CStr::from_ptr(ptr).to_bytes().to_vec()
         }).collect::<Vec<_>>()
     };

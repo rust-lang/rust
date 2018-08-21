@@ -282,7 +282,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         // double would have aborted or panicked if the len exceeded
     ///         // `isize::MAX` so this is safe to do unchecked now.
     ///         unsafe {
-    ///             ptr::write(self.buf.ptr().offset(self.len as isize), elem);
+    ///             ptr::write(self.buf.ptr().add(self.len), elem);
     ///         }
     ///         self.len += 1;
     ///     }
@@ -487,7 +487,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         // `isize::MAX` so this is safe to do unchecked now.
     ///         for x in elems {
     ///             unsafe {
-    ///                 ptr::write(self.buf.ptr().offset(self.len as isize), x.clone());
+    ///                 ptr::write(self.buf.ptr().add(self.len), x.clone());
     ///             }
     ///             self.len += 1;
     ///         }
