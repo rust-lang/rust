@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::AsmDialect;
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -20,6 +19,7 @@ use value::Value;
 
 use std::borrow::Cow;
 use std::ops::Range;
+use syntax::ast::AsmDialect;
 
 pub struct OperandBundleDef<'a, Value : 'a> {
     pub name: &'a str,
