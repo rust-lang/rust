@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,7 +11,12 @@
 // aux-build:lib.rs
 
 // Regression test for #50865.
-// FIXME: explain.
+// When using generics or specifying the type directly, this example
+// codegens `foo` internally. However, when using a private `impl Trait`
+// function which references another private item, `foo` (in this case)
+// wouldn't be codegenned until main.rs used `bar`, as with impl Trait
+// it is not cast to `fn()` automatically to satisfy e.g.
+// `fn foo() -> fn() { ... }`. 
 
 extern crate lib;
 

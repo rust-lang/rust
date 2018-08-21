@@ -42,7 +42,6 @@ pub struct AccessLevels<Id = NodeId> {
 
 impl<Id: Hash + Eq> AccessLevels<Id> {
     pub fn is_reachable(&self, id: Id) -> bool {
-        // self.map.contains_key(&id)
         self.map.get(&id) >= Some(&AccessLevel::Reachable)
     }
     pub fn is_exported(&self, id: Id) -> bool {
