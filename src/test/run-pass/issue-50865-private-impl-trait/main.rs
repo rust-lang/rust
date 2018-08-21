@@ -16,7 +16,7 @@
 // function which references another private item, `foo` (in this case)
 // wouldn't be codegenned until main.rs used `bar`, as with impl Trait
 // it is not cast to `fn()` automatically to satisfy e.g.
-// `fn foo() -> fn() { ... }`. 
+// `fn foo() -> fn() { ... }`.
 
 extern crate lib;
 

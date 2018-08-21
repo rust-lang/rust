@@ -150,7 +150,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        debug!("Walked item {:?}", item);
+        debug!("visit_item({:?})", item);
         let inherited_item_level = match item.node {
             // Impls inherit level from their types and traits
             hir::ItemKind::Impl(..) => {
@@ -184,7 +184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // Update level of the item itself
         let item_level = self.update(item.id, inherited_item_level);
 
-        debug!("Its privacy is believed to be: {:?}", item_level);
+        debug!("item_level = {:?}", item_level);
 
         // Update levels of nested things
         match item.node {
