@@ -75,7 +75,7 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
-use traits::{IntPredicate, BuilderMethods};
+use traits::{IntPredicate, RealPredicate, BuilderMethods};
 use llvm::BasicBlock;
 
 use std::any::Any;
@@ -144,14 +144,14 @@ pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind,
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
+pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     match op {
-        hir::BinOpKind::Eq => llvm::RealOEQ,
-        hir::BinOpKind::Ne => llvm::RealUNE,
-        hir::BinOpKind::Lt => llvm::RealOLT,
-        hir::BinOpKind::Le => llvm::RealOLE,
-        hir::BinOpKind::Gt => llvm::RealOGT,
-        hir::BinOpKind::Ge => llvm::RealOGE,
+        hir::BinOpKind::Eq => RealPredicate::RealOEQ,
+        hir::BinOpKind::Ne => RealPredicate::RealUNE,
+        hir::BinOpKind::Lt => RealPredicate::RealOLT,
+        hir::BinOpKind::Le => RealPredicate::RealOLE,
+        hir::BinOpKind::Gt => RealPredicate::RealOGT,
+        hir::BinOpKind::Ge => RealPredicate::RealOGE,
         op => {
             bug!("comparison_op_to_fcmp_predicate: expected comparison operator, \
                   found {:?}",

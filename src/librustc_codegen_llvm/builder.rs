@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::{RealPredicate, False, OperandBundleDef};
+use llvm::{False, OperandBundleDef};
 use llvm::{self, BasicBlock};
 use common::*;
 use type_::Type;
@@ -700,7 +700,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }
     }
 
-    fn fcmp(&self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    fn fcmp(&self, op: traits::RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("fcmp");
         unsafe {
             llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, noname())

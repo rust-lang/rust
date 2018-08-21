@@ -181,6 +181,29 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
+impl traits::RealPredicateMethods for RealPredicate {
+    fn convert_to_backend_specific(realpred: traits::RealPredicate) -> Self {
+        match realpred {
+            traits::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
+            traits::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
+            traits::RealPredicate::RealOGT => RealPredicate::RealOGT,
+            traits::RealPredicate::RealOGE => RealPredicate::RealOGE,
+            traits::RealPredicate::RealOLT => RealPredicate::RealOLT,
+            traits::RealPredicate::RealOLE => RealPredicate::RealOLE,
+            traits::RealPredicate::RealONE => RealPredicate::RealONE,
+            traits::RealPredicate::RealORD => RealPredicate::RealORD,
+            traits::RealPredicate::RealUNO => RealPredicate::RealUNO,
+            traits::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
+            traits::RealPredicate::RealUGT => RealPredicate::RealUGT,
+            traits::RealPredicate::RealUGE => RealPredicate::RealUGE,
+            traits::RealPredicate::RealULT => RealPredicate::RealULT,
+            traits::RealPredicate::RealULE => RealPredicate::RealULE,
+            traits::RealPredicate::RealUNE => RealPredicate::RealUNE,
+            traits::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
+        }
+    }
+}
+
 /// LLVMTypeKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]

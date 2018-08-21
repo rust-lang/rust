@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::{RealPredicate, OperandBundleDef};
+use llvm::OperandBundleDef;
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -36,6 +36,30 @@ pub enum IntPredicate {
 
 pub trait IntPredicateMethods {
     fn convert_to_backend_specific(intpre : IntPredicate) -> Self;
+}
+
+#[allow(dead_code)]
+pub enum RealPredicate {
+    RealPredicateFalse,
+    RealOEQ,
+    RealOGT,
+    RealOGE,
+    RealOLT,
+    RealOLE,
+    RealONE,
+    RealORD,
+    RealUNO,
+    RealUEQ,
+    RealUGT,
+    RealUGE,
+    RealULT,
+    RealULE,
+    RealUNE,
+    RealPredicateTrue,
+}
+
+pub trait RealPredicateMethods {
+    fn convert_to_backend_specific(realpred : RealPredicate) -> Self;
 }
 
 

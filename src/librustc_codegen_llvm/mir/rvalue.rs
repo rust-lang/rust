@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm;
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf};
@@ -28,7 +27,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use traits::{IntPredicate,BuilderMethods};
+use traits::{IntPredicate, RealPredicate, BuilderMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -962,8 +961,8 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // negation, and the negation can be merged into the select. Therefore, it not necessarily any
     // more expensive than a ordered ("normal") comparison. Whether these optimizations will be
     // performed is ultimately up to the backend, but at least x86 does perform them.
-    let less_or_nan = bx.fcmp(llvm::RealULT, x, f_min);
-    let greater = bx.fcmp(llvm::RealOGT, x, f_max);
+    let less_or_nan = bx.fcmp(RealPredicate::RealULT, x, f_min);
+    let greater = bx.fcmp(RealPredicate::RealOGT, x, f_max);
     let int_max = C_uint_big(int_ty, int_max(signed, int_ty));
     let int_min = C_uint_big(int_ty, int_min(signed, int_ty) as u128);
     let s0 = bx.select(less_or_nan, int_min, fptosui_result);
@@ -974,7 +973,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // Therefore we only need to execute this step for signed integer types.
     if signed {
         // LLVM has no isNaN predicate, so we use (x == x) instead
-        bx.select(bx.fcmp(llvm::RealOEQ, x, x), s1, C_uint(int_ty, 0))
+        bx.select(bx.fcmp(RealPredicate::RealOEQ, x, x), s1, C_uint(int_ty, 0))
     } else {
         s1
     }
