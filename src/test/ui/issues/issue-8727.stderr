@@ -1,8 +1,8 @@
-warning: function cannot return without recurring
+warning: function cannot return without recursing
   --> $DIR/issue-8727.rs:14:1
    |
 LL | fn generic<T>() {
-   | ^^^^^^^^^^^^^^^ cannot return without recurring
+   | ^^^^^^^^^^^^^^^ cannot return without recursing
 LL |     generic::<Option<T>>();
    |     ---------------------- recursive call site
    |

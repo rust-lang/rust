@@ -15,7 +15,7 @@ fn generic<T>() {
     generic::<Option<T>>();
 }
 //~^^^ ERROR reached the recursion limit while instantiating `generic::<std::option::Option<
-//~| WARN function cannot return without recurring
+//~| WARN function cannot return without recursing
 
 
 
