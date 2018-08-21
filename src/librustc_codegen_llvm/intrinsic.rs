@@ -439,7 +439,7 @@ pub fn codegen_intrinsic_call(
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         name if name.starts_with("atomic_") => {
-            use llvm::AtomicOrdering::*;
+            use traits::AtomicOrdering::*;
 
             let split: Vec<&str> = name.split('_').collect();
 

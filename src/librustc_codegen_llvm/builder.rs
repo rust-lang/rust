@@ -488,10 +488,20 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }
     }
 
-    fn atomic_load(&self, ptr: &'ll Value, order: AtomicOrdering, size: Size) -> &'ll Value {
+    fn atomic_load(
+        &self,
+        ptr: &'ll Value,
+        order: traits::AtomicOrdering,
+        size: Size,
+    ) -> &'ll Value {
         self.count_insn("load.atomic");
         unsafe {
-            let load = llvm::LLVMRustBuildAtomicLoad(self.llbuilder, ptr, noname(), order);
+            let load = llvm::LLVMRustBuildAtomicLoad(
+                self.llbuilder,
+                ptr,
+                noname(),
+                AtomicOrdering::from_generic(order),
+            );
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
             load
@@ -568,12 +578,17 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     }
 
    fn atomic_store(&self, val: &'ll Value, ptr: &'ll Value,
-                   order: AtomicOrdering, size: Size) {
+                   order: traits::AtomicOrdering, size: Size) {
         debug!("Store {:?} -> {:?}", val, ptr);
         self.count_insn("store.atomic");
         let ptr = self.check_store(val, ptr);
         unsafe {
-            let store = llvm::LLVMRustBuildAtomicStore(self.llbuilder, val, ptr, order);
+            let store = llvm::LLVMRustBuildAtomicStore(
+                self.llbuilder,
+                val,
+                ptr,
+                AtomicOrdering::from_generic(order),
+            );
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
         }
@@ -1047,14 +1062,21 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        order: AtomicOrdering,
-        failure_order: AtomicOrdering,
+        order: traits::AtomicOrdering,
+        failure_order: traits::AtomicOrdering,
         weak: bool,
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
-            llvm::LLVMRustBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
-                                             order, failure_order, weak)
+            llvm::LLVMRustBuildAtomicCmpXchg(
+                self.llbuilder,
+                dst,
+                cmp,
+                src,
+                AtomicOrdering::from_generic(order),
+                AtomicOrdering::from_generic(failure_order),
+                weak
+            )
         }
     }
     fn atomic_rmw(
@@ -1062,7 +1084,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         op: traits::AtomicRmwBinOp,
         dst: &'ll Value,
         src: &'ll Value,
-        order: AtomicOrdering,
+        order: traits::AtomicOrdering,
     ) -> &'ll Value {
         unsafe {
             llvm::LLVMBuildAtomicRMW(
@@ -1070,14 +1092,18 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                 AtomicRmwBinOp::from_generic(op),
                 dst,
                 src,
-                order,
+                AtomicOrdering::from_generic(order),
                 False)
         }
     }
 
-    fn atomic_fence(&self, order: AtomicOrdering, scope: SynchronizationScope) {
+    fn atomic_fence(&self, order: traits::AtomicOrdering, scope: SynchronizationScope) {
         unsafe {
-            llvm::LLVMRustBuildAtomicFence(self.llbuilder, order, scope);
+            llvm::LLVMRustBuildAtomicFence(
+                self.llbuilder,
+                AtomicOrdering::from_generic(order),
+                scope
+            );
         }
     }
 
