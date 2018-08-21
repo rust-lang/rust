@@ -96,11 +96,12 @@
 #![unstable(feature = "pin", issue = "49150")]
 
 pub use core::pin::*;
+pub use core::marker::Unpin;
 
 use core::convert::From;
 use core::fmt;
 use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
-use core::marker::{Unpin, Unsize};
+use core::marker::Unsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::task::{Context, Poll};
 
