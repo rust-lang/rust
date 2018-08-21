@@ -10,7 +10,7 @@
 
 //! Types which pin data to its location in memory
 //!
-//! see the [standard library module] for more information
+//! See the [standard library module] for more information.
 //!
 //! [standard library module]: ../../std/pin/index.html
 
