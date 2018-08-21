@@ -1,9 +1,0 @@
-error[E0089]: wrong number of type arguments: expected 2, found 1
-  --> $DIR/E0089.rs:14:5
-   |
-LL |     foo::<f64>(); //~ ERROR wrong number of type arguments: expected 2, found 1 [E0089]
-   |     ^^^^^^^^^^ expected 2 type arguments
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0089`.
