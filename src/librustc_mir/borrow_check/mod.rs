@@ -1080,7 +1080,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        if self
+        // Check is_empty() first because it's the common case, and doing that
+        // way we avoid the clone() call.
+        if !self.access_place_error_reported.is_empty() &&
+           self
             .access_place_error_reported
             .contains(&(place_span.0.clone(), place_span.1))
         {
