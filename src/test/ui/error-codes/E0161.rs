@@ -8,9 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
+// Check that E0161 is a hard error in all possible configurations that might
+// affect it.
+
+// revisions: ast nll zflags edition astul nllul zflagsul editionul
+//[zflags]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
+//[edition]edition:2018
+//[zflagsul]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
+//[editionul]edition:2018
+
+#![cfg_attr(nll, feature(nll))]
+#![cfg_attr(nllul, feature(nll))]
+#![cfg_attr(astul, feature(unsized_locals))]
+#![cfg_attr(zflagsul, feature(unsized_locals))]
+#![cfg_attr(nllul, feature(unsized_locals))]
+#![cfg_attr(editionul, feature(unsized_locals))]
+
 #![feature(box_syntax)]
 
-fn main() {
-    let _x: Box<str> = box *"hello"; //~ ERROR E0161
-                                     //~^ ERROR E0507
+fn foo(x: Box<[i32]>) {
+    box *x; //~ ERROR E0161
 }
+
+fn main() {}
