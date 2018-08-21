@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicOrdering, SynchronizationScope, AsmDialect};
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -30,7 +30,7 @@ impl OperandBundleDef<'ll, &'ll Value> {
     pub fn new(name: &'ll str, val: &'ll Value) -> Self {
         OperandBundleDef {
             name,
-            val,
+            val
         }
     }
 }
@@ -45,7 +45,7 @@ pub enum IntPredicate {
     IntSGT,
     IntSGE,
     IntSLT,
-    IntSLE,
+    IntSLE
 }
 
 #[allow(dead_code)]
@@ -65,7 +65,21 @@ pub enum RealPredicate {
     RealULT,
     RealULE,
     RealUNE,
-    RealPredicateTrue,
+    RealPredicateTrue
+}
+
+pub enum AtomicRmwBinOp {
+    AtomicXchg,
+    AtomicAdd,
+    AtomicSub,
+    AtomicAnd,
+    AtomicNand,
+    AtomicOr,
+    AtomicXor,
+    AtomicMax,
+    AtomicMin,
+    AtomicUMax,
+    AtomicUMin
 }
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,

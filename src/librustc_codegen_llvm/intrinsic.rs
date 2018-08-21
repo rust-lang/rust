@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use traits::BuilderMethods;
+use traits::{BuilderMethods, AtomicRmwBinOp};
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -533,17 +533,17 @@ pub fn codegen_intrinsic_call(
                 // These are all AtomicRMW ops
                 op => {
                     let atom_op = match op {
-                        "xchg"  => llvm::AtomicXchg,
-                        "xadd"  => llvm::AtomicAdd,
-                        "xsub"  => llvm::AtomicSub,
-                        "and"   => llvm::AtomicAnd,
-                        "nand"  => llvm::AtomicNand,
-                        "or"    => llvm::AtomicOr,
-                        "xor"   => llvm::AtomicXor,
-                        "max"   => llvm::AtomicMax,
-                        "min"   => llvm::AtomicMin,
-                        "umax"  => llvm::AtomicUMax,
-                        "umin"  => llvm::AtomicUMin,
+                        "xchg"  => AtomicRmwBinOp::AtomicXchg,
+                        "xadd"  => AtomicRmwBinOp::AtomicAdd,
+                        "xsub"  => AtomicRmwBinOp::AtomicSub,
+                        "and"   => AtomicRmwBinOp::AtomicAnd,
+                        "nand"  => AtomicRmwBinOp::AtomicNand,
+                        "or"    => AtomicRmwBinOp::AtomicOr,
+                        "xor"   => AtomicRmwBinOp::AtomicXor,
+                        "max"   => AtomicRmwBinOp::AtomicMax,
+                        "min"   => AtomicRmwBinOp::AtomicMin,
+                        "umax"  => AtomicRmwBinOp::AtomicUMax,
+                        "umin"  => AtomicRmwBinOp::AtomicUMin,
                         _ => cx.sess().fatal("unknown atomic operation")
                     };
 
