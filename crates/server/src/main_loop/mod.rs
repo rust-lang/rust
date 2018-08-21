@@ -252,7 +252,7 @@ fn on_notification(
 fn handle_request_on_threadpool<R: req::ClientRequest>(
     req: &mut Option<RawRequest>,
     pool: &ThreadPool,
-    world: &mut ServerWorldState,
+    world: &ServerWorldState,
     sender: &Sender<Task>,
     f: fn(ServerWorld, R::Params) -> Result<R::Result>,
 ) -> Result<()>

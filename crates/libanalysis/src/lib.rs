@@ -17,7 +17,6 @@ use rayon::prelude::*;
 
 use std::{
     fmt,
-    mem,
     path::{Path},
     sync::{
         Arc,
@@ -36,18 +35,16 @@ use libeditor::{LineIndex, FileSymbol, find_node};
 
 use self::{
     symbol_index::FileSymbols,
-    module_map::ModuleMap,
+    module_map::{ModuleMap, ChangeKind},
 };
 pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
-const INDEXING_THRESHOLD: usize = 128;
 
 pub type FileResolver = dyn Fn(FileId, &Path) -> Option<FileId> + Send + Sync;
 
 #[derive(Debug)]
 pub struct WorldState {
-    updates: Vec<FileId>,
     data: Arc<WorldData>
 }
 
@@ -79,32 +76,16 @@ pub struct FileId(pub u32);
 impl WorldState {
     pub fn new() -> WorldState {
         WorldState {
-            updates: Vec::new(),
             data: Arc::new(WorldData::default()),
         }
     }
 
     pub fn snapshot(
-        &mut self,
+        &self,
         file_resolver: impl Fn(FileId, &Path) -> Option<FileId> + 'static + Send + Sync,
     ) -> World {
-        let needs_reindex = self.updates.len() >= INDEXING_THRESHOLD;
-        if !self.updates.is_empty() {
-            let updates = mem::replace(&mut self.updates, Vec::new());
-            let data = self.data_mut();
-            for file_id in updates {
-                let syntax = data.file_map
-                    .get(&file_id)
-                    .map(|it| it.syntax());
-                data.module_map.update_file(
-                    file_id,
-                    syntax,
-                    &file_resolver,
-                );
-            }
-        }
         World {
-            needs_reindex: AtomicBool::new(needs_reindex),
+            needs_reindex: AtomicBool::new(false),
             file_resolver: Arc::new(file_resolver),
             data: self.data.clone()
         }
@@ -115,21 +96,26 @@ impl WorldState {
     }
 
     pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
-        let mut updates = Vec::new();
-        {
-            let data = self.data_mut();
-            for (file_id, text) in changes {
-                data.file_map.remove(&file_id);
-                if let Some(text) = text {
-                    let file_data = FileData::new(text);
-                    data.file_map.insert(file_id, Arc::new(file_data));
+        let data = self.data_mut();
+        for (file_id, text) in changes {
+            let change_kind = if data.file_map.remove(&file_id).is_some() {
+                if text.is_some() {
+                    ChangeKind::Update
                 } else {
-                    data.file_map.remove(&file_id);
+                    ChangeKind::Delete
                 }
-                updates.push(file_id);
+            } else {
+                ChangeKind::Insert
+            };
+            data.module_map.update_file(file_id, change_kind);
+            data.file_map.remove(&file_id);
+            if let Some(text) = text {
+                let file_data = FileData::new(text);
+                data.file_map.insert(file_id, Arc::new(file_data));
+            } else {
+                data.file_map.remove(&file_id);
             }
         }
-        self.updates.extend(updates)
     }
 
     fn data_mut(&mut self) -> &mut WorldData {
@@ -171,13 +157,17 @@ impl World {
         let module_map = &self.data.module_map;
         let id = module_map.file2module(id);
         module_map
-            .parent_modules(id)
+            .parent_modules(
+                id,
+                &*self.file_resolver,
+                &|file_id| self.file_syntax(file_id).unwrap(),
+            )
             .into_iter()
-            .map(|(id, m)| {
+            .map(|(id, name, node)| {
                 let id = module_map.module2file(id);
                 let sym = FileSymbol {
-                    name: m.name().unwrap().text(),
-                    node_range: m.syntax().range(),
+                    name,
+                    node_range: node.range(),
                     kind: MODULE,
                 };
                 (id, sym)
@@ -235,7 +225,11 @@ impl World {
         let module_map = &self.data.module_map;
         let id = module_map.file2module(id);
         module_map
-            .child_module_by_name(id, name.as_str())
+            .child_module_by_name(
+                id, name.as_str(),
+                &*self.file_resolver,
+                &|file_id| self.file_syntax(file_id).unwrap(),
+            )
             .into_iter()
             .map(|id| module_map.module2file(id))
             .collect()

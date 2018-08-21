@@ -86,7 +86,7 @@ impl ServerWorldState {
         Ok(())
     }
 
-    pub fn snapshot(&mut self) -> ServerWorld {
+    pub fn snapshot(&self) -> ServerWorld {
         let pm = self.path_map.clone();
         ServerWorld {
             analysis: self.analysis.snapshot(move |id, path| {
