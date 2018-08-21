@@ -22,7 +22,6 @@ use mir::place::PlaceRef;
 use mir::operand::OperandValue;
 
 use std::ffi::CString;
-use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -82,11 +81,6 @@ pub fn codegen_inline_asm(
         _ => Type::struct_(bx.cx, &output_types, false)
     };
 
-    let dialect = match ia.dialect {
-        AsmDialect::Att   => llvm::AsmDialect::Att,
-        AsmDialect::Intel => llvm::AsmDialect::Intel,
-    };
-
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
     let constraint_cstr = CString::new(all_constraints).unwrap();
     let r = bx.inline_asm_call(
@@ -96,7 +90,7 @@ pub fn codegen_inline_asm(
         output_type,
         ia.volatile,
         ia.alignstack,
-        dialect
+        ia.dialect
     );
     if r.is_none() {
         return false;

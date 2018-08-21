@@ -20,6 +20,7 @@ use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
 use traits::{self, BuilderMethods};
+use syntax;
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -742,7 +743,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
                        inputs: &[&'ll Value], output: &'ll Type,
                        volatile: bool, alignstack: bool,
-                       dia: AsmDialect) -> Option<&'ll Value> {
+                       dia: syntax::ast::AsmDialect) -> Option<&'ll Value> {
         self.count_insn("inlineasm");
 
         let volatile = if volatile { llvm::True }
@@ -763,7 +764,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
             debug!("Constraint verification result: {:?}", constraints_ok);
             if constraints_ok {
                 let v = llvm::LLVMRustInlineAsm(
-                    fty, asm, cons, volatile, alignstack, dia);
+                    fty, asm, cons, volatile, alignstack, AsmDialect::from_generic(dia));
                 Some(self.call(v, inputs, None))
             } else {
                 // LLVM has detected an issue with our constraints, bail out
