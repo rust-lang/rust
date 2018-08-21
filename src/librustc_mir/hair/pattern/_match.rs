@@ -1501,6 +1501,8 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                     if let Endpoint::Both = a.1 {
                         split_ctors.push(IntRange::range_to_ctor(tcx, ty, a.0..=a.0));
                     }
+                    // Integer overflow cannot occur here, because only the first point may be
+                    // u128::MIN and only the last may be u128::MAX.
                     let c = match a.1 {
                         Endpoint::Start => a.0,
                         Endpoint::End | Endpoint::Both => a.0 + 1,

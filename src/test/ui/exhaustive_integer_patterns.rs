@@ -140,21 +140,26 @@ fn main() {
     }
 
     match (0u8, true) { //~ ERROR non-exhaustive patterns
-        (0..=125, false) => {}
-        (128..=255, false) => {}
-        (0..=255, true) => {}
+        (0 ..= 125, false) => {}
+        (128 ..= 255, false) => {}
+        (0 ..= 255, true) => {}
     }
 
     match (0u8, true) { // ok
-        (0..=125, false) => {}
-        (128..=255, false) => {}
-        (0..=255, true) => {}
-        (125..128, false) => {}
+        (0 ..= 125, false) => {}
+        (128 ..= 255, false) => {}
+        (0 ..= 255, true) => {}
+        (125 .. 128, false) => {}
     }
 
     match 0u8 { // ok
-        0..2 => {}
-        1..=2 => {}
+        0 .. 2 => {}
+        1 ..= 2 => {}
         _ => {}
+    }
+
+    const lim: u128 = u128::MAX - 1;
+    match 0u128 { //~ ERROR non-exhaustive patterns
+        0 ..= lim => {}
     }
 }
