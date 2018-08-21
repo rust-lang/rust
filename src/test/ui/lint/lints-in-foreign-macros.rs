@@ -12,6 +12,7 @@
 // compile-pass
 
 #![warn(unused_imports)]
+#![warn(missing_docs)] //~ WARN: missing documentation for crate [missing_docs]
 
 #[macro_use]
 extern crate lints_in_foreign_macros;
