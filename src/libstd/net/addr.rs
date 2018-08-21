@@ -554,6 +554,7 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV4> for SocketAddr {
+    /// Converts a [`SocketAddrV4`] into a [`SocketAddr::V4`].
     fn from(sock4: SocketAddrV4) -> SocketAddr {
         SocketAddr::V4(sock4)
     }
@@ -561,6 +562,7 @@ impl From<SocketAddrV4> for SocketAddr {
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV6> for SocketAddr {
+    /// Converts a [`SocketAddrV6`] into a [`SocketAddr::V6`].
     fn from(sock6: SocketAddrV6) -> SocketAddr {
         SocketAddr::V6(sock6)
     }
@@ -568,6 +570,12 @@ impl From<SocketAddrV6> for SocketAddr {
 
 #[stable(feature = "addr_from_into_ip", since = "1.17.0")]
 impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
+    /// Converts a tuple struct (Into<[`IpAddr`]>, `u16`) into a [`SocketAddr`].
+    ///
+    /// This conversion creates a [`SocketAddr::V4`] for a [`IpAddr::V4`]
+    /// and creates a [`SocketAddr::V6`] for a [`IpAddr::V6`].
+    ///
+    /// `u16` is treated as port of the newly created [`SocketAddr`].
     fn from(pieces: (I, u16)) -> SocketAddr {
         SocketAddr::new(pieces.0.into(), pieces.1)
     }
