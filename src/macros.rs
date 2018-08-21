@@ -29,7 +29,7 @@ use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::print::pprust;
 use syntax::symbol;
 use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
-use syntax::util::ThinVec;
+use syntax::ThinVec;
 use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
