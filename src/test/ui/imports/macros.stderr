@@ -1,15 +1,15 @@
-error: `m` is ambiguous
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:48:5
    |
 LL |     m!(); //~ ERROR ambiguous
    |     ^
    |
-note: `m` could refer to the macro defined here
+note: `m` could refer to the name defined here
   --> $DIR/macros.rs:46:5
    |
 LL |     macro_rules! m { () => {} }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `m` could also refer to the macro imported here
+note: `m` could also refer to the name imported here
   --> $DIR/macros.rs:47:9
    |
 LL |     use two_macros::m;

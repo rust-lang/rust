@@ -37,10 +37,10 @@ mod m4 {
 
 mod m5 {
     macro_rules! m { () => {
-        macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
+        macro_rules! panic { () => {} }
     } }
     m!();
-    panic!();
+    panic!(); //~ ERROR `panic` is ambiguous
 }
 
 #[macro_use(n)]

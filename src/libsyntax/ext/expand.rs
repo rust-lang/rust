@@ -243,15 +243,6 @@ impl Invocation {
             InvocationKind::Derive { ref path, .. } => path.span,
         }
     }
-
-    pub fn path(&self) -> Option<&Path> {
-        match self.kind {
-            InvocationKind::Bang { ref mac, .. } => Some(&mac.node.path),
-            InvocationKind::Attr { attr: Some(ref attr), .. } => Some(&attr.path),
-            InvocationKind::Attr { attr: None, .. } => None,
-            InvocationKind::Derive { ref path, .. } => Some(path),
-        }
-    }
 }
 
 pub struct MacroExpander<'a, 'b:'a> {
@@ -343,7 +334,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let ext = match self.cx.resolver.resolve_invoc(&invoc, scope, force) {
+            let ext = match self.cx.resolver.resolve_macro_invocation(&invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
@@ -393,8 +384,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     for path in &traits {
                         let mark = Mark::fresh(self.cx.current_expansion.mark);
                         derives.push(mark);
-                        let item = match self.cx.resolver.resolve_macro(
-                                Mark::root(), path, MacroKind::Derive, false) {
+                        let item = match self.cx.resolver.resolve_macro_path(
+                                path, MacroKind::Derive, Mark::root(), &[], false) {
                             Ok(ext) => match *ext {
                                 BuiltinDerive(..) => item_with_markers.clone(),
                                 _ => item.clone(),

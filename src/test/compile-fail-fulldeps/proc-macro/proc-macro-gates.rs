@@ -22,7 +22,7 @@ extern crate proc_macro_gates as foo;
 
 use foo::*;
 
-#[foo::a] //~ ERROR: paths of length greater than one
+#[foo::a] //~ ERROR: non-ident attribute macro paths are unstable
 fn _test() {}
 
 fn _test_inner() {
