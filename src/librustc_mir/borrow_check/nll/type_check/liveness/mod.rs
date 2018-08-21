@@ -24,7 +24,6 @@ use super::TypeChecker;
 
 crate mod liveness_map;
 mod local_use_map;
-mod point_index_map;
 mod trace;
 
 /// Combines liveness analysis with initialization analysis to

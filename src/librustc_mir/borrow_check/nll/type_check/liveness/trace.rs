@@ -11,7 +11,6 @@
 use borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
 use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
 use borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
-use borrow_check::nll::type_check::liveness::point_index_map::PointIndexMap;
 use borrow_check::nll::type_check::AtLocation;
 use borrow_check::nll::type_check::TypeChecker;
 use dataflow::move_paths::indexes::MovePathIndex;
@@ -57,7 +56,6 @@ pub(super) fn trace(
     }
 
     let local_use_map = &LocalUseMap::build(liveness_map, elements, mir);
-    let point_index_map = &PointIndexMap::new(elements, mir);
 
     let cx = LivenessContext {
         typeck,
@@ -67,7 +65,6 @@ pub(super) fn trace(
         local_use_map,
         move_data,
         liveness_map,
-        point_index_map,
         drop_data: FxHashMap::default(),
     };
 
@@ -104,8 +101,6 @@ where
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
     local_use_map: &'me LocalUseMap<'me>,
-
-    point_index_map: &'me PointIndexMap<'me, 'tcx>,
 
     /// Map tracking which variables need liveness computation.
     liveness_map: &'me NllLivenessMap,
@@ -146,7 +141,7 @@ where
 
 impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
     fn new(cx: LivenessContext<'me, 'typeck, 'flow, 'gcx, 'tcx>) -> Self {
-        let num_points = cx.point_index_map.num_points();
+        let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
             defs: BitArray::new(num_points),
@@ -218,8 +213,8 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
 
             if self.use_live_at.insert(p) {
                 self.cx
-                    .point_index_map
-                    .push_predecessors(p, &mut self.stack)
+                    .elements
+                    .push_predecessors(self.cx.mir, p, &mut self.stack)
             }
         }
     }
@@ -242,7 +237,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
 
         // Find the drops where `local` is initialized.
         for drop_point in self.cx.local_use_map.drops(live_local) {
-            let location = self.cx.point_index_map.location_of(drop_point);
+            let location = self.cx.elements.to_location(drop_point);
             debug_assert_eq!(self.cx.mir.terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi) {
@@ -281,7 +276,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         debug!(
             "compute_drop_live_points_for_block(mpi={:?}, term_point={:?})",
             self.cx.move_data.move_paths[mpi].place,
-            self.cx.point_index_map.location_of(term_point),
+            self.cx.elements.to_location(term_point),
         );
 
         // We are only invoked with terminators where `mpi` is
@@ -301,7 +296,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         for p in (entry_point..term_point).rev() {
             debug!(
                 "compute_drop_live_points_for_block: p = {:?}",
-                self.cx.point_index_map.location_of(p),
+                self.cx.elements.to_location(p),
             );
 
             if self.defs.contains(p) {
