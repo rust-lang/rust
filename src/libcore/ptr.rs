@@ -582,6 +582,21 @@ impl<T: ?Sized> *const T {
     ///     }
     /// }
     /// ```
+    ///
+    /// # Null-unchecked version
+    ///
+    /// If you are sure the pointer can never be null and are looking for some kind of
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>, know that you can
+    /// dereference the pointer directly.
+    ///
+    /// ```
+    /// let ptr: *const u8 = &10u8 as *const u8;
+    ///
+    /// unsafe {
+    ///     let val_back = &*ptr;
+    ///     println!("We got back the value: {}!", val_back);
+    /// }
+    /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
@@ -1301,6 +1316,21 @@ impl<T: ?Sized> *mut T {
     ///     if let Some(val_back) = ptr.as_ref() {
     ///         println!("We got back the value: {}!", val_back);
     ///     }
+    /// }
+    /// ```
+    ///
+    /// # Null-unchecked version
+    ///
+    /// If you are sure the pointer can never be null and are looking for some kind of
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>, know that you can
+    /// dereference the pointer directly.
+    ///
+    /// ```
+    /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
+    ///
+    /// unsafe {
+    ///     let val_back = &*ptr;
+    ///     println!("We got back the value: {}!", val_back);
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
