@@ -1441,7 +1441,8 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
                 let ctor_range = IntRange::from_ctor(tcx, &ctor).unwrap();
 
                 /// Represents a border between 2 integers. Because the intervals spanning borders
-                /// must be able to cover every integer, we need 2^128 + 1 such borders.
+                /// must be able to cover every integer, we need to be able to represent
+                /// 2^128 + 1 such borders.
                 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
                 enum Border {
                     JustBefore(u128),

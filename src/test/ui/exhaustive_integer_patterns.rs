@@ -162,4 +162,12 @@ fn main() {
     match 0u128 { //~ ERROR non-exhaustive patterns
         0 ..= LIM => {}
     }
+
+    match 0u128 { //~ ERROR non-exhaustive patterns
+        0 ..= 4 => {}
+    }
+
+    match 0u128 { //~ ERROR non-exhaustive patterns
+        4 ..= u128::MAX => {}
+    }
 }

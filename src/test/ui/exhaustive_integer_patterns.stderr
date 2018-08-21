@@ -70,6 +70,18 @@ error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211455u
 LL |     match 0u128 { //~ ERROR non-exhaustive patterns
    |           ^^^^^ pattern `340282366920938463463374607431768211455u128` not covered
 
-error: aborting due to 11 previous errors
+error[E0004]: non-exhaustive patterns: `5u128..=340282366920938463463374607431768211455u128` not covered
+  --> $DIR/exhaustive_integer_patterns.rs:166:11
+   |
+LL |     match 0u128 { //~ ERROR non-exhaustive patterns
+   |           ^^^^^ pattern `5u128..=340282366920938463463374607431768211455u128` not covered
+
+error[E0004]: non-exhaustive patterns: `0u128..=3u128` not covered
+  --> $DIR/exhaustive_integer_patterns.rs:170:11
+   |
+LL |     match 0u128 { //~ ERROR non-exhaustive patterns
+   |           ^^^^^ pattern `0u128..=3u128` not covered
+
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
