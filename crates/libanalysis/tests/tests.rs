@@ -43,3 +43,24 @@ fn test_resolve_module() {
         &symbols,
     );
 }
+
+#[test]
+fn test_resolve_parent_module() {
+    let mut world = WorldState::new();
+    world.change_file(FileId(1), Some("mod foo;".to_string()));
+    world.change_file(FileId(2), Some("".to_string()));
+
+    let snap = world.snapshot(|id, path| {
+        assert_eq!(id, FileId(1));
+        if path == PathBuf::from("../foo/mod.rs") {
+            return None;
+        }
+        assert_eq!(path, PathBuf::from("../foo.rs"));
+        Some(FileId(2))
+    });
+    let symbols = snap.parent_module(FileId(2));
+    assert_eq_dbg(
+        r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
+        &symbols,
+    );
+}

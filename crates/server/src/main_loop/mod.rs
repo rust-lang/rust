@@ -94,7 +94,7 @@ pub(super) fn main_loop(
             Event::Msg(msg) => {
                 match msg {
                     RawMsg::Request(req) => {
-                        if !on_request(io, &state, pool, &task_sender, req)? {
+                        if !on_request(io, &mut state, pool, &task_sender, req)? {
                             return Ok(());
                         }
                     }
@@ -114,7 +114,7 @@ pub(super) fn main_loop(
 
 fn on_request(
     io: &mut Io,
-    world: &ServerWorldState,
+    world: &mut ServerWorldState,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     req: RawRequest,
@@ -252,7 +252,7 @@ fn on_notification(
 fn handle_request_on_threadpool<R: req::ClientRequest>(
     req: &mut Option<RawRequest>,
     pool: &ThreadPool,
-    world: &ServerWorldState,
+    world: &mut ServerWorldState,
     sender: &Sender<Task>,
     f: fn(ServerWorld, R::Params) -> Result<R::Result>,
 ) -> Result<()>

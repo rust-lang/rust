@@ -10,16 +10,18 @@ extern crate fst;
 extern crate rayon;
 
 mod symbol_index;
+mod module_map;
 
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
 use std::{
     fmt,
-    path::{Path, PathBuf},
+    mem,
+    path::{Path},
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering::SeqCst},
+        atomic::{AtomicBool, Ordering::SeqCst},
     },
     collections::hash_map::HashMap,
     time::Instant,
@@ -32,7 +34,10 @@ use libsyntax2::{
 };
 use libeditor::{LineIndex, FileSymbol, find_node};
 
-use self::symbol_index::FileSymbols;
+use self::{
+    symbol_index::FileSymbols,
+    module_map::ModuleMap,
+};
 pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -42,11 +47,12 @@ pub type FileResolver = dyn Fn(FileId, &Path) -> Option<FileId> + Send + Sync;
 
 #[derive(Debug)]
 pub struct WorldState {
+    updates: Vec<FileId>,
     data: Arc<WorldData>
 }
 
-#[derive(Clone)]
 pub struct World {
+    needs_reindex: AtomicBool,
     file_resolver: Arc<FileResolver>,
     data: Arc<WorldData>,
 }
@@ -57,18 +63,48 @@ impl fmt::Debug for World {
     }
 }
 
+impl Clone for World {
+    fn clone(&self) -> World {
+        World {
+            needs_reindex: AtomicBool::new(self.needs_reindex.load(SeqCst)),
+            file_resolver: Arc::clone(&self.file_resolver),
+            data: Arc::clone(&self.data),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
 
 impl WorldState {
     pub fn new() -> WorldState {
         WorldState {
-            data: Arc::new(WorldData::default())
+            updates: Vec::new(),
+            data: Arc::new(WorldData::default()),
         }
     }
 
-    pub fn snapshot(&self, file_resolver: impl Fn(FileId, &Path) -> Option<FileId> + 'static + Send + Sync) -> World {
+    pub fn snapshot(
+        &mut self,
+        file_resolver: impl Fn(FileId, &Path) -> Option<FileId> + 'static + Send + Sync,
+    ) -> World {
+        let needs_reindex = self.updates.len() >= INDEXING_THRESHOLD;
+        if !self.updates.is_empty() {
+            let updates = mem::replace(&mut self.updates, Vec::new());
+            let data = self.data_mut();
+            for file_id in updates {
+                let syntax = data.file_map
+                    .get(&file_id)
+                    .map(|it| it.syntax());
+                data.module_map.update_file(
+                    file_id,
+                    syntax,
+                    &file_resolver,
+                );
+            }
+        }
         World {
+            needs_reindex: AtomicBool::new(needs_reindex),
             file_resolver: Arc::new(file_resolver),
             data: self.data.clone()
         }
@@ -79,28 +115,28 @@ impl WorldState {
     }
 
     pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
-        let data = self.data_mut();
-        let mut cnt = 0;
-        for (id, text) in changes {
-            cnt += 1;
-            data.file_map.remove(&id);
-            if let Some(text) = text {
-                let file_data = FileData::new(text);
-                data.file_map.insert(id, Arc::new(file_data));
-            } else {
-                data.file_map.remove(&id);
+        let mut updates = Vec::new();
+        {
+            let data = self.data_mut();
+            for (file_id, text) in changes {
+                data.file_map.remove(&file_id);
+                if let Some(text) = text {
+                    let file_data = FileData::new(text);
+                    data.file_map.insert(file_id, Arc::new(file_data));
+                } else {
+                    data.file_map.remove(&file_id);
+                }
+                updates.push(file_id);
             }
         }
-        *data.unindexed.get_mut() += cnt;
+        self.updates.extend(updates)
     }
 
     fn data_mut(&mut self) -> &mut WorldData {
         if Arc::get_mut(&mut self.data).is_none() {
             self.data = Arc::new(WorldData {
-                unindexed: AtomicUsize::new(
-                    self.data.unindexed.load(SeqCst)
-                ),
                 file_map: self.data.file_map.clone(),
+                module_map: self.data.module_map.clone(),
             });
         }
         Arc::get_mut(&mut self.data).unwrap()
@@ -127,6 +163,24 @@ impl World {
             .flat_map(move |(id, data)| {
                 let symbols = data.symbols();
                 query.process(symbols).into_iter().map(move |s| (*id, s))
+            })
+            .collect()
+    }
+
+    pub fn parent_module(&self, id: FileId) -> Vec<(FileId, FileSymbol)> {
+        let module_map = &self.data.module_map;
+        let id = module_map.file2module(id);
+        module_map
+            .parent_modules(id)
+            .into_iter()
+            .map(|(id, m)| {
+                let id = module_map.module2file(id);
+                let sym = FileSymbol {
+                    name: m.name().unwrap().text(),
+                    node_range: m.syntax().range(),
+                    kind: MODULE,
+                };
+                (id, sym)
             })
             .collect()
     }
@@ -178,32 +232,22 @@ impl World {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let paths = &[
-            PathBuf::from(format!("../{}.rs", name)),
-            PathBuf::from(format!("../{}/mod.rs", name)),
-        ];
-        paths.iter()
-            .filter_map(|path| self.resolve_relative_path(id, path))
+        let module_map = &self.data.module_map;
+        let id = module_map.file2module(id);
+        module_map
+            .child_module_by_name(id, name.as_str())
+            .into_iter()
+            .map(|id| module_map.module2file(id))
             .collect()
     }
 
-    fn resolve_relative_path(&self, id: FileId, path: &Path) -> Option<FileId> {
-        (self.file_resolver)(id, path)
-    }
-
     fn reindex(&self) {
-        let data = &*self.data;
-        let unindexed = data.unindexed.load(SeqCst);
-        if unindexed < INDEXING_THRESHOLD {
-            return;
-        }
-        if unindexed == data.unindexed.compare_and_swap(unindexed, 0, SeqCst) {
+        if self.needs_reindex.compare_and_swap(false, true, SeqCst) {
             let now = Instant::now();
+            let data = &*self.data;
             data.file_map
                 .par_iter()
-                .for_each(|(_, data)| {
-                    data.symbols();
-                });
+                .for_each(|(_, data)| drop(data.symbols()));
             info!("parallel indexing took {:?}", now.elapsed());
         }
     }
@@ -218,8 +262,8 @@ impl World {
 
 #[derive(Default, Debug)]
 struct WorldData {
-    unindexed: AtomicUsize,
     file_map: HashMap<FileId, Arc<FileData>>,
+    module_map: ModuleMap,
 }
 
 #[derive(Debug)]

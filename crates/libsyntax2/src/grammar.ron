@@ -218,7 +218,8 @@ Grammar(
     ast: {
         "File": (
             collections: [
-                ["functions", "FnDef"]
+                ["functions", "FnDef"],
+                ["modules", "Module"],
             ]
         ),
         "FnDef": ( traits: ["NameOwner", "AttrsOwner"] ),
@@ -231,7 +232,12 @@ Grammar(
         "NamedField": ( traits: ["NameOwner", "AttrsOwner"] ),
         "EnumDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "TraitDef": ( traits: ["NameOwner", "AttrsOwner"] ),
-        "Module": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "Module": (
+            traits: ["NameOwner", "AttrsOwner"],
+            collections: [
+                ["modules", "Module"]
+            ]
+        ),
         "ConstDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "StaticDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "TypeDef": ( traits: ["NameOwner", "AttrsOwner"] ),

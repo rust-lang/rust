@@ -127,6 +127,12 @@ impl<'a> File<'a> {
             .children()
             .filter_map(FnDef::cast)
     }
+
+    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+        self.syntax()
+            .children()
+            .filter_map(Module::cast)
+    }
 }
 
 // FnDef
@@ -239,7 +245,13 @@ impl<'a> AstNode<'a> for Module<'a> {
 
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
-impl<'a> Module<'a> {}
+impl<'a> Module<'a> {
+    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+        self.syntax()
+            .children()
+            .filter_map(Module::cast)
+    }
+}
 
 // Name
 #[derive(Debug, Clone, Copy)]
