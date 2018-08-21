@@ -50,6 +50,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "colored",            // MPL-2.0, rustfmt
     "ordslice",           // Apache-2.0, rls
     "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
+    "ryu",                // Apache-2.0, rls/cargo/... (b/c of serde)
 ];
 
 /// Which crates to check against the whitelist?
@@ -68,9 +69,10 @@ static WHITELIST: &'static [Crate] = &[
     Crate("bitflags"),
     Crate("byteorder"),
     Crate("cc"),
+    Crate("cfg-if"),
     Crate("chalk-engine"),
     Crate("chalk-macros"),
-    Crate("cfg-if"),
+    Crate("cloudabi"),
     Crate("cmake"),
     Crate("crossbeam-deque"),
     Crate("crossbeam-epoch"),
@@ -103,6 +105,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("pkg-config"),
     Crate("quick-error"),
     Crate("rand"),
+    Crate("rand_core"),
     Crate("redox_syscall"),
     Crate("redox_termios"),
     Crate("regex"),
@@ -125,6 +128,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("unicode-width"),
     Crate("unreachable"),
     Crate("utf8-ranges"),
+    Crate("version_check"),
     Crate("void"),
     Crate("winapi"),
     Crate("winapi-build"),
