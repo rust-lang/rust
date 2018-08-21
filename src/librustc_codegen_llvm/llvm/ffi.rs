@@ -304,6 +304,16 @@ pub enum SynchronizationScope {
     CrossThread,
 }
 
+impl SynchronizationScope {
+    pub fn from_generic(sc : traits::SynchronizationScope) -> Self {
+        match sc {
+            traits::SynchronizationScope::Other => SynchronizationScope::Other,
+            traits::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
+            traits::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
+        }
+    }
+}
+
 /// LLVMRustFileType
 #[derive(Copy, Clone)]
 #[repr(C)]

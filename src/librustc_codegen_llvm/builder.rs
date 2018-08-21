@@ -1097,12 +1097,12 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }
     }
 
-    fn atomic_fence(&self, order: traits::AtomicOrdering, scope: SynchronizationScope) {
+    fn atomic_fence(&self, order: traits::AtomicOrdering, scope: traits::SynchronizationScope) {
         unsafe {
             llvm::LLVMRustBuildAtomicFence(
                 self.llbuilder,
                 AtomicOrdering::from_generic(order),
-                scope
+                SynchronizationScope::from_generic(scope)
             );
         }
     }

@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use traits::{BuilderMethods, AtomicRmwBinOp};
+use traits::{BuilderMethods, AtomicRmwBinOp, SynchronizationScope};
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -521,12 +521,12 @@ pub fn codegen_intrinsic_call(
                 }
 
                 "fence" => {
-                    bx.atomic_fence(order, llvm::SynchronizationScope::CrossThread);
+                    bx.atomic_fence(order, SynchronizationScope::CrossThread);
                     return;
                 }
 
                 "singlethreadfence" => {
-                    bx.atomic_fence(order, llvm::SynchronizationScope::SingleThread);
+                    bx.atomic_fence(order, SynchronizationScope::SingleThread);
                     return;
                 }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{SynchronizationScope, AsmDialect};
+use llvm::AsmDialect;
 use common::*;
 use type_::Type;
 use libc::c_char;
@@ -92,6 +92,14 @@ pub enum AtomicOrdering {
     Release,
     AcquireRelease,
     SequentiallyConsistent,
+}
+
+pub enum SynchronizationScope {
+    // FIXME: figure out if this variant is needed at all.
+    #[allow(dead_code)]
+    Other,
+    SingleThread,
+    CrossThread,
 }
 
 
