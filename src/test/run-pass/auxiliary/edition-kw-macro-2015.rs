@@ -10,8 +10,6 @@
 
 // edition:2015
 
-#![feature(raw_identifiers)]
-
 #[macro_export]
 macro_rules! produces_async {
     () => (pub fn async() {})
