@@ -9,16 +9,16 @@
 // except according to those terms.
 
 fn foo() {
-    println!("{:?}", (0..13).collect<Vec<i32>>()); //~ ERROR chained comparison
+    println!("{:?}", (0..13).collect<Vec<i32>>()); // ok
 }
 
 fn bar() {
-    println!("{:?}", Vec<i32>::new()); //~ ERROR chained comparison
+    println!("{:?}", Vec<i32>::new()); // ok
 }
 
 fn qux() {
-    println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
-    //~^ ERROR chained comparison
+    println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR expected function, found struct `Vec`
+    //~^ ERROR attempted to take value of method `collect`
 }
 
 fn main() {}

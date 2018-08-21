@@ -1714,11 +1714,10 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Const) {
             Mutability::Immutable
         } else {
-            let span = self.prev_span;
-            self.span_err(span,
-                          "expected mut or const in raw pointer type (use \
-                           `*mut T` or `*const T` as appropriate)");
-            Mutability::Immutable
+            let mut err = self.fatal("expected mut or const in raw pointer type (use \
+            `*mut T` or `*const T` as appropriate)");
+            err.span_label(self.prev_span, "expected mut or const");
+            return Err(err);
         };
         let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl: mutbl })
@@ -2022,20 +2021,39 @@ impl<'a> Parser<'a> {
                           -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &token::Token| match *token {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
+        let is_args_start = |token: &token::Token, include_paren: bool| match *token {
+            token::Lt | token::BinOp(token::Shl) => true,
+            token::OpenDelim(token::Paren) => include_paren,
             _ => false,
         };
-        let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(
-                &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
-            );
-            is_args_start(&this.token)
+        let check_args_start = |this: &mut Self, include_paren: bool| {
+            this.expected_tokens.push(TokenType::Token(token::Lt));
+            if include_paren {
+                this.expected_tokens.push(TokenType::Token(token::OpenDelim(token::Paren)));
+            }
+            is_args_start(&this.token, include_paren)
         };
 
-        Ok(if style == PathStyle::Type && check_args_start(self) ||
-              style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t)) {
+        let mut parser_snapshot_before_generics = None;
+
+        Ok(if style == PathStyle::Type && check_args_start(self, true)
+            || style != PathStyle::Mod && self.check(&token::ModSep)
+                                       && self.look_ahead(1, |t| is_args_start(t, true))
+                                       && {
+                if style == PathStyle::Expr {
+                    // Simulate every occurrence of `::<>` actually being `<>`.
+                    self.eat(&token::ModSep);
+                    parser_snapshot_before_generics = Some(self.clone());
+                }
+                true
+            }
+            || style == PathStyle::Expr && check_args_start(self, false) && {
+                // Check for generic arguments in an expression without a disambiguating `::`.
+                // We have to save a snapshot, because it could end up being an expression
+                // instead.
+                parser_snapshot_before_generics = Some(self.clone());
+                true
+            } {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
@@ -2045,10 +2063,26 @@ impl<'a> Parser<'a> {
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (args, bindings) = self.parse_generic_args()?;
-                self.expect_gt()?;
-                let span = lo.to(self.prev_span);
-                AngleBracketedArgs { args, bindings, span }.into()
+                let args: PResult<_> = do catch {
+                    let (args, bindings) = self.parse_generic_args()?;
+                    self.expect_gt()?;
+                    let span = lo.to(self.prev_span);
+                    AngleBracketedArgs { args, bindings, span }
+                };
+
+                match args {
+                    Err(mut err) => {
+                        if let Some(snapshot) = parser_snapshot_before_generics {
+                            err.cancel();
+                            mem::replace(self, snapshot);
+                            return Ok(PathSegment::from_ident(ident));
+                        }
+                        return Err(err);
+                    }
+                    _ => {
+                        args?.into()
+                    }
+                }
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`

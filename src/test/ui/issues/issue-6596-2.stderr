@@ -7,11 +7,11 @@ LL |         { $inp $nonexistent }
 LL |     g!(foo);
    |     -------- in this macro invocation
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `nonexistent`
+error: expected one of `!`, `.`, `::`, `;`, `<`, `?`, `{`, `}`, or an operator, found `nonexistent`
   --> $DIR/issue-6596-2.rs:15:16
    |
 LL |         { $inp $nonexistent }
-   |                ^^^^^^^^^^^^ expected one of 8 possible tokens here
+   |                ^^^^^^^^^^^^ expected one of 9 possible tokens here
 ...
 LL |     g!(foo);
    |     -------- in this macro invocation

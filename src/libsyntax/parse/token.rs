@@ -167,7 +167,7 @@ pub enum Token {
     Comma,
     Semi,
     Colon,
-    ModSep,
+    ModSep, // `::`
     RArrow,
     LArrow,
     FatArrow,
