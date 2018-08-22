@@ -48,3 +48,5 @@ struct ZstAlign32<T>(PhantomData<T>);
 
 #[repr(transparent)]
 struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
+
+fn main() {}
