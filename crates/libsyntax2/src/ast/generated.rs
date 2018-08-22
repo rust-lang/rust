@@ -641,3 +641,21 @@ impl<'a> AstNode<'a> for TypeRef<'a> {
 
 impl<'a> TypeRef<'a> {}
 
+// Whitespace
+#[derive(Debug, Clone, Copy)]
+pub struct Whitespace<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Whitespace<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            WHITESPACE => Some(Whitespace { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Whitespace<'a> {}
+

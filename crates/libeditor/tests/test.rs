@@ -12,15 +12,32 @@ use libeditor::{
 
 #[test]
 fn test_extend_selection() {
-    let file = file(r#"fn foo() {
-    1 + 1
-}
-"#);
-    let range = TextRange::offset_len(18.into(), 0.into());
-    let range = extend_selection(&file, range).unwrap();
-    assert_eq!(range, TextRange::from_to(17.into(), 18.into()));
-    let range = extend_selection(&file, range).unwrap();
-    assert_eq!(range, TextRange::from_to(15.into(), 20.into()));
+    fn do_check(before: &str, afters: &[&str]) {
+        let (cursor, before) = extract_cursor(before);
+        let file = file(&before);
+        let mut range = TextRange::offset_len(cursor, 0.into());
+        for &after in afters {
+            range = extend_selection(&file, range)
+                .unwrap();
+            let actual = &before[range];
+            assert_eq!(after, actual);
+        }
+    }
+
+    do_check(
+        r#"fn foo() { <|>1 + 1 }"#,
+        &["1", "1 + 1", "{ 1 + 1 }"],
+    );
+
+    do_check(
+        r#"
+impl S {
+<|>    fn foo() {
+
+    }
+}"#,
+        &["fn foo() {\n\n    }"]
+    );
 }
 
 #[test]

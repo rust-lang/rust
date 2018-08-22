@@ -17,18 +17,14 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
             return Some(leaf.range());
         }
         let ws = leaves.next()?;
-//        let ws_suffix = file.text().slice(
-//            TextRange::from_to(offset, ws.range().end())
-//        );
-//        if ws.text().contains("\n") && !ws_suffix.contains("\n") {
-//            if let Some(line_end) = file.text()
-//                .slice(TextSuffix::from(ws.range().end()))
-//                .find("\n")
-//            {
-//                let range = TextRange::from_len(ws.range().end(), line_end);
-//                return Some(find_covering_node(file.root(), range).range());
-//            }
-//        }
+        let ws_text = ws.leaf_text().unwrap();
+        let range = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
+        let ws_suffix = &ws_text.as_str()[range];
+        if ws_text.contains("\n") && !ws_suffix.contains("\n") {
+            if let Some(node) = ws.next_sibling() {
+                return Some(node.range());
+            }
+        }
         return Some(ws.range());
     };
     let node = find_covering_node(root, range);
