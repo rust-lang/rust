@@ -537,7 +537,7 @@ pub fn type_metadata(
             ty::Slice(typ) => {
                 Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span))
             }
-            ty::TyStr => {
+            ty::Str => {
                 Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span))
             }
             ty::Dynamic(..) => {
@@ -563,11 +563,11 @@ pub fn type_metadata(
 
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match t.sty {
         ty::Never    |
-        ty::TyBool     |
-        ty::TyChar     |
-        ty::TyInt(_)   |
-        ty::TyUint(_)  |
-        ty::TyFloat(_) => {
+        ty::Bool     |
+        ty::Char     |
+        ty::Int(_)   |
+        ty::Uint(_)  |
+        ty::Float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::Tuple(ref elements) if elements.is_empty() => {
@@ -577,7 +577,7 @@ pub fn type_metadata(
         ty::Slice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, t, typ, usage_site_span)
         }
-        ty::TyStr => {
+        ty::Str => {
             fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span)
         }
         ty::Dynamic(..) => {
@@ -768,15 +768,15 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         ty::Never => ("!", DW_ATE_unsigned),
         ty::Tuple(ref elements) if elements.is_empty() =>
             ("()", DW_ATE_unsigned),
-        ty::TyBool => ("bool", DW_ATE_boolean),
-        ty::TyChar => ("char", DW_ATE_unsigned_char),
-        ty::TyInt(int_ty) => {
+        ty::Bool => ("bool", DW_ATE_boolean),
+        ty::Char => ("char", DW_ATE_unsigned_char),
+        ty::Int(int_ty) => {
             (int_ty.ty_to_string(), DW_ATE_signed)
         },
-        ty::TyUint(uint_ty) => {
+        ty::Uint(uint_ty) => {
             (uint_ty.ty_to_string(), DW_ATE_unsigned)
         },
-        ty::TyFloat(float_ty) => {
+        ty::Float(float_ty) => {
             (float_ty.ty_to_string(), DW_ATE_float)
         },
         _ => bug!("debuginfo::basic_type_metadata - t is invalid type")

@@ -84,20 +84,20 @@ impl BoundRegion {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
-    TyBool,
+    Bool,
 
     /// The primitive character type; holds a Unicode scalar value
     /// (a non-surrogate code point).  Written as `char`.
-    TyChar,
+    Char,
 
     /// A primitive signed integer type. For example, `i32`.
-    TyInt(ast::IntTy),
+    Int(ast::IntTy),
 
     /// A primitive unsigned integer type. For example, `u32`.
-    TyUint(ast::UintTy),
+    Uint(ast::UintTy),
 
     /// A primitive floating-point type. For example, `f64`.
-    TyFloat(ast::FloatTy),
+    Float(ast::FloatTy),
 
     /// Structures, enumerations and unions.
     ///
@@ -110,7 +110,7 @@ pub enum TyKind<'tcx> {
     Foreign(DefId),
 
     /// The pointee of a string slice. Written as `str`.
-    TyStr,
+    Str,
 
     /// An array with the given length. Written as `[T; n]`.
     Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
@@ -1483,7 +1483,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_primitive(&self) -> bool {
         match self.sty {
-            TyBool | TyChar | TyInt(_) | TyUint(_) | TyFloat(_) => true,
+            Bool | Char | Int(_) | Uint(_) | Float(_) => true,
             _ => false,
         }
     }
@@ -1510,7 +1510,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_bool(&self) -> bool { self.sty == TyBool }
+    pub fn is_bool(&self) -> bool { self.sty == Bool }
 
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
@@ -1529,7 +1529,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_slice(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.sty {
-                Slice(_) | TyStr => true,
+                Slice(_) | Str => true,
                 _ => false,
             },
             _ => false
@@ -1547,7 +1547,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             Array(ty, _) | Slice(ty) => ty,
-            TyStr => tcx.mk_mach_uint(ast::UintTy::U8),
+            Str => tcx.mk_mach_uint(ast::UintTy::U8),
             _ => bug!("sequence_element_type called on non-sequence value: {}", self),
         }
     }
@@ -1610,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// contents are abstract to rustc.)
     pub fn is_scalar(&self) -> bool {
         match self.sty {
-            TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
+            Bool | Char | Int(_) | Float(_) | Uint(_) |
             Infer(IntVar(_)) | Infer(FloatVar(_)) |
             FnDef(..) | FnPtr(_) | RawPtr(_) => true,
             _ => false
@@ -1620,7 +1620,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Returns true if this type is a floating point type and false otherwise.
     pub fn is_floating_point(&self) -> bool {
         match self.sty {
-            TyFloat(_) |
+            Float(_) |
             Infer(FloatVar(_)) => true,
             _ => false,
         }
@@ -1658,7 +1658,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_integral(&self) -> bool {
         match self.sty {
-            Infer(IntVar(_)) | TyInt(_) | TyUint(_) => true,
+            Infer(IntVar(_)) | Int(_) | Uint(_) => true,
             _ => false
         }
     }
@@ -1681,14 +1681,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_char(&self) -> bool {
         match self.sty {
-            TyChar => true,
+            Char => true,
             _ => false,
         }
     }
 
     pub fn is_fp(&self) -> bool {
         match self.sty {
-            Infer(FloatVar(_)) | TyFloat(_) => true,
+            Infer(FloatVar(_)) | Float(_) => true,
             _ => false
         }
     }
@@ -1699,15 +1699,15 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_signed(&self) -> bool {
         match self.sty {
-            TyInt(_) => true,
+            Int(_) => true,
             _ => false,
         }
     }
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            TyInt(ast::IntTy::Isize) | TyUint(ast::UintTy::Usize) => false,
-            TyInt(..) | TyUint(..) | TyFloat(..) => true,
+            Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => false,
+            Int(..) | Uint(..) | Float(..) => true,
             _ => false,
         }
     }
@@ -1804,12 +1804,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             FnDef(..) |
             FnPtr(_) |
             GeneratorWitness(..) |
-            TyBool |
-            TyChar |
-            TyInt(_) |
-            TyUint(_) |
-            TyFloat(_) |
-            TyStr |
+            Bool |
+            Char |
+            Int(_) |
+            Uint(_) |
+            Float(_) |
+            Str |
             Array(..) |
             Slice(_) |
             RawPtr(_) |
@@ -1838,7 +1838,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// is complete, that type variable will be unified.
     pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
         match self.sty {
-            TyInt(int_ty) => match int_ty {
+            Int(int_ty) => match int_ty {
                 ast::IntTy::I8 => Some(ty::ClosureKind::Fn),
                 ast::IntTy::I16 => Some(ty::ClosureKind::FnMut),
                 ast::IntTy::I32 => Some(ty::ClosureKind::FnOnce),
@@ -1860,14 +1860,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_trivially_sized(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> bool {
         match self.sty {
             ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) |
-            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
             ty::FnDef(..) | ty::FnPtr(_) | ty::RawPtr(..) |
-            ty::TyChar | ty::Ref(..) | ty::Generator(..) |
+            ty::Char | ty::Ref(..) | ty::Generator(..) |
             ty::GeneratorWitness(..) | ty::Array(..) | ty::Closure(..) |
             ty::Never | ty::Error =>
                 true,
 
-            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) =>
+            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) =>
                 false,
 
             ty::Tuple(tys) =>

@@ -265,13 +265,13 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::TyBool
-            | ty::TyChar
-            | ty::TyInt(..)
-            | ty::TyUint(..)
-            | ty::TyFloat(..)
+            | ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
             | ty::Adt(..)
-            | ty::TyStr
+            | ty::Str
             | ty::Error
             | ty::Array(..)
             | ty::Slice(..)

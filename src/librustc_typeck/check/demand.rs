@@ -260,8 +260,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match (&expected.sty, &checked_ty.sty) {
             (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
-                (&ty::TyStr, &ty::Array(arr, _)) |
-                (&ty::TyStr, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
+                (&ty::Str, &ty::Array(arr, _)) |
+                (&ty::Str, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
@@ -272,8 +272,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 },
-                (&ty::Array(arr, _), &ty::TyStr) |
-                (&ty::Slice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
+                (&ty::Array(arr, _), &ty::Str) |
+                (&ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("\"") {
@@ -418,7 +418,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           if needs_paren { ")" } else { "" });
 
             match (&expected_ty.sty, &checked_ty.sty) {
-                (&ty::TyInt(ref exp), &ty::TyInt(ref found)) => {
+                (&ty::Int(ref exp), &ty::Int(ref found)) => {
                     match (found.bit_width(), exp.bit_width()) {
                         (Some(found), Some(exp)) if found > exp => {
                             if can_cast {
@@ -444,7 +444,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyUint(ref exp), &ty::TyUint(ref found)) => {
+                (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
                     match (found.bit_width(), exp.bit_width()) {
                         (Some(found), Some(exp)) if found > exp => {
                             if can_cast {
@@ -470,7 +470,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyInt(ref exp), &ty::TyUint(ref found)) => {
+                (&ty::Int(ref exp), &ty::Uint(ref found)) => {
                     if can_cast {
                         match (found.bit_width(), exp.bit_width()) {
                             (Some(found), Some(exp)) if found > exp - 1 => {
@@ -506,7 +506,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyUint(ref exp), &ty::TyInt(ref found)) => {
+                (&ty::Uint(ref exp), &ty::Int(ref found)) => {
                     if can_cast {
                         match (found.bit_width(), exp.bit_width()) {
                             (Some(found), Some(exp)) if found - 1 > exp => {
@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyFloat(ref exp), &ty::TyFloat(ref found)) => {
+                (&ty::Float(ref exp), &ty::Float(ref found)) => {
                     if found.bit_width() < exp.bit_width() {
                         err.span_suggestion(expr.span,
                                             &format!("{} in a lossless way",
@@ -556,7 +556,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyUint(_), &ty::TyFloat(_)) | (&ty::TyInt(_), &ty::TyFloat(_)) => {
+                (&ty::Uint(_), &ty::Float(_)) | (&ty::Int(_), &ty::Float(_)) => {
                     if can_cast {
                         err.span_suggestion(expr.span,
                                             &format!("{}, rounding the float towards zero",
@@ -568,7 +568,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyFloat(ref exp), &ty::TyUint(ref found)) => {
+                (&ty::Float(ref exp), &ty::Uint(ref found)) => {
                     // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(expr.span,
@@ -586,7 +586,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     true
                 }
-                (&ty::TyFloat(ref exp), &ty::TyInt(ref found)) => {
+                (&ty::Float(ref exp), &ty::Int(ref found)) => {
                     // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(expr.span,

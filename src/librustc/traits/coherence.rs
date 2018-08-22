@@ -441,12 +441,12 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
-        ty::TyBool |
-        ty::TyChar |
-        ty::TyInt(..) |
-        ty::TyUint(..) |
-        ty::TyFloat(..) |
-        ty::TyStr |
+        ty::Bool |
+        ty::Char |
+        ty::Int(..) |
+        ty::Uint(..) |
+        ty::Float(..) |
+        ty::Str |
         ty::FnDef(..) |
         ty::FnPtr(_) |
         ty::Array(..) |

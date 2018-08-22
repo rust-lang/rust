@@ -860,8 +860,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Closure(did, substs) => ty::Closure(did, substs.fold_with(folder)),
             ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
             ty::Anon(did, substs) => ty::Anon(did, substs.fold_with(folder)),
-            ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
+            ty::Bool | ty::Char | ty::Str | ty::Int(_) |
+            ty::Uint(_) | ty::Float(_) | ty::Error | ty::Infer(_) |
             ty::Param(..) | ty::Never | ty::Foreign(..) => return self
         };
 
@@ -895,8 +895,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Projection(ref data) => data.visit_with(visitor),
             ty::Anon(_, ref substs) => substs.visit_with(visitor),
-            ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
+            ty::Bool | ty::Char | ty::Str | ty::Int(_) |
+            ty::Uint(_) | ty::Float(_) | ty::Error | ty::Infer(_) |
             ty::Param(..) | ty::Never | ty::Foreign(..) => false,
         }
     }

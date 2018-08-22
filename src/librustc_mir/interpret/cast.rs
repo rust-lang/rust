@@ -152,7 +152,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     "Unexpected value of size {} before casting", size);
 
                 let res = match src_layout.ty.sty {
-                    TyFloat(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
+                    Float(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
                     _ => self.cast_from_int(bits, src_layout, dest_layout)?,
                 };
 
@@ -186,7 +186,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
         use rustc::ty::TyKind::*;
         match dest_layout.ty.sty {
-            TyInt(_) | TyUint(_) => {
+            Int(_) | Uint(_) => {
                 let v = self.truncate(v, dest_layout);
                 Ok(Scalar::Bits {
                     bits: v,
@@ -194,24 +194,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             }
 
-            TyFloat(FloatTy::F32) if signed => Ok(Scalar::Bits {
+            Float(FloatTy::F32) if signed => Ok(Scalar::Bits {
                 bits: Single::from_i128(v as i128).value.to_bits(),
                 size: 4,
             }),
-            TyFloat(FloatTy::F64) if signed => Ok(Scalar::Bits {
+            Float(FloatTy::F64) if signed => Ok(Scalar::Bits {
                 bits: Double::from_i128(v as i128).value.to_bits(),
                 size: 8,
             }),
-            TyFloat(FloatTy::F32) => Ok(Scalar::Bits {
+            Float(FloatTy::F32) => Ok(Scalar::Bits {
                 bits: Single::from_u128(v).value.to_bits(),
                 size: 4,
             }),
-            TyFloat(FloatTy::F64) => Ok(Scalar::Bits {
+            Float(FloatTy::F64) => Ok(Scalar::Bits {
                 bits: Double::from_u128(v).value.to_bits(),
                 size: 8,
             }),
 
-            TyChar => {
+            Char => {
                 assert_eq!(v as u8 as u128, v);
                 Ok(Scalar::Bits { bits: v, size: 4 })
             },
@@ -234,7 +234,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
             // float -> uint
-            TyUint(t) => {
+            Uint(t) => {
                 let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_u128(width).value,
@@ -247,7 +247,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             },
             // float -> int
-            TyInt(t) => {
+            Int(t) => {
                 let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_i128(width).value,
@@ -263,25 +263,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             },
             // f64 -> f32
-            TyFloat(FloatTy::F32) if fty == FloatTy::F64 => {
+            Float(FloatTy::F32) if fty == FloatTy::F64 => {
                 Ok(Scalar::Bits {
                     bits: Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
                     size: 4,
                 })
             },
             // f32 -> f64
-            TyFloat(FloatTy::F64) if fty == FloatTy::F32 => {
+            Float(FloatTy::F64) if fty == FloatTy::F32 => {
                 Ok(Scalar::Bits {
                     bits: Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
                     size: 8,
                 })
             },
             // identity cast
-            TyFloat(FloatTy:: F64) => Ok(Scalar::Bits {
+            Float(FloatTy:: F64) => Ok(Scalar::Bits {
                 bits,
                 size: 8,
             }),
-            TyFloat(FloatTy:: F32) => Ok(Scalar::Bits {
+            Float(FloatTy:: F32) => Ok(Scalar::Bits {
                 bits,
                 size: 4,
             }),
@@ -294,9 +294,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             RawPtr(_) |
-            TyInt(IntTy::Isize) |
-            TyUint(UintTy::Usize) => Ok(ptr.into()),
-            TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
+            Int(IntTy::Isize) |
+            Uint(UintTy::Usize) => Ok(ptr.into()),
+            Int(_) | Uint(_) => err!(ReadPointerAsBytes),
             _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }

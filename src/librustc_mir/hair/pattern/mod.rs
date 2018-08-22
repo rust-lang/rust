@@ -811,7 +811,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }).collect::<Vec<_>>()
         };
         let kind = match cv.ty.sty {
-            ty::TyFloat(_) => {
+            ty::Float(_) => {
                 let id = self.tcx.hir.hir_to_node_id(id);
                 self.tcx.lint_node(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
@@ -1073,17 +1073,17 @@ pub fn compare_const_vals<'a, 'tcx>(
     if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;
         return match ty.value.sty {
-            ty::TyFloat(ast::FloatTy::F32) => {
+            ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
                 l.partial_cmp(&r)
             },
-            ty::TyFloat(ast::FloatTy::F64) => {
+            ty::Float(ast::FloatTy::F64) => {
                 let l = ::rustc_apfloat::ieee::Double::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Double::from_bits(b);
                 l.partial_cmp(&r)
             },
-            ty::TyInt(_) => {
+            ty::Int(_) => {
                 let layout = tcx.layout_of(ty).ok()?;
                 assert!(layout.abi.is_signed());
                 let a = sign_extend(a, layout.size);
@@ -1095,7 +1095,7 @@ pub fn compare_const_vals<'a, 'tcx>(
     }
 
     if let ty::Ref(_, rty, _) = ty.value.sty {
-        if let ty::TyStr = rty.sty {
+        if let ty::Str = rty.sty {
             match (a.val, b.val) {
                 (
                     ConstValue::ScalarPair(
@@ -1170,10 +1170,10 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Unsigned(UintTy),
             }
             let ity = match ty.sty {
-                ty::TyInt(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
-                ty::TyInt(other) => Int::Signed(other),
-                ty::TyUint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
-                ty::TyUint(other) => Int::Unsigned(other),
+                ty::Int(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
+                ty::Int(other) => Int::Signed(other),
+                ty::Uint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
+                ty::Uint(other) => Int::Unsigned(other),
                 ty::Error => { // Avoid ICE (#51963)
                     return Err(LitToConstError::Propagated);
                 }
@@ -1211,7 +1211,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
-                ty::TyFloat(fty) => fty,
+                ty::Float(fty) => fty,
                 _ => bug!()
             };
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?

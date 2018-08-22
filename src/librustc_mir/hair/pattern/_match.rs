@@ -619,7 +619,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     debug!("all_constructors({:?})", pcx.ty);
     let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
     let ctors = match pcx.ty.sty {
-        ty::TyBool => {
+        ty::Bool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
             }).collect()

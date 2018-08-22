@@ -376,12 +376,12 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         }
 
         (&ty::Never, _) |
-        (&ty::TyChar, _) |
-        (&ty::TyBool, _) |
-        (&ty::TyInt(_), _) |
-        (&ty::TyUint(_), _) |
-        (&ty::TyFloat(_), _) |
-        (&ty::TyStr, _)
+        (&ty::Char, _) |
+        (&ty::Bool, _) |
+        (&ty::Int(_), _) |
+        (&ty::Uint(_), _) |
+        (&ty::Float(_), _) |
+        (&ty::Str, _)
             if a == b =>
         {
             Ok(a)

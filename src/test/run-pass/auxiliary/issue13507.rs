@@ -32,22 +32,22 @@ pub mod testtypes {
         ]
     }
 
-    // Tests TyBool
+    // Tests Bool
     pub type FooBool = bool;
 
-    // Tests TyChar
+    // Tests Char
     pub type FooChar = char;
 
-    // Tests TyInt (does not test all variants of IntTy)
+    // Tests Int (does not test all variants of IntTy)
     pub type FooInt = isize;
 
-    // Tests TyUint (does not test all variants of UintTy)
+    // Tests Uint (does not test all variants of UintTy)
     pub type FooUint = usize;
 
-    // Tests TyFloat (does not test all variants of FloatTy)
+    // Tests Float (does not test all variants of FloatTy)
     pub type FooFloat = f64;
 
-    // Tests TyStr
+    // Tests Str
     pub type FooStr = str;
 
     // Tests Array

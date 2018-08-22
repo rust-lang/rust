@@ -35,7 +35,7 @@ use self::TypeParameters::*;
 use self::RibKind::*;
 
 use rustc::hir::map::{Definitions, DefCollector};
-use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
+use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
@@ -1280,23 +1280,23 @@ impl PrimitiveTypeTable {
     fn new() -> PrimitiveTypeTable {
         let mut table = PrimitiveTypeTable { primitive_types: FxHashMap() };
 
-        table.intern("bool", TyBool);
-        table.intern("char", TyChar);
-        table.intern("f32", TyFloat(FloatTy::F32));
-        table.intern("f64", TyFloat(FloatTy::F64));
-        table.intern("isize", TyInt(IntTy::Isize));
-        table.intern("i8", TyInt(IntTy::I8));
-        table.intern("i16", TyInt(IntTy::I16));
-        table.intern("i32", TyInt(IntTy::I32));
-        table.intern("i64", TyInt(IntTy::I64));
-        table.intern("i128", TyInt(IntTy::I128));
-        table.intern("str", TyStr);
-        table.intern("usize", TyUint(UintTy::Usize));
-        table.intern("u8", TyUint(UintTy::U8));
-        table.intern("u16", TyUint(UintTy::U16));
-        table.intern("u32", TyUint(UintTy::U32));
-        table.intern("u64", TyUint(UintTy::U64));
-        table.intern("u128", TyUint(UintTy::U128));
+        table.intern("bool", Bool);
+        table.intern("char", Char);
+        table.intern("f32", Float(FloatTy::F32));
+        table.intern("f64", Float(FloatTy::F64));
+        table.intern("isize", Int(IntTy::Isize));
+        table.intern("i8", Int(IntTy::I8));
+        table.intern("i16", Int(IntTy::I16));
+        table.intern("i32", Int(IntTy::I32));
+        table.intern("i64", Int(IntTy::I64));
+        table.intern("i128", Int(IntTy::I128));
+        table.intern("str", Str);
+        table.intern("usize", Uint(UintTy::Usize));
+        table.intern("u8", Uint(UintTy::U8));
+        table.intern("u16", Uint(UintTy::U16));
+        table.intern("u32", Uint(UintTy::U32));
+        table.intern("u64", Uint(UintTy::U64));
+        table.intern("u128", Uint(UintTy::U128));
         table
     }
 
@@ -3900,7 +3900,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 }
             }
             // Add primitive types to the mix
-            if filter_fn(Def::PrimTy(TyBool)) {
+            if filter_fn(Def::PrimTy(Bool)) {
                 names.extend(
                     self.primitive_type_table.primitive_types.iter().map(|(name, _)| name)
                 )

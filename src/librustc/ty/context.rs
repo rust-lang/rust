@@ -817,24 +817,24 @@ impl<'tcx> CommonTypes<'tcx> {
             &*r
         };
         CommonTypes {
-            bool: mk(TyBool),
-            char: mk(TyChar),
+            bool: mk(Bool),
+            char: mk(Char),
             never: mk(Never),
             err: mk(Error),
-            isize: mk(TyInt(ast::IntTy::Isize)),
-            i8: mk(TyInt(ast::IntTy::I8)),
-            i16: mk(TyInt(ast::IntTy::I16)),
-            i32: mk(TyInt(ast::IntTy::I32)),
-            i64: mk(TyInt(ast::IntTy::I64)),
-            i128: mk(TyInt(ast::IntTy::I128)),
-            usize: mk(TyUint(ast::UintTy::Usize)),
-            u8: mk(TyUint(ast::UintTy::U8)),
-            u16: mk(TyUint(ast::UintTy::U16)),
-            u32: mk(TyUint(ast::UintTy::U32)),
-            u64: mk(TyUint(ast::UintTy::U64)),
-            u128: mk(TyUint(ast::UintTy::U128)),
-            f32: mk(TyFloat(ast::FloatTy::F32)),
-            f64: mk(TyFloat(ast::FloatTy::F64)),
+            isize: mk(Int(ast::IntTy::Isize)),
+            i8: mk(Int(ast::IntTy::I8)),
+            i16: mk(Int(ast::IntTy::I16)),
+            i32: mk(Int(ast::IntTy::I32)),
+            i64: mk(Int(ast::IntTy::I64)),
+            i128: mk(Int(ast::IntTy::I128)),
+            usize: mk(Uint(ast::UintTy::Usize)),
+            u8: mk(Uint(ast::UintTy::U8)),
+            u16: mk(Uint(ast::UintTy::U16)),
+            u32: mk(Uint(ast::UintTy::U32)),
+            u64: mk(Uint(ast::UintTy::U64)),
+            u128: mk(Uint(ast::UintTy::U128)),
+            f32: mk(Float(ast::FloatTy::F32)),
+            f64: mk(Float(ast::FloatTy::F64)),
 
             re_empty: mk_region(RegionKind::ReEmpty),
             re_static: mk_region(RegionKind::ReStatic),
@@ -2035,8 +2035,8 @@ macro_rules! sty_debug_print {
 
                 for &Interned(t) in tcx.interners.type_.borrow().iter() {
                     let variant = match t.sty {
-                        ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
-                            ty::TyFloat(..) | ty::TyStr | ty::Never => continue,
+                        ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
+                            ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -2374,7 +2374,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_str(self) -> Ty<'tcx> {
-        self.mk_ty(TyStr)
+        self.mk_ty(Str)
     }
 
     pub fn mk_static_str(self) -> Ty<'tcx> {
@@ -2466,7 +2466,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_bool(self) -> Ty<'tcx> {
-        self.mk_ty(TyBool)
+        self.mk_ty(Bool)
     }
 
     pub fn mk_fn_def(self, def_id: DefId,

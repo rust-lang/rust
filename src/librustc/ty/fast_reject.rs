@@ -68,13 +68,13 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                      -> Option<SimplifiedType>
 {
     match ty.sty {
-        ty::TyBool => Some(BoolSimplifiedType),
-        ty::TyChar => Some(CharSimplifiedType),
-        ty::TyInt(int_type) => Some(IntSimplifiedType(int_type)),
-        ty::TyUint(uint_type) => Some(UintSimplifiedType(uint_type)),
-        ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
+        ty::Bool => Some(BoolSimplifiedType),
+        ty::Char => Some(CharSimplifiedType),
+        ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
+        ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
+        ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
-        ty::TyStr => Some(StrSimplifiedType),
+        ty::Str => Some(StrSimplifiedType),
         ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
         ty::RawPtr(_) => Some(PtrSimplifiedType),
         ty::Dynamic(ref trait_info, ..) => {

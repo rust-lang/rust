@@ -83,16 +83,16 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
                     .map_err(|e| int_unification_error(a_is_expected, e))?;
                 Ok(a)
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::TyInt(v)) => {
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, IntType(v))
             }
-            (&ty::TyInt(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, IntType(v))
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::TyUint(v)) => {
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, UintType(v))
             }
-            (&ty::TyUint(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, UintType(v))
             }
 
@@ -104,10 +104,10 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
                     .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
                 Ok(a)
             }
-            (&ty::Infer(ty::FloatVar(v_id)), &ty::TyFloat(v)) => {
+            (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
                 self.unify_float_variable(a_is_expected, v_id, v)
             }
-            (&ty::TyFloat(v), &ty::Infer(ty::FloatVar(v_id))) => {
+            (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 

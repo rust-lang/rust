@@ -169,7 +169,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        if let ty::TyFloat(fty) = left_layout.ty.sty {
+        if let ty::Float(fty) = left_layout.ty.sty {
             macro_rules! float_math {
                 ($ty:path, $size:expr) => {{
                     let l = <$ty>::from_bits(l);
@@ -267,12 +267,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let result_bytes = match (un_op, &layout.ty.sty) {
 
-            (Not, ty::TyBool) => !val.to_bool()? as u128,
+            (Not, ty::Bool) => !val.to_bool()? as u128,
 
             (Not, _) => !bytes,
 
-            (Neg, ty::TyFloat(FloatTy::F32)) => Single::to_bits(-Single::from_bits(bytes)),
-            (Neg, ty::TyFloat(FloatTy::F64)) => Double::to_bits(-Double::from_bits(bytes)),
+            (Neg, ty::Float(FloatTy::F32)) => Single::to_bits(-Single::from_bits(bytes)),
+            (Neg, ty::Float(FloatTy::F64)) => Double::to_bits(-Double::from_bits(bytes)),
 
             (Neg, _) if bytes == (1 << (size.bits() - 1)) => return err!(OverflowNeg),
             (Neg, _) => (-(bytes as i128)) as u128,

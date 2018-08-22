@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail(ty).sty {
-            ty::Slice(_) | ty::TyStr | ty::Dynamic(..) => {
+            ty::Slice(_) | ty::Str | ty::Dynamic(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
             _ => ExpectHasType(ty)
@@ -2831,13 +2831,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
                 match arg_ty.sty {
-                    ty::TyFloat(ast::FloatTy::F32) => {
+                    ty::Float(ast::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
+                    ty::Int(ast::IntTy::I8) | ty::Int(ast::IntTy::I16) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
+                    ty::Uint(ast::UintTy::U8) | ty::Uint(ast::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
@@ -2876,8 +2876,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| {
                     match ty.sty {
-                        ty::TyInt(_) | ty::TyUint(_) => Some(ty),
-                        ty::TyChar => Some(tcx.types.u8),
+                        ty::Int(_) | ty::Uint(_) => Some(ty),
+                        ty::Char => Some(tcx.types.u8),
                         ty::RawPtr(..) => Some(tcx.types.usize),
                         ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types.usize),
                         _ => None
@@ -2890,7 +2890,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ast::LitKind::FloatUnsuffixed(_) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| {
                     match ty.sty {
-                        ty::TyFloat(_) => Some(ty),
+                        ty::Float(_) => Some(ty),
                         _ => None
                     }
                 });
@@ -3755,7 +3755,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         hir::UnNot => {
                             let result = self.check_user_unop(expr, oprnd_t, unop);
                             // If it's builtin, we can reuse the type, this helps inference.
-                            if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
+                            if !(oprnd_t.is_integral() || oprnd_t.sty == ty::Bool) {
                                 oprnd_t = result;
                             }
                         }

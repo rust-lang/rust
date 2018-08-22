@@ -188,7 +188,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             }
             LitKind::FloatUnsuffixed(n) => {
                 let fty = match ty.sty {
-                    ty::TyFloat(fty) => fty,
+                    ty::Float(fty) => fty,
                     _ => bug!()
                 };
                 parse_float(n, fty)

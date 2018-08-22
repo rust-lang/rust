@@ -470,25 +470,25 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
         Ok(match ty.sty {
             // Basic scalars.
-            ty::TyBool => {
+            ty::Bool => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
                     value: Int(I8, false),
                     valid_range: 0..=1
                 }))
             }
-            ty::TyChar => {
+            ty::Char => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
                     value: Int(I32, false),
                     valid_range: 0..=0x10FFFF
                 }))
             }
-            ty::TyInt(ity) => {
+            ty::Int(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity)), true))
             }
-            ty::TyUint(ity) => {
+            ty::Uint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::TyFloat(fty) => scalar(Float(fty)),
+            ty::Float(fty) => scalar(Float(fty)),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
@@ -524,7 +524,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
-                    ty::Slice(_) | ty::TyStr => {
+                    ty::Slice(_) | ty::Str => {
                         scalar_unit(Int(dl.ptr_sized_integer(), false))
                     }
                     ty::Dynamic(..) => {
@@ -577,7 +577,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size: Size::ZERO
                 })
             }
-            ty::TyStr => {
+            ty::Str => {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
@@ -1582,11 +1582,11 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     fn field(this: TyLayout<'tcx>, cx: C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
         cx.layout_of(match this.ty.sty {
-            ty::TyBool |
-            ty::TyChar |
-            ty::TyInt(_) |
-            ty::TyUint(_) |
-            ty::TyFloat(_) |
+            ty::Bool |
+            ty::Char |
+            ty::Int(_) |
+            ty::Uint(_) |
+            ty::Float(_) |
             ty::FnPtr(_) |
             ty::Never |
             ty::FnDef(..) |
@@ -1620,7 +1620,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
                 match tcx.struct_tail(pointee).sty {
                     ty::Slice(_) |
-                    ty::TyStr => tcx.types.usize,
+                    ty::Str => tcx.types.usize,
                     ty::Dynamic(data, _) => {
                         let trait_def_id = data.principal().unwrap().def_id();
                         let num_fns: u64 = crate::traits::supertrait_def_ids(tcx, trait_def_id)
@@ -1648,7 +1648,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             // Arrays and slices.
             ty::Array(element, _) |
             ty::Slice(element) => element,
-            ty::TyStr => tcx.types.u8,
+            ty::Str => tcx.types.u8,
 
             // Tuples, generators and closures.
             ty::Closure(def_id, ref substs) => {

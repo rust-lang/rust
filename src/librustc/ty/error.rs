@@ -175,8 +175,8 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> String {
         match self.sty {
-            ty::TyBool | ty::TyChar | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::Never => self.to_string(),
+            ty::Bool | ty::Char | ty::Int(_) |
+            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string(),
             ty::Tuple(ref tys) if tys.is_empty() => self.to_string(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
                 match (&values.found.sty, &values.expected.sty) { // Issue #53280
-                    (ty::Infer(ty::IntVar(_)), ty::TyFloat(_)) => {
+                    (ty::Infer(ty::IntVar(_)), ty::Float(_)) => {
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
                             if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                                 db.span_suggestion_with_applicability(

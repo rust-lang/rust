@@ -248,13 +248,13 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         while let Some(ty) = subtys.next() {
             match ty.sty {
-                ty::TyBool |
-                ty::TyChar |
-                ty::TyInt(..) |
-                ty::TyUint(..) |
-                ty::TyFloat(..) |
+                ty::Bool |
+                ty::Char |
+                ty::Int(..) |
+                ty::Uint(..) |
+                ty::Float(..) |
                 ty::Error |
-                ty::TyStr |
+                ty::Str |
                 ty::GeneratorWitness(..) |
                 ty::Never |
                 ty::Param(_) |

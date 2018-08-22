@@ -69,13 +69,13 @@ impl FlagComputation {
 
     fn add_sty(&mut self, st: &ty::TyKind) {
         match st {
-            &ty::TyBool |
-            &ty::TyChar |
-            &ty::TyInt(_) |
-            &ty::TyFloat(_) |
-            &ty::TyUint(_) |
+            &ty::Bool |
+            &ty::Char |
+            &ty::Int(_) |
+            &ty::Float(_) |
+            &ty::Uint(_) |
             &ty::Never |
-            &ty::TyStr |
+            &ty::Str |
             &ty::Foreign(..) => {
             }
 

@@ -41,7 +41,7 @@ pub struct Discr<'tcx> {
 impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.ty.sty {
-            ty::TyInt(ity) => {
+            ty::Int(ity) => {
                 let bits = ty::tls::with(|tcx| {
                     Integer::from_attr(tcx, SignedInt(ity)).size().bits()
                 });
@@ -62,8 +62,8 @@ impl<'tcx> Discr<'tcx> {
     }
     pub fn checked_add<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, n: u128) -> (Self, bool) {
         let (int, signed) = match self.ty.sty {
-            TyInt(ity) => (Integer::from_attr(tcx, SignedInt(ity)), true),
-            TyUint(uty) => (Integer::from_attr(tcx, UnsignedInt(uty)), false),
+            Int(ity) => (Integer::from_attr(tcx, SignedInt(ity)), true),
+            Uint(uty) => (Integer::from_attr(tcx, UnsignedInt(uty)), false),
             _ => bug!("non integer discriminant"),
         };
 
@@ -193,8 +193,8 @@ impl<'tcx> ty::ParamEnv<'tcx> {
             let (adt, substs) = match self_type.sty {
                 // These types used to have a builtin impl.
                 // Now libcore provides that impl.
-                ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
-                ty::TyChar | ty::RawPtr(..) | ty::Never |
+                ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
+                ty::Char | ty::RawPtr(..) | ty::Never |
                 ty::Ref(_, _, hir::MutImmutable) => return Ok(()),
 
                 ty::Adt(adt, substs) => (adt, substs),
@@ -925,9 +925,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match ty.sty {
         // Fast-path for primitive types
         ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
-        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::Never |
-        ty::FnDef(..) | ty::FnPtr(_) | ty::TyChar | ty::GeneratorWitness(..) |
-        ty::RawPtr(_) | ty::Ref(..) | ty::TyStr => false,
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never |
+        ty::FnDef(..) | ty::FnPtr(_) | ty::Char | ty::GeneratorWitness(..) |
+        ty::RawPtr(_) | ty::Ref(..) | ty::Str => false,
 
         // Foreign types can never have destructors
         ty::Foreign(..) => false,

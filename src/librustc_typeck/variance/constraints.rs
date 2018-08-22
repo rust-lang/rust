@@ -261,8 +261,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                variance);
 
         match ty.sty {
-            ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-            ty::TyStr | ty::Never | ty::Foreign(..) => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
+            ty::Str | ty::Never | ty::Foreign(..) => {
                 // leaf type -- noop
             }
 

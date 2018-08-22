@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         Ok(match t.sty {
-            ty::Slice(_) | ty::TyStr => Some(PointerKind::Length),
+            ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, ..) =>
                 Some(PointerKind::Vtable(tty.principal().map(|p| p.def_id()))),
             ty::Adt(def, substs) if def.is_struct() => {
@@ -129,8 +129,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Insufficient type information.
             ty::Infer(_) => None,
 
-            ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
-            ty::TyFloat(_) | ty::Array(..) | ty::GeneratorWitness(..) |
+            ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
+            ty::Float(_) | ty::Array(..) | ty::GeneratorWitness(..) |
             ty::RawPtr(_) | ty::Ref(..) | ty::FnDef(..) |
             ty::FnPtr(..) | ty::Closure(..) | ty::Generator(..) |
             ty::Adt(..) | ty::Never | ty::Error => {
@@ -477,9 +477,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (RPtr(p), Int(_)) |
             (RPtr(p), Float) => {
                 match p.ty.sty {
-                    ty::TyKind::TyInt(_) |
-                    ty::TyKind::TyUint(_) |
-                    ty::TyKind::TyFloat(_) => {
+                    ty::TyKind::Int(_) |
+                    ty::TyKind::Uint(_) |
+                    ty::TyKind::Float(_) => {
                         Err(CastError::NeedDeref)
                     }
                     ty::TyKind::Infer(t) => {

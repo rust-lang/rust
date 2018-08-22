@@ -13,7 +13,7 @@
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TyKind::{Ref, Adt, TyStr, TyUint, Never, Tuple, TyChar, Array};
+use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
@@ -430,7 +430,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         match (&lhs_ty.sty, &rhs_ty.sty) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _))
-            if l_ty.sty == TyStr && r_ty.sty == TyStr => {
+            if l_ty.sty == Str && r_ty.sty == Str => {
                 if !is_assign {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
@@ -444,7 +444,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..))
-            if l_ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
+            if l_ty.sty == Str && &format!("{:?}", rhs_ty) == "std::string::String" => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match (
@@ -489,11 +489,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(ex.span, format!("cannot apply unary \
                                                     operator `{}`", op.as_str()));
                     match actual.sty {
-                        TyUint(_) if op == hir::UnNeg => {
+                        Uint(_) if op == hir::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         },
-                        TyStr | Never | TyChar | Tuple(_) | Array(_,_) => {},
-                        Ref(_, ref lty, _) if lty.sty == TyStr => {},
+                        Str | Never | Char | Tuple(_) | Array(_,_) => {},
+                        Ref(_, ref lty, _) if lty.sty == Str => {},
                         _ => {
                             let missing_trait = match op {
                                 hir::UnNeg => "std::ops::Neg",

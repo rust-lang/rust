@@ -309,12 +309,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::Foreign(did) => self.push_item_path(buffer, did),
 
-            ty::TyBool |
-            ty::TyChar |
-            ty::TyInt(_) |
-            ty::TyUint(_) |
-            ty::TyFloat(_) |
-            ty::TyStr => {
+            ty::Bool |
+            ty::Char |
+            ty::Int(_) |
+            ty::Uint(_) |
+            ty::Float(_) |
+            ty::Str => {
                 buffer.push(&self_ty.to_string());
             }
 
@@ -377,11 +377,11 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::Generator(def_id, _, _) |
         ty::Foreign(def_id) => Some(def_id),
 
-        ty::TyBool |
-        ty::TyChar |
-        ty::TyInt(_) |
-        ty::TyUint(_) |
-        ty::TyStr |
+        ty::Bool |
+        ty::Char |
+        ty::Int(_) |
+        ty::Uint(_) |
+        ty::Str |
         ty::FnPtr(_) |
         ty::Projection(_) |
         ty::Param(_) |
@@ -390,7 +390,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::Error |
         ty::GeneratorWitness(..) |
         ty::Never |
-        ty::TyFloat(_) => None,
+        ty::Float(_) => None,
     }
 }
 

@@ -81,8 +81,8 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
-        ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-        ty::TyStr | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
+        ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
         ty::Foreign(..) => {
         }
         ty::Array(ty, len) => {

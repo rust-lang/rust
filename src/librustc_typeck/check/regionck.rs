@@ -916,7 +916,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let r_index_expr = ty::ReScope(region::Scope::Node(index_expr.hir_id.local_id));
         if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.sty {
             match r_ty.sty {
-                ty::Slice(_) | ty::TyStr => {
+                ty::Slice(_) | ty::Str => {
                     self.sub_regions(infer::IndexSlice(index_expr.span),
                                      self.tcx.mk_region(r_index_expr), r_ptr);
                 }

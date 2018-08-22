@@ -216,18 +216,18 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         // execution.
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
-        | ty::TyBool
-        | ty::TyInt(_)
-        | ty::TyUint(_)
-        | ty::TyFloat(_)
+        | ty::Bool
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
         | ty::Never
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::TyChar
+        | ty::Char
         | ty::GeneratorWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
-        | ty::TyStr
+        | ty::Str
         | ty::Foreign(..)
         | ty::Error => true,
 

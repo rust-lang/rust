@@ -1438,12 +1438,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
                 match prim_ty {
-                    hir::TyBool => tcx.types.bool,
-                    hir::TyChar => tcx.types.char,
-                    hir::TyInt(it) => tcx.mk_mach_int(it),
-                    hir::TyUint(uit) => tcx.mk_mach_uint(uit),
-                    hir::TyFloat(ft) => tcx.mk_mach_float(ft),
-                    hir::TyStr => tcx.mk_str()
+                    hir::Bool => tcx.types.bool,
+                    hir::Char => tcx.types.char,
+                    hir::Int(it) => tcx.mk_mach_int(it),
+                    hir::Uint(uit) => tcx.mk_mach_uint(uit),
+                    hir::Float(ft) => tcx.mk_mach_float(ft),
+                    hir::Str => tcx.mk_str()
                 }
             }
             Def::Err => {

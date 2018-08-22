@@ -175,13 +175,13 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 bug!("encountered canonical ty during freshening"),
 
             ty::Generator(..) |
-            ty::TyBool |
-            ty::TyChar |
-            ty::TyInt(..) |
-            ty::TyUint(..) |
-            ty::TyFloat(..) |
+            ty::Bool |
+            ty::Char |
+            ty::Int(..) |
+            ty::Uint(..) |
+            ty::Float(..) |
             ty::Adt(..) |
-            ty::TyStr |
+            ty::Str |
             ty::Error |
             ty::Array(..) |
             ty::Slice(..) |

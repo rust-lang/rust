@@ -190,8 +190,8 @@ impl RhsKind {
 
 fn sign_of_128bit(ty: Ty) -> Option<bool> {
     match ty.sty {
-        TyKind::TyInt(syntax::ast::IntTy::I128) => Some(true),
-        TyKind::TyUint(syntax::ast::UintTy::U128) => Some(false),
+        TyKind::Int(syntax::ast::IntTy::I128) => Some(true),
+        TyKind::Uint(syntax::ast::UintTy::U128) => Some(false),
         _ => None,
     }
 }

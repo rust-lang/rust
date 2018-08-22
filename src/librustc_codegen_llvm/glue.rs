@@ -40,7 +40,7 @@ pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Opt
             let vtable = info.unwrap();
             (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
         }
-        ty::Slice(_) | ty::TyStr => {
+        ty::Slice(_) | ty::Str => {
             let unit = t.sequence_element_type(bx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.

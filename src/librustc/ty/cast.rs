@@ -60,13 +60,13 @@ pub enum CastKind {
 impl<'tcx> CastTy<'tcx> {
     pub fn from_ty(t: Ty<'tcx>) -> Option<CastTy<'tcx>> {
         match t.sty {
-            ty::TyBool => Some(CastTy::Int(IntTy::Bool)),
-            ty::TyChar => Some(CastTy::Int(IntTy::Char)),
-            ty::TyInt(_) => Some(CastTy::Int(IntTy::I)),
+            ty::Bool => Some(CastTy::Int(IntTy::Bool)),
+            ty::Char => Some(CastTy::Int(IntTy::Char)),
+            ty::Int(_) => Some(CastTy::Int(IntTy::I)),
             ty::Infer(ty::InferTy::IntVar(_)) => Some(CastTy::Int(IntTy::I)),
             ty::Infer(ty::InferTy::FloatVar(_)) => Some(CastTy::Float),
-            ty::TyUint(u) => Some(CastTy::Int(IntTy::U(u))),
-            ty::TyFloat(_) => Some(CastTy::Float),
+            ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
+            ty::Float(_) => Some(CastTy::Float),
             ty::Adt(d,_) if d.is_enum() && d.is_payloadfree() =>
                 Some(CastTy::Int(IntTy::CEnum)),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),

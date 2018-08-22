@@ -41,13 +41,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
 
     match t.sty {
-        ty::TyBool => output.push_str("bool"),
-        ty::TyChar => output.push_str("char"),
-        ty::TyStr => output.push_str("str"),
+        ty::Bool => output.push_str("bool"),
+        ty::Char => output.push_str("char"),
+        ty::Str => output.push_str("str"),
         ty::Never => output.push_str("!"),
-        ty::TyInt(int_ty) => output.push_str(int_ty.ty_to_string()),
-        ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
-        ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
+        ty::Int(int_ty) => output.push_str(int_ty.ty_to_string()),
+        ty::Uint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
+        ty::Float(float_ty) => output.push_str(float_ty.ty_to_string()),
         ty::Foreign(def_id) => push_item_name(cx, def_id, qualified, output),
         ty::Adt(def, substs) => {
             push_item_name(cx, def.did, qualified, output);

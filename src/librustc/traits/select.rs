@@ -2180,16 +2180,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match self_ty.sty {
             ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) |
-            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
             ty::FnDef(..) | ty::FnPtr(_) | ty::RawPtr(..) |
-            ty::TyChar | ty::Ref(..) | ty::Generator(..) |
+            ty::Char | ty::Ref(..) | ty::Generator(..) |
             ty::GeneratorWitness(..) | ty::Array(..) | ty::Closure(..) |
             ty::Never | ty::Error => {
                 // safe for everything
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
+            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
 
             ty::Tuple(tys) => {
                 Where(ty::Binder::bind(tys.last().into_iter().cloned().collect()))
@@ -2231,14 +2231,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
-            ty::TyChar | ty::RawPtr(..) | ty::Never |
+            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
+            ty::Char | ty::RawPtr(..) | ty::Never |
             ty::Ref(_, _, hir::MutImmutable) => {
                 // Implementations provided in libcore
                 None
             }
 
-            ty::Dynamic(..) | ty::TyStr | ty::Slice(..) |
+            ty::Dynamic(..) | ty::Str | ty::Slice(..) |
             ty::Generator(..) | ty::GeneratorWitness(..) | ty::Foreign(..) |
             ty::Ref(_, _, hir::MutMutable) => {
                 None
@@ -2300,18 +2300,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
         match t.sty {
-            ty::TyUint(_) |
-            ty::TyInt(_) |
-            ty::TyBool |
-            ty::TyFloat(_) |
+            ty::Uint(_) |
+            ty::Int(_) |
+            ty::Bool |
+            ty::Float(_) |
             ty::FnDef(..) |
             ty::FnPtr(_) |
-            ty::TyStr |
+            ty::Str |
             ty::Error |
             ty::Infer(ty::IntVar(_)) |
             ty::Infer(ty::FloatVar(_)) |
             ty::Never |
-            ty::TyChar => {
+            ty::Char => {
                 Vec::new()
             }
 

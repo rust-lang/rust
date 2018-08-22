@@ -542,11 +542,11 @@ impl<'tcx> Hash for TyS<'tcx> {
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
-            TyKind::TyBool |
-                TyKind::TyChar |
-                TyKind::TyInt(_) |
-                TyKind::TyUint(_) |
-                TyKind::TyFloat(_) |
+            TyKind::Bool |
+                TyKind::Char |
+                TyKind::Int(_) |
+                TyKind::Uint(_) |
+                TyKind::Float(_) |
                 TyKind::Infer(InferTy::IntVar(_)) |
                 TyKind::Infer(InferTy::FloatVar(_)) |
                 TyKind::Infer(InferTy::FreshIntTy(_)) |
@@ -2230,13 +2230,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                ty: Ty<'tcx>)
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
-            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            Bool | Char | Int(..) | Uint(..) | Float(..) |
             RawPtr(..) | Ref(..) | FnDef(..) | FnPtr(_) |
             Array(..) | Closure(..) | Generator(..) | Never => {
                 vec![]
             }
 
-            TyStr |
+            Str |
             Dynamic(..) |
             Slice(_) |
             Foreign(..) |

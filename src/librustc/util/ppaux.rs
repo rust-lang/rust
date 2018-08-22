@@ -14,11 +14,11 @@ use mir::interpret::ConstValue;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{TyBool, TyChar, Adt};
-use ty::{Error, TyStr, Array, Slice, TyFloat, FnDef, FnPtr};
+use ty::{Bool, Char, Adt};
+use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use ty::{Param, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Anon};
-use ty::{Dynamic, TyInt, TyUint, Infer};
+use ty::{Dynamic, Int, Uint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
@@ -1032,11 +1032,11 @@ define_print! {
     ('tcx) ty::TyKind<'tcx>, (self, f, cx) {
         display {
             match *self {
-                TyBool => write!(f, "bool"),
-                TyChar => write!(f, "char"),
-                TyInt(t) => write!(f, "{}", t.ty_to_string()),
-                TyUint(t) => write!(f, "{}", t.ty_to_string()),
-                TyFloat(t) => write!(f, "{}", t.ty_to_string()),
+                Bool => write!(f, "bool"),
+                Char => write!(f, "char"),
+                Int(t) => write!(f, "{}", t.ty_to_string()),
+                Uint(t) => write!(f, "{}", t.ty_to_string()),
+                Float(t) => write!(f, "{}", t.ty_to_string()),
                 RawPtr(ref tm) => {
                     write!(f, "*{} ", match tm.mutbl {
                         hir::MutMutable => "mut",
@@ -1154,7 +1154,7 @@ define_print! {
                         Ok(())
                     })
                 }
-                TyStr => write!(f, "str"),
+                Str => write!(f, "str"),
                 Generator(did, substs, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     let witness = substs.witness(did, tcx);

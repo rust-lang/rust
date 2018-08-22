@@ -137,16 +137,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // the type and then visits the types that are lexically
             // contained within. (The comments refer to relevant rules
             // from RFC1214.)
-            ty::TyBool |            // OutlivesScalar
-            ty::TyChar |            // OutlivesScalar
-            ty::TyInt(..) |         // OutlivesScalar
-            ty::TyUint(..) |        // OutlivesScalar
-            ty::TyFloat(..) |       // OutlivesScalar
+            ty::Bool |            // OutlivesScalar
+            ty::Char |            // OutlivesScalar
+            ty::Int(..) |         // OutlivesScalar
+            ty::Uint(..) |        // OutlivesScalar
+            ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
             ty::Anon(..) |        // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
-            ty::TyStr |             // OutlivesScalar (ish)
+            ty::Str |             // OutlivesScalar (ish)
             ty::Array(..) |       // ...
             ty::Slice(..) |       // ...
             ty::RawPtr(..) |      // ...

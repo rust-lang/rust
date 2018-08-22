@@ -806,20 +806,20 @@ for ty::TyKind<'gcx>
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            TyBool  |
-            TyChar  |
-            TyStr   |
+            Bool  |
+            Char  |
+            Str   |
             Error |
             Never => {
                 // Nothing more to hash.
             }
-            TyInt(int_ty) => {
+            Int(int_ty) => {
                 int_ty.hash_stable(hcx, hasher);
             }
-            TyUint(uint_ty) => {
+            Uint(uint_ty) => {
                 uint_ty.hash_stable(hcx, hasher);
             }
-            TyFloat(float_ty)  => {
+            Float(float_ty)  => {
                 float_ty.hash_stable(hcx, hasher);
             }
             Adt(adt_def, substs) => {

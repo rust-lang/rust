@@ -11,9 +11,9 @@
 // Original Levenshtein distance for both of this is 1. We improved accuracy with
 // additional case insensitive comparison.
 
-struct TyUint {}
+struct Uint {}
 
-struct TyInt {}
+struct Int {}
 
 fn main() {
     TyUInt {};

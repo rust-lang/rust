@@ -704,11 +704,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {
             match (&a.sty, &b.sty) {
                 (a, b) if *a == *b => true,
-                (&ty::TyInt(_), &ty::Infer(ty::InferTy::IntVar(_)))
-                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::TyInt(_))
+                (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
+                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Int(_))
                 | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_)))
-                | (&ty::TyFloat(_), &ty::Infer(ty::InferTy::FloatVar(_)))
-                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::TyFloat(_))
+                | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
+                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Float(_))
                 | (
                     &ty::Infer(ty::InferTy::FloatVar(_)),
                     &ty::Infer(ty::InferTy::FloatVar(_)),

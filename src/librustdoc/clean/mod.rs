@@ -2546,12 +2546,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
             ty::Never => Never,
-            ty::TyBool => Primitive(PrimitiveType::Bool),
-            ty::TyChar => Primitive(PrimitiveType::Char),
-            ty::TyInt(int_ty) => Primitive(int_ty.into()),
-            ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
-            ty::TyFloat(float_ty) => Primitive(float_ty.into()),
-            ty::TyStr => Primitive(PrimitiveType::Str),
+            ty::Bool => Primitive(PrimitiveType::Bool),
+            ty::Char => Primitive(PrimitiveType::Char),
+            ty::Int(int_ty) => Primitive(int_ty.into()),
+            ty::Uint(uint_ty) => Primitive(uint_ty.into()),
+            ty::Float(float_ty) => Primitive(float_ty.into()),
+            ty::Str => Primitive(PrimitiveType::Str),
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(&n).expect("array lift failed");
@@ -3700,12 +3700,12 @@ fn resolve_type(cx: &DocContext,
 
     let is_generic = match path.def {
         Def::PrimTy(p) => match p {
-            hir::TyStr => return Primitive(PrimitiveType::Str),
-            hir::TyBool => return Primitive(PrimitiveType::Bool),
-            hir::TyChar => return Primitive(PrimitiveType::Char),
-            hir::TyInt(int_ty) => return Primitive(int_ty.into()),
-            hir::TyUint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::TyFloat(float_ty) => return Primitive(float_ty.into()),
+            hir::Str => return Primitive(PrimitiveType::Str),
+            hir::Bool => return Primitive(PrimitiveType::Bool),
+            hir::Char => return Primitive(PrimitiveType::Char),
+            hir::Int(int_ty) => return Primitive(int_ty.into()),
+            hir::Uint(uint_ty) => return Primitive(uint_ty.into()),
+            hir::Float(float_ty) => return Primitive(float_ty.into()),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
