@@ -12,6 +12,7 @@
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir;
+use rustc::hir::map::NodeKind;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
@@ -232,7 +233,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     ));
 
     let movable_generator = match tcx.hir.get(id) {
-        hir::map::NodeKind::Expr(&hir::Expr {
+        NodeKind::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => false,

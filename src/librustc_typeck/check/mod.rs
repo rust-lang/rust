@@ -761,7 +761,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
 {
     match tcx.hir.get(id) {
-        hir::map::NodeKind::Item(item) => {
+        NodeKind::Item(item) => {
             match item.node {
                 hir::ItemKind::Const(_, body) |
                 hir::ItemKind::Static(_, _, body) =>
@@ -772,7 +772,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        hir::map::NodeKind::TraitItem(item) => {
+        NodeKind::TraitItem(item) => {
             match item.node {
                 hir::TraitItemKind::Const(_, Some(body)) =>
                     Some((body, None)),
@@ -782,7 +782,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        hir::map::NodeKind::ImplItem(item) => {
+        NodeKind::ImplItem(item) => {
             match item.node {
                 hir::ImplItemKind::Const(_, body) =>
                     Some((body, None)),
@@ -792,7 +792,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        hir::map::NodeKind::AnonConst(constant) => Some((constant.body, None)),
+        NodeKind::AnonConst(constant) => Some((constant.body, None)),
         _ => None,
     }
 }

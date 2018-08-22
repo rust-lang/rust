@@ -29,6 +29,7 @@ use super::{
 
 use errors::{Applicability, DiagnosticBuilder};
 use hir;
+use hir::map::NodeKind;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
@@ -864,7 +865,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        err: &mut DiagnosticBuilder<'tcx>) {
         if let &ObligationCauseCode::VariableType(node_id) = code {
             let parent_node = self.tcx.hir.get_parent_node(node_id);
-            if let Some(hir::map::NodeKind::Local(ref local)) = self.tcx.hir.find(parent_node) {
+            if let Some(NodeKind::Local(ref local)) = self.tcx.hir.find(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
@@ -932,9 +933,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    pub fn get_fn_like_arguments(&self, node: hir::map::NodeKind) -> (Span, Vec<ArgKind>) {
+    pub fn get_fn_like_arguments(&self, node: NodeKind) -> (Span, Vec<ArgKind>) {
         match node {
-            hir::map::NodeKind::Expr(&hir::Expr {
+            NodeKind::Expr(&hir::Expr {
                 node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
@@ -961,17 +962,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     })
                     .collect::<Vec<ArgKind>>())
             }
-            hir::map::NodeKind::Item(&hir::Item {
+            NodeKind::Item(&hir::Item {
                 span,
                 node: hir::ItemKind::Fn(ref decl, ..),
                 ..
             }) |
-            hir::map::NodeKind::ImplItem(&hir::ImplItem {
+            NodeKind::ImplItem(&hir::ImplItem {
                 span,
                 node: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) |
-            hir::map::NodeKind::TraitItem(&hir::TraitItem {
+            NodeKind::TraitItem(&hir::TraitItem {
                 span,
                 node: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
@@ -987,7 +988,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => ArgKind::Arg("_".to_owned(), "_".to_owned())
                 }).collect::<Vec<ArgKind>>())
             }
-            hir::map::NodeKind::Variant(&hir::Variant {
+            NodeKind::Variant(&hir::Variant {
                 span,
                 node: hir::VariantKind {
                     data: hir::VariantData::Tuple(ref fields, _),
@@ -1000,7 +1001,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                      ArgKind::Arg(field.ident.to_string(), "_".to_string())
                  }).collect::<Vec<_>>())
             }
-            hir::map::NodeKind::StructCtor(ref variant_data) => {
+            NodeKind::StructCtor(ref variant_data) => {
                 (self.tcx.sess.source_map().def_span(self.tcx.hir.span(variant_data.id())),
                  variant_data.fields()
                     .iter().map(|_| ArgKind::Arg("_".to_owned(), "_".to_owned()))

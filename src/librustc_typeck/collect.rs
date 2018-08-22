@@ -50,10 +50,11 @@ use syntax::symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::map::NodeKind;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
-use rustc::hir::{self, map as hir_map, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
+use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -671,7 +672,7 @@ fn super_predicates_of<'a, 'tcx>(
     let trait_node_id = tcx.hir.as_local_node_id(trait_def_id).unwrap();
 
     let item = match tcx.hir.get(trait_node_id) {
-        hir_map::NodeKind::Item(item) => item,
+        NodeKind::Item(item) => item,
         _ => bug!("trait_node_id {} is not an item", trait_node_id),
     };
 
@@ -740,7 +741,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::
 
 fn has_late_bound_regions<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    node: hir_map::NodeKind<'tcx>,
+    node: NodeKind<'tcx>,
 ) -> Option<Span> {
     struct LateBoundRegionsDetector<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -826,25 +827,25 @@ fn has_late_bound_regions<'a, 'tcx>(
     }
 
     match node {
-        hir_map::NodeKind::TraitItem(item) => match item.node {
+        NodeKind::TraitItem(item) => match item.node {
             hir::TraitItemKind::Method(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
         },
-        hir_map::NodeKind::ImplItem(item) => match item.node {
+        NodeKind::ImplItem(item) => match item.node {
             hir::ImplItemKind::Method(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
         },
-        hir_map::NodeKind::ForeignItem(item) => match item.node {
+        NodeKind::ForeignItem(item) => match item.node {
             hir::ForeignItemKind::Fn(ref fn_decl, _, ref generics) => {
                 has_late_bound_regions(tcx, generics, fn_decl)
             }
             _ => None,
         },
-        hir_map::NodeKind::Item(item) => match item.node {
+        NodeKind::Item(item) => match item.node {
             hir::ItemKind::Fn(ref fn_decl, .., ref generics, _) => {
                 has_late_bound_regions(tcx, generics, fn_decl)
             }
@@ -1396,29 +1397,29 @@ fn find_existential_constraints<'a, 'tcx>(
 }
 
 fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig<'tcx> {
-    use rustc::hir::map::*;
     use rustc::hir::*;
+    use rustc::hir::map::NodeKind::*;
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
 
     let icx = ItemCtxt::new(tcx, def_id);
 
     match tcx.hir.get(node_id) {
-        NodeKind::TraitItem(hir::TraitItem {
+        TraitItem(hir::TraitItem {
             node: TraitItemKind::Method(sig, _),
             ..
         })
-        | NodeKind::ImplItem(hir::ImplItem {
+        | ImplItem(hir::ImplItem {
             node: ImplItemKind::Method(sig, _),
             ..
         }) => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl),
 
-        NodeKind::Item(hir::Item {
+        Item(hir::Item {
             node: ItemKind::Fn(decl, header, _, _),
             ..
         }) => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl),
 
-        NodeKind::ForeignItem(&hir::ForeignItem {
+        ForeignItem(&hir::ForeignItem {
             node: ForeignItemKind::Fn(ref fn_decl, _, _),
             ..
         }) => {
@@ -1426,8 +1427,8 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
 
-        NodeKind::StructCtor(&VariantData::Tuple(ref fields, _))
-        | NodeKind::Variant(&Spanned {
+        StructCtor(&VariantData::Tuple(ref fields, _))
+        | Variant(&Spanned {
             node:
                 hir::VariantKind {
                     data: VariantData::Tuple(ref fields, _),
@@ -1448,7 +1449,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
             ))
         }
 
-        NodeKind::Expr(&hir::Expr {
+        Expr(&hir::Expr {
             node: hir::ExprKind::Closure(..),
             ..
         }) => {
@@ -2027,7 +2028,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
 
 fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
     match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeKind::ForeignItem(..)) => true,
+        Some(NodeKind::ForeignItem(..)) => true,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
     }

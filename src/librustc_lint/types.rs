@@ -10,7 +10,7 @@
 
 #![allow(non_snake_case)]
 
-use rustc::hir::map as hir_map;
+use rustc::hir::map::NodeKind;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf};
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         };
                         if lit_val < min || lit_val > max {
                             let parent_id = cx.tcx.hir.get_parent_node(e.id);
-                            if let hir_map::NodeKind::Expr(parent_expr) = cx.tcx.hir.get(parent_id) {
+                            if let NodeKind::Expr(parent_expr) = cx.tcx.hir.get(parent_id) {
                                 if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(

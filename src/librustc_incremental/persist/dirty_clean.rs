@@ -399,7 +399,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     _ => self.tcx.sess.span_fatal(
                         attr.span,
                         &format!(
-                            "clean/dirty auto-assertions not yet defined for NodeKind::Item.node={:?}",
+                            "clean/dirty auto-assertions not yet defined \
+                             for NodeKind::Item.node={:?}",
                             item.node
                         )
                     ),

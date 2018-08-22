@@ -34,7 +34,7 @@ use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc::traits;
-use rustc::hir::map as hir_map;
+use hir::map::NodeKind;
 use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
@@ -427,7 +427,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 let real_trait = trait_ref.path.def.def_id();
                 if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
                     match cx.tcx.hir.find(node_id) {
-                        Some(hir_map::NodeKind::Item(item)) => {
+                        Some(NodeKind::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
                                     self.private_traits.insert(impl_item_ref.id.node_id);
@@ -981,7 +981,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
         fn expr_refers_to_this_fn(cx: &LateContext, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
             match cx.tcx.hir.get(id) {
-                hir_map::NodeKind::Expr(&hir::Expr { node: hir::ExprKind::Call(ref callee, _), .. }) => {
+                NodeKind::Expr(&hir::Expr { node: hir::ExprKind::Call(ref callee, _), .. }) => {
                     let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             use rustc::ty::adjustment::*;
 
             // Ignore non-expressions.
-            let expr = if let hir_map::NodeKind::Expr(e) = cx.tcx.hir.get(id) {
+            let expr = if let NodeKind::Expr(e) = cx.tcx.hir.get(id) {
                 e
             } else {
                 return false;
@@ -1864,7 +1864,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
                     if attr.name() == "test" {
                         let parent = cx.tcx.hir.get_parent(it.id);
                         match cx.tcx.hir.find(parent) {
-                            Some(hir_map::NodeKind::Item(hir::Item {node: hir::ItemKind::Mod(_), ..})) |
+                            Some(NodeKind::Item(hir::Item {node: hir::ItemKind::Mod(_), ..})) |
                             None => {}
                             _ => {
                                 cx.struct_span_lint(

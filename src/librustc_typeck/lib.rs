@@ -103,7 +103,7 @@ use rustc::middle;
 use rustc::session;
 use rustc::util;
 
-use hir::map as hir_map;
+use hir::map::NodeKind;
 use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -187,7 +187,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match main_t.sty {
         ty::FnDef(..) => {
             match tcx.hir.find(main_id) {
-                Some(hir_map::NodeKind::Item(it)) => {
+                Some(NodeKind::Item(it)) => {
                     match it.node {
                         hir::ItemKind::Fn(.., ref generics, _) => {
                             let mut error = false;
@@ -259,7 +259,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match start_t.sty {
         ty::FnDef(..) => {
             match tcx.hir.find(start_id) {
-                Some(hir_map::NodeKind::Item(it)) => {
+                Some(NodeKind::Item(it)) => {
                     match it.node {
                         hir::ItemKind::Fn(.., ref generics, _) => {
                             let mut error = false;

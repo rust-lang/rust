@@ -15,6 +15,7 @@
 
 use arena;
 use rustc::hir;
+use hir::map::NodeKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 use rustc::ty::query::Providers;
@@ -61,7 +62,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
         span_bug!(tcx.hir.span(id), "asked to compute variance for wrong kind of item")
     };
     match tcx.hir.get(id) {
-        hir::map::NodeKind::Item(item) => match item.node {
+        NodeKind::Item(item) => match item.node {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) |
@@ -70,25 +71,25 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
             _ => unsupported()
         },
 
-        hir::map::NodeKind::TraitItem(item) => match item.node {
+        NodeKind::TraitItem(item) => match item.node {
             hir::TraitItemKind::Method(..) => {}
 
             _ => unsupported()
         },
 
-        hir::map::NodeKind::ImplItem(item) => match item.node {
+        NodeKind::ImplItem(item) => match item.node {
             hir::ImplItemKind::Method(..) => {}
 
             _ => unsupported()
         },
 
-        hir::map::NodeKind::ForeignItem(item) => match item.node {
+        NodeKind::ForeignItem(item) => match item.node {
             hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()
         },
 
-        hir::map::NodeKind::Variant(_) | hir::map::NodeKind::StructCtor(_) => {}
+        NodeKind::Variant(_) | NodeKind::StructCtor(_) => {}
 
         _ => unsupported()
     }

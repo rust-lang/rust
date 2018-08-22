@@ -11,7 +11,7 @@ use self::Context::*;
 
 use rustc::session::Session;
 
-use rustc::hir::map::Map;
+use rustc::hir::map::{Map, NodeKind};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Destination};
 use syntax::ast;
@@ -115,7 +115,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 if loop_id != ast::DUMMY_NODE_ID {
                     match self.hir_map.find(loop_id).unwrap() {
-                        hir::map::NodeKind::Block(_) => return,
+                        NodeKind::Block(_) => return,
                         _=> (),
                     }
                 }
@@ -158,7 +158,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match label.target_id {
                     Ok(loop_id) => {
-                        if let hir::map::NodeKind::Block(block) = self.hir_map.find(loop_id).unwrap() {
+                        if let NodeKind::Block(block) = self.hir_map.find(loop_id).unwrap() {
                             struct_span_err!(self.sess, e.span, E0696,
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,

@@ -27,6 +27,7 @@ use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
+use hir::map::NodeKind;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc::ty;
 use syntax::{ast, source_map};
@@ -58,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
                 id: ast::NodeId) {
 
         let item = match cx.tcx.hir.get(id) {
-            hir_map::NodeKind::Item(item) => item,
+            NodeKind::Item(item) => item,
             _ => cx.tcx.hir.expect_item(cx.tcx.hir.get_parent(id)),
         };
 
