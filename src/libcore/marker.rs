@@ -620,7 +620,8 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// ```rust
 /// #![feature(pin)]
-/// use std::mem::{PinMut, replace};
+/// use std::mem::replace;
+/// use std::pin::PinMut;
 ///
 /// let mut string = "this".to_string();
 /// let mut pinned_string = PinMut::new(&mut string);
