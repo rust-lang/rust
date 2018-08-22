@@ -11,12 +11,7 @@ use libsyntax2::{
 
 pub struct ActionResult {
     pub edit: Edit,
-    pub cursor_position: CursorPosition,
-}
-
-pub enum CursorPosition {
-    Same,
-    Offset(TextUnit),
+    pub cursor_position: Option<TextUnit>,
 }
 
 pub fn flip_comma<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
@@ -31,7 +26,7 @@ pub fn flip_comma<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnO
         edit.replace(right.range(), left.text());
         ActionResult {
             edit: edit.finish(),
-            cursor_position: CursorPosition::Same,
+            cursor_position: None,
         }
     })
 }
@@ -58,7 +53,7 @@ pub fn add_derive<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnO
         };
         ActionResult {
             edit: edit.finish(),
-            cursor_position: CursorPosition::Offset(offset),
+            cursor_position: Some(offset),
         }
     })
 }

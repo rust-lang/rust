@@ -21,7 +21,7 @@ pub use self::{
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit, AtomEdit},
     code_actions::{
-        ActionResult, CursorPosition, find_node,
+        ActionResult, find_node,
         flip_comma, add_derive,
     },
 };

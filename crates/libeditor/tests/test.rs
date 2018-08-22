@@ -5,7 +5,7 @@ extern crate assert_eq_text;
 
 use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
-    ParsedFile, TextUnit, TextRange, ActionResult, CursorPosition,
+    ParsedFile, TextUnit, TextRange, ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, matching_brace,
 };
@@ -177,8 +177,8 @@ fn check_action<F: Fn(&ParsedFile, TextUnit) -> Option<ActionResult>>(
     let result = f(&file, before_cursor_pos).expect("code action is not applicable");
     let actual = result.edit.apply(&before);
     let actual_cursor_pos = match result.cursor_position {
-        CursorPosition::Same => result.edit.apply_to_offset(before_cursor_pos).unwrap(),
-        CursorPosition::Offset(off) => off,
+        None => result.edit.apply_to_offset(before_cursor_pos).unwrap(),
+        Some(off) => off,
     };
     let actual = add_cursor(&actual, actual_cursor_pos);
     assert_eq_text!(after, &actual);

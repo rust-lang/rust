@@ -6,7 +6,7 @@ use languageserver_types::{
     SymbolInformation, Position, Location,
 };
 use libanalysis::{Query};
-use libeditor::{self, CursorPosition};
+use libeditor;
 use libsyntax2::TextUnit;
 use serde_json::{to_value, from_value};
 
@@ -230,11 +230,8 @@ pub fn handle_execute_command(
         document_changes: None,
     };
     let edit = req::ApplyWorkspaceEditParams { edit };
-    let cursor_pos = match action_result.cursor_position {
-        CursorPosition::Same => None,
-        CursorPosition::Offset(offset) => Some(offset.conv_with(&line_index)),
-    };
-
+    let cursor_pos = action_result.cursor_position
+        .map(|off| off.conv_with(&line_index));
     Ok((edit, cursor_pos))
 }
 
