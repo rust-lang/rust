@@ -1,4 +1,7 @@
-use {TextUnit, EditBuilder, Edit};
+use std::{
+    fmt::{self, Write},
+};
+
 use libsyntax2::{
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner, ParsedFile},
     SyntaxKind::COMMA,
@@ -8,6 +11,8 @@ use libsyntax2::{
         find_leaf_at_offset, ancestors,
     },
 };
+
+use {TextUnit, EditBuilder, Edit};
 
 pub struct ActionResult {
     pub edit: Edit,
@@ -63,27 +68,31 @@ pub fn add_impl<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnc
     let name = nominal.name()?;
 
     Some(move || {
-        // let type_params = nominal.type_param_list();
-        // let type_args = match type_params {
-        //     None => String::new(),
-        //     Some(params) => {
-        //         let mut buf = String::new();
-        //     }
-        // };
+        let type_params = nominal.type_param_list();
         let mut edit = EditBuilder::new();
         let start_offset = nominal.syntax().range().end();
-        edit.insert(
-            start_offset,
-            format!(
-                "\n\nimpl {} {{\n\n}}",
-                name.text(),
-            )
-        );
+        let mut buf = String::new();
+        buf.push_str("\n\nimpl");
+        if let Some(type_params) = type_params {
+            buf.push_display(&type_params.syntax().text());
+        }
+        buf.push_str(" ");
+        buf.push_str(name.text().as_str());
+        if let Some(type_params) = type_params {
+            comma_list(
+                &mut buf, "<", ">",
+                type_params.type_params()
+                    .filter_map(|it| it.name())
+                    .map(|it| it.text())
+            );
+        }
+        buf.push_str(" {\n");
+        let offset = start_offset + TextUnit::of_str(&buf);
+        buf.push_str("\n}");
+        edit.insert(start_offset, buf);
         ActionResult {
             edit: edit.finish(),
-            cursor_position: Some(
-                start_offset + TextUnit::of_str("\n\nimpl  {\n") + name.syntax().range().len()
-            ),
+            cursor_position: Some(offset),
         }
     })
 }
@@ -104,3 +113,26 @@ pub fn find_node<'a, N: AstNode<'a>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit
         .next()
 }
 
+fn comma_list(buf: &mut String, bra: &str, ket: &str, items: impl Iterator<Item=impl fmt::Display>) {
+    buf.push_str(bra);
+    let mut first = true;
+    for item in items {
+        if !first {
+            first = false;
+            buf.push_str(", ");
+        }
+        write!(buf, "{}", item).unwrap();
+    }
+    buf.push_str(ket);
+}
+
+trait PushDisplay {
+    fn push_display<T: fmt::Display>(&mut self, item: &T);
+}
+
+impl PushDisplay for String {
+    fn push_display<T: fmt::Display>(&mut self, item: &T) {
+        use std::fmt::Write;
+        write!(self, "{}", item).unwrap()
+    }
+}

@@ -580,6 +580,25 @@ impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
 impl<'a> TypeDef<'a> {}
 
+// TypeParam
+#[derive(Debug, Clone, Copy)]
+pub struct TypeParam<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TypeParam<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TYPE_PARAM => Some(TypeParam { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ast::NameOwner<'a> for TypeParam<'a> {}
+impl<'a> TypeParam<'a> {}
+
 // TypeParamList
 #[derive(Debug, Clone, Copy)]
 pub struct TypeParamList<'a> {
@@ -596,7 +615,11 @@ impl<'a> AstNode<'a> for TypeParamList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> TypeParamList<'a> {}
+impl<'a> TypeParamList<'a> {
+    pub fn type_params(self) -> impl Iterator<Item = TypeParam<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // TypeRef
 #[derive(Debug, Clone, Copy)]

@@ -310,7 +310,8 @@ Grammar(
         "NameRef": (),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
         "TokenTree": (),
-        "TypeParamList": (),
+        "TypeParamList": ( collections: [ ["type_params", "TypeParam" ] ]),
+        "TypeParam": ( traits: ["NameOwner"]),
         "WhereClause": (),
     },
 )

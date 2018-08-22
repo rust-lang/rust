@@ -110,6 +110,7 @@ pub fn handle_code_action(
     let actions = &[
         (ActionId::FlipComma, libeditor::flip_comma(&file, offset).is_some()),
         (ActionId::AddDerive, libeditor::add_derive(&file, offset).is_some()),
+        (ActionId::AddImpl, libeditor::add_impl(&file, offset).is_some()),
     ];
 
     for (id, edit) in actions {
@@ -218,6 +219,7 @@ pub fn handle_execute_command(
     let action_result = match arg.id {
         ActionId::FlipComma => libeditor::flip_comma(&file, arg.offset).map(|f| f()),
         ActionId::AddDerive => libeditor::add_derive(&file, arg.offset).map(|f| f()),
+        ActionId::AddImpl => libeditor::add_impl(&file, arg.offset).map(|f| f()),
     }.ok_or_else(|| format_err!("command not applicable"))?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let mut changes = HashMap::new();
@@ -259,6 +261,7 @@ fn apply_code_action_cmd(id: ActionId, doc: TextDocumentIdentifier, offset: Text
 enum ActionId {
     FlipComma,
     AddDerive,
+    AddImpl,
 }
 
 impl ActionId {
@@ -266,6 +269,7 @@ impl ActionId {
         match *self {
             ActionId::FlipComma => "Flip `,`",
             ActionId::AddDerive => "Add `#[derive]`",
+            ActionId::AddImpl => "Add impl",
         }
     }
 }

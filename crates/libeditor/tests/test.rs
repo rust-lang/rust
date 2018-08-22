@@ -151,11 +151,11 @@ fn test_add_impl() {
         "struct Foo {}\n\nimpl Foo {\n<|>\n}\n",
         |file, off| add_impl(file, off).map(|f| f()),
     );
-    // check_action(
-    //     "struct Foo<T: Clone> {<|>}",
-    //     "struct Foo<T: Clone> {}\nimpl<T: Clone> Foo<T> {\n<|>\n}",
-    //     |file, off| add_impl(file, off).map(|f| f()),
-    // );
+    check_action(
+        "struct Foo<T: Clone> {<|>}",
+        "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+        |file, off| add_impl(file, off).map(|f| f()),
+    );
 }
 
 #[test]
