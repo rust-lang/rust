@@ -5,13 +5,14 @@ use rustc::hir;
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Instance};
-use rustc::ty::layout::{LayoutOf, Primitive, TyLayout};
+use rustc::ty::layout::{LayoutOf, Primitive, TyLayout, Size};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 use syntax::source_map::DUMMY_SP;
+use syntax::symbol::Symbol;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
@@ -19,7 +20,7 @@ use rustc::mir::interpret::{
 };
 use super::{
     Place, PlaceExtra, PlaceTy, MemPlace, OpTy, Operand, Value,
-    EvalContext, StackPopCleanup, Memory, MemoryKind
+    EvalContext, StackPopCleanup, Memory, MemoryKind, MPlaceTy,
 };
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
@@ -237,23 +238,56 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         if !ecx.tcx.is_const_fn(instance.def_id()) {
             let def_id = instance.def_id();
             // Some fn calls are actually BinOp intrinsics
-            let (op, oflo) = if let Some(op) = ecx.tcx.is_binop_lang_item(def_id) {
-                op
+            let _: ! = if let Some((op, oflo)) = ecx.tcx.is_binop_lang_item(def_id) {
+                let (dest, bb) = destination.expect("128 lowerings can't diverge");
+                let l = ecx.read_value(args[0])?;
+                let r = ecx.read_value(args[1])?;
+                if oflo {
+                    ecx.binop_with_overflow(op, l, r, dest)?;
+                } else {
+                    ecx.binop_ignore_overflow(op, l, r, dest)?;
+                }
+                ecx.goto_block(bb);
+                return Ok(true);
+            } else if Some(def_id) == ecx.tcx.lang_items().panic_fn() {
+                assert!(args.len() == 1);
+                // &(&'static str, &'static str, u32, u32)
+                let ptr = ecx.read_value(args[0])?;
+                let place = ecx.ref_to_mplace(ptr)?;
+                let (msg, file, line, col) = (
+                    place_field(ecx, 0, place)?,
+                    place_field(ecx, 1, place)?,
+                    place_field(ecx, 2, place)?,
+                    place_field(ecx, 3, place)?,
+                );
+
+                let msg = to_str(ecx, msg)?;
+                let file = to_str(ecx, file)?;
+                let line = to_u32(line)?;
+                let col = to_u32(col)?;
+                return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
+            } else if Some(def_id) == ecx.tcx.lang_items().begin_panic_fn() {
+                assert!(args.len() == 2);
+                // &'static str, &(&'static str, u32, u32)
+                let msg = ecx.read_value(args[0])?;
+                let ptr = ecx.read_value(args[1])?;
+                let place = ecx.ref_to_mplace(ptr)?;
+                let (file, line, col) = (
+                    place_field(ecx, 0, place)?,
+                    place_field(ecx, 1, place)?,
+                    place_field(ecx, 2, place)?,
+                );
+
+                let msg = to_str(ecx, msg.value)?;
+                let file = to_str(ecx, file)?;
+                let line = to_u32(line)?;
+                let col = to_u32(col)?;
+                return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
             } else {
                 return Err(
                     ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
                 );
             };
-            let (dest, bb) = destination.expect("128 lowerings can't diverge");
-            let l = ecx.read_value(args[0])?;
-            let r = ecx.read_value(args[1])?;
-            if oflo {
-                ecx.binop_with_overflow(op, l, r, dest)?;
-            } else {
-                ecx.binop_ignore_overflow(op, l, r, dest)?;
-            }
-            ecx.goto_block(bb);
-            return Ok(true);
         }
         let mir = match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
@@ -409,6 +443,39 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         Err(
             ConstEvalError::NotConst("statics with `linkage` attribute".to_string()).into(),
         )
+    }
+}
+
+fn place_field<'a, 'tcx, 'mir>(
+    ecx: &mut EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>,
+    i: u64,
+    place: MPlaceTy<'tcx>,
+) -> EvalResult<'tcx, Value> {
+    let place = ecx.mplace_field(place, i)?;
+    Ok(ecx.try_read_value_from_mplace(place)?.expect("bad panic arg layout"))
+}
+
+fn to_str<'a, 'tcx, 'mir>(
+    ecx: &mut EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>,
+    val: Value,
+) -> EvalResult<'tcx, Symbol> {
+    if let Value::ScalarPair(ptr, len) = val {
+        let len = len.not_undef()?.to_bits(ecx.memory.pointer_size())?;
+        let bytes = ecx.memory.read_bytes(ptr.not_undef()?, Size::from_bytes(len as u64))?;
+        let str = ::std::str::from_utf8(bytes).map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+        Ok(Symbol::intern(str))
+    } else {
+        bug!("panic arg is not a str")
+    }
+}
+
+fn to_u32<'a, 'tcx, 'mir>(
+    val: Value,
+) -> EvalResult<'tcx, u32> {
+    if let Value::Scalar(n) = val {
+        Ok(n.not_undef()?.to_bits(Size::from_bits(32))? as u32)
+    } else {
+        bug!("panic arg is not a str")
     }
 }
 

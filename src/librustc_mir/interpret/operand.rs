@@ -213,7 +213,7 @@ fn from_known_layout<'tcx>(
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularily for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
-    fn try_read_value_from_mplace(
+    pub(super) fn try_read_value_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {

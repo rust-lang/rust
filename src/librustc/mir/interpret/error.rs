@@ -17,6 +17,7 @@ use errors::DiagnosticBuilder;
 
 use syntax_pos::Span;
 use syntax::ast;
+use syntax::symbol::Symbol;
 
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>;
 
@@ -250,7 +251,12 @@ pub enum EvalErrorKind<'tcx, O> {
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
-    Panic,
+    Panic {
+        msg: Symbol,
+        line: u32,
+        col: u32,
+        file: Symbol,
+    },
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
     UnimplementedTraitSelection,
@@ -370,7 +376,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "tried to re-, de-, or allocate heap memory with alignment that is not a power of two",
             Unreachable =>
                 "entered unreachable code",
-            Panic =>
+            Panic { .. } =>
                 "the evaluated program panicked",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
@@ -465,6 +471,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                 write!(f, "{}", inner),
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size.bytes(), align.abi(), size2.bytes(), align2.abi()),
+            Panic { ref msg, line, col, ref file } =>
+                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
             _ => write!(f, "{}", self.description()),
         }
     }

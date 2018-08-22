@@ -230,7 +230,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     // FIXME: implement
                     => {},
 
-                    | Panic
+                    | Panic { .. }
                     | BoundsCheck{..}
                     | Overflow(_)
                     | OverflowNeg

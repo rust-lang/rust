@@ -574,7 +574,11 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             HeapAllocZeroBytes => HeapAllocZeroBytes,
             HeapAllocNonPowerOfTwoAlignment(n) => HeapAllocNonPowerOfTwoAlignment(n),
             Unreachable => Unreachable,
-            Panic => Panic,
+            Panic { ref msg, ref file, line, col } => Panic {
+                msg: msg.clone(),
+                file: file.clone(),
+                line, col,
+            },
             ReadFromReturnPointer => ReadFromReturnPointer,
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,

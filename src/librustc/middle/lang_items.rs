@@ -305,6 +305,8 @@ language_item_table! {
     PanicBoundsCheckFnLangItem,      "panic_bounds_check",      panic_bounds_check_fn;
     PanicInfoLangItem,               "panic_info",              panic_info;
     PanicImplLangItem,               "panic_impl",              panic_impl;
+    // Libstd panic entry point. Necessary for const eval to be able to catch it
+    BeginPanicFnLangItem,            "begin_panic",             begin_panic_fn;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;

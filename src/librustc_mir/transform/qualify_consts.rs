@@ -400,6 +400,11 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         (self.qualif, Lrc::new(promoted_temps))
     }
+
+    fn is_const_panic_fn(&self, def_id: DefId) -> bool {
+        Some(def_id) == self.tcx.lang_items().panic_fn() ||
+        Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+    }
 }
 
 /// Accumulates an Rvalue or Call's effects in self.qualif.
@@ -834,7 +839,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
                     }
                     _ => {
-                        if self.tcx.is_const_fn(def_id) {
+                        if self.tcx.is_const_fn(def_id) || self.is_const_panic_fn(def_id) {
                             is_const_fn = Some(def_id);
                         }
                     }
@@ -880,8 +885,25 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             // Const fn calls.
             if let Some(def_id) = is_const_fn {
+                // check the const_panic feature gate or
                 // find corresponding rustc_const_unstable feature
-                if let Some(&attr::Stability {
+                // FIXME: cannot allow this inside `allow_internal_unstable` because that would make
+                // `panic!` insta stable in constants, since the macro is marked with the attr
+                if self.is_const_panic_fn(def_id) {
+                    if self.mode == Mode::Fn {
+                        // never promote panics
+                        self.qualif = Qualif::NOT_CONST;
+                    } else if !self.tcx.sess.features_untracked().const_panic {
+                        // don't allow panics in constants without the feature gate
+                        emit_feature_err(
+                            &self.tcx.sess.parse_sess,
+                            "const_panic",
+                            self.span,
+                            GateIssue::Language,
+                            &format!("panicking in {}s is unstable", self.mode),
+                        );
+                    }
+                } else if let Some(&attr::Stability {
                     rustc_const_unstable: Some(attr::RustcConstUnstable {
                         feature: ref feature_name
                     }),
