@@ -1378,7 +1378,7 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                if self.span.edition() >= Edition::Edition2018 {
+                if p.span.edition() >= Edition::Edition2018 {
                     p.parse_arg_general(true)
                 } else {
                     p.parse_arg_general(false)
