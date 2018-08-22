@@ -3,11 +3,8 @@ environment:
         PROJECT_NAME: rust-clippy
     matrix:
         #- TARGET: i686-pc-windows-gnu
-        #  MSYS2_BITS: 32
         #- TARGET: i686-pc-windows-msvc
-        #  MSYS2_BITS: 32
         #- TARGET: x86_64-pc-windows-gnu
-        #  MSYS2_BITS: 64
         - TARGET: x86_64-pc-windows-msvc
           MSYS2_BITS: 64
 
@@ -31,9 +28,6 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --features debugging
     - cargo test --features debugging
-    #- copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
-    #- cargo clippy -- -D clippy
-    #- cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
 notifications:
     - provider: Email
