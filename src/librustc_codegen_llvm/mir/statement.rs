@@ -26,31 +26,37 @@ impl FunctionCx<'a, 'll, 'tcx> {
         self.set_debug_loc(&bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
-                if let mir::Place::Local(index) = *place {
-                    match self.locals[index] {
-                        LocalRef::Place(cg_dest) => {
-                            self.codegen_rvalue(bx, cg_dest, rvalue)
-                        }
-                        LocalRef::Operand(None) => {
-                            let (bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
-                            self.locals[index] = LocalRef::Operand(Some(operand));
-                            bx
-                        }
-                        LocalRef::Operand(Some(op)) => {
-                            if !op.layout.is_zst() {
-                                span_bug!(statement.source_info.span,
-                                          "operand {:?} already assigned",
-                                          rvalue);
+                match place {
+                    mir::Place {
+                        base: mir::PlaceBase::Local(index),
+                        elems,
+                    } if elems.is_empty() => {
+                        match self.locals[*index] {
+                            LocalRef::Place(cg_dest) => {
+                                self.codegen_rvalue(bx, cg_dest, rvalue)
                             }
+                            LocalRef::Operand(None) => {
+                                let (bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
+                                self.locals[*index] = LocalRef::Operand(Some(operand));
+                                bx
+                            }
+                            LocalRef::Operand(Some(op)) => {
+                                if !op.layout.is_zst() {
+                                    span_bug!(statement.source_info.span,
+                                              "operand {:?} already assigned",
+                                              rvalue);
+                                }
 
-                            // If the type is zero-sized, it's already been set here,
-                            // but we still need to make sure we codegen the operand
-                            self.codegen_rvalue_operand(bx, rvalue).0
+                                // If the type is zero-sized, it's already been set here,
+                                // but we still need to make sure we codegen the operand
+                                self.codegen_rvalue_operand(bx, rvalue).0
+                            }
                         }
                     }
-                } else {
-                    let cg_dest = self.codegen_place(&bx, place);
-                    self.codegen_rvalue(bx, cg_dest, rvalue)
+                    _ => {
+                        let cg_dest = self.codegen_place(&bx, place);
+                        self.codegen_rvalue(bx, cg_dest, rvalue)
+                    }
                 }
             }
             mir::StatementKind::SetDiscriminant{ref place, variant_index} => {

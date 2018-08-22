@@ -419,20 +419,18 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let cx = bx.cx;
         let tcx = cx.tcx;
 
-        if let mir::Place::Local(index) = *place {
-            match self.locals[index] {
-                LocalRef::Place(place) => {
-                    return place;
-                }
-                LocalRef::Operand(..) => {
-                    bug!("using operand local {:?} as place", place);
+        let mut result = match place.base {
+            mir::PlaceBase::Local(index) => {
+                match self.locals[index] {
+                    LocalRef::Place(place) => {
+                        return place;
+                    }
+                    LocalRef::Operand(..) => {
+                        bug!("using operand local {:?} as place", place);
+                    }
                 }
             }
-        }
-
-        let result = match *place {
-            mir::Place::Local(_) => bug!(), // handled above
-            mir::Place::Promoted(box (index, ty)) => {
+            mir::PlaceBase::Promoted(box (index, ty)) => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
@@ -458,54 +456,52 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                 }
             }
-            mir::Place::Static(box mir::Static { def_id, ty }) => {
+            mir::PlaceBase::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 PlaceRef::new_sized(consts::get_static(cx, def_id), layout, layout.align)
-            },
-            mir::Place::Projection(box mir::Projection {
-                ref base,
-                elem: mir::ProjectionElem::Deref
-            }) => {
-                // Load the pointer from its location.
-                self.codegen_consume(bx, base).deref(bx.cx)
             }
-            mir::Place::Projection(ref projection) => {
-                let cg_base = self.codegen_place(bx, &projection.base);
+        };
 
-                match projection.elem {
-                    mir::ProjectionElem::Deref => bug!(),
+        if !place.elems.is_empty() {
+            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                let base = place.elem_base(tcx, i);
+                result = match elem {
+                    mir::ProjectionElem::Deref => {
+                        // Load the pointer from its location.
+                        self.codegen_consume(bx, &base).deref(bx.cx)
+                    }
                     mir::ProjectionElem::Field(ref field, _) => {
-                        cg_base.project_field(bx, field.index())
+                        result.project_field(bx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Copy(mir::Place::Local(index));
+                        let index = &mir::Operand::Copy(mir::Place::local(index));
                         let index = self.codegen_operand(bx, index);
                         let llindex = index.immediate();
-                        cg_base.project_index(bx, llindex)
+                        result.project_index(bx, llindex)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
                         let lloffset = C_usize(bx.cx, offset as u64);
-                        cg_base.project_index(bx, lloffset)
+                        result.project_index(bx, lloffset)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
                         let lloffset = C_usize(bx.cx, offset as u64);
-                        let lllen = cg_base.len(bx.cx);
+                        let lllen = result.len(bx.cx);
                         let llindex = bx.sub(lllen, lloffset);
-                        cg_base.project_index(bx, llindex)
+                        result.project_index(bx, llindex)
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
-                        let mut subslice = cg_base.project_index(bx,
+                        let mut subslice = result.project_index(bx,
                             C_usize(bx.cx, from as u64));
-                        let projected_ty = PlaceTy::Ty { ty: cg_base.layout.ty }
-                            .projection_ty(tcx, &projection.elem).to_ty(bx.tcx());
+                        let projected_ty = PlaceTy::Ty { ty: result.layout.ty }
+                            .projection_ty(tcx, &elem).to_ty(bx.tcx());
                         subslice.layout = bx.cx.layout_of(self.monomorphize(&projected_ty));
 
                         if subslice.layout.is_unsized() {
-                            subslice.llextra = Some(bx.sub(cg_base.llextra.unwrap(),
+                            subslice.llextra = Some(bx.sub(result.llextra.unwrap(),
                                 C_usize(bx.cx, (from as u64) + (to as u64))));
                         }
 
@@ -517,11 +513,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         subslice
                     }
                     mir::ProjectionElem::Downcast(_, v) => {
-                        cg_base.project_downcast(bx, v)
+                        result.project_downcast(bx, v)
                     }
-                }
+                };
             }
-        };
+        }
         debug!("codegen_place(place={:?}) => {:?}", place, result);
         result
     }

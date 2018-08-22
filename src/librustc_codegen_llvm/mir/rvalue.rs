@@ -518,11 +518,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let mir::Place::Local(index) = *place {
-            if let LocalRef::Operand(Some(op)) = self.locals[index] {
-                if let ty::TyArray(_, n) = op.layout.ty.sty {
-                    let n = n.unwrap_usize(bx.cx.tcx);
-                    return common::C_usize(bx.cx, n);
+        if place.elems.is_empty() {
+            if let mir::PlaceBase::Local(index) = place.base {
+                if let LocalRef::Operand(Some(op)) = self.locals[index] {
+                    if let ty::TyArray(_, n) = op.layout.ty.sty {
+                        let n = n.unwrap_usize(bx.cx.tcx);
+                        return common::C_usize(bx.cx, n);
+                    }
                 }
             }
         }

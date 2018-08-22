@@ -110,13 +110,19 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                     location: Location) {
         debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
 
-        if let mir::Place::Local(index) = *place {
-            self.assign(index, location);
-            if !self.fx.rvalue_creates_operand(rvalue) {
-                self.not_ssa(index);
+        match place {
+            mir::Place {
+                base: mir::PlaceBase::Local(index),
+                elems,
+            } if elems.is_empty() => {
+                self.assign(*index, location);
+                if !self.fx.rvalue_creates_operand(rvalue) {
+                    self.not_ssa(*index);
+                }
+            },
+            _ => {
+                self.visit_place(place, PlaceContext::Store, location);
             }
-        } else {
-            self.visit_place(place, PlaceContext::Store, location);
         }
 
         self.visit_rvalue(rvalue, location);
@@ -152,43 +158,48 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
 
     fn visit_place(&mut self,
                     place: &mir::Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    mut context: PlaceContext<'tcx>,
                     location: Location) {
-        debug!("visit_place(place={:?}, context={:?})", place, context);
         let cx = self.fx.cx;
 
-        if let mir::Place::Projection(ref proj) = *place {
-            // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = match context {
-                PlaceContext::Copy | PlaceContext::Move => true,
-                _ => false
-            };
-            if is_consume {
-                let base_ty = proj.base.ty(self.fx.mir, cx.tcx);
-                let base_ty = self.fx.monomorphize(&base_ty);
+        if !place.elems.is_empty() {
+            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                debug!("visit_place(place={:?}, context={:?})", place, context);
 
-                // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx, &proj.elem).to_ty(cx.tcx);
-                let elem_ty = self.fx.monomorphize(&elem_ty);
-                if cx.layout_of(elem_ty).is_zst() {
-                    return;
-                }
+                // Allow uses of projections that are ZSTs or from scalar fields.
+                let is_consume = match context {
+                    PlaceContext::Copy | PlaceContext::Move => true,
+                    _ => false
+                };
 
-                if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
-                    if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
-                        // Recurse with the same context, instead of `Projection`,
-                        // potentially stopping at non-operand projections,
-                        // which would trigger `not_ssa` on locals.
-                        self.visit_place(&proj.base, context, location);
+                let base = place.elem_base(cx.tcx, i);
+                if is_consume {
+                    let base_ty = base.ty(self.fx.mir, cx.tcx);
+                    let base_ty = self.fx.monomorphize(&base_ty);
+
+                    // ZSTs don't require any actual memory access.
+                    let elem_ty = base_ty.projection_ty(cx.tcx, &elem).to_ty(cx.tcx);
+                    let elem_ty = self.fx.monomorphize(&elem_ty);
+                    if cx.layout_of(elem_ty).is_zst() {
                         return;
                     }
-                }
-            }
 
-            // A deref projection only reads the pointer, never needs the place.
-            if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_place(&proj.base, PlaceContext::Copy, location);
+                    if let mir::ProjectionElem::Field(..) = elem {
+                        let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
+                        if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
+                            // Recurse with the same context, instead of `Projection`,
+                            // potentially stopping at non-operand projections,
+                            // which would trigger `not_ssa` on locals.
+                            continue;
+                        }
+                    }
+                }
+
+                // A deref projection only reads the pointer, never needs the place.
+                if let mir::ProjectionElem::Deref = elem {
+                    context = PlaceContext::Copy;
+                    continue;
+                }
             }
         }
 
@@ -234,7 +245,7 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
             }
 
             PlaceContext::Drop => {
-                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx);
+                let ty = mir::Place::local(local).ty(self.fx.mir, self.fx.cx.tcx);
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
 
                 // Only need the place if we're actually dropping it.

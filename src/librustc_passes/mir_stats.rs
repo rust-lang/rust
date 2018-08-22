@@ -14,7 +14,7 @@
 
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
 use rustc::mir::{Constant, Location, Local, LocalDecl};
-use rustc::mir::{Place, PlaceElem, PlaceProjection};
+use rustc::mir::{Place, PlaceBase, PlaceElem};
 use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind, SourceScope, SourceScopeData};
@@ -201,37 +201,39 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                     context: mir_visit::PlaceContext<'tcx>,
                     location: Location) {
         self.record("Place", place);
-        self.record(match *place {
-            Place::Local(..) => "Place::Local",
-            Place::Static(..) => "Place::Static",
-            Place::Promoted(..) => "Place::Promoted",
-            Place::Projection(..) => "Place::Projection",
+        self.record("PlaceBase", &place.base);
+        self.record(match place.base {
+            PlaceBase::Local(..) => "PlaceBase::Local",
+            PlaceBase::Static(..) => "PlaceBase::Static",
+            PlaceBase::Promoted(..) => "PlaceBase::Promoted",
         }, place);
+
+        if !place.elems.is_empty() {
+            for elem in place.elems.iter() {
+                self.visit_projection_elem(
+                    elem,
+                    context,
+                    location,
+                );
+            }
+        }
         self.super_place(place, context, location);
     }
 
-    fn visit_projection(&mut self,
-                        place: &PlaceProjection<'tcx>,
-                        context: mir_visit::PlaceContext<'tcx>,
-                        location: Location) {
-        self.record("PlaceProjection", place);
-        self.super_projection(place, context, location);
-    }
-
     fn visit_projection_elem(&mut self,
-                             place: &PlaceElem<'tcx>,
+                             place_elem: &PlaceElem<'tcx>,
                              context: mir_visit::PlaceContext<'tcx>,
                              location: Location) {
-        self.record("PlaceElem", place);
-        self.record(match *place {
+        self.record("PlaceElem", place_elem);
+        self.record(match place_elem {
             ProjectionElem::Deref => "PlaceElem::Deref",
             ProjectionElem::Subslice { .. } => "PlaceElem::Subslice",
             ProjectionElem::Field(..) => "PlaceElem::Field",
             ProjectionElem::Index(..) => "PlaceElem::Index",
             ProjectionElem::ConstantIndex { .. } => "PlaceElem::ConstantIndex",
             ProjectionElem::Downcast(..) => "PlaceElem::Downcast",
-        }, place);
-        self.super_projection_elem(place, context, location);
+        }, place_elem);
+        self.super_projection_elem(place_elem, context, location);
     }
 
     fn visit_constant(&mut self,

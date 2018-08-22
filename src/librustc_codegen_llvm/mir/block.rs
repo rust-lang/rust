@@ -231,7 +231,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
-                        let op = self.codegen_consume(&bx, &mir::Place::Local(mir::RETURN_PLACE));
+                        let op = self.codegen_consume(&bx, &mir::Place::local(mir::RETURN_PLACE));
                         if let Ref(llval, align) = op.val {
                             bx.load(llval, align)
                         } else {
@@ -514,16 +514,24 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
-                            match *arg {
+                            match arg {
                                 // The shuffle array argument is usually not an explicit constant,
                                 // but specified directly in the code. This means it gets promoted
                                 // and we can then extract the value by evaluating the promoted.
-                                mir::Operand::Copy(mir::Place::Promoted(box(index, ty))) |
-                                mir::Operand::Move(mir::Place::Promoted(box(index, ty))) => {
+                                mir::Operand::Copy(mir::Place {
+                                    base: mir::PlaceBase::Promoted(box (index, ty)),
+                                    elems,
+                                }) |
+                                mir::Operand::Move(mir::Place {
+                                    base: mir::PlaceBase::Promoted(box (index, ty)),
+                                    elems,
+                                })
+                                    if elems.is_empty()
+                                => {
                                     let param_env = ty::ParamEnv::reveal_all();
                                     let cid = mir::interpret::GlobalId {
                                         instance: self.instance,
-                                        promoted: Some(index),
+                                        promoted: Some(*index),
                                     };
                                     let c = bx.tcx().const_eval(param_env.and(cid));
                                     let (llval, ty) = self.simd_shuffle_indices(
@@ -817,37 +825,42 @@ impl FunctionCx<'a, 'll, 'tcx> {
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let mir::Place::Local(index) = *dest {
-            match self.locals[index] {
-                LocalRef::Place(dest) => dest,
-                LocalRef::Operand(None) => {
-                    // Handle temporary places, specifically Operand ones, as
-                    // they don't have allocas
-                    return if fn_ret.is_indirect() {
-                        // Odd, but possible, case, we have an operand temporary,
-                        // but the calling convention has an indirect return.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
-                        tmp.storage_live(bx);
-                        llargs.push(tmp.llval);
-                        ReturnDest::IndirectOperand(tmp, index)
-                    } else if is_intrinsic {
-                        // Currently, intrinsics always need a location to store
-                        // the result. so we create a temporary alloca for the
-                        // result
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
-                        tmp.storage_live(bx);
-                        ReturnDest::IndirectOperand(tmp, index)
-                    } else {
-                        ReturnDest::DirectOperand(index)
-                    };
-                }
-                LocalRef::Operand(Some(_)) => {
-                    bug!("place local already assigned to");
+        let dest = match dest {
+            mir::Place {
+                base: mir::PlaceBase::Local(index),
+                elems,
+            } if elems.is_empty() => {
+                match self.locals[*index] {
+                    LocalRef::Place(dest) => dest,
+                    LocalRef::Operand(None) => {
+                        // Handle temporary places, specifically Operand ones, as
+                        // they don't have allocas
+                        return if fn_ret.is_indirect() {
+                            // Odd, but possible, case, we have an operand temporary,
+                            // but the calling convention has an indirect return.
+                            let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                            tmp.storage_live(bx);
+                            llargs.push(tmp.llval);
+                            ReturnDest::IndirectOperand(tmp, *index)
+                        } else if is_intrinsic {
+                            // Currently, intrinsics always need a location to store
+                            // the result. so we create a temporary alloca for the
+                            // result
+                            let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                            tmp.storage_live(bx);
+                            ReturnDest::IndirectOperand(tmp, *index)
+                        } else {
+                            ReturnDest::DirectOperand(*index)
+                        };
+                    }
+                    LocalRef::Operand(Some(_)) => {
+                        bug!("place local already assigned to");
+                    }
                 }
             }
-        } else {
-            self.codegen_place(bx, dest)
+            _ => self.codegen_place(bx, dest),
         };
+
         if fn_ret.is_indirect() {
             if dest.align.abi() < dest.layout.align.abi() {
                 // Currently, MIR code generation does not create calls
@@ -868,27 +881,33 @@ impl FunctionCx<'a, 'll, 'tcx> {
     fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                        src: &mir::Operand<'tcx>,
                        dst: &mir::Place<'tcx>) {
-        if let mir::Place::Local(index) = *dst {
-            match self.locals[index] {
-                LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
-                LocalRef::Operand(None) => {
-                    let dst_layout = bx.cx.layout_of(self.monomorphized_place_ty(dst));
-                    assert!(!dst_layout.ty.has_erasable_regions());
-                    let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
-                    place.storage_live(bx);
-                    self.codegen_transmute_into(bx, src, place);
-                    let op = place.load(bx);
-                    place.storage_dead(bx);
-                    self.locals[index] = LocalRef::Operand(Some(op));
-                }
-                LocalRef::Operand(Some(op)) => {
-                    assert!(op.layout.is_zst(),
-                            "assigning to initialized SSAtemp");
+        match dst {
+            mir::Place {
+                base: mir::PlaceBase::Local(index),
+                elems,
+            } if elems.is_empty() => {
+                match self.locals[*index] {
+                    LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
+                    LocalRef::Operand(None) => {
+                        let dst_layout = bx.cx.layout_of(self.monomorphized_place_ty(dst));
+                        assert!(!dst_layout.ty.has_erasable_regions());
+                        let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
+                        place.storage_live(bx);
+                        self.codegen_transmute_into(bx, src, place);
+                        let op = place.load(bx);
+                        place.storage_dead(bx);
+                        self.locals[*index] = LocalRef::Operand(Some(op));
+                    }
+                    LocalRef::Operand(Some(op)) => {
+                        assert!(op.layout.is_zst(),
+                                "assigning to initialized SSAtemp");
+                    }
                 }
             }
-        } else {
-            let dst = self.codegen_place(bx, dst);
-            self.codegen_transmute_into(bx, src, dst);
+            _ => {
+                let dst = self.codegen_place(bx, dst);
+                self.codegen_transmute_into(bx, src, dst);
+            }
         }
     }
 
