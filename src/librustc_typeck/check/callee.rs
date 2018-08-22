@@ -20,6 +20,7 @@ use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoB
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
 use syntax_pos::Span;
+use errors::Applicability;
 
 use rustc::hir;
 
@@ -234,10 +235,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(call_expr.span, "not a function");
 
                 if let Some(ref path) = unit_variant {
-                    err.span_suggestion(call_expr.span,
-                                        &format!("`{}` is a unit variant, you need to write it \
-                                                  without the parenthesis", path),
-                                        path.to_string());
+                    err.span_suggestion_with_applicability(
+                        call_expr.span,
+                        &format!("`{}` is a unit variant, you need to write it \
+                                 without the parenthesis", path),
+                        path.to_string(),
+                        Applicability::MachineApplicable
+                    );
                 }
 
                 if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
