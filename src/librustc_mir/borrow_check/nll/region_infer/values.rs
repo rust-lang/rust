@@ -21,14 +21,9 @@ crate struct RegionValueElements {
     /// For each basic block, how many points are contained within?
     statements_before_block: IndexVec<BasicBlock, usize>,
 
-    /// Map backward from each point into to one of two possible values:
-    ///
-    /// - `None`: if this point index represents a Location with non-zero index
-    /// - `Some(bb)`: if this point index represents a Location with zero index
-    ///
-    /// NB. It may be better to just map back to a full `Location`. We
-    /// should probably try that.
-    basic_block_heads: IndexVec<PointIndex, Option<BasicBlock>>,
+    /// Map backward from each point to the basic block that it
+    /// belongs to.
+    basic_blocks: IndexVec<PointIndex, BasicBlock>,
 
     num_points: usize,
 }
@@ -51,16 +46,14 @@ impl RegionValueElements {
         );
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
-        let mut basic_block_heads: IndexVec<PointIndex, Option<BasicBlock>> =
-            (0..num_points).map(|_| None).collect();
-        for (bb, &first_point) in statements_before_block.iter_enumerated() {
-            let first_point = PointIndex::new(first_point);
-            basic_block_heads[first_point] = Some(bb);
+        let mut basic_blocks = IndexVec::with_capacity(num_points);
+        for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+            basic_blocks.extend((0 .. bb_data.statements.len() + 1).map(|_| bb));
         }
 
         Self {
             statements_before_block,
-            basic_block_heads,
+            basic_blocks,
             num_points,
         }
     }
@@ -86,22 +79,13 @@ impl RegionValueElements {
         PointIndex::new(start_index)
     }
 
-    /// Converts a `PointIndex` back to a location. O(N) where N is
-    /// the number of blocks; could be faster if we ever cared.
+    /// Converts a `PointIndex` back to a location. O(1).
     crate fn to_location(&self, index: PointIndex) -> Location {
         assert!(index.index() < self.num_points);
-
-        let mut statement_index = 0;
-
-        for opt_bb in self.basic_block_heads.raw[..= index.index()].iter().rev() {
-            if let &Some(block) = opt_bb {
-                return Location { block, statement_index };
-            }
-
-            statement_index += 1;
-        }
-
-        bug!("did not find basic block as expected for index = {:?}", index)
+        let block = self.basic_blocks[index];
+        let start_index = self.statements_before_block[block];
+        let statement_index = index.index() - start_index;
+        Location { block, statement_index }
     }
 
     /// Sometimes we get point-indices back from bitsets that may be
@@ -119,23 +103,20 @@ impl RegionValueElements {
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
-        match self.basic_block_heads[index] {
+        let Location { block, statement_index } = self.to_location(index);
+        if statement_index == 0 {
             // If this is a basic block head, then the predecessors are
             // the the terminators of other basic blocks
-            Some(bb_head) => {
-                stack.extend(
-                    mir
-                        .predecessors_for(bb_head)
-                        .iter()
-                        .map(|&pred_bb| mir.terminator_loc(pred_bb))
-                        .map(|pred_loc| self.point_from_location(pred_loc)),
-                );
-            }
-
+            stack.extend(
+                mir
+                    .predecessors_for(block)
+                    .iter()
+                    .map(|&pred_bb| mir.terminator_loc(pred_bb))
+                    .map(|pred_loc| self.point_from_location(pred_loc)),
+            );
+        } else {
             // Otherwise, the pred is just the previous statement
-            None => {
-                stack.push(PointIndex::new(index.index() - 1));
-            }
+            stack.push(PointIndex::new(index.index() - 1));
         }
     }
 }
