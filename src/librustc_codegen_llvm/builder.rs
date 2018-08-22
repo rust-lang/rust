@@ -489,7 +489,12 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }
     }
 
-    fn atomic_load(&self, ptr: &'ll Value, order: traits::AtomicOrdering, align: Align) -> &'ll Value {
+    fn atomic_load(
+        &self,
+        ptr: &'ll Value,
+        order: traits::AtomicOrdering,
+        align: Align
+    ) -> &'ll Value {
         self.count_insn("load.atomic");
         unsafe {
             let load = llvm::LLVMRustBuildAtomicLoad(
