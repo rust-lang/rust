@@ -433,23 +433,20 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
-        let addr = self.expect_addr();
-        let layout = self.layout();
-        if layout.is_unsized() {
-            unimpl!("unsized place_field");
-        }
-
-        match layout.ty.sty {
+        match self.layout().ty.sty {
             ty::Array(elem_ty, _) => {
                 let elem_layout = fx.layout_of(elem_ty);
+
                 let offset = fx
                     .bcx
                     .ins()
                     .imul_imm(index, elem_layout.size.bytes() as i64);
+
+                let addr = self.expect_addr();
                 CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
             }
-            ty::Slice(_elem_ty) => unimplemented!("place_index(TySlice)"),
-            _ => bug!("place_index({:?})", layout.ty),
+            ty::Slice(_elem_ty) => unimpl!("place_index(TySlice)"),
+            _ => bug!("place_index({:?})", self.layout().ty),
         }
     }
 

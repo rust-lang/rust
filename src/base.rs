@@ -474,7 +474,15 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         to.write_cvalue(fx, operand);
                     }
                 }
-                Rvalue::Len(lval) => unimpl!("rval len {:?}", lval),
+                Rvalue::Len(place) => {
+                    let place = trans_place(fx, place);
+                    let size = match place {
+                        CPlace::Addr(_, size, _) => size.unwrap(),
+                        CPlace::Var(_, _) => unreachable!(),
+                    };
+                    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+                    lval.write_cvalue(fx, CValue::ByVal(size, usize_layout));
+                }
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                     assert!(
