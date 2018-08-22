@@ -287,11 +287,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 offsets[usize::try_from(field).unwrap()],
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len();
-                assert!(field < len, "Tried to access element {} of array/slice with length {}", field, len);
+                assert!(field < len,
+                        "Tried to access element {} of array/slice with length {}", field, len);
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
-                assert!(field < count as u64, "Tried to access field {} of union with {} fields", field, count);
+                assert!(field < count as u64,
+                        "Tried to access field {} of union with {} fields", field, count);
                 // Offset is always 0
                 Size::from_bytes(0)
             }
@@ -604,7 +606,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Value::ScalarPair(a_val, b_val) => {
                 let (a, b) = match dest.layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}", dest.layout)
+                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}",
+                              dest.layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let (a_align, b_align) = (a.align(&self), b.align(&self));
@@ -770,7 +773,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Turn a place that is a dyn trait (i.e., PlaceExtra::Vtable and the appropriate layout)
     /// or a slice into the specific fixed-size place and layout that is given by the vtable/len.
     /// This "unpacks" the existential quantifier, so to speak.
-    pub fn unpack_unsized_mplace(&self, mplace: MPlaceTy<'tcx>) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+    pub fn unpack_unsized_mplace(&self, mplace: MPlaceTy<'tcx>)
+        -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         trace!("Unpacking {:?} ({:?})", *mplace, mplace.layout.ty);
         let layout = match mplace.extra {
             PlaceExtra::Vtable(vtable) => {

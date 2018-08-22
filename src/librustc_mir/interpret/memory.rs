@@ -241,7 +241,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         };
 
-        let alloc_kind = self.alloc_kind.remove(&ptr.alloc_id).expect("alloc_map out of sync with alloc_kind");
+        let alloc_kind = self.alloc_kind
+                        .remove(&ptr.alloc_id)
+                        .expect("alloc_map out of sync with alloc_kind");
 
         // It is okay for us to still holds locks on deallocation -- for example, we could store
         // data we own in a local, and the local could be deallocated (from StorageDead) before the
@@ -259,7 +261,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         if let Some((size, align)) = size_and_align {
             if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
-                return err!(IncorrectAllocationInformation(size, Size::from_bytes(alloc.bytes.len() as u64), align, alloc.align));
+                let bytes = Size::from_bytes(alloc.bytes.len() as u64);
+                return err!(IncorrectAllocationInformation(size,
+                                                           bytes,
+                                                           align,
+                                                           alloc.align));
             }
         }
 
@@ -678,7 +684,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     relocations
                     .iter()
                     .map(|&(offset, alloc_id)| {
-                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64), alloc_id)
+                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64),
+                    alloc_id)
                     })
                 );
             }
@@ -707,11 +714,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 }
 
                 for i in 0..length {
-                    ptr::copy(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                    ptr::copy(src_bytes,
+                              dest_bytes.offset((size.bytes() * i) as isize),
+                              size.bytes() as usize);
                 }
             } else {
                 for i in 0..length {
-                    ptr::copy_nonoverlapping(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                    ptr::copy_nonoverlapping(src_bytes,
+                                             dest_bytes.offset((size.bytes() * i) as isize),
+                                             size.bytes() as usize);
                 }
             }
         }
@@ -778,7 +789,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// Read a *non-ZST* scalar
-    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size)
+        -> EvalResult<'tcx, ScalarMaybeUndef> {
         // Make sure we don't read part of a pointer as a pointer
         self.check_relocation_edges(ptr, size)?;
         let endianness = self.endianness();
@@ -801,7 +813,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(ScalarMaybeUndef::Scalar(Pointer::new(alloc_id, Size::from_bytes(bits as u64)).into())),
+                Some(&alloc_id) => {
+                    let ptr = Pointer::new(alloc_id, Size::from_bytes(bits as u64));
+                    return Ok(ScalarMaybeUndef::Scalar(ptr.into()))
+                }
                 None => {},
             }
         }
@@ -812,7 +827,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }))
     }
 
-    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align)
+        -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
@@ -865,7 +881,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef)
+        -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
         self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
     }
@@ -1009,7 +1026,9 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M>;
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M>
+where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         self
@@ -1021,7 +1040,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Me
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M>
+where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         &mut self.memory
@@ -1033,7 +1054,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Ev
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M>
+where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout

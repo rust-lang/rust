@@ -92,7 +92,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.memory.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
-        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.to_bits(pointer_size)? as u64;
+        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?,pointer_align)?
+            .to_bits(pointer_size)? as u64;
         let align = self.memory.read_ptr_sized(
             vtable.offset(pointer_size * 2, self)?,
             pointer_align

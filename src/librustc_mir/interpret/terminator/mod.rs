@@ -55,7 +55,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op
-                    let const_int = Scalar::Bits { bits: const_int, size: discr.layout.size.bytes() as u8 };
+                    let const_int = Scalar::Bits {
+                        bits: const_int,
+                        size: discr.layout.size.bytes() as u8
+                    };
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
                         discr,
                         ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
@@ -154,7 +157,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_and_read_value(cond, None)?.to_scalar()?.to_bool()?;
+                let cond_val = self.eval_operand_and_read_value(cond, None)?
+                    .to_scalar()?
+                    .to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
@@ -239,15 +244,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // We need to allow what comes up when a non-capturing closure is cast to a fn().
         match (sig.abi, real_sig.abi) {
             (Abi::Rust, Abi::RustCall) // check the ABIs.  This makes the test here non-symmetric.
-                if check_ty_compat(sig.output(), real_sig.output()) && real_sig.inputs_and_output.len() == 3 => {
+                if check_ty_compat(sig.output(), real_sig.output())
+                    && real_sig.inputs_and_output.len() == 3 => {
                 // First argument of real_sig must be a ZST
                 let fst_ty = real_sig.inputs_and_output[0];
                 if self.layout_of(fst_ty)?.is_zst() {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
+<<<<<<< HEAD
                         ty::Tuple(tys) if sig.inputs().len() == tys.len() =>
                             if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+=======
+                        ty::TyTuple(tys) if sig.inputs().len() == tys.len() =>
+                            if sig.inputs()
+                                  .iter()
+                                  .zip(tys)
+                                  .all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+>>>>>>> 7d30ba9... Fixup long code lines
                                 return Ok(true)
                             },
                         _ => {}
@@ -304,7 +318,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         trace!(
                             "args: {:#?}",
                             self.frame().mir.args_iter().zip(args.iter())
-                                .map(|(local, arg)| (local, **arg, arg.layout.ty)).collect::<Vec<_>>()
+                                .map(|(local, arg)| (local, **arg, arg.layout.ty))
+                                .collect::<Vec<_>>()
                         );
                         let local = arg_locals.nth(1).unwrap();
                         for (i, &op) in args.into_iter().enumerate() {
@@ -325,7 +340,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::Item(_) => {
                 // Push the stack frame, and potentially be entirely done if the call got hooked
                 if M::eval_fn_call(self, instance, destination, args, span)? {
-                    // TODO: Can we make it return the frame to push, instead
+                    // FIXME: Can we make it return the frame to push, instead
                     // of the hook doing half of the work and us doing the argument
                     // initialization?
                     return Ok(());

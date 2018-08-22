@@ -68,7 +68,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             layout::Abi::Scalar(ref scalar) => scalar.value,
             _ => return err!(TypeNotPrimitive(right_layout.ty)),
         };
-        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
+        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+        bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers
         if !left_kind.is_float() && !right_kind.is_float() {

@@ -221,7 +221,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let variant = self.read_discriminant_as_variant_index(dest.into())?;
                 let inner_dest = self.mplace_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
-                path.push(PathElem::Field(dest.layout.ty.ty_adt_def().unwrap().variants[variant].name));
+                path.push(PathElem::Field(dest.layout.ty
+                                          .ty_adt_def()
+                                          .unwrap()
+                                          .variants[variant].name));
                 trace!("variant layout: {:#?}", dest.layout);
                 (variant, inner_dest)
             },
