@@ -851,7 +851,7 @@ impl Step for Src {
         t!(fs::create_dir_all(&dst_src));
 
         let src_files = [
-            "src/Cargo.lock",
+            "Cargo.lock",
         ];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies)
@@ -949,6 +949,8 @@ impl Step for PlainSourceTarball {
             "configure",
             "x.py",
             "config.toml.example",
+            "Cargo.toml",
+            "Cargo.lock",
         ];
         let src_dirs = [
             "src",
@@ -992,7 +994,7 @@ impl Step for PlainSourceTarball {
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
-               .current_dir(&plain_dst_src.join("src"));
+               .current_dir(&plain_dst_src);
             builder.run(&mut cmd);
         }
 

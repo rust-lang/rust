@@ -1934,6 +1934,7 @@ impl Step for Distcheck {
                 .arg("generate-lockfile")
                 .arg("--manifest-path")
                 .arg(&toml)
+                .env("__CARGO_TEST_ROOT", &dir)
                 .current_dir(&dir),
         );
     }
