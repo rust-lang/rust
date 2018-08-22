@@ -309,8 +309,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Ref(_, _, place) => {
                     let place = trans_place(fx, place);
-                    let addr = place.expect_addr();
-                    lval.write_cvalue(fx, CValue::ByVal(addr, dest_layout));
+                    place.write_place_ref(fx, lval);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
@@ -893,13 +892,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
             match projection.elem {
-                ProjectionElem::Deref => {
-                    let layout = fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx));
-                    if layout.is_unsized() {
-                        unimpl!("Unsized places are not yet implemented");
-                    }
-                    CPlace::Addr(base.to_cvalue(fx).load_value(fx), layout)
-                }
+                ProjectionElem::Deref => base.place_deref(fx),
                 ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
                 ProjectionElem::Index(local) => {
                     let index = fx.get_local_place(local).to_cvalue(fx).load_value(fx);

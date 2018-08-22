@@ -28,6 +28,11 @@ fn get_pass_mode<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
     is_return: bool,
 ) -> PassMode {
+    assert!(
+        !tcx.layout_of(ParamEnv::reveal_all().and(ty))
+            .unwrap()
+            .is_unsized()
+    );
     if ty.sty == tcx.mk_nil().sty {
         if is_return {
             //if false {
@@ -312,7 +317,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             //unimplemented!("pass mode nopass");
             fx.local_map.insert(
                 RETURN_PLACE,
-                CPlace::Addr(null, fx.layout_of(fx.return_type())),
+                CPlace::Addr(null, None, fx.layout_of(fx.return_type())),
             );
         }
         PassMode::ByVal(ret_ty) => {
@@ -321,8 +326,10 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 .insert(RETURN_PLACE, CPlace::Var(RETURN_PLACE, ret_layout));
         }
         PassMode::ByRef => {
-            fx.local_map
-                .insert(RETURN_PLACE, CPlace::Addr(ret_param.unwrap(), ret_layout));
+            fx.local_map.insert(
+                RETURN_PLACE,
+                CPlace::Addr(ret_param.unwrap(), None, ret_layout),
+            );
         }
     }
 

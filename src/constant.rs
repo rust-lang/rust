@@ -179,7 +179,8 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
         .ins()
         .global_value(fx.module.pointer_type(), local_data_id);
     let layout = fx.layout_of(fx.monomorphize(&ty));
-    CPlace::Addr(global_ptr, layout)
+    assert!(!layout.is_unsized(), "unsized statics aren't supported");
+    CPlace::Addr(global_ptr, None, layout)
 }
 
 fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(

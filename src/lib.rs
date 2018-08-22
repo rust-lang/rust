@@ -63,7 +63,7 @@ mod prelude {
     pub use rustc::mir::interpret::AllocId;
     pub use rustc::mir::*;
     pub use rustc::session::{config::CrateType, Session};
-    pub use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
+    pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
