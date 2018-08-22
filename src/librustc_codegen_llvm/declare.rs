@@ -32,7 +32,7 @@ use attributes;
 use context::CodegenCx;
 use common;
 use type_::Type;
-use value::{Value, ValueTrait};
+use value::Value;
 
 
 /// Declare a global value.
@@ -55,12 +55,12 @@ pub fn declare_global(
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn<Value : ?Sized>(
+fn declare_raw_fn(
     cx: &CodegenCx<'ll, '_, &'ll Value>,
     name: &str,
     callconv: llvm::CallConv,
     ty: &'ll Type,
-) -> &'ll Value where Value : ValueTrait {
+) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = SmallCStr::new(name);
     let llfn = unsafe {
@@ -109,7 +109,7 @@ fn declare_raw_fn<Value : ?Sized>(
 
     attributes::non_lazy_bind(cx.sess(), llfn);
 
-    Value::of_llvm(llfn)
+    llfn
 }
 
 
@@ -120,11 +120,11 @@ fn declare_raw_fn<Value : ?Sized>(
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-pub fn declare_cfn<Value : ?Sized>(
+pub fn declare_cfn(
     cx: &CodegenCx<'ll, '_, &'ll Value>,
     name: &str,
     fn_type: &'ll Type
-) -> &'ll Value where Value : ValueTrait {
+) -> &'ll Value {
     declare_raw_fn(cx, name, llvm::CCallConv, fn_type)
 }
 

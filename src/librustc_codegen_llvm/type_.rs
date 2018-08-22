@@ -16,7 +16,7 @@ use llvm;
 use llvm::{Bool, False, True, TypeKind};
 
 use context::CodegenCx;
-use value::{Value, ValueTrait};
+use value::Value;
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
@@ -41,143 +41,143 @@ impl fmt::Debug for Type {
 }
 
 impl Type {
-    pub fn void<Value : ?Sized>(
+    pub fn void(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMVoidTypeInContext(cx.llcx)
         }
     }
 
-    pub fn metadata<Value : ?Sized>(
+    pub fn metadata(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMRustMetadataTypeInContext(cx.llcx)
         }
     }
 
-    pub fn i1<Value : ?Sized>(
+    pub fn i1(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMInt1TypeInContext(cx.llcx)
         }
     }
 
-    pub fn i8<Value : ?Sized>(
+    pub fn i8(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMInt8TypeInContext(cx.llcx)
         }
     }
 
-    pub fn i8_llcx<Value : ?Sized>(llcx: &llvm::Context) -> &Type where Value : ValueTrait {
+    pub fn i8_llcx(llcx: &llvm::Context) -> &Type {
         unsafe {
             llvm::LLVMInt8TypeInContext(llcx)
         }
     }
 
-    pub fn i16<Value : ?Sized>(
-        cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type where Value : ValueTrait {
+    pub fn i16(
+        cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
         unsafe {
 
             llvm::LLVMInt16TypeInContext(cx.llcx)
         }
     }
 
-    pub fn i32<Value : ?Sized>(
+    pub fn i32(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMInt32TypeInContext(cx.llcx)
         }
     }
 
-    pub fn i64<Value : ?Sized>(
+    pub fn i64(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMInt64TypeInContext(cx.llcx)
         }
     }
 
-    pub fn i128<Value : ?Sized>(
+    pub fn i128(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMIntTypeInContext(cx.llcx, 128)
         }
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
-    pub fn ix<Value : ?Sized>(
+    pub fn ix(
         cx: &CodegenCx<'ll, '_, &'ll Value>,
         num_bits: u64
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMIntTypeInContext(cx.llcx, num_bits as c_uint)
         }
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
-    pub fn ix_llcx<Value : ?Sized>(
+    pub fn ix_llcx(
         llcx: &llvm::Context,
         num_bits: u64
-    ) -> &Type where Value : ValueTrait {
+    ) -> &Type {
         unsafe {
             llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint)
         }
     }
 
-    pub fn f32<Value : ?Sized>(
+    pub fn f32(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMFloatTypeInContext(cx.llcx)
         }
     }
 
-    pub fn f64<Value : ?Sized>(
+    pub fn f64(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMDoubleTypeInContext(cx.llcx)
         }
     }
 
-    pub fn bool<Value : ?Sized>(
+    pub fn bool(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         Type::i8(cx)
     }
 
-    pub fn char<Value : ?Sized>(
+    pub fn char(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         Type::i32(cx)
     }
 
-    pub fn i8p<Value : ?Sized>(
+    pub fn i8p(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait {
+    ) -> &'ll Type {
         Type::i8(cx).ptr_to()
     }
 
-    pub fn i8p_llcx<Value : ?Sized>(llcx: &llvm::Context) -> &Type where Value : ValueTrait  {
-        Type::i8_llcx::<Value>(llcx).ptr_to()
+    pub fn i8p_llcx(llcx: &llvm::Context) -> &Type {
+        Type::i8_llcx(llcx).ptr_to()
     }
 
-    pub fn isize<Value : ?Sized>(
+    pub fn isize(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         cx.isize_ty
     }
 
-    pub fn c_int<Value : ?Sized>(
+    pub fn c_int(
         cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         match &cx.tcx.sess.target.target.target_c_int_width[..] {
             "16" => Type::i16(cx),
             "32" => Type::i32(cx),
@@ -186,10 +186,10 @@ impl Type {
         }
     }
 
-    pub fn int_from_ty<Value : ?Sized>(
+    pub fn int_from_ty(
         cx: &CodegenCx<'ll, '_, &'ll Value>,
         t: ast::IntTy
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         match t {
             ast::IntTy::Isize => cx.isize_ty,
             ast::IntTy::I8 => Type::i8(cx),
@@ -200,10 +200,10 @@ impl Type {
         }
     }
 
-    pub fn uint_from_ty<Value : ?Sized>(
+    pub fn uint_from_ty(
         cx: &CodegenCx<'ll, '_, &'ll Value>,
         t: ast::UintTy
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         match t {
             ast::UintTy::Usize => cx.isize_ty,
             ast::UintTy::U8 => Type::i8(cx),
@@ -214,41 +214,41 @@ impl Type {
         }
     }
 
-    pub fn float_from_ty<Value : ?Sized>(
+    pub fn float_from_ty(
         cx: &CodegenCx<'ll, '_, &'ll Value>,
         t: ast::FloatTy
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         match t {
             ast::FloatTy::F32 => Type::f32(cx),
             ast::FloatTy::F64 => Type::f64(cx),
         }
     }
 
-    pub fn func<Value : ?Sized>(
+    pub fn func(
         args: &[&'ll Type],
         ret: &'ll Type
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMFunctionType(ret, args.as_ptr(),
                                    args.len() as c_uint, False)
         }
     }
 
-    pub fn variadic_func<Value : ?Sized>(
+    pub fn variadic_func(
         args: &[&'ll Type],
         ret: &'ll Type
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMFunctionType(ret, args.as_ptr(),
                                    args.len() as c_uint, True)
         }
     }
 
-    pub fn struct_<Value : ?Sized>(
+    pub fn struct_(
         cx: &CodegenCx<'ll, '_, &'ll Value>,
         els: &[&'ll Type],
         packed: bool
-    ) -> &'ll Type where Value : ValueTrait  {
+    ) -> &'ll Type {
         unsafe {
             llvm::LLVMStructTypeInContext(cx.llcx, els.as_ptr(),
                                           els.len() as c_uint,
@@ -264,13 +264,13 @@ impl Type {
     }
 
 
-    pub fn array<Value : ?Sized>(ty: &Type, len: u64) -> &Type where Value : ValueTrait  {
+    pub fn array(ty: &Type, len: u64) -> &Type {
         unsafe {
             llvm::LLVMRustArrayType(ty, len)
         }
     }
 
-    pub fn vector<Value : ?Sized>(ty: &Type, len: u64) -> &Type where Value : ValueTrait  {
+    pub fn vector(ty: &Type, len: u64) -> &Type {
         unsafe {
             llvm::LLVMVectorType(ty, len as c_uint)
         }
@@ -365,7 +365,7 @@ impl Type {
         let size = size.bytes();
         let unit_size = unit.size().bytes();
         assert_eq!(size % unit_size, 0);
-        Type::array::<Value>(Type::from_integer(cx, unit), size / unit_size)
+        Type::array(Type::from_integer(cx, unit), size / unit_size)
     }
 
     pub fn x86_mmx(cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {

@@ -17,7 +17,7 @@ use rustc_data_structures::sync::Lrc;
 use base;
 use common::{CodegenCx, C_undef, C_usize};
 use builder::{Builder, MemFlags};
-use value::{Value, ValueTrait};
+use value::Value;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use glue;
@@ -64,7 +64,7 @@ pub struct OperandRef<'tcx, V> {
     pub layout: TyLayout<'tcx>,
 }
 
-impl<Value : ?Sized> fmt::Debug for OperandRef<'tcx, &'ll Value> where Value : ValueTrait {
+impl fmt::Debug for OperandRef<'tcx, &'ll Value> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
@@ -280,10 +280,8 @@ impl OperandValue<&'ll Value> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Value : ?Sized> OperandValue<&'ll Value> where
-    Value : ValueTrait,
-    Builder<'a, 'll, 'tcx, &'ll Value>:
-        BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
+impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> where
+    Builder<'a, 'll, 'tcx, &'ll Value>: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
 {
     pub fn nontemporal_store(
         self,

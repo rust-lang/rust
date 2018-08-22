@@ -56,7 +56,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_, &'
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
         unsafe {
-            let llvm_type = Type::array::<Value>(Type::i8(cx),
+            let llvm_type = Type::array(Type::i8(cx),
                                         section_contents.len() as u64);
 
             let section_var = declare::define_global(cx, section_var_name,

@@ -23,7 +23,7 @@ use consts;
 use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
-use value::{Value, ValueTrait};
+use value::Value;
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -113,9 +113,9 @@ impl Funclet<'ll> {
     }
 }
 
-pub fn val_ty<Value : ?Sized>(v: &'ll Value) -> &'ll Type where Value : ValueTrait {
+pub fn val_ty(v: &'ll Value) -> &'ll Type {
     unsafe {
-        llvm::LLVMTypeOf(v.to_llvm())
+        llvm::LLVMTypeOf(v)
     }
 }
 
@@ -126,21 +126,21 @@ pub fn C_null(t: &'ll Type) -> &'ll Value {
     }
 }
 
-pub fn C_undef<Value : ?Sized>(t: &'ll Type) -> &'ll Value where Value : ValueTrait {
+pub fn C_undef(t: &'ll Type) -> &'ll Value {
     unsafe {
-        Value::of_llvm(llvm::LLVMGetUndef(t))
+        llvm::LLVMGetUndef(t)
     }
 }
 
-pub fn C_int<Value : ?Sized>(t: &'ll Type, i: i64) -> &'ll Value where Value : ValueTrait {
+pub fn C_int(t: &'ll Type, i: i64) -> &'ll Value {
     unsafe {
-        Value::of_llvm(llvm::LLVMConstInt(t, i as u64, True))
+        llvm::LLVMConstInt(t, i as u64, True)
     }
 }
 
-pub fn C_uint<Value : ?Sized>(t: &'ll Type, i: u64) -> &'ll Value where Value : ValueTrait {
+pub fn C_uint(t: &'ll Type, i: u64) -> &'ll Value {
     unsafe {
-        Value::of_llvm(llvm::LLVMConstInt(t, i, False))
+        llvm::LLVMConstInt(t, i, False)
     }
 }
 
@@ -151,17 +151,11 @@ pub fn C_uint_big(t: &'ll Type, u: u128) -> &'ll Value {
     }
 }
 
-pub fn C_bool<Value : ?Sized>(
-    cx: &CodegenCx<'ll, '_, &'ll Value>,
-    val: bool
-) -> &'ll Value where Value : ValueTrait {
+pub fn C_bool(cx: &CodegenCx<'ll, '_, &'ll Value>, val: bool) -> &'ll Value {
     C_uint(Type::i1(cx), val as u64)
 }
 
-pub fn C_i32<Value : ?Sized>(
-    cx: &CodegenCx<'ll, '_, &'ll Value>,
-    i: i32
-) -> &'ll Value where Value : ValueTrait {
+pub fn C_i32(cx: &CodegenCx<'ll, '_, &'ll Value>, i: i32) -> &'ll Value {
     C_int(Type::i32(cx), i as i64)
 }
 
@@ -173,10 +167,7 @@ pub fn C_u64(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u64) -> &'ll Value {
     C_uint(Type::i64(cx), i)
 }
 
-pub fn C_usize<Value : ?Sized>(
-    cx: &CodegenCx<'ll, '_, &'ll Value>,
-    i: u64
-) -> &'ll Value where Value : ValueTrait {
+pub fn C_usize(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u64) -> &'ll Value {
     let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow

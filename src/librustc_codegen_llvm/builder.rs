@@ -755,7 +755,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = Type::func::<Value>(&argtys[..], output);
+        let fty = Type::func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
@@ -833,9 +833,9 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
             let elt_ty = val_ty(elt);
-            let undef = llvm::LLVMGetUndef(Type::vector::<Value>(elt_ty, num_elts as u64));
+            let undef = llvm::LLVMGetUndef(Type::vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, C_i32(self.cx, 0));
-            let vec_i32_ty = Type::vector::<Value>(Type::i32(self.cx), num_elts as u64);
+            let vec_i32_ty = Type::vector(Type::i32(self.cx), num_elts as u64);
             self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
