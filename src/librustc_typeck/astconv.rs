@@ -1132,7 +1132,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             traits::transitive_bounds(tcx, &bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
-        let param_name = tcx.ty_param_name(ty_param_def_id);
+        let param_name = tcx.generic_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
                                       assoc_name,
@@ -1406,7 +1406,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let param_owner_def_id = tcx.ty_param_owner(did);
+                let param_owner_def_id = tcx.generic_param_owner(did);
                 let generics = tcx.generics_of(param_owner_def_id);
                 let index = generics.param_def_id_to_index[&did];
                 tcx.mk_ty_param(generics.param_at(index, tcx))

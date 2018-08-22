@@ -213,7 +213,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt, (_, def_id): (DefId, DefId)) -> String {
         format!("computing the bounds for type parameter `{}`",
-                tcx.ty_param_name(def_id))
+                tcx.generic_param_name(def_id))
     }
 }
 

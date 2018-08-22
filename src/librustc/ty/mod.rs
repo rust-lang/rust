@@ -2637,7 +2637,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn ty_param_name(self, id: DefId) -> InternedString {
+    pub fn generic_param_name(self, id: DefId) -> InternedString {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
             DefPathData::ImplTrait => {
@@ -2688,7 +2688,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn ty_param_owner(self, id: DefId) -> DefId {
+    pub fn generic_param_owner(self, id: DefId) -> DefId {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
             DefPathData::Trait(_) |

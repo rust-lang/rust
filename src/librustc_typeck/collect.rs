@@ -244,7 +244,7 @@ fn type_param_predicates<'a, 'tcx>(
     // written inline like `<T:Foo>` or in a where clause like
     // `where T:Foo`.
 
-    let param_owner_def_id = tcx.ty_param_owner(def_id);
+    let param_owner_def_id = tcx.generic_param_owner(def_id);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.param_def_id_to_index[&def_id];
     let ty = tcx.mk_ty_param(generics.param_at(index, tcx));

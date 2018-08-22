@@ -1267,10 +1267,10 @@ define_print! {
 define_print! {
     () ty::ParamTy, (self, f, cx) {
         display {
-            write!(f, "{}", ty::tls::with(|tcx| tcx.ty_param_name(self.def_id)))
+            write!(f, "{}", ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)))
         }
         debug {
-            write!(f, "{}/#{}", ty::tls::with(|tcx| tcx.ty_param_name(self.def_id)), self.idx)
+            write!(f, "{}/#{}", ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)), self.idx)
         }
     }
 }

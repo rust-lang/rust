@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let ty_vars = self.type_variables.borrow();
             if let TypeVariableOrigin::TypeParameterDefinition(_, def_id) =
                 *ty_vars.var_origin(ty_vid) {
-                self.tcx.ty_param_name(def_id).to_string()
+                self.tcx.generic_param_name(def_id).to_string()
             } else {
                 ty.to_string()
             }
