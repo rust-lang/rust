@@ -205,7 +205,7 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
              .replace("\t", " ")
              .replace("{", "")
              .replace("}", "")
-             .split(" ")
+             .split(' ')
              .filter(|s| s.len() > 0)
              .collect::<Vec<&str>>()
              .join(" ")

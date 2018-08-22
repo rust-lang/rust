@@ -89,7 +89,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
             (&user_path[..], None)
         };
 
-        let mut cgu_path_components = user_path.split("-").collect::<Vec<_>>();
+        let mut cgu_path_components = user_path.split('-').collect::<Vec<_>>();
 
         // Remove the crate name
         assert_eq!(cgu_path_components.remove(0), crate_name);
