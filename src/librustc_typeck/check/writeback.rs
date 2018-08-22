@@ -492,6 +492,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 })
             };
 
+            if let ty::Anon(defin_ty_def_id, _substs) = definition_ty.sty {
+                if def_id == defin_ty_def_id {
+                  // Concrete type resolved to the existential type itself
+                  // Force a cycle error
+                  self.tcx().at(span).type_of(defin_ty_def_id);
+                }
+            }
+
             let old = self.tables.concrete_existential_types.insert(def_id, definition_ty);
             if let Some(old) = old {
                 if old != definition_ty {
