@@ -83,7 +83,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                                              .expect("Cannot get impl trait");
 
                     match trait_ref.self_ty().sty {
-                        ty::TyParam(_) => {},
+                        ty::Param(_) => {},
                         _ => return,
                     }
 

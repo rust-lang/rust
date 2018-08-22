@@ -697,7 +697,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                              Some(nl.to_string()),
                                                              Origin::Ast);
                 let need_note = match lp.ty.sty {
-                    ty::TyKind::Closure(id, _) => {
+                    ty::Closure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
                         if let Some((span, name)) = self.tables.closure_kind_origins().get(hir_id) {

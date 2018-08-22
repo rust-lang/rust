@@ -477,12 +477,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (RPtr(p), Int(_)) |
             (RPtr(p), Float) => {
                 match p.ty.sty {
-                    ty::TyKind::Int(_) |
-                    ty::TyKind::Uint(_) |
-                    ty::TyKind::Float(_) => {
+                    ty::Int(_) |
+                    ty::Uint(_) |
+                    ty::Float(_) => {
                         Err(CastError::NeedDeref)
                     }
-                    ty::TyKind::Infer(t) => {
+                    ty::Infer(t) => {
                         match t {
                             ty::InferTy::IntVar(_) |
                             ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),

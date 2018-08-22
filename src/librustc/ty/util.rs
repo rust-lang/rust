@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     UnpackedKind::Type(&ty::TyS {
-                        sty: ty::TyKind::Param(ref pt), ..
+                        sty: ty::Param(ref pt), ..
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }

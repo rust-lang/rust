@@ -236,7 +236,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_field_access(&lhs, expr.id);
             }
             hir::ExprKind::Struct(_, ref fields, _) => {
-                if let ty::TyKind::Adt(ref adt, _) = self.tables.expr_ty(expr).sty {
+                if let ty::Adt(ref adt, _) = self.tables.expr_ty(expr).sty {
                     self.mark_as_used_if_union(adt, fields);
                 }
             }
