@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::AnnNode::*;
-
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::source_map::{SourceMap, Spanned};
@@ -33,12 +31,12 @@ use std::iter::Peekable;
 use std::vec;
 
 pub enum AnnNode<'a> {
-    NodeName(&'a ast::Name),
-    NodeBlock(&'a hir::Block),
-    NodeItem(&'a hir::Item),
-    NodeSubItem(ast::NodeId),
-    NodeExpr(&'a hir::Expr),
-    NodePat(&'a hir::Pat),
+    Name(&'a ast::Name),
+    Block(&'a hir::Block),
+    Item(&'a hir::Item),
+    SubItem(ast::NodeId),
+    Expr(&'a hir::Expr),
+    Pat(&'a hir::Pat),
 }
 
 pub enum Nested {
@@ -529,7 +527,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
-        self.ann.pre(self, NodeItem(item))?;
+        self.ann.pre(self, AnnNode::Item(item))?;
         match item.node {
             hir::ItemKind::ExternCrate(orig_name) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
@@ -768,7 +766,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
             }
         }
-        self.ann.post(self, NodeItem(item))
+        self.ann.post(self, AnnNode::Item(item))
     }
 
     pub fn print_trait_ref(&mut self, t: &hir::TraitRef) -> io::Result<()> {
@@ -933,7 +931,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
-        self.ann.pre(self, NodeSubItem(ti.id))?;
+        self.ann.pre(self, AnnNode::SubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ti.span.lo())?;
         self.print_outer_attributes(&ti.attrs)?;
@@ -965,11 +963,11 @@ impl<'a> State<'a> {
                                            default.as_ref().map(|ty| &**ty))?;
             }
         }
-        self.ann.post(self, NodeSubItem(ti.id))
+        self.ann.post(self, AnnNode::SubItem(ti.id))
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
-        self.ann.pre(self, NodeSubItem(ii.id))?;
+        self.ann.pre(self, AnnNode::SubItem(ii.id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo())?;
         self.print_outer_attributes(&ii.attrs)?;
@@ -995,7 +993,7 @@ impl<'a> State<'a> {
                 self.print_associated_type(ii.ident, Some(bounds), None)?;
             }
         }
-        self.ann.post(self, NodeSubItem(ii.id))
+        self.ann.post(self, AnnNode::SubItem(ii.id))
     }
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
@@ -1055,7 +1053,7 @@ impl<'a> State<'a> {
             hir::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo())?;
-        self.ann.pre(self, NodeBlock(blk))?;
+        self.ann.pre(self, AnnNode::Block(blk))?;
         self.bopen()?;
 
         self.print_inner_attributes(attrs)?;
@@ -1072,7 +1070,7 @@ impl<'a> State<'a> {
             _ => (),
         }
         self.bclose_maybe_open(blk.span, indented, close_box)?;
-        self.ann.post(self, NodeBlock(blk))
+        self.ann.post(self, AnnNode::Block(blk))
     }
 
     fn print_else(&mut self, els: Option<&hir::Expr>) -> io::Result<()> {
@@ -1321,7 +1319,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(expr.span.lo())?;
         self.print_outer_attributes(&expr.attrs)?;
         self.ibox(indent_unit)?;
-        self.ann.pre(self, NodeExpr(expr))?;
+        self.ann.pre(self, AnnNode::Expr(expr))?;
         match expr.node {
             hir::ExprKind::Box(ref expr) => {
                 self.word_space("box")?;
@@ -1559,7 +1557,7 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }
         }
-        self.ann.post(self, NodeExpr(expr))?;
+        self.ann.post(self, AnnNode::Expr(expr))?;
         self.end()
     }
 
@@ -1606,7 +1604,7 @@ impl<'a> State<'a> {
         } else {
             self.s.word(&ident.as_str())?;
         }
-        self.ann.post(self, NodeName(&ident.name))
+        self.ann.post(self, AnnNode::Name(&ident.name))
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
@@ -1774,7 +1772,7 @@ impl<'a> State<'a> {
 
     pub fn print_pat(&mut self, pat: &hir::Pat) -> io::Result<()> {
         self.maybe_print_comment(pat.span.lo())?;
-        self.ann.pre(self, NodePat(pat))?;
+        self.ann.pre(self, AnnNode::Pat(pat))?;
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.node {
@@ -1928,7 +1926,7 @@ impl<'a> State<'a> {
                 self.s.word("]")?;
             }
         }
-        self.ann.post(self, NodePat(pat))
+        self.ann.post(self, AnnNode::Pat(pat))
     }
 
     fn print_arm(&mut self, arm: &hir::Arm) -> io::Result<()> {

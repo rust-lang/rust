@@ -355,33 +355,33 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
 impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
-            pprust::NodeExpr(_) => s.popen(),
+            pprust::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
-            pprust::NodeIdent(_) |
-            pprust::NodeName(_) => Ok(()),
+            pprust::AnnNode::Ident(_) |
+            pprust::AnnNode::Name(_) => Ok(()),
 
-            pprust::NodeItem(item) => {
+            pprust::AnnNode::Item(item) => {
                 s.s.space()?;
                 s.synth_comment(item.id.to_string())
             }
-            pprust::NodeSubItem(id) => {
+            pprust::AnnNode::SubItem(id) => {
                 s.s.space()?;
                 s.synth_comment(id.to_string())
             }
-            pprust::NodeBlock(blk) => {
+            pprust::AnnNode::Block(blk) => {
                 s.s.space()?;
                 s.synth_comment(format!("block {}", blk.id))
             }
-            pprust::NodeExpr(expr) => {
+            pprust::AnnNode::Expr(expr) => {
                 s.s.space()?;
                 s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
-            pprust::NodePat(pat) => {
+            pprust::AnnNode::Pat(pat) => {
                 s.s.space()?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
@@ -414,34 +414,34 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     }
     fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeExpr(_) => s.popen(),
+            pprust_hir::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
     fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeName(_) => Ok(()),
-            pprust_hir::NodeItem(item) => {
+            pprust_hir::AnnNode::Name(_) => Ok(()),
+            pprust_hir::AnnNode::Item(item) => {
                 s.s.space()?;
                 s.synth_comment(format!("node_id: {} hir local_id: {}",
                                         item.id, item.hir_id.local_id.0))
             }
-            pprust_hir::NodeSubItem(id) => {
+            pprust_hir::AnnNode::SubItem(id) => {
                 s.s.space()?;
                 s.synth_comment(id.to_string())
             }
-            pprust_hir::NodeBlock(blk) => {
+            pprust_hir::AnnNode::Block(blk) => {
                 s.s.space()?;
                 s.synth_comment(format!("block node_id: {} hir local_id: {}",
                                         blk.id, blk.hir_id.local_id.0))
             }
-            pprust_hir::NodeExpr(expr) => {
+            pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
                 s.synth_comment(format!("node_id: {} hir local_id: {}",
                                         expr.id, expr.hir_id.local_id.0))?;
                 s.pclose()
             }
-            pprust_hir::NodePat(pat) => {
+            pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space()?;
                 s.synth_comment(format!("pat node_id: {} hir local_id: {}",
                                         pat.id, pat.hir_id.local_id.0))
@@ -467,13 +467,13 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
-            pprust::NodeIdent(&ast::Ident { name, span }) => {
+            pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
                 s.s.space()?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
-            pprust::NodeName(&name) => {
+            pprust::AnnNode::Name(&name) => {
                 s.s.space()?;
                 s.synth_comment(name.as_u32().to_string())
             }
@@ -519,13 +519,13 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     }
     fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeExpr(_) => s.popen(),
+            pprust_hir::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
     fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeExpr(expr) => {
+            pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
                 s.s.word("as")?;
                 s.s.space()?;
