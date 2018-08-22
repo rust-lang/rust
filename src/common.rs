@@ -68,8 +68,7 @@ fn codegen_field<'a, 'tcx: 'a>(
     let field_offset = layout.fields.offset(field.index());
     let field_ty = layout.field(&*fx, field.index());
     if field_offset.bytes() > 0 {
-        let field_offset = fx.bcx.ins().iconst(fx.module.pointer_type(), field_offset.bytes() as i64);
-        (fx.bcx.ins().iadd(base, field_offset), field_ty)
+        (fx.bcx.ins().iadd_imm(base, field_offset.bytes() as i64), field_ty)
     } else {
         (base, field_ty)
     }
@@ -305,11 +304,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         match layout.ty.sty {
             TypeVariants::TyArray(elem_ty, _) => {
                 let elem_layout = fx.layout_of(elem_ty);
-                let size = fx
-                    .bcx
-                    .ins()
-                    .iconst(fx.module.pointer_type(), elem_layout.size.bytes() as i64);
-                let offset = fx.bcx.ins().imul(size, index);
+                let offset = fx.bcx.ins().imul_imm(index, elem_layout.size.bytes() as i64);
                 CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
             }
             TypeVariants::TySlice(_elem_ty) => unimplemented!("place_index(TySlice)"),
