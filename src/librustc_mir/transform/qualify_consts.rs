@@ -15,7 +15,7 @@
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
 use rustc_data_structures::bitvec::BitArray;
-use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
@@ -279,7 +279,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSetBuf<Local>>) {
+    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSet<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
 
         // Collect all the temps we need to promote.
-        let mut promoted_temps = IdxSetBuf::new_empty(self.temp_promotion_state.len());
+        let mut promoted_temps = IdxSet::new_empty(self.temp_promotion_state.len());
 
         for candidate in &self.promotion_candidates {
             match *candidate {
@@ -1082,7 +1082,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Lrc<IdxSetBuf<Local>>) {
+                              -> (u8, Lrc<IdxSet<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1091,7 +1091,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSetBuf::new_empty(0)));
+        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSet::new_empty(0)));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);

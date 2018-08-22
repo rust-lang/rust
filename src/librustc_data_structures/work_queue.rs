@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use indexed_set::IdxSetBuf;
+use indexed_set::IdxSet;
 use indexed_vec::Idx;
 use std::collections::VecDeque;
 
@@ -20,7 +20,7 @@ use std::collections::VecDeque;
 /// and also use a bit set to track occupancy.
 pub struct WorkQueue<T: Idx> {
     deque: VecDeque<T>,
-    set: IdxSetBuf<T>,
+    set: IdxSet<T>,
 }
 
 impl<T: Idx> WorkQueue<T> {
@@ -29,7 +29,7 @@ impl<T: Idx> WorkQueue<T> {
     pub fn with_all(len: usize) -> Self {
         WorkQueue {
             deque: (0..len).map(T::new).collect(),
-            set: IdxSetBuf::new_filled(len),
+            set: IdxSet::new_filled(len),
         }
     }
 
@@ -38,7 +38,7 @@ impl<T: Idx> WorkQueue<T> {
     pub fn with_none(len: usize) -> Self {
         WorkQueue {
             deque: VecDeque::with_capacity(len),
-            set: IdxSetBuf::new_empty(len),
+            set: IdxSet::new_empty(len),
         }
     }
 

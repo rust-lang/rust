@@ -12,7 +12,7 @@
 //! locations.
 
 use rustc::mir::{BasicBlock, Location};
-use rustc_data_structures::indexed_set::{HybridIdxSetBuf, IdxSetBuf, Iter};
+use rustc_data_structures::indexed_set::{HybridIdxSet, IdxSet, Iter};
 use rustc_data_structures::indexed_vec::Idx;
 
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
@@ -67,9 +67,9 @@ where
     BD: BitDenotation,
 {
     base_results: DataflowResults<BD>,
-    curr_state: IdxSetBuf<BD::Idx>,
-    stmt_gen: HybridIdxSetBuf<BD::Idx>,
-    stmt_kill: HybridIdxSetBuf<BD::Idx>,
+    curr_state: IdxSet<BD::Idx>,
+    stmt_gen: HybridIdxSet<BD::Idx>,
+    stmt_kill: HybridIdxSet<BD::Idx>,
 }
 
 impl<BD> FlowAtLocation<BD>
@@ -96,9 +96,9 @@ where
 
     pub fn new(results: DataflowResults<BD>) -> Self {
         let bits_per_block = results.sets().bits_per_block();
-        let curr_state = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_gen = HybridIdxSetBuf::new_empty(bits_per_block);
-        let stmt_kill = HybridIdxSetBuf::new_empty(bits_per_block);
+        let curr_state = IdxSet::new_empty(bits_per_block);
+        let stmt_gen = HybridIdxSet::new_empty(bits_per_block);
+        let stmt_kill = HybridIdxSet::new_empty(bits_per_block);
         FlowAtLocation {
             base_results: results,
             curr_state: curr_state,

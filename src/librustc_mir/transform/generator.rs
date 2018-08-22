@@ -68,7 +68,7 @@ use rustc::ty::subst::Substs;
 use util::dump_mir;
 use util::liveness::{self, IdentityMap, LivenessMode};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::indexed_set::IdxSet;
 use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
@@ -369,7 +369,7 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                movable: bool) ->
                                                (liveness::LiveVarSet<Local>,
                                                 HashMap<BasicBlock, liveness::LiveVarSet<Local>>) {
-    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+    let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
@@ -381,7 +381,7 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
-    let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
+    let mut ignored = StorageIgnored(IdxSet::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
 
     // Calculate the MIR locals which have been previously
