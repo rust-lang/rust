@@ -11,6 +11,7 @@
 use lint;
 use rustc::ty::TyCtxt;
 
+use errors::Applicability;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -138,7 +139,11 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             let id = tcx.hir.hir_to_node_id(hir_id);
             let msg = "unused extern crate";
             tcx.struct_span_lint_node(lint, id, span, msg)
-                .span_suggestion_short(span, "remove it", "".to_string())
+                .span_suggestion_short_with_applicability(
+                    span,
+                    "remove it",
+                    "".to_string(),
+                    Applicability::MachineApplicable)
                 .emit();
             continue;
         }
