@@ -131,7 +131,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx.sess, span, E0207,
             "the {} parameter `{}` is not constrained by the \
             impl trait, self type, or predicates",
-            kind, param.name)
+            kind, tcx.generic_param_name(param.def_id))
             .span_label(span, format!("unconstrained {} parameter", kind))
             .emit();
     }

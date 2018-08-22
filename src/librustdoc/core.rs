@@ -201,10 +201,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
         for param in generics.params.iter() {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
-                    let name = if param.name == "" {
+                    let param_name = self.tcx.generic_param_name(param.def_id);
+                    let name = if param_name == "" {
                         hir::ParamName::Plain(keywords::StaticLifetime.ident())
                     } else {
-                        hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
+                        hir::ParamName::Plain(ast::Ident::from_interned_str(param_name))
                     };
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
@@ -228,6 +229,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
 
     pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
+        let param_name = self.tcx.generic_param_name(param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(
@@ -236,7 +238,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
                     span: DUMMY_SP,
                     def: Def::TyParam(param.def_id),
                     segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
+                        hir::PathSegment::from_ident(Ident::from_interned_str(param_name))
                     ]),
                 }),
             )),

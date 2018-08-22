@@ -45,7 +45,7 @@ use syntax::ast::MetaItemKind;
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::def::{CtorKind, Def};
@@ -909,7 +909,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
-                        name: keywords::SelfType.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
@@ -954,7 +953,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
         early_lifetimes
             .enumerate()
             .map(|(i, param)| ty::GenericParamDef {
-                name: param.name.ident().as_interned_str(),
                 index: own_start + i as u32,
                 def_id: tcx.hir.local_def_id(param.id),
                 pure_wrt_drop: param.pure_wrt_drop,
@@ -994,7 +992,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                     let ty_param = ty::GenericParamDef {
                         index: type_start + i as u32,
-                        name: param.name.ident().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param.id),
                         pure_wrt_drop: param.pure_wrt_drop,
                         kind: ty::GenericParamDefKind::Type {
@@ -1030,9 +1027,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
             dummy_args
                 .iter()
                 .enumerate()
-                .map(|(i, &arg)| ty::GenericParamDef {
+                .map(|(i, &_arg)| ty::GenericParamDef {
                     index: type_start + i as u32,
-                    name: Symbol::intern(arg).as_interned_str(),
                     def_id,
                     pure_wrt_drop: false,
                     kind: ty::GenericParamDefKind::Type {
@@ -1047,7 +1043,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
             params.extend(fv.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
                 ty::GenericParamDef {
                     index: type_start + i,
-                    name: Symbol::intern("<upvar>").as_interned_str(),
                     def_id,
                     pure_wrt_drop: false,
                     kind: ty::GenericParamDefKind::Type {

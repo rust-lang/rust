@@ -437,7 +437,9 @@ pub fn create_function_debug_context(
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
-        names.extend(generics.params.iter().map(|param| param.name));
+        names.extend(generics.params.iter().map(|param| {
+            cx.tcx.generic_param_name(param.def_id)
+        }));
         names
     }
 

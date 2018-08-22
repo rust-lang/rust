@@ -1243,8 +1243,8 @@ impl Clean<Lifetime> for hir::GenericParam {
 }
 
 impl<'tcx> Clean<Lifetime> for ty::GenericParamDef {
-    fn clean(&self, _cx: &DocContext) -> Lifetime {
-        Lifetime(self.name.to_string())
+    fn clean(&self, cx: &DocContext) -> Lifetime {
+        Lifetime(cx.tcx.generic_param_name(self.def_id).to_string())
     }
 }
 
@@ -1409,19 +1409,20 @@ impl GenericParamDef {
 
 impl<'tcx> Clean<GenericParamDef> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext) -> GenericParamDef {
+        let name = cx.tcx.generic_param_name(self.def_id);
         let (name, kind) = match self.kind {
             ty::GenericParamDefKind::Lifetime => {
-                (self.name.to_string(), GenericParamDefKind::Lifetime)
+                (name.to_string(), GenericParamDefKind::Lifetime)
             }
             ty::GenericParamDefKind::Type { has_default, .. } => {
                 cx.renderinfo.borrow_mut().external_typarams
-                             .insert(self.def_id, self.name.clean(cx));
+                             .insert(self.def_id, name.clean(cx));
                 let default = if has_default {
                     Some(cx.tcx.type_of(self.def_id).clean(cx))
                 } else {
                     None
                 };
-                (self.name.clean(cx), GenericParamDefKind::Type {
+                (name.clean(cx), GenericParamDefKind::Type {
                     did: self.def_id,
                     bounds: vec![], // These are filled in from the where-clauses.
                     default,
@@ -1561,8 +1562,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         let stripped_typarams = gens.params.iter().filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => None,
             ty::GenericParamDefKind::Type { .. } => {
-                if param.name == keywords::SelfType.name().as_str() {
-                    assert_eq!(param.index, 0);
+                if gens.has_self && param.index == 0 {
                     return None;
                 }
                 Some(param.clean(cx))

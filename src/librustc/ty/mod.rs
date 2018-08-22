@@ -844,7 +844,6 @@ pub enum GenericParamDefKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct GenericParamDef {
-    pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
 

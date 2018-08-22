@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == "from_desugaring" => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        param.name == s
+                        tcx.generic_param_name(param.def_id) == s
                     }) {
                         Some(_) => (),
                         None => {
@@ -298,7 +298,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                 },
                 GenericParamDefKind::Lifetime => return None
             };
-            let name = param.name.to_string();
+            let name = tcx.generic_param_name(param.def_id).to_string();
             Some((name, value))
         }).collect::<FxHashMap<String, String>>();
         let empty_string = String::new();

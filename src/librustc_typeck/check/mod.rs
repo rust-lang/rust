@@ -1844,7 +1844,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn re_infer(&self, span: Span, def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>> {
         let v = match def {
-            Some(def) => infer::EarlyBoundRegion(span, def.name),
+            Some(def) => infer::EarlyBoundRegion(span, def.def_id),
             None => infer::MiscVariable(span)
         };
         Some(self.next_region_var(v))
@@ -5259,9 +5259,9 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
-            let id = tcx.hir.as_local_node_id(param.def_id).unwrap();
-            let span = tcx.hir.span(id);
-            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
+            let span = tcx.def_span(param.def_id);
+            let param_name = tcx.generic_param_name(param.def_id);
+            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param_name)
                 .span_label(span, "unused type parameter")
                 .emit();
         }

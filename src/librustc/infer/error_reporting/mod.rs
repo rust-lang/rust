@@ -1338,7 +1338,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 br_string(br),
                 self.tcx.associated_item(def_id).ident
             ),
-            infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
+            infer::EarlyBoundRegion(_, def_id) => format!(
+                " for lifetime parameter `{}`",
+                self.tcx.generic_param_name(def_id),
+            ),
             infer::BoundRegionInCoherence(name) => {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }

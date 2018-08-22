@@ -387,7 +387,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 GenericParamDefKind::Lifetime => continue,
             };
-            let name = param.name.to_string();
+            let name = self.tcx.generic_param_name(param.def_id).to_string();
             flags.push((name, Some(value)));
         }
 

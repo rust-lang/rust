@@ -838,7 +838,9 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let parent = tcx.generics_of(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
         GenericParamDefKind::Lifetime => None,
-        GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
+        GenericParamDefKind::Type {..} => {
+            Some((tcx.generic_param_name(param.def_id), param.def_id))
+        }
     }).collect();
 
     for method_param in &generics.params {
@@ -847,15 +849,16 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
             GenericParamDefKind::Lifetime => continue,
             _ => {},
         };
-        if impl_params.contains_key(&method_param.name) {
+        let method_param_name = tcx.generic_param_name(method_param.def_id);
+        if impl_params.contains_key(&method_param_name) {
             // Tighten up the span to focus on only the shadowing type
             let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is
             // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params[&method_param.name];
+            let trait_def_id = impl_params[&method_param_name];
             let trait_decl_span = tcx.def_span(trait_def_id);
-            error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
+            error_194(tcx, type_span, trait_decl_span, &method_param_name.as_str()[..]);
         }
     }
 }

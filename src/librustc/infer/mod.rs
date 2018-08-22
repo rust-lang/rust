@@ -35,7 +35,6 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span};
-use syntax_pos::symbol::InternedString;
 use util::nodemap::FxHashMap;
 use arena::SyncDroplessArena;
 
@@ -355,7 +354,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     // Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, InternedString),
+    EarlyBoundRegion(Span, DefId),
 
     // Region variables created for bound regions
     // in a function or method that is called
@@ -931,7 +930,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
                 // region parameter definition.
-                self.next_region_var(EarlyBoundRegion(span, param.name)).into()
+                self.next_region_var(EarlyBoundRegion(span, param.def_id)).into()
             }
             GenericParamDefKind::Type {..} => {
                 // Create a type inference variable for the given

@@ -637,7 +637,7 @@ impl fmt::Debug for ty::GenericParamDef {
         };
         write!(f, "{}({}, {:?}, {})",
                type_name,
-               self.name,
+               ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)),
                self.def_id,
                self.index)
     }

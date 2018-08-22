@@ -636,12 +636,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                             // defaults. This will lead to an ICE if we are not
                             // careful!
                             if default_needs_object_self(param) {
+                                let param_name = tcx.generic_param_name(param.def_id);
                                 struct_span_err!(tcx.sess, span, E0393,
                                                     "the type parameter `{}` must be explicitly \
                                                     specified",
-                                                    param.name)
+                                                    param_name)
                                     .span_label(span,
-                                                format!("missing reference to `{}`", param.name))
+                                                format!("missing reference to `{}`", param_name))
                                     .note(&format!("because of the default `Self` reference, \
                                                     type parameters must be specified on object \
                                                     types"))

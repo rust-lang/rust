@@ -690,7 +690,6 @@ impl_stable_hash_for!(struct ty::Generics {
 });
 
 impl_stable_hash_for!(struct ty::GenericParamDef {
-    name,
     def_id,
     index,
     pure_wrt_drop,
