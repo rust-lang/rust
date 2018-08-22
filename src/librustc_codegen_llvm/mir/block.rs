@@ -101,7 +101,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         };
 
         let funclet_br =
-            |this: &mut Self, bx: Builder<'_, 'll, '_, &'ll Value>, target: mir::BasicBlock| {
+            |this: &mut Self, bx: Builder<'_, 'll, '_>, target: mir::BasicBlock| {
                 let (lltarget, is_cleanupret) = lltarget(this, target);
                 if is_cleanupret {
                     // micro-optimization: generate a `ret` rather than a jump
@@ -848,7 +848,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
     fn get_personality_slot(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>
+        bx: &Builder<'a, 'll, 'tcx>
     ) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {

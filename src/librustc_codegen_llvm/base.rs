@@ -89,7 +89,7 @@ use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use rustc::hir::{self, CodegenFnAttrs};
 
-use value::{Value, ValueTrait};
+use value::Value;
 
 use mir::operand::OperandValue;
 
@@ -391,11 +391,10 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
 }
 
 pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll,
-    Value : ?Sized,
     Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
     bx: &Builder,
     val: &'ll Value
-) -> &'ll Value where Value : ValueTrait {
+) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx()) {
         bx.zext(val, Type::i8(bx.cx()))
     } else {
@@ -426,7 +425,6 @@ pub fn to_immediate_scalar(
 }
 
 pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
-    Value : ?Sized,
     Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
     bx: &Builder,
     dst: &'ll Value,
@@ -435,7 +433,7 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
     src_align: Align,
     n_bytes: &'ll Value,
     flags: MemFlags,
-) where Value : ValueTrait {
+) {
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, src_align);
@@ -452,7 +450,6 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
 }
 
 pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll,
-    Value : ?Sized,
     Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
     bx: &Builder,
     dst: &'ll Value,
@@ -461,7 +458,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll,
     src_align: Align,
     layout: TyLayout<'tcx>,
     flags: MemFlags,
-) where Value : ValueTrait {
+) {
     let size = layout.size.bytes();
     if size == 0 {
         return;
@@ -558,7 +555,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         use_start_lang_item: bool,
     ) {
         let llfty =
-            Type::func::<Value>(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
+            Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,

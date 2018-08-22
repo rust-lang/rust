@@ -52,7 +52,7 @@ impl<'a, 'tcx> VirtualIndex {
 
     pub fn get_usize(
         self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &Builder<'a, 'll, 'tcx>,
         llvtable: &'ll Value
     ) -> &'ll Value {
         // Load the data pointer from the object.

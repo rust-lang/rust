@@ -109,14 +109,14 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll,
     > {
 
     fn new_block<'b>(
-        cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+        cx: &'a CodegenCx<'ll, 'tcx>,
         llfn: &'ll Value,
         name: &'b str
     ) -> Self;
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>) -> Self;
+    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
     fn sess(&self) -> &Session;
-    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx, &'ll Value>;
+    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx>;
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn llfn(&self) -> &'ll Value;
     fn llbb(&self) -> &'ll BasicBlock;

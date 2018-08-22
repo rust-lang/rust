@@ -200,7 +200,8 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                args);
 
         let args = self.check_call("invoke", llfn, args);
-        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
+        let bundle = bundle.map(OperandBundleDef::from_generic);
+        let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildInvoke(self.llbuilder,
@@ -757,7 +758,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = Type::func::<Value>(&argtys[..], output);
+        let fty = Type::func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
@@ -853,9 +854,9 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
             let elt_ty = val_ty(elt);
-            let undef = llvm::LLVMGetUndef(Type::vector::<Value>(elt_ty, num_elts as u64));
+            let undef = llvm::LLVMGetUndef(Type::vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, C_i32(self.cx, 0));
-            let vec_i32_ty = Type::vector::<Value>(Type::i32(self.cx), num_elts as u64);
+            let vec_i32_ty = Type::vector(Type::i32(self.cx), num_elts as u64);
             self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
@@ -1232,7 +1233,8 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
                args);
 
         let args = self.check_call("call", llfn, args);
-        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
+        let bundle = bundle.map(OperandBundleDef::from_generic);
+        let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildCall(
@@ -1260,7 +1262,7 @@ impl BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
         }
     }
 
-    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx, &'ll Value> {
+    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx> {
         &self.cx
     }
 }

@@ -122,7 +122,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
     pub fn set_debug_loc(
         &mut self,
-        bx: &Builder<'_, 'll, '_, &'ll Value>,
+        bx: &Builder<'_, 'll, '_>,
         source_info: mir::SourceInfo
     ) {
         let (scope, span) = self.debug_loc(source_info);

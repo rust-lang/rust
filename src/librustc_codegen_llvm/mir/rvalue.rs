@@ -180,10 +180,10 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     }
 
     pub fn codegen_rvalue_unsized(&mut self,
-                        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
+                        bx: Builder<'a, 'll, 'tcx>,
                         indirect_dest: PlaceRef<'tcx, &'ll Value>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx, &'ll Value>
+                        -> Builder<'a, 'll, 'tcx>
     {
         debug!("codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
                indirect_dest.llval, rvalue);
@@ -201,9 +201,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
     pub fn codegen_rvalue_operand(
         &mut self,
-        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: Builder<'a, 'll, 'tcx>,
         rvalue: &mir::Rvalue<'tcx>
-    ) -> (Builder<'a, 'll, 'tcx, &'ll Value>, OperandRef<'tcx, &'ll Value>) {
+    ) -> (Builder<'a, 'll, 'tcx>, OperandRef<'tcx, &'ll Value>) {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
         match *rvalue {
@@ -753,7 +753,7 @@ enum OverflowOp {
 
 fn get_overflow_intrinsic(
     oop: OverflowOp,
-    bx: &Builder<'_, 'll, '_, &'ll Value>,
+    bx: &Builder<'_, 'll, '_>,
     ty: Ty
 ) -> &'ll Value {
     use syntax::ast::IntTy::*;
