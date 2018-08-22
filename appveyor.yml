@@ -8,14 +8,15 @@ environment:
         - TARGET: x86_64-pc-windows-msvc
 
 install:
-    - del rust-toolchain
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
-    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\Users\appveyor\.rustup\toolchains\nightly-%TARGET%\bin
-    - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-    - rustup-toolchain-install-master -f -n master
-    - rustup default master
-    - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
+    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    # https://support.microsoft.com/en-us/help/2524009/error-running-command-shell-scripts-that-include-parentheses
+    - if defined GITHUB_TOKEN del rust-toolchain
+    - if defined GITHUB_TOKEN (cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed")
+    - if defined GITHUB_TOKEN rustup-toolchain-install-master -f -n master --github-token %GITHUB_TOKEN%
+    - if defined GITHUB_TOKEN rustup default master
+    - if defined GITHUB_TOKEN set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
 
