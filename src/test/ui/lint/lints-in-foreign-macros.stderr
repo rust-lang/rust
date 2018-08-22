@@ -29,17 +29,17 @@ warning: missing documentation for crate
   --> $DIR/lints-in-foreign-macros.rs:14:1
    |
 LL | / #![warn(unused_imports)]
-LL | | #![warn(missing_docs)] //~ WARN: missing documentation for crate [missing_docs]
+LL | | #![warn(missing_docs)]
 LL | |
 LL | | #[macro_use]
 ...  |
 LL | |
-LL | | fn main() {}
+LL | | fn main() {} //~ WARN: missing documentation for crate [missing_docs]
    | |____________^
    |
 note: lint level defined here
   --> $DIR/lints-in-foreign-macros.rs:15:9
    |
-LL | #![warn(missing_docs)] //~ WARN: missing documentation for crate [missing_docs]
+LL | #![warn(missing_docs)]
    |         ^^^^^^^^^^^^
 
