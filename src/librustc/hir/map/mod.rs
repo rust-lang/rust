@@ -453,7 +453,7 @@ impl<'hir> Map<'hir> {
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
                     ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
-                    ForeignItemKind::Type => Some(Def::TyForeign(def_id)),
+                    ForeignItemKind::Type => Some(Def::ForeignTy(def_id)),
                 }
             }
             NodeTraitItem(item) => {

@@ -539,7 +539,7 @@ impl<'a> PathSource<'a> {
                 Def::Trait(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
                 Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) |
                 Def::Existential(..) |
-                Def::TyForeign(..) => true,
+                Def::ForeignTy(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match def {
