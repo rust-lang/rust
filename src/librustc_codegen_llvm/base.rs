@@ -76,7 +76,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::Idx;
 
 use traits::{IntPredicate, RealPredicate, BuilderMethods};
-use llvm::BasicBlock;
 
 use std::any::Any;
 use std::cmp;
@@ -390,9 +389,8 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     val: &'ll Value
 ) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx()) {
@@ -424,9 +422,8 @@ pub fn to_immediate_scalar(
     val
 }
 
-pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     dst: &'ll Value,
     dst_align: Align,
     src: &'ll Value,
@@ -449,9 +446,8 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
     bx.memcpy(dst_ptr, dst_align.abi(), src_ptr, src_align.abi(), size, volatile);
 }
 
-pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     dst: &'ll Value,
     dst_align: Align,
     src: &'ll Value,
