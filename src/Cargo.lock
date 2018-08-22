@@ -1859,6 +1859,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rls-data"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rls-rustc"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2382,7 +2391,7 @@ name = "rustc_save_analysis"
 version = "0.0.0"
 dependencies = [
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-data 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-data 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3286,6 +3295,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rls-analysis 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "96f84d303dcbe1c1bdd41b10867d3399c38fbdac32c4e3645cdb6dbd7f82db1d"
 "checksum rls-blacklist 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e4a9cc2545ccb7e05b355bfe047b8039a6ec12270d5f3c996b766b340a50f7d2"
 "checksum rls-data 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3dd20763e1c60ae8945384c8a8fa4ac44f8afa7b0a817511f5e8927e5d24f988"
+"checksum rls-data 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4f81e838ecff6830ed33c2907fd236f38d441c206e983a2aa29fbce99295fab9"
 "checksum rls-rustc 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2f9dba7390427aefa953608429701e3665192ca810ba8ae09301e001b7c7bed0"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
 "checksum rls-vfs 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ecbc8541b4c341d6271eae10f869dd9d36db871afe184f5b6f9bffbd6ed0373f"
