@@ -11,7 +11,7 @@
 // aux-build:issue-50061.rs
 // ignore-stage1
 
-#![feature(proc_macro_path_invoc, decl_macro)]
+#![feature(decl_macro)]
 
 extern crate issue_50061;
 

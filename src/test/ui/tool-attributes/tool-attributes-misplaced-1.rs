@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes, custom_attribute)]
+#![feature(custom_attribute)]
 
 type A = rustfmt; //~ ERROR expected type, found tool module `rustfmt`
 type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::skip`
