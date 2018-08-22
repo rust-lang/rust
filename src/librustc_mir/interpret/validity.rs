@@ -9,7 +9,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    MPlaceTy, PlaceExtra, Machine, EvalContext
+    MPlaceTy, Machine, EvalContext
 };
 
 macro_rules! validation_failure{
@@ -281,59 +281,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                 // Fat pointers need special treatment.
-                match dest.layout.ty.builtin_deref(true).map(|tam| &tam.ty.sty) {
-                    | Some(ty::TyStr)
-                    | Some(ty::TySlice(_)) => {
-                        // check the length (for nicer error messages); must be valid even
-                        // for a raw pointer.
-                        let len_mplace = self.mplace_field(dest, 1)?;
-                        let len = self.read_scalar(len_mplace.into())?;
-                        let len = match len.to_bits(len_mplace.layout.size) {
-                            Err(_) => return validation_failure!("length is not a valid integer", path),
-                            Ok(len) => len as u64,
-                        };
-                        // for safe ptrs, get the fat ptr, and recursively check it
-                        if !dest.layout.ty.is_unsafe_ptr() {
-                            let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                            assert_eq!(ptr.extra, PlaceExtra::Length(len));
-                            let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
-                            if seen.insert(unpacked_ptr) {
-                                todo.push((unpacked_ptr, path_clone_and_deref(path)));
-                            }
+                if dest.layout.ty.builtin_deref(true).is_some() {
+                    // This is a fat pointer.
+                    let ptr = match self.ref_to_mplace(self.read_value(dest.into())?) {
+                        Ok(ptr) => ptr,
+                        Err(ReadPointerAsBytes) =>
+                            return validation_failure!("fat pointer length is not a valid integer", path),
+                        Err(ReadBytesAsPointer) =>
+                            return validation_failure!("fat pointer vtable is not a valid pointer", path),
+                        Err(err) => return Err(err),
+                    };
+                    let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                    // for safe ptrs, recursively check it
+                    if !dest.layout.ty.is_unsafe_ptr() {
+                        if seen.insert(unpacked_ptr) {
+                            todo.push((unpacked_ptr, path_clone_and_deref(path)));
                         }
-                    },
-                    Some(ty::TyDynamic(..)) => {
-                        // check the vtable (for nicer error messages); must be valid even for a
-                        // raw ptr.
-                        let vtable = self.read_scalar(self.mplace_field(dest, 1)?.into())?;
-                        let vtable = match vtable.to_ptr() {
-                            Err(_) => return validation_failure!("vtable address is not a pointer", path),
-                            Ok(vtable) => vtable,
-                        };
-                        // for safe ptrs, get the fat ptr, and recursively check it
-                        if !dest.layout.ty.is_unsafe_ptr() {
-                            let ptr = self.ref_to_mplace(self.read_value(dest.into())?)?;
-                            assert_eq!(ptr.extra, PlaceExtra::Vtable(vtable));
-                            let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
-                            if seen.insert(unpacked_ptr) {
-                                todo.push((unpacked_ptr, path_clone_and_deref(path)));
-                            }
-                            // FIXME: More checks for the vtable... making sure it is exactly
-                            // the one one would expect for this type.
-                        }
-                    },
-                    Some(ty) =>
-                        bug!("Unexpected fat pointer target type {:?}", ty),
-                    None => {
-                        // Not a pointer, perform regular aggregate handling below
-                        for i in 0..offsets.len() {
-                            let field = self.mplace_field(dest, i as u64)?;
-                            path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                            self.validate_mplace(field, path, seen, todo)?;
-                            path.truncate(path_len);
-                        }
-                        // FIXME: For a TyStr, check that this is valid UTF-8.
-                    },
+                    }
+                } else {
+                    // Not a pointer, perform regular aggregate handling below
+                    for i in 0..offsets.len() {
+                        let field = self.mplace_field(dest, i as u64)?;
+                        path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
+                        self.validate_mplace(field, path, seen, todo)?;
+                        path.truncate(path_len);
+                    }
+                    // FIXME: For a TyStr, check that this is valid UTF-8.
                 }
             }
         }

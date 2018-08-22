@@ -37,6 +37,7 @@ union SliceTransmute {
     bad: BadSliceRepr,
     slice: &'static [u8],
     str: &'static str,
+    my_str: &'static Str,
 }
 
 #[repr(C)]
@@ -70,6 +71,8 @@ union DynTransmute {
 trait Trait {}
 impl Trait for bool {}
 
+struct Str(str);
+
 // OK
 const A: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.str};
 // bad str
@@ -78,6 +81,9 @@ const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 }
 // bad str
 const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
 //~^ ERROR this constant likely exhibits undefined behavior
+// bad str in Str
+const C2: &Str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
+//~^ ERROR this constant likely exhibits undefined behavior
 
 // OK
 const A2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.slice};
@@ -85,7 +91,7 @@ const A2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 }
 const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
 //~^ ERROR this constant likely exhibits undefined behavior
 // bad slice
-const C2: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
+const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
 //~^ ERROR this constant likely exhibits undefined behavior
 
 // bad trait object

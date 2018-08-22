@@ -774,6 +774,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
                 assert_eq!(size, layout.size);
                 assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+                // FIXME: More checks for the vtable? We could make sure it is exactly
+                // the one one would expect for this type.
                 // Done!
                 layout
             },
