@@ -24,7 +24,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::*;
-use rustc::hir::map::Node::*;
+use rustc::hir::map::NodeKind;
 
 struct GatherMoveInfo<'c, 'tcx: 'c> {
     id: hir::ItemLocalId,
@@ -60,7 +60,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
     let parent = tcx.hir.get_parent_node(pat.id);
 
     match tcx.hir.get(parent) {
-        NodeExpr(ref e) => {
+        NodeKind::Expr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {
                         ExprKind::Match(..) => true,
@@ -68,7 +68,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
                     });
             PatternSource::MatchExpr(e)
         }
-        NodeLocal(local) => PatternSource::LetDecl(local),
+        NodeKind::Local(local) => PatternSource::LetDecl(local),
         _ => return PatternSource::Other,
 
     }

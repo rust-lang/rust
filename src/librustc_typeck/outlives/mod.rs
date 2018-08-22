@@ -40,7 +40,7 @@ fn inferred_outlives_of<'a, 'tcx>(
         .expect("expected local def-id");
 
     match tcx.hir.get(id) {
-        hir_map::NodeItem(item) => match item.node {
+        hir_map::NodeKind::Item(item) => match item.node {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);
 

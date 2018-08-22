@@ -343,7 +343,7 @@ impl MutabilityCategory {
 
     fn from_local(tcx: TyCtxt, tables: &ty::TypeckTables, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.hir.get(id) {
-            hir_map::NodeBinding(p) => match p.node {
+            hir_map::NodeKind::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
                                     .get(p.hir_id)

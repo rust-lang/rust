@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
                 id: ast::NodeId) {
 
         let item = match cx.tcx.hir.get(id) {
-            hir_map::Node::NodeItem(item) => item,
+            hir_map::NodeKind::Item(item) => item,
             _ => cx.tcx.hir.expect_item(cx.tcx.hir.get_parent(id)),
         };
 

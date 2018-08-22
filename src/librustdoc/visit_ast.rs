@@ -295,7 +295,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         if !self.view_item_stack.insert(def_node_id) { return false }
 
         let ret = match tcx.hir.get(def_node_id) {
-            hir_map::NodeItem(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
+            hir_map::NodeKind::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
                     let i = self.cx.tcx.hir.expect_item(i.id);
@@ -304,13 +304,13 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 self.inlining = prev;
                 true
             }
-            hir_map::NodeItem(it) if !glob => {
+            hir_map::NodeKind::Item(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 self.visit_item(it, renamed, om);
                 self.inlining = prev;
                 true
             }
-            hir_map::NodeForeignItem(it) if !glob => {
+            hir_map::NodeKind::ForeignItem(it) if !glob => {
                 // generate a fresh `extern {}` block if we want to inline a foreign item.
                 om.foreigns.push(hir::ForeignMod {
                     abi: tcx.hir.get_foreign_abi(it.id),

@@ -407,7 +407,7 @@ fn is_enclosed(tcx: TyCtxt,
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
-        } else if let Some(hir::map::NodeItem(&hir::Item {
+        } else if let Some(hir::map::NodeKind::Item(&hir::Item {
             node: hir::ItemKind::Fn(_, header, _, _),
             ..
         })) = tcx.hir.find(parent_id) {

@@ -40,15 +40,15 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let fndecl = match self.tcx.hir.get(node_id) {
-                    hir_map::NodeItem(&hir::Item {
+                    hir_map::NodeKind::Item(&hir::Item {
                         node: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
                     }) => &fndecl,
-                    hir_map::NodeTraitItem(&hir::TraitItem {
+                    hir_map::NodeKind::TraitItem(&hir::TraitItem {
                         node: hir::TraitItemKind::Method(ref m, ..),
                         ..
                     })
-                    | hir_map::NodeImplItem(&hir::ImplItem {
+                    | hir_map::NodeKind::ImplItem(&hir::ImplItem {
                         node: hir::ImplItemKind::Method(ref m, ..),
                         ..
                     }) => &m.decl,

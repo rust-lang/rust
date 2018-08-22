@@ -362,7 +362,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir.get_parent(id);
-        if let Some(hir::map::Node::NodeItem(i)) = ir.tcx.hir.find(parent) {
+        if let Some(hir::map::NodeKind::Item(i)) = ir.tcx.hir.find(parent) {
             if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
                 return;
             }

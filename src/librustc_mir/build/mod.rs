@@ -40,9 +40,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
     // Figure out what primary body this item has.
     let body_id = match tcx.hir.get(id) {
-        hir::map::NodeVariant(variant) =>
+        hir::map::NodeKind::Variant(variant) =>
             return create_constructor_shim(tcx, id, &variant.node.data),
-        hir::map::NodeStructCtor(ctor) =>
+        hir::map::NodeKind::StructCtor(ctor) =>
             return create_constructor_shim(tcx, id, ctor),
 
         _ => match tcx.hir.maybe_body_owned_by(id) {
@@ -520,7 +520,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 by_ref,
                 mutability: Mutability::Not,
             };
-            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
+            if let Some(hir::map::NodeKind::Binding(pat)) = tcx.hir.find(var_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
 

@@ -697,7 +697,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                             parent_def_id == tcx.hir.local_def_id(anon_parent_node_id)
                         };
                         let in_definition_scope = match tcx.hir.find(anon_node_id) {
-                            Some(hir::map::NodeItem(item)) => match item.node {
+                            Some(hir::map::NodeKind::Item(item)) => match item.node {
                                 // impl trait
                                 hir::ItemKind::Existential(hir::ExistTy {
                                     impl_trait_fn: Some(parent),
@@ -714,7 +714,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                                 ),
                                 _ => def_scope_default(),
                             },
-                            Some(hir::map::NodeImplItem(item)) => match item.node {
+                            Some(hir::map::NodeKind::ImplItem(item)) => match item.node {
                                 hir::ImplItemKind::Existential(_) => may_define_existential_type(
                                     tcx,
                                     self.parent_def_id,

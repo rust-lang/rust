@@ -659,17 +659,17 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         match self.tcx.hir.as_local_node_id(did) {
             Some(node_id) => {
                 let vis = match self.tcx.hir.get(node_id) {
-                    hir::map::NodeItem(item) => &item.vis,
-                    hir::map::NodeForeignItem(foreign_item) => &foreign_item.vis,
-                    hir::map::NodeImplItem(impl_item) => &impl_item.vis,
-                    hir::map::NodeTraitItem(..) |
-                    hir::map::NodeVariant(..) => {
+                    hir::map::NodeKind::Item(item) => &item.vis,
+                    hir::map::NodeKind::ForeignItem(foreign_item) => &foreign_item.vis,
+                    hir::map::NodeKind::ImplItem(impl_item) => &impl_item.vis,
+                    hir::map::NodeKind::TraitItem(..) |
+                    hir::map::NodeKind::Variant(..) => {
                         return self.def_id_visibility(self.tcx.hir.get_parent_did(node_id));
                     }
-                    hir::map::NodeStructCtor(vdata) => {
+                    hir::map::NodeKind::StructCtor(vdata) => {
                         let struct_node_id = self.tcx.hir.get_parent(node_id);
                         let struct_vis = match self.tcx.hir.get(struct_node_id) {
-                            hir::map::NodeItem(item) => &item.vis,
+                            hir::map::NodeKind::Item(item) => &item.vis,
                             node => bug!("unexpected node kind: {:?}", node),
                         };
                         let mut ctor_vis
@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // .. and it corresponds to a private type in the AST (this returns
             // None for type parameters)
             match self.tcx.hir.find(node_id) {
-                Some(hir::map::NodeItem(ref item)) => !item.vis.node.is_pub(),
+                Some(hir::map::NodeKind::Item(ref item)) => !item.vis.node.is_pub(),
                 Some(_) | None => false,
             }
         } else {
@@ -1469,8 +1469,8 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
             // Non-local means public (private items can't leave their crate, modulo bugs)
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let hir_vis = match self.tcx.hir.find(node_id) {
-                    Some(hir::map::NodeItem(item)) => &item.vis,
-                    Some(hir::map::NodeForeignItem(item)) => &item.vis,
+                    Some(hir::map::NodeKind::Item(item)) => &item.vis,
+                    Some(hir::map::NodeKind::ForeignItem(item)) => &item.vis,
                     _ => bug!("expected item of foreign item"),
                 };
 

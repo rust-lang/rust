@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         );
 
                                         match (filename, parent_node) {
-                                            (FileName::Real(_), hir_map::NodeLocal(hir::Local {
+                                            (FileName::Real(_), hir_map::NodeKind::Local(hir::Local {
                                                 source: hir::LocalSource::Normal,
                                                 ty,
                                                 ..

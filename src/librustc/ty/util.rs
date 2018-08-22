@@ -12,7 +12,7 @@
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use hir::map::{DefPathData, Node};
+use hir::map::{DefPathData, NodeKind};
 use hir;
 use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
@@ -604,10 +604,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
         if let Some(node) = self.hir.get_if_local(def_id) {
             match node {
-                Node::NodeItem(&hir::Item {
+                NodeKind::Item(&hir::Item {
                     node: hir::ItemKind::Static(_, mutbl, _), ..
                 }) => Some(mutbl),
-                Node::NodeForeignItem(&hir::ForeignItem {
+                NodeKind::ForeignItem(&hir::ForeignItem {
                     node: hir::ForeignItemKind::Static(_, is_mutbl), ..
                 }) =>
                     Some(if is_mutbl {

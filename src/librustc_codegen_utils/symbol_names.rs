@@ -261,7 +261,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(id) = node_id {
         match tcx.hir.get(id) {
-            hir_map::NodeForeignItem(_) => true,
+            hir_map::NodeKind::ForeignItem(_) => true,
             _ => false,
         }
     } else {

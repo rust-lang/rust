@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .var_hir_id
                     .assert_crate_local();
                 let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
-                if let Some(hir::map::NodeBinding(pat)) = self.tcx.hir.find(upvar_node_id) {
+                if let Some(hir::map::NodeKind::Binding(pat)) = self.tcx.hir.find(upvar_node_id) {
                     if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,

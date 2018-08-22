@@ -740,7 +740,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
     };
 
     return match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeForeignItem(..)) => {
+        Some(hir_map::NodeKind::ForeignItem(..)) => {
             false // foreign items are linked against, not codegened.
         }
         Some(_) => true,

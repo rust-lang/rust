@@ -60,7 +60,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
             // Destructors only work on nominal types.
             if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
                 match tcx.hir.find(impl_node_id) {
-                    Some(hir_map::NodeItem(item)) => {
+                    Some(hir_map::NodeKind::Item(item)) => {
                         let span = match item.node {
                             ItemKind::Impl(.., ref ty, _) => ty.span,
                             _ => item.span,

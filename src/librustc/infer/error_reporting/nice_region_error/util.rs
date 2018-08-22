@@ -137,8 +137,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             .as_local_node_id(suitable_region_binding_scope)
             .unwrap();
         let is_impl_item = match self.tcx.hir.find(node_id) {
-            Some(hir_map::NodeItem(..)) | Some(hir_map::NodeTraitItem(..)) => false,
-            Some(hir_map::NodeImplItem(..)) => {
+            Some(hir_map::NodeKind::Item(..)) | Some(hir_map::NodeKind::TraitItem(..)) => false,
+            Some(hir_map::NodeKind::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
             }
             _ => return None,
