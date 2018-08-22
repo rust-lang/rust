@@ -233,7 +233,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Range { lo, hi, end } => {
                 fmt_const_val(f, lo)?;
                 match end {
-                    RangeEnd::Included => write!(f, "...")?,
+                    RangeEnd::Included => write!(f, "..=")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
                 fmt_const_val(f, hi)
@@ -368,9 +368,14 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                     "lower range bound must be less than upper",
                                 );
                                 PatternKind::Wild
-                            },
-                            (RangeEnd::Included, None) |
-                            (RangeEnd::Included, Some(Ordering::Greater)) => {
+                            }
+                            (RangeEnd::Included, Some(Ordering::Equal)) => {
+                                PatternKind::Constant { value: lo }
+                            }
+                            (RangeEnd::Included, Some(Ordering::Less)) => {
+                                PatternKind::Range { lo, hi, end }
+                            }
+                            (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
                                     self.tcx.sess,
                                     lo_expr.span,
@@ -390,8 +395,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 }
                                 err.emit();
                                 PatternKind::Wild
-                            },
-                            (RangeEnd::Included, Some(_)) => PatternKind::Range { lo, hi, end },
+                            }
                         }
                     }
                     _ => PatternKind::Wild

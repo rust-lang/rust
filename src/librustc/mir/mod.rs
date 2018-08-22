@@ -2228,7 +2228,7 @@ pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Resul
     }
 }
 
-pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
+pub fn print_miri_value<'tcx, W: Write>(value: Value, ty: Ty<'tcx>, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
     // print some primitives
     if let Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits, .. })) = value {

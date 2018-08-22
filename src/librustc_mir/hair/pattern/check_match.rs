@@ -272,7 +272,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                                                 self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pats : Matrix = vec![vec![
+            let pats: Matrix = vec![vec![
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
@@ -391,7 +391,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                     printed_if_let_err = true;
                                 }
                             }
-                        },
+                        }
 
                         hir::MatchSource::WhileLetDesugar => {
                             // check which arm we're on.
