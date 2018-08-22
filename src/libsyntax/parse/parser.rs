@@ -6843,8 +6843,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse one of the items allowed by the flags.
-    /// NB: this function no longer parses the items inside an
-    /// extern crate.
     fn parse_item_implementation(
         &mut self,
         attrs: Vec<Attribute>,
