@@ -202,6 +202,22 @@ impl<T> VecDeque<T> {
                                  len);
     }
 
+    /// Copies all values from `src` to `self`, wrapping around if needed.
+    /// Assumes capacity is sufficient.
+    #[inline]
+    unsafe fn copy_slice(&mut self, src: &[T]) {
+        let dst_high_ptr = self.ptr().add(self.head);
+        let dst_high_len = self.cap() - self.head;
+
+        let split = cmp::min(src.len(), dst_high_len);
+        let (src_high, src_low) = src.split_at(split);
+
+        ptr::copy_nonoverlapping(src_high.as_ptr(), dst_high_ptr, src_high.len());
+        ptr::copy_nonoverlapping(src_low.as_ptr(), self.ptr(), src_low.len());
+
+        self.head = self.wrap_add(self.head, src.len());
+    }
+
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
@@ -1834,8 +1850,17 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // naive impl
-        self.extend(other.drain(..));
+        // Guarantees there is space in `self` for `other
+        self.reserve(other.len());
+
+        unsafe {
+            let (src_high, src_low) = other.as_slices();
+            self.copy_slice(src_low);
+            self.copy_slice(src_high);
+        }
+
+        // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
+        other.tail = other.head;
     }
 
     /// Retains only the elements specified by the predicate.
