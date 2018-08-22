@@ -139,7 +139,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // char gets a special treatment, because its number space is not contiguous so `TyLayout`
         // has no special checks for chars
         match ty.sty {
-            ty::TyChar => {
+            ty::Char => {
                 debug_assert_eq!(size.bytes(), 4);
                 if ::std::char::from_u32(bits as u32).is_none() {
                     return validation_failure!(
@@ -323,23 +323,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn aggregate_field_path_elem(&self, ty: Ty<'tcx>, variant: usize, field: usize) -> PathElem {
         match ty.sty {
             // generators and closures.
-            ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _) => {
+            ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                 let freevar = self.tcx.with_freevars(node_id, |fv| fv[field]);
                 PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()))
             }
 
             // tuples
-            ty::TyTuple(_) => PathElem::TupleElem(field),
+            ty::Tuple(_) => PathElem::TupleElem(field),
 
             // enums
-            ty::TyAdt(def, ..) if def.is_enum() => {
+            ty::Adt(def, ..) if def.is_enum() => {
                 let variant = &def.variants[variant];
                 PathElem::Field(variant.fields[field].ident.name)
             }
 
             // other ADTs
-            ty::TyAdt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
+            ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
 
             // nothing else has an aggregate layout
             _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", ty),

@@ -15,9 +15,9 @@ use super::{EvalContext, Machine, PlaceTy, OpTy, Value};
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyRef(_, ty, _) => !self.type_is_sized(ty),
-            ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::Ref(_, ty, _) => !self.type_is_sized(ty),
+            ty::Adt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
             _ => false,
         }
     }
@@ -313,19 +313,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+            (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_value(src)?.to_scalar_ptr()?;
                 // u64 cast is from usize to u64, which is always good
                 let val = Value::new_slice(ptr, length.unwrap_usize(self.tcx.tcx), self.tcx.tcx);
                 self.write_value(val, dest)
             }
-            (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
+            (&ty::Dynamic(..), &ty::Dynamic(..)) => {
                 // For now, upcasts are limited to changes in marker
                 // traits, and hence never actually require an actual
                 // change to the vtable.
                 self.copy_op(src, dest)
             }
-            (_, &ty::TyDynamic(ref data, _)) => {
+            (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
                 let trait_ref = data.principal().unwrap().with_self_ty(
                     *self.tcx,
@@ -348,13 +348,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         match (&src.layout.ty.sty, &dest.layout.ty.sty) {
-            (&ty::TyRef(_, s, _), &ty::TyRef(_, d, _)) |
-            (&ty::TyRef(_, s, _), &ty::TyRawPtr(TypeAndMut { ty: d, .. })) |
-            (&ty::TyRawPtr(TypeAndMut { ty: s, .. }),
-             &ty::TyRawPtr(TypeAndMut { ty: d, .. })) => {
+            (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |
+            (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. })) |
+            (&ty::RawPtr(TypeAndMut { ty: s, .. }),
+             &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
                 self.unsize_into_ptr(src, dest, s, d)
             }
-            (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+            (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b);
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {

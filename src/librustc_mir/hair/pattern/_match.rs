@@ -647,7 +647,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .map(|v| Variant(v.did))
                 .collect()
         }
-        ty::TyChar if exhaustive_integer_patterns => {
+        ty::Char if exhaustive_integer_patterns => {
             let endpoint = |c: char| {
                 let ty = ty::ParamEnv::empty().and(cx.tcx.types.char);
                 ty::Const::from_bits(cx.tcx, c as u128, ty)
@@ -658,7 +658,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ConstantRange(endpoint('\u{E000}'), endpoint('\u{10FFFF}'), RangeEnd::Included),
             ]
         }
-        ty::TyInt(ity) if exhaustive_integer_patterns => {
+        ty::Int(ity) if exhaustive_integer_patterns => {
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
@@ -668,7 +668,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                ty::Const::from_bits(cx.tcx, max as u128, ty),
                                RangeEnd::Included)]
         }
-        ty::TyUint(uty) if exhaustive_integer_patterns => {
+        ty::Uint(uty) if exhaustive_integer_patterns => {
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
@@ -861,7 +861,7 @@ impl<'tcx> IntRange<'tcx> {
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'_, 'tcx, 'tcx>, ty: Ty<'tcx>) -> u128 {
         match ty.sty {
-            ty::TyInt(ity) => {
+            ty::Int(ity) => {
                 let bits = Integer::from_attr(tcx, SignedInt(ity)).size().bits() as u128;
                 1u128 << (bits - 1)
             }
@@ -1382,7 +1382,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
 fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
     if tcx.features().exhaustive_integer_patterns {
         if let ConstantValue(value) | ConstantRange(value, _, _) = ctor {
-            if let ty::TyChar | ty::TyInt(_) | ty::TyUint(_) = value.ty.sty {
+            if let ty::Char | ty::Int(_) | ty::Uint(_) = value.ty.sty {
                 return true;
             }
         }

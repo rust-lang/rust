@@ -236,7 +236,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
         let mplace = match self.tcx.struct_tail(pointee_type).sty {
-            ty::TyDynamic(..) => {
+            ty::Dynamic(..) => {
                 let (ptr, vtable) = val.to_scalar_dyn_trait()?;
                 MemPlace {
                     ptr,
@@ -244,7 +244,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     extra: PlaceExtra::Vtable(vtable),
                 }
             }
-            ty::TyStr | ty::TySlice(_) => {
+            ty::Str | ty::Slice(_) => {
                 let (ptr, len) = val.to_scalar_slice(self)?;
                 MemPlace {
                     ptr,
@@ -358,9 +358,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Compute extra and new layout
         let inner_len = len - to - from;
         let (extra, ty) = match base.layout.ty.sty {
-            ty::TyArray(inner, _) =>
+            ty::Array(inner, _) =>
                 (PlaceExtra::None, self.tcx.mk_array(inner, inner_len)),
-            ty::TySlice(..) =>
+            ty::Slice(..) =>
                 (PlaceExtra::Length(inner_len), base.layout.ty),
             _ =>
                 bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
