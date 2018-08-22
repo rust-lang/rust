@@ -174,7 +174,6 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Local(_), Local(_)) |
                             (Upvar(_, _, _), Upvar(_, _, _)) |
                             (Label(_), Label(_)) |
-                            (GlobalAsm(_), GlobalAsm(_)) |
                             (Macro(_, _), Macro(_, _)) |
                             (Variant(_), Variant(_)) |
                             (Const(_), Const(_)) |
