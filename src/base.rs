@@ -17,25 +17,29 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
     let context = &mut cx.context;
 
     match mono_item {
-        MonoItem::Fn(inst) => match inst {
-            Instance {
-                def: InstanceDef::Item(def_id),
-                substs: _,
-            } => {
-                let mut mir = ::std::io::Cursor::new(Vec::new());
-                ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                let mir_file_name =
-                    "target/out/mir/".to_string() + &format!("{:?}", def_id).replace('/', "@");
-                ::std::fs::write(mir_file_name, mir.into_inner()).unwrap();
-                let _print_guard = PrintOnPanic(format!("{:?}", inst));
+        MonoItem::Fn(inst) => {
+            let _print_guard = PrintOnPanic(format!("{:?}", inst));
+            let mir = match inst.def {
+                InstanceDef::Item(_)
+                | InstanceDef::DropGlue(_, _)
+                | InstanceDef::Virtual(_, _) => {
+                    let mut mir = ::std::io::Cursor::new(Vec::new());
+                    ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir).unwrap();
+                    mir.into_inner()
+                }
+                InstanceDef::FnPtrShim(_, _)
+                | InstanceDef::ClosureOnceShim { .. }
+                | InstanceDef::CloneShim(_, _) => {
+                    // FIXME fix write_mir_pretty for these instances
+                    format!("{:#?}", cx.tcx.instance_mir(inst.def)).into_bytes()
+                }
+                InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
+            };
+            let mir_file_name =
+                "target/out/mir/".to_string() + &format!("{:?}", inst.def_id()).replace('/', "@");
+            ::std::fs::write(mir_file_name, mir).unwrap();
 
-                trans_fn(tcx, cx.module, &mut cx.ccx, context, inst);
-            }
-            Instance {
-                def: InstanceDef::DropGlue(_, _),
-                substs: _,
-            } => unimpl!("Unimplemented drop glue instance"),
-            inst => unimpl!("Unimplemented instance {:?}", inst),
+            trans_fn(tcx, cx.module, &mut cx.ccx, context, inst);
         },
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.ccx, def_id);
