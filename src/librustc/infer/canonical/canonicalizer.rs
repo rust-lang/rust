@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, CanonicalVar, Lift, Slice, Ty, TyCtxt, TypeFlags};
+use ty::{self, CanonicalVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -246,46 +246,46 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::TyInfer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
+            ty::Infer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
 
-            ty::TyInfer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
+            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
 
-            ty::TyInfer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
+            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy(_))
+            | ty::Infer(ty::FreshIntTy(_))
+            | ty::Infer(ty::FreshFloatTy(_)) => {
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::TyInfer(ty::CanonicalTy(_)) => {
+            ty::Infer(ty::CanonicalTy(_)) => {
                 bug!("encountered a canonical type during canonicalization")
             }
 
-            ty::TyClosure(..)
-            | ty::TyGenerator(..)
-            | ty::TyGeneratorWitness(..)
-            | ty::TyBool
-            | ty::TyChar
-            | ty::TyInt(..)
-            | ty::TyUint(..)
-            | ty::TyFloat(..)
-            | ty::TyAdt(..)
-            | ty::TyStr
-            | ty::TyError
-            | ty::TyArray(..)
-            | ty::TySlice(..)
-            | ty::TyRawPtr(..)
-            | ty::TyRef(..)
-            | ty::TyFnDef(..)
-            | ty::TyFnPtr(_)
-            | ty::TyDynamic(..)
-            | ty::TyNever
-            | ty::TyTuple(..)
-            | ty::TyProjection(..)
-            | ty::TyForeign(..)
-            | ty::TyParam(..)
-            | ty::TyAnon(..) => {
+            ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Adt(..)
+            | ty::Str
+            | ty::Error
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Dynamic(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Projection(..)
+            | ty::Foreign(..)
+            | ty::Param(..)
+            | ty::Anon(..) => {
                 if t.flags.intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {
@@ -327,7 +327,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         if !value.has_type_flags(needs_canonical_flags) {
             let out_value = gcx.lift(value).unwrap();
             let canon_value = Canonical {
-                variables: Slice::empty(),
+                variables: List::empty(),
                 value: out_value,
             };
             return canon_value;

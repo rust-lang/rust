@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ) -> Option<Span> {
         let ret_ty = self.tcx.type_of(scope_def_id);
         match ret_ty.sty {
-            ty::TyFnDef(_, _) => {
+            ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self.tcx);
                 let late_bound_regions = self.tcx
                     .collect_referenced_late_bound_regions(&sig.output());
@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ) -> bool {
         let ret_ty = self.tcx.type_of(scope_def_id);
         match ret_ty.sty {
-            ty::TyFnDef(_, _) => {
+            ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self.tcx);
                 let output = self.tcx.erase_late_bound_regions(&sig.output());
                 return output.is_impl_trait();

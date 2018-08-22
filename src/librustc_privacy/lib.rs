@@ -89,11 +89,11 @@ struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
         let ty_def_id = match self.tcx.type_of(item_def_id).sty {
-            ty::TyAdt(adt, _) => adt.did,
-            ty::TyForeign(did) => did,
-            ty::TyDynamic(ref obj, ..) if obj.principal().is_some() =>
+            ty::Adt(adt, _) => adt.did,
+            ty::Foreign(did) => did,
+            ty::Dynamic(ref obj, ..) if obj.principal().is_some() =>
                 obj.principal().unwrap().def_id(),
-            ty::TyProjection(ref proj) => proj.trait_ref(self.tcx).def_id,
+            ty::Projection(ref proj) => proj.trait_ref(self.tcx).def_id,
             _ => return Some(AccessLevel::Public)
         };
         if let Some(node_id) = self.tcx.hir.as_local_node_id(ty_def_id) {
@@ -443,7 +443,7 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn ty(&mut self) -> &mut Self {
         let ty = self.ev.tcx.type_of(self.item_def_id);
         ty.visit_with(self);
-        if let ty::TyFnDef(def_id, _) = ty.sty {
+        if let ty::FnDef(def_id, _) = ty.sty {
             if def_id == self.item_def_id {
                 self.ev.tcx.fn_sig(def_id).visit_with(self);
             }
@@ -470,14 +470,14 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
-            ty::TyAdt(adt, _) => Some(adt.did),
-            ty::TyForeign(did) => Some(did),
-            ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
-            ty::TyProjection(ref proj) => Some(proj.item_def_id),
-            ty::TyFnDef(def_id, ..) |
-            ty::TyClosure(def_id, ..) |
-            ty::TyGenerator(def_id, ..) |
-            ty::TyAnon(def_id, _) => Some(def_id),
+            ty::Adt(adt, _) => Some(adt.did),
+            ty::Foreign(did) => Some(did),
+            ty::Dynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
+            ty::Projection(ref proj) => Some(proj.item_def_id),
+            ty::FnDef(def_id, ..) |
+            ty::Closure(def_id, ..) |
+            ty::Generator(def_id, ..) |
+            ty::Anon(def_id, _) => Some(def_id),
             _ => None
         };
 
@@ -896,15 +896,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(&ty::AdtDef { did: def_id, .. }, ..) |
-            ty::TyFnDef(def_id, ..) |
-            ty::TyForeign(def_id) => {
+            ty::Adt(&ty::AdtDef { did: def_id, .. }, ..) |
+            ty::FnDef(def_id, ..) |
+            ty::Foreign(def_id) => {
                 if !self.item_is_accessible(def_id) {
                     let msg = format!("type `{}` is private", ty);
                     self.tcx.sess.span_err(self.span, &msg);
                     return true;
                 }
-                if let ty::TyFnDef(..) = ty.sty {
+                if let ty::FnDef(..) = ty.sty {
                     if self.tcx.fn_sig(def_id).visit_with(self) {
                         return true;
                     }
@@ -919,7 +919,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     }
                 }
             }
-            ty::TyDynamic(ref predicates, ..) => {
+            ty::Dynamic(ref predicates, ..) => {
                 let is_private = predicates.skip_binder().iter().any(|predicate| {
                     let def_id = match *predicate {
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref.def_id,
@@ -935,13 +935,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     return true;
                 }
             }
-            ty::TyProjection(ref proj) => {
+            ty::Projection(ref proj) => {
                 let tcx = self.tcx;
                 if self.check_trait_ref(proj.trait_ref(tcx)) {
                     return true;
                 }
             }
-            ty::TyAnon(def_id, ..) => {
+            ty::Anon(def_id, ..) => {
                 for predicate in &self.tcx.predicates_of(def_id).predicates {
                     let trait_ref = match *predicate {
                         ty::Predicate::Trait(ref poly_trait_predicate) => {
@@ -964,9 +964,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             return true;
                         }
                         for subst in trait_ref.substs.iter() {
-                            // Skip repeated `TyAnon`s to avoid infinite recursion.
+                            // Skip repeated `Anon`s to avoid infinite recursion.
                             if let UnpackedKind::Type(ty) = subst.unpack() {
-                                if let ty::TyAnon(def_id, ..) = ty.sty {
+                                if let ty::Anon(def_id, ..) = ty.sty {
                                     if !self.visited_anon_tys.insert(def_id) {
                                         continue;
                                     }
@@ -1388,7 +1388,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn ty(&mut self) -> &mut Self {
         let ty = self.tcx.type_of(self.item_def_id);
         ty.visit_with(self);
-        if let ty::TyFnDef(def_id, _) = ty.sty {
+        if let ty::FnDef(def_id, _) = ty.sty {
             if def_id == self.item_def_id {
                 self.tcx.fn_sig(def_id).visit_with(self);
             }
@@ -1434,10 +1434,10 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
 impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
-            ty::TyAdt(adt, _) => Some(adt.did),
-            ty::TyForeign(did) => Some(did),
-            ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
-            ty::TyProjection(ref proj) => {
+            ty::Adt(adt, _) => Some(adt.did),
+            ty::Foreign(did) => Some(did),
+            ty::Dynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
+            ty::Projection(ref proj) => {
                 if self.required_visibility == ty::Visibility::Invisible {
                     // Conservatively approximate the whole type alias as public without
                     // recursing into its components when determining impl publicity.

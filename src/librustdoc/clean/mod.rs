@@ -1077,7 +1077,7 @@ fn external_generic_args(cx: &DocContext, trait_did: Option<DefId>, has_self: bo
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
-                ty::TyTuple(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                ty::Tuple(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => {
                     return GenericArgs::AngleBracketed {
                         lifetimes,
@@ -1089,7 +1089,7 @@ fn external_generic_args(cx: &DocContext, trait_did: Option<DefId>, has_self: bo
             let output = None;
             // FIXME(#20299) return type comes from a projection now
             // match types[1].sty {
-            //     ty::TyTuple(ref v) if v.is_empty() => None, // -> ()
+            //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
             // };
             GenericArgs::Parenthesized {
@@ -1133,9 +1133,9 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
         // collect any late bound regions
         let mut late_bounds = vec![];
         for ty_s in trait_ref.input_types().skip(1) {
-            if let ty::TyTuple(ts) = ty_s.sty {
+            if let ty::Tuple(ts) = ty_s.sty {
                 for &ty_s in ts {
-                    if let ty::TyRef(ref reg, _, _) = ty_s.sty {
+                    if let ty::Ref(ref reg, _, _) = ty_s.sty {
                         if let &ty::RegionKind::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(Lifetime(name)) = reg.clean(cx) {
@@ -1979,7 +1979,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
-                    } else if let ty::TyRef(_, ty, _) = self_arg_ty.sty {
+                    } else if let ty::Ref(_, ty, _) = self_arg_ty.sty {
                         if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef{ref mut type_, ..} => {
@@ -2506,7 +2506,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut def = Def::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
-                if let ty::TyProjection(proj) = ty.sty {
+                if let ty::Projection(proj) = ty.sty {
                     def = Def::Trait(proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path {
@@ -2545,15 +2545,15 @@ impl Clean<Type> for hir::Ty {
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
-            ty::TyNever => Never,
-            ty::TyBool => Primitive(PrimitiveType::Bool),
-            ty::TyChar => Primitive(PrimitiveType::Char),
-            ty::TyInt(int_ty) => Primitive(int_ty.into()),
-            ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
-            ty::TyFloat(float_ty) => Primitive(float_ty.into()),
-            ty::TyStr => Primitive(PrimitiveType::Str),
-            ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => {
+            ty::Never => Never,
+            ty::Bool => Primitive(PrimitiveType::Bool),
+            ty::Char => Primitive(PrimitiveType::Char),
+            ty::Int(int_ty) => Primitive(int_ty.into()),
+            ty::Uint(uint_ty) => Primitive(uint_ty.into()),
+            ty::Float(float_ty) => Primitive(float_ty.into()),
+            ty::Str => Primitive(PrimitiveType::Str),
+            ty::Slice(ty) => Slice(box ty.clean(cx)),
+            ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(&n).expect("array lift failed");
                 if let ConstValue::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
@@ -2568,15 +2568,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let n = print_const(cx, n);
                 Array(box ty.clean(cx), n)
             }
-            ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
-            ty::TyRef(r, ty, mutbl) => BorrowedRef {
+            ty::RawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
+            ty::Ref(r, ty, mutbl) => BorrowedRef {
                 lifetime: r.clean(cx),
                 mutability: mutbl.clean(cx),
                 type_: box ty.clean(cx),
             },
-            ty::TyFnDef(..) |
-            ty::TyFnPtr(_) => {
-                let ty = cx.tcx.lift(self).expect("TyFnPtr lift failed");
+            ty::FnDef(..) |
+            ty::FnPtr(_) => {
+                let ty = cx.tcx.lift(self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
@@ -2585,7 +2585,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     abi: sig.abi(),
                 })
             }
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {
                     AdtKind::Struct => TypeKind::Struct,
@@ -2602,7 +2602,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyForeign(did) => {
+            ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
                 let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                                          None, false, vec![], Substs::empty());
@@ -2613,7 +2613,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyDynamic(ref obj, ref reg) => {
+            ty::Dynamic(ref obj, ref reg) => {
                 if let Some(principal) = obj.principal() {
                     let did = principal.def_id();
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
@@ -2657,17 +2657,17 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     Never
                 }
             }
-            ty::TyTuple(ref t) => Tuple(t.clean(cx)),
+            ty::Tuple(ref t) => Tuple(t.clean(cx)),
 
-            ty::TyProjection(ref data) => data.clean(cx),
+            ty::Projection(ref data) => data.clean(cx),
 
-            ty::TyParam(ref p) => Generic(p.name.to_string()),
+            ty::Param(ref p) => Generic(p.name.to_string()),
 
-            ty::TyAnon(def_id, substs) => {
+            ty::Anon(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
                 let predicates_of = cx.tcx.predicates_of(def_id);
-                let substs = cx.tcx.lift(&substs).expect("TyAnon lift failed");
+                let substs = cx.tcx.lift(&substs).expect("Anon lift failed");
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 let mut regions = vec![];
                 let mut has_sized = false;
@@ -2717,11 +2717,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 ImplTrait(bounds)
             }
 
-            ty::TyClosure(..) | ty::TyGenerator(..) => Tuple(vec![]), // FIXME(pcwalton)
+            ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
-            ty::TyGeneratorWitness(..) => panic!("TyGeneratorWitness"),
-            ty::TyInfer(..) => panic!("TyInfer"),
-            ty::TyError => panic!("TyError"),
+            ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
+            ty::Infer(..) => panic!("Infer"),
+            ty::Error => panic!("Error"),
         }
     }
 }
@@ -3700,12 +3700,12 @@ fn resolve_type(cx: &DocContext,
 
     let is_generic = match path.def {
         Def::PrimTy(p) => match p {
-            hir::TyStr => return Primitive(PrimitiveType::Str),
-            hir::TyBool => return Primitive(PrimitiveType::Bool),
-            hir::TyChar => return Primitive(PrimitiveType::Char),
-            hir::TyInt(int_ty) => return Primitive(int_ty.into()),
-            hir::TyUint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::TyFloat(float_ty) => return Primitive(float_ty.into()),
+            hir::Str => return Primitive(PrimitiveType::Str),
+            hir::Bool => return Primitive(PrimitiveType::Bool),
+            hir::Char => return Primitive(PrimitiveType::Char),
+            hir::Int(int_ty) => return Primitive(int_ty.into()),
+            hir::Uint(uint_ty) => return Primitive(uint_ty.into()),
+            hir::Float(float_ty) => return Primitive(float_ty.into()),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
@@ -3731,7 +3731,7 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Struct(i) => (i, TypeKind::Struct),
         Def::Union(i) => (i, TypeKind::Union),
         Def::Mod(i) => (i, TypeKind::Module),
-        Def::TyForeign(i) => (i, TypeKind::Foreign),
+        Def::ForeignTy(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),

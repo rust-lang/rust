@@ -467,7 +467,7 @@ fn arg_local_refs(
 
             let arg_ty = fx.monomorphize(&arg_decl.ty);
             let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys) => tys,
+                ty::Tuple(ref tys) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
@@ -592,14 +592,14 @@ fn arg_local_refs(
 
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
-                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-                ty::TyRef(_, ty, _)  => (bx.cx.layout_of(ty), true),
+                ty::RawPtr(ty::TypeAndMut { ty, .. }) |
+                ty::Ref(_, ty, _)  => (bx.cx.layout_of(ty), true),
                 _ => (arg.layout, false)
             };
 
             let (def_id, upvar_substs) = match closure_layout.ty.sty {
-                ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
-                ty::TyGenerator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
+                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+                ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
                 _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_layout.ty)
             };
             let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
@@ -639,7 +639,7 @@ fn arg_local_refs(
                 // a pointer in an alloca for debuginfo atm.
                 let mut ops = if env_ref || env_alloca { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::TyRef(_, ty, _)) = (decl.by_ref, &ty.sty) {
+                let ty = if let (true, &ty::Ref(_, ty, _)) = (decl.by_ref, &ty.sty) {
                     ty
                 } else {
                     ops = &ops[..ops.len() - 1];

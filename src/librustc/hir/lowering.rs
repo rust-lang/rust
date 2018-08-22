@@ -1183,7 +1183,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
                         self.lower_node_id(def_node_id);
-                        // Add a definition for the in-band TyParam
+                        // Add a definition for the in-band Param
                         let def_index = self
                             .resolver
                             .definitions()

@@ -771,7 +771,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // in the normalized form
         if self.just_constrained {
             match t.sty {
-                ty::TyProjection(..) | ty::TyAnon(..) => { return false; }
+                ty::Projection(..) | ty::Anon(..) => { return false; }
                 _ => { }
             }
         }

@@ -61,17 +61,17 @@ fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx,
                                                             place: &mir::Place<'tcx>) -> bool {
     let ty = place.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
-        ty::TyArray(..) => {
+        ty::Array(..) => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
                    place, ty);
             false
         }
-        ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
+        ty::Slice(..) | ty::Ref(..) | ty::RawPtr(..) => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} refd => true",
                    place, ty);
             true
         }
-        ty::TyAdt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
+        ty::Adt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} Drop => true",
                    place, ty);
             true

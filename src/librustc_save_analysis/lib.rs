@@ -534,7 +534,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         let hir_node = self.tcx.hir.expect_expr(expr.id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || ty.unwrap().sty == ty::TyError {
+        if ty.is_none() || ty.unwrap().sty == ty::Error {
             return None;
         }
         match expr.node {
@@ -551,7 +551,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 };
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
-                    ty::TyAdt(def, _) if !def.is_enum() => {
+                    ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         let index = self.tcx.find_field_index(ident, variant).unwrap();
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -563,7 +563,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             ref_id: id_from_def_id(variant.fields[index].did),
                         }));
                     }
-                    ty::TyTuple(..) => None,
+                    ty::Tuple(..) => None,
                     _ => {
                         debug!("Expected struct or union type, found {:?}", ty);
                         None
@@ -572,7 +572,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::Struct(ref path, ..) => {
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
-                    ty::TyAdt(def, _) if !def.is_enum() => {
+                    ty::Adt(def, _) if !def.is_enum() => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
                         let span = self.span_from_span(sub_span.unwrap());
@@ -674,7 +674,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     hir::QPath::Resolved(_, ref path) => path.def,
                     hir::QPath::TypeRelative(..) => {
                         let ty = hir_ty_to_ty(self.tcx, ty);
-                        if let ty::TyProjection(proj) = ty.sty {
+                        if let ty::Projection(proj) = ty.sty {
                             return HirDef::AssociatedTy(proj.item_def_id);
                         }
                         HirDef::Err
@@ -747,7 +747,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Union(def_id) |
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
-            HirDef::TyForeign(def_id) |
+            HirDef::ForeignTy(def_id) |
             HirDef::TraitAlias(def_id) |
             HirDef::AssociatedExistential(def_id) |
             HirDef::AssociatedTy(def_id) |

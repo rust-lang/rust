@@ -194,7 +194,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             );
 
             let def = match item_type.sty {
-                ty::TyFnDef(..) if {
+                ty::FnDef(..) if {
                     let f = item_type.fn_sig(tcx);
                     f.abi() == Abi::RustIntrinsic ||
                         f.abi() == Abi::PlatformIntrinsic

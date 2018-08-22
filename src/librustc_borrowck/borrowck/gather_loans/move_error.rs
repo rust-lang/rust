@@ -154,7 +154,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
+                ty::Adt(def, _) if def.has_dtor(bccx.tcx) => {
                     bccx.cannot_move_out_of_interior_of_drop(
                         move_from.span, b.ty, Origin::Ast)
                 }

@@ -470,33 +470,33 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
         Ok(match ty.sty {
             // Basic scalars.
-            ty::TyBool => {
+            ty::Bool => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
                     value: Int(I8, false),
                     valid_range: 0..=1
                 }))
             }
-            ty::TyChar => {
+            ty::Char => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
                     value: Int(I32, false),
                     valid_range: 0..=0x10FFFF
                 }))
             }
-            ty::TyInt(ity) => {
+            ty::Int(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity)), true))
             }
-            ty::TyUint(ity) => {
+            ty::Uint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::TyFloat(fty) => scalar(Float(fty)),
-            ty::TyFnPtr(_) => {
+            ty::Float(fty) => scalar(Float(fty)),
+            ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
                 tcx.intern_layout(LayoutDetails::scalar(self, ptr))
             }
 
             // The never type.
-            ty::TyNever => {
+            ty::Never => {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Union(0),
@@ -507,8 +507,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, pointee, _) |
-            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+            ty::Ref(_, pointee, _) |
+            ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
                     data_ptr.valid_range = 1..=*data_ptr.valid_range.end();
@@ -521,13 +521,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 let unsized_part = tcx.struct_tail(pointee);
                 let metadata = match unsized_part.sty {
-                    ty::TyForeign(..) => {
+                    ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
-                    ty::TySlice(_) | ty::TyStr => {
+                    ty::Slice(_) | ty::Str => {
                         scalar_unit(Int(dl.ptr_sized_integer(), false))
                     }
-                    ty::TyDynamic(..) => {
+                    ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
                         vtable.valid_range = 1..=*vtable.valid_range.end();
                         vtable
@@ -540,7 +540,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Arrays and slices.
-            ty::TyArray(element, mut count) => {
+            ty::Array(element, mut count) => {
                 if count.has_projections() {
                     count = tcx.normalize_erasing_regions(param_env, count);
                     if count.has_projections() {
@@ -564,7 +564,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size
                 })
             }
-            ty::TySlice(element) => {
+            ty::Slice(element) => {
                 let element = self.layout_of(element)?;
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
@@ -577,7 +577,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size: Size::ZERO
                 })
             }
-            ty::TyStr => {
+            ty::Str => {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
@@ -591,10 +591,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Odd unit types.
-            ty::TyFnDef(..) => {
+            ty::FnDef(..) => {
                 univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?
             }
-            ty::TyDynamic(..) | ty::TyForeign(..) => {
+            ty::Dynamic(..) | ty::Foreign(..) => {
                 let mut unit = univariant_uninterned(&[], &ReprOptions::default(),
                   StructKind::AlwaysSized)?;
                 match unit.abi {
@@ -605,21 +605,21 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Tuples, generators and closures.
-            ty::TyGenerator(def_id, ref substs, _) => {
+            ty::Generator(def_id, ref substs, _) => {
                 let tys = substs.field_tys(def_id, tcx);
                 univariant(&tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     StructKind::AlwaysSized)?
             }
 
-            ty::TyClosure(def_id, ref substs) => {
+            ty::Closure(def_id, ref substs) => {
                 let tys = substs.upvar_tys(def_id, tcx);
                 univariant(&tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     StructKind::AlwaysSized)?
             }
 
-            ty::TyTuple(tys) => {
+            ty::Tuple(tys) => {
                 let kind = if tys.len() == 0 {
                     StructKind::AlwaysSized
                 } else {
@@ -631,7 +631,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.repr.simd() => {
+            ty::Adt(def, ..) if def.repr.simd() => {
                 let element = self.layout_of(ty.simd_type(tcx))?;
                 let count = ty.simd_size(tcx) as u64;
                 assert!(count > 0);
@@ -664,7 +664,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // ADTs.
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 // Cache the field layouts.
                 let variants = def.variants.iter().map(|v| {
                     v.fields.iter().map(|field| {
@@ -1103,17 +1103,17 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Types with no meaningful known layout.
-            ty::TyProjection(_) | ty::TyAnon(..) => {
+            ty::Projection(_) | ty::Anon(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
                 tcx.layout_raw(param_env.and(normalized))?
             }
-            ty::TyGeneratorWitness(..) | ty::TyInfer(_) => {
+            ty::GeneratorWitness(..) | ty::Infer(_) => {
                 bug!("LayoutDetails::compute: unexpected type `{}`", ty)
             }
-            ty::TyParam(_) | ty::TyError => {
+            ty::Param(_) | ty::Error => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
@@ -1153,12 +1153,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         };
 
         let adt_def = match layout.ty.sty {
-            ty::TyAdt(ref adt_def, _) => {
+            ty::Adt(ref adt_def, _) => {
                 debug!("print-type-size t: `{:?}` process adt", layout.ty);
                 adt_def
             }
 
-            ty::TyClosure(..) => {
+            ty::Closure(..) => {
                 debug!("print-type-size t: `{:?}` record closure", layout.ty);
                 record(DataTypeKind::Closure, false, None, vec![]);
                 return;
@@ -1294,12 +1294,12 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
         };
 
         match ty.sty {
-            ty::TyRef(_, pointee, _) |
-            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+            ty::Ref(_, pointee, _) |
+            ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail(pointee);
                 match tail.sty {
-                    ty::TyParam(_) | ty::TyProjection(_) => {
+                    ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types() || tail.has_self_ty());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
                 if def.is_union() || def.variants.is_empty() || def.variants.len() > 2 {
                     return Err(err);
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::TyProjection(_) | ty::TyAnon(..) => {
+            ty::Projection(_) | ty::Anon(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 });
 
                 let fields = match this.ty.sty {
-                    ty::TyAdt(def, _) => def.variants[variant_index].fields.len(),
+                    ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
                 let tcx = cx.tcx();
@@ -1582,23 +1582,23 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     fn field(this: TyLayout<'tcx>, cx: C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
         cx.layout_of(match this.ty.sty {
-            ty::TyBool |
-            ty::TyChar |
-            ty::TyInt(_) |
-            ty::TyUint(_) |
-            ty::TyFloat(_) |
-            ty::TyFnPtr(_) |
-            ty::TyNever |
-            ty::TyFnDef(..) |
-            ty::TyGeneratorWitness(..) |
-            ty::TyForeign(..) |
-            ty::TyDynamic(..) => {
+            ty::Bool |
+            ty::Char |
+            ty::Int(_) |
+            ty::Uint(_) |
+            ty::Float(_) |
+            ty::FnPtr(_) |
+            ty::Never |
+            ty::FnDef(..) |
+            ty::GeneratorWitness(..) |
+            ty::Foreign(..) |
+            ty::Dynamic(..) => {
                 bug!("TyLayout::field_type({:?}): not applicable", this)
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, pointee, _) |
-            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+            ty::Ref(_, pointee, _) |
+            ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 assert!(i < this.fields.count());
 
                 // Reuse the fat *T type as its own thin pointer data field.
@@ -1619,9 +1619,9 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 }
 
                 match tcx.struct_tail(pointee).sty {
-                    ty::TySlice(_) |
-                    ty::TyStr => tcx.types.usize,
-                    ty::TyDynamic(data, _) => {
+                    ty::Slice(_) |
+                    ty::Str => tcx.types.usize,
+                    ty::Dynamic(data, _) => {
                         let trait_def_id = data.principal().unwrap().def_id();
                         let num_fns: u64 = crate::traits::supertrait_def_ids(tcx, trait_def_id)
                             .map(|trait_def_id| {
@@ -1646,28 +1646,28 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             }
 
             // Arrays and slices.
-            ty::TyArray(element, _) |
-            ty::TySlice(element) => element,
-            ty::TyStr => tcx.types.u8,
+            ty::Array(element, _) |
+            ty::Slice(element) => element,
+            ty::Str => tcx.types.u8,
 
             // Tuples, generators and closures.
-            ty::TyClosure(def_id, ref substs) => {
+            ty::Closure(def_id, ref substs) => {
                 substs.upvar_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::TyGenerator(def_id, ref substs, _) => {
+            ty::Generator(def_id, ref substs, _) => {
                 substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::TyTuple(tys) => tys[i],
+            ty::Tuple(tys) => tys[i],
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.repr.simd() => {
+            ty::Adt(def, ..) if def.repr.simd() => {
                 this.ty.simd_type(tcx)
             }
 
             // ADTs.
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 match this.variants {
                     Variants::Single { index } => {
                         def.variants[index].fields[i].ty(tcx, substs)
@@ -1686,8 +1686,8 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 }
             }
 
-            ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
-            ty::TyInfer(_) | ty::TyError => {
+            ty::Projection(_) | ty::Anon(..) | ty::Param(_) |
+            ty::Infer(_) | ty::Error => {
                 bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }
         })
@@ -1749,7 +1749,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         // Locals variables which live across yields are stored
         // in the generator type as fields. These may be uninitialized
         // so we don't look for niches there.
-        if let ty::TyGenerator(..) = layout.ty.sty {
+        if let ty::Generator(..) = layout.ty.sty {
             return Ok(None);
         }
 

@@ -67,13 +67,13 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let ty = tcx.type_of(tcx.hir.local_def_id(id));
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.sty {
-                ty::TyClosure(..) => {
+                ty::Closure(..) => {
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
                     Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
                 }
-                ty::TyGenerator(..) => {
+                ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
                     Some(ArgInfo(gen_ty, None, None, None))
                 }
@@ -115,7 +115,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
             let (yield_ty, return_ty) = if body.is_generator {
                 let gen_sig = match ty.sty {
-                    ty::TyGenerator(gen_def_id, gen_substs, ..) =>
+                    ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
                     _ =>
                         span_bug!(tcx.hir.span(id), "generator w/o generator type: {:?}", ty),
@@ -241,7 +241,7 @@ fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
-        ty::TyClosure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
+        ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
     };
 

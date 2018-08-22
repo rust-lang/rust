@@ -45,7 +45,7 @@ fn place_context<'a, 'tcx, D>(
                     // A Deref projection may restrict the context, this depends on the type
                     // being deref'd.
                     let context = match ty.sty {
-                        ty::TyRef(re, _, mutbl) => {
+                        ty::Ref(re, _, mutbl) => {
                             let re = match re {
                                 &RegionKind::ReScope(ce) => Some(ce),
                                 &RegionKind::ReErased =>
@@ -54,12 +54,12 @@ fn place_context<'a, 'tcx, D>(
                             };
                             (re, mutbl)
                         }
-                        ty::TyRawPtr(_) =>
+                        ty::RawPtr(_) =>
                             // There is no guarantee behind even a mutable raw pointer,
                             // no write locks are acquired there, so we also don't want to
                             // release any.
                             (None, hir::MutImmutable),
-                        ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
+                        ty::Adt(adt, _) if adt.is_box() => (None, hir::MutMutable),
                         _ => bug!("Deref on a non-pointer type {:?}", ty),
                     };
                     // "Intersect" this restriction with proj.base.

@@ -25,7 +25,7 @@ use ty;
 use mir;
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
-for &'gcx ty::Slice<T>
+for &'gcx ty::List<T>
     where T: HashStable<StableHashingContext<'a>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -53,7 +53,7 @@ for &'gcx ty::Slice<T>
     }
 }
 
-impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::Slice<T>
+impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T>
     where T: HashStable<StableHashingContext<'a>>
 {
     type KeyType = Fingerprint;
@@ -797,90 +797,90 @@ impl_stable_hash_for!(enum ty::BoundRegion {
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ty::TypeVariants<'gcx>
+for ty::TyKind<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::TypeVariants::*;
+        use ty::TyKind::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            TyBool  |
-            TyChar  |
-            TyStr   |
-            TyError |
-            TyNever => {
+            Bool  |
+            Char  |
+            Str   |
+            Error |
+            Never => {
                 // Nothing more to hash.
             }
-            TyInt(int_ty) => {
+            Int(int_ty) => {
                 int_ty.hash_stable(hcx, hasher);
             }
-            TyUint(uint_ty) => {
+            Uint(uint_ty) => {
                 uint_ty.hash_stable(hcx, hasher);
             }
-            TyFloat(float_ty)  => {
+            Float(float_ty)  => {
                 float_ty.hash_stable(hcx, hasher);
             }
-            TyAdt(adt_def, substs) => {
+            Adt(adt_def, substs) => {
                 adt_def.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyArray(inner_ty, len) => {
+            Array(inner_ty, len) => {
                 inner_ty.hash_stable(hcx, hasher);
                 len.hash_stable(hcx, hasher);
             }
-            TySlice(inner_ty) => {
+            Slice(inner_ty) => {
                 inner_ty.hash_stable(hcx, hasher);
             }
-            TyRawPtr(pointee_ty) => {
+            RawPtr(pointee_ty) => {
                 pointee_ty.hash_stable(hcx, hasher);
             }
-            TyRef(region, pointee_ty, mutbl) => {
+            Ref(region, pointee_ty, mutbl) => {
                 region.hash_stable(hcx, hasher);
                 pointee_ty.hash_stable(hcx, hasher);
                 mutbl.hash_stable(hcx, hasher);
             }
-            TyFnDef(def_id, substs) => {
+            FnDef(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyFnPtr(ref sig) => {
+            FnPtr(ref sig) => {
                 sig.hash_stable(hcx, hasher);
             }
-            TyDynamic(ref existential_predicates, region) => {
+            Dynamic(ref existential_predicates, region) => {
                 existential_predicates.hash_stable(hcx, hasher);
                 region.hash_stable(hcx, hasher);
             }
-            TyClosure(def_id, closure_substs) => {
+            Closure(def_id, closure_substs) => {
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
-            TyGenerator(def_id, generator_substs, movability) => {
+            Generator(def_id, generator_substs, movability) => {
                 def_id.hash_stable(hcx, hasher);
                 generator_substs.hash_stable(hcx, hasher);
                 movability.hash_stable(hcx, hasher);
             }
-            TyGeneratorWitness(types) => {
+            GeneratorWitness(types) => {
                 types.hash_stable(hcx, hasher)
             }
-            TyTuple(inner_tys) => {
+            Tuple(inner_tys) => {
                 inner_tys.hash_stable(hcx, hasher);
             }
-            TyProjection(ref projection_ty) => {
+            Projection(ref projection_ty) => {
                 projection_ty.hash_stable(hcx, hasher);
             }
-            TyAnon(def_id, substs) => {
+            Anon(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyParam(param_ty) => {
+            Param(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
             }
-            TyForeign(def_id) => {
+            Foreign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            TyInfer(infer_ty) => {
+            Infer(infer_ty) => {
                 infer_ty.hash_stable(hcx, hasher);
             }
         }
@@ -905,7 +905,7 @@ for ty::TyVid
                                           _hasher: &mut StableHasher<W>) {
         // TyVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash a TyVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash a TyVid {:?}.", *self)
     }
 }
 
@@ -917,7 +917,7 @@ for ty::IntVid
                                           _hasher: &mut StableHasher<W>) {
         // IntVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash an IntVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash an IntVid {:?}.", *self)
     }
 }
 
@@ -929,7 +929,7 @@ for ty::FloatVid
                                           _hasher: &mut StableHasher<W>) {
         // FloatVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash a FloatVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }
 }
 

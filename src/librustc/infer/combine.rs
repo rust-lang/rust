@@ -76,44 +76,44 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
 
         match (&a.sty, &b.sty) {
             // Relate integral variables to other types
-            (&ty::TyInfer(ty::IntVar(a_id)), &ty::TyInfer(ty::IntVar(b_id))) => {
+            (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
                 self.int_unification_table
                     .borrow_mut()
                     .unify_var_var(a_id, b_id)
                     .map_err(|e| int_unification_error(a_is_expected, e))?;
                 Ok(a)
             }
-            (&ty::TyInfer(ty::IntVar(v_id)), &ty::TyInt(v)) => {
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, IntType(v))
             }
-            (&ty::TyInt(v), &ty::TyInfer(ty::IntVar(v_id))) => {
+            (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, IntType(v))
             }
-            (&ty::TyInfer(ty::IntVar(v_id)), &ty::TyUint(v)) => {
+            (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, UintType(v))
             }
-            (&ty::TyUint(v), &ty::TyInfer(ty::IntVar(v_id))) => {
+            (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, UintType(v))
             }
 
             // Relate floating-point variables to other types
-            (&ty::TyInfer(ty::FloatVar(a_id)), &ty::TyInfer(ty::FloatVar(b_id))) => {
+            (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
                 self.float_unification_table
                     .borrow_mut()
                     .unify_var_var(a_id, b_id)
                     .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
                 Ok(a)
             }
-            (&ty::TyInfer(ty::FloatVar(v_id)), &ty::TyFloat(v)) => {
+            (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
                 self.unify_float_variable(a_is_expected, v_id, v)
             }
-            (&ty::TyFloat(v), &ty::TyInfer(ty::FloatVar(v_id))) => {
+            (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
             // All other cases of inference are errors
-            (&ty::TyInfer(_), _) |
-            (_, &ty::TyInfer(_)) => {
+            (&ty::Infer(_), _) |
+            (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, &a, &b)))
             }
 
@@ -393,7 +393,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
         match t.sty {
-            ty::TyInfer(ty::TyVar(vid)) => {
+            ty::Infer(ty::TyVar(vid)) => {
                 let mut variables = self.infcx.type_variables.borrow_mut();
                 let vid = variables.root_var(vid);
                 let sub_vid = variables.sub_root_var(vid);
@@ -433,8 +433,8 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     }
                 }
             }
-            ty::TyInfer(ty::IntVar(_)) |
-            ty::TyInfer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_)) |
+            ty::Infer(ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.

@@ -20,24 +20,24 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     let ty = cx.tcx.type_of(def_id);
 
     match ty.sty {
-        ty::TyAdt(adt, _) => callback(&match adt.adt_kind() {
+        ty::Adt(adt, _) => callback(&match adt.adt_kind() {
             AdtKind::Struct => Def::Struct,
             AdtKind::Enum => Def::Enum,
             AdtKind::Union => Def::Union,
         }),
-        ty::TyInt(_) |
-        ty::TyUint(_) |
-        ty::TyFloat(_) |
-        ty::TyStr |
-        ty::TyBool |
-        ty::TyChar => callback(&move |_: DefId| {
+        ty::Int(_) |
+        ty::Uint(_) |
+        ty::Float(_) |
+        ty::Str |
+        ty::Bool |
+        ty::Char => callback(&move |_: DefId| {
             match ty.sty {
-                ty::TyInt(x) => Def::PrimTy(hir::TyInt(x)),
-                ty::TyUint(x) => Def::PrimTy(hir::TyUint(x)),
-                ty::TyFloat(x) => Def::PrimTy(hir::TyFloat(x)),
-                ty::TyStr => Def::PrimTy(hir::TyStr),
-                ty::TyBool => Def::PrimTy(hir::TyBool),
-                ty::TyChar => Def::PrimTy(hir::TyChar),
+                ty::Int(x) => Def::PrimTy(hir::Int(x)),
+                ty::Uint(x) => Def::PrimTy(hir::Uint(x)),
+                ty::Float(x) => Def::PrimTy(hir::Float(x)),
+                ty::Str => Def::PrimTy(hir::Str),
+                ty::Bool => Def::PrimTy(hir::Bool),
+                ty::Char => Def::PrimTy(hir::Char),
                 _ => unreachable!(),
             }
         }),

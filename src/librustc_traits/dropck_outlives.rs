@@ -119,11 +119,11 @@ fn dropck_outlives<'tcx>(
                         match ty.sty {
                             // All parameters live for the duration of the
                             // function.
-                            ty::TyParam(..) => {}
+                            ty::Param(..) => {}
 
                             // A projection that we couldn't resolve - it
                             // might have a destructor.
-                            ty::TyProjection(..) | ty::TyAnon(..) => {
+                            ty::Projection(..) | ty::Anon(..) => {
                                 result.kinds.push(ty.into());
                             }
 
@@ -173,39 +173,39 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
     }
 
     let result = match ty.sty {
-        ty::TyBool
-        | ty::TyChar
-        | ty::TyInt(_)
-        | ty::TyUint(_)
-        | ty::TyFloat(_)
-        | ty::TyStr
-        | ty::TyNever
-        | ty::TyForeign(..)
-        | ty::TyRawPtr(..)
-        | ty::TyRef(..)
-        | ty::TyFnDef(..)
-        | ty::TyFnPtr(_)
-        | ty::TyGeneratorWitness(..) => {
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Str
+        | ty::Never
+        | ty::Foreign(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::GeneratorWitness(..) => {
             // these types never have a destructor
             Ok(DtorckConstraint::empty())
         }
 
-        ty::TyArray(ety, _) | ty::TySlice(ety) => {
+        ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety)
         }
 
-        ty::TyTuple(tys) => tys
+        ty::Tuple(tys) => tys
             .iter()
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
-        ty::TyClosure(def_id, substs) => substs
+        ty::Closure(def_id, substs) => substs
             .upvar_tys(def_id, tcx)
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
-        ty::TyGenerator(def_id, substs, _movability) => {
+        ty::Generator(def_id, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -216,7 +216,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             // its interior).
             //
             // However, the interior's representation uses things like
-            // TyGeneratorWitness that explicitly assume they are not
+            // GeneratorWitness that explicitly assume they are not
             // traversed in such a manner. So instead, we will
             // simplify things for now by treating all generators as
             // if they were like trait objects, where its upvars must
@@ -242,7 +242,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             Ok(constraint)
         }
 
-        ty::TyAdt(def, substs) => {
+        ty::Adt(def, substs) => {
             let DtorckConstraint {
                 dtorck_types,
                 outlives,
@@ -259,20 +259,20 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
 
         // Objects must be alive in order for their destructor
         // to be called.
-        ty::TyDynamic(..) => Ok(DtorckConstraint {
+        ty::Dynamic(..) => Ok(DtorckConstraint {
             outlives: vec![ty.into()],
             dtorck_types: vec![],
             overflows: vec![],
         }),
 
         // Types that can't be resolved. Pass them forward.
-        ty::TyProjection(..) | ty::TyAnon(..) | ty::TyParam(..) => Ok(DtorckConstraint {
+        ty::Projection(..) | ty::Anon(..) | ty::Param(..) => Ok(DtorckConstraint {
             outlives: vec![],
             dtorck_types: vec![ty],
             overflows: vec![],
         }),
 
-        ty::TyInfer(..) | ty::TyError => {
+        ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.
             Err(NoSolution)

@@ -182,7 +182,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::TyArray(_, n) => n.unwrap_usize(bx.tcx()),
+                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
                 let values: Result<Vec<_>, Lrc<_>> = (0..fields).map(|field| {

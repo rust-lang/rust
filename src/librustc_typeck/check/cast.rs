@@ -103,10 +103,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         Ok(match t.sty {
-            ty::TySlice(_) | ty::TyStr => Some(PointerKind::Length),
-            ty::TyDynamic(ref tty, ..) =>
+            ty::Slice(_) | ty::Str => Some(PointerKind::Length),
+            ty::Dynamic(ref tty, ..) =>
                 Some(PointerKind::Vtable(tty.principal().map(|p| p.def_id()))),
-            ty::TyAdt(def, substs) if def.is_struct() => {
+            ty::Adt(def, substs) if def.is_struct() => {
                 match def.non_enum_variant().fields.last() {
                     None => Some(PointerKind::Thin),
                     Some(f) => {
@@ -115,25 +115,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            ty::TyTuple(fields) => match fields.last() {
+            ty::Tuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(f) => self.pointer_kind(f, span)?
             },
 
             // Pointers to foreign types are thin, despite being unsized
-            ty::TyForeign(..) => Some(PointerKind::Thin),
+            ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::TyProjection(ref pi) => Some(PointerKind::OfProjection(pi)),
-            ty::TyAnon(def_id, substs) => Some(PointerKind::OfAnon(def_id, substs)),
-            ty::TyParam(ref p) => Some(PointerKind::OfParam(p)),
+            ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
+            ty::Anon(def_id, substs) => Some(PointerKind::OfAnon(def_id, substs)),
+            ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
-            ty::TyInfer(_) => None,
+            ty::Infer(_) => None,
 
-            ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
-            ty::TyFloat(_) | ty::TyArray(..) | ty::TyGeneratorWitness(..) |
-            ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyFnDef(..) |
-            ty::TyFnPtr(..) | ty::TyClosure(..) | ty::TyGenerator(..) |
-            ty::TyAdt(..) | ty::TyNever | ty::TyError => {
+            ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
+            ty::Float(_) | ty::Array(..) | ty::GeneratorWitness(..) |
+            ty::RawPtr(_) | ty::Ref(..) | ty::FnDef(..) |
+            ty::FnPtr(..) | ty::Closure(..) | ty::Generator(..) |
+            ty::Adt(..) | ty::Never | ty::Error => {
                 self.tcx.sess.delay_span_bug(
                     span, &format!("`{:?}` should be sized but is not?", t));
                 return Err(ErrorReported);
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.sty {
-            ty::TyDynamic(..) | ty::TySlice(..) => {
+            ty::Dynamic(..) | ty::Slice(..) => {
                 check.report_cast_to_unsized_type(fcx);
                 Err(ErrorReported)
             }
@@ -319,7 +319,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                          fcx.resolve_type_vars_if_possible(&self.expr_ty),
                                          tstr);
         match self.expr_ty.sty {
-            ty::TyRef(_, _, mt) => {
+            ty::Ref(_, _, mt) => {
                 let mtstr = match mt {
                     hir::MutMutable => "mut ",
                     hir::MutImmutable => "",
@@ -343,7 +343,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                tstr);
                 }
             }
-            ty::TyAdt(def, ..) if def.is_box() => {
+            ty::Adt(def, ..) if def.is_box() => {
                 match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                     Ok(s) => {
                         err.span_suggestion(self.cast_span,
@@ -429,7 +429,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                if let ty::TyFnDef(..) = self.expr_ty.sty {
+                if let ty::FnDef(..) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
                     let f = self.expr_ty.fn_sig(fcx.tcx);
                     let res = fcx.try_coerce(self.expr,
@@ -477,12 +477,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (RPtr(p), Int(_)) |
             (RPtr(p), Float) => {
                 match p.ty.sty {
-                    ty::TypeVariants::TyInt(_) |
-                    ty::TypeVariants::TyUint(_) |
-                    ty::TypeVariants::TyFloat(_) => {
+                    ty::Int(_) |
+                    ty::Uint(_) |
+                    ty::Float(_) => {
                         Err(CastError::NeedDeref)
                     }
-                    ty::TypeVariants::TyInfer(t) => {
+                    ty::Infer(t) => {
                         match t {
                             ty::InferTy::IntVar(_) |
                             ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
@@ -583,7 +583,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         // array-ptr-cast.
 
         if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
-            if let ty::TyArray(ety, _) = m_expr.ty.sty {
+            if let ty::Array(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.

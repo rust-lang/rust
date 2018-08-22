@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use rustc::mir::*;
-use rustc::ty::{Slice, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{List, Ty, TyCtxt, TyKind};
 use rustc_data_structures::indexed_vec::{Idx};
 use transform::{MirPass, MirSource};
 use syntax;
@@ -114,7 +114,7 @@ impl Lower128Bit {
                         source_info,
                         kind: TerminatorKind::Call {
                             func: Operand::function_handle(tcx, call_did,
-                                Slice::empty(), source_info.span),
+                                List::empty(), source_info.span),
                             args: vec![lhs, rhs],
                             destination: Some((place, bb)),
                             cleanup: None,
@@ -190,8 +190,8 @@ impl RhsKind {
 
 fn sign_of_128bit(ty: Ty) -> Option<bool> {
     match ty.sty {
-        TypeVariants::TyInt(syntax::ast::IntTy::I128) => Some(true),
-        TypeVariants::TyUint(syntax::ast::UintTy::U128) => Some(false),
+        TyKind::Int(syntax::ast::IntTy::I128) => Some(true),
+        TyKind::Uint(syntax::ast::UintTy::U128) => Some(false),
         _ => None,
     }
 }

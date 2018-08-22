@@ -17,7 +17,7 @@ use rustc::traits::{
     WhereClause,
 };
 use rustc::ty::query::Providers;
-use rustc::ty::{self, Slice, TyCtxt};
+use rustc::ty::{self, List, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::mem;
 use syntax::ast;
@@ -162,7 +162,7 @@ crate fn program_clauses_for<'a, 'tcx>(
         DefPathData::AssocTypeInImpl(..) => program_clauses_for_associated_type_value(tcx, def_id),
         DefPathData::AssocTypeInTrait(..) => program_clauses_for_associated_type_def(tcx, def_id),
         DefPathData::TypeNs(..) => program_clauses_for_type_def(tcx, def_id),
-        _ => Slice::empty(),
+        _ => List::empty(),
     }
 }
 
@@ -319,7 +319,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
-        return Slice::empty();
+        return List::empty();
     }
 
     // Rule Implemented-From-Impl (see rustc guide)

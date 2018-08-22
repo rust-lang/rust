@@ -37,7 +37,7 @@ pub trait EncodableWithShorthand: Clone + Eq + Hash {
 }
 
 impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
-    type Variant = ty::TypeVariants<'tcx>;
+    type Variant = ty::TyKind<'tcx>;
     fn variant(&self) -> &Self::Variant {
         &self.sty
     }
@@ -164,7 +164,7 @@ pub fn decode_ty<'a, 'tcx, D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
         })
     } else {
         let tcx = decoder.tcx();
-        Ok(tcx.mk_ty(ty::TypeVariants::decode(decoder)?))
+        Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
     }
 }
 
@@ -212,7 +212,7 @@ pub fn decode_region<'a, 'tcx, D>(decoder: &mut D) -> Result<ty::Region<'tcx>, D
 
 #[inline]
 pub fn decode_ty_slice<'a, 'tcx, D>(decoder: &mut D)
-                                    -> Result<&'tcx ty::Slice<Ty<'tcx>>, D::Error>
+                                    -> Result<&'tcx ty::List<Ty<'tcx>>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
@@ -232,7 +232,7 @@ pub fn decode_adt_def<'a, 'tcx, D>(decoder: &mut D)
 
 #[inline]
 pub fn decode_existential_predicate_slice<'a, 'tcx, D>(decoder: &mut D)
-    -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, D::Error>
+    -> Result<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
@@ -366,10 +366,10 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::Slice<ty::Ty<'tcx>>>
+            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::List<ty::Ty<'tcx>>>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self)
-                                      -> Result<&'tcx ty::Slice<ty::Ty<'tcx>>, Self::Error> {
+                                      -> Result<&'tcx ty::List<ty::Ty<'tcx>>, Self::Error> {
                     decode_ty_slice(self)
                 }
             }
@@ -381,10 +381,10 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>
+            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
                 for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self)
-                    -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
+                    -> Result<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>, Self::Error> {
                     decode_existential_predicate_slice(self)
                 }
             }

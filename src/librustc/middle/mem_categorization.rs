@@ -214,8 +214,8 @@ impl<'tcx> cmt_<'tcx> {
     fn resolve_field(&self, field_index: usize) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
     {
         let adt_def = match self.ty.sty {
-            ty::TyAdt(def, _) => def,
-            ty::TyTuple(..) => return None,
+            ty::Adt(def, _) => def,
+            ty::Tuple(..) => return None,
             // closures get `Categorization::Upvar` rather than `Categorization::Interior`
             _ =>  bug!("interior cmt {:?} is not an ADT", self)
         };
@@ -783,8 +783,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnOnce         | copied               | upvar -> &'up bk
 
         let kind = match self.node_ty(fn_hir_id)?.sty {
-            ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
-            ty::TyClosure(closure_def_id, closure_substs) => {
+            ty::Generator(..) => ty::ClosureKind::FnOnce,
+            ty::Closure(closure_def_id, closure_substs) => {
                 match self.infcx {
                     // During upvar inference we may not know the
                     // closure kind, just use the LATTICE_BOTTOM value.
@@ -893,7 +893,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // that the above is actually immutable and
         // has a ref type.  However, nothing should
         // actually look at the type, so we can get
-        // away with stuffing a `TyError` in there
+        // away with stuffing a `Error` in there
         // instead of bothering to construct a proper
         // one.
         let cmt_result = cmt_ {
@@ -956,7 +956,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
-            ty::TyArray(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
+            ty::Array(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
             _ => promotable,
         };
 
@@ -1035,7 +1035,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let (region, mutbl) = match base_ty.sty {
-            ty::TyRef(region, _, mutbl) => (region, mutbl),
+            ty::Ref(region, _, mutbl) => (region, mutbl),
             _ => {
                 span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
             }
@@ -1068,9 +1068,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         };
 
         let ptr = match base_cmt.ty.sty {
-            ty::TyAdt(def, ..) if def.is_box() => Unique,
-            ty::TyRawPtr(ref mt) => UnsafePtr(mt.mutbl),
-            ty::TyRef(r, _, mutbl) => {
+            ty::Adt(def, ..) if def.is_box() => Unique,
+            ty::RawPtr(ref mt) => UnsafePtr(mt.mutbl),
+            ty::Ref(r, _, mutbl) => {
                 let bk = ty::BorrowKind::from_mutbl(mutbl);
                 BorrowedPtr(bk, r)
             }
@@ -1290,7 +1290,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty_unadjusted(&pat)?.sty {
-                        ty::TyAdt(adt_def, _) => {
+                        ty::Adt(adt_def, _) => {
                             (cmt, adt_def.non_enum_variant().fields.len())
                         }
                         ref ty => {
@@ -1343,7 +1343,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
             let expected_len = match self.pat_ty_unadjusted(&pat)?.sty {
-                ty::TyTuple(ref tys) => tys.len(),
+                ty::Tuple(ref tys) => tys.len(),
                 ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {

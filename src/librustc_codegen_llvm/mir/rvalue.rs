@@ -214,7 +214,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.layout.ty.sty {
-                            ty::TyFnDef(def_id, substs) => {
+                            ty::FnDef(def_id, substs) => {
                                 if bx.cx.tcx.has_attr(def_id, "rustc_args_required_const") {
                                     bug!("reifying a fn ptr that requires \
                                           const arguments");
@@ -229,7 +229,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                     mir::CastKind::ClosureFnPointer => {
                         match operand.layout.ty.sty {
-                            ty::TyClosure(def_id, substs) => {
+                            ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
                                     bx.cx.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(callee::get_fn(bx.cx, instance))
@@ -545,7 +545,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         // because codegen_place() panics if Local is operand.
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
-                if let ty::TyArray(_, n) = op.layout.ty.sty {
+                if let ty::Array(_, n) = op.layout.ty.sty {
                     let n = n.unwrap_usize(bx.cx.tcx);
                     return common::C_usize(bx.cx, n);
                 }
@@ -753,60 +753,60 @@ enum OverflowOp {
 fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) -> &'ll Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
-    use rustc::ty::{TyInt, TyUint};
+    use rustc::ty::{Int, Uint};
 
     let tcx = bx.tcx();
 
     let new_sty = match ty.sty {
-        TyInt(Isize) => TyInt(tcx.sess.target.isize_ty),
-        TyUint(Usize) => TyUint(tcx.sess.target.usize_ty),
-        ref t @ TyUint(_) | ref t @ TyInt(_) => t.clone(),
+        Int(Isize) => Int(tcx.sess.target.isize_ty),
+        Uint(Usize) => Uint(tcx.sess.target.usize_ty),
+        ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
         _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
     };
 
     let name = match oop {
         OverflowOp::Add => match new_sty {
-            TyInt(I8) => "llvm.sadd.with.overflow.i8",
-            TyInt(I16) => "llvm.sadd.with.overflow.i16",
-            TyInt(I32) => "llvm.sadd.with.overflow.i32",
-            TyInt(I64) => "llvm.sadd.with.overflow.i64",
-            TyInt(I128) => "llvm.sadd.with.overflow.i128",
+            Int(I8) => "llvm.sadd.with.overflow.i8",
+            Int(I16) => "llvm.sadd.with.overflow.i16",
+            Int(I32) => "llvm.sadd.with.overflow.i32",
+            Int(I64) => "llvm.sadd.with.overflow.i64",
+            Int(I128) => "llvm.sadd.with.overflow.i128",
 
-            TyUint(U8) => "llvm.uadd.with.overflow.i8",
-            TyUint(U16) => "llvm.uadd.with.overflow.i16",
-            TyUint(U32) => "llvm.uadd.with.overflow.i32",
-            TyUint(U64) => "llvm.uadd.with.overflow.i64",
-            TyUint(U128) => "llvm.uadd.with.overflow.i128",
+            Uint(U8) => "llvm.uadd.with.overflow.i8",
+            Uint(U16) => "llvm.uadd.with.overflow.i16",
+            Uint(U32) => "llvm.uadd.with.overflow.i32",
+            Uint(U64) => "llvm.uadd.with.overflow.i64",
+            Uint(U128) => "llvm.uadd.with.overflow.i128",
 
             _ => unreachable!(),
         },
         OverflowOp::Sub => match new_sty {
-            TyInt(I8) => "llvm.ssub.with.overflow.i8",
-            TyInt(I16) => "llvm.ssub.with.overflow.i16",
-            TyInt(I32) => "llvm.ssub.with.overflow.i32",
-            TyInt(I64) => "llvm.ssub.with.overflow.i64",
-            TyInt(I128) => "llvm.ssub.with.overflow.i128",
+            Int(I8) => "llvm.ssub.with.overflow.i8",
+            Int(I16) => "llvm.ssub.with.overflow.i16",
+            Int(I32) => "llvm.ssub.with.overflow.i32",
+            Int(I64) => "llvm.ssub.with.overflow.i64",
+            Int(I128) => "llvm.ssub.with.overflow.i128",
 
-            TyUint(U8) => "llvm.usub.with.overflow.i8",
-            TyUint(U16) => "llvm.usub.with.overflow.i16",
-            TyUint(U32) => "llvm.usub.with.overflow.i32",
-            TyUint(U64) => "llvm.usub.with.overflow.i64",
-            TyUint(U128) => "llvm.usub.with.overflow.i128",
+            Uint(U8) => "llvm.usub.with.overflow.i8",
+            Uint(U16) => "llvm.usub.with.overflow.i16",
+            Uint(U32) => "llvm.usub.with.overflow.i32",
+            Uint(U64) => "llvm.usub.with.overflow.i64",
+            Uint(U128) => "llvm.usub.with.overflow.i128",
 
             _ => unreachable!(),
         },
         OverflowOp::Mul => match new_sty {
-            TyInt(I8) => "llvm.smul.with.overflow.i8",
-            TyInt(I16) => "llvm.smul.with.overflow.i16",
-            TyInt(I32) => "llvm.smul.with.overflow.i32",
-            TyInt(I64) => "llvm.smul.with.overflow.i64",
-            TyInt(I128) => "llvm.smul.with.overflow.i128",
+            Int(I8) => "llvm.smul.with.overflow.i8",
+            Int(I16) => "llvm.smul.with.overflow.i16",
+            Int(I32) => "llvm.smul.with.overflow.i32",
+            Int(I64) => "llvm.smul.with.overflow.i64",
+            Int(I128) => "llvm.smul.with.overflow.i128",
 
-            TyUint(U8) => "llvm.umul.with.overflow.i8",
-            TyUint(U16) => "llvm.umul.with.overflow.i16",
-            TyUint(U32) => "llvm.umul.with.overflow.i32",
-            TyUint(U64) => "llvm.umul.with.overflow.i64",
-            TyUint(U128) => "llvm.umul.with.overflow.i128",
+            Uint(U8) => "llvm.umul.with.overflow.i8",
+            Uint(U16) => "llvm.umul.with.overflow.i16",
+            Uint(U32) => "llvm.umul.with.overflow.i32",
+            Uint(U64) => "llvm.umul.with.overflow.i64",
+            Uint(U128) => "llvm.umul.with.overflow.i128",
 
             _ => unreachable!(),
         },

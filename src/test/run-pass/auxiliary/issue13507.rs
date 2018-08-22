@@ -32,43 +32,43 @@ pub mod testtypes {
         ]
     }
 
-    // Tests TyBool
+    // Tests Bool
     pub type FooBool = bool;
 
-    // Tests TyChar
+    // Tests Char
     pub type FooChar = char;
 
-    // Tests TyInt (does not test all variants of IntTy)
+    // Tests Int (does not test all variants of IntTy)
     pub type FooInt = isize;
 
-    // Tests TyUint (does not test all variants of UintTy)
+    // Tests Uint (does not test all variants of UintTy)
     pub type FooUint = usize;
 
-    // Tests TyFloat (does not test all variants of FloatTy)
+    // Tests Float (does not test all variants of FloatTy)
     pub type FooFloat = f64;
 
-    // Tests TyStr
+    // Tests Str
     pub type FooStr = str;
 
-    // Tests TyArray
+    // Tests Array
     pub type FooArray = [u8; 1];
 
-    // Tests TySlice
+    // Tests Slice
     pub type FooSlice = [u8];
 
     // Tests Box (of u8)
     pub type FooBox = Box<u8>;
 
-    // Tests TyRawPtr
+    // Tests RawPtr
     pub type FooPtr = *const u8;
 
-    // Tests TyRef
+    // Tests Ref
     pub type FooRef = &'static u8;
 
-    // Tests TyFnPtr
+    // Tests FnPtr
     pub type FooFnPtr = fn(u8) -> bool;
 
-    // Tests TyDynamic
+    // Tests Dynamic
     pub trait FooTrait {
         fn foo_method(&self) -> usize;
     }
@@ -85,13 +85,13 @@ pub mod testtypes {
         VarB(usize, usize)
     }
 
-    // Tests TyTuple
+    // Tests Tuple
     pub type FooNil = ();
     pub type FooTuple = (u8, i8, bool);
 
-    // Skipping TyParam
+    // Skipping Param
 
-    // Skipping TyInfer
+    // Skipping Infer
 
-    // Skipping TyError
+    // Skipping Error
 }

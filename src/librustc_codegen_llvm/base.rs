@@ -166,12 +166,12 @@ pub fn compare_simd_types(
     op: hir::BinOpKind
 ) -> &'ll Value {
     let signed = match t.sty {
-        ty::TyFloat(_) => {
+        ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
             return bx.sext(bx.fcmp(cmp, lhs, rhs), ret_ty);
         },
-        ty::TyUint(_) => false,
-        ty::TyInt(_) => true,
+        ty::Uint(_) => false,
+        ty::Int(_) => true,
         _ => bug!("compare_simd_types: invalid SIMD type"),
     };
 
@@ -197,16 +197,16 @@ pub fn unsized_info(
 ) -> &'ll Value {
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
-        (&ty::TyArray(_, len), &ty::TySlice(_)) => {
+        (&ty::Array(_, len), &ty::Slice(_)) => {
             C_usize(cx, len.unwrap_usize(cx.tcx))
         }
-        (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
+        (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::TyDynamic(ref data, ..)) => {
+        (_, &ty::Dynamic(ref data, ..)) => {
             let vtable_ptr = cx.layout_of(cx.tcx.mk_mut_ptr(target))
                 .field(cx, abi::FAT_PTR_EXTRA);
             consts::ptrcast(meth::get_vtable(cx, source, data.principal()),
@@ -227,23 +227,23 @@ pub fn unsize_thin_ptr(
 ) -> (&'ll Value, &'ll Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::TyRef(_, a, _),
-         &ty::TyRef(_, b, _)) |
-        (&ty::TyRef(_, a, _),
-         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
-         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (&ty::Ref(_, a, _),
+         &ty::Ref(_, b, _)) |
+        (&ty::Ref(_, a, _),
+         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
+        (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
+         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx.type_is_sized(a));
             let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bx.cx.type_is_sized(a));
             let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             let src_layout = bx.cx.layout_of(src_ty);
@@ -299,16 +299,16 @@ pub fn coerce_unsized_into(
         OperandValue::Pair(base, info).store(bx, dst);
     };
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::TyRef(..), &ty::TyRef(..)) |
-        (&ty::TyRef(..), &ty::TyRawPtr(..)) |
-        (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
+        (&ty::Ref(..), &ty::Ref(..)) |
+        (&ty::Ref(..), &ty::RawPtr(..)) |
+        (&ty::RawPtr(..), &ty::RawPtr(..)) => {
             coerce_ptr()
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             coerce_ptr()
         }
 
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variants[0].fields.len() {

@@ -267,7 +267,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 Def::Struct(did) |
                 Def::Union(did) |
                 Def::Enum(did) |
-                Def::TyForeign(did) |
+                Def::ForeignTy(did) |
                 Def::TyAlias(did) if !self_is_hidden => {
                     self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
                 },

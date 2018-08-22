@@ -376,7 +376,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 //     &
                 //     - let's call the lifetime of this reference `'1`
                 (
-                    ty::TyRef(region, referent_ty, _),
+                    ty::Ref(region, referent_ty, _),
                     hir::TyKind::Rptr(_lifetime, referent_hir_ty),
                 ) => {
                     if region.to_region_vid() == needle_fr {
@@ -403,7 +403,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Match up something like `Foo<'1>`
                 (
-                    ty::TyAdt(_adt_def, substs),
+                    ty::Adt(_adt_def, substs),
                     hir::TyKind::Path(hir::QPath::Resolved(None, path)),
                 ) => {
                     if let Some(last_segment) = path.segments.last() {
@@ -423,16 +423,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // The following cases don't have lifetimes, so we
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
-                (ty::TyTuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
+                (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
                     search_stack.extend(elem_tys.iter().cloned().zip(elem_hir_tys));
                 }
 
-                (ty::TySlice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
-                | (ty::TyArray(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
+                (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
+                | (ty::Array(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
                     search_stack.push((elem_ty, elem_hir_ty));
                 }
 
-                (ty::TyRawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
+                (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
                     search_stack.push((mut_ty.ty, &mut_hir_ty.ty));
                 }
 

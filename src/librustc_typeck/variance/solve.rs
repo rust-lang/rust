@@ -101,7 +101,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             debug!("id={} variances={:?}", id, variances);
 
             // Functions can have unused type parameters: make those invariant.
-            if let ty::TyFnDef(..) = tcx.type_of(def_id).sty {
+            if let ty::FnDef(..) = tcx.type_of(def_id).sty {
                 for variance in &mut variances {
                     if *variance == ty::Bivariant {
                         *variance = ty::Invariant;

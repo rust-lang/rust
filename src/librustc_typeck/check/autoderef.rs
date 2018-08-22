@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                 self.fcx.try_overloaded_deref(self.span, source, needs)
                     .and_then(|InferOk { value: method, obligations: o }| {
                         obligations.extend(o);
-                        if let ty::TyRef(region, _, mutbl) = method.sig.output().sty {
+                        if let ty::Ref(region, _, mutbl) = method.sig.output().sty {
                             Some(OverloadedDeref {
                                 region,
                                 mutbl,

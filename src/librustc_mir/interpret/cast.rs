@@ -15,9 +15,9 @@ use super::{EvalContext, Machine, PlaceTy, OpTy, Value};
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyRef(_, ty, _) => !self.type_is_sized(ty),
-            ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::Ref(_, ty, _) => !self.type_is_sized(ty),
+            ty::Adt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
             _ => false,
         }
     }
@@ -80,7 +80,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ReifyFnPointer => {
                 // The src operand does not matter, just its type
                 match src_layout.ty.sty {
-                    ty::TyFnDef(def_id, substs) => {
+                    ty::FnDef(def_id, substs) => {
                         if self.tcx.has_attr(def_id, "rustc_args_required_const") {
                             bug!("reifying a fn ptr that requires \
                                     const arguments");
@@ -101,7 +101,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             UnsafeFnPointer => {
                 let src = self.read_value(src)?;
                 match dest.layout.ty.sty {
-                    ty::TyFnPtr(_) => {
+                    ty::FnPtr(_) => {
                         // No change to value
                         self.write_value(*src, dest)?;
                     }
@@ -112,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ClosureFnPointer => {
                 // The src operand does not matter, just its type
                 match src_layout.ty.sty {
-                    ty::TyClosure(def_id, substs) => {
+                    ty::Closure(def_id, substs) => {
                         let substs = self.tcx.subst_and_normalize_erasing_regions(
                             self.substs(),
                             ty::ParamEnv::reveal_all(),
@@ -141,7 +141,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
         match val {
@@ -152,7 +152,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     "Unexpected value of size {} before casting", size);
 
                 let res = match src_layout.ty.sty {
-                    TyFloat(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
+                    Float(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
                     _ => self.cast_from_int(bits, src_layout, dest_layout)?,
                 };
 
@@ -184,9 +184,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             v
         };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         match dest_layout.ty.sty {
-            TyInt(_) | TyUint(_) => {
+            Int(_) | Uint(_) => {
                 let v = self.truncate(v, dest_layout);
                 Ok(Scalar::Bits {
                     bits: v,
@@ -194,30 +194,30 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             }
 
-            TyFloat(FloatTy::F32) if signed => Ok(Scalar::Bits {
+            Float(FloatTy::F32) if signed => Ok(Scalar::Bits {
                 bits: Single::from_i128(v as i128).value.to_bits(),
                 size: 4,
             }),
-            TyFloat(FloatTy::F64) if signed => Ok(Scalar::Bits {
+            Float(FloatTy::F64) if signed => Ok(Scalar::Bits {
                 bits: Double::from_i128(v as i128).value.to_bits(),
                 size: 8,
             }),
-            TyFloat(FloatTy::F32) => Ok(Scalar::Bits {
+            Float(FloatTy::F32) => Ok(Scalar::Bits {
                 bits: Single::from_u128(v).value.to_bits(),
                 size: 4,
             }),
-            TyFloat(FloatTy::F64) => Ok(Scalar::Bits {
+            Float(FloatTy::F64) => Ok(Scalar::Bits {
                 bits: Double::from_u128(v).value.to_bits(),
                 size: 8,
             }),
 
-            TyChar => {
+            Char => {
                 assert_eq!(v as u8 as u128, v);
                 Ok(Scalar::Bits { bits: v, size: 4 })
             },
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
-            TyRawPtr(_) => {
+            RawPtr(_) => {
                 Ok(Scalar::Bits {
                     bits: self.memory.truncate_to_ptr(v).0 as u128,
                     size: self.memory.pointer_size().bytes() as u8,
@@ -230,11 +230,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn cast_from_float(&self, bits: u128, fty: FloatTy, dest_ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
             // float -> uint
-            TyUint(t) => {
+            Uint(t) => {
                 let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_u128(width).value,
@@ -247,7 +247,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             },
             // float -> int
-            TyInt(t) => {
+            Int(t) => {
                 let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_i128(width).value,
@@ -263,25 +263,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })
             },
             // f64 -> f32
-            TyFloat(FloatTy::F32) if fty == FloatTy::F64 => {
+            Float(FloatTy::F32) if fty == FloatTy::F64 => {
                 Ok(Scalar::Bits {
                     bits: Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
                     size: 4,
                 })
             },
             // f32 -> f64
-            TyFloat(FloatTy::F64) if fty == FloatTy::F32 => {
+            Float(FloatTy::F64) if fty == FloatTy::F32 => {
                 Ok(Scalar::Bits {
                     bits: Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
                     size: 8,
                 })
             },
             // identity cast
-            TyFloat(FloatTy:: F64) => Ok(Scalar::Bits {
+            Float(FloatTy:: F64) => Ok(Scalar::Bits {
                 bits,
                 size: 8,
             }),
-            TyFloat(FloatTy:: F32) => Ok(Scalar::Bits {
+            Float(FloatTy:: F32) => Ok(Scalar::Bits {
                 bits,
                 size: 4,
             }),
@@ -290,13 +290,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn cast_from_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
-            TyRawPtr(_) |
-            TyInt(IntTy::Isize) |
-            TyUint(UintTy::Usize) => Ok(ptr.into()),
-            TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
+            RawPtr(_) |
+            Int(IntTy::Isize) |
+            Uint(UintTy::Usize) => Ok(ptr.into()),
+            Int(_) | Uint(_) => err!(ReadPointerAsBytes),
             _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }
@@ -313,19 +313,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+            (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_value(src)?.to_scalar_ptr()?;
                 // u64 cast is from usize to u64, which is always good
                 let val = Value::new_slice(ptr, length.unwrap_usize(self.tcx.tcx), self.tcx.tcx);
                 self.write_value(val, dest)
             }
-            (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
+            (&ty::Dynamic(..), &ty::Dynamic(..)) => {
                 // For now, upcasts are limited to changes in marker
                 // traits, and hence never actually require an actual
                 // change to the vtable.
                 self.copy_op(src, dest)
             }
-            (_, &ty::TyDynamic(ref data, _)) => {
+            (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
                 let trait_ref = data.principal().unwrap().with_self_ty(
                     *self.tcx,
@@ -348,13 +348,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         match (&src.layout.ty.sty, &dest.layout.ty.sty) {
-            (&ty::TyRef(_, s, _), &ty::TyRef(_, d, _)) |
-            (&ty::TyRef(_, s, _), &ty::TyRawPtr(TypeAndMut { ty: d, .. })) |
-            (&ty::TyRawPtr(TypeAndMut { ty: s, .. }),
-             &ty::TyRawPtr(TypeAndMut { ty: d, .. })) => {
+            (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |
+            (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. })) |
+            (&ty::RawPtr(TypeAndMut { ty: s, .. }),
+             &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
                 self.unsize_into_ptr(src, dest, s, d)
             }
-            (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+            (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b);
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {

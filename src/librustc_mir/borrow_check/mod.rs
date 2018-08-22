@@ -935,14 +935,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // individual fields instead. This way if `foo` has a
             // destructor but `bar` does not, we will only check for
             // borrows of `x.foo` and not `x.bar`. See #47703.
-            ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
+            ty::Adt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
                 def.all_fields()
                     .map(|field| field.ty(gcx, substs))
                     .enumerate()
                     .for_each(|field| drop_field(self, field));
             }
             // Same as above, but for tuples.
-            ty::TyTuple(tys) => {
+            ty::Tuple(tys) => {
                 tys.iter()
                     .cloned()
                     .enumerate()
@@ -950,7 +950,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             // Closures also have disjoint fields, but they are only
             // directly accessed in the body of the closure.
-            ty::TyClosure(def, substs)
+            ty::Closure(def, substs)
                 if *drop_place == Place::Local(Local::new(1))
                     && !self.mir.upvar_decls.is_empty() =>
             {
@@ -961,7 +961,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             // Generators also have disjoint fields, but they are only
             // directly accessed in the body of the generator.
-            ty::TyGenerator(def, substs, _)
+            ty::Generator(def, substs, _)
                 if *drop_place == Place::Local(Local::new(1))
                     && !self.mir.upvar_decls.is_empty() =>
             {
@@ -978,7 +978,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // the base case below, we would have a Deep Write due to
             // the box being `needs_drop`, and that Deep Write would
             // touch `&mut` data in the box.
-            ty::TyAdt(def, _) if def.is_box() => {
+            ty::Adt(def, _) if def.is_box() => {
                 // When/if we add a `&own T` type, this action would
                 // be like running the destructor of the `&own T`.
                 // (And the owner of backing storage referenced by the
@@ -1818,7 +1818,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             // be already initialized
                             let tcx = self.tcx;
                             match base.ty(self.mir, tcx).to_ty(tcx).sty {
-                                ty::TyAdt(def, _) if def.has_dtor(tcx) => {
+                                ty::Adt(def, _) if def.has_dtor(tcx) => {
 
                                     // FIXME: analogous code in
                                     // check_loans.rs first maps
@@ -2062,7 +2062,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         // Check the kind of deref to decide
                         match base_ty.sty {
-                            ty::TyRef(_, _, mutbl) => {
+                            ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable
                                     hir::MutImmutable => Err(place),
@@ -2086,7 +2086,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     }
                                 }
                             }
-                            ty::TyRawPtr(tnm) => {
+                            ty::RawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
                                     hir::MutImmutable => return Err(place),

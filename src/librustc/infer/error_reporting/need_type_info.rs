@@ -12,7 +12,7 @@ use hir::{self, Local, Pat, Body, HirId};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use infer::InferCtxt;
 use infer::type_variable::TypeVariableOrigin;
-use ty::{self, Ty, TyInfer, TyVar};
+use ty::{self, Ty, Infer, TyVar};
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
@@ -35,7 +35,7 @@ impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                 let ty = self.infcx.resolve_type_vars_if_possible(&ty);
                 ty.walk().any(|inner_ty| {
                     inner_ty == *self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
-                        (&TyInfer(TyVar(a_vid)), &TyInfer(TyVar(b_vid))) => {
+                        (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
                             self.infcx
                                 .type_variables
                                 .borrow_mut()
@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
-        if let ty::TyInfer(ty::TyVar(ty_vid)) = (*ty).sty {
+        if let ty::Infer(ty::TyVar(ty_vid)) = (*ty).sty {
             let ty_vars = self.type_variables.borrow();
             if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
                 *ty_vars.var_origin(ty_vid) {

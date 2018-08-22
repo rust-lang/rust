@@ -245,7 +245,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// instantiated. Otherwise, returns `t`.
     pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::TyInfer(ty::TyVar(v)) => {
+            ty::Infer(ty::TyVar(v)) => {
                 match self.probe(v) {
                     TypeVariableValue::Unknown { .. } => t,
                     TypeVariableValue::Known { value } => value,

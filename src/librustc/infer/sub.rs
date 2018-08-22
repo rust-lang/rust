@@ -80,7 +80,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
-            (&ty::TyInfer(TyVar(a_vid)), &ty::TyInfer(TyVar(b_vid))) => {
+            (&ty::Infer(TyVar(a_vid)), &ty::Infer(TyVar(b_vid))) => {
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental
                 // capture.
@@ -106,17 +106,17 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
                 Ok(a)
             }
-            (&ty::TyInfer(TyVar(a_id)), _) => {
+            (&ty::Infer(TyVar(a_id)), _) => {
                 self.fields
                     .instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
-            (_, &ty::TyInfer(TyVar(b_id))) => {
+            (_, &ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
-            (&ty::TyError, _) | (_, &ty::TyError) => {
+            (&ty::Error, _) | (_, &ty::Error) => {
                 infcx.set_tainted_by_errors();
                 Ok(self.tcx().types.err)
             }

@@ -90,7 +90,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                 .unwrap()
                                 .subst(infcx.tcx, &source_substs);
 
-    // translate the Self and TyParam parts of the substitution, since those
+    // translate the Self and Param parts of the substitution, since those
     // vary across impls
     let target_substs = match target_node {
         specialization_graph::Node::Impl(target_impl) => {

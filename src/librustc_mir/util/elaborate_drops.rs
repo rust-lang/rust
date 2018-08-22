@@ -787,7 +787,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.sty {
-            ty::TyClosure(def_id, substs) => {
+            ty::Closure(def_id, substs) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
@@ -797,30 +797,30 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             // This should only happen for the self argument on the resume function.
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_mir/transform/generator.rs for more details.
-            ty::TyGenerator(def_id, substs, _) => {
+            ty::Generator(def_id, substs, _) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::TyTuple(tys) => {
+            ty::Tuple(tys) => {
                 self.open_drop_for_tuple(tys)
             }
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 if def.is_box() {
                     self.open_drop_for_box(def, substs)
                 } else {
                     self.open_drop_for_adt(def, substs)
                 }
             }
-            ty::TyDynamic(..) => {
+            ty::Dynamic(..) => {
                 let unwind = self.unwind; // FIXME(#43234)
                 let succ = self.succ;
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
-            ty::TyArray(ety, size) => {
+            ty::Array(ety, size) => {
                 let size = size.assert_usize(self.tcx());
                 self.open_drop_for_array(ety, size)
             },
-            ty::TySlice(ety) => self.open_drop_for_array(ety, None),
+            ty::Slice(ety) => self.open_drop_for_array(ety, None),
 
             _ => bug!("open drop from non-ADT `{:?}`", ty)
         }

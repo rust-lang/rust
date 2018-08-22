@@ -64,7 +64,7 @@ pub struct UniversalRegions<'tcx> {
 
     /// The "defining" type for this function, with all universal
     /// regions instantiated.  For a closure or generator, this is the
-    /// closure type, but for a top-level function it's the `TyFnDef`.
+    /// closure type, but for a top-level function it's the `FnDef`.
     pub defining_ty: DefiningTy<'tcx>,
 
     /// The return type of this function, with all regions replaced by
@@ -437,11 +437,11 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                     .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
                 match defining_ty.sty {
-                    ty::TyClosure(def_id, substs) => DefiningTy::Closure(def_id, substs),
-                    ty::TyGenerator(def_id, substs, movability) => {
+                    ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
+                    ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)
                     }
-                    ty::TyFnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
+                    ty::FnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
                     _ => span_bug!(
                         tcx.def_span(self.mir_def_id),
                         "expected defining type for `{:?}`: `{:?}`",
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         &self,
         indices: &UniversalRegionIndices<'tcx>,
         defining_ty: DefiningTy<'tcx>,
-    ) -> ty::Binder<&'tcx ty::Slice<Ty<'tcx>>> {
+    ) -> ty::Binder<&'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
@@ -524,7 +524,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                         let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                         assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
                         let inputs = match tuplized_inputs[0].sty {
-                            ty::TyTuple(inputs) => inputs,
+                            ty::Tuple(inputs) => inputs,
                             _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
                         };
 

@@ -20,7 +20,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let place = self.force_allocation(place)?;
 
         let (instance, place) = match place.layout.ty.sty {
-            ty::TyDynamic(..) => {
+            ty::Dynamic(..) => {
                 // Dropping a trait object.
                 let vtable = match place.extra {
                     PlaceExtra::Vtable(vtable) => vtable,

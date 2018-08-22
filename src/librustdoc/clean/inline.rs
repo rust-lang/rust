@@ -83,7 +83,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
             ret.extend(build_impls(cx, did, true));
             clean::EnumItem(build_enum(cx, did))
         }
-        Def::TyForeign(did) => {
+        Def::ForeignTy(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
             ret.extend(build_impls(cx, did, false));
             clean::ForeignTypeItem

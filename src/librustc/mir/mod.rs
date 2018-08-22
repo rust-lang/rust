@@ -2221,18 +2221,18 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
-    use ty::TypeVariants::*;
+    use ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;
     // print some primitives
     if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = value {
         match ty.sty {
-            TyBool if bits == 0 => return write!(f, "false"),
-            TyBool if bits == 1 => return write!(f, "true"),
-            TyFloat(ast::FloatTy::F32) => return write!(f, "{}f32", Single::from_bits(bits)),
-            TyFloat(ast::FloatTy::F64) => return write!(f, "{}f64", Double::from_bits(bits)),
-            TyUint(ui) => return write!(f, "{:?}{}", bits, ui),
-            TyInt(i) => {
+            Bool if bits == 0 => return write!(f, "false"),
+            Bool if bits == 1 => return write!(f, "true"),
+            Float(ast::FloatTy::F32) => return write!(f, "{}f32", Single::from_bits(bits)),
+            Float(ast::FloatTy::F64) => return write!(f, "{}f64", Double::from_bits(bits)),
+            Uint(ui) => return write!(f, "{:?}{}", bits, ui),
+            Int(i) => {
                 let bit_width = ty::tls::with(|tcx| {
                     let ty = tcx.lift_to_global(&ty).unwrap();
                     tcx.layout_of(ty::ParamEnv::empty().and(ty))
@@ -2243,19 +2243,19 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
                 let shift = 128 - bit_width;
                 return write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i);
             }
-            TyChar => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
+            Char => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
             _ => {},
         }
     }
     // print function definitons
-    if let TyFnDef(did, _) = ty.sty {
+    if let FnDef(did, _) = ty.sty {
         return write!(f, "{}", item_path_str(did));
     }
     // print string literals
     if let ConstValue::ScalarPair(ptr, len) = value {
         if let Scalar::Ptr(ptr) = ptr {
             if let ScalarMaybeUndef::Scalar(Scalar::Bits { bits: len, .. }) = len {
-                if let TyRef(_, &ty::TyS { sty: TyStr, .. }, _) = ty.sty {
+                if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
                         if let Some(interpret::AllocType::Memory(alloc)) = alloc {

@@ -214,34 +214,34 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         // None of these types have a destructor and hence they do not
         // require anything in particular to outlive the dtor's
         // execution.
-        ty::TyInfer(ty::FreshIntTy(_))
-        | ty::TyInfer(ty::FreshFloatTy(_))
-        | ty::TyBool
-        | ty::TyInt(_)
-        | ty::TyUint(_)
-        | ty::TyFloat(_)
-        | ty::TyNever
-        | ty::TyFnDef(..)
-        | ty::TyFnPtr(_)
-        | ty::TyChar
-        | ty::TyGeneratorWitness(..)
-        | ty::TyRawPtr(_)
-        | ty::TyRef(..)
-        | ty::TyStr
-        | ty::TyForeign(..)
-        | ty::TyError => true,
+        ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_))
+        | ty::Bool
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Never
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Char
+        | ty::GeneratorWitness(..)
+        | ty::RawPtr(_)
+        | ty::Ref(..)
+        | ty::Str
+        | ty::Foreign(..)
+        | ty::Error => true,
 
         // [T; N] and [T] have same properties as T.
-        ty::TyArray(ty, _) | ty::TySlice(ty) => trivial_dropck_outlives(tcx, ty),
+        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
-        ty::TyTuple(ref tys) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
-        ty::TyClosure(def_id, ref substs) => substs
+        ty::Tuple(ref tys) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
+        ty::Closure(def_id, ref substs) => substs
             .upvar_tys(def_id, tcx)
             .all(|t| trivial_dropck_outlives(tcx, t)),
 
-        ty::TyAdt(def, _) => {
+        ty::Adt(def, _) => {
             if Some(def.did) == tcx.lang_items().manually_drop() {
                 // `ManuallyDrop` never has a dtor.
                 true
@@ -255,11 +255,11 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         }
 
         // The following *might* require a destructor: it would deeper inspection to tell.
-        ty::TyDynamic(..)
-        | ty::TyProjection(..)
-        | ty::TyParam(_)
-        | ty::TyAnon(..)
-        | ty::TyInfer(_)
-        | ty::TyGenerator(..) => false,
+        ty::Dynamic(..)
+        | ty::Projection(..)
+        | ty::Param(_)
+        | ty::Anon(..)
+        | ty::Infer(_)
+        | ty::Generator(..) => false,
     }
 }

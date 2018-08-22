@@ -1672,12 +1672,12 @@ impl fmt::Debug for Ty {
 /// Not represented directly in the AST, referred to by name through a ty_path.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum PrimTy {
-    TyInt(IntTy),
-    TyUint(UintTy),
-    TyFloat(FloatTy),
-    TyStr,
-    TyBool,
-    TyChar,
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
+    Str,
+    Bool,
+    Char,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

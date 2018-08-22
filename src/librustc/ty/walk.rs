@@ -81,27 +81,27 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
-        ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-        ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError |
-        ty::TyForeign(..) => {
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
+        ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
+        ty::Foreign(..) => {
         }
-        ty::TyArray(ty, len) => {
+        ty::Array(ty, len) => {
             push_const(stack, len);
             stack.push(ty);
         }
-        ty::TySlice(ty) => {
+        ty::Slice(ty) => {
             stack.push(ty);
         }
-        ty::TyRawPtr(ref mt) => {
+        ty::RawPtr(ref mt) => {
             stack.push(mt.ty);
         }
-        ty::TyRef(_, ty, _) => {
+        ty::Ref(_, ty, _) => {
             stack.push(ty);
         }
-        ty::TyProjection(ref data) => {
+        ty::Projection(ref data) => {
             stack.extend(data.substs.types().rev());
         }
-        ty::TyDynamic(ref obj, ..) => {
+        ty::Dynamic(ref obj, ..) => {
             stack.extend(obj.iter().rev().flat_map(|predicate| {
                 let (substs, opt_ty) = match *predicate.skip_binder() {
                     ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
@@ -115,25 +115,25 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
                 substs.types().rev().chain(opt_ty)
             }));
         }
-        ty::TyAdt(_, substs) | ty::TyAnon(_, substs) => {
+        ty::Adt(_, substs) | ty::Anon(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::TyClosure(_, ref substs) => {
+        ty::Closure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGenerator(_, ref substs, _) => {
+        ty::Generator(_, ref substs, _) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGeneratorWitness(ts) => {
+        ty::GeneratorWitness(ts) => {
             stack.extend(ts.skip_binder().iter().cloned().rev());
         }
-        ty::TyTuple(ts) => {
+        ty::Tuple(ts) => {
             stack.extend(ts.iter().cloned().rev());
         }
-        ty::TyFnDef(_, substs) => {
+        ty::FnDef(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::TyFnPtr(sig) => {
+        ty::FnPtr(sig) => {
             stack.push(sig.skip_binder().output());
             stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
         }

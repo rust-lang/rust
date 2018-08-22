@@ -13,7 +13,7 @@
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TypeVariants::{TyRef, TyAdt, TyStr, TyUint, TyNever, TyTuple, TyChar, TyArray};
+use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
-                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 if by_ref_binop {
-                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[1].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].sty {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -265,7 +265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     format!("cannot use `{}=` on type `{}`",
                                     op.node.as_str(), lhs_ty));
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
                                                                         rty,
@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                        while let Ref(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
                                         let msg = &format!(
@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g. "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::TyParam(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             op.node.as_str(),
                                             lhs_ty);
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
                                                                         rty,
@@ -344,7 +344,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                        while let Ref(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
                                         let msg = &format!(
@@ -385,7 +385,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g. "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::TyParam(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -429,8 +429,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         match (&lhs_ty.sty, &rhs_ty.sty) {
-            (&TyRef(_, l_ty, _), &TyRef(_, r_ty, _))
-            if l_ty.sty == TyStr && r_ty.sty == TyStr => {
+            (&Ref(_, l_ty, _), &Ref(_, r_ty, _))
+            if l_ty.sty == Str && r_ty.sty == Str => {
                 if !is_assign {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
@@ -443,8 +443,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 true
             }
-            (&TyRef(_, l_ty, _), &TyAdt(..))
-            if l_ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
+            (&Ref(_, l_ty, _), &Adt(..))
+            if l_ty.sty == Str && &format!("{:?}", rhs_ty) == "std::string::String" => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match (
@@ -489,11 +489,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(ex.span, format!("cannot apply unary \
                                                     operator `{}`", op.as_str()));
                     match actual.sty {
-                        TyUint(_) if op == hir::UnNeg => {
+                        Uint(_) if op == hir::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         },
-                        TyStr | TyNever | TyChar | TyTuple(_) | TyArray(_,_) => {},
-                        TyRef(_, ref lty, _) if lty.sty == TyStr => {},
+                        Str | Never | Char | Tuple(_) | Array(_,_) => {},
+                        Ref(_, ref lty, _) if lty.sty == Str => {},
                         _ => {
                             let missing_trait = match op {
                                 hir::UnNeg => "std::ops::Neg",

@@ -36,7 +36,7 @@ pub(super) fn sub_types<'tcx>(
         ty::Variance::Covariant,
         locations,
         borrowck_context,
-        ty::Slice::empty(),
+        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }
@@ -54,7 +54,7 @@ pub(super) fn eq_types<'tcx>(
         ty::Variance::Invariant,
         locations,
         borrowck_context,
-        ty::Slice::empty(),
+        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }
@@ -325,7 +325,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         // Watch out for the case that we are matching a `?T` against the
         // right-hand side.
-        if let ty::TyInfer(ty::CanonicalTy(var)) = a.sty {
+        if let ty::Infer(ty::CanonicalTy(var)) = a.sty {
             self.equate_var(var, b.into())?;
             Ok(a)
         } else {

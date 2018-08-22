@@ -85,7 +85,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
                     // Calculating the predicate requirements necessary
                     // for item_did.
                     //
-                    // For field of type &'a T (reference) or TyAdt
+                    // For field of type &'a T (reference) or Adt
                     // (struct/enum/union) there will be outlive
                     // requirements for adt_def.
                     let field_ty = self.tcx.type_of(field_def.did);
@@ -138,16 +138,16 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             // a predicate requirement of T: 'a (T outlives 'a).
             //
             // We also want to calculate potential predicates for the T
-            ty::TyRef(region, rty, _) => {
-                debug!("TyRef");
+            ty::Ref(region, rty, _) => {
+                debug!("Ref");
                 insert_outlives_predicate(tcx, rty.into(), region, required_predicates);
             }
 
-            // For each TyAdt (struct/enum/union) type `Foo<'a, T>`, we
+            // For each Adt (struct/enum/union) type `Foo<'a, T>`, we
             // can load the current set of inferred and explicit
             // predicates from `global_inferred_outlives` and filter the
             // ones that are TypeOutlives.
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 // First check the inferred predicates
                 //
                 // Example 1:
@@ -166,7 +166,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // round we will get `U: 'b`. We then apply the substitution
                 // `['b => 'a, U => T]` and thus get the requirement that `T:
                 // 'a` holds for `Foo`.
-                debug!("TyAdt");
+                debug!("Adt");
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did) {
                     for unsubstituted_predicate in unsubstituted_predicates {
                         // `unsubstituted_predicate` is `U: 'b` in the
@@ -195,7 +195,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
-            ty::TyDynamic(obj, ..) => {
+            ty::Dynamic(obj, ..) => {
                 // This corresponds to `dyn Trait<..>`. In this case, we should
                 // use the explicit predicates as well.
 
@@ -204,7 +204,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // `dyn Trait` at this stage. Therefore when checking explicit
                 // predicates in `check_explicit_predicates` we need to ignore
                 // checking the explicit_map for Self type.
-                debug!("TyDynamic");
+                debug!("Dynamic");
                 debug!("field_ty = {}", &field_ty);
                 debug!("ty in field = {}", &ty);
                 if let Some(ex_trait_ref) = obj.principal() {
@@ -219,10 +219,10 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::TyProjection(obj) => {
+            ty::Projection(obj) => {
                 // This corresponds to `<T as Foo<'a>>::Bar`. In this case, we should use the
                 // explicit predicates as well.
-                debug!("TyProjection");
+                debug!("Projection");
                 check_explicit_predicates(
                     tcx,
                     &tcx.associated_item(obj.item_def_id).container.id(),
