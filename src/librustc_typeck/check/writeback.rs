@@ -417,7 +417,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     fldop: |ty| {
                         trace!("checking type {:?}: {:#?}", ty, ty.sty);
                         // find a type parameter
-                        if let ty::TyParam(..) = ty.sty {
+                        if let ty::Param(..) = ty.sty {
                             // look it up in the substitution list
                             assert_eq!(anon_defn.substs.len(), generics.params.len());
                             for (subst, param) in anon_defn.substs.iter().zip(&generics.params) {

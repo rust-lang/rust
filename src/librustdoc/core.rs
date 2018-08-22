@@ -234,7 +234,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
                 None,
                 P(hir::Path {
                     span: DUMMY_SP,
-                    def: Def::TyParam(param.def_id),
+                    def: Def::Param(param.def_id),
                     segments: HirVec::from_vec(vec![
                         hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
                     ]),

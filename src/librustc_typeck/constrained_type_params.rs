@@ -66,7 +66,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
                 // projections are not injective
                 return false;
             }
-            ty::TyParam(data) => {
+            ty::Param(data) => {
                 self.parameters.push(Parameter::from(data));
             }
             _ => {}

@@ -211,7 +211,7 @@ impl PlaceRef<'ll, 'tcx> {
                 return simple();
             }
             _ if !field.is_unsized() => return simple(),
-            ty::Slice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
+            ty::Slice(..) | ty::TyStr | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
                 if def.repr.packed() {
                     // FIXME(eddyb) generalize the adjustment when we

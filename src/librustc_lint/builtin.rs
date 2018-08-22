@@ -1510,7 +1510,7 @@ impl TypeAliasBounds {
                 match ty.node {
                     hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                         match path.def {
-                            Def::TyParam(_) => true,
+                            Def::Param(_) => true,
                             _ => false
                         }
                     }

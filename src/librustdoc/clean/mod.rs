@@ -2411,7 +2411,7 @@ impl Clean<Type> for hir::Ty {
                     return new_ty;
                 }
 
-                if let Def::TyParam(did) = path.def {
+                if let Def::Param(did) = path.def {
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
                     }
@@ -2460,7 +2460,7 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::TyParam(cx.tcx.hir.local_def_id(param.id));
+                                        Def::Param(cx.tcx.hir.local_def_id(param.id));
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2602,7 +2602,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyForeign(did) => {
+            ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
                 let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                                          None, false, vec![], Substs::empty());
@@ -2661,7 +2661,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Projection(ref data) => data.clean(cx),
 
-            ty::TyParam(ref p) => Generic(p.name.to_string()),
+            ty::Param(ref p) => Generic(p.name.to_string()),
 
             ty::Anon(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
@@ -3710,10 +3710,10 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
         }
-        Def::TyParam(..) if path.segments.len() == 1 => {
+        Def::Param(..) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path));
         }
-        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
+        Def::SelfTy(..) | Def::Param(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, path.def);
@@ -3731,7 +3731,7 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Struct(i) => (i, TypeKind::Struct),
         Def::Union(i) => (i, TypeKind::Union),
         Def::Mod(i) => (i, TypeKind::Module),
-        Def::TyForeign(i) => (i, TypeKind::Foreign),
+        Def::Foreign(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),

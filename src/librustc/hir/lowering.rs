@@ -1183,7 +1183,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
                         self.lower_node_id(def_node_id);
-                        // Add a definition for the in-band TyParam
+                        // Add a definition for the in-band Param
                         let def_index = self
                             .resolver
                             .definitions()
@@ -1213,7 +1213,7 @@ impl<'a> LoweringContext<'a> {
                             None,
                             P(hir::Path {
                                 span,
-                                def: Def::TyParam(DefId::local(def_index)),
+                                def: Def::Param(DefId::local(def_index)),
                                 segments: hir_vec![hir::PathSegment::from_ident(ident)],
                             }),
                         ))
@@ -2352,7 +2352,7 @@ impl<'a> LoweringContext<'a> {
                                 if path.segments.len() == 1
                                     && bound_pred.bound_generic_params.is_empty() =>
                             {
-                                if let Some(Def::TyParam(def_id)) = self.resolver
+                                if let Some(Def::Param(def_id)) = self.resolver
                                     .get_resolution(bound_pred.bounded_ty.id)
                                     .map(|d| d.base_def())
                                 {

@@ -2239,7 +2239,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             TyStr |
             Dynamic(..) |
             Slice(_) |
-            TyForeign(..) |
+            Foreign(..) |
             Error |
             GeneratorWitness(..) => {
                 // these are never sized - return the target type
@@ -2270,7 +2270,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![ty]
             }
 
-            TyParam(..) => {
+            Param(..) => {
                 // perf hack: if there is a `T: Sized` bound, then
                 // we know that `T` is Sized and do not need to check
                 // it on the impl.

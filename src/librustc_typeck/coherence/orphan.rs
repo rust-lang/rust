@@ -115,7 +115,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
                         ty::Adt(self_def, _) => Some(self_def.did),
-                        ty::TyForeign(did) => Some(did),
+                        ty::Foreign(did) => Some(did),
                         _ => None,
                     };
 

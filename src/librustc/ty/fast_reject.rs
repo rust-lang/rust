@@ -103,7 +103,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::FnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
         }
-        ty::Projection(_) | ty::TyParam(_) => {
+        ty::Projection(_) | ty::Param(_) => {
             if can_simplify_params {
                 // In normalized types, projections don't unify with
                 // anything. when lazy normalization happens, this
@@ -118,7 +118,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Anon(def_id, _) => {
             Some(AnonSimplifiedType(def_id))
         }
-        ty::TyForeign(def_id) => {
+        ty::Foreign(def_id) => {
             Some(ForeignSimplifiedType(def_id))
         }
         ty::Infer(_) | ty::Error => None,

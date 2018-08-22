@@ -449,7 +449,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         self.ty_stack_depth += 1;
 
         let t1 = match t.sty {
-            ty::TyParam(p) => {
+            ty::Param(p) => {
                 self.ty_for_param(p, t)
             }
             _ => {

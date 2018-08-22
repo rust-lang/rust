@@ -1647,7 +1647,7 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId
                 return;
             }
             match e.sty {
-                ty::TyParam(_) => { /* struct<T>(T, T, T, T) is ok */ }
+                ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine()  => { /* struct(u8, u8, u8, u8) is ok */ }
                 _ => {
                     span_err!(tcx.sess, sp, E0077,
@@ -5155,7 +5155,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ty::ParamTy { idx, .. }) = leaf_ty.sty {
+        if let ty::Param(ty::ParamTy { idx, .. }) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
             types_used[idx as usize - own_counts.lifetimes] = true;
         } else if let ty::Error = leaf_ty.sty {

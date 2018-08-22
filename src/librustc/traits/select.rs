@@ -1810,13 +1810,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // say nothing; a candidate may be added by
                     // `assemble_candidates_from_object_ty`.
                 }
-                ty::TyForeign(..) => {
+                ty::Foreign(..) => {
                     // Since the contents of foreign types is unknown,
                     // we don't add any `..` impl. Default traits could
                     // still be provided by a manual implementation for
                     // this trait and type.
                 }
-                ty::TyParam(..) |
+                ty::Param(..) |
                 ty::Projection(..) => {
                     // In these cases, we don't know what the actual
                     // type is.  Therefore, we cannot break it down
@@ -2189,7 +2189,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::TyForeign(..) => None,
+            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
 
             ty::Tuple(tys) => {
                 Where(ty::Binder::bind(tys.last().into_iter().cloned().collect()))
@@ -2203,7 +2203,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 ))
             }
 
-            ty::Projection(_) | ty::TyParam(_) | ty::Anon(..) => None,
+            ty::Projection(_) | ty::Param(_) | ty::Anon(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::Infer(ty::CanonicalTy(_)) |
@@ -2239,7 +2239,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::Dynamic(..) | ty::TyStr | ty::Slice(..) |
-            ty::Generator(..) | ty::GeneratorWitness(..) | ty::TyForeign(..) |
+            ty::Generator(..) | ty::GeneratorWitness(..) | ty::Foreign(..) |
             ty::Ref(_, _, hir::MutMutable) => {
                 None
             }
@@ -2265,7 +2265,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Projection(..) | ty::TyParam(..) | ty::Anon(..) => {
+            ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Anon(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -2316,8 +2316,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::Dynamic(..) |
-            ty::TyParam(..) |
-            ty::TyForeign(..) |
+            ty::Param(..) |
+            ty::Foreign(..) |
             ty::Projection(..) |
             ty::Infer(ty::CanonicalTy(_)) |
             ty::Infer(ty::TyVar(_)) |
@@ -3072,7 +3072,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let mut ty_params = BitArray::new(substs_a.types().count());
                 let mut found = false;
                 for ty in field.walk() {
-                    if let ty::TyParam(p) = ty.sty {
+                    if let ty::Param(p) = ty.sty {
                         ty_params.insert(p.idx as usize);
                         found = true;
                     }

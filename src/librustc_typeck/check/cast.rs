@@ -121,11 +121,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             },
 
             // Pointers to foreign types are thin, despite being unsized
-            ty::TyForeign(..) => Some(PointerKind::Thin),
+            ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
             ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
             ty::Anon(def_id, substs) => Some(PointerKind::OfAnon(def_id, substs)),
-            ty::TyParam(ref p) => Some(PointerKind::OfParam(p)),
+            ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Infer(_) => None,
 

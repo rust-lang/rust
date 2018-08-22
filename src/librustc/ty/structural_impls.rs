@@ -862,7 +862,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Anon(did, substs) => ty::Anon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
-            ty::TyParam(..) | ty::Never | ty::TyForeign(..) => return self
+            ty::Param(..) | ty::Never | ty::Foreign(..) => return self
         };
 
         if self.sty == sty {
@@ -897,7 +897,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Anon(_, ref substs) => substs.visit_with(visitor),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
-            ty::TyParam(..) | ty::Never | ty::TyForeign(..) => false,
+            ty::Param(..) | ty::Never | ty::Foreign(..) => false,
         }
     }
 

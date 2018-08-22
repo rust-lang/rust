@@ -350,7 +350,7 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
         match path.def {
             Def::SelfTy(Some(def_id), None) |
-            Def::TyParam(def_id) => {
+            Def::Param(def_id) => {
                 def_id == tcx.hir.local_def_id(param_id)
             }
             _ => false

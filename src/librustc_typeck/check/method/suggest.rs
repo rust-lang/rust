@@ -639,12 +639,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),
-                ty::TyForeign(did) => did.is_local(),
+                ty::Foreign(did) => did.is_local(),
 
                 ty::Dynamic(ref tr, ..) => tr.principal()
                     .map_or(false, |p| p.def_id().is_local()),
 
-                ty::TyParam(_) => true,
+                ty::Param(_) => true,
 
                 // everything else (primitive types etc.) is effectively
                 // non-local (there are "edge" cases, e.g. (LocalType,), but

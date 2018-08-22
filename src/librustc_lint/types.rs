@@ -712,9 +712,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::TyForeign(..) => FfiSafe,
+            ty::Foreign(..) => FfiSafe,
 
-            ty::TyParam(..) |
+            ty::Param(..) |
             ty::Infer(..) |
             ty::Error |
             ty::Closure(..) |

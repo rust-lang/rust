@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            ty::TyForeign(did) => self.push_item_path(buffer, did),
+            ty::Foreign(did) => self.push_item_path(buffer, did),
 
             ty::TyBool |
             ty::TyChar |
@@ -375,7 +375,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::FnDef(def_id, _) |
         ty::Closure(def_id, _) |
         ty::Generator(def_id, _, _) |
-        ty::TyForeign(def_id) => Some(def_id),
+        ty::Foreign(def_id) => Some(def_id),
 
         ty::TyBool |
         ty::TyChar |
@@ -384,7 +384,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyStr |
         ty::FnPtr(_) |
         ty::Projection(_) |
-        ty::TyParam(_) |
+        ty::Param(_) |
         ty::Anon(..) |
         ty::Infer(_) |
         ty::Error |

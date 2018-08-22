@@ -90,7 +90,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
         let ty_def_id = match self.tcx.type_of(item_def_id).sty {
             ty::Adt(adt, _) => adt.did,
-            ty::TyForeign(did) => did,
+            ty::Foreign(did) => did,
             ty::Dynamic(ref obj, ..) if obj.principal().is_some() =>
                 obj.principal().unwrap().def_id(),
             ty::Projection(ref proj) => proj.trait_ref(self.tcx).def_id,
@@ -471,7 +471,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::Adt(adt, _) => Some(adt.did),
-            ty::TyForeign(did) => Some(did),
+            ty::Foreign(did) => Some(did),
             ty::Dynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::Projection(ref proj) => Some(proj.item_def_id),
             ty::FnDef(def_id, ..) |
@@ -898,7 +898,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         match ty.sty {
             ty::Adt(&ty::AdtDef { did: def_id, .. }, ..) |
             ty::FnDef(def_id, ..) |
-            ty::TyForeign(def_id) => {
+            ty::Foreign(def_id) => {
                 if !self.item_is_accessible(def_id) {
                     let msg = format!("type `{}` is private", ty);
                     self.tcx.sess.span_err(self.span, &msg);
@@ -1435,7 +1435,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::Adt(adt, _) => Some(adt.did),
-            ty::TyForeign(did) => Some(did),
+            ty::Foreign(did) => Some(did),
             ty::Dynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::Projection(ref proj) => {
                 if self.required_visibility == ty::Visibility::Invisible {

@@ -407,7 +407,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
 
 fn is_possibly_remote_type(ty: Ty, _in_crate: InCrate) -> bool {
     match ty.sty {
-        ty::Projection(..) | ty::TyParam(..) => true,
+        ty::Projection(..) | ty::Param(..) => true,
         _ => false,
     }
 }
@@ -455,7 +455,7 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
         ty::Ref(..) |
         ty::Never |
         ty::Tuple(..) |
-        ty::TyParam(..) |
+        ty::Param(..) |
         ty::Projection(..) => {
             false
         }
@@ -468,7 +468,7 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
         },
 
         ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
-        ty::TyForeign(did) => def_id_is_local(did, in_crate),
+        ty::Foreign(did) => def_id_is_local(did, in_crate),
 
         ty::Dynamic(ref tt, ..) => {
             tt.principal().map_or(false, |p| {

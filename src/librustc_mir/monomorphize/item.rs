@@ -327,7 +327,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
-            ty::TyForeign(did) => self.push_def_path(did, output),
+            ty::Foreign(did) => self.push_def_path(did, output),
             ty::FnDef(..) |
             ty::FnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);
@@ -383,7 +383,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Error |
             ty::Infer(_) |
             ty::Projection(..) |
-            ty::TyParam(_) |
+            ty::Param(_) |
             ty::GeneratorWitness(_) |
             ty::Anon(..) => {
                 bug!("DefPathBasedNames: Trying to create type name for \

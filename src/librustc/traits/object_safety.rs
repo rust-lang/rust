@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut error = false;
         ty.maybe_walk(|ty| {
             match ty.sty {
-                ty::TyParam(ref param_ty) => {
+                ty::Param(ref param_ty) => {
                     if param_ty.is_self() {
                         error = true;
                     }

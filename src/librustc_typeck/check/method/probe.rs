@@ -459,10 +459,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
-            ty::TyForeign(did) => {
+            ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }
-            ty::TyParam(p) => {
+            ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }
             ty::TyChar => {
@@ -652,7 +652,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 match *predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
                         match trait_predicate.skip_binder().trait_ref.self_ty().sty {
-                            ty::TyParam(ref p) if *p == param_ty => {
+                            ty::Param(ref p) if *p == param_ty => {
                                 Some(trait_predicate.to_poly_trait_ref())
                             }
                             _ => None,

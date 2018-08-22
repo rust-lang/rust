@@ -53,13 +53,13 @@ pub enum Def {
     Existential(DefId),
     /// `type Foo = Bar;`
     TyAlias(DefId),
-    TyForeign(DefId),
+    Foreign(DefId),
     TraitAlias(DefId),
     AssociatedTy(DefId),
     /// `existential type Foo: Bar;`
     AssociatedExistential(DefId),
     PrimTy(hir::PrimTy),
-    TyParam(DefId),
+    Param(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g. `rustfmt` in `#[rustfmt::skip]`
 
@@ -269,10 +269,10 @@ impl Def {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
             Def::TyAlias(id) | Def::TraitAlias(id) |
-            Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
+            Def::AssociatedTy(id) | Def::Param(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::TyForeign(id) => {
+            Def::Existential(id) | Def::AssociatedExistential(id) | Def::Foreign(id) => {
                 id
             }
 
@@ -311,11 +311,11 @@ impl Def {
             Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
             Def::Union(..) => "union",
             Def::Trait(..) => "trait",
-            Def::TyForeign(..) => "foreign type",
+            Def::Foreign(..) => "foreign type",
             Def::Method(..) => "method",
             Def::Const(..) => "constant",
             Def::AssociatedConst(..) => "associated constant",
-            Def::TyParam(..) => "type parameter",
+            Def::Param(..) => "type parameter",
             Def::PrimTy(..) => "builtin type",
             Def::Local(..) => "local variable",
             Def::Upvar(..) => "closure capture",

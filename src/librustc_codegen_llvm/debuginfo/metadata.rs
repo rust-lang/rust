@@ -585,7 +585,7 @@ pub fn type_metadata(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyForeign(..) => {
+        ty::Foreign(..) => {
             MetadataCreationResult::new(
                         foreign_type_metadata(cx, t, unique_type_id),
             false)

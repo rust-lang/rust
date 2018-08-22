@@ -874,10 +874,10 @@ for ty::TyKind<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyParam(param_ty) => {
+            Param(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
             }
-            TyForeign(def_id) => {
+            Foreign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
             Infer(infer_ty) => {

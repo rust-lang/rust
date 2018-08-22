@@ -101,13 +101,13 @@ pub enum TyKind<'tcx> {
 
     /// Structures, enumerations and unions.
     ///
-    /// Substs here, possibly against intuition, *may* contain `TyParam`s.
+    /// Substs here, possibly against intuition, *may* contain `Param`s.
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `Adt` corresponds to an ADT
     /// definition and not a concrete use of it.
     Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
-    TyForeign(DefId),
+    Foreign(DefId),
 
     /// The pointee of a string slice. Written as `str`.
     TyStr,
@@ -166,7 +166,7 @@ pub enum TyKind<'tcx> {
     Anon(DefId, &'tcx Substs<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
-    TyParam(ParamTy),
+    Param(ParamTy),
 
     /// A type variable used during type-checking.
     Infer(InferTy),
@@ -1058,7 +1058,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].
 ///
-/// Unlike TyParam-s, bound regions are not supposed to exist "in the wild"
+/// Unlike Param-s, bound regions are not supposed to exist "in the wild"
 /// outside their binder, e.g. in types passed to type inference, and
 /// should first be substituted (by skolemized regions, free regions,
 /// or region variables).
@@ -1514,14 +1514,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
-            ty::TyParam(ref data) => data.idx == index,
+            ty::Param(ref data) => data.idx == index,
             _ => false,
         }
     }
 
     pub fn is_self(&self) -> bool {
         match self.sty {
-            TyParam(ref p) => p.is_self(),
+            Param(ref p) => p.is_self(),
             _ => false,
         }
     }
@@ -1714,7 +1714,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn has_concrete_skeleton(&self) -> bool {
         match self.sty {
-            TyParam(_) | Infer(_) | Error => false,
+            Param(_) | Infer(_) | Error => false,
             _ => true,
         }
     }
@@ -1815,8 +1815,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             RawPtr(_) |
             Never |
             Tuple(..) |
-            TyForeign(..) |
-            TyParam(_) |
+            Foreign(..) |
+            Param(_) |
             Infer(_) |
             Error => {
                 vec![]
@@ -1867,7 +1867,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::Never | ty::Error =>
                 true,
 
-            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::TyForeign(..) =>
+            ty::TyStr | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) =>
                 false,
 
             ty::Tuple(tys) =>
@@ -1876,7 +1876,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::Adt(def, _substs) =>
                 def.sized_constraint(tcx).is_empty(),
 
-            ty::Projection(_) | ty::TyParam(_) | ty::Anon(..) => false,
+            ty::Projection(_) | ty::Param(_) | ty::Anon(..) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
 

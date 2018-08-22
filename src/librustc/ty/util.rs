@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     UnpackedKind::Type(&ty::TyS {
-                        sty: ty::TyKind::TyParam(ref pt), ..
+                        sty: ty::TyKind::Param(ref pt), ..
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
@@ -930,7 +930,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::RawPtr(_) | ty::Ref(..) | ty::TyStr => false,
 
         // Foreign types can never have destructors
-        ty::TyForeign(..) => false,
+        ty::Foreign(..) => false,
 
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
         ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
@@ -955,7 +955,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Can refer to a type which may drop.
         // FIXME(eddyb) check this against a ParamEnv.
-        ty::Dynamic(..) | ty::Projection(..) | ty::TyParam(_) |
+        ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) |
         ty::Anon(..) | ty::Infer(_) | ty::Error => true,
 
         // Structural recursion.

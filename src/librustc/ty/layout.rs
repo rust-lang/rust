@@ -521,7 +521,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 let unsized_part = tcx.struct_tail(pointee);
                 let metadata = match unsized_part.sty {
-                    ty::TyForeign(..) => {
+                    ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
                     ty::Slice(_) | ty::TyStr => {
@@ -594,7 +594,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::FnDef(..) => {
                 univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?
             }
-            ty::Dynamic(..) | ty::TyForeign(..) => {
+            ty::Dynamic(..) | ty::Foreign(..) => {
                 let mut unit = univariant_uninterned(&[], &ReprOptions::default(),
                   StructKind::AlwaysSized)?;
                 match unit.abi {
@@ -1113,7 +1113,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::GeneratorWitness(..) | ty::Infer(_) => {
                 bug!("LayoutDetails::compute: unexpected type `{}`", ty)
             }
-            ty::TyParam(_) | ty::Error => {
+            ty::Param(_) | ty::Error => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail(pointee);
                 match tail.sty {
-                    ty::TyParam(_) | ty::Projection(_) => {
+                    ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types() || tail.has_self_ty());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
@@ -1591,7 +1591,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             ty::Never |
             ty::FnDef(..) |
             ty::GeneratorWitness(..) |
-            ty::TyForeign(..) |
+            ty::Foreign(..) |
             ty::Dynamic(..) => {
                 bug!("TyLayout::field_type({:?}): not applicable", this)
             }
@@ -1686,7 +1686,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 }
             }
 
-            ty::Projection(_) | ty::Anon(..) | ty::TyParam(_) |
+            ty::Projection(_) | ty::Anon(..) | ty::Param(_) |
             ty::Infer(_) | ty::Error => {
                 bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }

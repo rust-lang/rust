@@ -283,8 +283,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::TyForeign(..)
-            | ty::TyParam(..)
+            | ty::Foreign(..)
+            | ty::Param(..)
             | ty::Anon(..) => {
                 if t.flags.intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)

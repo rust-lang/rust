@@ -94,7 +94,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
-            ty::TyParam(p) => {
+            ty::Param(p) => {
                 out.push(Component::Param(p));
             }
 
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
             ty::Anon(..) |        // OutlivesNominalType (ish)
-            ty::TyForeign(..) |     // OutlivesNominalType
+            ty::Foreign(..) |     // OutlivesNominalType
             ty::TyStr |             // OutlivesScalar (ish)
             ty::Array(..) |       // ...
             ty::Slice(..) |       // ...

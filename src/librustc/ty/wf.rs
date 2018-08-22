@@ -257,8 +257,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::TyStr |
                 ty::GeneratorWitness(..) |
                 ty::Never |
-                ty::TyParam(_) |
-                ty::TyForeign(..) => {
+                ty::Param(_) |
+                ty::Foreign(..) => {
                     // WfScalar, WfParameter, etc
                 }
 

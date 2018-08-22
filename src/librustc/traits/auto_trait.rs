@@ -606,7 +606,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
 
         return match substs.type_at(0).sty {
-            ty::TyParam(_) => true,
+            ty::Param(_) => true,
             ty::Projection(p) => self.is_of_param(p.substs),
             _ => false,
         };

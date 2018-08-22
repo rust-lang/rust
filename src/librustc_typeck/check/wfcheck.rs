@@ -454,7 +454,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
                 match t.sty {
-                    ty::TyParam(p) => {
+                    ty::Param(p) => {
                         self.params.insert(p.idx);
                         t.super_visit_with(self)
                     }
@@ -588,7 +588,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
                                 ty::subst::UnpackedKind::Type(ty) => match ty.sty {
-                                    ty::TyParam(..) => {},
+                                    ty::Param(..) => {},
                                     // prevent `fn foo() -> Foo<u32>` from being defining
                                     _ => {
                                         tcx

@@ -204,14 +204,14 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                     "`Self` type implicitly declared here, on the `impl`");
                     }
                 },
-                Def::TyParam(typaram_defid) => {
+                Def::Param(typaram_defid) => {
                     if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
                         err.span_label(typaram_span, "type variable from outer function");
                     }
                 },
                 _ => {
                     bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
-                         Def::TyParam")
+                         Def::Param")
                 }
             }
 
@@ -537,9 +537,9 @@ impl<'a> PathSource<'a> {
             PathSource::Type => match def {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
-                Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) |
+                Def::PrimTy(..) | Def::Param(..) | Def::SelfTy(..) |
                 Def::Existential(..) |
-                Def::TyForeign(..) => true,
+                Def::Foreign(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match def {
@@ -2359,7 +2359,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
                         // Plain insert (no renaming).
-                        let def = Def::TyParam(self.definitions.local_def_id(param.id));
+                        let def = Def::Param(self.definitions.local_def_id(param.id));
                             function_type_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
@@ -3765,7 +3765,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     }
                 }
             }
-            Def::TyParam(..) | Def::SelfTy(..) => {
+            Def::Param(..) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | TraitOrImplItemRibKind | ClosureRibKind(..) |

@@ -262,7 +262,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         match ty.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-            ty::TyStr | ty::Never | ty::TyForeign(..) => {
+            ty::TyStr | ty::Never | ty::Foreign(..) => {
                 // leaf type -- noop
             }
 
@@ -323,7 +323,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyParam(ref data) => {
+            ty::Param(ref data) => {
                 self.add_constraint(current, data.idx, variance);
             }
 

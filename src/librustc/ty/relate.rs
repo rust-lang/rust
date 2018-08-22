@@ -387,7 +387,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(a)
         }
 
-        (&ty::TyParam(ref a_p), &ty::TyParam(ref b_p))
+        (&ty::Param(ref a_p), &ty::Param(ref b_p))
             if a_p.idx == b_p.idx =>
         {
             Ok(a)
@@ -400,7 +400,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_adt(a_def, substs))
         }
 
-        (&ty::TyForeign(a_id), &ty::TyForeign(b_id))
+        (&ty::Foreign(a_id), &ty::Foreign(b_id))
             if a_id == b_id =>
         {
             Ok(tcx.mk_foreign(a_id))

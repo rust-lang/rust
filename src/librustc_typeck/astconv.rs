@@ -1239,8 +1239,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
-            (&ty::TyParam(_), Def::SelfTy(Some(param_did), None)) |
-            (&ty::TyParam(_), Def::TyParam(param_did)) => {
+            (&ty::Param(_), Def::SelfTy(Some(param_did), None)) |
+            (&ty::Param(_), Def::Param(param_did)) => {
                 match self.find_bound_for_assoc_item(param_did, assoc_name, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
@@ -1387,7 +1387,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 )
             }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
-            Def::Union(did) | Def::TyForeign(did) => {
+            Def::Union(did) | Def::Foreign(did) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
@@ -1401,7 +1401,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                     tcx.parent_def_id(did).unwrap(),
                                     path.segments.last().unwrap())
             }
-            Def::TyParam(did) => {
+            Def::Param(did) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 

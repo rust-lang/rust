@@ -747,13 +747,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Union(def_id) |
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
-            HirDef::TyForeign(def_id) |
+            HirDef::Foreign(def_id) |
             HirDef::TraitAlias(def_id) |
             HirDef::AssociatedExistential(def_id) |
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
             HirDef::Existential(def_id) |
-            HirDef::TyParam(def_id) => {
+            HirDef::Param(def_id) => {
                 let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Type,

@@ -1326,7 +1326,7 @@ fn object_lifetime_defaults_for_item(
                     _ => continue,
                 };
 
-                if def == Def::TyParam(param_def_id) {
+                if def == Def::Param(param_def_id) {
                     add_bounds(&mut set, &data.bounds);
                 }
             }

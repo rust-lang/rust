@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
                 ty::Projection(..) => Some(11),
-                ty::TyParam(..) => Some(12),
+                ty::Param(..) => Some(12),
                 ty::Anon(..) => Some(13),
                 ty::Never => Some(14),
                 ty::Adt(adt, ..) => match adt.adt_kind() {
@@ -265,7 +265,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     AdtKind::Enum => Some(17),
                 },
                 ty::Generator(..) => Some(18),
-                ty::TyForeign(..) => Some(19),
+                ty::Foreign(..) => Some(19),
                 ty::GeneratorWitness(..) => Some(20),
                 ty::Infer(..) | ty::Error => None
             }
@@ -785,7 +785,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                 let found_did = match found_trait_ty.sty {
                     ty::Closure(did, _) |
-                    ty::TyForeign(did) |
+                    ty::Foreign(did) |
                     ty::FnDef(did, _) => Some(did),
                     ty::Adt(def, _) => Some(def.did),
                     _ => None,
@@ -1348,7 +1348,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::TyParam(ty::ParamTy {name, ..}) = ty.sty {
+                if let ty::Param(ty::ParamTy {name, ..}) = ty.sty {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(

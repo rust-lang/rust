@@ -89,7 +89,7 @@ pub mod testtypes {
     pub type FooNil = ();
     pub type FooTuple = (u8, i8, bool);
 
-    // Skipping TyParam
+    // Skipping Param
 
     // Skipping Infer
 

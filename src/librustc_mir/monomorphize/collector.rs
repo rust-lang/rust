@@ -838,7 +838,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             let tail = tcx.struct_tail(ty);
             match tail.sty {
-                ty::TyForeign(..) => false,
+                ty::Foreign(..) => false,
                 ty::TyStr | ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail.sty),
             }

@@ -228,7 +228,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::TyStr
-        | ty::TyForeign(..)
+        | ty::Foreign(..)
         | ty::Error => true,
 
         // [T; N] and [T] have same properties as T.
@@ -257,7 +257,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         // The following *might* require a destructor: it would deeper inspection to tell.
         ty::Dynamic(..)
         | ty::Projection(..)
-        | ty::TyParam(_)
+        | ty::Param(_)
         | ty::Anon(..)
         | ty::Infer(_)
         | ty::Generator(..) => false,

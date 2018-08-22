@@ -119,7 +119,7 @@ fn dropck_outlives<'tcx>(
                         match ty.sty {
                             // All parameters live for the duration of the
                             // function.
-                            ty::TyParam(..) => {}
+                            ty::Param(..) => {}
 
                             // A projection that we couldn't resolve - it
                             // might have a destructor.
@@ -180,7 +180,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
         | ty::TyFloat(_)
         | ty::TyStr
         | ty::Never
-        | ty::TyForeign(..)
+        | ty::Foreign(..)
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnDef(..)
@@ -266,7 +266,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
         }),
 
         // Types that can't be resolved. Pass them forward.
-        ty::Projection(..) | ty::Anon(..) | ty::TyParam(..) => Ok(DtorckConstraint {
+        ty::Projection(..) | ty::Anon(..) | ty::Param(..) => Ok(DtorckConstraint {
             outlives: vec![],
             dtorck_types: vec![ty],
             overflows: vec![],

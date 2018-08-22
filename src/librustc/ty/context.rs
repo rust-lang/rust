@@ -2078,7 +2078,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             self,
             Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr,
             Generator, GeneratorWitness, Dynamic, Closure, Tuple,
-            TyParam, Infer, Projection, Anon, TyForeign);
+            Param, Infer, Projection, Anon, Foreign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
@@ -2387,7 +2387,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_foreign(self, def_id: DefId) -> Ty<'tcx> {
-        self.mk_ty(TyForeign(def_id))
+        self.mk_ty(Foreign(def_id))
     }
 
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -2532,7 +2532,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_ty_param(self,
                     index: u32,
                     name: InternedString) -> Ty<'tcx> {
-        self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
+        self.mk_ty(Param(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {

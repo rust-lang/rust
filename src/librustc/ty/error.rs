@@ -180,7 +180,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::Tuple(ref tys) if tys.is_empty() => self.to_string(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
-            ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
+            ty::Foreign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::Array(_, n) => {
                 match n.assert_usize(tcx) {
                     Some(n) => format!("array of {} elements", n),
@@ -222,7 +222,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::FreshIntTy(_)) => "skolemized integral type".to_string(),
             ty::Infer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
             ty::Projection(_) => "associated type".to_string(),
-            ty::TyParam(ref p) => {
+            ty::Param(ref p) => {
                 if p.is_self() {
                     "Self".to_string()
                 } else {

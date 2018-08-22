@@ -16,8 +16,8 @@ use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, Adt};
 use ty::{Error, TyStr, Array, Slice, TyFloat, FnDef, FnPtr};
-use ty::{TyParam, RawPtr, Ref, Never, Tuple};
-use ty::{Closure, Generator, GeneratorWitness, TyForeign, Projection, Anon};
+use ty::{Param, RawPtr, Ref, Never, Tuple};
+use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Anon};
 use ty::{Dynamic, TyInt, TyUint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
@@ -1086,7 +1086,7 @@ define_print! {
                 }
                 Infer(infer_ty) => write!(f, "{}", infer_ty),
                 Error => write!(f, "[type error]"),
-                TyParam(ref param_ty) => write!(f, "{}", param_ty),
+                Param(ref param_ty) => write!(f, "{}", param_ty),
                 Adt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 Dynamic(data, r) => {
                     let r = r.print_to_string(cx);
@@ -1101,7 +1101,7 @@ define_print! {
                         Ok(())
                     }
                 }
-                TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
+                Foreign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 Projection(ref data) => data.print(f, cx),
                 Anon(def_id, substs) => {
                     if cx.is_verbose {
