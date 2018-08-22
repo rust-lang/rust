@@ -87,13 +87,13 @@ fn format_project<T: FormatHandler>(
         if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
             continue;
         }
-        should_emit_verbose(!input_is_stdin, config, || println!("Formatting {}", path));
+        should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
         let is_root = path == main_file;
         context.format_file(path, module, is_root)?;
     }
     timer = timer.done_formatting();
 
-    should_emit_verbose(!input_is_stdin, config, || {
+    should_emit_verbose(input_is_stdin, config, || {
         println!(
             "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
             timer.get_parse_time(),
@@ -611,7 +611,7 @@ fn parse_crate(
             // Note that if you see this message and want more information,
             // then run the `parse_crate_mod` function above without
             // `catch_unwind` so rustfmt panics and you can get a backtrace.
-            should_emit_verbose(!input_is_stdin, config, || {
+            should_emit_verbose(input_is_stdin, config, || {
                 println!("The Rust parser panicked")
             });
         }
