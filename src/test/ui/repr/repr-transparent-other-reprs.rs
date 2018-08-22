@@ -26,3 +26,5 @@ struct TransparentPlusAlign(u8);
 #[repr(transparent)] //~ ERROR cannot have other repr
 #[repr(C)]
 struct SeparateAttributes(*mut u8);
+
+fn main() {}

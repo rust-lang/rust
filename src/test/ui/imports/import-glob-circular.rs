@@ -25,3 +25,5 @@ mod test {
 
     fn test() { f1066(); } //~ ERROR cannot find function `f1066` in this scope
 }
+
+fn main() {}

@@ -17,3 +17,5 @@ impl SomeNonExistentTrait for isize {}
 
 fn f<T:SomeNonExistentTrait>() {}
 //~^ ERROR cannot find trait `SomeNonExistentTrait` in this scope
+
+fn main() {}
