@@ -2963,6 +2963,13 @@ impl<'test> TestCx<'test> {
             normalized = normalized.replace("\\n", "\n");
         }
 
+        // If there are `$SRC_DIR` normalizations with line and column numbers, then replace them
+        // with placeholders as we do not want tests needing updated when compiler source code
+        // changes.
+        // eg. $SRC_DIR/libcore/mem.rs:323:14 becomes $SRC_DIR/libcore/mem.rs:LL:COL
+        normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+").unwrap()
+            .replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
+
         normalized = normalized.replace("\\\\", "\\") // denormalize for paths on windows
               .replace("\\", "/") // normalize for paths on windows
               .replace("\r\n", "\n") // normalize for linebreaks on windows

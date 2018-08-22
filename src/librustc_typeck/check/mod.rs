@@ -102,7 +102,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoB
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
-use errors::{DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
 use session::{CompileIncomplete, config, Session};
@@ -2678,10 +2678,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let sugg_span = tcx.sess.source_map().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
-                err.span_suggestion(
+                err.span_suggestion_with_applicability(
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",
-                    String::from("()"));
+                    String::from("()"),
+                    Applicability::MachineApplicable);
             } else {
                 err.span_label(sp, format!("expected {}{} parameter{}",
                                             if variadic {"at least "} else {""},
@@ -2943,7 +2944,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.tcx.sess.source_map().span_to_snippet(lhs.span),
                         self.tcx.sess.source_map().span_to_snippet(rhs.span))
                     {
-                        err.span_suggestion(expr.span, msg, format!("{} == {}", left, right));
+                        err.span_suggestion_with_applicability(
+                            expr.span,
+                            msg,
+                            format!("{} == {}", left, right),
+                            Applicability::MaybeIncorrect);
                     } else {
                         err.help(msg);
                     }
@@ -4237,9 +4242,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             ast::LitIntType::Unsuffixed) = lit.node {
                                         let snip = tcx.sess.source_map().span_to_snippet(base.span);
                                         if let Ok(snip) = snip {
-                                            err.span_suggestion(expr.span,
-                                                                "to access tuple elements, use",
-                                                                format!("{}.{}", snip, i));
+                                            err.span_suggestion_with_applicability(
+                                                expr.span,
+                                                "to access tuple elements, use",
+                                                format!("{}.{}", snip, i),
+                                                Applicability::MachineApplicable);
                                             needs_note = false;
                                         }
                                     }
@@ -4677,9 +4684,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::ExprKind::Match(..) |
                 hir::ExprKind::Block(..) => {
                     let sp = self.tcx.sess.source_map().next_point(cause_span);
-                    err.span_suggestion(sp,
-                                        "try adding a semicolon",
-                                        ";".to_string());
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "try adding a semicolon",
+                        ";".to_string(),
+                        Applicability::MachineApplicable);
                 }
                 _ => (),
             }
@@ -4708,10 +4717,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_nil()) {
             (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
-                err.span_suggestion(span,
-                                    "try adding a return type",
-                                    format!("-> {} ",
-                                            self.resolve_type_vars_with_obligations(found)));
+                err.span_suggestion_with_applicability(
+                    span,
+                    "try adding a return type",
+                    format!("-> {} ", self.resolve_type_vars_with_obligations(found)),
+                    Applicability::MachineApplicable);
             }
             (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
                 err.span_label(span, "possibly return type missing here?");
@@ -4770,7 +4780,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
         let original_span = original_sp(last_stmt.span, blk.span);
         let span_semi = original_span.with_lo(original_span.hi() - BytePos(1));
-        err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
+        err.span_suggestion_with_applicability(
+            span_semi,
+            "consider removing this semicolon",
+            "".to_string(),
+            Applicability::MachineApplicable);
     }
 
     fn def_ids_for_path_segments(&self,

@@ -24,7 +24,7 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
-use rustc_errors::{Diagnostic, DiagnosticBuilder, Level};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -324,7 +324,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 span,
                 "variable does not need to be mutable",
             );
-            err.span_suggestion_short(mut_span, "remove this `mut`", "".to_owned());
+            err.span_suggestion_short_with_applicability(
+                mut_span,
+                "remove this `mut`",
+                "".to_owned(),
+                Applicability::MachineApplicable);
 
             err.buffer(&mut mbcx.errors_buffer);
         }

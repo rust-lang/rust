@@ -1079,12 +1079,13 @@ impl<'a> Parser<'a> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
-    fn parse_seq_to_before_tokens<T, F>(&mut self,
-                                            kets: &[&token::Token],
-                                            sep: SeqSep,
-                                            expect: TokenExpectType,
-                                            mut f: F)
-                                            -> PResult<'a, Vec<T>>
+    fn parse_seq_to_before_tokens<T, F>(
+        &mut self,
+        kets: &[&token::Token],
+        sep: SeqSep,
+        expect: TokenExpectType,
+        mut f: F,
+    ) -> PResult<'a, Vec<T>>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
     {
         let mut first: bool = true;
@@ -2058,12 +2059,12 @@ impl<'a> Parser<'a> {
                     TokenExpectType::Expect,
                     |p| p.parse_ty())?;
                 self.bump(); // `)`
+                let span = lo.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_common(false, false)?)
                 } else {
                     None
                 };
-                let span = lo.to(self.prev_span);
                 ParenthesisedArgs { inputs, output, span }.into()
             };
 
@@ -6842,8 +6843,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse one of the items allowed by the flags.
-    /// NB: this function no longer parses the items inside an
-    /// extern crate.
     fn parse_item_implementation(
         &mut self,
         attrs: Vec<Attribute>,
