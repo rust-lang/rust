@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test use of const fn without the `const_fn` feature gate.
-// `min_const_fn` is checked in its own file
-#![feature(min_const_fn)]
+// Test use of min_const_fn without feature gate.
 
-const fn foo() -> usize { 0 } // ok
+const fn foo() -> usize { 0 } //~ ERROR const fn is unstable
 
 trait Foo {
     const fn foo() -> u32; //~ ERROR const fn is unstable
@@ -22,11 +20,12 @@ trait Foo {
 }
 
 impl Foo {
-    const fn baz() -> u32 { 0 } // ok
+    const fn baz() -> u32 { 0 } //~ ERROR const fn is unstable
 }
 
 impl Foo for u32 {
-    const fn foo() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
+    const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
+                                //~| ERROR trait fns cannot be declared const
 }
 
 static FOO: usize = foo();

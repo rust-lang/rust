@@ -197,9 +197,11 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = unsafe { Lazy::new(stdin_init) };
+    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     return Stdin {
-        inner: INSTANCE.get().expect("cannot access stdin during shutdown"),
+        inner: unsafe {
+            INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
+        },
     };
 
     fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
@@ -396,10 +398,11 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>
-        = unsafe { Lazy::new(stdout_init) };
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     return Stdout {
-        inner: INSTANCE.get().expect("cannot access stdout during shutdown"),
+        inner: unsafe {
+            INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
+        },
     };
 
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
@@ -533,10 +536,11 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> =
-        unsafe { Lazy::new(stderr_init) };
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
     return Stderr {
-        inner: INSTANCE.get().expect("cannot access stderr during shutdown"),
+        inner: unsafe {
+            INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
+        },
     };
 
     fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {

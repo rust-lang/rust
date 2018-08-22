@@ -1981,12 +1981,15 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     decl: &hir::FnDecl,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
-    let fty = AstConv::ty_of_fn(
-        &ItemCtxt::new(tcx, def_id),
-        hir::Unsafety::Unsafe,
-        abi,
-        decl,
-    );
+    let unsafety = if abi == abi::Abi::RustIntrinsic {
+        match &*tcx.item_name(def_id).as_str() {
+            "size_of" | "min_align_of" => hir::Unsafety::Normal,
+            _ => hir::Unsafety::Unsafe,
+        }
+    } else {
+        hir::Unsafety::Unsafe
+    };
+    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl);
 
     // feature gate SIMD types in FFI, since I (huonw) am not sure the
     // ABIs are handled at all correctly.

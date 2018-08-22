@@ -178,9 +178,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
 
         if let Some(&attr::Stability {
-            rustc_const_unstable: Some(attr::RustcConstUnstable {
-                                           feature: ref feature_name
-                                       }),
+            const_stability: Some(ref feature_name),
             .. }) = self.tcx.lookup_stability(def_id) {
             let stable_check =
                 // feature-gate is enabled,

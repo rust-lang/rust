@@ -916,9 +916,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         );
                     }
                 } else if let Some(&attr::Stability {
-                    rustc_const_unstable: Some(attr::RustcConstUnstable {
-                        feature: ref feature_name
-                    }),
+                    const_stability: Some(ref feature_name),
                 .. }) = self.tcx.lookup_stability(def_id) {
                     if
                         // feature-gate is not enabled,
@@ -1175,8 +1173,20 @@ impl MirPass for QualifyAndPromoteConstants {
             let (temps, candidates) = {
                 let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
                 if mode == Mode::ConstFn {
-                    // Enforce a constant-like CFG for `const fn`.
-                    qualifier.qualify_const();
+                    if tcx.is_min_const_fn(def_id) {
+                        // enforce `min_const_fn` for stable const fns
+                        use super::qualify_min_const_fn::is_min_const_fn;
+                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
+                            tcx.sess.span_err(span, &err);
+                        } else {
+                            // this should not produce any errors, but better safe than sorry
+                            // FIXME(#53819)
+                            qualifier.qualify_const();
+                        }
+                    } else {
+                        // Enforce a constant-like CFG for `const fn`.
+                        qualifier.qualify_const();
+                    }
                 } else {
                     while let Some((bb, data)) = qualifier.rpo.next() {
                         qualifier.visit_basic_block_data(bb, data);

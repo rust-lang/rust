@@ -107,7 +107,11 @@ pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
     pub rustc_depr: Option<RustcDeprecation>,
-    pub rustc_const_unstable: Option<RustcConstUnstable>,
+    /// `None` means the function is stable but needs to be allowed by the
+    /// `min_const_fn` feature
+    /// `Some` contains the feature gate required to be able to use the function
+    /// as const fn
+    pub const_stability: Option<Symbol>,
 }
 
 /// The available stability levels.
@@ -141,11 +145,6 @@ pub struct RustcDeprecation {
     pub reason: Symbol,
 }
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
-pub struct RustcConstUnstable {
-    pub feature: Symbol,
-}
-
 /// Check if `attrs` contains an attribute like `#![feature(feature_name)]`.
 /// This will not perform any "sanity checks" on the form of the attributes.
 pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
@@ -176,7 +175,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
 
     let mut stab: Option<Stability> = None;
     let mut rustc_depr: Option<RustcDeprecation> = None;
-    let mut rustc_const_unstable: Option<RustcConstUnstable> = None;
+    let mut rustc_const_unstable: Option<Symbol> = None;
 
     'outer: for attr in attrs_iter {
         if ![
@@ -191,6 +190,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         mark_used(attr);
 
         let meta = attr.meta();
+        // attributes with data
         if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
@@ -272,9 +272,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
 
                     get_meta!(feature);
                     if let Some(feature) = feature {
-                        rustc_const_unstable = Some(RustcConstUnstable {
-                            feature
-                        });
+                        rustc_const_unstable = Some(feature);
                     } else {
                         span_err!(diagnostic, attr.span(), E0629, "missing 'feature'");
                         continue
@@ -330,7 +328,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 },
                                 feature,
                                 rustc_depr: None,
-                                rustc_const_unstable: None,
+                                const_stability: None,
                             })
                         }
                         (None, _, _) => {
@@ -379,7 +377,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 },
                                 feature,
                                 rustc_depr: None,
-                                rustc_const_unstable: None,
+                                const_stability: None,
                             })
                         }
                         (None, _) => {
@@ -412,9 +410,9 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
     }
 
     // Merge the const-unstable info into the stability info
-    if let Some(rustc_const_unstable) = rustc_const_unstable {
+    if let Some(feature) = rustc_const_unstable {
         if let Some(ref mut stab) = stab {
-            stab.rustc_const_unstable = Some(rustc_const_unstable);
+            stab.const_stability = Some(feature);
         } else {
             span_err!(diagnostic, item_sp, E0630,
                       "rustc_const_unstable attribute must be paired with \

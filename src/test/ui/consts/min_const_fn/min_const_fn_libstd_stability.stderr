@@ -1,0 +1,20 @@
+error: can only call other `min_const_fn` within a `min_const_fn`
+  --> $DIR/min_const_fn_libstd_stability.rs:25:25
+   |
+LL | const fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
+   |                         ^^^^^
+
+error: can only call other `min_const_fn` within a `min_const_fn`
+  --> $DIR/min_const_fn_libstd_stability.rs:32:26
+   |
+LL | const fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
+   |                          ^^^^^^
+
+error: only int, `bool` and `char` operations are stable in const fn
+  --> $DIR/min_const_fn_libstd_stability.rs:36:26
+   |
+LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` operations
+   |                          ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
