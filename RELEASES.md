@@ -39,8 +39,8 @@ Misc
   will demote `deny` and `forbid` lints to `warn`.
 - [`rustc` and `rustdoc` will now have the exit code of `1` if compilation
   fails, and `101` if there is a panic.][52197]
-- [Added a preview of clippy has been made available through rustup][51122]
-  Install with `rustup component add clippy-preview`
+- [A preview of clippy has been made available through rustup.][51122]
+  You can install the preview with `rustup component add clippy-preview`
 
 Compatibility Notes
 -------------------
