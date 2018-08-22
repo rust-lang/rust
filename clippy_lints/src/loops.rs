@@ -759,8 +759,8 @@ struct FixedOffsetVar {
 
 fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     let is_slice = match ty.sty {
-        ty::TyRef(_, subty, _) => is_slice_like(cx, subty),
-        ty::TySlice(..) | ty::TyArray(..) => true,
+        ty::Ref(_, subty, _) => is_slice_like(cx, subty),
+        ty::Slice(..) | ty::Array(..) => true,
         _ => false,
     };
 
@@ -1149,8 +1149,8 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                         Constant::Int(start_idx),
                         Constant::Int(end_idx),
                     ) => (match ty.sty {
-                        ty::TyInt(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
-                        ty::TyUint(_) => start_idx > end_idx,
+                        ty::Int(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
+                        ty::Uint(_) => start_idx > end_idx,
                         _ => false,
                     }, start_idx == end_idx),
                     _ => (false, false),
@@ -1239,7 +1239,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::TypeVariants::TyArray(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
+                        ty::TyKind::Array(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
@@ -1381,7 +1381,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
-                ty::TyRef(_, ty, mutbl) => match (&pat[0].node, &pat[1].node) {
+                ty::Ref(_, ty, mutbl) => match (&pat[0].node, &pat[1].node) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
                     (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, MutImmutable),
                     _ => return,
@@ -1721,7 +1721,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.tables.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::TyRef(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.sty {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1733,7 +1733,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
-                    if let ty::TyRef(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.sty {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1814,7 +1814,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 fn is_iterable_array(ty: Ty<'_>, cx: &LateContext<'_, '_>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
+        ty::Array(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
         _ => false,
     }
 }

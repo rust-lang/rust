@@ -224,7 +224,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             return;
         };
         let ty = cx.tables.expr_ty(ex);
-        if ty.sty != ty::TyBool || is_allowed(cx, MATCH_BOOL, ex.id) {
+        if ty.sty != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
@@ -295,7 +295,7 @@ fn check_single_match_opt_like(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]
 
 fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
-    if cx.tables.expr_ty(ex).sty == ty::TyBool {
+    if cx.tables.expr_ty(ex).sty == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,

@@ -67,9 +67,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             let fn_ty = cx.tables.expr_ty(caller);
             match fn_ty.sty {
                 // Is it an unsafe function? They don't implement the closure traits
-                ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                ty::FnDef(..) | ty::FnPtr(_) => {
                     let sig = fn_ty.fn_sig(cx.tcx);
-                    if sig.skip_binder().unsafety == Unsafety::Unsafe || sig.skip_binder().output().sty == ty::TyNever {
+                    if sig.skip_binder().unsafety == Unsafety::Unsafe || sig.skip_binder().output().sty == ty::Never {
                         return;
                     }
                 },

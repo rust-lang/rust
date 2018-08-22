@@ -63,19 +63,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                     let constant = cx.tcx.const_eval(param_env.and(cid)).ok();
                     if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
                         let mut ty = cx.tcx.type_of(did);
-                        if let ty::TyAdt(adt, _) = ty.sty {
+                        if let ty::Adt(adt, _) = ty.sty {
                             if adt.is_enum() {
                                 ty = adt.repr.discr_type().to_ty(cx.tcx);
                             }
                         }
                         match ty.sty {
-                            ty::TyInt(IntTy::Isize) => {
+                            ty::Int(IntTy::Isize) => {
                                 let val = ((val as i128) << 64) >> 64;
                                 if val <= i128::from(i32::max_value()) && val >= i128::from(i32::min_value()) {
                                     continue;
                                 }
                             }
-                            ty::TyUint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
+                            ty::Uint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
                             _ => continue,
                         }
                         span_lint(

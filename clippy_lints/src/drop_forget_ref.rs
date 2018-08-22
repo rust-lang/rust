@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let arg = &args[0];
                 let arg_ty = cx.tables.expr_ty(arg);
 
-                if let ty::TyRef(..) = arg_ty.sty {
+                if let ty::Ref(..) = arg_ty.sty {
                     if match_def_path(cx.tcx, def_id, &paths::DROP) {
                         lint = DROP_REF;
                         msg = DROP_REF_SUMMARY.to_string();

@@ -1,13 +1,14 @@
 use std::cmp;
 
 use matches::matches;
+use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::TypeVariants;
+use rustc::ty::TyKind;
 use rustc::session::config::Config as SessionConfig;
 use rustc_target::spec::abi::Abi;
 use rustc_target::abi::LayoutOf;
@@ -125,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         // argument. In that case we can't switch to pass-by-value as the
         // argument will not live long enough.
         let output_lts = match fn_sig.output().sty {
-            TypeVariants::TyRef(output_lt, _, _) => vec![output_lt],
-            TypeVariants::TyAdt(_, substs) => substs.regions().collect(),
+            TyKind::Ref(output_lt, _, _) => vec![output_lt],
+            TyKind::Adt(_, substs) => substs.regions().collect(),
             _ => vec![],
         };
 
@@ -137,12 +138,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let TypeVariants::TyRef(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if let TyKind::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
                 if !output_lts.contains(&input_lt);
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                 if size <= self.limit;
-                if let TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
+                if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
                 then {
                     let value_type = if is_self(arg) {
                         "self".into()

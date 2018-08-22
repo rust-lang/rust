@@ -71,7 +71,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::TyRef(
+            } else if let ty::Ref(
                 _,
                 _,
                 hir::MutMutable,

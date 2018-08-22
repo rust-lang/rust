@@ -101,7 +101,7 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
 /// Check if type is struct, enum or union type with given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyAdt(adt, _) => match_def_path(cx.tcx, adt.did, path),
+        ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
         _ => false,
     }
 }
@@ -631,7 +631,7 @@ pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
     match ty.sty {
-        ty::TyRef(_, ty, _) => walk_ptrs_ty(ty),
+        ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
 }
@@ -641,7 +641,7 @@ pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
         match ty.sty {
-            ty::TyRef(_, ty, _) => inner(ty, depth + 1),
+            ty::Ref(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
     }
@@ -842,7 +842,7 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) 
 /// Return whether the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
+        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
         _ => false,
     }
 }
@@ -927,7 +927,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::TyAlias(id) |
         Def::AssociatedTy(id) |
         Def::TyParam(id) |
-        Def::TyForeign(id) |
+        Def::ForeignTy(id) |
         Def::Struct(id) |
         Def::StructCtor(id, ..) |
         Def::Union(id) |

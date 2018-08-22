@@ -93,8 +93,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
-                                if matches!(ty.sty, ty::TySlice(_)) ||
-                                    matches!(ty.sty, ty::TyArray(_, _)) ||
+                                if matches!(ty.sty, ty::Slice(_)) ||
+                                    matches!(ty.sty, ty::Array(_, _)) ||
                                     match_type(cx, ty, &paths::VEC) ||
                                     match_type(cx, ty, &paths::VEC_DEQUE) {
                                         return Some((lhs1, idx1, idx2));

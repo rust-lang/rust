@@ -86,8 +86,8 @@ impl LintPass for Pass {
 
 fn is_unit_type(ty: ty::Ty<'_>) -> bool {
     match ty.sty {
-        ty::TyTuple(slice) => slice.is_empty(),
-        ty::TyNever => true,
+        ty::Tuple(slice) => slice.is_empty(),
+        ty::Never => true,
         _ => false,
     }
 }
@@ -95,7 +95,7 @@ fn is_unit_type(ty: ty::Ty<'_>) -> bool {
 fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
 
-    if let ty::TyFnDef(id, _) = ty.sty {
+    if let ty::FnDef(id, _) = ty.sty {
         if let Some(fn_type) = cx.tcx.fn_sig(id).no_late_bound_regions() {
             return is_unit_type(fn_type.output());
         }

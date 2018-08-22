@@ -37,8 +37,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
-            if let ty::TyRef(_, ty, _) = cx.tables.expr_ty_adjusted(expr).sty;
-            if let ty::TySlice(..) = ty.sty;
+            if let ty::Ref(_, ty, _) = cx.tables.expr_ty_adjusted(expr).sty;
+            if let ty::Slice(..) = ty.sty;
             if let ExprKind::AddrOf(_, ref addressee) = expr.node;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
@@ -95,7 +95,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).
 fn vec_type(ty: Ty<'_>) -> Ty<'_> {
-    if let ty::TyAdt(_, substs) = ty.sty {
+    if let ty::Adt(_, substs) = ty.sty {
         substs.type_at(0)
     } else {
         panic!("The type of `vec!` is a not a struct?");
