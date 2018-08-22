@@ -10,15 +10,16 @@
 
 // compile-flags:-C panic=abort
 
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![no_std]
 #![no_main]
 
 use core::panic::PanicInfo;
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(
-    info: PanicInfo, //~ ERROR argument should be `&PanicInfo`
-) -> () //~ ERROR return type should be `!`
+    info: &'static PanicInfo, //~ ERROR argument should be `&PanicInfo`
+) -> !
 {
+    loop {}
 }

@@ -293,7 +293,9 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt,
     }
 
     // (To be) stable attribute for #[lang = "panic_impl"]
-    if attr::contains_name(attrs, "panic_implementation") {
+    if attr::contains_name(attrs, "panic_implementation") ||
+        attr::contains_name(attrs, "panic_handler")
+    {
         return true;
     }
 

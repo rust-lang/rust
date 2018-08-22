@@ -11,12 +11,12 @@
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![no_std]
 
 use core::panic::PanicInfo;
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     loop {}
 }

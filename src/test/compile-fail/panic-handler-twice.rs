@@ -8,15 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=abort
+// aux-build:some-panic-impl.rs
 
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
+#![feature(lang_items)]
 #![no_std]
 #![no_main]
 
+extern crate some_panic_impl;
+
 use core::panic::PanicInfo;
 
-#[panic_implementation]
-fn panic() -> ! { //~ ERROR function should have one argument
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    //~^ error duplicate lang item found: `panic_impl`
     loop {}
 }
+
+#[lang = "eh_personality"]
+fn eh() {}

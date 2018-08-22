@@ -319,7 +319,8 @@ pub fn panicking() -> bool {
 
 /// Entry point of panic from the libcore crate.
 #[cfg(not(test))]
-#[panic_implementation]
+#[cfg_attr(stage0, panic_implementation)]
+#[cfg_attr(not(stage0), panic_handler)]
 #[unwind(allowed)]
 pub fn rust_begin_panic(info: &PanicInfo) -> ! {
     continue_panic_fmt(&info)

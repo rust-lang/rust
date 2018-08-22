@@ -8,16 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=abort
+// error-pattern: `#[panic_handler]` function required, but not found
 
-#![feature(panic_implementation)]
-#![no_std]
+#![feature(lang_items)]
 #![no_main]
+#![no_std]
 
-use core::panic::PanicInfo;
-
-#[panic_implementation]
-fn panic<T>(pi: &PanicInfo) -> ! {
-    //~^ ERROR `#[panic_implementation]` function should have no type parameters
-    loop {}
-}
+#[lang = "eh_personality"]
+fn eh() {}

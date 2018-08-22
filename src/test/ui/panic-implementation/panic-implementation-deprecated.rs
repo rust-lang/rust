@@ -10,12 +10,15 @@
 
 // compile-flags:-C panic=abort
 
+#![deny(deprecated)]
+#![feature(panic_implementation)]
 #![no_std]
-#![no_main]
 
 use core::panic::PanicInfo;
 
-#[panic_implementation] //~ ERROR #[panic_implementation] is an unstable feature (see issue #44489)
+#[panic_implementation]
 fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
+
+fn main() {}

@@ -9,18 +9,20 @@
 // except according to those terms.
 
 // compile-flags:-C panic=abort
-// error-pattern: language item required, but not found: `panic_info`
 
 #![feature(lang_items)]
-#![feature(no_core)]
-#![feature(panic_implementation)]
-#![no_core]
+#![feature(panic_handler)]
+#![no_std]
 #![no_main]
 
-#[panic_implementation]
-fn panic() -> ! {
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[lang = "sized"]
-trait Sized {}
+#[lang = "panic_impl"]
+fn panic2(info: &PanicInfo) -> ! { //~ ERROR duplicate lang item found: `panic_impl`.
+    loop {}
+}

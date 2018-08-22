@@ -1,0 +1,11 @@
+error: should have no type parameters
+  --> $DIR/panic-handler-bad-signature-4.rs:20:1
+   |
+LL | / fn panic<T>(pi: &PanicInfo) -> ! {
+LL | |     //~^ ERROR should have no type parameters
+LL | |     loop {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

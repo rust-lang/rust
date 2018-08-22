@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: duplicate lang item found: `panic_impl`.
+// compile-flags:-C panic=abort
+// error-pattern: language item required, but not found: `panic_info`
 
-#![feature(panic_implementation)]
+#![feature(lang_items)]
+#![feature(no_core)]
+#![feature(panic_handler)]
+#![no_core]
+#![no_main]
 
-use std::panic::PanicInfo;
-
-#[panic_implementation]
-fn panic(info: PanicInfo) -> ! {
+#[panic_handler]
+fn panic() -> ! {
     loop {}
 }
 
-fn main() {}
+#[lang = "sized"]
+trait Sized {}
