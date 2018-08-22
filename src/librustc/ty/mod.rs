@@ -42,7 +42,7 @@ use session::DataTypeKind;
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
-use std::fmt;
+use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
@@ -2640,15 +2640,43 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn ty_param_name(self, id: DefId) -> InternedString {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
-            DefPathData::TypeParam(name) => name,
             DefPathData::ImplTrait => {
-                let param_owner_def_id = DefId {
+                // HACK(eddyb) on-demand pretty-printing of `impl Trait`
+                // parameters - hopefully this is not used too often.
+
+                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`, by
+                // looking up the predicates associated with the owner's def_id.
+                let predicates_of_owner = self.predicates_of(DefId {
                     krate: id.krate,
                     index: def_key.parent.unwrap()
-                };
-                let generics = self.generics_of(param_owner_def_id);
-                let index = generics.param_def_id_to_index[&id];
-                generics.param_at(index, self).name
+                });
+
+                let mut first = true;
+                let mut is_sized = false;
+                let mut s = String::from("impl");
+                for predicate in predicates_of_owner.predicates {
+                    if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                        // Ignore bounds other than those on this parameter.
+                        match trait_ref.self_ty().sty {
+                            ty::TyParam(p) if p.def_id == id => {}
+                            _ => continue,
+                        }
+
+                        // Don't print +Sized, but rather +?Sized if absent.
+                        if Some(trait_ref.def_id()) == self.lang_items().sized_trait() {
+                            is_sized = true;
+                            continue;
+                        }
+
+                        let _ = write!(s, "{}{}", if first { " " } else { "+" }, trait_ref);
+                        first = false;
+                    }
+                }
+                if !is_sized {
+                    let _ = write!(s, "{}?Sized", if first { " " } else { "+" });
+                }
+
+                Symbol::intern(&s).as_interned_str()
             }
             DefPathData::Trait(_) => {
                 keywords::SelfType.name().as_interned_str()
@@ -2656,21 +2684,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             DefPathData::ClosureExpr => {
                 Symbol::intern("<synthetic closure param>").as_interned_str()
             }
-            _ => bug!("ty_param_name: {:?} not a type parameter", id),
+            data => data.as_interned_str()
         }
     }
 
     pub fn ty_param_owner(self, id: DefId) -> DefId {
         let def_key = self.def_key(id);
         match def_key.disambiguated_data.data {
-            DefPathData::ImplTrait |
-            DefPathData::TypeParam(_) => DefId {
+            DefPathData::Trait(_) |
+            DefPathData::ClosureExpr => id,
+            _ => DefId {
                 krate: id.krate,
                 index: def_key.parent.unwrap()
             },
-            DefPathData::Trait(_) |
-            DefPathData::ClosureExpr => id,
-            _ => bug!("ty_param_owner: {:?} not a type parameter", id),
         }
     }
 

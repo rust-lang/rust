@@ -4,10 +4,10 @@ error[E0308]: mismatched types
 LL | fn foo(x: impl Debug) -> String {
    |                          ------ expected `std::string::String` because of return type
 LL |     x //~ ERROR mismatched types
-   |     ^ expected struct `std::string::String`, found `impl Debug` parameter
+   |     ^ expected struct `std::string::String`, found `impl std::fmt::Debug` parameter
    |
    = note: expected type `std::string::String`
-              found type `impl Debug`
+              found type `impl std::fmt::Debug`
 
 error: aborting due to previous error
 

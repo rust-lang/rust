@@ -1124,7 +1124,7 @@ define_print! {
                             return Ok(());
                         }
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                        // by looking up the projections associated with the def_id.
+                        // by looking up the predicates associated with the def_id.
                         let predicates_of = tcx.predicates_of(def_id);
                         let substs = tcx.lift(&substs).unwrap_or_else(|| {
                             tcx.intern_substs(&[])
