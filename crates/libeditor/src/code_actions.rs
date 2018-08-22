@@ -1,6 +1,6 @@
 use {TextUnit, EditBuilder, Edit};
 use libsyntax2::{
-    ast::{self, AstNode, AttrsOwner, ParsedFile},
+    ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner, ParsedFile},
     SyntaxKind::COMMA,
     SyntaxNodeRef,
     algo::{
@@ -54,6 +54,36 @@ pub fn add_derive<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnO
         ActionResult {
             edit: edit.finish(),
             cursor_position: Some(offset),
+        }
+    })
+}
+
+pub fn add_impl<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+    let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
+    let name = nominal.name()?;
+
+    Some(move || {
+        // let type_params = nominal.type_param_list();
+        // let type_args = match type_params {
+        //     None => String::new(),
+        //     Some(params) => {
+        //         let mut buf = String::new();
+        //     }
+        // };
+        let mut edit = EditBuilder::new();
+        let start_offset = nominal.syntax().range().end();
+        edit.insert(
+            start_offset,
+            format!(
+                "\n\nimpl {} {{\n\n}}",
+                name.text(),
+            )
+        );
+        ActionResult {
+            edit: edit.finish(),
+            cursor_position: Some(
+                start_offset + TextUnit::of_str("\n\nimpl  {\n") + name.syntax().range().len()
+            ),
         }
     })
 }

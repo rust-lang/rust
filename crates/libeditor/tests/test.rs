@@ -7,7 +7,7 @@ use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
     ParsedFile, TextUnit, TextRange, ActionResult,
     highlight, runnables, extend_selection, file_structure,
-    flip_comma, add_derive, matching_brace,
+    flip_comma, add_derive, add_impl, matching_brace,
 };
 
 #[test]
@@ -142,6 +142,20 @@ fn test_add_derive() {
         "#[derive(Clone<|>)]\nstruct Foo { a: i32, }",
         |file, off| add_derive(file, off).map(|f| f()),
     );
+}
+
+#[test]
+fn test_add_impl() {
+    check_action(
+        "struct Foo {<|>}\n",
+        "struct Foo {}\n\nimpl Foo {\n<|>\n}\n",
+        |file, off| add_impl(file, off).map(|f| f()),
+    );
+    // check_action(
+    //     "struct Foo<T: Clone> {<|>}",
+    //     "struct Foo<T: Clone> {}\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+    //     |file, off| add_impl(file, off).map(|f| f()),
+    // );
 }
 
 #[test]

@@ -299,7 +299,11 @@ Grammar(
 
         "NominalDef": (
             enum: ["StructDef", "EnumDef"],
-            traits: [ "AttrsOwner", "TypeParamsOwner" ],
+            traits: [
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner"
+            ],
         ),
 
         "Name": (),

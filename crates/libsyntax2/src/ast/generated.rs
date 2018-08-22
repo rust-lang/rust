@@ -344,8 +344,9 @@ impl<'a> AstNode<'a> for NominalDef<'a> {
     }
 }
 
-impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
+impl<'a> ast::NameOwner<'a> for NominalDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for NominalDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
 // ParenType

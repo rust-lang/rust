@@ -22,7 +22,7 @@ pub use self::{
     edit::{EditBuilder, Edit, AtomEdit},
     code_actions::{
         ActionResult, find_node,
-        flip_comma, add_derive,
+        flip_comma, add_derive, add_impl,
     },
 };
 
