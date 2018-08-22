@@ -243,7 +243,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
 
     fn region_name(&self, region: Region) -> Option<String> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
+            &ty::ReEarlyBound(_) => Some(region.to_string()),
             _ => None,
         }
     }
@@ -414,9 +414,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     match r {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
-                        &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
+                        &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_)) => {
                             Some(GenericParamDef {
-                                name: name.to_string(),
+                                name: r.to_string(),
                                 kind: GenericParamDefKind::Lifetime,
                             })
                         },

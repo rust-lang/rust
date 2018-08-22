@@ -148,7 +148,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
+                    (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id)) => {
                         debug!(
                             "EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
                              def_id={:?}",
@@ -166,7 +166,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // region at the right depth with the same index
                     (
                         Some(rl::Region::LateBound(debruijn_index, id, _)),
-                        ty::BrNamed(def_id, _),
+                        ty::BrNamed(def_id),
                     ) => {
                         debug!(
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
@@ -241,7 +241,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
+            (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id)) => {
                 debug!(
                     "EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
                      def_id={:?}",
@@ -254,7 +254,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (Some(rl::Region::LateBound(debruijn_index, id, _)), ty::BrNamed(def_id, _)) => {
+            (Some(rl::Region::LateBound(debruijn_index, id, _)), ty::BrNamed(def_id)) => {
                 debug!(
                     "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                     debruijn_index,

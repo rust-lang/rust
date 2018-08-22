@@ -709,11 +709,10 @@ fn for_each_late_bound_region_defined_on<'tcx>(
         for late_bound in late_bounds.iter() {
             let hir_id = HirId{ owner: fn_def_id.index, local_id: *late_bound };
             let region_node_id = tcx.hir.hir_to_node_id(hir_id);
-            let name = tcx.hir.name(region_node_id).as_interned_str();
             let region_def_id = tcx.hir.local_def_id(region_node_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,
-                bound_region: ty::BoundRegion::BrNamed(region_def_id, name),
+                bound_region: ty::BoundRegion::BrNamed(region_def_id),
             }));
             f(liberated_region);
         }

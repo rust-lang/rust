@@ -821,13 +821,14 @@ pub struct FloatVarValue(pub ast::FloatTy);
 
 impl ty::EarlyBoundRegion {
     pub fn to_bound_region(&self) -> ty::BoundRegion {
-        ty::BoundRegion::BrNamed(self.def_id, self.name)
+        ty::BoundRegion::BrNamed(self.def_id)
     }
 
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn has_name(&self) -> bool {
-        self.name != keywords::UnderscoreLifetime.name().as_interned_str()
+    pub fn has_name(&self, tcx: TyCtxt) -> bool {
+        let name = tcx.generic_param_name(self.def_id);
+        name != keywords::UnderscoreLifetime.name().as_interned_str()
     }
 }
 
@@ -862,7 +863,6 @@ impl GenericParamDef {
                 ty::EarlyBoundRegion {
                     def_id: self.def_id,
                     index: self.index,
-                    name: self.name,
                 }
             }
             _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")

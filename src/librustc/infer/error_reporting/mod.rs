@@ -202,17 +202,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
+                let name = self.generic_param_name(br.def_id);
                 let mut sp = cm.def_span(self.hir.span(node));
                 if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
-                    generics.get_named(&br.name)
+                    generics.get_named(&name)
                 }) {
                     sp = param.span;
                 }
-                (format!("the lifetime {} as defined on", br.name), sp)
+                (format!("the lifetime {} as defined on", name), sp)
             }
             ty::ReFree(ty::FreeRegion {
-                bound_region: ty::BoundRegion::BrNamed(_, ref name), ..
+                bound_region: ty::BoundRegion::BrNamed(def_id), ..
             }) => {
+                let name = self.generic_param_name(def_id);
                 let mut sp = cm.def_span(self.hir.span(node));
                 if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
                     generics.get_named(&name)

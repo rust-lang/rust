@@ -750,9 +750,7 @@ impl<'tcx> ScopeTree {
     pub fn free_scope<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, fr: &ty::FreeRegion)
                                  -> Scope {
         let param_owner = match fr.bound_region {
-            ty::BoundRegion::BrNamed(def_id, _) => {
-                tcx.parent_def_id(def_id).unwrap()
-            }
+            ty::BoundRegion::BrNamed(def_id) => tcx.generic_param_owner(def_id),
             _ => fr.scope
         };
 

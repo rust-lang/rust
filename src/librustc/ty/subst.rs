@@ -453,7 +453,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
                             "Region parameter out of range \
                              when substituting in region {} (root type={:?}) \
                              (index={})",
-                            data.name,
+                            self.tcx().generic_param_name(data.def_id),
                             self.root_ty,
                             data.index);
                     }

@@ -482,7 +482,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     pub fn region_name(&self, region: Region) -> Option<String> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
+            &ty::ReEarlyBound(r) => Some(self.tcx.generic_param_name(r.def_id).to_string()),
             _ => None,
         }
     }

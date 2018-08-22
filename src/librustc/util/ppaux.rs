@@ -28,7 +28,6 @@ use std::usize;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
 
@@ -139,8 +138,12 @@ struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
 impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         match *r {
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => {
-                self.0.insert(name);
+            ty::ReLateBound(_, ty::BrAnon(n)) |
+            ty::ReLateBound(_, ty::BrFresh(n)) => {
+                assert!(n < PrintContext::ARTIFICIAL_REGION_BASE);
+            }
+            ty::ReLateBound(_, ty::BrNamed(def_id)) => {
+                self.0.insert(ty::tls::with(|tcx| tcx.generic_param_name(def_id)));
             },
             _ => {},
         }
@@ -154,7 +157,7 @@ pub struct PrintContext {
     is_verbose: bool,
     identify_regions: bool,
     used_region_names: Option<FxHashSet<InternedString>>,
-    region_index: usize,
+    region_index: u32,
     binder_depth: usize,
 }
 impl PrintContext {
@@ -465,6 +468,11 @@ impl PrintContext {
         Ok(())
     }
 
+    // HACK(eddyb) Because we can't store names inside regions, we have
+    // to resort to encoding the regions we want to print in integers.
+    // Specifically, we use `Br{Anon,Fresh}((1 << 31) + region_index)`.
+    const ARTIFICIAL_REGION_BASE: u32 = 1 << 31;
+
     fn in_binder<'a, 'gcx, 'tcx, T, U, F>(&mut self,
                                           f: &mut F,
                                           tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -472,19 +480,11 @@ impl PrintContext {
                                           lifted: Option<ty::Binder<U>>) -> fmt::Result
         where T: Print, U: Print + TypeFoldable<'tcx>, F: fmt::Write
     {
-        fn name_by_region_index(index: usize) -> InternedString {
-            match index {
-                0 => Symbol::intern("'r"),
-                1 => Symbol::intern("'s"),
-                i => Symbol::intern(&format!("'t{}", i-2)),
-            }.as_interned_str()
-        }
-
-        // Replace any anonymous late-bound regions with named
-        // variants, using gensym'd identifiers, so that we can
-        // clearly differentiate between named and unnamed regions in
-        // the output. We'll probably want to tweak this over time to
-        // decide just how much information to give.
+        // Replace any anonymous late-bound regions with artificially named ones
+        // (see `ARTIFICIAL_REGION_BASE` above), so that we can clearly
+        // differentiate between named and unnamed regions in the output.
+        // We'll probably want to tweak this over time to decide just how much
+        // information to give.
         let value = if let Some(v) = lifted {
             v
         } else {
@@ -510,22 +510,34 @@ impl PrintContext {
         let new_value = tcx.replace_late_bound_regions(&value, |br| {
             let _ = start_or_continue(f, "for<", ", ");
             let br = match br {
-                ty::BrNamed(_, name) => {
-                    let _ = write!(f, "{}", name);
+                ty::BrNamed(_) => {
+                    let _ = write!(f, "{}", br);
                     br
                 }
                 ty::BrAnon(_) |
                 ty::BrFresh(_) |
-                ty::BrEnv => {
-                    let name = loop {
-                        let name = name_by_region_index(region_index);
-                        region_index += 1;
-                        if !self.is_name_used(&name) {
-                            break name;
+                ty::BrEnv => loop {
+                    match br {
+                        ty::BrAnon(n) | ty::BrFresh(n) => {
+                            assert!(n < PrintContext::ARTIFICIAL_REGION_BASE);
                         }
+                        _ => {}
+                    }
+
+                    let n = Self::ARTIFICIAL_REGION_BASE + region_index;
+                    let br = match br {
+                        ty::BrFresh(_) => ty::BrFresh(n),
+                        _ => ty::BrAnon(n),
                     };
-                    let _ = write!(f, "{}", name);
-                    ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
+
+                    let mut name = String::new();
+                    let _ = print_maybe_artificial_region(&mut name, n, false);
+
+                    region_index += 1;
+                    if !self.is_name_used(&Symbol::intern(&name).as_interned_str()) {
+                        let _ = write!(f, "{}", name);
+                        break br;
+                    }
                 }
             };
             tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
@@ -720,6 +732,26 @@ define_print! {
     }
 }
 
+fn print_maybe_artificial_region(
+    f: &mut impl fmt::Write,
+    n: u32,
+    print_number: bool,
+) -> fmt::Result {
+    // See ARTIFICIAL_REGION_BASE for more details on this hack.
+    match n.checked_sub(PrintContext::ARTIFICIAL_REGION_BASE) {
+        Some(index) => match index {
+            0 => write!(f, "'r"),
+            1 => write!(f, "'s"),
+            i => write!(f, "'t{}", i-2),
+        },
+        None => if print_number {
+            write!(f, "{}", n)
+        } else {
+            Ok(())
+        },
+    }
+}
+
 define_print! {
     () ty::BoundRegion, (self, f, cx) {
         display {
@@ -728,20 +760,34 @@ define_print! {
             }
 
             match *self {
-                BrNamed(_, name) => write!(f, "{}", name),
-                BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
+                BrNamed(def_id) => {
+                    write!(f, "{}", ty::tls::with(|tcx| tcx.generic_param_name(def_id)))
+                }
+                BrAnon(n) | BrFresh(n) => {
+                    print_maybe_artificial_region(f, n, false)
+                }
+                BrEnv => Ok(())
             }
         }
         debug {
-            return match *self {
-                BrAnon(n) => write!(f, "BrAnon({:?})", n),
-                BrFresh(n) => write!(f, "BrFresh({:?})", n),
-                BrNamed(did, name) => {
+            match *self {
+                BrAnon(n) => {
+                    write!(f, "BrAnon(")?;
+                    print_maybe_artificial_region(f, n, true)?;
+                    write!(f, ")")
+                }
+                BrFresh(n) => {
+                    write!(f, "BrFresh(")?;
+                    print_maybe_artificial_region(f, n, true)?;
+                    write!(f, ")")
+                }
+                BrNamed(did) => {
                     write!(f, "BrNamed({:?}:{:?}, {})",
-                           did.krate, did.index, name)
+                           did.krate, did.index,
+                           ty::tls::with(|tcx| tcx.generic_param_name(did)))
                 }
                 BrEnv => write!(f, "BrEnv"),
-            };
+            }
         }
     }
 }
@@ -759,7 +805,7 @@ define_print! {
             // `explain_region()` or `note_and_explain_region()`.
             match *self {
                 ty::ReEarlyBound(ref data) => {
-                    write!(f, "{}", data.name)
+                    write!(f, "{}", ty::tls::with(|tcx| tcx.generic_param_name(data.def_id)))
                 }
                 ty::ReCanonical(_) => {
                     write!(f, "'_")
@@ -802,7 +848,7 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "ReEarlyBound({}, {})",
                            data.index,
-                           data.name)
+                           ty::tls::with(|tcx| tcx.generic_param_name(data.def_id)))
                 }
 
                 ty::ReClosureBound(ref vid) => {

@@ -107,18 +107,16 @@ for ty::RegionKind {
                 db.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
-            ty::ReLateBound(db, ty::BrNamed(def_id, name)) => {
+            ty::ReLateBound(db, ty::BrNamed(def_id)) => {
                 db.hash_stable(hcx, hasher);
                 def_id.hash_stable(hcx, hasher);
-                name.hash_stable(hcx, hasher);
             }
             ty::ReLateBound(db, ty::BrEnv) => {
                 db.hash_stable(hcx, hasher);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
+            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
-                name.hash_stable(hcx, hasher);
             }
             ty::ReScope(scope) => {
                 scope.hash_stable(hcx, hasher);
@@ -796,7 +794,7 @@ impl_stable_hash_for!(struct ty::FreeRegion {
 
 impl_stable_hash_for!(enum ty::BoundRegion {
     BrAnon(index),
-    BrNamed(def_id, name),
+    BrNamed(def_id),
     BrFresh(index),
     BrEnv
 });

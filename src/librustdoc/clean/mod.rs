@@ -1249,11 +1249,11 @@ impl<'tcx> Clean<Lifetime> for ty::GenericParamDef {
 }
 
 impl Clean<Option<Lifetime>> for ty::RegionKind {
-    fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
+    fn clean(&self, _cx: &DocContext) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name.to_string())),
-            ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
+            ty::ReLateBound(_, ty::BrNamed(_)) |
+            ty::ReEarlyBound(_) => Some(Lifetime(self.to_string())),
 
             ty::ReLateBound(..) |
             ty::ReFree(..) |

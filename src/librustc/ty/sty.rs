@@ -26,7 +26,6 @@ use std::iter;
 use std::cmp::Ordering;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::InternedString;
 
 use serialize;
 
@@ -60,7 +59,7 @@ pub enum BoundRegion {
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, InternedString),
+    BrNamed(DefId),
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
@@ -1129,7 +1128,6 @@ impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
-    pub name: InternedString,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]

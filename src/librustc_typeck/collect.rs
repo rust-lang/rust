@@ -1748,7 +1748,6 @@ fn explicit_predicates_of<'a, 'tcx>(
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir.local_def_id(param.id),
             index,
-            name: param.name.ident().as_interned_str(),
         }));
         index += 1;
 

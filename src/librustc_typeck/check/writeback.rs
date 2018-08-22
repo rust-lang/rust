@@ -466,7 +466,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                             let reg = ty::EarlyBoundRegion {
                                                 def_id: p.def_id,
                                                 index: p.index,
-                                                name: p.name,
                                             };
                                             trace!("replace {:?} with {:?}", region, reg);
                                             return self.tcx()

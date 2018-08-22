@@ -95,9 +95,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match error_region {
             ty::ReEarlyBound(ebr) => {
-                if ebr.has_name() {
-                    self.highlight_named_span(tcx, error_region, &ebr.name, diag);
-                    Some(ebr.name)
+                if ebr.has_name(tcx) {
+                    let name = tcx.generic_param_name(ebr.def_id);
+                    self.highlight_named_span(tcx, error_region, &name, diag);
+                    Some(name)
                 } else {
                     None
                 }
@@ -106,7 +107,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReStatic => Some(keywords::StaticLifetime.name().as_interned_str()),
 
             ty::ReFree(free_region) => match free_region.bound_region {
-                ty::BoundRegion::BrNamed(_, name) => {
+                ty::BoundRegion::BrNamed(def_id) => {
+                    let name = tcx.generic_param_name(def_id);
                     self.highlight_named_span(tcx, error_region, &name, diag);
                     Some(name)
                 },

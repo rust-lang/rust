@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ref ebr) => (
                 self.tcx.parent_def_id(ebr.def_id).unwrap(),
-                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+                ty::BoundRegion::BrNamed(ebr.def_id),
             ),
             _ => return None, // not a free region
         };
@@ -127,7 +127,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ref ebr) => (
                 self.tcx.parent_def_id(ebr.def_id).unwrap(),
-                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+                ty::BoundRegion::BrNamed(ebr.def_id),
             ),
             _ => return None, // not a free region
         };

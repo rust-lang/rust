@@ -117,9 +117,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| {
-            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap()).as_interned_str()
-        };
 
         let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
         let r = match tcx.named_region(hir_id) {
@@ -128,9 +125,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
-                let name = lifetime_name(id);
-                tcx.mk_region(ty::ReLateBound(debruijn,
-                    ty::BrNamed(id, name)))
+                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id)))
             }
 
             Some(rl::Region::LateBoundAnon(debruijn, index)) => {
@@ -138,19 +133,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
-                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     def_id: id,
                     index,
-                    name,
                 }))
             }
 
             Some(rl::Region::Free(scope, id)) => {
-                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
-                    bound_region: ty::BrNamed(id, name)
+                    bound_region: ty::BrNamed(id)
                 }))
 
                     // (*) -- not late-bound, won't change
@@ -875,7 +867,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
             for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
                 let br_name = match *br {
-                    ty::BrNamed(_, name) => name,
+                    ty::BrNamed(def_id) => tcx.generic_param_name(def_id),
                     _ => {
                         span_bug!(
                             binding.span,
@@ -1633,7 +1625,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
         for br in late_bound_in_ret.difference(&late_bound_in_args) {
             let lifetime_name = match *br {
-                ty::BrNamed(_, name) => format!("lifetime `{}`,", name),
+                ty::BrNamed(def_id) => {
+                    format!("lifetime `{}`,", tcx.generic_param_name(def_id))
+                }
                 ty::BrAnon(_) | ty::BrFresh(_) | ty::BrEnv => "an anonymous lifetime".to_string(),
             };
             let mut err = struct_span_err!(tcx.sess,
