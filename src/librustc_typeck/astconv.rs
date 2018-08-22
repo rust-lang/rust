@@ -99,12 +99,6 @@ enum GenericArgPosition {
     MethodCall,
 }
 
-// FIXME(#53525): these error codes should all be unified.
-struct GenericArgMismatchErrorCode {
-    lifetimes: (&'static str, &'static str),
-    types: (&'static str, &'static str),
-}
-
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
@@ -262,10 +256,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             },
             def.parent.is_none() && def.has_self, // `has_self`
             seg.infer_types || suppress_mismatch, // `infer_types`
-            GenericArgMismatchErrorCode {
-                lifetimes: ("E0090", "E0088"),
-                types: ("E0089", "E0087"),
-            },
         )
     }
 
@@ -279,7 +269,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         position: GenericArgPosition,
         has_self: bool,
         infer_types: bool,
-        error_codes: GenericArgMismatchErrorCode,
     ) -> bool {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
@@ -325,8 +314,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }
 
-        let check_kind_count = |error_code: (&str, &str),
-                                kind,
+        let check_kind_count = |kind,
                                 required,
                                 permitted,
                                 provided,
@@ -384,13 +372,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     bound,
                     provided,
                 ),
-                DiagnosticId::Error({
-                    if provided <= permitted {
-                        error_code.0
-                    } else {
-                        error_code.1
-                    }
-                }.into())
+                DiagnosticId::Error("E0107".into())
             ).span_label(span, label).emit();
 
             provided > required // `suppress_error`
@@ -398,7 +380,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
             check_kind_count(
-                error_codes.lifetimes,
                 "lifetime",
                 param_counts.lifetimes,
                 param_counts.lifetimes,
@@ -409,7 +390,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         if !infer_types
             || arg_counts.types > param_counts.types - defaults.types - has_self as usize {
             check_kind_count(
-                error_codes.types,
                 "type",
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
@@ -587,10 +567,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             GenericArgPosition::Type,
             has_self,
             infer_types,
-            GenericArgMismatchErrorCode {
-                lifetimes: ("E0107", "E0107"),
-                types: ("E0243", "E0244"),
-            },
         );
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
