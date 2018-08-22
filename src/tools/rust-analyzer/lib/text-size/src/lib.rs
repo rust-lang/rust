@@ -57,7 +57,7 @@ impl From<u32> for TextUnit {
     }
 }
 
-macro_rules! ops_impls {
+macro_rules! unit_ops_impls {
     ($T:ident, $f:ident, $op:tt, $AT:ident, $af:ident) => {
 
 impl ops::$T<TextUnit> for TextUnit {
@@ -108,8 +108,73 @@ impl<'a> ops::$AT<&'a TextUnit> for TextUnit {
     };
 }
 
-ops_impls!(Add, add, +, AddAssign, add_assign);
-ops_impls!(Sub, sub, -, SubAssign, sub_assign);
+macro_rules! range_ops_impls {
+    ($T:ident, $f:ident, $op:tt, $AT:ident, $af:ident) => {
+
+impl ops::$T<TextUnit> for TextRange {
+    type Output = TextRange;
+    #[inline(always)]
+    fn $f(self, rhs: TextUnit) -> TextRange {
+        TextRange::from_to(
+            self.start() $op rhs,
+            self.end() $op rhs,
+        )
+    }
+}
+
+impl<'a> ops::$T<&'a TextUnit> for TextRange {
+    type Output = TextRange;
+    #[inline(always)]
+    fn $f(self, rhs: &'a TextUnit) -> TextRange {
+        TextRange::from_to(
+            self.start() $op rhs,
+            self.end() $op rhs,
+        )
+    }
+}
+
+impl<'a> ops::$T<TextUnit> for &'a TextRange {
+    type Output = TextRange;
+    #[inline(always)]
+    fn $f(self, rhs: TextUnit) -> TextRange {
+        TextRange::from_to(
+            self.start() $op rhs,
+            self.end() $op rhs,
+        )
+    }
+}
+
+impl<'a, 'b> ops::$T<&'a TextUnit> for &'b TextRange {
+    type Output = TextRange;
+    #[inline(always)]
+    fn $f(self, rhs: &'a TextUnit) -> TextRange {
+        TextRange::from_to(
+            self.start() $op rhs,
+            self.end() $op rhs,
+        )
+    }
+}
+
+impl ops::$AT<TextUnit> for TextRange {
+    #[inline(always)]
+    fn $af(&mut self, rhs: TextUnit) {
+        *self = *self $op rhs
+    }
+}
+
+impl<'a> ops::$AT<&'a TextUnit> for TextRange {
+    #[inline(always)]
+    fn $af(&mut self, rhs: &'a TextUnit) {
+        *self = *self $op rhs
+    }
+}
+    };
+}
+
+unit_ops_impls!(Add, add, +, AddAssign, add_assign);
+unit_ops_impls!(Sub, sub, -, SubAssign, sub_assign);
+range_ops_impls!(Add, add, +, AddAssign, add_assign);
+range_ops_impls!(Sub, sub, -, SubAssign, sub_assign);
 
 impl<'a> iter::Sum<&'a TextUnit> for TextUnit {
     fn sum<I: Iterator<Item=&'a TextUnit>>(iter: I) -> TextUnit {
@@ -245,5 +310,19 @@ mod tests {
         let xs: Vec<TextUnit> = vec![0.into(), 1.into(), 2.into()];
         assert_eq!(xs.iter().sum::<TextUnit>(), 3.into());
         assert_eq!(xs.into_iter().sum::<TextUnit>(), 3.into());
+    }
+
+    #[test]
+    fn test_ops() {
+        let r = TextRange::from_to(10.into(), 20.into());
+        let u: TextUnit = 5.into();
+        assert_eq!(
+            r + u,
+            TextRange::from_to(15.into(), 25.into()),
+        );
+        assert_eq!(
+            r - u,
+            TextRange::from_to(5.into(), 15.into()),
+        );
     }
 }
