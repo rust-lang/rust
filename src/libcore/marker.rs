@@ -632,9 +632,9 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`replace`]: ../../core/mem/fn.replace.html
+/// [`replace`]: ../../std/mem/fn.replace.html
 /// [`PinMut`]: ../pin/struct.PinMut.html
-/// [`pin module`]: ../../alloc/pin/index.html
+/// [`pin module`]: ../../std/pin/index.html
 #[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 

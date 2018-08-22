@@ -35,8 +35,8 @@
 //!
 //! [`PinMut`]: struct.PinMut.html
 //! [`PinBox`]: struct.PinBox.html
-//! [`Unpin`]: ../../core/marker/trait.Unpin.html
-//! [`swap`]: ../../core/mem/fn.swap.html
+//! [`Unpin`]: trait.Unpin.html
+//! [`swap`]: ../../std/mem/fn.swap.html
 //! [`Box`]: ../boxed/struct.Box.html
 //!
 //! # Examples
@@ -115,7 +115,7 @@ use boxed::Box;
 /// See the [module documentation] for furthur explaination on pinning.
 ///
 /// [`Box`]: ../boxed/struct.Box.html
-/// [`Unpin`]: ../../core/marker/trait.Unpin.html
+/// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [module documentation]: index.html
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]

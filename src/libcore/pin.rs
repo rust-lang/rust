@@ -29,8 +29,8 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 ///
 /// See the [`pin` module] documentation for furthur explanation on pinning.
 ///
-/// [`Unpin`]: ../../core/marker/trait.Unpin.html
-/// [`pin` module]: ../../alloc/pin/index.html
+/// [`Unpin`]: ../../std/marker/trait.Unpin.html
+/// [`pin` module]: ../../std/pin/index.html
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
 pub struct PinMut<'a, T: ?Sized + 'a> {
