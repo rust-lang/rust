@@ -29,7 +29,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate,
     /// The node map
-    map: Vec<MapEntry<'hir>>,
+    map: Vec<EntryKind<'hir>>,
     /// The parent of this node
     parent_node: NodeId,
 
@@ -114,7 +114,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
         };
-        collector.insert_entry(CRATE_NODE_ID, RootCrate(root_mod_sig_dep_index));
+        collector.insert_entry(CRATE_NODE_ID, EntryKind::RootCrate(root_mod_sig_dep_index));
 
         collector
     }
@@ -124,7 +124,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                                                   cstore: &dyn CrateStore,
                                                   source_map: &SourceMap,
                                                   commandline_args_hash: u64)
-                                                  -> (Vec<MapEntry<'hir>>, Svh) {
+                                                  -> (Vec<EntryKind<'hir>>, Svh) {
         self
             .hir_body_nodes
             .sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
@@ -178,11 +178,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         (self.map, svh)
     }
 
-    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'hir>) {
+    fn insert_entry(&mut self, id: NodeId, entry: EntryKind<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
         if id.as_usize() >= len {
-            self.map.extend(repeat(NotPresent).take(id.as_usize() - len + 1));
+            self.map.extend(repeat(EntryKind::NotPresent).take(id.as_usize() - len + 1));
         }
         self.map[id.as_usize()] = entry;
     }
@@ -196,26 +196,26 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         };
 
         let entry = match node {
-            NodeItem(n) => EntryItem(parent, dep_node_index, n),
-            NodeForeignItem(n) => EntryForeignItem(parent, dep_node_index, n),
-            NodeTraitItem(n) => EntryTraitItem(parent, dep_node_index, n),
-            NodeImplItem(n) => EntryImplItem(parent, dep_node_index, n),
-            NodeVariant(n) => EntryVariant(parent, dep_node_index, n),
-            NodeField(n) => EntryField(parent, dep_node_index, n),
-            NodeAnonConst(n) => EntryAnonConst(parent, dep_node_index, n),
-            NodeExpr(n) => EntryExpr(parent, dep_node_index, n),
-            NodeStmt(n) => EntryStmt(parent, dep_node_index, n),
-            NodeTy(n) => EntryTy(parent, dep_node_index, n),
-            NodeTraitRef(n) => EntryTraitRef(parent, dep_node_index, n),
-            NodeBinding(n) => EntryBinding(parent, dep_node_index, n),
-            NodePat(n) => EntryPat(parent, dep_node_index, n),
-            NodeBlock(n) => EntryBlock(parent, dep_node_index, n),
-            NodeStructCtor(n) => EntryStructCtor(parent, dep_node_index, n),
-            NodeLifetime(n) => EntryLifetime(parent, dep_node_index, n),
-            NodeGenericParam(n) => EntryGenericParam(parent, dep_node_index, n),
-            NodeVisibility(n) => EntryVisibility(parent, dep_node_index, n),
-            NodeLocal(n) => EntryLocal(parent, dep_node_index, n),
-            NodeMacroDef(n) => EntryMacroDef(dep_node_index, n),
+            NodeItem(n) => EntryKind::Item(parent, dep_node_index, n),
+            NodeForeignItem(n) => EntryKind::ForeignItem(parent, dep_node_index, n),
+            NodeTraitItem(n) => EntryKind::TraitItem(parent, dep_node_index, n),
+            NodeImplItem(n) => EntryKind::ImplItem(parent, dep_node_index, n),
+            NodeVariant(n) => EntryKind::Variant(parent, dep_node_index, n),
+            NodeField(n) => EntryKind::Field(parent, dep_node_index, n),
+            NodeAnonConst(n) => EntryKind::AnonConst(parent, dep_node_index, n),
+            NodeExpr(n) => EntryKind::Expr(parent, dep_node_index, n),
+            NodeStmt(n) => EntryKind::Stmt(parent, dep_node_index, n),
+            NodeTy(n) => EntryKind::Ty(parent, dep_node_index, n),
+            NodeTraitRef(n) => EntryKind::TraitRef(parent, dep_node_index, n),
+            NodeBinding(n) => EntryKind::Binding(parent, dep_node_index, n),
+            NodePat(n) => EntryKind::Pat(parent, dep_node_index, n),
+            NodeBlock(n) => EntryKind::Block(parent, dep_node_index, n),
+            NodeStructCtor(n) => EntryKind::StructCtor(parent, dep_node_index, n),
+            NodeLifetime(n) => EntryKind::Lifetime(parent, dep_node_index, n),
+            NodeGenericParam(n) => EntryKind::GenericParam(parent, dep_node_index, n),
+            NodeVisibility(n) => EntryKind::Visibility(parent, dep_node_index, n),
+            NodeLocal(n) => EntryKind::Local(parent, dep_node_index, n),
+            NodeMacroDef(n) => EntryKind::MacroDef(dep_node_index, n),
         };
 
         // Make sure that the DepNode of some node coincides with the HirId
