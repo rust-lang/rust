@@ -82,12 +82,15 @@ fn codegen_field<'a, 'tcx: 'a>(
 pub enum CValue<'tcx> {
     ByRef(Value, TyLayout<'tcx>),
     ByVal(Value, TyLayout<'tcx>),
+    ByValPair(Value, Value, TyLayout<'tcx>),
 }
 
 impl<'tcx> CValue<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
-            CValue::ByRef(_, layout) | CValue::ByVal(_, layout) => layout,
+            CValue::ByRef(_, layout)
+            | CValue::ByVal(_, layout)
+            | CValue::ByValPair(_, _, layout) => layout,
         }
     }
 
@@ -108,6 +111,19 @@ impl<'tcx> CValue<'tcx> {
                     .ins()
                     .stack_addr(fx.module.pointer_type(), stack_slot, 0)
             }
+            CValue::ByValPair(value, extra, layout) => {
+                let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                    kind: StackSlotKind::ExplicitSlot,
+                    size: layout.size.bytes() as u32,
+                    offset: None,
+                });
+                let base = fx.bcx.ins().stack_addr(types::I64, stack_slot, 0);
+                let a_addr = codegen_field(fx, base, layout, mir::Field::new(0)).0;
+                let b_addr = codegen_field(fx, base, layout, mir::Field::new(1)).0;
+                fx.bcx.ins().store(MemFlags::new(), value, a_addr, 0);
+                fx.bcx.ins().store(MemFlags::new(), extra, b_addr, 0);
+                base
+            }
         }
     }
 
@@ -123,6 +139,34 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
+            CValue::ByValPair(_, _, _layout) => bug!("Please use load_value_pair for ByValPair"),
+        }
+    }
+
+    pub fn load_value_pair<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> (Value, Value)
+    where
+        'tcx: 'a,
+    {
+        match self {
+            CValue::ByRef(addr, layout) => {
+                assert_eq!(
+                    layout.size.bytes(),
+                    fx.tcx.data_layout.pointer_size.bytes() * 2
+                );
+                let val1_offset = layout.fields.offset(0).bytes() as i32;
+                let val2_offset = layout.fields.offset(1).bytes() as i32;
+                let val1 =
+                    fx.bcx
+                        .ins()
+                        .load(fx.module.pointer_type(), MemFlags::new(), addr, val1_offset);
+                let val2 =
+                    fx.bcx
+                        .ins()
+                        .load(fx.module.pointer_type(), MemFlags::new(), addr, val2_offset);
+                (val1, val2)
+            }
+            CValue::ByVal(_, _layout) => bug!("Please use load_value for ByVal"),
+            CValue::ByValPair(val1, val2, _layout) => (val1, val2),
         }
     }
 
@@ -130,6 +174,10 @@ impl<'tcx> CValue<'tcx> {
         match self {
             CValue::ByRef(value, layout) => (value, layout),
             CValue::ByVal(_, _) => bug!("Expected CValue::ByRef, found CValue::ByVal: {:?}", self),
+            CValue::ByValPair(_, _, _) => bug!(
+                "Expected CValue::ByRef, found CValue::ByValPair: {:?}",
+                self
+            ),
         }
     }
 
@@ -167,6 +215,7 @@ impl<'tcx> CValue<'tcx> {
         match self {
             CValue::ByRef(addr, _) => CValue::ByRef(addr, layout),
             CValue::ByVal(val, _) => CValue::ByVal(val, layout),
+            CValue::ByValPair(val, extra, _) => CValue::ByValPair(val, extra, layout),
         }
     }
 }
@@ -262,37 +311,38 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CPlace::Addr(addr, layout) => {
                 let size = layout.size.bytes() as i32;
 
-                if let Some(_) = fx.cton_type(layout.ty) {
-                    let data = from.load_value(fx);
-                    fx.bcx.ins().store(MemFlags::new(), data, addr, 0);
-                } else {
-                    let from = from.expect_byref();
-                    let mut offset = 0;
-                    while size - offset >= 8 {
-                        let byte = fx.bcx.ins().load(
-                            fx.module.pointer_type(),
-                            MemFlags::new(),
-                            from.0,
-                            offset,
-                        );
-                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                        offset += 8;
+                match from {
+                    CValue::ByVal(val, _layout) => {
+                        fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
                     }
-                    while size - offset >= 4 {
-                        let byte = fx
-                            .bcx
-                            .ins()
-                            .load(types::I32, MemFlags::new(), from.0, offset);
-                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                        offset += 4;
+                    CValue::ByValPair(val1, val2, _layout) => {
+                        let val1_offset = layout.fields.offset(0).bytes() as i32;
+                        let val2_offset = layout.fields.offset(1).bytes() as i32;
+                        fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
+                        fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
                     }
-                    while offset < size {
-                        let byte = fx
-                            .bcx
-                            .ins()
-                            .load(types::I8, MemFlags::new(), from.0, offset);
-                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
-                        offset += 1;
+                    CValue::ByRef(from, _layout) => {
+                        let mut offset = 0;
+                        while size - offset >= 8 {
+                            let byte = fx.bcx.ins().load(
+                                fx.module.pointer_type(),
+                                MemFlags::new(),
+                                from,
+                                offset,
+                            );
+                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                            offset += 8;
+                        }
+                        while size - offset >= 4 {
+                            let byte = fx.bcx.ins().load(types::I32, MemFlags::new(), from, offset);
+                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                            offset += 4;
+                        }
+                        while offset < size {
+                            let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from, offset);
+                            fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                            offset += 1;
+                        }
                     }
                 }
             }

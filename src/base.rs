@@ -727,15 +727,15 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
 pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
-    lhs: CValue<'tcx>,
-    rhs: CValue<'tcx>,
+    in_lhs: CValue<'tcx>,
+    in_rhs: CValue<'tcx>,
     out_ty: Ty<'tcx>,
     signed: bool,
 ) -> CValue<'tcx> {
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
         assert_eq!(
-            lhs.layout().ty,
-            rhs.layout().ty,
+            in_lhs.layout().ty,
+            in_rhs.layout().ty,
             "checked int binop requires lhs and rhs of same type"
         );
     }
@@ -747,40 +747,32 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
         ),
     };
 
-    let res = binop_match! {
-        fx, bin_op, signed, lhs, rhs, res_ty, "checked int/uint";
-        Add (_) iadd;
-        Sub (_) isub;
-        Mul (_) imul;
-        Div (_) bug;
-        Rem (_) bug;
-        BitXor (_) bug;
-        BitAnd (_) bug;
-        BitOr (_) bug;
-        Shl (_) ishl;
-        Shr (false) ushr;
-        Shr (true) sshr;
-
-        Eq (_) bug;
-        Lt (_) bug;
-        Le (_) bug;
-        Ne (_) bug;
-        Ge (_) bug;
-        Gt (_) bug;
-
-        Offset (_) bug;
+    let lhs = in_lhs.load_value(fx);
+    let rhs = in_rhs.load_value(fx);
+    let res = match bin_op {
+        BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
+        BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
+        BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
+        BinOp::Shl => fx.bcx.ins().ishl(lhs, rhs),
+        BinOp::Shr => if !signed {
+            fx.bcx.ins().ushr(lhs, rhs)
+        } else {
+            fx.bcx.ins().sshr(lhs, rhs)
+        },
+        _ => bug!(
+            "binop {:?} on checked int/uint lhs: {:?} rhs: {:?}",
+            bin_op,
+            in_lhs,
+            in_rhs
+        ),
     };
 
     // TODO: check for overflow
-    let has_overflow = CValue::const_val(fx, fx.tcx.types.bool, 0);
+    let has_overflow = fx.bcx.ins().iconst(types::I8, 0);
 
     let out_place = CPlace::temp(fx, out_ty);
-    out_place
-        .place_field(fx, mir::Field::new(0))
-        .write_cvalue(fx, res);
-    out_place
-        .place_field(fx, mir::Field::new(1))
-        .write_cvalue(fx, has_overflow);
+    let out_layout = out_place.layout();
+    out_place.write_cvalue(fx, CValue::ByValPair(res, has_overflow, out_layout));
 
     out_place.to_cvalue(fx)
 }
