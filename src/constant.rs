@@ -134,12 +134,17 @@ fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -
         .unwrap()
 }
 
-fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &mut Module<B>, def_id: DefId) -> DataId {
+fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<B>,
+    def_id: DefId,
+) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
     let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
         true
     } else {
-        !tcx.type_of(def_id).is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+        !tcx.type_of(def_id)
+            .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
     };
     module
         .declare_data(&*symbol_name, Linkage::Export, is_mutable)
@@ -152,7 +157,10 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
     data_id: DataId,
 ) -> CPlace<'tcx> {
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    let global_ptr = fx.bcx.ins().global_value(fx.module.pointer_type(), local_data_id);
+    let global_ptr = fx
+        .bcx
+        .ins()
+        .global_value(fx.module.pointer_type(), local_data_id);
     let layout = fx.layout_of(fx.monomorphize(&ty));
     CPlace::Addr(global_ptr, layout)
 }

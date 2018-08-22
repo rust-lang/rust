@@ -224,7 +224,10 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
         } else {
-            CValue::ByRef(self.bcx.ins().iconst(self.module.pointer_type(), 0), return_layout)
+            CValue::ByRef(
+                self.bcx.ins().iconst(self.module.pointer_type(), 0),
+                return_layout,
+            )
         }
     }
 
@@ -570,7 +573,10 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "copy" | "copy_nonoverlapping" => {
                     let elem_ty = substs.type_at(0);
                     let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
-                    let elem_size = fx.bcx.ins().iconst(fx.module.pointer_type(), elem_size as i64);
+                    let elem_size = fx
+                        .bcx
+                        .ins()
+                        .iconst(fx.module.pointer_type(), elem_size as i64);
                     assert_eq!(args.len(), 3);
                     let src = args[0];
                     let dst = args[1];

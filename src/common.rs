@@ -39,7 +39,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             IntTy::I32 => types::I32,
             IntTy::I64 => types::I64,
             IntTy::I128 => unimpl!("i128"),
-            IntTy::Isize => pointer_ty(tcx)
+            IntTy::Isize => pointer_ty(tcx),
         },
         TypeVariants::TyChar => types::I32,
         TypeVariants::TyFloat(size) => match size {
@@ -68,7 +68,10 @@ fn codegen_field<'a, 'tcx: 'a>(
     let field_offset = layout.fields.offset(field.index());
     let field_ty = layout.field(&*fx, field.index());
     if field_offset.bytes() > 0 {
-        (fx.bcx.ins().iadd_imm(base, field_offset.bytes() as i64), field_ty)
+        (
+            fx.bcx.ins().iadd_imm(base, field_offset.bytes() as i64),
+            field_ty,
+        )
     } else {
         (base, field_ty)
     }
@@ -101,7 +104,9 @@ impl<'tcx> CValue<'tcx> {
                     offset: None,
                 });
                 fx.bcx.ins().stack_store(value, stack_slot, 0);
-                fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0)
+                fx.bcx
+                    .ins()
+                    .stack_addr(fx.module.pointer_type(), stack_slot, 0)
             }
         }
     }
@@ -187,7 +192,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             size: layout.size.bytes() as u32,
             offset: None,
         });
-        CPlace::Addr(fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0), layout)
+        CPlace::Addr(
+            fx.bcx
+                .ins()
+                .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+            layout,
+        )
     }
 
     pub fn from_stack_slot(
@@ -196,7 +206,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
-        CPlace::Addr(fx.bcx.ins().stack_addr(fx.module.pointer_type(), stack_slot, 0), layout)
+        CPlace::Addr(
+            fx.bcx
+                .ins()
+                .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+            layout,
+        )
     }
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
@@ -254,10 +269,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     let from = from.expect_byref();
                     let mut offset = 0;
                     while size - offset >= 8 {
-                        let byte = fx
-                            .bcx
-                            .ins()
-                            .load(fx.module.pointer_type(), MemFlags::new(), from.0, offset);
+                        let byte = fx.bcx.ins().load(
+                            fx.module.pointer_type(),
+                            MemFlags::new(),
+                            from.0,
+                            offset,
+                        );
                         fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                         offset += 8;
                     }
@@ -304,7 +321,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         match layout.ty.sty {
             TypeVariants::TyArray(elem_ty, _) => {
                 let elem_layout = fx.layout_of(elem_ty);
-                let offset = fx.bcx.ins().imul_imm(index, elem_layout.size.bytes() as i64);
+                let offset = fx
+                    .bcx
+                    .ins()
+                    .imul_imm(index, elem_layout.size.bytes() as i64);
                 CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
             }
             TypeVariants::TySlice(_elem_ty) => unimplemented!("place_index(TySlice)"),

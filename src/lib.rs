@@ -215,9 +215,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
         let flags = settings::Flags::new(flags_builder);
-        let isa = cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
-            .unwrap()
-            .finish(flags);
+        let isa =
+            cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
+                .unwrap()
+                .finish(flags);
 
         let mono_items =
             collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0;
