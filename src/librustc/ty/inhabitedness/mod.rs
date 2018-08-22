@@ -13,7 +13,7 @@ use ty::context::TyCtxt;
 use ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
 use ty::{DefId, Substs};
 use ty::{AdtKind, Visibility};
-use ty::TypeVariants::*;
+use ty::TyKind::*;
 
 pub use self::def_id_forest::DefIdForest;
 

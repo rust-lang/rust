@@ -37,7 +37,7 @@ pub trait EncodableWithShorthand: Clone + Eq + Hash {
 }
 
 impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
-    type Variant = ty::TypeVariants<'tcx>;
+    type Variant = ty::TyKind<'tcx>;
     fn variant(&self) -> &Self::Variant {
         &self.sty
     }
@@ -164,7 +164,7 @@ pub fn decode_ty<'a, 'tcx, D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
         })
     } else {
         let tcx = decoder.tcx();
-        Ok(tcx.mk_ty(ty::TypeVariants::decode(decoder)?))
+        Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
     }
 }
 

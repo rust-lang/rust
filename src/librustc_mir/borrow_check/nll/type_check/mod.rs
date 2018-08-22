@@ -37,7 +37,7 @@ use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use rustc_errors::Diagnostic;
 use std::fmt;
 use std::rc::Rc;
@@ -917,7 +917,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             } => {
                 let place_type = place.ty(mir, tcx).to_ty(tcx);
                 let adt = match place_type.sty {
-                    TypeVariants::TyAdt(adt, _) if adt.is_enum() => adt,
+                    TyKind::TyAdt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
                             stmt.source_info.span,

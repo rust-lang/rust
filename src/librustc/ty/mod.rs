@@ -65,7 +65,7 @@ pub use self::sty::{Binder, CanonicalVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
-pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
+pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
@@ -74,7 +74,7 @@ pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
-pub use self::sty::TypeVariants::*;
+pub use self::sty::TyKind::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
@@ -490,7 +490,7 @@ bitflags! {
 }
 
 pub struct TyS<'tcx> {
-    pub sty: TypeVariants<'tcx>,
+    pub sty: TyKind<'tcx>,
     pub flags: TypeFlags,
 
     /// This is a kind of confusing thing: it stores the smallest
@@ -542,29 +542,29 @@ impl<'tcx> Hash for TyS<'tcx> {
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
-            TypeVariants::TyBool |
-                TypeVariants::TyChar |
-                TypeVariants::TyInt(_) |
-                TypeVariants::TyUint(_) |
-                TypeVariants::TyFloat(_) |
-                TypeVariants::TyInfer(InferTy::IntVar(_)) |
-                TypeVariants::TyInfer(InferTy::FloatVar(_)) |
-                TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
-                TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
-            TypeVariants::TyRef(_, x, _) => x.is_primitive_ty(),
+            TyKind::TyBool |
+                TyKind::TyChar |
+                TyKind::TyInt(_) |
+                TyKind::TyUint(_) |
+                TyKind::TyFloat(_) |
+                TyKind::TyInfer(InferTy::IntVar(_)) |
+                TyKind::TyInfer(InferTy::FloatVar(_)) |
+                TyKind::TyInfer(InferTy::FreshIntTy(_)) |
+                TyKind::TyInfer(InferTy::FreshFloatTy(_)) => true,
+            TyKind::TyRef(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
     }
 
     pub fn is_suggestable(&self) -> bool {
         match self.sty {
-            TypeVariants::TyAnon(..) |
-            TypeVariants::TyFnDef(..) |
-            TypeVariants::TyFnPtr(..) |
-            TypeVariants::TyDynamic(..) |
-            TypeVariants::TyClosure(..) |
-            TypeVariants::TyInfer(..) |
-            TypeVariants::TyProjection(..) => false,
+            TyKind::TyAnon(..) |
+            TyKind::TyFnDef(..) |
+            TyKind::TyFnPtr(..) |
+            TyKind::TyDynamic(..) |
+            TyKind::TyClosure(..) |
+            TyKind::TyInfer(..) |
+            TyKind::TyProjection(..) => false,
             _ => true,
         }
     }

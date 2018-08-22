@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Lit(ref lt) => {
                 let ty = self.check_expr(lt);
                 match ty.sty {
-                    ty::TypeVariants::TyRef(..) => false,
+                    ty::TyKind::TyRef(..) => false,
                     _ => true,
                 }
             }
@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expected = loop {
                 debug!("inspecting {:?} with type {:?}", exp_ty, exp_ty.sty);
                 match exp_ty.sty {
-                    ty::TypeVariants::TyRef(_, inner_ty, inner_mutability) => {
+                    ty::TyKind::TyRef(_, inner_ty, inner_mutability) => {
                         debug!("current discriminant is TyRef, inserting implicit deref");
                         // Preserve the reference type. We'll need it later during HAIR lowering.
                         pat_adjustments.push(exp_ty);

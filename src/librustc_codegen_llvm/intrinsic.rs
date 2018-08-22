@@ -1801,7 +1801,7 @@ fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
 
 // Returns the width of a float TypeVariant
 // Returns None if the type is not a float
-fn float_type_width<'tcx>(sty: &ty::TypeVariants<'tcx>) -> Option<u64> {
+fn float_type_width<'tcx>(sty: &ty::TyKind<'tcx>) -> Option<u64> {
     match *sty {
         ty::TyFloat(t) => Some(t.bit_width() as u64),
         _ => None,

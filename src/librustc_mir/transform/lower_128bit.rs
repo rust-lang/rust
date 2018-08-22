@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use rustc::mir::*;
-use rustc::ty::{List, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{List, Ty, TyCtxt, TyKind};
 use rustc_data_structures::indexed_vec::{Idx};
 use transform::{MirPass, MirSource};
 use syntax;
@@ -190,8 +190,8 @@ impl RhsKind {
 
 fn sign_of_128bit(ty: Ty) -> Option<bool> {
     match ty.sty {
-        TypeVariants::TyInt(syntax::ast::IntTy::I128) => Some(true),
-        TypeVariants::TyUint(syntax::ast::UintTy::U128) => Some(false),
+        TyKind::TyInt(syntax::ast::IntTy::I128) => Some(true),
+        TyKind::TyUint(syntax::ast::UintTy::U128) => Some(false),
         _ => None,
     }
 }

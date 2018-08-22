@@ -321,7 +321,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //
         // No suggestion for: `isize`, `usize`.
         fn get_type_suggestion<'a>(
-            t: &ty::TypeVariants,
+            t: &ty::TyKind,
             val: u128,
             negative: bool,
         ) -> Option<String> {
@@ -367,7 +367,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         fn report_bin_hex_error(
             cx: &LateContext,
             expr: &hir::Expr,
-            ty: ty::TypeVariants,
+            ty: ty::TyKind,
             repr_str: String,
             val: u128,
             negative: bool,

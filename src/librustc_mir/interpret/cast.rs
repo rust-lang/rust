@@ -141,7 +141,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
         match val {
@@ -184,7 +184,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             v
         };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         match dest_layout.ty.sty {
             TyInt(_) | TyUint(_) => {
                 let v = self.truncate(v, dest_layout);
@@ -230,7 +230,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn cast_from_float(&self, bits: u128, fty: FloatTy, dest_ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
             // float -> uint
@@ -290,7 +290,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     fn cast_from_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) |

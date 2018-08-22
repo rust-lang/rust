@@ -38,12 +38,12 @@ use ty::ReprOptions;
 use traits;
 use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
-use ty::{TyS, TypeVariants, List};
+use ty::{TyS, TyKind, List};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
-use ty::TypeVariants::*;
+use ty::TyKind::*;
 use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::query;
@@ -167,7 +167,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     fn intern_ty(
         local: &CtxtInterners<'tcx>,
         global: &CtxtInterners<'gcx>,
-        st: TypeVariants<'tcx>
+        st: TyKind<'tcx>
     ) -> Ty<'tcx> {
         let flags = super::flags::FlagComputation::for_sty(&st);
 
@@ -803,7 +803,7 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         // Ensure our type representation does not grow
         #[cfg(target_pointer_width = "64")]
-        assert!(mem::size_of::<ty::TypeVariants>() <= 24);
+        assert!(mem::size_of::<ty::TyKind>() <= 24);
         #[cfg(target_pointer_width = "64")]
         assert!(mem::size_of::<ty::TyS>() <= 32);
 
@@ -1540,7 +1540,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// None is returned if the value or one of the components is not part
 /// of the provided context.
 /// For Ty, None can be returned if either the type interner doesn't
-/// contain the TypeVariants key or if the address of the interned
+/// contain the TyKind key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx>: fmt::Debug {
@@ -2107,8 +2107,8 @@ impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<TypeVariants<'lcx>> for Interned<'tcx, TyS<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a TypeVariants<'lcx> {
+impl<'tcx: 'lcx, 'lcx> Borrow<TyKind<'lcx>> for Interned<'tcx, TyS<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a TyKind<'lcx> {
         &self.0.sty
     }
 }
@@ -2340,7 +2340,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_fn_ptr(converted_sig)
     }
 
-    pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         CtxtInterners::intern_ty(&self.interners, &self.global_interners, st)
     }
 

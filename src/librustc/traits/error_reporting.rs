@@ -802,7 +802,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let expected = match expected_trait_ref.skip_binder().substs.type_at(1).sty {
                     ty::TyTuple(ref tys) => tys.iter()
                         .map(|t| match t.sty {
-                            ty::TypeVariants::TyTuple(ref tys) => ArgKind::Tuple(
+                            ty::TyKind::TyTuple(ref tys) => ArgKind::Tuple(
                                 Some(span),
                                 tys.iter()
                                     .map(|ty| ("_".to_owned(), ty.sty.to_string()))
@@ -899,7 +899,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let mut trait_type = trait_ref.self_ty();
 
             for refs_remaining in 0..refs_number {
-                if let ty::TypeVariants::TyRef(_, t_type, _) = trait_type.sty {
+                if let ty::TyKind::TyRef(_, t_type, _) = trait_type.sty {
                     trait_type = t_type;
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);

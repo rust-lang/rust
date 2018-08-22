@@ -1029,7 +1029,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TypeVariants<'tcx>, (self, f, cx) {
+    ('tcx) ty::TyKind<'tcx>, (self, f, cx) {
         display {
             match *self {
                 TyBool => write!(f, "bool"),

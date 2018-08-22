@@ -13,7 +13,7 @@
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TypeVariants::{TyRef, TyAdt, TyStr, TyUint, TyNever, TyTuple, TyChar, TyArray};
+use rustc::ty::TyKind::{TyRef, TyAdt, TyStr, TyUint, TyNever, TyTuple, TyChar, TyArray};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;

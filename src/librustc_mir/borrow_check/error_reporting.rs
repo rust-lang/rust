@@ -134,7 +134,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if let Some(ty) = self.retrieve_type_for_place(place) {
                 let needs_note = match ty.sty {
-                    ty::TypeVariants::TyClosure(id, _) => {
+                    ty::TyKind::TyClosure(id, _) => {
                         let tables = self.tcx.typeck_tables_of(id);
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);

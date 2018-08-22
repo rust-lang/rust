@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
         fn get_transmute_from_to<'a, 'tcx>
             (cx: &LateContext<'a, 'tcx>,
              expr: &hir::Expr)
-             -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
+             -> Option<(&'tcx ty::TyKind<'tcx>, &'tcx ty::TyKind<'tcx>)> {
             let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                 cx.tables.qpath_def(qpath, expr.hir_id)
             } else {

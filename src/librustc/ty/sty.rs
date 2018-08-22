@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module contains TypeVariants and its major components
+//! This module contains TyKind and its major components
 
 use hir::def_id::DefId;
 
@@ -33,7 +33,7 @@ use serialize;
 use hir;
 
 use self::InferTy::*;
-use self::TypeVariants::*;
+use self::TyKind::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct TypeAndMut<'tcx> {
@@ -82,7 +82,7 @@ impl BoundRegion {
 /// NB: If you change this, you'll probably want to change the corresponding
 /// AST structure in libsyntax/ast.rs as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub enum TypeVariants<'tcx> {
+pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
     TyBool,
 

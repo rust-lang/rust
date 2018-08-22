@@ -28,7 +28,7 @@ impl FlagComputation {
         }
     }
 
-    pub fn for_sty(st: &ty::TypeVariants) -> FlagComputation {
+    pub fn for_sty(st: &ty::TyKind) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_sty(st);
         result
@@ -67,7 +67,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_sty(&mut self, st: &ty::TypeVariants) {
+    fn add_sty(&mut self, st: &ty::TyKind) {
         match st {
             &ty::TyBool |
             &ty::TyChar |

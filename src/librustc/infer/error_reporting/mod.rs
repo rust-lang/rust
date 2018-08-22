@@ -66,7 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
+use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TyKind};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -979,14 +979,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 (_, false, _) => {
                     if let Some(exp_found) = exp_found {
                         let (def_id, ret_ty) = match exp_found.found.sty {
-                            TypeVariants::TyFnDef(def, _) => {
+                            TyKind::TyFnDef(def, _) => {
                                 (Some(def), Some(self.tcx.fn_sig(def).output()))
                             }
                             _ => (None, None),
                         };
 
                         let exp_is_struct = match exp_found.expected.sty {
-                            TypeVariants::TyAdt(def, _) => def.is_struct(),
+                            TyKind::TyAdt(def, _) => def.is_struct(),
                             _ => false,
                         };
 

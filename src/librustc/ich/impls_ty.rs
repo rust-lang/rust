@@ -797,12 +797,12 @@ impl_stable_hash_for!(enum ty::BoundRegion {
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ty::TypeVariants<'gcx>
+for ty::TyKind<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::TypeVariants::*;
+        use ty::TyKind::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -905,7 +905,7 @@ for ty::TyVid
                                           _hasher: &mut StableHasher<W>) {
         // TyVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash a TyVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash a TyVid {:?}.", *self)
     }
 }
 
@@ -917,7 +917,7 @@ for ty::IntVid
                                           _hasher: &mut StableHasher<W>) {
         // IntVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash an IntVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash an IntVid {:?}.", *self)
     }
 }
 
@@ -929,7 +929,7 @@ for ty::FloatVid
                                           _hasher: &mut StableHasher<W>) {
         // FloatVid values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TypeVariants::hash_stable() - can't hash a FloatVid {:?}.", *self)
+        bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }
 }
 

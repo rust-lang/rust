@@ -108,7 +108,7 @@ struct GenericArgMismatchErrorCode {
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
-const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
+const TRAIT_OBJECT_DUMMY_SELF: ty::TyKind<'static> = ty::TyInfer(ty::FreshTy(0));
 
 impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,

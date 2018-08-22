@@ -2221,7 +2221,7 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
-    use ty::TypeVariants::*;
+    use ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;
     // print some primitives

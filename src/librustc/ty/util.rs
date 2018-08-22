@@ -19,7 +19,7 @@ use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
 use ty::subst::{Substs, UnpackedKind};
 use ty::query::TyCtxtAt;
-use ty::TypeVariants::*;
+use ty::TyKind::*;
 use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
 use middle::lang_items;
@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     UnpackedKind::Type(&ty::TyS {
-                        sty: ty::TypeVariants::TyParam(ref pt), ..
+                        sty: ty::TyKind::TyParam(ref pt), ..
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
