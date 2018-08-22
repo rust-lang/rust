@@ -12,7 +12,7 @@
 // compile-pass
 
 #![warn(unused_imports)]
-#![warn(missing_docs)] //~ WARN: missing documentation for crate [missing_docs]
+#![warn(missing_docs)]
 
 #[macro_use]
 extern crate lints_in_foreign_macros;
@@ -25,5 +25,6 @@ mod a { foo!(); }
 mod b { bar!(); }
 mod c { baz!(use std::string::ToString;); } //~ WARN: unused import
 mod d { baz2!(use std::string::ToString;); } //~ WARN: unused import
+mod e { baz!(pub fn undocumented() {}); }//~ WARN: missing documentation for a function
 
 fn main() {}
