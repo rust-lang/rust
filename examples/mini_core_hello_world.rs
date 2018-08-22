@@ -43,7 +43,8 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 
 fn main() {
     unsafe {
-        let (ptr, _): (*const u8, usize) = intrinsics::transmute("Hello!\0");
+        let slice: &[u8] = b"Hello!\0" as &[u8; 7];
+        let ptr: *const u8 = slice as *const [u8] as *const u8;
         puts(ptr);
     }
 

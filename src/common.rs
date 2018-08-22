@@ -216,6 +216,43 @@ impl<'tcx> CValue<'tcx> {
         CValue::ByRef(field_ptr, field_layout)
     }
 
+    pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+        if self.layout().ty == dest.layout().ty {
+            dest.write_cvalue(fx, self); // FIXME this shouldn't happen (rust-lang/rust#53602)
+            return;
+        }
+        match &self.layout().ty.sty {
+            ty::Ref(_, ty, _) | ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
+                let (ptr, extra) = match ptr_referee(dest.layout().ty).sty {
+                    ty::Slice(slice_elem_ty) => match ty.sty {
+                        ty::Array(array_elem_ty, size) => {
+                            assert_eq!(slice_elem_ty, array_elem_ty);
+                            let ptr = self.load_value(fx);
+                            let extra = fx
+                                .bcx
+                                .ins()
+                                .iconst(fx.module.pointer_type(), size.unwrap_usize(fx.tcx) as i64);
+                            (ptr, extra)
+                        }
+                        _ => bug!("unsize non array {:?} to slice", ty),
+                    },
+                    ty::Dynamic(_, _) => match ty.sty {
+                        ty::Dynamic(_, _) => self.load_value_pair(fx),
+                        _ => unimpl!("unsize of type ... to {:?}", dest.layout().ty),
+                    },
+                    _ => bug!(
+                        "unsize of type {:?} to {:?}",
+                        self.layout().ty,
+                        dest.layout().ty
+                    ),
+                };
+                println!("ty {:?}", self.layout().ty);
+                dest.write_cvalue(fx, CValue::ByValPair(ptr, extra, dest.layout()));
+            }
+            ty => unimpl!("unsize of non ptr {:?}", ty),
+        }
+    }
+
     pub fn const_val<'a>(
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Ty<'tcx>,

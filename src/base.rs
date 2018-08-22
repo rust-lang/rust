@@ -458,7 +458,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty)
                 }
                 Rvalue::Cast(CastKind::Unsize, operand, ty) => {
-                    unimpl!("rval unsize {:?} {:?}", operand, ty);
+                    let operand = trans_operand(fx, operand);
+                    operand.unsize_value(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place).to_cvalue(fx);
