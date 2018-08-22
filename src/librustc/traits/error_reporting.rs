@@ -247,33 +247,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyBool => Some(0),
                 ty::TyChar => Some(1),
                 ty::TyStr => Some(2),
-                ty::TyInt(..) | ty::TyUint(..) | ty::TyInfer(ty::IntVar(..)) => Some(3),
-                ty::TyFloat(..) | ty::TyInfer(ty::FloatVar(..)) => Some(4),
-                ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
-                ty::TyArray(..) | ty::TySlice(..) => Some(6),
-                ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(7),
-                ty::TyDynamic(..) => Some(8),
-                ty::TyClosure(..) => Some(9),
-                ty::TyTuple(..) => Some(10),
-                ty::TyProjection(..) => Some(11),
+                ty::TyInt(..) | ty::TyUint(..) | ty::Infer(ty::IntVar(..)) => Some(3),
+                ty::TyFloat(..) | ty::Infer(ty::FloatVar(..)) => Some(4),
+                ty::Ref(..) | ty::RawPtr(..) => Some(5),
+                ty::Array(..) | ty::Slice(..) => Some(6),
+                ty::FnDef(..) | ty::FnPtr(..) => Some(7),
+                ty::Dynamic(..) => Some(8),
+                ty::Closure(..) => Some(9),
+                ty::Tuple(..) => Some(10),
+                ty::Projection(..) => Some(11),
                 ty::TyParam(..) => Some(12),
-                ty::TyAnon(..) => Some(13),
-                ty::TyNever => Some(14),
-                ty::TyAdt(adt, ..) => match adt.adt_kind() {
+                ty::Anon(..) => Some(13),
+                ty::Never => Some(14),
+                ty::Adt(adt, ..) => match adt.adt_kind() {
                     AdtKind::Struct => Some(15),
                     AdtKind::Union => Some(16),
                     AdtKind::Enum => Some(17),
                 },
-                ty::TyGenerator(..) => Some(18),
+                ty::Generator(..) => Some(18),
                 ty::TyForeign(..) => Some(19),
-                ty::TyGeneratorWitness(..) => Some(20),
-                ty::TyInfer(..) | ty::TyError => None
+                ty::GeneratorWitness(..) => Some(20),
+                ty::Infer(..) | ty::Error => None
             }
         }
 
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (&a.sty, &b.sty) {
-                (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => def_a == def_b,
+                (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
                 _ => cat_a == cat_b
             },
             // infer and error can be equated to all types
@@ -784,10 +784,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let found_trait_ty = found_trait_ref.self_ty();
 
                 let found_did = match found_trait_ty.sty {
-                    ty::TyClosure(did, _) |
+                    ty::Closure(did, _) |
                     ty::TyForeign(did) |
-                    ty::TyFnDef(did, _) => Some(did),
-                    ty::TyAdt(def, _) => Some(def.did),
+                    ty::FnDef(did, _) => Some(did),
+                    ty::Adt(def, _) => Some(def.did),
                     _ => None,
                 };
                 let found_span = found_did.and_then(|did| {
@@ -795,14 +795,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }).map(|sp| self.tcx.sess.source_map().def_span(sp)); // the sp could be an fn def
 
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).sty {
-                    ty::TyTuple(ref tys) => tys.iter()
+                    ty::Tuple(ref tys) => tys.iter()
                         .map(|_| ArgKind::empty()).collect::<Vec<_>>(),
                     _ => vec![ArgKind::empty()],
                 };
                 let expected = match expected_trait_ref.skip_binder().substs.type_at(1).sty {
-                    ty::TyTuple(ref tys) => tys.iter()
+                    ty::Tuple(ref tys) => tys.iter()
                         .map(|t| match t.sty {
-                            ty::TyKind::TyTuple(ref tys) => ArgKind::Tuple(
+                            ty::TyKind::Tuple(ref tys) => ArgKind::Tuple(
                                 Some(span),
                                 tys.iter()
                                     .map(|ty| ("_".to_owned(), ty.sty.to_string()))
@@ -899,7 +899,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let mut trait_type = trait_ref.self_ty();
 
             for refs_remaining in 0..refs_number {
-                if let ty::TyKind::TyRef(_, t_type, _) = trait_type.sty {
+                if let ty::TyKind::Ref(_, t_type, _) = trait_type.sty {
                     trait_type = t_type;
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);
@@ -1143,7 +1143,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         fn build_fn_sig_string<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
                                                trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
-            let sig = if let ty::TyTuple(inputs) = inputs.sty {
+            let sig = if let ty::Tuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|&x| x),
                     tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
@@ -1594,7 +1594,7 @@ impl ArgKind {
     /// argument. This has no name (`_`) and no source spans..
     pub fn from_expected_ty(t: Ty<'_>) -> ArgKind {
         match t.sty {
-            ty::TyTuple(ref tys) => ArgKind::Tuple(
+            ty::Tuple(ref tys) => ArgKind::Tuple(
                 None,
                 tys.iter()
                    .map(|ty| ("_".to_owned(), ty.sty.to_string()))

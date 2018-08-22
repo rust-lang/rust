@@ -320,7 +320,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         // constraints on `'a` and `'b`. These constraints
         // would be lost if we just look at the normalized
         // value.
-        if let ty::TyFnDef(def_id, substs) = constant.literal.ty.sty {
+        if let ty::FnDef(def_id, substs) = constant.literal.ty.sty {
             let tcx = self.tcx();
             let type_checker = &mut self.cx;
 
@@ -483,7 +483,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
             ProjectionElem::Subslice { from, to } => PlaceTy::Ty {
                 ty: match base_ty.sty {
-                    ty::TyArray(inner, size) => {
+                    ty::Array(inner, size) => {
                         let size = size.unwrap_usize(tcx);
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
@@ -497,12 +497,12 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                             )
                         }
                     }
-                    ty::TySlice(..) => base_ty,
+                    ty::Slice(..) => base_ty,
                     _ => span_mirbug_and_err!(self, place, "slice of non-array {:?}", base_ty),
                 },
             },
             ProjectionElem::Downcast(adt_def1, index) => match base_ty.sty {
-                ty::TyAdt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
+                ty::Adt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
                     if index >= adt_def.variants.len() {
                         PlaceTy::Ty {
                             ty: span_mirbug_and_err!(
@@ -578,8 +578,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             PlaceTy::Ty { ty } => match ty.sty {
-                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => (&adt_def.variants[0], substs),
-                ty::TyClosure(def_id, substs) => {
+                ty::Adt(adt_def, substs) if !adt_def.is_enum() => (&adt_def.variants[0], substs),
+                ty::Closure(def_id, substs) => {
                     return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
@@ -587,7 +587,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }),
                     }
                 }
-                ty::TyGenerator(def_id, substs, _) => {
+                ty::Generator(def_id, substs, _) => {
                     // Try pre-transform fields first (upvars and current state)
                     if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field.index()) {
                         return Ok(ty);
@@ -602,7 +602,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }),
                     };
                 }
-                ty::TyTuple(tys) => {
+                ty::Tuple(tys) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
@@ -917,7 +917,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             } => {
                 let place_type = place.ty(mir, tcx).to_ty(tcx);
                 let adt = match place_type.sty {
-                    TyKind::TyAdt(adt, _) if adt.is_enum() => adt,
+                    TyKind::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
                             stmt.source_info.span,
@@ -1032,7 +1032,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let sig = match func_ty.sty {
-                    ty::TyFnDef(..) | ty::TyFnPtr(_) => func_ty.fn_sig(tcx),
+                    ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
@@ -1472,7 +1472,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 CastKind::ClosureFnPointer => {
                     let sig = match op.ty(mir, tcx).sty {
-                        ty::TyClosure(def_id, substs) => {
+                        ty::Closure(def_id, substs) => {
                             substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
                         }
                         _ => bug!(),
@@ -1650,7 +1650,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
-                        ty::TyRef(ref_region, _, mutbl) => {
+                        ty::Ref(ref_region, _, mutbl) => {
                             constraints.outlives_constraints.push(OutlivesConstraint {
                                 sup: ref_region.to_region_vid(),
                                 sub: borrow_region.to_region_vid(),
@@ -1697,11 +1697,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                 }
                             }
                         }
-                        ty::TyRawPtr(..) => {
+                        ty::RawPtr(..) => {
                             // deref of raw pointer, guaranteed to be valid
                             break;
                         }
-                        ty::TyAdt(def, _) if def.is_box() => {
+                        ty::Adt(def, _) if def.is_box() => {
                             // deref of `Box`, need the base to be valid - propagate
                         }
                         _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),

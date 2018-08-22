@@ -576,7 +576,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         fldop: |ty| {
-            if let ty::TyAnon(def_id, substs) = ty.sty {
+            if let ty::Anon(def_id, substs) = ty.sty {
                 trace!("check_existential_types: anon_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
                 // only check named existential types
@@ -674,7 +674,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         }
                     }
                 } // if is_named_existential_type
-            } // if let TyAnon
+            } // if let Anon
             ty
         },
         reg_op: |reg| reg,

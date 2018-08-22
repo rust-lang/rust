@@ -571,7 +571,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     &source_ty,
                 );
                 match source_ty.sty {
-                    ty::TyClosure(def_id, substs) => {
+                    ty::Closure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                         if should_monomorphize_locally(self.tcx, &instance) {
@@ -680,7 +680,7 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           is_direct_call: bool,
                           output: &mut Vec<MonoItem<'tcx>>)
 {
-    if let ty::TyFnDef(def_id, substs) = ty.sty {
+    if let ty::FnDef(def_id, substs) = ty.sty {
         let instance = ty::Instance::resolve(tcx,
                                              ty::ParamEnv::reveal_all(),
                                              def_id,
@@ -839,7 +839,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let tail = tcx.struct_tail(ty);
             match tail.sty {
                 ty::TyForeign(..) => false,
-                ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+                ty::TyStr | ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail.sty),
             }
         };
@@ -851,20 +851,20 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     match (&source_ty.sty, &target_ty.sty) {
-        (&ty::TyRef(_, a, _),
-         &ty::TyRef(_, b, _)) |
-        (&ty::TyRef(_, a, _),
-         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
-         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (&ty::Ref(_, a, _),
+         &ty::Ref(_, b, _)) |
+        (&ty::Ref(_, a, _),
+         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
+        (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
+         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             ptr_vtable(a, b)
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
 
-        (&ty::TyAdt(source_adt_def, source_substs),
-         &ty::TyAdt(target_adt_def, target_substs)) => {
+        (&ty::Adt(source_adt_def, source_substs),
+         &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
             let kind =
@@ -906,7 +906,7 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
 
-    if let ty::TyDynamic(ref trait_ty, ..) = trait_ty.sty {
+    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.sty {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_regions());

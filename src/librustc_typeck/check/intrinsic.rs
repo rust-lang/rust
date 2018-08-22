@@ -463,7 +463,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
 
     match *expected {
         Void => match t.sty {
-            ty::TyTuple(ref v) if v.is_empty() => {},
+            ty::Tuple(ref v) if v.is_empty() => {},
             _ => simple_error(&format!("`{}`", t), "()"),
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
@@ -491,7 +491,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         },
         Pointer(ref inner_expected, ref _llvm_type, const_) => {
             match t.sty {
-                ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                     if (mutbl == hir::MutImmutable) != const_ {
                         simple_error(&format!("`{}`", t),
                                      if const_ {"const pointer"} else {"mut pointer"})
@@ -537,7 +537,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         }
         Aggregate(_flatten, ref expected_contents) => {
             match t.sty {
-                ty::TyTuple(contents) => {
+                ty::Tuple(contents) => {
                     if contents.len() != expected_contents.len() {
                         simple_error(&format!("tuple with length {}", contents.len()),
                                      &format!("tuple with length {}", expected_contents.len()));

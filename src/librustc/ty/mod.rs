@@ -450,7 +450,7 @@ bitflags! {
         const HAS_FREE_LOCAL_NAMES    = 1 << 10;
 
         // Present if the type belongs in a local type context.
-        // Only set for TyInfer other than Fresh.
+        // Only set for Infer other than Fresh.
         const KEEP_IN_LOCAL_TCX  = 1 << 11;
 
         // Is there a projection that does not involve a bound region?
@@ -547,24 +547,24 @@ impl<'tcx> TyS<'tcx> {
                 TyKind::TyInt(_) |
                 TyKind::TyUint(_) |
                 TyKind::TyFloat(_) |
-                TyKind::TyInfer(InferTy::IntVar(_)) |
-                TyKind::TyInfer(InferTy::FloatVar(_)) |
-                TyKind::TyInfer(InferTy::FreshIntTy(_)) |
-                TyKind::TyInfer(InferTy::FreshFloatTy(_)) => true,
-            TyKind::TyRef(_, x, _) => x.is_primitive_ty(),
+                TyKind::Infer(InferTy::IntVar(_)) |
+                TyKind::Infer(InferTy::FloatVar(_)) |
+                TyKind::Infer(InferTy::FreshIntTy(_)) |
+                TyKind::Infer(InferTy::FreshFloatTy(_)) => true,
+            TyKind::Ref(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
     }
 
     pub fn is_suggestable(&self) -> bool {
         match self.sty {
-            TyKind::TyAnon(..) |
-            TyKind::TyFnDef(..) |
-            TyKind::TyFnPtr(..) |
-            TyKind::TyDynamic(..) |
-            TyKind::TyClosure(..) |
-            TyKind::TyInfer(..) |
-            TyKind::TyProjection(..) => false,
+            TyKind::Anon(..) |
+            TyKind::FnDef(..) |
+            TyKind::FnPtr(..) |
+            TyKind::Dynamic(..) |
+            TyKind::Closure(..) |
+            TyKind::Infer(..) |
+            TyKind::Projection(..) => false,
             _ => true,
         }
     }
@@ -2231,29 +2231,29 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyArray(..) | TyClosure(..) | TyGenerator(..) | TyNever => {
+            RawPtr(..) | Ref(..) | FnDef(..) | FnPtr(_) |
+            Array(..) | Closure(..) | Generator(..) | Never => {
                 vec![]
             }
 
             TyStr |
-            TyDynamic(..) |
-            TySlice(_) |
+            Dynamic(..) |
+            Slice(_) |
             TyForeign(..) |
-            TyError |
-            TyGeneratorWitness(..) => {
+            Error |
+            GeneratorWitness(..) => {
                 // these are never sized - return the target type
                 vec![ty]
             }
 
-            TyTuple(ref tys) => {
+            Tuple(ref tys) => {
                 match tys.last() {
                     None => vec![],
                     Some(ty) => self.sized_constraint_for_ty(tcx, ty)
                 }
             }
 
-            TyAdt(adt, substs) => {
+            Adt(adt, substs) => {
                 // recursive case
                 let adt_tys = adt.sized_constraint(tcx);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
@@ -2264,7 +2264,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     .collect()
             }
 
-            TyProjection(..) | TyAnon(..) => {
+            Projection(..) | Anon(..) => {
                 // must calculate explicitly.
                 // FIXME: consider special-casing always-Sized projections
                 vec![ty]
@@ -2291,7 +2291,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
-            TyInfer(..) => {
+            Infer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)
             }
@@ -2833,7 +2833,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 ///     - a type parameter or projection whose Sizedness can't be known
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
-///     - a TyError, if a type contained itself. The representability
+///     - a Error, if a type contained itself. The representability
 ///       check should catch this case.
 fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)

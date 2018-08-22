@@ -134,7 +134,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if let Some(ty) = self.retrieve_type_for_place(place) {
                 let needs_note = match ty.sty {
-                    ty::TyKind::TyClosure(id, _) => {
+                    ty::TyKind::Closure(id, _) => {
                         let tables = self.tcx.typeck_tables_of(id);
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
@@ -834,19 +834,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             self.describe_field_from_ty(&ty.boxed_ty(), field)
         } else {
             match ty.sty {
-                ty::TyAdt(def, _) => if def.is_enum() {
+                ty::Adt(def, _) => if def.is_enum() {
                     field.index().to_string()
                 } else {
                     def.non_enum_variant().fields[field.index()]
                         .ident
                         .to_string()
                 },
-                ty::TyTuple(_) => field.index().to_string(),
-                ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                ty::Tuple(_) => field.index().to_string(),
+                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     self.describe_field_from_ty(&ty, field)
                 }
-                ty::TyArray(ty, _) | ty::TySlice(ty) => self.describe_field_from_ty(&ty, field),
-                ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _) => {
+                ty::Array(ty, _) | ty::Slice(ty) => self.describe_field_from_ty(&ty, field),
+                ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                     // Convert the def-id into a node-id. node-ids are only valid for
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't

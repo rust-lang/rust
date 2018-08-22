@@ -100,7 +100,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
 
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
-            if let TyKind::TyArray(_, len) = place_ty.sty {
+            if let TyKind::Array(_, len) = place_ty.sty {
                 let span = self.mir.source_info(location).span;
                 let ty = self.tcx.types.usize;
                 let constant = Constant { span, ty, literal: len };

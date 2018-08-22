@@ -836,33 +836,33 @@ impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let sty = match self.sty {
-            ty::TyRawPtr(tm) => ty::TyRawPtr(tm.fold_with(folder)),
-            ty::TyArray(typ, sz) => ty::TyArray(typ.fold_with(folder), sz.fold_with(folder)),
-            ty::TySlice(typ) => ty::TySlice(typ.fold_with(folder)),
-            ty::TyAdt(tid, substs) => ty::TyAdt(tid, substs.fold_with(folder)),
-            ty::TyDynamic(ref trait_ty, ref region) =>
-                ty::TyDynamic(trait_ty.fold_with(folder), region.fold_with(folder)),
-            ty::TyTuple(ts) => ty::TyTuple(ts.fold_with(folder)),
-            ty::TyFnDef(def_id, substs) => {
-                ty::TyFnDef(def_id, substs.fold_with(folder))
+            ty::RawPtr(tm) => ty::RawPtr(tm.fold_with(folder)),
+            ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
+            ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
+            ty::Adt(tid, substs) => ty::Adt(tid, substs.fold_with(folder)),
+            ty::Dynamic(ref trait_ty, ref region) =>
+                ty::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder)),
+            ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)),
+            ty::FnDef(def_id, substs) => {
+                ty::FnDef(def_id, substs.fold_with(folder))
             }
-            ty::TyFnPtr(f) => ty::TyFnPtr(f.fold_with(folder)),
-            ty::TyRef(ref r, ty, mutbl) => {
-                ty::TyRef(r.fold_with(folder), ty.fold_with(folder), mutbl)
+            ty::FnPtr(f) => ty::FnPtr(f.fold_with(folder)),
+            ty::Ref(ref r, ty, mutbl) => {
+                ty::Ref(r.fold_with(folder), ty.fold_with(folder), mutbl)
             }
-            ty::TyGenerator(did, substs, movability) => {
-                ty::TyGenerator(
+            ty::Generator(did, substs, movability) => {
+                ty::Generator(
                     did,
                     substs.fold_with(folder),
                     movability)
             }
-            ty::TyGeneratorWitness(types) => ty::TyGeneratorWitness(types.fold_with(folder)),
-            ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
-            ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
-            ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
+            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.fold_with(folder)),
+            ty::Closure(did, substs) => ty::Closure(did, substs.fold_with(folder)),
+            ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
+            ty::Anon(did, substs) => ty::Anon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) | ty::TyNever | ty::TyForeign(..) => return self
+            ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
+            ty::TyParam(..) | ty::Never | ty::TyForeign(..) => return self
         };
 
         if self.sty == sty {
@@ -878,26 +878,26 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match self.sty {
-            ty::TyRawPtr(ref tm) => tm.visit_with(visitor),
-            ty::TyArray(typ, sz) => typ.visit_with(visitor) || sz.visit_with(visitor),
-            ty::TySlice(typ) => typ.visit_with(visitor),
-            ty::TyAdt(_, substs) => substs.visit_with(visitor),
-            ty::TyDynamic(ref trait_ty, ref reg) =>
+            ty::RawPtr(ref tm) => tm.visit_with(visitor),
+            ty::Array(typ, sz) => typ.visit_with(visitor) || sz.visit_with(visitor),
+            ty::Slice(typ) => typ.visit_with(visitor),
+            ty::Adt(_, substs) => substs.visit_with(visitor),
+            ty::Dynamic(ref trait_ty, ref reg) =>
                 trait_ty.visit_with(visitor) || reg.visit_with(visitor),
-            ty::TyTuple(ts) => ts.visit_with(visitor),
-            ty::TyFnDef(_, substs) => substs.visit_with(visitor),
-            ty::TyFnPtr(ref f) => f.visit_with(visitor),
-            ty::TyRef(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
-            ty::TyGenerator(_did, ref substs, _) => {
+            ty::Tuple(ts) => ts.visit_with(visitor),
+            ty::FnDef(_, substs) => substs.visit_with(visitor),
+            ty::FnPtr(ref f) => f.visit_with(visitor),
+            ty::Ref(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
+            ty::Generator(_did, ref substs, _) => {
                 substs.visit_with(visitor)
             }
-            ty::TyGeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
-            ty::TyProjection(ref data) => data.visit_with(visitor),
-            ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
+            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
+            ty::Closure(_did, ref substs) => substs.visit_with(visitor),
+            ty::Projection(ref data) => data.visit_with(visitor),
+            ty::Anon(_, ref substs) => substs.visit_with(visitor),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) | ty::TyNever | ty::TyForeign(..) => false,
+            ty::TyUint(_) | ty::TyFloat(_) | ty::Error | ty::Infer(_) |
+            ty::TyParam(..) | ty::Never | ty::TyForeign(..) => false,
         }
     }
 

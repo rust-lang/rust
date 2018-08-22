@@ -80,7 +80,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ReifyFnPointer => {
                 // The src operand does not matter, just its type
                 match src_layout.ty.sty {
-                    ty::TyFnDef(def_id, substs) => {
+                    ty::FnDef(def_id, substs) => {
                         if self.tcx.has_attr(def_id, "rustc_args_required_const") {
                             bug!("reifying a fn ptr that requires \
                                     const arguments");
@@ -101,7 +101,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             UnsafeFnPointer => {
                 let src = self.read_value(src)?;
                 match dest.layout.ty.sty {
-                    ty::TyFnPtr(_) => {
+                    ty::FnPtr(_) => {
                         // No change to value
                         self.write_value(*src, dest)?;
                     }
@@ -112,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ClosureFnPointer => {
                 // The src operand does not matter, just its type
                 match src_layout.ty.sty {
-                    ty::TyClosure(def_id, substs) => {
+                    ty::Closure(def_id, substs) => {
                         let substs = self.tcx.subst_and_normalize_erasing_regions(
                             self.substs(),
                             ty::ParamEnv::reveal_all(),
@@ -217,7 +217,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             },
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
-            TyRawPtr(_) => {
+            RawPtr(_) => {
                 Ok(Scalar::Bits {
                     bits: self.memory.truncate_to_ptr(v).0 as u128,
                     size: self.memory.pointer_size().bytes() as u8,
@@ -293,7 +293,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc::ty::TyKind::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
-            TyRawPtr(_) |
+            RawPtr(_) |
             TyInt(IntTy::Isize) |
             TyUint(UintTy::Usize) => Ok(ptr.into()),
             TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),

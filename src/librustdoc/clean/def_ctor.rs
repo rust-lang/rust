@@ -20,7 +20,7 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     let ty = cx.tcx.type_of(def_id);
 
     match ty.sty {
-        ty::TyAdt(adt, _) => callback(&match adt.adt_kind() {
+        ty::Adt(adt, _) => callback(&match adt.adt_kind() {
             AdtKind::Struct => Def::Struct,
             AdtKind::Enum => Def::Enum,
             AdtKind::Union => Def::Union,

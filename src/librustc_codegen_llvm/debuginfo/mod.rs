@@ -323,7 +323,7 @@ pub fn create_function_debug_context(
 
         // Return type -- llvm::DIBuilder wants this at index 0
         signature.push(match sig.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => None,
+            ty::Tuple(ref tys) if tys.is_empty() => None,
             _ => Some(type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP))
         });
 
@@ -347,7 +347,7 @@ pub fn create_function_debug_context(
             // already inaccurate due to ABI adjustments (see #42800).
             signature.extend(inputs.iter().map(|&t| {
                 let t = match t.sty {
-                    ty::TyArray(ct, _)
+                    ty::Array(ct, _)
                         if (ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() => {
                         cx.tcx.mk_imm_ptr(ct)
                     }
@@ -362,7 +362,7 @@ pub fn create_function_debug_context(
         }
 
         if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
-            if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
+            if let ty::Tuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
                 signature.extend(
                     args.iter().map(|argument_type| {
                         Some(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP))
@@ -460,7 +460,7 @@ pub fn create_function_debug_context(
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).
                 match impl_self_ty.sty {
-                    ty::TyAdt(def, ..) if !def.is_box() => {
+                    ty::Adt(def, ..) if !def.is_box() => {
                         Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
                     }
                     _ => None

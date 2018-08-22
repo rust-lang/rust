@@ -309,7 +309,7 @@ fn fixed_vec_metadata(
     let (size, align) = cx.size_and_align_of(array_or_slice_type);
 
     let upper_bound = match array_or_slice_type.sty {
-        ty::TyArray(_, len) => {
+        ty::Array(_, len) => {
             len.unwrap_usize(cx.tcx) as c_longlong
         }
         _ => -1
@@ -396,7 +396,7 @@ fn subroutine_type_metadata(
     let signature_metadata: Vec<_> = iter::once(
         // return type
         match signature.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => None,
+            ty::Tuple(ref tys) if tys.is_empty() => None,
             _ => Some(type_metadata(cx, signature.output(), span))
         }
     ).chain(
@@ -435,7 +435,7 @@ fn trait_pointer_metadata(
     // But it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
-        ty::TyDynamic(ref data, ..) => if let Some(principal) = data.principal() {
+        ty::Dynamic(ref data, ..) => if let Some(principal) = data.principal() {
             let def_id = principal.def_id();
             Some(get_namespace_for_item(cx, def_id))
         } else {
@@ -534,13 +534,13 @@ pub fn type_metadata(
 
     let ptr_metadata = |ty: Ty<'tcx>| {
         match ty.sty {
-            ty::TySlice(typ) => {
+            ty::Slice(typ) => {
                 Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span))
             }
             ty::TyStr => {
                 Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span))
             }
-            ty::TyDynamic(..) => {
+            ty::Dynamic(..) => {
                 Ok(MetadataCreationResult::new(
                     trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
                     false))
@@ -562,7 +562,7 @@ pub fn type_metadata(
     };
 
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match t.sty {
-        ty::TyNever    |
+        ty::Never    |
         ty::TyBool     |
         ty::TyChar     |
         ty::TyInt(_)   |
@@ -570,17 +570,17 @@ pub fn type_metadata(
         ty::TyFloat(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyTuple(ref elements) if elements.is_empty() => {
+        ty::Tuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyArray(typ, _) |
-        ty::TySlice(typ) => {
+        ty::Array(typ, _) |
+        ty::Slice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, t, typ, usage_site_span)
         }
         ty::TyStr => {
             fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span)
         }
-        ty::TyDynamic(..) => {
+        ty::Dynamic(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
@@ -590,20 +590,20 @@ pub fn type_metadata(
                         foreign_type_metadata(cx, t, unique_type_id),
             false)
         }
-        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::TyRef(_, ty, _) => {
+        ty::RawPtr(ty::TypeAndMut{ty, ..}) |
+        ty::Ref(_, ty, _) => {
             match ptr_metadata(ty) {
                 Ok(res) => res,
                 Err(metadata) => return metadata,
             }
         }
-        ty::TyAdt(def, _) if def.is_box() => {
+        ty::Adt(def, _) if def.is_box() => {
             match ptr_metadata(t.boxed_ty()) {
                 Ok(res) => res,
                 Err(metadata) => return metadata,
             }
         }
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(_) => {
             let fn_metadata = subroutine_type_metadata(cx,
                                                        unique_type_id,
                                                        t.fn_sig(cx.tcx),
@@ -619,7 +619,7 @@ pub fn type_metadata(
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
 
         }
-        ty::TyClosure(def_id, substs) => {
+        ty::Closure(def_id, substs) => {
             let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx).collect();
             prepare_tuple_metadata(cx,
                                    t,
@@ -627,7 +627,7 @@ pub fn type_metadata(
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
-        ty::TyGenerator(def_id, substs,  _) => {
+        ty::Generator(def_id, substs,  _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx).map(|t| {
                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)
             }).collect();
@@ -637,7 +637,7 @@ pub fn type_metadata(
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
-        ty::TyAdt(def, ..) => match def.adt_kind() {
+        ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => {
                 prepare_struct_metadata(cx,
                                         t,
@@ -658,7 +658,7 @@ pub fn type_metadata(
                                     usage_site_span).finalize(cx)
             }
         },
-        ty::TyTuple(ref elements) => {
+        ty::Tuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
                                    &elements[..],
@@ -765,8 +765,8 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     debug!("basic_type_metadata: {:?}", t);
 
     let (name, encoding) = match t.sty {
-        ty::TyNever => ("!", DW_ATE_unsigned),
-        ty::TyTuple(ref elements) if elements.is_empty() =>
+        ty::Never => ("!", DW_ATE_unsigned),
+        ty::Tuple(ref elements) if elements.is_empty() =>
             ("()", DW_ATE_unsigned),
         ty::TyBool => ("bool", DW_ATE_boolean),
         ty::TyChar => ("char", DW_ATE_unsigned_char),
@@ -1009,7 +1009,7 @@ fn prepare_struct_metadata(
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
 
     let (struct_def_id, variant) = match struct_type.sty {
-        ty::TyAdt(def, _) => (def.did, def.non_enum_variant()),
+        ty::Adt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
@@ -1126,7 +1126,7 @@ fn prepare_union_metadata(
     let union_name = compute_debuginfo_type_name(cx, union_type, false);
 
     let (union_def_id, variant) = match union_type.sty {
-        ty::TyAdt(def, _) => (def.did, def.non_enum_variant()),
+        ty::Adt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_union_metadata on a non-ADT")
     };
 

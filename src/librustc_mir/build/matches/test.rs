@@ -272,8 +272,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // array, so we can call `<[u8]>::eq` rather than having to find an
                     // `<[u8; N]>::eq`.
                     let unsize = |ty: Ty<'tcx>| match ty.sty {
-                        ty::TyRef(region, rty, _) => match rty.sty {
-                            ty::TyArray(inner_ty, n) => Some((region, inner_ty, n)),
+                        ty::Ref(region, rty, _) => match rty.sty {
+                            ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
                             _ => None,
                         },
                         _ => None,

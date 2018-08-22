@@ -73,37 +73,37 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyInt(int_type) => Some(IntSimplifiedType(int_type)),
         ty::TyUint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::TyAdt(def, _) => Some(AdtSimplifiedType(def.did)),
+        ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
         ty::TyStr => Some(StrSimplifiedType),
-        ty::TyArray(..) | ty::TySlice(_) => Some(ArraySimplifiedType),
-        ty::TyRawPtr(_) => Some(PtrSimplifiedType),
-        ty::TyDynamic(ref trait_info, ..) => {
+        ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
+        ty::RawPtr(_) => Some(PtrSimplifiedType),
+        ty::Dynamic(ref trait_info, ..) => {
             trait_info.principal().map(|p| TraitSimplifiedType(p.def_id()))
         }
-        ty::TyRef(_, ty, _) => {
+        ty::Ref(_, ty, _) => {
             // since we introduce auto-refs during method lookup, we
             // just treat &T and T as equivalent from the point of
             // view of possibly unifying
             simplify_type(tcx, ty, can_simplify_params)
         }
-        ty::TyFnDef(def_id, _) |
-        ty::TyClosure(def_id, _) => {
+        ty::FnDef(def_id, _) |
+        ty::Closure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
-        ty::TyGenerator(def_id, _, _) => {
+        ty::Generator(def_id, _, _) => {
             Some(GeneratorSimplifiedType(def_id))
         }
-        ty::TyGeneratorWitness(ref tys) => {
+        ty::GeneratorWitness(ref tys) => {
             Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
         }
-        ty::TyNever => Some(NeverSimplifiedType),
-        ty::TyTuple(ref tys) => {
+        ty::Never => Some(NeverSimplifiedType),
+        ty::Tuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::TyFnPtr(ref f) => {
+        ty::FnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
         }
-        ty::TyProjection(_) | ty::TyParam(_) => {
+        ty::Projection(_) | ty::TyParam(_) => {
             if can_simplify_params {
                 // In normalized types, projections don't unify with
                 // anything. when lazy normalization happens, this
@@ -115,13 +115,13 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 None
             }
         }
-        ty::TyAnon(def_id, _) => {
+        ty::Anon(def_id, _) => {
             Some(AnonSimplifiedType(def_id))
         }
         ty::TyForeign(def_id) => {
             Some(ForeignSimplifiedType(def_id))
         }
-        ty::TyInfer(_) | ty::TyError => None,
+        ty::Infer(_) | ty::Error => None,
     }
 }
 

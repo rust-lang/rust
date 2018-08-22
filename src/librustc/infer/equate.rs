@@ -75,17 +75,17 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
-            (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
+            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().equate(a_id, b_id);
                 Ok(a)
             }
 
-            (&ty::TyInfer(TyVar(a_id)), _) => {
+            (&ty::Infer(TyVar(a_id)), _) => {
                 self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
                 Ok(a)
             }
 
-            (_, &ty::TyInfer(TyVar(b_id))) => {
+            (_, &ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
                 Ok(a)
             }

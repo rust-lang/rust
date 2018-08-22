@@ -435,7 +435,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let tail = self.tcx.struct_tail(ty);
         match tail.sty {
             ty::TyForeign(..) => false,
-            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+            ty::TyStr | ty::Slice(..) | ty::Dynamic(..) => true,
             _ => bug!("unexpected unsized tail: {:?}", tail.sty),
         }
     }

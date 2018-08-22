@@ -246,46 +246,46 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::TyInfer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
+            ty::Infer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
 
-            ty::TyInfer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
+            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
 
-            ty::TyInfer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
+            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::Infer(ty::FreshTy(_))
+            | ty::Infer(ty::FreshIntTy(_))
+            | ty::Infer(ty::FreshFloatTy(_)) => {
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::TyInfer(ty::CanonicalTy(_)) => {
+            ty::Infer(ty::CanonicalTy(_)) => {
                 bug!("encountered a canonical type during canonicalization")
             }
 
-            ty::TyClosure(..)
-            | ty::TyGenerator(..)
-            | ty::TyGeneratorWitness(..)
+            ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
             | ty::TyBool
             | ty::TyChar
             | ty::TyInt(..)
             | ty::TyUint(..)
             | ty::TyFloat(..)
-            | ty::TyAdt(..)
+            | ty::Adt(..)
             | ty::TyStr
-            | ty::TyError
-            | ty::TyArray(..)
-            | ty::TySlice(..)
-            | ty::TyRawPtr(..)
-            | ty::TyRef(..)
-            | ty::TyFnDef(..)
-            | ty::TyFnPtr(_)
-            | ty::TyDynamic(..)
-            | ty::TyNever
-            | ty::TyTuple(..)
-            | ty::TyProjection(..)
+            | ty::Error
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Dynamic(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Projection(..)
             | ty::TyForeign(..)
             | ty::TyParam(..)
-            | ty::TyAnon(..) => {
+            | ty::Anon(..) => {
                 if t.flags.intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {

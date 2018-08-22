@@ -170,7 +170,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         debug!("places_conflict: shallow access behind ptr");
                         return false;
                     }
-                    (ProjectionElem::Deref, ty::TyRef(_, _, hir::MutImmutable), _) => {
+                    (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
                         // the borrow goes through a dereference of a shared reference.
                         //
                         // I'm not sure why we are tracking these borrows - shared
@@ -329,7 +329,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
         }
         (Place::Promoted(p1), Place::Promoted(p2)) => {
             if p1.0 == p2.0 {
-                if let ty::TyArray(_, size) = p1.1.sty {
+                if let ty::Array(_, size) = p1.1.sty {
                     if size.unwrap_usize(tcx) == 0 {
                         // Ignore conflicts with promoted [T; 0].
                         debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
@@ -366,7 +366,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                     } else {
                         let ty = pi1.base.ty(mir, tcx).to_ty(tcx);
                         match ty.sty {
-                            ty::TyAdt(def, _) if def.is_union() => {
+                            ty::Adt(def, _) if def.is_union() => {
                                 // Different fields of a union, we are basically stuck.
                                 debug!("place_element_conflict: STUCK-UNION");
                                 Overlap::Arbitrary

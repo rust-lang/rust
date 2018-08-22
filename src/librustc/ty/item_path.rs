@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
         // anything other than a simple path.
         match self_ty.sty {
-            ty::TyAdt(adt_def, substs) => {
+            ty::Adt(adt_def, substs) => {
                 if substs.types().next().is_none() { // ignore regions
                     self.push_item_path(buffer, adt_def.did);
                 } else {
@@ -357,24 +357,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// decisions and we may want to adjust it later.
 pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
     match ty.sty {
-        ty::TyAdt(adt_def, _) => Some(adt_def.did),
+        ty::Adt(adt_def, _) => Some(adt_def.did),
 
-        ty::TyDynamic(data, ..) => data.principal().map(|p| p.def_id()),
+        ty::Dynamic(data, ..) => data.principal().map(|p| p.def_id()),
 
-        ty::TyArray(subty, _) |
-        ty::TySlice(subty) => characteristic_def_id_of_type(subty),
+        ty::Array(subty, _) |
+        ty::Slice(subty) => characteristic_def_id_of_type(subty),
 
-        ty::TyRawPtr(mt) => characteristic_def_id_of_type(mt.ty),
+        ty::RawPtr(mt) => characteristic_def_id_of_type(mt.ty),
 
-        ty::TyRef(_, ty, _) => characteristic_def_id_of_type(ty),
+        ty::Ref(_, ty, _) => characteristic_def_id_of_type(ty),
 
-        ty::TyTuple(ref tys) => tys.iter()
+        ty::Tuple(ref tys) => tys.iter()
                                    .filter_map(|ty| characteristic_def_id_of_type(ty))
                                    .next(),
 
-        ty::TyFnDef(def_id, _) |
-        ty::TyClosure(def_id, _) |
-        ty::TyGenerator(def_id, _, _) |
+        ty::FnDef(def_id, _) |
+        ty::Closure(def_id, _) |
+        ty::Generator(def_id, _, _) |
         ty::TyForeign(def_id) => Some(def_id),
 
         ty::TyBool |
@@ -382,14 +382,14 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyInt(_) |
         ty::TyUint(_) |
         ty::TyStr |
-        ty::TyFnPtr(_) |
-        ty::TyProjection(_) |
+        ty::FnPtr(_) |
+        ty::Projection(_) |
         ty::TyParam(_) |
-        ty::TyAnon(..) |
-        ty::TyInfer(_) |
-        ty::TyError |
-        ty::TyGeneratorWitness(..) |
-        ty::TyNever |
+        ty::Anon(..) |
+        ty::Infer(_) |
+        ty::Error |
+        ty::GeneratorWitness(..) |
+        ty::Never |
         ty::TyFloat(_) => None,
     }
 }

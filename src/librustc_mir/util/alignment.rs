@@ -59,7 +59,7 @@ fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ProjectionElem::Field(..) => {
                 let ty = base.ty(local_decls, tcx).to_ty(tcx);
                 match ty.sty {
-                    ty::TyAdt(def, _) if def.repr.packed() => {
+                    ty::Adt(def, _) if def.repr.packed() => {
                         return true
                     }
                     _ => {}

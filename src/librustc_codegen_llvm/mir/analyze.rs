@@ -131,7 +131,7 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 func: mir::Operand::Constant(ref c),
                 ref args, ..
             } => match c.ty.sty {
-                ty::TyFnDef(did, _) => Some((did, args)),
+                ty::FnDef(did, _) => Some((did, args)),
                 _ => None,
             },
             _ => None,

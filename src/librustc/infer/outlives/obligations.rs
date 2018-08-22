@@ -451,7 +451,7 @@ where
     fn type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         match ty.sty {
             ty::TyParam(p) => self.param_bound(p),
-            ty::TyProjection(data) => {
+            ty::Projection(data) => {
                 let declared_bounds = self.projection_declared_bounds(data);
                 self.projection_bound(declared_bounds, data)
             }

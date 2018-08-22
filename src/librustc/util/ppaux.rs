@@ -14,11 +14,11 @@ use mir::interpret::ConstValue;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{TyBool, TyChar, TyAdt};
-use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
-use ty::{TyDynamic, TyInt, TyUint, TyInfer};
+use ty::{TyBool, TyChar, Adt};
+use ty::{Error, TyStr, Array, Slice, TyFloat, FnDef, FnPtr};
+use ty::{TyParam, RawPtr, Ref, Never, Tuple};
+use ty::{Closure, Generator, GeneratorWitness, TyForeign, Projection, Anon};
+use ty::{Dynamic, TyInt, TyUint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
@@ -371,7 +371,7 @@ impl PrintContext {
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
-            if let TyTuple(ref args) = substs.type_at(1).sty {
+            if let Tuple(ref args) = substs.type_at(1).sty {
                 return self.fn_sig(f, args, false, projection_ty);
             }
         }
@@ -1037,14 +1037,14 @@ define_print! {
                 TyInt(t) => write!(f, "{}", t.ty_to_string()),
                 TyUint(t) => write!(f, "{}", t.ty_to_string()),
                 TyFloat(t) => write!(f, "{}", t.ty_to_string()),
-                TyRawPtr(ref tm) => {
+                RawPtr(ref tm) => {
                     write!(f, "*{} ", match tm.mutbl {
                         hir::MutMutable => "mut",
                         hir::MutImmutable => "const",
                     })?;
                     tm.ty.print(f, cx)
                 }
-                TyRef(r, ty, mutbl) => {
+                Ref(r, ty, mutbl) => {
                     write!(f, "&")?;
                     let s = r.print_to_string(cx);
                     if s != "'_" {
@@ -1055,8 +1055,8 @@ define_print! {
                     }
                     ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
-                TyNever => write!(f, "!"),
-                TyTuple(ref tys) => {
+                Never => write!(f, "!"),
+                Tuple(ref tys) => {
                     write!(f, "(")?;
                     let mut tys = tys.iter();
                     if let Some(&ty) = tys.next() {
@@ -1070,7 +1070,7 @@ define_print! {
                     }
                     write!(f, ")")
                 }
-                TyFnDef(def_id, substs) => {
+                FnDef(def_id, substs) => {
                     ty::tls::with(|tcx| {
                         let mut sig = tcx.fn_sig(def_id);
                         if let Some(substs) = tcx.lift(&substs) {
@@ -1081,14 +1081,14 @@ define_print! {
                     cx.parameterized(f, substs, def_id, &[])?;
                     write!(f, "}}")
                 }
-                TyFnPtr(ref bare_fn) => {
+                FnPtr(ref bare_fn) => {
                     bare_fn.print(f, cx)
                 }
-                TyInfer(infer_ty) => write!(f, "{}", infer_ty),
-                TyError => write!(f, "[type error]"),
+                Infer(infer_ty) => write!(f, "{}", infer_ty),
+                Error => write!(f, "[type error]"),
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
-                TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
-                TyDynamic(data, r) => {
+                Adt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
+                Dynamic(data, r) => {
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
                         write!(f, "(")?;
@@ -1102,10 +1102,10 @@ define_print! {
                     }
                 }
                 TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
-                TyProjection(ref data) => data.print(f, cx),
-                TyAnon(def_id, substs) => {
+                Projection(ref data) => data.print(f, cx),
+                Anon(def_id, substs) => {
                     if cx.is_verbose {
-                        return write!(f, "TyAnon({:?}, {:?})", def_id, substs);
+                        return write!(f, "Anon({:?}, {:?})", def_id, substs);
                     }
 
                     ty::tls::with(|tcx| {
@@ -1155,7 +1155,7 @@ define_print! {
                     })
                 }
                 TyStr => write!(f, "str"),
-                TyGenerator(did, substs, movability) => ty::tls::with(|tcx| {
+                Generator(did, substs, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     let witness = substs.witness(did, tcx);
                     if movability == hir::GeneratorMovability::Movable {
@@ -1193,10 +1193,10 @@ define_print! {
 
                     print!(f, cx, write(" "), print(witness), write("]"))
                 }),
-                TyGeneratorWitness(types) => {
+                GeneratorWitness(types) => {
                     ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))
                 }
-                TyClosure(did, substs) => ty::tls::with(|tcx| {
+                Closure(did, substs) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     write!(f, "[closure")?;
 
@@ -1233,7 +1233,7 @@ define_print! {
 
                     write!(f, "]")
                 }),
-                TyArray(ty, sz) => {
+                Array(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
                         ConstValue::Unevaluated(_def_id, _substs) => {
@@ -1245,7 +1245,7 @@ define_print! {
                     }
                     write!(f, "]")
                 }
-                TySlice(ty) => {
+                Slice(ty) => {
                     print!(f, cx, write("["), print(ty), write("]"))
                 }
             }

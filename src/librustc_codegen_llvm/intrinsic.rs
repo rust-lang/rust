@@ -98,7 +98,7 @@ pub fn codegen_intrinsic_call(
     let tcx = cx.tcx;
 
     let (def_id, substs) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs) => (def_id, substs),
+        ty::FnDef(def_id, substs) => (def_id, substs),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
 
@@ -1343,7 +1343,7 @@ fn generic_simd_intrinsic(
         // This counts how many pointers
         fn ptr_count(t: ty::Ty) -> usize {
             match t.sty {
-                ty::TyRawPtr(p) => 1 + ptr_count(p.ty),
+                ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
             }
         }
@@ -1351,7 +1351,7 @@ fn generic_simd_intrinsic(
         // Non-ptr type
         fn non_ptr(t: ty::Ty) -> ty::Ty {
             match t.sty {
-                ty::TyRawPtr(p) => non_ptr(p.ty),
+                ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
             }
         }
@@ -1359,7 +1359,7 @@ fn generic_simd_intrinsic(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
-            ty::TyRawPtr(p) if p.ty == in_elem => (ptr_count(arg_tys[1].simd_type(tcx)),
+            ty::RawPtr(p) if p.ty == in_elem => (ptr_count(arg_tys[1].simd_type(tcx)),
                                                    non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {
                 require!(false, "expected element type `{}` of second argument `{}` \
@@ -1439,7 +1439,7 @@ fn generic_simd_intrinsic(
         // This counts how many pointers
         fn ptr_count(t: ty::Ty) -> usize {
             match t.sty {
-                ty::TyRawPtr(p) => 1 + ptr_count(p.ty),
+                ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
             }
         }
@@ -1447,7 +1447,7 @@ fn generic_simd_intrinsic(
         // Non-ptr type
         fn non_ptr(t: ty::Ty) -> ty::Ty {
             match t.sty {
-                ty::TyRawPtr(p) => non_ptr(p.ty),
+                ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
             }
         }
@@ -1455,7 +1455,7 @@ fn generic_simd_intrinsic(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
-            ty::TyRawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
                 => (ptr_count(arg_tys[1].simd_type(tcx)),
                     non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {

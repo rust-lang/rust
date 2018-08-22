@@ -2248,14 +2248,14 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
         }
     }
     // print function definitons
-    if let TyFnDef(did, _) = ty.sty {
+    if let FnDef(did, _) = ty.sty {
         return write!(f, "{}", item_path_str(did));
     }
     // print string literals
     if let ConstValue::ScalarPair(ptr, len) = value {
         if let Scalar::Ptr(ptr) = ptr {
             if let ScalarMaybeUndef::Scalar(Scalar::Bits { bits: len, .. }) = len {
-                if let TyRef(_, &ty::TyS { sty: TyStr, .. }, _) = ty.sty {
+                if let Ref(_, &ty::TyS { sty: TyStr, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
                         if let Some(interpret::AllocType::Memory(alloc)) = alloc {

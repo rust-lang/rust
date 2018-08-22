@@ -54,7 +54,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                         // original path into a new variable and
                         // borrowed *that* one, leaving the original
                         // path unborrowed.
-                        ty::TyRawPtr(..) | ty::TyRef(_, _, hir::MutImmutable) => true,
+                        ty::RawPtr(..) | ty::Ref(_, _, hir::MutImmutable) => true,
                         _ => proj.base.ignore_borrow(tcx, mir),
                     }
                 }

@@ -185,7 +185,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let main_def_id = tcx.hir.local_def_id(main_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
-        ty::TyFnDef(..) => {
+        ty::FnDef(..) => {
             match tcx.hir.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
@@ -257,7 +257,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let start_def_id = tcx.hir.local_def_id(start_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
-        ty::TyFnDef(..) => {
+        ty::FnDef(..) => {
             match tcx.hir.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {

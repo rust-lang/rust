@@ -312,26 +312,26 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             // individual fields instead. This way if `foo` has a
             // destructor but `bar` does not, we will only check for
             // borrows of `x.foo` and not `x.bar`. See #47703.
-            ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.infcx.tcx) => {
+            ty::Adt(def, substs) if def.is_struct() && !def.has_dtor(self.infcx.tcx) => {
                 def.all_fields()
                     .map(|field| field.ty(gcx, substs))
                     .enumerate()
                     .for_each(|field| drop_field(self, field));
             }
             // Same as above, but for tuples.
-            ty::TyTuple(tys) => {
+            ty::Tuple(tys) => {
                 tys.iter().cloned().enumerate()
                     .for_each(|field| drop_field(self, field));
             }
             // Closures and generators also have disjoint fields, but they are only
             // directly accessed in the body of the closure/generator.
-            ty::TyGenerator(def, substs, ..)
+            ty::Generator(def, substs, ..)
                 if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.infcx.tcx).enumerate()
                     .for_each(|field| drop_field(self, field));
             }
-            ty::TyClosure(def, substs)
+            ty::Closure(def, substs)
                 if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
                 => {
                     substs.upvar_tys(def, self.infcx.tcx).enumerate()

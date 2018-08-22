@@ -206,7 +206,7 @@ struct LiteralExpander;
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
         match (&pat.ty.sty, &*pat.kind) {
-            (&ty::TyRef(_, rty, _), &PatternKind::Constant { ref value }) => {
+            (&ty::Ref(_, rty, _), &PatternKind::Constant { ref value }) => {
                 Pattern {
                     ty: pat.ty,
                     span: pat.span,
@@ -381,14 +381,14 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(adt_def, ..) => adt_def.is_enum() && adt_def.is_non_exhaustive(),
+            ty::Adt(adt_def, ..) => adt_def.is_enum() && adt_def.is_non_exhaustive(),
             _ => false,
         }
     }
 
     fn is_local(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(adt_def, ..) => adt_def.did.is_local(),
+            ty::Adt(adt_def, ..) => adt_def.did.is_local(),
             _ => false,
         }
     }
@@ -548,8 +548,8 @@ impl<'tcx> Witness<'tcx> {
             let mut pats = self.0.drain((len - arity) as usize..).rev();
 
             match ty.sty {
-                ty::TyAdt(..) |
-                ty::TyTuple(..) => {
+                ty::Adt(..) |
+                ty::Tuple(..) => {
                     let pats = pats.enumerate().map(|(i, p)| {
                         FieldPattern {
                             field: Field::new(i),
@@ -557,7 +557,7 @@ impl<'tcx> Witness<'tcx> {
                         }
                     }).collect();
 
-                    if let ty::TyAdt(adt, substs) = ty.sty {
+                    if let ty::Adt(adt, substs) = ty.sty {
                         if adt.is_enum() {
                             PatternKind::Variant {
                                 adt_def: adt,
@@ -573,11 +573,11 @@ impl<'tcx> Witness<'tcx> {
                     }
                 }
 
-                ty::TyRef(..) => {
+                ty::Ref(..) => {
                     PatternKind::Deref { subpattern: pats.nth(0).unwrap() }
                 }
 
-                ty::TySlice(_) | ty::TyArray(..) => {
+                ty::Slice(_) | ty::Array(..) => {
                     PatternKind::Slice {
                         prefix: pats.collect(),
                         slice: None,
@@ -624,7 +624,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
             }).collect()
         }
-        ty::TyArray(ref sub_ty, len) if len.assert_usize(cx.tcx).is_some() => {
+        ty::Array(ref sub_ty, len) if len.assert_usize(cx.tcx).is_some() => {
             let len = len.unwrap_usize(cx.tcx);
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
@@ -633,15 +633,15 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }
         }
         // Treat arrays of a constant but unknown length like slices.
-        ty::TyArray(ref sub_ty, _) |
-        ty::TySlice(ref sub_ty) => {
+        ty::Array(ref sub_ty, _) |
+        ty::Slice(ref sub_ty) => {
             if cx.is_uninhabited(sub_ty) {
                 vec![Slice(0)]
             } else {
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
-        ty::TyAdt(def, substs) if def.is_enum() => {
+        ty::Adt(def, substs) if def.is_enum() => {
             def.variants.iter()
                 .filter(|v| !cx.is_variant_uninhabited(v, substs))
                 .map(|v| Variant(v.did))
@@ -1243,7 +1243,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatternKind::Range { lo, hi, end } => Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
-            ty::TyArray(_, length) => Some(vec![
+            ty::Array(_, length) => Some(vec![
                 Slice(length.unwrap_usize(cx.tcx))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
@@ -1267,14 +1267,14 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
 fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs) => fs.len() as u64,
-        ty::TySlice(..) | ty::TyArray(..) => match *ctor {
+        ty::Tuple(ref fs) => fs.len() as u64,
+        ty::Slice(..) | ty::Array(..) => match *ctor {
             Slice(length) => length,
             ConstantValue(_) => 0,
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },
-        ty::TyRef(..) => 1,
-        ty::TyAdt(adt, _) => {
+        ty::Ref(..) => 1,
+        ty::Adt(adt, _) => {
             adt.variants[ctor.variant_index_for_adt(adt)].fields.len() as u64
         }
         _ => 0
@@ -1291,14 +1291,14 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
-        ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
+        ty::Tuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
+        ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
             Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },
-        ty::TyRef(_, rty, _) => vec![rty],
-        ty::TyAdt(adt, substs) => {
+        ty::Ref(_, rty, _) => vec![rty],
+        ty::Adt(adt, substs) => {
             if adt.is_box() {
                 // Use T as the sub pattern type of Box<T>.
                 vec![substs.type_at(0)]

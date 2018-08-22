@@ -32,7 +32,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::ty::TyAdt;
+use rustc::ty::Adt;
 
 use std::cmp::Ordering;
 
@@ -45,9 +45,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match ty.sty {
             // Not all of these (e.g. unsafe fns) implement FnOnce
             // so we look for these beforehand
-            ty::TyClosure(..) |
-            ty::TyFnDef(..) |
-            ty::TyFnPtr(_) => true,
+            ty::Closure(..) |
+            ty::FnDef(..) |
+            ty::FnPtr(_) => true,
             // If it's not a simple function, look for things which implement FnOnce
             _ => {
                 let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let item_kind = if is_method {
                     "method"
                 } else if actual.is_enum() {
-                    if let TyAdt(ref adt_def, _) = actual.sty {
+                    if let Adt(ref adt_def, _) = actual.sty {
                         let names = adt_def.variants.iter().map(|s| &s.name);
                         suggestion = find_best_match_for_name(names,
                                                               &item_name.as_str(),
@@ -338,7 +338,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(expr) = rcvr_expr {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         match ty.sty {
-                            ty::TyAdt(def, substs) if !def.is_enum() => {
+                            ty::Adt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
                                 if let Some(index) = self.tcx.find_field_index(item_name, variant) {
                                     let field = &variant.fields[index];
@@ -638,10 +638,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
-                ty::TyAdt(def, _) => def.did.is_local(),
+                ty::Adt(def, _) => def.did.is_local(),
                 ty::TyForeign(did) => did.is_local(),
 
-                ty::TyDynamic(ref tr, ..) => tr.principal()
+                ty::Dynamic(ref tr, ..) => tr.principal()
                     .map_or(false, |p| p.def_id().is_local()),
 
                 ty::TyParam(_) => true,

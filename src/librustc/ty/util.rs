@@ -194,10 +194,10 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // These types used to have a builtin impl.
                 // Now libcore provides that impl.
                 ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
-                ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
-                ty::TyRef(_, _, hir::MutImmutable) => return Ok(()),
+                ty::TyChar | ty::RawPtr(..) | ty::Never |
+                ty::Ref(_, _, hir::MutImmutable) => return Ok(()),
 
-                ty::TyAdt(adt, substs) => (adt, substs),
+                ty::Adt(adt, substs) => (adt, substs),
 
                 _ => return Err(CopyImplementationError::NotAnAdt),
             };
@@ -258,10 +258,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 for field in def.all_fields() {
                     let field_ty = field.ty(self, substs);
-                    if let TyError = field_ty.sty {
+                    if let Error = field_ty.sty {
                         return true;
                     }
                 }
@@ -277,7 +277,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         loop {
             match ty.sty {
-                ty::TyAdt(def, substs) => {
+                ty::Adt(def, substs) => {
                     if !def.is_struct() {
                         break;
                     }
@@ -287,7 +287,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyTuple(tys) => {
+                ty::Tuple(tys) => {
                     if let Some((&last_ty, _)) = tys.split_last() {
                         ty = last_ty;
                     } else {
@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let (mut a, mut b) = (source, target);
         loop {
             match (&a.sty, &b.sty) {
-                (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
+                (&Adt(a_def, a_substs), &Adt(b_def, b_substs))
                         if a_def == b_def && a_def.is_struct() => {
                     if let Some(f) = a_def.non_enum_variant().fields.last() {
                         a = f.ty(self, a_substs);
@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         break;
                     }
                 },
-                (&TyTuple(a_tys), &TyTuple(b_tys))
+                (&Tuple(a_tys), &Tuple(b_tys))
                         if a_tys.len() == b_tys.len() => {
                     if let Some(a_last) = a_tys.last() {
                         a = a_last;
@@ -487,12 +487,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // parameters marked as pure.
 
         let impl_substs = match self.type_of(impl_def_id).sty {
-            ty::TyAdt(def_, substs) if def_ == def => substs,
+            ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
         let item_substs = match self.type_of(def.did).sty {
-            ty::TyAdt(def_, substs) if def_ == def => substs,
+            ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
@@ -697,7 +697,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             -> Representability
         {
             match ty.sty {
-                TyTuple(ref ts) => {
+                Tuple(ref ts) => {
                     // Find non representable
                     fold_repr(ts.iter().map(|ty| {
                         is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
@@ -705,10 +705,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 }
                 // Fixed-length vectors.
                 // FIXME(#11924) Behavior undecided for zero-length vectors.
-                TyArray(ty, _) => {
+                Array(ty, _) => {
                     is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                 }
-                TyAdt(def, substs) => {
+                Adt(def, substs) => {
                     // Find non representable fields with their spans
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
@@ -723,7 +723,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         }
                     }))
                 }
-                TyClosure(..) => {
+                Closure(..) => {
                     // this check is run on type definitions, so we don't expect
                     // to see closure types
                     bug!("requires check invoked on inapplicable type: {:?}", ty)
@@ -734,7 +734,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
             match ty.sty {
-                TyAdt(ty_def, _) => {
+                Adt(ty_def, _) => {
                      ty_def == def
                 }
                 _ => false
@@ -743,7 +743,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (&a.sty, &b.sty) {
-                (&TyAdt(did_a, substs_a), &TyAdt(did_b, substs_b)) => {
+                (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
                     if did_a != did_b {
                         return false;
                     }
@@ -785,7 +785,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             ty: Ty<'tcx>) -> Representability
         {
             match ty.sty {
-                TyAdt(def, _) => {
+                Adt(def, _) => {
                     {
                         // Iterate through stack of previously seen types.
                         let mut iter = seen.iter();
@@ -924,16 +924,16 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     match ty.sty {
         // Fast-path for primitive types
-        ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
-        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
-        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar | ty::TyGeneratorWitness(..) |
-        ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+        ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
+        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::Never |
+        ty::FnDef(..) | ty::FnPtr(_) | ty::TyChar | ty::GeneratorWitness(..) |
+        ty::RawPtr(_) | ty::Ref(..) | ty::TyStr => false,
 
         // Foreign types can never have destructors
         ty::TyForeign(..) => false,
 
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
-        ty::TyAdt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
+        ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
 
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely
@@ -951,30 +951,30 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // (see above), it is sound to treat it as having a destructor.
 
         // User destructors are the only way to have concrete drop types.
-        ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
+        ty::Adt(def, _) if def.has_dtor(tcx) => true,
 
         // Can refer to a type which may drop.
         // FIXME(eddyb) check this against a ParamEnv.
-        ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyParam(_) |
-        ty::TyAnon(..) | ty::TyInfer(_) | ty::TyError => true,
+        ty::Dynamic(..) | ty::Projection(..) | ty::TyParam(_) |
+        ty::Anon(..) | ty::Infer(_) | ty::Error => true,
 
         // Structural recursion.
-        ty::TyArray(ty, _) | ty::TySlice(ty) => needs_drop(ty),
+        ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
 
-        ty::TyClosure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
+        ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
 
         // Pessimistically assume that all generators will require destructors
         // as we don't know if a destructor is a noop or not until after the MIR
         // state transformation pass
-        ty::TyGenerator(..) => true,
+        ty::Generator(..) => true,
 
-        ty::TyTuple(ref tys) => tys.iter().cloned().any(needs_drop),
+        ty::Tuple(ref tys) => tys.iter().cloned().any(needs_drop),
 
         // unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).
-        ty::TyAdt(def, _) if def.is_union() => false,
+        ty::Adt(def, _) if def.is_union() => false,
 
-        ty::TyAdt(def, substs) =>
+        ty::Adt(def, substs) =>
             def.variants.iter().any(
                 |variant| variant.fields.iter().any(
                     |field| needs_drop(field.ty(tcx, substs)))),
@@ -1025,13 +1025,13 @@ impl<'tcx> ExplicitSelf<'tcx> {
 
         match self_arg_ty.sty {
             _ if is_self_ty(self_arg_ty) => ByValue,
-            ty::TyRef(region, ty, mutbl) if is_self_ty(ty) => {
+            ty::Ref(region, ty, mutbl) if is_self_ty(ty) => {
                 ByReference(region, mutbl)
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
+            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
                 ByRawPointer(mutbl)
             }
-            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => {
+            ty::Adt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => {
                 ByBox
             }
             _ => Other

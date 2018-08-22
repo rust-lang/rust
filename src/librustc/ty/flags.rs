@@ -74,19 +74,19 @@ impl FlagComputation {
             &ty::TyInt(_) |
             &ty::TyFloat(_) |
             &ty::TyUint(_) |
-            &ty::TyNever |
+            &ty::Never |
             &ty::TyStr |
             &ty::TyForeign(..) => {
             }
 
-            // You might think that we could just return TyError for
-            // any type containing TyError as a component, and get
+            // You might think that we could just return Error for
+            // any type containing Error as a component, and get
             // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
             // the exception of function types that return bot).
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
-            &ty::TyError => {
+            &ty::Error => {
                 self.add_flags(TypeFlags::HAS_TY_ERR)
             }
 
@@ -99,25 +99,25 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyGenerator(_, ref substs, _) => {
+            &ty::Generator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
             }
 
-            &ty::TyGeneratorWitness(ref ts) => {
+            &ty::GeneratorWitness(ref ts) => {
                 let mut computation = FlagComputation::new();
                 computation.add_tys(&ts.skip_binder()[..]);
                 self.add_bound_computation(&computation);
             }
 
-            &ty::TyClosure(_, ref substs) => {
+            &ty::Closure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
             }
 
-            &ty::TyInfer(infer) => {
+            &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
@@ -136,11 +136,11 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyAdt(_, substs) => {
+            &ty::Adt(_, substs) => {
                 self.add_substs(substs);
             }
 
-            &ty::TyProjection(ref data) => {
+            &ty::Projection(ref data) => {
                 // currently we can't normalize projections that
                 // include bound regions, so track those separately.
                 if !data.has_escaping_regions() {
@@ -150,12 +150,12 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::TyAnon(_, substs) => {
+            &ty::Anon(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_substs(substs);
             }
 
-            &ty::TyDynamic(ref obj, r) => {
+            &ty::Dynamic(ref obj, r) => {
                 let mut computation = FlagComputation::new();
                 for predicate in obj.skip_binder().iter() {
                     match *predicate {
@@ -172,33 +172,33 @@ impl FlagComputation {
                 self.add_region(r);
             }
 
-            &ty::TyArray(tt, len) => {
+            &ty::Array(tt, len) => {
                 self.add_ty(tt);
                 self.add_const(len);
             }
 
-            &ty::TySlice(tt) => {
+            &ty::Slice(tt) => {
                 self.add_ty(tt)
             }
 
-            &ty::TyRawPtr(ref m) => {
+            &ty::RawPtr(ref m) => {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyRef(r, ty, _) => {
+            &ty::Ref(r, ty, _) => {
                 self.add_region(r);
                 self.add_ty(ty);
             }
 
-            &ty::TyTuple(ref ts) => {
+            &ty::Tuple(ref ts) => {
                 self.add_tys(&ts[..]);
             }
 
-            &ty::TyFnDef(_, substs) => {
+            &ty::FnDef(_, substs) => {
                 self.add_substs(substs);
             }
 
-            &ty::TyFnPtr(f) => {
+            &ty::FnPtr(f) => {
                 self.add_fn_sig(f);
             }
         }

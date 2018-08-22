@@ -250,7 +250,7 @@ fn check_and_apply_linkage(
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
         let llty2 = match ty.sty {
-            ty::TyRawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
+            ty::RawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
             _ => {
                 if span.is_some() {
                     cx.sess().span_fatal(span.unwrap(), "must have type `*const T` or `*mut T`")

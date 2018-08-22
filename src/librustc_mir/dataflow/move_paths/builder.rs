@@ -134,19 +134,19 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let tcx = self.builder.tcx;
         let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
         match place_ty.sty {
-            ty::TyRef(..) | ty::TyRawPtr(..) =>
+            ty::Ref(..) | ty::RawPtr(..) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
                     BorrowedContent { target_place: place.clone() })),
-            ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
+            ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                 return Err(MoveError::cannot_move_out_of(self.loc,
                                                          InteriorOfTypeWithDestructor {
                     container_ty: place_ty
                 })),
             // move out of union - always move the entire union
-            ty::TyAdt(adt, _) if adt.is_union() =>
+            ty::Adt(adt, _) if adt.is_union() =>
                 return Err(MoveError::UnionMove { path: base }),
-            ty::TySlice(_) =>
+            ty::Slice(_) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
                     InteriorOfSliceOrArray {
@@ -155,7 +155,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                             _ => false
                         },
                     })),
-            ty::TyArray(..) => match proj.elem {
+            ty::Array(..) => match proj.elem {
                 ProjectionElem::Index(..) =>
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,

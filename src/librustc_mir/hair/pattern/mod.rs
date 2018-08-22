@@ -148,7 +148,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     PatternKind::Variant { adt_def, variant_index, .. } => {
                         Some(&adt_def.variants[variant_index])
                     }
-                    _ => if let ty::TyAdt(adt, _) = self.ty.sty {
+                    _ => if let ty::Adt(adt, _) = self.ty.sty {
                         if !adt.is_enum() {
                             Some(&adt.variants[0])
                         } else {
@@ -165,7 +165,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 if let Some(variant) = variant {
                     write!(f, "{}", variant.name)?;
 
-                    // Only for TyAdt we can have `S {...}`,
+                    // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
                     if variant.ctor_kind == CtorKind::Fictive {
                         write!(f, " {{ ")?;
@@ -216,8 +216,8 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             }
             PatternKind::Deref { ref subpattern } => {
                 match self.ty.sty {
-                    ty::TyAdt(def, _) if def.is_box() => write!(f, "box ")?,
-                    ty::TyRef(_, _, mutbl) => {
+                    ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
+                    ty::Ref(_, _, mutbl) => {
                         write!(f, "&")?;
                         if mutbl == hir::MutMutable {
                             write!(f, "mut ")?;
@@ -413,7 +413,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
                 match ty.sty {
-                    ty::TyRef(_, ty, _) =>
+                    ty::Ref(_, ty, _) =>
                         PatternKind::Deref {
                             subpattern: Pattern {
                                 ty,
@@ -422,10 +422,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                     pat.span, ty, prefix, slice, suffix))
                             },
                         },
-                    ty::TySlice(..) |
-                    ty::TyArray(..) =>
+                    ty::Slice(..) |
+                    ty::Array(..) =>
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    ty::TyError => { // Avoid ICE
+                    ty::Error => { // Avoid ICE
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     ref sty =>
@@ -438,7 +438,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
                 match ty.sty {
-                    ty::TyTuple(ref tys) => {
+                    ty::Tuple(ref tys) => {
                         let subpatterns =
                             subpatterns.iter()
                                        .enumerate_and_adjust(tys.len(), ddpos)
@@ -450,7 +450,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                         PatternKind::Leaf { subpatterns: subpatterns }
                     }
-                    ty::TyError => { // Avoid ICE (#50577)
+                    ty::Error => { // Avoid ICE (#50577)
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     ref sty => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", sty),
@@ -460,8 +460,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 let region = match var_ty.sty {
-                    ty::TyRef(r, _, _) => Some(r),
-                    ty::TyError => { // Avoid ICE
+                    ty::Ref(r, _, _) => Some(r),
+                    ty::Error => { // Avoid ICE
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     _ => None,
@@ -484,7 +484,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
                 if let ty::BindByReference(_) = bm {
-                    if let ty::TyRef(_, rty, _) = ty.sty {
+                    if let ty::Ref(_, rty, _) = ty.sty {
                         ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
@@ -504,8 +504,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
                 let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
-                    ty::TyAdt(adt_def, _) => adt_def,
-                    ty::TyError => { // Avoid ICE (#50585)
+                    ty::Adt(adt_def, _) => adt_def,
+                    ty::Error => { // Avoid ICE (#50585)
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     _ => span_bug!(pat.span,
@@ -608,12 +608,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             self.flatten_nested_slice_patterns(prefix, slice, suffix);
 
         match ty.sty {
-            ty::TySlice(..) => {
+            ty::Slice(..) => {
                 // matching a slice or fixed-length array
                 PatternKind::Slice { prefix: prefix, slice: slice, suffix: suffix }
             }
 
-            ty::TyArray(_, len) => {
+            ty::Array(_, len) => {
                 // fixed-length array
                 let len = len.unwrap_usize(self.tcx);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
@@ -640,9 +640,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let substs = match ty.sty {
-                        ty::TyAdt(_, substs) |
-                        ty::TyFnDef(_, substs) => substs,
-                        ty::TyError => {  // Avoid ICE (#50585)
+                        ty::Adt(_, substs) |
+                        ty::FnDef(_, substs) => substs,
+                        ty::Error => {  // Avoid ICE (#50585)
                             return PatternKind::Wild;
                         }
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
@@ -823,12 +823,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     value: cv,
                 }
             },
-            ty::TyAdt(adt_def, _) if adt_def.is_union() => {
+            ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
                 PatternKind::Wild
             }
-            ty::TyAdt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+            ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
                 let msg = format!("to use a constant of type `{}` in a pattern, \
                                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
                                     self.tcx.item_path_str(adt_def.did),
@@ -836,7 +836,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
             },
-            ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
+            ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                 let variant_index = const_variant_index(
                     self.tcx, self.param_env, instance, cv
                 ).expect("const_variant_index failed");
@@ -851,18 +851,18 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     subpatterns,
                 }
             },
-            ty::TyAdt(adt_def, _) => {
+            ty::Adt(adt_def, _) => {
                 let struct_var = adt_def.non_enum_variant();
                 PatternKind::Leaf {
                     subpatterns: adt_subpatterns(struct_var.fields.len(), None),
                 }
             }
-            ty::TyTuple(fields) => {
+            ty::Tuple(fields) => {
                 PatternKind::Leaf {
                     subpatterns: adt_subpatterns(fields.len(), None),
                 }
             }
-            ty::TyArray(_, n) => {
+            ty::Array(_, n) => {
                 PatternKind::Array {
                     prefix: (0..n.unwrap_usize(self.tcx))
                         .map(|i| adt_subpattern(i as usize, None))
@@ -1094,7 +1094,7 @@ pub fn compare_const_vals<'a, 'tcx>(
         }
     }
 
-    if let ty::TyRef(_, rty, _) = ty.value.sty {
+    if let ty::Ref(_, rty, _) = ty.value.sty {
         if let ty::TyStr = rty.sty {
             match (a.val, b.val) {
                 (
@@ -1174,7 +1174,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 ty::TyInt(other) => Int::Signed(other),
                 ty::TyUint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
                 ty::TyUint(other) => Int::Unsigned(other),
-                ty::TyError => { // Avoid ICE (#51963)
+                ty::Error => { // Avoid ICE (#51963)
                     return Err(LitToConstError::Propagated);
                 }
                 _ => bug!("literal integer type with bad type ({:?})", ty.sty),

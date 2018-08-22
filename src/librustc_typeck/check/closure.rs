@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         match expected_ty.sty {
-            ty::TyDynamic(ref object_type, ..) => {
+            ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type
                     .projection_bounds()
                     .filter_map(|pb| {
@@ -203,8 +203,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .and_then(|p| self.tcx.lang_items().fn_trait_kind(p.def_id()));
                 (sig, kind)
             }
-            ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
-            ty::TyFnPtr(sig) => {
+            ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
+            ty::FnPtr(sig) => {
                 let expected_sig = ExpectedSig {
                     cause_span: None,
                     sig: sig.skip_binder().clone(),
@@ -269,9 +269,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     // NB: This predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where
-                    // `ClosureType` represents some `TyClosure`. It can't
+                    // `ClosureType` represents some `Closure`. It can't
                     // possibly be referring to the current closure,
-                    // because we haven't produced the `TyClosure` for
+                    // because we haven't produced the `Closure` for
                     // this closure yet; this is exactly why the other
                     // code is looking for a self type of a unresolved
                     // inference variable.
@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         let input_tys = match arg_param_ty.sty {
-            ty::TyTuple(tys) => tys.into_iter(),
+            ty::Tuple(tys) => tys.into_iter(),
             _ => {
                 return None;
             }
@@ -353,7 +353,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             trait_ref, self_ty
         );
         match self_ty.sty {
-            ty::TyInfer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
+            ty::Infer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
             _ => None,
         }
     }

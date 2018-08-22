@@ -102,13 +102,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
         match self_ty.sty {
-            ty::TyAdt(def, _) => {
+            ty::Adt(def, _) => {
                 self.check_def_id(item, def.did);
             }
             ty::TyForeign(did) => {
                 self.check_def_id(item, did);
             }
-            ty::TyDynamic(ref data, ..) if data.principal().is_some() => {
+            ty::Dynamic(ref data, ..) if data.principal().is_some() => {
                 self.check_def_id(item, data.principal().unwrap().def_id());
             }
             ty::TyChar => {
@@ -127,7 +127,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "str",
                                           item.span);
             }
-            ty::TySlice(slice_item) if slice_item == self.tcx.types.u8 => {
+            ty::Slice(slice_item) if slice_item == self.tcx.types.u8 => {
                 self.check_primitive_impl(def_id,
                                           lang_items.slice_u8_impl(),
                                           lang_items.slice_u8_alloc_impl(),
@@ -135,7 +135,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "[u8]",
                                           item.span);
             }
-            ty::TySlice(_) => {
+            ty::Slice(_) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.slice_impl(),
                                           lang_items.slice_alloc_impl(),
@@ -143,7 +143,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "[T]",
                                           item.span);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.const_ptr_impl(),
                                           None,
@@ -151,7 +151,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "*const T",
                                           item.span);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.mut_ptr_impl(),
                                           None,
@@ -271,7 +271,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "f64",
                                           item.span);
             }
-            ty::TyError => {
+            ty::Error => {
                 return;
             }
             _ => {

@@ -258,8 +258,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn conservative_is_uninhabited(&self, scrutinee_ty: Ty<'tcx>) -> bool {
         // "rustc-1.0-style" uncontentious uninhabitableness check
         match scrutinee_ty.sty {
-            ty::TyNever => true,
-            ty::TyAdt(def, _) => def.variants.is_empty(),
+            ty::Never => true,
+            ty::Adt(def, _) => def.variants.is_empty(),
             _ => false
         }
     }
@@ -315,7 +315,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
                     return true;
                 }
                 let pat_ty = cx.tables.pat_ty(p);
-                if let ty::TyAdt(edef, _) = pat_ty.sty {
+                if let ty::Adt(edef, _) = pat_ty.sty {
                     if edef.is_enum() && edef.variants.iter().any(|variant| {
                         variant.name == ident.name && variant.ctor_kind == CtorKind::Const
                     }) {

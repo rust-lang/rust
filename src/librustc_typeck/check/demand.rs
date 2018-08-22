@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the expected type is an enum with any variants whose sole
         // field is of the found type, suggest such variants. See Issue
         // #42764.
-        if let ty::TyAdt(expected_adt, substs) = expected.sty {
+        if let ty::Adt(expected_adt, substs) = expected.sty {
             let mut compatible_variants = vec![];
             for variant in &expected_adt.variants {
                 if variant.fields.len() == 1 {
@@ -259,9 +259,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         match (&expected.sty, &checked_ty.sty) {
-            (&ty::TyRef(_, exp, _), &ty::TyRef(_, check, _)) => match (&exp.sty, &check.sty) {
-                (&ty::TyStr, &ty::TyArray(arr, _)) |
-                (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
+            (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
+                (&ty::TyStr, &ty::Array(arr, _)) |
+                (&ty::TyStr, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
@@ -272,8 +272,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 },
-                (&ty::TyArray(arr, _), &ty::TyStr) |
-                (&ty::TySlice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
+                (&ty::Array(arr, _), &ty::TyStr) |
+                (&ty::Slice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("\"") {
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 _ => {}
             },
-            (&ty::TyRef(_, _, mutability), _) => {
+            (&ty::Ref(_, _, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
                 // ```
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            (_, &ty::TyRef(_, checked, _)) => {
+            (_, &ty::Ref(_, checked, _)) => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest adding a `*`, or removing
                 // a `&`.

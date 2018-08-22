@@ -809,8 +809,8 @@ for ty::TyKind<'gcx>
             TyBool  |
             TyChar  |
             TyStr   |
-            TyError |
-            TyNever => {
+            Error |
+            Never => {
                 // Nothing more to hash.
             }
             TyInt(int_ty) => {
@@ -822,55 +822,55 @@ for ty::TyKind<'gcx>
             TyFloat(float_ty)  => {
                 float_ty.hash_stable(hcx, hasher);
             }
-            TyAdt(adt_def, substs) => {
+            Adt(adt_def, substs) => {
                 adt_def.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyArray(inner_ty, len) => {
+            Array(inner_ty, len) => {
                 inner_ty.hash_stable(hcx, hasher);
                 len.hash_stable(hcx, hasher);
             }
-            TySlice(inner_ty) => {
+            Slice(inner_ty) => {
                 inner_ty.hash_stable(hcx, hasher);
             }
-            TyRawPtr(pointee_ty) => {
+            RawPtr(pointee_ty) => {
                 pointee_ty.hash_stable(hcx, hasher);
             }
-            TyRef(region, pointee_ty, mutbl) => {
+            Ref(region, pointee_ty, mutbl) => {
                 region.hash_stable(hcx, hasher);
                 pointee_ty.hash_stable(hcx, hasher);
                 mutbl.hash_stable(hcx, hasher);
             }
-            TyFnDef(def_id, substs) => {
+            FnDef(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            TyFnPtr(ref sig) => {
+            FnPtr(ref sig) => {
                 sig.hash_stable(hcx, hasher);
             }
-            TyDynamic(ref existential_predicates, region) => {
+            Dynamic(ref existential_predicates, region) => {
                 existential_predicates.hash_stable(hcx, hasher);
                 region.hash_stable(hcx, hasher);
             }
-            TyClosure(def_id, closure_substs) => {
+            Closure(def_id, closure_substs) => {
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
-            TyGenerator(def_id, generator_substs, movability) => {
+            Generator(def_id, generator_substs, movability) => {
                 def_id.hash_stable(hcx, hasher);
                 generator_substs.hash_stable(hcx, hasher);
                 movability.hash_stable(hcx, hasher);
             }
-            TyGeneratorWitness(types) => {
+            GeneratorWitness(types) => {
                 types.hash_stable(hcx, hasher)
             }
-            TyTuple(inner_tys) => {
+            Tuple(inner_tys) => {
                 inner_tys.hash_stable(hcx, hasher);
             }
-            TyProjection(ref projection_ty) => {
+            Projection(ref projection_ty) => {
                 projection_ty.hash_stable(hcx, hasher);
             }
-            TyAnon(def_id, substs) => {
+            Anon(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
@@ -880,7 +880,7 @@ for ty::TyKind<'gcx>
             TyForeign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            TyInfer(infer_ty) => {
+            Infer(infer_ty) => {
                 infer_ty.hash_stable(hcx, hasher);
             }
         }

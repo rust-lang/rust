@@ -484,7 +484,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 match (&exp_found.expected.sty, &exp_found.found.sty) {
-                    (&ty::TyAdt(exp_adt, _), &ty::TyAdt(found_adt, _)) => {
+                    (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) => {
                         report_path_match(err, exp_adt.did, found_adt.did);
                     }
                     _ => (),
@@ -636,7 +636,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                 return Some(());
             }
-            if let &ty::TyAdt(def, _) = &ta.sty {
+            if let &ty::Adt(def, _) = &ta.sty {
                 let path_ = self.tcx.item_path_str(def.did.clone());
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -704,14 +704,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {
             match (&a.sty, &b.sty) {
                 (a, b) if *a == *b => true,
-                (&ty::TyInt(_), &ty::TyInfer(ty::InferTy::IntVar(_)))
-                | (&ty::TyInfer(ty::InferTy::IntVar(_)), &ty::TyInt(_))
-                | (&ty::TyInfer(ty::InferTy::IntVar(_)), &ty::TyInfer(ty::InferTy::IntVar(_)))
-                | (&ty::TyFloat(_), &ty::TyInfer(ty::InferTy::FloatVar(_)))
-                | (&ty::TyInfer(ty::InferTy::FloatVar(_)), &ty::TyFloat(_))
+                (&ty::TyInt(_), &ty::Infer(ty::InferTy::IntVar(_)))
+                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::TyInt(_))
+                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_)))
+                | (&ty::TyFloat(_), &ty::Infer(ty::InferTy::FloatVar(_)))
+                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::TyFloat(_))
                 | (
-                    &ty::TyInfer(ty::InferTy::FloatVar(_)),
-                    &ty::TyInfer(ty::InferTy::FloatVar(_)),
+                    &ty::Infer(ty::InferTy::FloatVar(_)),
+                    &ty::Infer(ty::InferTy::FloatVar(_)),
                 ) => true,
                 _ => false,
             }
@@ -738,7 +738,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         match (&t1.sty, &t2.sty) {
-            (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
+            (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
@@ -877,13 +877,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             // When finding T != &T, highlight only the borrow
-            (&ty::TyRef(r1, ref_ty1, mutbl1), _) if equals(&ref_ty1, &t2) => {
+            (&ty::Ref(r1, ref_ty1, mutbl1), _) if equals(&ref_ty1, &t2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
                 values.1.push_normal(t2.to_string());
                 values
             }
-            (_, &ty::TyRef(r2, ref_ty2, mutbl2)) if equals(&t1, &ref_ty2) => {
+            (_, &ty::Ref(r2, ref_ty2, mutbl2)) if equals(&t1, &ref_ty2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 values.0.push_normal(t1.to_string());
                 push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
@@ -891,8 +891,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             // When encountering &T != &mut T, highlight only the borrow
-            (&ty::TyRef(r1, ref_ty1, mutbl1),
-             &ty::TyRef(r2, ref_ty2, mutbl2)) if equals(&ref_ty1, &ref_ty2) => {
+            (&ty::Ref(r1, ref_ty1, mutbl1),
+             &ty::Ref(r2, ref_ty2, mutbl2)) if equals(&ref_ty1, &ref_ty2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
                 push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
@@ -979,14 +979,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 (_, false, _) => {
                     if let Some(exp_found) = exp_found {
                         let (def_id, ret_ty) = match exp_found.found.sty {
-                            TyKind::TyFnDef(def, _) => {
+                            TyKind::FnDef(def, _) => {
                                 (Some(def), Some(self.tcx.fn_sig(def).output()))
                             }
                             _ => (None, None),
                         };
 
                         let exp_is_struct = match exp_found.expected.sty {
-                            TyKind::TyAdt(def, _) => def.is_struct(),
+                            TyKind::Adt(def, _) => def.is_struct(),
                             _ => false,
                         };
 

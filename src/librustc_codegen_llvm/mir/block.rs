@@ -296,7 +296,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     &args1[..]
                 };
                 let (drop_fn, fn_ty) = match ty.sty {
-                    ty::TyDynamic(..) => {
+                    ty::Dynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
                         let sig = common::ty_fn_sig(bx.cx, fn_ty);
                         let sig = bx.tcx().normalize_erasing_late_bound_regions(
@@ -417,14 +417,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let callee = self.codegen_operand(&bx, func);
 
                 let (instance, mut llfn) = match callee.layout.ty.sty {
-                    ty::TyFnDef(def_id, substs) => {
+                    ty::FnDef(def_id, substs) => {
                         (Some(ty::Instance::resolve(bx.cx.tcx,
                                                     ty::ParamEnv::reveal_all(),
                                                     def_id,
                                                     substs).unwrap()),
                          None)
                     }
-                    ty::TyFnPtr(_) => {
+                    ty::FnPtr(_) => {
                         (None, Some(callee.immediate()))
                     }
                     _ => bug!("{} is not callable", callee.layout.ty)

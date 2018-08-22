@@ -379,7 +379,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     false // no contained types to walk
                 }
 
-                ty::TyProjection(ref data) => {
+                ty::Projection(ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.
 
                     // Compute supertraits of current trait lazily.

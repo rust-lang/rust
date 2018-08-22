@@ -41,7 +41,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 ty: Ty<'tcx>)
                                 -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
-        ty::TyAdt(def, substs) => (def, substs),
+        ty::Adt(def, substs) => (def, substs),
         _ => return ty
     };
 
@@ -83,7 +83,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx.global_tcx(), from);
-            if let (&ty::TyFnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
                 if size_to == Pointer.size(self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591,
                                      "can't transmute zero-sized type")

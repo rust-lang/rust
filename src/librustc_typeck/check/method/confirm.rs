@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .include_raw_pointers()
             .filter_map(|(ty, _)| {
                 match ty.sty {
-                    ty::TyDynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
+                    ty::Dynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
                     _ => None,
                 }
             })
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
                         if let Some(ok) = self.try_overloaded_deref(expr.span, source, needs) {
                             let method = self.register_infer_ok_obligations(ok);
-                            if let ty::TyRef(region, _, mutbl) = method.sig.output().sty {
+                            if let ty::Ref(region, _, mutbl) = method.sig.output().sty {
                                 *deref = OverloadedDeref {
                                     region,
                                     mutbl,
@@ -538,7 +538,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         debug!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
-        let (region, mutbl) = if let ty::TyRef(r, _, mutbl) = method.sig.inputs()[0].sty {
+        let (region, mutbl) = if let ty::Ref(r, _, mutbl) = method.sig.inputs()[0].sty {
             (r, mutbl)
         } else {
             span_bug!(expr.span, "input to place op is not a ref?");
@@ -605,7 +605,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             })
             .any(|trait_pred| {
                 match trait_pred.skip_binder().self_ty().sty {
-                    ty::TyDynamic(..) => true,
+                    ty::Dynamic(..) => true,
                     _ => false,
                 }
             })

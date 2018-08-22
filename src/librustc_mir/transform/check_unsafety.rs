@@ -179,13 +179,13 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
                 match base_ty.sty {
-                    ty::TyRawPtr(..) => {
+                    ty::RawPtr(..) => {
                         self.require_unsafe("dereference of raw pointer",
                             "raw pointers may be NULL, dangling or unaligned; they can violate \
                              aliasing rules and cause data races: all of these are undefined \
                              behavior")
                     }
-                    ty::TyAdt(adt, _) => {
+                    ty::Adt(adt, _) => {
                         if adt.is_union() {
                             if context == PlaceContext::Store ||
                                 context == PlaceContext::AsmOutput ||

@@ -325,7 +325,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         // Watch out for the case that we are matching a `?T` against the
         // right-hand side.
-        if let ty::TyInfer(ty::CanonicalTy(var)) = a.sty {
+        if let ty::Infer(ty::CanonicalTy(var)) = a.sty {
             self.equate_var(var, b.into())?;
             Ok(a)
         } else {

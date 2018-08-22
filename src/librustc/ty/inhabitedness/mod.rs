@@ -226,7 +226,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
     {
         match self.sty {
-            TyAdt(def, substs) => {
+            Adt(def, substs) => {
                 {
                     let substs_set = visited.entry(def.did).or_default();
                     if !substs_set.insert(substs) {
@@ -255,13 +255,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 ret
             },
 
-            TyNever => DefIdForest::full(tcx),
-            TyTuple(ref tys) => {
+            Never => DefIdForest::full(tcx),
+            Tuple(ref tys) => {
                 DefIdForest::union(tcx, tys.iter().map(|ty| {
                     ty.uninhabited_from(visited, tcx)
                 }))
             },
-            TyArray(ty, len) => {
+            Array(ty, len) => {
                 match len.assert_usize(tcx) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                     _ => DefIdForest::empty()
                 }
             }
-            TyRef(_, ty, _) => {
+            Ref(_, ty, _) => {
                 ty.uninhabited_from(visited, tcx)
             }
 

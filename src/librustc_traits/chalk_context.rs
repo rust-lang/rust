@@ -237,7 +237,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 //                    _ => false,
 //                },
 //                Kind::Type(ty) => match ty.sty {
-//                    ty::TyInfer(ty::InferTy::CanonicalTy(cvar1)) => cvar == cvar1,
+//                    ty::Infer(ty::InferTy::CanonicalTy(cvar1)) => cvar == cvar1,
 //                    _ => false,
 //                },
 //            })

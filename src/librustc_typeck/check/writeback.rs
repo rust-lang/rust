@@ -174,7 +174,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
             match tables.expr_ty_adjusted(&base).sty {
                 // All valid indexing looks like this
-                ty::TyRef(_, base_ty, _) => {
+                ty::Ref(_, base_ty, _) => {
                     let index_ty = tables.expr_ty_adjusted(&index);
                     let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
 

@@ -460,10 +460,10 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         if def.variants[data_idx].fields.len() == 1 {
             match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
-                ty::TyFnPtr(_) => {
+                ty::FnPtr(_) => {
                     return true;
                 }
-                ty::TyRef(..) => {
+                ty::Ref(..) => {
                     return true;
                 }
                 _ => {}
@@ -492,7 +492,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match ty.sty {
-            ty::TyAdt(def, substs) => {
+            ty::Adt(def, substs) => {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }
@@ -646,15 +646,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             },
 
             // Primitive types with a stable representation.
-            ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
+            ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::Never => FfiSafe,
 
-            ty::TySlice(_) => FfiUnsafe {
+            ty::Slice(_) => FfiUnsafe {
                 ty: ty,
                 reason: "slices have no C equivalent",
                 help: Some("consider using a raw pointer instead"),
             },
 
-            ty::TyDynamic(..) => FfiUnsafe {
+            ty::Dynamic(..) => FfiUnsafe {
                 ty: ty,
                 reason: "trait objects have no C equivalent",
                 help: None,
@@ -666,18 +666,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using `*const u8` and a length instead"),
             },
 
-            ty::TyTuple(..) => FfiUnsafe {
+            ty::Tuple(..) => FfiUnsafe {
                 ty: ty,
                 reason: "tuples have unspecified layout",
                 help: Some("consider using a struct instead"),
             },
 
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyRef(_, ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
-            ty::TyArray(ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::Array(ty, _) => self.check_type_for_ffi(cache, ty),
 
-            ty::TyFnPtr(sig) => {
+            ty::FnPtr(sig) => {
                 match sig.abi() {
                     Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
                         return FfiUnsafe {
@@ -715,14 +715,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyForeign(..) => FfiSafe,
 
             ty::TyParam(..) |
-            ty::TyInfer(..) |
-            ty::TyError |
-            ty::TyClosure(..) |
-            ty::TyGenerator(..) |
-            ty::TyGeneratorWitness(..) |
-            ty::TyProjection(..) |
-            ty::TyAnon(..) |
-            ty::TyFnDef(..) => bug!("Unexpected type in foreign function"),
+            ty::Infer(..) |
+            ty::Error |
+            ty::Closure(..) |
+            ty::Generator(..) |
+            ty::GeneratorWitness(..) |
+            ty::Projection(..) |
+            ty::Anon(..) |
+            ty::FnDef(..) => bug!("Unexpected type in foreign function"),
         }
     }
 
@@ -746,7 +746,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if let Some(s) = help {
                     diag.help(s);
                 }
-                if let ty::TyAdt(def, _) = unsafe_ty.sty {
+                if let ty::Adt(def, _) = unsafe_ty.sty {
                     if let Some(sp) = self.cx.tcx.hir.span_if_local(def.did) {
                         diag.span_note(sp, "type defined here");
                     }

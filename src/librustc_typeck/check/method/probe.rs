@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
                 };
-                if let ty::TyRawPtr(_) = ty.sty {
+                if let ty::RawPtr(_) = ty.sty {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let final_ty = autoderef.maybe_ambiguous_final_ty();
         match final_ty.sty {
-            ty::TyInfer(ty::TyVar(_)) => {
+            ty::Infer(ty::TyVar(_)) => {
                 // Ended in an inference variable. If we are doing
                 // a real method lookup, this is a hard error because it's
                 // possible that there will be multiple applicable methods.
@@ -356,7 +356,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // just ignore it.
                 }
             }
-            ty::TyArray(elem_ty, _) => {
+            ty::Array(elem_ty, _) => {
                 let dereferences = steps.len() - 1;
 
                 steps.push(CandidateStep {
@@ -368,7 +368,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     unsize: true,
                 });
             }
-            ty::TyError => return None,
+            ty::Error => return None,
             _ => (),
         }
 
@@ -450,13 +450,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let lang_items = self.tcx.lang_items();
 
         match self_ty.sty {
-            ty::TyDynamic(ref data, ..) => {
+            ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
                     self.assemble_inherent_candidates_from_object(self_ty, p);
                     self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 }
             }
-            ty::TyAdt(def, _) => {
+            ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
             ty::TyForeign(did) => {
@@ -476,7 +476,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.str_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TySlice(_) => {
+            ty::Slice(_) => {
                 let lang_def_id = lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
 
@@ -489,11 +489,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.slice_u8_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
                 let lang_def_id = lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 let lang_def_id = lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -919,7 +919,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::TyRef(_, _, mutbl) = step.self_ty.sty {
+                if let ty::Ref(_, _, mutbl) = step.self_ty.sty {
                     pick.autoderefs += 1;
                     pick.autoref = Some(mutbl);
                 }

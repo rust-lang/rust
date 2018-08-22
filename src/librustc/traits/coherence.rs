@@ -407,7 +407,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
 
 fn is_possibly_remote_type(ty: Ty, _in_crate: InCrate) -> bool {
     match ty.sty {
-        ty::TyProjection(..) | ty::TyParam(..) => true,
+        ty::Projection(..) | ty::TyParam(..) => true,
         _ => false,
     }
 }
@@ -419,9 +419,9 @@ fn ty_is_local(tcx: TyCtxt, ty: Ty, in_crate: InCrate) -> bool {
 
 fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     match ty.sty {
-        ty::TyRef(..) => true,
-        ty::TyAdt(def, _) => def.is_fundamental(),
-        ty::TyDynamic(ref data, ..) => {
+        ty::Ref(..) => true,
+        ty::Adt(def, _) => def.is_fundamental(),
+        ty::Dynamic(ref data, ..) => {
             data.principal().map_or(false, |p| tcx.has_attr(p.def_id(), "fundamental"))
         }
         _ => false
@@ -447,43 +447,43 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
         ty::TyUint(..) |
         ty::TyFloat(..) |
         ty::TyStr |
-        ty::TyFnDef(..) |
-        ty::TyFnPtr(_) |
-        ty::TyArray(..) |
-        ty::TySlice(..) |
-        ty::TyRawPtr(..) |
-        ty::TyRef(..) |
-        ty::TyNever |
-        ty::TyTuple(..) |
+        ty::FnDef(..) |
+        ty::FnPtr(_) |
+        ty::Array(..) |
+        ty::Slice(..) |
+        ty::RawPtr(..) |
+        ty::Ref(..) |
+        ty::Never |
+        ty::Tuple(..) |
         ty::TyParam(..) |
-        ty::TyProjection(..) => {
+        ty::Projection(..) => {
             false
         }
 
-        ty::TyInfer(..) => match in_crate {
+        ty::Infer(..) => match in_crate {
             InCrate::Local => false,
             // The inference variable might be unified with a local
             // type in that remote crate.
             InCrate::Remote => true,
         },
 
-        ty::TyAdt(def, _) => def_id_is_local(def.did, in_crate),
+        ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
         ty::TyForeign(did) => def_id_is_local(did, in_crate),
 
-        ty::TyDynamic(ref tt, ..) => {
+        ty::Dynamic(ref tt, ..) => {
             tt.principal().map_or(false, |p| {
                 def_id_is_local(p.def_id(), in_crate)
             })
         }
 
-        ty::TyError => {
+        ty::Error => {
             true
         }
 
-        ty::TyClosure(..) |
-        ty::TyGenerator(..) |
-        ty::TyGeneratorWitness(..) |
-        ty::TyAnon(..) => {
+        ty::Closure(..) |
+        ty::Generator(..) |
+        ty::GeneratorWitness(..) |
+        ty::Anon(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

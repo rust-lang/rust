@@ -253,26 +253,26 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::TyInt(..) |
                 ty::TyUint(..) |
                 ty::TyFloat(..) |
-                ty::TyError |
+                ty::Error |
                 ty::TyStr |
-                ty::TyGeneratorWitness(..) |
-                ty::TyNever |
+                ty::GeneratorWitness(..) |
+                ty::Never |
                 ty::TyParam(_) |
                 ty::TyForeign(..) => {
                     // WfScalar, WfParameter, etc
                 }
 
-                ty::TySlice(subty) => {
+                ty::Slice(subty) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                 }
 
-                ty::TyArray(subty, len) => {
+                ty::Array(subty, len) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                     assert_eq!(len.ty, self.infcx.tcx.types.usize);
                     self.compute_const(len);
                 }
 
-                ty::TyTuple(ref tys) => {
+                ty::Tuple(ref tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
                             self.require_sized(elem, traits::TupleElem);
@@ -280,22 +280,22 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyRawPtr(_) => {
+                ty::RawPtr(_) => {
                     // simple cases that are WF if their type args are WF
                 }
 
-                ty::TyProjection(data) => {
+                ty::Projection(data) => {
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
                     self.compute_projection(data);
                 }
 
-                ty::TyAdt(def, substs) => {
+                ty::Adt(def, substs) => {
                     // WfNominalType
                     let obligations = self.nominal_obligations(def.did, substs);
                     self.out.extend(obligations);
                 }
 
-                ty::TyRef(r, rty, _) => {
+                ty::Ref(r, rty, _) => {
                     // WfReference
                     if !r.has_escaping_regions() && !rty.has_escaping_regions() {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
@@ -309,7 +309,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyGenerator(..) => {
+                ty::Generator(..) => {
                     // Walk ALL the types in the generator: this will
                     // include the upvar types as well as the yield
                     // type. Note that this is mildly distinct from
@@ -319,7 +319,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // generators don't take arguments.
                 }
 
-                ty::TyClosure(def_id, substs) => {
+                ty::Closure(def_id, substs) => {
                     // Only check the upvar types for WF, not the rest
                     // of the types within. This is needed because we
                     // capture the signature and it may not be WF
@@ -355,12 +355,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                ty::FnDef(..) | ty::FnPtr(_) => {
                     // let the loop iterate into the argument/return
                     // types appearing in the fn signature
                 }
 
-                ty::TyAnon(did, substs) => {
+                ty::Anon(did, substs) => {
                     // all of the requirements on type parameters
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
@@ -372,7 +372,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyDynamic(data, r) => {
+                ty::Dynamic(data, r) => {
                     // WfObject
                     //
                     // Here, we defer WF checking due to higher-ranked
@@ -408,9 +408,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 //    register a pending obligation and keep
                 //    moving. (Goal is that an "inductive hypothesis"
                 //    is satisfied to ensure termination.)
-                ty::TyInfer(_) => {
+                ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::TyInfer(_) = ty.sty { // not yet resolved...
+                    if let ty::Infer(_) = ty.sty { // not yet resolved...
                         if ty == ty0 { // ...this is the type we started from! no progress.
                             return false;
                         }
@@ -423,7 +423,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     } else {
                         // Yes, resolved, proceed with the
                         // result. Should never return false because
-                        // `ty` is not a TyInfer.
+                        // `ty` is not a Infer.
                         assert!(self.compute(ty));
                     }
                 }

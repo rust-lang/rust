@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let expr_ty = return_if_err!(self.mc.expr_ty(expr));
-                if let ty::TyRef(r, _, _) = expr_ty.sty {
+                if let ty::Ref(r, _, _) = expr_ty.sty {
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.borrow_expr(&base, r, bk, AddrOf);
                 }
@@ -551,10 +551,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("walk_callee: callee={:?} callee_ty={:?}",
                callee, callee_ty);
         match callee_ty.sty {
-            ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+            ty::FnDef(..) | ty::FnPtr(_) => {
                 self.consume_expr(callee);
             }
-            ty::TyError => { }
+            ty::Error => { }
             _ => {
                 if let Some(def) = self.mc.tables.type_dependent_defs().get(call.hir_id) {
                     let def_id = def.def_id();
@@ -659,7 +659,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // Select just those fields of the `with`
         // expression that will actually be used
         match with_cmt.ty.sty {
-            ty::TyAdt(adt, substs) if adt.is_struct() => {
+            ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
                     let is_mentioned = fields.iter().any(|f| {
@@ -867,7 +867,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     // It is also a borrow or copy/move of the value being matched.
                     match bm {
                         ty::BindByReference(m) => {
-                            if let ty::TyRef(r, _, _) = pat_ty.sty {
+                            if let ty::Ref(r, _, _) = pat_ty.sty {
                                 let bk = ty::BorrowKind::from_mutbl(m);
                                 delegate.borrow(pat.id, pat.span, &cmt_pat, r, bk, RefBinding);
                             }

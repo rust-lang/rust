@@ -284,7 +284,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprKind::AddrOf(mutbl, ref expr) => {
             let region = match expr_ty.sty {
-                ty::TyRef(r, _, _) => r,
+                ty::Ref(r, _, _) => r,
                 _ => span_bug!(expr.span, "type of & not region"),
             };
             ExprKind::Borrow {
@@ -418,7 +418,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
             match expr_ty.sty {
-                ty::TyAdt(adt, substs) => {
+                ty::Adt(adt, substs) => {
                     match adt.adt_kind() {
                         AdtKind::Struct | AdtKind::Union => {
                             ExprKind::Adt {
@@ -472,8 +472,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.sty {
-                ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
-                ty::TyGenerator(def_id, substs, movability) => {
+                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
+                ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
                 }
                 _ => {
@@ -775,7 +775,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match cx.tables().node_id_to_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
-                ty::TyAdt(adt_def, substs) => {
+                ty::Adt(adt_def, substs) => {
                     ExprKind::Adt {
                         adt_def,
                         variant_index: adt_def.variant_index_with_id(def_id),
@@ -827,7 +827,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::TyClosure(_, closure_substs) = closure_ty.sty {
+            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.sty {
                 match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
@@ -977,7 +977,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
     let (region, mutbl) = match recv_ty.sty {
-        ty::TyRef(region, _, mutbl) => (region, mutbl),
+        ty::Ref(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {

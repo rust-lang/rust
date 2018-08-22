@@ -45,7 +45,7 @@ pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {
-        ty::TyAdt(adt_def, self_to_impl_substs) => {
+        ty::Adt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(tcx,
                                                           drop_impl_did,
                                                           dtor_self_type,

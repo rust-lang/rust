@@ -495,7 +495,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 this.add(Qualif::NOT_CONST);
                             } else {
                                 let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                                if let ty::TyRawPtr(_) = base_ty.sty {
+                                if let ty::RawPtr(_) = base_ty.sty {
                                     if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
                                         emit_feature_err(
                                             &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
@@ -591,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             if let Place::Projection(ref proj) = *place {
                 if let ProjectionElem::Deref = proj.elem {
                     let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                    if let ty::TyRef(..) = base_ty.sty {
+                    if let ty::Ref(..) = base_ty.sty {
                         is_reborrow = true;
                     }
                 }
@@ -638,10 +638,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if self.mode == Mode::StaticMut {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         match ty.sty {
-                            ty::TyArray(..) | ty::TySlice(_) => forbidden_mut = false,
+                            ty::Array(..) | ty::Slice(_) => forbidden_mut = false,
                             _ => {}
                         }
-                    } else if let ty::TyArray(_, len) = ty.sty {
+                    } else if let ty::Array(_, len) = ty.sty {
                         // FIXME(eddyb) the `self.mode == Mode::Fn` condition
                         // seems unnecessary, given that this is merely a ZST.
                         if len.unwrap_usize(self.tcx) == 0 && self.mode == Mode::Fn {
@@ -745,7 +745,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::TyRawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
+                if let ty::RawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -809,7 +809,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             let fn_ty = func.ty(self.mir, self.tcx);
             let mut callee_def_id = None;
             let (mut is_shuffle, mut is_const_fn) = (false, None);
-            if let ty::TyFnDef(def_id, _) = fn_ty.sty {
+            if let ty::FnDef(def_id, _) = fn_ty.sty {
                 callee_def_id = Some(def_id);
                 match self.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |

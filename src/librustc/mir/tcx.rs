@@ -68,12 +68,12 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 let ty = self.to_ty(tcx);
                 PlaceTy::Ty {
                     ty: match ty.sty {
-                        ty::TyArray(inner, size) => {
+                        ty::Array(inner, size) => {
                             let size = size.unwrap_usize(tcx);
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
-                        ty::TySlice(..) => ty,
+                        ty::Slice(..) => ty,
                         _ => {
                             bug!("cannot subslice non-array type: `{:?}`", self)
                         }
@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
             }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
-                    ty::TyAdt(adt_def, substs) => {
+                    ty::Adt(adt_def, substs) => {
                         assert!(adt_def.is_enum());
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
@@ -199,7 +199,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Discriminant(ref place) => {
                 let ty = place.ty(local_decls, tcx).to_ty(tcx);
-                if let ty::TyAdt(adt_def, _) = ty.sty {
+                if let ty::Adt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
                     // This can only be `0`, for now, so `u8` will suffice.

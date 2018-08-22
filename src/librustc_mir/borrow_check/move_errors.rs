@@ -261,10 +261,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             .any(|p| p.is_upvar_field_projection(self.mir, &self.tcx)
                                  .is_some());
                         match ty.sty {
-                            ty::TyArray(..) | ty::TySlice(..) => self
+                            ty::Array(..) | ty::Slice(..) => self
                                 .tcx
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
-                            ty::TyClosure(def_id, closure_substs)
+                            ty::Closure(def_id, closure_substs)
                                 if !self.mir.upvar_decls.is_empty() && is_upvar_field_projection
                             => {
                                 let closure_kind_ty =

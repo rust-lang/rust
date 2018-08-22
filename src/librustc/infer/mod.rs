@@ -546,7 +546,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn type_var_diverges(&'a self, ty: Ty) -> bool {
         match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
+            ty::Infer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
             _ => false
         }
     }
@@ -559,14 +559,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::error::UnconstrainedNumeric::Neither;
         use ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
-            ty::TyInfer(ty::IntVar(vid)) => {
+            ty::Infer(ty::IntVar(vid)) => {
                 if self.int_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedInt
                 }
             },
-            ty::TyInfer(ty::FloatVar(vid)) => {
+            ty::Infer(ty::FloatVar(vid)) => {
                 if self.float_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
@@ -1118,7 +1118,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
-            ty::TyInfer(ty::TyVar(v)) => {
+            ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
                 // it can be resolved to an int/float variable, which
                 // can then be recursively resolved, hence the
@@ -1135,7 +1135,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                    .unwrap_or(typ)
             }
 
-            ty::TyInfer(ty::IntVar(v)) => {
+            ty::Infer(ty::IntVar(v)) => {
                 self.int_unification_table
                     .borrow_mut()
                     .probe_value(v)
@@ -1143,7 +1143,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     .unwrap_or(typ)
             }
 
-            ty::TyInfer(ty::FloatVar(v)) => {
+            ty::Infer(ty::FloatVar(v)) => {
                 self.float_unification_table
                     .borrow_mut()
                     .probe_value(v)
@@ -1210,12 +1210,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // [Note-Type-error-reporting]
-    // An invariant is that anytime the expected or actual type is TyError (the special
+    // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),
     // this is a derived error. The error cascaded from another error (that was already
     // reported), so it's not useful to display it to the user.
     // The following methods implement this logic.
-    // They check if either the actual or expected type is TyError, and don't print the error
+    // They check if either the actual or expected type is Error, and don't print the error
     // in this case. The typechecker should only ever report type errors involving mismatched
     // types using one of these methods, and should not call span_err directly for such
     // errors.
@@ -1230,7 +1230,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
-        // Don't report an error if actual type is TyError.
+        // Don't report an error if actual type is Error.
         if actual_ty.references_error() {
             return self.tcx.sess.diagnostic().struct_dummy();
         }

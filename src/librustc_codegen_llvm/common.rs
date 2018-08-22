@@ -413,10 +413,10 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                            -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
-        ty::TyFnDef(..) |
-        // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(cx.tcx),
-        ty::TyClosure(def_id, substs) => {
+        ty::FnDef(..) |
+        // Shims currently have type FnPtr. Not sure this should remain.
+        ty::FnPtr(_) => ty.fn_sig(cx.tcx),
+        ty::Closure(def_id, substs) => {
             let tcx = cx.tcx;
             let sig = substs.closure_sig(def_id, tcx);
 
@@ -429,7 +429,7 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 sig.abi
             ))
         }
-        ty::TyGenerator(def_id, substs, _) => {
+        ty::Generator(def_id, substs, _) => {
             let tcx = cx.tcx;
             let sig = substs.poly_sig(def_id, cx.tcx);
 

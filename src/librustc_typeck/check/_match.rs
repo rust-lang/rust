@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Lit(ref lt) => {
                 let ty = self.check_expr(lt);
                 match ty.sty {
-                    ty::TyKind::TyRef(..) => false,
+                    ty::TyKind::Ref(..) => false,
                     _ => true,
                 }
             }
@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Peel off as many `&` or `&mut` from the discriminant as possible. For example,
             // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
-            // the `Some(5)` which is not of type TyRef.
+            // the `Some(5)` which is not of type Ref.
             //
             // For each ampersand peeled off, update the binding mode and push the original
             // type into the adjustments vector.
@@ -84,8 +84,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expected = loop {
                 debug!("inspecting {:?} with type {:?}", exp_ty, exp_ty.sty);
                 match exp_ty.sty {
-                    ty::TyKind::TyRef(_, inner_ty, inner_mutability) => {
-                        debug!("current discriminant is TyRef, inserting implicit deref");
+                    ty::TyKind::Ref(_, inner_ty, inner_mutability) => {
+                        debug!("current discriminant is Ref, inserting implicit deref");
                         // Preserve the reference type. We'll need it later during HAIR lowering.
                         pat_adjustments.push(exp_ty);
 
@@ -150,8 +150,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let hir::ExprKind::Lit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
-                        if let ty::TyRef(_, r_ty, _) = expected_ty.sty {
-                            if let ty::TySlice(_) = r_ty.sty {
+                        if let ty::Ref(_, r_ty, _) = expected_ty.sty {
+                            if let ty::Slice(_) = r_ty.sty {
                                 pat_ty = tcx.mk_imm_ref(tcx.types.re_static,
                                                          tcx.mk_slice(tcx.types.u8))
                             }
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut expected_len = elements.len();
                 if ddpos.is_some() {
                     // Require known type only when `..` is present
-                    if let ty::TyTuple(ref tys) =
+                    if let ty::Tuple(ref tys) =
                             self.structurally_resolved_type(pat.span, expected).sty {
                         expected_len = tys.len();
                     }
@@ -297,7 +297,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     //       from all tuple elements isn't trivial.
                     TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
-                let pat_ty = tcx.mk_ty(ty::TyTuple(element_tys));
+                let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
                 self.demand_eqtype(pat.span, expected, pat_ty);
                 for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat_walk(elem, &element_tys[i], def_bm, true);
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // hack detailed in (*) below.
                     debug!("check_pat_walk: expected={:?}", expected);
                     let (rptr_ty, inner_ty) = match expected.sty {
-                        ty::TyRef(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
+                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
                             (expected, r_ty)
                         }
                         _ => {
@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Slice(ref before, ref slice, ref after) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
-                    ty::TyArray(inner_ty, size) => {
+                    ty::Array(inner_ty, size) => {
                         let size = size.unwrap_usize(tcx);
                         let min_len = before.len() as u64 + after.len() as u64;
                         if slice.is_none() {
@@ -400,16 +400,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             (inner_ty, tcx.types.err)
                         }
                     }
-                    ty::TySlice(inner_ty) => (inner_ty, expected_ty),
+                    ty::Slice(inner_ty) => (inner_ty, expected_ty),
                     _ => {
                         if !expected_ty.references_error() {
                             let mut err = struct_span_err!(
                                 tcx.sess, pat.span, E0529,
                                 "expected an array or slice, found `{}`",
                                 expected_ty);
-                            if let ty::TyRef(_, ty, _) = expected_ty.sty {
+                            if let ty::Ref(_, ty, _) = expected_ty.sty {
                                 match ty.sty {
-                                    ty::TyArray(..) | ty::TySlice(..) => {
+                                    ty::Array(..) | ty::Slice(..) => {
                                         err.help("the semantics of slice patterns changed \
                                                   recently; see issue #23121");
                                     }
@@ -493,7 +493,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {
         if let PatKind::Binding(..) = inner.node {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
-                if let ty::TyDynamic(..) = mt.ty.sty {
+                if let ty::Dynamic(..) = mt.ty.sty {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
@@ -818,7 +818,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
             let substs = match pat_ty.sty {
-                ty::TyAdt(_, substs) => substs,
+                ty::Adt(_, substs) => substs,
                 ref ty => bug!("unexpected pattern type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
@@ -854,7 +854,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let tcx = self.tcx;
 
         let (substs, adt) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt),
+            ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(span, "struct pattern is not an ADT")
         };
         let kind_name = adt.variant_descr();

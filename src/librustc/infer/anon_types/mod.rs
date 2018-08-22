@@ -592,7 +592,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
-            ty::TyClosure(def_id, substs) => {
+            ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
                 // we encounter a closure here, it is always a closure
                 // from within the function that we are currently
@@ -655,7 +655,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             tcx,
             reg_op: |reg| reg,
             fldop: |ty| {
-                if let ty::TyAnon(def_id, substs) = ty.sty {
+                if let ty::Anon(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
                     // value we are inferring.  At present, this is
@@ -679,7 +679,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // ```
                     //
                     // Here, the return type of `foo` references a
-                    // `TyAnon` indeed, but not one whose value is
+                    // `Anon` indeed, but not one whose value is
                     // presently being inferred. You can get into a
                     // similar situation with closure return types
                     // today:
@@ -755,11 +755,11 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
 
         debug!(
-            "instantiate_anon_types: TyAnon(def_id={:?}, substs={:?})",
+            "instantiate_anon_types: Anon(def_id={:?}, substs={:?})",
             def_id, substs
         );
 
-        // Use the same type variable if the exact same TyAnon appears more
+        // Use the same type variable if the exact same Anon appears more
         // than once in the return type (e.g. if it's passed to a type alias).
         if let Some(anon_defn) = self.anon_types.get(&def_id) {
             return anon_defn.concrete_ty;
@@ -805,7 +805,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         for predicate in bounds.predicates {
             // Change the predicate to refer to the type variable,
-            // which will be the concrete type, instead of the TyAnon.
+            // which will be the concrete type, instead of the Anon.
             // This also instantiates nested `impl Trait`.
             let predicate = self.instantiate_anon_types_in_map(&predicate);
 

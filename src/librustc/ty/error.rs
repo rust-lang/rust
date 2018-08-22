@@ -176,20 +176,20 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
-            ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
+            ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::Never => self.to_string(),
+            ty::Tuple(ref tys) if tys.is_empty() => self.to_string(),
 
-            ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
+            ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
-            ty::TyArray(_, n) => {
+            ty::Array(_, n) => {
                 match n.assert_usize(tcx) {
                     Some(n) => format!("array of {} elements", n),
                     None => "array".to_string(),
                 }
             }
-            ty::TySlice(_) => "slice".to_string(),
-            ty::TyRawPtr(_) => "*-ptr".to_string(),
-            ty::TyRef(region, ty, mutbl) => {
+            ty::Slice(_) => "slice".to_string(),
+            ty::RawPtr(_) => "*-ptr".to_string(),
+            ty::Ref(region, ty, mutbl) => {
                 let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
                 if tymut_string == "_" ||         //unknown type name,
@@ -204,24 +204,24 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                     format!("&{}", tymut_string)
                 }
             }
-            ty::TyFnDef(..) => "fn item".to_string(),
-            ty::TyFnPtr(_) => "fn pointer".to_string(),
-            ty::TyDynamic(ref inner, ..) => {
+            ty::FnDef(..) => "fn item".to_string(),
+            ty::FnPtr(_) => "fn pointer".to_string(),
+            ty::Dynamic(ref inner, ..) => {
                 inner.principal().map_or_else(|| "trait".to_string(),
                     |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }
-            ty::TyClosure(..) => "closure".to_string(),
-            ty::TyGenerator(..) => "generator".to_string(),
-            ty::TyGeneratorWitness(..) => "generator witness".to_string(),
-            ty::TyTuple(..) => "tuple".to_string(),
-            ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
-            ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),
-            ty::TyInfer(ty::FloatVar(_)) => "floating-point variable".to_string(),
-            ty::TyInfer(ty::CanonicalTy(_)) |
-            ty::TyInfer(ty::FreshTy(_)) => "skolemized type".to_string(),
-            ty::TyInfer(ty::FreshIntTy(_)) => "skolemized integral type".to_string(),
-            ty::TyInfer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
-            ty::TyProjection(_) => "associated type".to_string(),
+            ty::Closure(..) => "closure".to_string(),
+            ty::Generator(..) => "generator".to_string(),
+            ty::GeneratorWitness(..) => "generator witness".to_string(),
+            ty::Tuple(..) => "tuple".to_string(),
+            ty::Infer(ty::TyVar(_)) => "inferred type".to_string(),
+            ty::Infer(ty::IntVar(_)) => "integral variable".to_string(),
+            ty::Infer(ty::FloatVar(_)) => "floating-point variable".to_string(),
+            ty::Infer(ty::CanonicalTy(_)) |
+            ty::Infer(ty::FreshTy(_)) => "skolemized type".to_string(),
+            ty::Infer(ty::FreshIntTy(_)) => "skolemized integral type".to_string(),
+            ty::Infer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
+            ty::Projection(_) => "associated type".to_string(),
             ty::TyParam(ref p) => {
                 if p.is_self() {
                     "Self".to_string()
@@ -229,8 +229,8 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                     "type parameter".to_string()
                 }
             }
-            ty::TyAnon(..) => "anonymized type".to_string(),
-            ty::TyError => "type error".to_string(),
+            ty::Anon(..) => "anonymized type".to_string(),
+            ty::Error => "type error".to_string(),
         }
     }
 }
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
                 match (&values.found.sty, &values.expected.sty) { // Issue #53280
-                    (ty::TyInfer(ty::IntVar(_)), ty::TyFloat(_)) => {
+                    (ty::Infer(ty::IntVar(_)), ty::TyFloat(_)) => {
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
                             if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                                 db.span_suggestion_with_applicability(

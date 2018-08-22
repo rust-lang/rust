@@ -260,7 +260,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyBool              => output.push_str("bool"),
             ty::TyChar              => output.push_str("char"),
             ty::TyStr               => output.push_str("str"),
-            ty::TyNever             => output.push_str("!"),
+            ty::Never             => output.push_str("!"),
             ty::TyInt(ast::IntTy::Isize)    => output.push_str("isize"),
             ty::TyInt(ast::IntTy::I8)    => output.push_str("i8"),
             ty::TyInt(ast::IntTy::I16)   => output.push_str("i16"),
@@ -275,11 +275,11 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyUint(ast::UintTy::U128)  => output.push_str("u128"),
             ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
             ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
-            ty::TyAdt(adt_def, substs) => {
+            ty::Adt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);
             },
-            ty::TyTuple(component_types) => {
+            ty::Tuple(component_types) => {
                 output.push('(');
                 for &component_type in component_types {
                     self.push_type_name(component_type, output);
@@ -291,7 +291,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 }
                 output.push(')');
             },
-            ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
+            ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 output.push('*');
                 match mutbl {
                     hir::MutImmutable => output.push_str("const "),
@@ -300,7 +300,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 self.push_type_name(inner_type, output);
             },
-            ty::TyRef(_, inner_type, mutbl) => {
+            ty::Ref(_, inner_type, mutbl) => {
                 output.push('&');
                 if mutbl == hir::MutMutable {
                     output.push_str("mut ");
@@ -308,18 +308,18 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 self.push_type_name(inner_type, output);
             },
-            ty::TyArray(inner_type, len) => {
+            ty::Array(inner_type, len) => {
                 output.push('[');
                 self.push_type_name(inner_type, output);
                 write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
                 output.push(']');
             },
-            ty::TySlice(inner_type) => {
+            ty::Slice(inner_type) => {
                 output.push('[');
                 self.push_type_name(inner_type, output);
                 output.push(']');
             },
-            ty::TyDynamic(ref trait_data, ..) => {
+            ty::Dynamic(ref trait_data, ..) => {
                 if let Some(principal) = trait_data.principal() {
                     self.push_def_path(principal.def_id(), output);
                     self.push_type_params(principal.skip_binder().substs,
@@ -328,8 +328,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 }
             },
             ty::TyForeign(did) => self.push_def_path(did, output),
-            ty::TyFnDef(..) |
-            ty::TyFnPtr(_) => {
+            ty::FnDef(..) |
+            ty::FnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);
                 if sig.unsafety() == hir::Unsafety::Unsafe {
                     output.push_str("unsafe ");
@@ -373,19 +373,19 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     self.push_type_name(sig.output(), output);
                 }
             },
-            ty::TyGenerator(def_id, GeneratorSubsts { ref substs }, _) |
-            ty::TyClosure(def_id, ClosureSubsts { ref substs }) => {
+            ty::Generator(def_id, GeneratorSubsts { ref substs }, _) |
+            ty::Closure(def_id, ClosureSubsts { ref substs }) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }
-            ty::TyError |
-            ty::TyInfer(_) |
-            ty::TyProjection(..) |
+            ty::Error |
+            ty::Infer(_) |
+            ty::Projection(..) |
             ty::TyParam(_) |
-            ty::TyGeneratorWitness(_) |
-            ty::TyAnon(..) => {
+            ty::GeneratorWitness(_) |
+            ty::Anon(..) => {
                 bug!("DefPathBasedNames: Trying to create type name for \
                                          unexpected type: {:?}", t);
             }

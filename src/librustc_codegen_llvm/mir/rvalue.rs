@@ -214,7 +214,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.layout.ty.sty {
-                            ty::TyFnDef(def_id, substs) => {
+                            ty::FnDef(def_id, substs) => {
                                 if bx.cx.tcx.has_attr(def_id, "rustc_args_required_const") {
                                     bug!("reifying a fn ptr that requires \
                                           const arguments");
@@ -229,7 +229,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                     mir::CastKind::ClosureFnPointer => {
                         match operand.layout.ty.sty {
-                            ty::TyClosure(def_id, substs) => {
+                            ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
                                     bx.cx.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(callee::get_fn(bx.cx, instance))
@@ -545,7 +545,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         // because codegen_place() panics if Local is operand.
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
-                if let ty::TyArray(_, n) = op.layout.ty.sty {
+                if let ty::Array(_, n) = op.layout.ty.sty {
                     let n = n.unwrap_usize(bx.cx.tcx);
                     return common::C_usize(bx.cx, n);
                 }

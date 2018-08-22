@@ -35,12 +35,12 @@ pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Opt
         return (size, align);
     }
     match t.sty {
-        ty::TyDynamic(..) => {
+        ty::Dynamic(..) => {
             // load size/align from vtable
             let vtable = info.unwrap();
             (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
         }
-        ty::TySlice(_) | ty::TyStr => {
+        ty::Slice(_) | ty::TyStr => {
             let unit = t.sequence_element_type(bx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
@@ -81,7 +81,7 @@ pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Opt
             let size = bx.add(sized_size, unsized_size);
 
             // Packed types ignore the alignment of their fields.
-            if let ty::TyAdt(def, _) = t.sty {
+            if let ty::Adt(def, _) = t.sty {
                 if def.repr.packed() {
                     unsized_align = sized_align;
                 }

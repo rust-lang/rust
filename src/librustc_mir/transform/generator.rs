@@ -493,7 +493,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // MIR types
     let allowed_upvars = tcx.erase_regions(&upvars);
     let allowed = match interior.sty {
-        ty::TyGeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
     };
 
@@ -863,7 +863,7 @@ impl MirPass for StateTransform {
 
         // Get the interior types and substs which typeck computed
         let (upvars, interior, movable) = match gen_ty.sty {
-            ty::TyGenerator(_, substs, movability) => {
+            ty::Generator(_, substs, movability) => {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
                  movability == hir::GeneratorMovability::Movable)

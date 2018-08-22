@@ -540,7 +540,7 @@ fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 't
      .map(|t| selcx.infcx().resolve_type_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
-     .filter(|t| match t.sty { ty::TyInfer(_) => true, _ => false })
+     .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })
      .collect()
 }
 

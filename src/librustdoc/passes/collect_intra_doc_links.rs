@@ -149,7 +149,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
                         Ok((ty.def, Some(format!("{}.{}", out, item_name))))
                     } else {
                         match cx.tcx.type_of(did).sty {
-                            ty::TyAdt(def, _) => {
+                            ty::Adt(def, _) => {
                                 if let Some(item) = if def.is_enum() {
                                     def.all_fields().find(|item| item.ident.name == item_name)
                                 } else {

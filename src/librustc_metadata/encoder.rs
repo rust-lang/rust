@@ -1342,7 +1342,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         let kind = match tables.node_id_to_type(hir_id).sty {
-            ty::TyGenerator(def_id, ..) => {
+            ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
                 let data = GeneratorData {
                     layout: layout.clone(),
@@ -1350,7 +1350,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 EntryKind::Generator(self.lazy(&data))
             }
 
-            ty::TyClosure(def_id, substs) => {
+            ty::Closure(def_id, substs) => {
                 let sig = substs.closure_sig(def_id, self.tcx);
                 let data = ClosureData { sig: self.lazy(&sig) };
                 EntryKind::Closure(self.lazy(&data))
@@ -1865,7 +1865,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
-        ty::TyAdt(ref def, _) => return def.repr,
+        ty::Adt(ref def, _) => return def.repr,
         _ => bug!("{} is not an ADT", ty),
     }
 }

@@ -72,12 +72,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 let func = self.eval_operand(func, None)?;
                 let (fn_def, sig) = match func.layout.ty.sty {
-                    ty::TyFnPtr(sig) => {
+                    ty::FnPtr(sig) => {
                         let fn_ptr = self.read_scalar(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
-                            ty::TyFnDef(..) => {
+                            ty::FnDef(..) => {
                                 let real_sig = instance_ty.fn_sig(*self.tcx);
                                 let sig = self.tcx.normalize_erasing_late_bound_regions(
                                     ty::ParamEnv::reveal_all(),
@@ -95,7 +95,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         }
                         (instance, sig)
                     }
-                    ty::TyFnDef(def_id, substs) => (
+                    ty::FnDef(def_id, substs) => (
                         self.resolve(def_id, substs)?,
                         func.layout.ty.fn_sig(*self.tcx),
                     ),
@@ -198,8 +198,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // Permit changing the pointer type of raw pointers and references as well as
                 // mutability of raw pointers.
                 // TODO: Should not be allowed when fat pointers are involved.
-                (&ty::TyRawPtr(_), &ty::TyRawPtr(_)) => true,
-                (&ty::TyRef(_, _, _), &ty::TyRef(_, _, _)) => {
+                (&ty::RawPtr(_), &ty::RawPtr(_)) => true,
+                (&ty::Ref(_, _, _), &ty::Ref(_, _, _)) => {
                     ty.is_mutable_pointer() == real_ty.is_mutable_pointer()
                 }
                 // rule out everything else
@@ -233,7 +233,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
-                        ty::TyTuple(tys) if sig.inputs().len() == tys.len() =>
+                        ty::Tuple(tys) if sig.inputs().len() == tys.len() =>
                             if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
                                 return Ok(true)
                             },
@@ -339,7 +339,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                         // unpack and write all other args
                         let layout = args[1].layout;
-                        if let ty::TyTuple(_) = layout.ty.sty {
+                        if let ty::Tuple(_) = layout.ty.sty {
                             if layout.is_zst() {
                                 // Nothing to do, no need to unpack zsts
                                 return Ok(());

@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let layout = mplace.layout;
             assert!(layout.is_unsized());
             match layout.ty.sty {
-                ty::TyAdt(..) | ty::TyTuple(..) => {
+                ty::Adt(..) | ty::Tuple(..) => {
                     // First get the size of all statically known fields.
                     // Don't use type_of::sizing_type_of because that expects t to be sized,
                     // and it also rounds up to alignment, which we want to avoid,
@@ -506,7 +506,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                     Ok((size.abi_align(align), align))
                 }
-                ty::TyDynamic(..) => {
+                ty::Dynamic(..) => {
                     let vtable = match mplace.extra {
                         PlaceExtra::Vtable(vtable) => vtable,
                         _ => bug!("Expected vtable"),
@@ -515,7 +515,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     self.read_size_and_align_from_vtable(vtable)
                 }
 
-                ty::TySlice(_) | ty::TyStr => {
+                ty::Slice(_) | ty::Str => {
                     let len = match mplace.extra {
                         PlaceExtra::Length(len) => len,
                         _ => bug!("Expected length"),
