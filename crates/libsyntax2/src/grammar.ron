@@ -222,15 +222,27 @@ Grammar(
                 ["modules", "Module"],
             ]
         ),
-        "FnDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "FnDef": ( traits: [
+            "NameOwner",
+            "TypeParamsOwner",
+            "AttrsOwner",
+        ] ),
         "StructDef": (
-            traits: ["NameOwner", "AttrsOwner"],
+            traits: [
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+            ],
             collections: [
                 ["fields", "NamedField"]
             ]
         ),
         "NamedField": ( traits: ["NameOwner", "AttrsOwner"] ),
-        "EnumDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "EnumDef": ( traits: [
+            "NameOwner",
+            "TypeParamsOwner",
+            "AttrsOwner",
+        ] ),
         "TraitDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "Module": (
             traits: ["NameOwner", "AttrsOwner"],
@@ -238,15 +250,22 @@ Grammar(
                 ["modules", "Module"]
             ]
         ),
-        "ConstDef": ( traits: ["NameOwner", "AttrsOwner"] ),
-        "StaticDef": ( traits: ["NameOwner", "AttrsOwner"] ),
-        "TypeDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "ConstDef": ( traits: [
+            "NameOwner",
+            "TypeParamsOwner",
+            "AttrsOwner",
+        ] ),
+        "StaticDef": ( traits: [
+            "NameOwner",
+            "TypeParamsOwner",
+            "AttrsOwner",
+        ] ),
+        "TypeDef": ( traits: [
+            "NameOwner",
+            "TypeParamsOwner",
+            "AttrsOwner",
+        ] ),
         "ImplItem": (),
-
-        "Name": (),
-        "NameRef": (),
-        "Attr": ( options: [ ["value", "TokenTree"] ] ),
-        "TokenTree": (),
 
         "ParenType": (),
         "TupleType": (),
@@ -280,7 +299,14 @@ Grammar(
 
         "NominalDef": (
             enum: ["StructDef", "EnumDef"],
-            traits: [ "AttrsOwner" ],
+            traits: [ "AttrsOwner", "TypeParamsOwner" ],
         ),
+
+        "Name": (),
+        "NameRef": (),
+        "Attr": ( options: [ ["value", "TokenTree"] ] ),
+        "TokenTree": (),
+        "TypeParamList": (),
+        "WhereClause": (),
     },
 )

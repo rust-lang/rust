@@ -64,6 +64,7 @@ impl<'a> AstNode<'a> for ConstDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
 impl<'a> ConstDef<'a> {}
 
@@ -102,6 +103,7 @@ impl<'a> AstNode<'a> for EnumDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
@@ -152,6 +154,7 @@ impl<'a> AstNode<'a> for FnDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
 impl<'a> FnDef<'a> {}
 
@@ -351,6 +354,7 @@ impl<'a> AstNode<'a> for NominalDef<'a> {
 }
 
 impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
 // ParenType
@@ -478,6 +482,7 @@ impl<'a> AstNode<'a> for StaticDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
 impl<'a> StaticDef<'a> {}
 
@@ -498,6 +503,7 @@ impl<'a> AstNode<'a> for StructDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
 impl<'a> StructDef<'a> {
     pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
@@ -580,8 +586,27 @@ impl<'a> AstNode<'a> for TypeDef<'a> {
 }
 
 impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
+impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
 impl<'a> TypeDef<'a> {}
+
+// TypeParamList
+#[derive(Debug, Clone, Copy)]
+pub struct TypeParamList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TypeParamList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TYPE_PARAM_LIST => Some(TypeParamList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> TypeParamList<'a> {}
 
 // TypeRef
 #[derive(Debug, Clone, Copy)]
@@ -641,21 +666,21 @@ impl<'a> AstNode<'a> for TypeRef<'a> {
 
 impl<'a> TypeRef<'a> {}
 
-// Whitespace
+// WhereClause
 #[derive(Debug, Clone, Copy)]
-pub struct Whitespace<'a> {
+pub struct WhereClause<'a> {
     syntax: SyntaxNodeRef<'a>,
 }
 
-impl<'a> AstNode<'a> for Whitespace<'a> {
+impl<'a> AstNode<'a> for WhereClause<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
-            WHITESPACE => Some(Whitespace { syntax }),
+            WHERE_CLAUSE => Some(WhereClause { syntax }),
             _ => None,
         }
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Whitespace<'a> {}
+impl<'a> WhereClause<'a> {}
 

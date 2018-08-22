@@ -1,3 +1,3 @@
-struct S {
-
+struct S<T: Copy> {
+    f: T,
 }

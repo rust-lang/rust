@@ -24,6 +24,22 @@ pub trait NameOwner<'a>: AstNode<'a> {
     }
 }
 
+pub trait TypeParamsOwner<'a>: AstNode<'a> {
+    fn type_param_list(self) -> Option<TypeParamList<'a>> {
+        self.syntax()
+            .children()
+            .filter_map(TypeParamList::cast)
+            .next()
+    }
+
+    fn where_clause(self) -> Option<WhereClause<'a>> {
+        self.syntax()
+            .children()
+            .filter_map(WhereClause::cast)
+            .next()
+    }
+}
+
 pub trait AttrsOwner<'a>: AstNode<'a> {
     fn attrs(&self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
         let it = self.syntax().children()
