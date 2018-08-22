@@ -1,4 +1,8 @@
 STRING 7 "\"hello\""
 WHITESPACE 1 " "
 RAW_STRING 8 "r\"world\""
+WHITESPACE 1 " "
+STRING 17 "\"\\n\\\"\\\\no escape\""
+WHITESPACE 1 " "
+STRING 12 "\"multi\nline\""
 WHITESPACE 1 "\n"

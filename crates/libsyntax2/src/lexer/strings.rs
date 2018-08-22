@@ -15,22 +15,23 @@ pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char
 }
 
 pub(crate) fn scan_char(ptr: &mut Ptr) {
-    loop {
-        if ptr.next_is('\\') {
-            ptr.bump();
-            if ptr.next_is('\\') || ptr.next_is('\'') {
+    while let Some(c) = ptr.next() {
+        match c {
+            '\\' => {
+                ptr.bump();
+                if ptr.next_is('\\') || ptr.next_is('\'') {
+                    ptr.bump();
+                }
+            }
+            '\'' => {
+                ptr.bump();
+                return;
+            }
+            '\n' => return,
+            _ => {
                 ptr.bump();
             }
-            continue;
         }
-        if ptr.next_is('\'') {
-            ptr.bump();
-            return;
-        }
-        if ptr.next_is('\n') {
-            break;
-        }
-        ptr.bump();
     }
 }
 
@@ -56,9 +57,21 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
 }
 
 pub(crate) fn scan_string(ptr: &mut Ptr) {
-    while let Some(c) = ptr.bump() {
-        if c == '"' {
-            return;
+    while let Some(c) = ptr.next() {
+        match c {
+            '\\' => {
+                ptr.bump();
+                if ptr.next_is('\\') || ptr.next_is('"') {
+                    ptr.bump();
+                }
+            }
+            '"' => {
+                ptr.bump();
+                return;
+            }
+            _ => {
+                ptr.bump();
+            },
         }
     }
 }
