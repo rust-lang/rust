@@ -752,7 +752,7 @@ impl String {
         self.vec
     }
 
-    /// Extracts a string slice containing the entire string.
+    /// Extracts a string slice containing the entire `String`.
     ///
     /// # Examples
     ///
@@ -1454,8 +1454,8 @@ impl String {
         self.vec.clear()
     }
 
-    /// Creates a draining iterator that removes the specified range in the string
-    /// and yields the removed chars.
+    /// Creates a draining iterator that removes the specified range in the `String`
+    /// and yields the removed `chars`.
     ///
     /// Note: The element range is removed even if the iterator is not
     /// consumed until the end.
