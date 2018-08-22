@@ -2379,8 +2379,8 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(e, parser::PREC_POSTFIX)?;
                 self.s.word("?")?
             }
-            ast::ExprKind::Catch(ref blk) => {
-                self.head("do catch")?;
+            ast::ExprKind::TryBlock(ref blk) => {
+                self.head("try")?;
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?
             }

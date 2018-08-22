@@ -12,15 +12,16 @@
 
 #![feature(try_blocks)]
 
-fn main() {
-    let mut a = 0;
-    let () = {
-        let _: Result<(), ()> = try {
-            let _ = Err(())?;
-            return
-        };
-        a += 1;
+fn use_val<T: Sized>(_x: T) {}
+
+pub fn main() {
+    let cfg_res;
+    let _: Result<(), ()> = try {
+        Err(())?;
+        cfg_res = 5;
+        Ok::<(), ()>(())?;
+        use_val(cfg_res);
     };
-    a += 2;
-    assert_eq!(a, 3);
+    assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly uninitialized variable: `cfg_res`
 }
+

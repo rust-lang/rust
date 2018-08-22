@@ -8,19 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_expr)]
-
-fn foo() -> Option<()> { Some(()) }
+// compile-flags: -Z parse-only
 
 fn main() {
-    let _: Option<f32> = do catch {
-        foo()?;
-        42
-        //~^ ERROR type mismatch
-    };
-
-    let _: Option<i32> = do catch {
-        foo()?;
-    };
-    //~^ ERROR type mismatch
+    let _: Option<()> = do catch {};
+    //~^ ERROR found removed `do catch` syntax
+    //~^^ HELP Following RFC #2388, the new non-placeholder syntax is `try`
 }
