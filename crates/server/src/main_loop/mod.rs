@@ -26,6 +26,7 @@ use {
         handle_workspace_symbol,
         handle_goto_definition,
         handle_find_matching_brace,
+        handle_parent_module,
     },
 };
 
@@ -140,6 +141,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::GotoDefinition>(
         &mut req, pool, world, sender, handle_goto_definition,
+    )?;
+    handle_request_on_threadpool::<req::ParentModule>(
+        &mut req, pool, world, sender, handle_parent_module,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));

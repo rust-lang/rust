@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
-    SymbolInformation, Position,
+    SymbolInformation, Position, Location,
 };
 use libanalysis::{Query};
 use libeditor::{self, CursorPosition};
@@ -182,6 +182,23 @@ pub fn handle_goto_definition(
         res.push(location)
     }
     Ok(Some(req::GotoDefinitionResponse::Array(res)))
+}
+
+pub fn handle_parent_module(
+    world: ServerWorld,
+    params: TextDocumentIdentifier,
+) -> Result<Vec<Location>> {
+    let file_id = params.try_conv_with(&world)?;
+    let mut res = Vec::new();
+    for (file_id, symbol) in world.analysis().parent_module(file_id) {
+        let line_index = world.analysis().file_line_index(file_id)?;
+        let location = to_location(
+            file_id, symbol.node_range,
+            &world, &line_index
+        )?;
+        res.push(location);
+    }
+    Ok(res)
 }
 
 pub fn handle_execute_command(

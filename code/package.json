@@ -41,6 +41,11 @@
         "command": "libsyntax-rust.matchingBrace",
         "key": "ctrl+shift+m",
         "title": "Rust Matching Brace"
+      },
+      {
+        "command": "libsyntax-rust.parentModule",
+        "key": "ctrl+u",
+        "title": "Rust Parent Module"
       }
     ],
     "keybindings": [

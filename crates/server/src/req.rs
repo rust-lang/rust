@@ -1,5 +1,5 @@
 use serde::{ser::Serialize, de::DeserializeOwned};
-use languageserver_types::{TextDocumentIdentifier, Range, Url, Position};
+use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
 
 pub use languageserver_types::{
@@ -108,4 +108,12 @@ impl Request for MoveCursor {
     type Params = Position;
     type Result = ();
     const METHOD: &'static str = "m/moveCursor";
+}
+
+pub enum ParentModule {}
+
+impl Request for ParentModule {
+    type Params = TextDocumentIdentifier;
+    type Result = Vec<Location>;
+    const METHOD: &'static str = "m/parentModule";
 }

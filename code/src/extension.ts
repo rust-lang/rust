@@ -51,6 +51,22 @@ export function activate(context: vscode.ExtensionContext) {
             return new vscode.Selection(anchor, active)
         })
     })
+    registerCommand('libsyntax-rust.parentModule', async () => {
+        let editor = vscode.window.activeTextEditor
+        if (editor == null || editor.document.languageId != "rust") return
+        let request: lc.TextDocumentIdentifier = {
+            uri: editor.document.uri.toString()
+        }
+        let response = await client.sendRequest<lc.TextDocumentIdentifier>("m/parentModule", request)
+        let loc: lc.Location = response[0]
+        if (loc == null) return
+        let uri = client.protocol2CodeConverter.asUri(loc.uri)
+        let range = client.protocol2CodeConverter.asRange(loc.range)
+
+        let doc = await vscode.workspace.openTextDocument(uri)
+        let e = await vscode.window.showTextDocument(doc)
+        e.revealRange(range, vscode.TextEditorRevealType.InCenter)
+    })
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(
         'libsyntax-rust',
