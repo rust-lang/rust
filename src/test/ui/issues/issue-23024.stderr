@@ -6,7 +6,7 @@ LL |     println!("{:?}",(vfnfer[0] as Fn)(3));
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0243]: wrong number of type arguments: expected 1, found 0
+error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/issue-23024.rs:19:35
    |
 LL |     println!("{:?}",(vfnfer[0] as Fn)(3));
@@ -20,5 +20,5 @@ LL |     println!("{:?}",(vfnfer[0] as Fn)(3));
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0191, E0243, E0658.
-For more information about an error, try `rustc --explain E0191`.
+Some errors occurred: E0107, E0191, E0658.
+For more information about an error, try `rustc --explain E0107`.

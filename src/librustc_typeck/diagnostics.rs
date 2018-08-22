@@ -1042,9 +1042,10 @@ enum NightsWatch {}
 
 E0087: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 Too many type arguments were supplied for a function. For example:
 
-```compile_fail,E0087
+```compile_fail,E0107
 fn foo<T>() {}
 
 fn main() {
@@ -1059,9 +1060,10 @@ parameters.
 
 E0088: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 You gave too many lifetime arguments. Erroneous code example:
 
-```compile_fail,E0088
+```compile_fail,E0107
 fn f() {}
 
 fn main() {
@@ -1106,9 +1108,10 @@ fn main() {
 
 E0089: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 Too few type arguments were supplied for a function. For example:
 
-```compile_fail,E0089
+```compile_fail,E0107
 fn foo<T, U>() {}
 
 fn main() {
@@ -1119,7 +1122,7 @@ fn main() {
 Note that if a function takes multiple type arguments but you want the compiler
 to infer some of them, you can use type placeholders:
 
-```compile_fail,E0089
+```compile_fail,E0107
 fn foo<T, U>(x: T) {}
 
 fn main() {
@@ -1133,9 +1136,10 @@ fn main() {
 
 E0090: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 You gave too few lifetime arguments. Example:
 
-```compile_fail,E0090
+```compile_fail,E0107
 fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
@@ -2418,13 +2422,14 @@ fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 
 E0243: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that not enough type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below is defined to be generic in `T`, but the
 type parameter is missing in the definition of `Bar`:
 
-```compile_fail,E0243
+```compile_fail,E0107
 struct Foo<T> { x: T }
 
 struct Bar { x: Foo }
@@ -2433,13 +2438,14 @@ struct Bar { x: Foo }
 
 E0244: r##"
 #### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that too many type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below has no type parameters, but is supplied
 with two in the definition of `Bar`:
 
-```compile_fail,E0244
+```compile_fail,E0107
 struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }

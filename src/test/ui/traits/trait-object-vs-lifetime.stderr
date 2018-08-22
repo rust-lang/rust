@@ -16,7 +16,7 @@ error[E0107]: wrong number of lifetime arguments: expected 1, found 2
 LL |     let _: S<'static, 'static>;
    |                       ^^^^^^^ unexpected lifetime argument
 
-error[E0243]: wrong number of type arguments: expected 1, found 0
+error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/trait-object-vs-lifetime.rs:23:12
    |
 LL |     let _: S<'static, 'static>;
@@ -30,5 +30,5 @@ LL |     let _: S<'static +, 'static>;
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0107, E0224, E0243.
+Some errors occurred: E0107, E0224.
 For more information about an error, try `rustc --explain E0107`.

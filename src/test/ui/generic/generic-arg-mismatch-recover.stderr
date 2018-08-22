@@ -1,4 +1,4 @@
-error[E0088]: wrong number of lifetime arguments: expected 1, found 2
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
   --> $DIR/generic-arg-mismatch-recover.rs:16:20
    |
 LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arguments
@@ -13,13 +13,13 @@ LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arg
    = note: expected type `&'static ()`
               found type `&{integer}`
 
-error[E0088]: wrong number of lifetime arguments: expected 1, found 2
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
   --> $DIR/generic-arg-mismatch-recover.rs:19:20
    |
 LL |     Bar::<'static, 'static, ()>(&()); //~ ERROR wrong number of lifetime arguments
    |                    ^^^^^^^ unexpected lifetime argument
 
-error[E0087]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/generic-arg-mismatch-recover.rs:19:29
    |
 LL |     Bar::<'static, 'static, ()>(&()); //~ ERROR wrong number of lifetime arguments
@@ -27,5 +27,5 @@ LL |     Bar::<'static, 'static, ()>(&()); //~ ERROR wrong number of lifetime ar
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0087, E0088, E0308.
-For more information about an error, try `rustc --explain E0087`.
+Some errors occurred: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.

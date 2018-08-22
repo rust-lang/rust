@@ -9,7 +9,7 @@ LL |     struct foo {
 LL |         x: T, //~ ERROR can't use type parameters from outer function
    |            ^ use of type variable from outer function
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/issue-3214.rs:16:26
    |
 LL |     impl<T> Drop for foo<T> {
@@ -17,5 +17,5 @@ LL |     impl<T> Drop for foo<T> {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0244, E0401.
-For more information about an error, try `rustc --explain E0244`.
+Some errors occurred: E0107, E0401.
+For more information about an error, try `rustc --explain E0107`.

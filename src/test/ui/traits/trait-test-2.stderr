@@ -1,10 +1,10 @@
-error[E0087]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/trait-test-2.rs:18:14
    |
 LL |     10.dup::<i32>(); //~ ERROR wrong number of type arguments: expected 0, found 1
    |              ^^^ unexpected type argument
 
-error[E0087]: wrong number of type arguments: expected 1, found 2
+error[E0107]: wrong number of type arguments: expected 1, found 2
   --> $DIR/trait-test-2.rs:19:20
    |
 LL |     10.blah::<i32, i32>(); //~ ERROR wrong number of type arguments: expected 1, found 2
@@ -37,5 +37,5 @@ LL |     (box 10 as Box<bar>).dup();
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0038, E0087, E0277.
+Some errors occurred: E0038, E0107, E0277.
 For more information about an error, try `rustc --explain E0038`.

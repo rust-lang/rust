@@ -70,7 +70,7 @@ LL |         x: 7,
    = note: expected type `f32`
               found type `{integer}`
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/structure-constructor-type-mismatch.rs:58:24
    |
 LL |     let pt3 = PointF::<i32> { //~ ERROR wrong number of type arguments
@@ -100,7 +100,7 @@ LL |         y: 10, //~ ERROR mismatched types
    = note: expected type `f32`
               found type `{integer}`
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/structure-constructor-type-mismatch.rs:64:18
    |
 LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
@@ -135,5 +135,5 @@ LL |         PairF::<u32> { .. } => {} //~ ERROR mismatched types
 
 error: aborting due to 13 previous errors
 
-Some errors occurred: E0244, E0308.
-For more information about an error, try `rustc --explain E0244`.
+Some errors occurred: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.
