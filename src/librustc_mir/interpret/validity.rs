@@ -5,7 +5,7 @@ use rustc::ty::layout::{self, Size, Primitive};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, ScalarMaybeUndef,
+    Scalar, AllocType, EvalResult, ScalarMaybeUndef, EvalErrorKind
 };
 
 use super::{
@@ -285,15 +285,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // This is a fat pointer.
                     let ptr = match self.ref_to_mplace(self.read_value(dest.into())?) {
                         Ok(ptr) => ptr,
-                        Err(ReadPointerAsBytes) =>
-                            return validation_failure!("fat pointer length is not a valid integer", path),
-                        Err(ReadBytesAsPointer) =>
-                            return validation_failure!("fat pointer vtable is not a valid pointer", path),
-                        Err(err) => return Err(err),
+                        Err(err) => match err.kind {
+                            EvalErrorKind::ReadPointerAsBytes =>
+                                return validation_failure!(
+                                    "fat pointer length is not a valid integer", path
+                                ),
+                            EvalErrorKind::ReadBytesAsPointer =>
+                                return validation_failure!(
+                                    "fat pointer vtable is not a valid pointer", path
+                                ),
+                            _ => return Err(err),
+                        }
                     };
                     let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
                     // for safe ptrs, recursively check it
                     if !dest.layout.ty.is_unsafe_ptr() {
+                        trace!("Recursing below fat ptr {:?} (unpacked: {:?})", ptr, unpacked_ptr);
                         if seen.insert(unpacked_ptr) {
                             todo.push((unpacked_ptr, path_clone_and_deref(path)));
                         }
