@@ -6,15 +6,12 @@ environment:
         #- TARGET: i686-pc-windows-msvc
         #- TARGET: x86_64-pc-windows-gnu
         - TARGET: x86_64-pc-windows-msvc
-          MSYS2_BITS: 64
 
 install:
-    - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
     - del rust-toolchain
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
     - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\Users\appveyor\.rustup\toolchains\nightly-%TARGET%\bin
-    - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
     - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
     - rustup-toolchain-install-master -f -n master
     - rustup default master
