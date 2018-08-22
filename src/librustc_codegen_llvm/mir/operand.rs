@@ -23,7 +23,6 @@ use type_::Type;
 use glue;
 
 use traits::BuilderMethods;
-use llvm::BasicBlock;
 
 use std::fmt;
 
@@ -280,9 +279,7 @@ impl OperandValue<&'ll Value> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> where
-    Builder<'a, 'll, 'tcx, &'ll Value>: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>
-{
+impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
     pub fn nontemporal_store(
         self,
         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
@@ -291,9 +288,9 @@ impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> where
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags<Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
+    fn store_with_flags(
         self,
-        bx: &Builder,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         dest: PlaceRef<'tcx, &'ll Value>,
         flags: MemFlags,
     ) {

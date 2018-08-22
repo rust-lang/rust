@@ -76,7 +76,6 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
 use traits::{IntPredicate, RealPredicate, BuilderMethods};
-use llvm::BasicBlock;
 
 use std::any::Any;
 use std::ffi::CString;
@@ -391,9 +390,8 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     val: &'ll Value
 ) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx()) {
@@ -425,9 +423,8 @@ pub fn to_immediate_scalar(
     val
 }
 
-pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     dst: &'ll Value,
     src: &'ll Value,
     n_bytes: &'ll Value,
@@ -453,9 +450,8 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll,
-    Builder: BuilderMethods<'a, 'll, 'tcx, Value, BasicBlock>>(
-    bx: &Builder,
+pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
+    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     dst: &'ll Value,
     src: &'ll Value,
     layout: TyLayout<'tcx>,
