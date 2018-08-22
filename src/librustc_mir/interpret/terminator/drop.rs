@@ -24,9 +24,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         target: BasicBlock,
     ) -> EvalResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
-        // We take the address of the object.  This may well be unaligned, which is fine for us here.
-        // However, unaligned accesses will probably make the actual drop implementation fail -- a problem shared
-        // by rustc.
+        // We take the address of the object.  This may well be unaligned, which is fine for us
+        // here. However, unaligned accesses will probably make the actual drop implementation fail
+        // -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 
         let (instance, place) = match place.layout.ty.sty {

@@ -185,15 +185,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
             Abort => unimplemented!(),
-            FalseEdges { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
+            FalseEdges { .. } => bug!("should have been eliminated by\
+                                      `simplify_branches` mir pass"),
+            FalseUnwind { .. } => bug!("should have been eliminated by\
+                                       `simplify_branches` mir pass"),
             Unreachable => return err!(Unreachable),
         }
 
         Ok(())
     }
 
-    /// Decides whether it is okay to call the method with signature `real_sig` using signature `sig`.
+    /// Decides whether it is okay to call the method with signature `real_sig`
+    /// using signature `sig`.
     /// FIXME: This should take into account the platform-dependent ABI description.
     fn check_sig_compat(
         &mut self,
@@ -207,7 +210,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             return match (&ty.sty, &real_ty.sty) {
                 // Permit changing the pointer type of raw pointers and references as well as
                 // mutability of raw pointers.
-                // TODO: Should not be allowed when fat pointers are involved.
+                // FIXME: Should not be allowed when fat pointers are involved.
                 (&ty::RawPtr(_), &ty::RawPtr(_)) => true,
                 (&ty::Ref(_, _, _), &ty::Ref(_, _, _)) => {
                     ty.is_mutable_pointer() == real_ty.is_mutable_pointer()

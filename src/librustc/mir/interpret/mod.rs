@@ -50,7 +50,8 @@ use std::num::NonZeroU32;
 pub enum Lock {
     NoLock,
     WriteLock(DynamicLifetime),
-    /// This should never be empty -- that would be a read lock held and nobody there to release it...
+    /// This should never be empty -- that would be a read lock held and nobody
+    /// there to release it...
     ReadLock(Vec<DynamicLifetime>),
 }
 

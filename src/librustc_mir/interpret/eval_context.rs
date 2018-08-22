@@ -92,7 +92,8 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub return_place: Place,
 
     /// The list of locals for this stack frame, stored in order as
-    /// `[return_ptr, arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
+    /// `[return_ptr, arguments..., variables..., temporaries...]`.
+    /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalValue>,
@@ -624,7 +625,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
                 if let Place::Ptr(MemPlace { ptr, .. }) = frame.return_place {
-                    // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
+                    // FIXME: to_ptr()? might be too extreme here,
+                    // static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
                         ptr.to_ptr()?.alloc_id,
                         mutable,

@@ -108,8 +108,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         use rustc::mir::StatementKind::*;
 
-        // Some statements (e.g. box) push new stack frames.  We have to record the stack frame number
-        // *before* executing the statement.
+        // Some statements (e.g. box) push new stack frames.
+        // We have to record the stack frame number *before* executing the statement.
         let frame_idx = self.cur_frame();
         self.tcx.span = stmt.source_info.span;
         self.memory.tcx.span = stmt.source_info.span;

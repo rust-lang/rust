@@ -119,8 +119,9 @@ impl MemPlace {
     /// Extract the ptr part of the mplace
     #[inline(always)]
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
-        // At this point, we forget about the alignment information -- the place has been turned into a reference,
-        // and no matter where it came from, it now must be aligned.
+        // At this point, we forget about the alignment information --
+        // the place has been turned into a reference, and no matter where it came from,
+        // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
 
@@ -582,9 +583,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         let (ptr, ptr_align) = dest.to_scalar_ptr_align();
-        // Note that it is really important that the type here is the right one, and matches the type things are read at.
-        // In case `src_val` is a `ScalarPair`, we don't do any magic here to handle padding properly, which is only
-        // correct if we never look at this data with the wrong type.
+        // Note that it is really important that the type here is the right one, and matches the
+        // type things are read at. In case `src_val` is a `ScalarPair`, we don't do any magic here
+        // to handle padding properly, which is only correct if we never look at this data with the
+        // wrong type.
 
         // Nothing to do for ZSTs, other than checking alignment
         if dest.layout.size.bytes() == 0 {

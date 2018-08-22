@@ -265,7 +265,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 if value.layout.ty.builtin_deref(false).is_some() {
                                     trace!("Recursing below ptr {:#?}", value);
                                     let ptr_place = self.ref_to_mplace(value)?;
-                                    // we have not encountered this pointer+layout combination before
+                                    // we have not encountered this pointer+layout
+                                    // combination before
                                     if seen.insert(ptr_place) {
                                         todo.push((ptr_place, path_clone_and_deref(path)));
                                     }

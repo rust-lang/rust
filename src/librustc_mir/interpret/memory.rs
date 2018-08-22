@@ -243,11 +243,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         let alloc_kind = self.alloc_kind.remove(&ptr.alloc_id).expect("alloc_map out of sync with alloc_kind");
 
-        // It is okay for us to still holds locks on deallocation -- for example, we could store data we own
-        // in a local, and the local could be deallocated (from StorageDead) before the function returns.
-        // However, we should check *something*.  For now, we make sure that there is no conflicting write
-        // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
-        // TODO: Figure out the exact rules here.
+        // It is okay for us to still holds locks on deallocation -- for example, we could store
+        // data we own in a local, and the local could be deallocated (from StorageDead) before the
+        // function returns. However, we should check *something*.  For now, we make sure that there
+        // is no conflicting write lock by another frame.  We *have* to permit deallocation if we
+        // hold a read lock.
+        // FIXME: Figure out the exact rules here.
         M::free_lock(self, ptr.alloc_id, alloc.bytes.len() as u64)?;
 
         if alloc_kind != kind {
@@ -521,13 +522,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &[u8]> {
-        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
+        // Zero-sized accesses can use dangling pointers,
+        // but they still have to be aligned and non-NULL
         self.check_align(ptr.into(), align)?;
         if size.bytes() == 0 {
             return Ok(&[]);
         }
         M::check_locks(self, ptr, size, AccessKind::Read)?;
-        self.check_bounds(ptr.offset(size, self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, self)?, true)?;
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -542,13 +545,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
-        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
+        // Zero-sized accesses can use dangling pointers,
+        // but they still have to be aligned and non-NULL
         self.check_align(ptr.into(), align)?;
         if size.bytes() == 0 {
             return Ok(&mut []);
         }
         M::check_locks(self, ptr, size, AccessKind::Write)?;
-        self.check_bounds(ptr.offset(size, &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, &*self)?, true)?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -774,14 +779,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Read a *non-ZST* scalar
     pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
+        // Make sure we don't read part of a pointer as a pointer
+        self.check_relocation_edges(ptr, size)?;
         let endianness = self.endianness();
         // get_bytes_unchecked tests alignment
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
-            // this inflates undefined bytes to the entire scalar, even if only a few bytes are undefined
+            // this inflates undefined bytes to the entire scalar,
+            // even if only a few bytes are undefined
             return Ok(ScalarMaybeUndef::Undef);
         }
         // Now we do the actual reading
