@@ -453,7 +453,7 @@ impl<'hir> Map<'hir> {
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
                     ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
-                    ForeignItemKind::Type => Some(Def::Foreign(def_id)),
+                    ForeignItemKind::Type => Some(Def::TyForeign(def_id)),
                 }
             }
             NodeTraitItem(item) => {
@@ -499,7 +499,7 @@ impl<'hir> Map<'hir> {
             NodeGenericParam(param) => {
                 Some(match param.kind {
                     GenericParamKind::Lifetime { .. } => Def::Local(param.id),
-                    GenericParamKind::Type { .. } => Def::Param(self.local_def_id(param.id)),
+                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
                 })
             }
         }

@@ -429,7 +429,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Trait(_) => Def::Trait(did),
             EntryKind::Enum(..) => Def::Enum(did),
             EntryKind::MacroDef(_) => Def::Macro(did, MacroKind::Bang),
-            EntryKind::ForeignType => Def::Foreign(did),
+            EntryKind::ForeignType => Def::TyForeign(did),
 
             EntryKind::ForeignMod |
             EntryKind::GlobalAsm |

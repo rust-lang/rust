@@ -2411,7 +2411,7 @@ impl Clean<Type> for hir::Ty {
                     return new_ty;
                 }
 
-                if let Def::Param(did) = path.def {
+                if let Def::TyParam(did) = path.def {
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
                     }
@@ -2460,7 +2460,7 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::Param(cx.tcx.hir.local_def_id(param.id));
+                                        Def::TyParam(cx.tcx.hir.local_def_id(param.id));
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -3710,10 +3710,10 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
         }
-        Def::Param(..) if path.segments.len() == 1 => {
+        Def::TyParam(..) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path));
         }
-        Def::SelfTy(..) | Def::Param(..) | Def::AssociatedTy(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, path.def);
@@ -3731,7 +3731,7 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Struct(i) => (i, TypeKind::Struct),
         Def::Union(i) => (i, TypeKind::Union),
         Def::Mod(i) => (i, TypeKind::Module),
-        Def::Foreign(i) => (i, TypeKind::Foreign),
+        Def::TyForeign(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),

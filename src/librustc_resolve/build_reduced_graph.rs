@@ -656,7 +656,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 (Def::Static(self.definitions.local_def_id(item.id), m), ValueNS)
             }
             ForeignItemKind::Ty => {
-                (Def::Foreign(self.definitions.local_def_id(item.id)), TypeNS)
+                (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
             ForeignItemKind::Macro(_) => unreachable!(),
         };
@@ -692,7 +692,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(..) | Def::TyAlias(..) | Def::Foreign(..) => {
+            Def::Variant(..) | Def::TyAlias(..) | Def::TyForeign(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {

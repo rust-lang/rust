@@ -830,7 +830,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 hir::intravisit::walk_ty(self, ty);
                                 match ty.node {
                                     hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                                        if let hir::def::Def::Param(def_id) = path.def {
+                                        if let hir::def::Def::TyParam(def_id) = path.def {
                                             if def_id == self.1 {
                                                 self.0 = Some(ty.span);
                                             }
