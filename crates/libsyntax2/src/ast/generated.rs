@@ -40,10 +40,7 @@ impl<'a> AstNode<'a> for Attr<'a> {
 
 impl<'a> Attr<'a> {
     pub fn value(self) -> Option<TokenTree<'a>> {
-        self.syntax()
-            .children()
-            .filter_map(TokenTree::cast)
-            .next()
+        super::child_opt(self)
     }
 }
 
@@ -125,15 +122,11 @@ impl<'a> AstNode<'a> for File<'a> {
 
 impl<'a> File<'a> {
     pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map(FnDef::cast)
+        super::children(self)
     }
 
     pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map(Module::cast)
+        super::children(self)
     }
 }
 
@@ -250,9 +243,7 @@ impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
 impl<'a> Module<'a> {
     pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map(Module::cast)
+        super::children(self)
     }
 }
 
@@ -507,9 +498,7 @@ impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
 impl<'a> StructDef<'a> {
     pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map(NamedField::cast)
+        super::children(self)
     }
 }
 

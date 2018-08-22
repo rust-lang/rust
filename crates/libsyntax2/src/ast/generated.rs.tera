@@ -58,9 +58,7 @@ impl<'a> {{ node }}<'a> {
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
     pub fn {{ method_name }}(self) -> impl Iterator<Item = {{ ChildName }}<'a>> + 'a {
-        self.syntax()
-            .children()
-            .filter_map({{ ChildName }}::cast)
+        super::children(self)
     }
 {% endfor -%}
 {%- endif -%}
@@ -70,10 +68,7 @@ impl<'a> {{ node }}<'a> {
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
     pub fn {{ method_name }}(self) -> Option<{{ ChildName }}<'a>> {
-        self.syntax()
-            .children()
-            .filter_map({{ ChildName }}::cast)
-            .next()
+        super::child_opt(self)
     }
 {% endfor -%}
 {%- endif -%}

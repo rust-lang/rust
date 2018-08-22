@@ -9,7 +9,7 @@ use {
 };
 pub use self::generated::*;
 
-pub trait AstNode<'a>: Clone + Copy {
+pub trait AstNode<'a>: Clone + Copy + 'a {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self>
         where Self: Sized;
     fn syntax(self) -> SyntaxNodeRef<'a>;
@@ -17,34 +17,23 @@ pub trait AstNode<'a>: Clone + Copy {
 
 pub trait NameOwner<'a>: AstNode<'a> {
     fn name(self) -> Option<Name<'a>> {
-        self.syntax()
-            .children()
-            .filter_map(Name::cast)
-            .next()
+        child_opt(self)
     }
 }
 
 pub trait TypeParamsOwner<'a>: AstNode<'a> {
     fn type_param_list(self) -> Option<TypeParamList<'a>> {
-        self.syntax()
-            .children()
-            .filter_map(TypeParamList::cast)
-            .next()
+        child_opt(self)
     }
 
     fn where_clause(self) -> Option<WhereClause<'a>> {
-        self.syntax()
-            .children()
-            .filter_map(WhereClause::cast)
-            .next()
+        child_opt(self)
     }
 }
 
 pub trait AttrsOwner<'a>: AstNode<'a> {
-    fn attrs(&self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
-        let it = self.syntax().children()
-            .filter_map(Attr::cast);
-        Box::new(it)
+    fn attrs(self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
+        Box::new(children(self))
     }
 }
 
@@ -118,22 +107,22 @@ impl<'a> NameRef<'a> {
 }
 
 impl<'a> ImplItem<'a> {
-    pub fn target_type(&self) -> Option<TypeRef<'a>> {
+    pub fn target_type(self) -> Option<TypeRef<'a>> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<TypeRef<'a>> {
+    pub fn target_trait(self) -> Option<TypeRef<'a>> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(&self) -> (Option<TypeRef<'a>>, Option<TypeRef<'a>>) {
-        let mut types = self.syntax().children().filter_map(TypeRef::cast);
+    fn target(self) -> (Option<TypeRef<'a>>, Option<TypeRef<'a>>) {
+        let mut types = children(self);
         let first = types.next();
         let second = types.next();
         (first, second)
@@ -141,10 +130,20 @@ impl<'a> ImplItem<'a> {
 }
 
 impl<'a> Module<'a> {
-    pub fn has_semi(&self) -> bool {
+    pub fn has_semi(self) -> bool {
         match self.syntax().last_child() {
             None => false,
             Some(node) => node.kind() == SEMI,
         }
     }
+}
+
+fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
+    children(parent).next()
+}
+
+fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> impl Iterator<Item=C> + 'a {
+    parent.syntax()
+        .children()
+        .filter_map(C::cast)
 }
