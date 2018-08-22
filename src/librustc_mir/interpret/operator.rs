@@ -1,58 +1,39 @@
 use rustc::mir;
-use rustc::ty::{self, Ty, layout};
+use rustc::ty::{self, layout::{self, TyLayout}};
 use syntax::ast::FloatTy;
-use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc::mir::interpret::{EvalResult, Scalar};
 
-use super::{EvalContext, Place, Machine, ValTy};
+use super::{EvalContext, PlaceTy, Value, Machine, ValTy};
 
-use rustc::mir::interpret::{EvalResult, Scalar, Value};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    fn binop_with_overflow(
-        &self,
-        op: mir::BinOp,
-        left: ValTy<'tcx>,
-        right: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
-        let left_val = self.value_to_scalar(left)?;
-        let right_val = self.value_to_scalar(right)?;
-        self.binary_op(op, left_val, left.ty, right_val, right.ty)
-    }
-
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
-    pub fn intrinsic_with_overflow(
+    pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
         left: ValTy<'tcx>,
         right: ValTy<'tcx>,
-        dest: Place,
-        dest_ty: Ty<'tcx>,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
+        let (val, overflowed) = self.binary_op(op, left, right)?;
         let val = Value::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
-        let valty = ValTy {
-            value: val,
-            ty: dest_ty,
-        };
-        self.write_value(valty, dest)
+        self.write_value(val, dest)
     }
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
-    /// destination. Returns `true` if the operation overflowed.
-    pub fn intrinsic_overflowing(
+    /// destination.
+    pub fn binop_ignore_overflow(
         &mut self,
         op: mir::BinOp,
         left: ValTy<'tcx>,
         right: ValTy<'tcx>,
-        dest: Place,
-        dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, bool> {
-        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        self.write_scalar(dest, val, dest_ty)?;
-        Ok(overflowed)
+        dest: PlaceTy<'tcx>,
+    ) -> EvalResult<'tcx> {
+        let (val, _overflowed) = self.binary_op(op, left, right)?;
+        self.write_scalar(val, dest)
     }
 }
 
@@ -61,29 +42,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar,
-        left_ty: Ty<'tcx>,
-        right: Scalar,
-        right_ty: Ty<'tcx>,
+        ValTy { value: left, layout: left_layout }: ValTy<'tcx>,
+        ValTy { value: right, layout: right_layout }: ValTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left_layout = self.layout_of(left_ty)?;
-        let right_layout = self.layout_of(right_ty)?;
+        let left = left.to_scalar()?;
+        let right = right.to_scalar()?;
 
         let left_kind = match left_layout.abi {
             layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => return err!(TypeNotPrimitive(left_ty)),
+            _ => return err!(TypeNotPrimitive(left_layout.ty)),
         };
         let right_kind = match right_layout.abi {
             layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => return err!(TypeNotPrimitive(right_ty)),
+            _ => return err!(TypeNotPrimitive(right_layout.ty)),
         };
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers
         if !left_kind.is_float() && !right_kind.is_float() {
-            if let Some(handled) = M::try_ptr_op(self, bin_op, left, left_ty, right, right_ty)? {
+            if let Some(handled) =
+                M::try_ptr_op(self, bin_op, left, left_layout, right, right_layout)?
+            {
                 return Ok(handled);
             }
         }
@@ -188,7 +169,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        if let ty::TyFloat(fty) = left_ty.sty {
+        if let ty::TyFloat(fty) = left_layout.ty.sty {
             macro_rules! float_math {
                 ($ty:path, $size:expr) => {{
                     let l = <$ty>::from_bits(l);
@@ -220,7 +201,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        let size = self.layout_of(left_ty).unwrap().size.bytes() as u8;
+        let size = left_layout.size.bytes() as u8;
 
         // only ints left
         let val = match bin_op {
@@ -260,9 +241,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     "unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})",
                     bin_op,
                     left,
-                    left_ty,
+                    left_layout.ty,
                     right,
-                    right_ty,
+                    right_layout.ty,
                 );
                 return err!(Unimplemented(msg));
             }

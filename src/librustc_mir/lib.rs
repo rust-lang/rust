@@ -37,6 +37,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(step_trait)]
 #![feature(slice_concat_ext)]
 #![feature(if_while_or_patterns)]
+#![feature(try_from)]
 
 #![recursion_limit="256"]
 
@@ -82,7 +83,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
-    providers.const_value_to_allocation = interpret::const_value_to_allocation_provider;
+    providers.const_to_allocation = interpret::const_to_allocation_provider;
     providers.check_match = hair::pattern::check_match;
 }
 

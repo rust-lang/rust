@@ -20,7 +20,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS, ParamEnvAnd, ParamEnv};
 use util::captures::Captures;
-use mir::interpret::{Scalar, Pointer, Value};
+use mir::interpret::{Scalar, Pointer};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1973,17 +1973,12 @@ impl<'tcx> Const<'tcx> {
         }
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
-        self.val.to_bits(size)
+        self.val.try_to_bits(size)
     }
 
     #[inline]
     pub fn to_ptr(&self) -> Option<Pointer> {
-        self.val.to_ptr()
-    }
-
-    #[inline]
-    pub fn to_byval_value(&self) -> Option<Value> {
-        self.val.to_byval_value()
+        self.val.try_to_ptr()
     }
 
     #[inline]
@@ -1995,7 +1990,7 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty, ty.value);
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
-        self.val.to_bits(size)
+        self.val.try_to_bits(size)
     }
 
     #[inline]

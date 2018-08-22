@@ -632,7 +632,7 @@ define_dep_nodes!( <'tcx>
     // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
-    [anon] ConstValueToAllocation { val: &'tcx ty::Const<'tcx> },
+    [anon] ConstToAllocation { val: &'tcx ty::Const<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),

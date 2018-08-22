@@ -1,3 +1,11 @@
+//! The memory subsystem.
+//!
+//! Generally, we use `Pointer` to denote memory addresses. However, some operations
+//! have a "size"-like parameter, and they take `Scalar` for the address because
+//! if the size is 0, then the pointer can also be a (properly aligned, non-NULL)
+//! integer.  It is crucial that these operations call `check_align` *before*
+//! short-circuiting the empty case!
+
 use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ptr;
@@ -7,14 +15,15 @@ use rustc::ty::Instance;
 use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value, ScalarMaybeUndef,
-                            EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
-pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, ScalarMaybeUndef,
+                            EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType, truncate};
+pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
 use syntax::ast::Mutability;
 
 use super::{EvalContext, Machine};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -43,9 +52,6 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
     alloc_map: FxHashMap<AllocId, Allocation>,
 
-    /// The current stack frame.  Used to check accesses against locks.
-    pub cur_frame: usize,
-
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
@@ -63,14 +69,12 @@ impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
             data,
             alloc_kind,
             alloc_map,
-            cur_frame,
             tcx: _,
         } = self;
 
         *data == other.data
             && *alloc_kind == other.alloc_kind
             && *alloc_map == other.alloc_map
-            && *cur_frame == other.cur_frame
     }
 }
 
@@ -83,12 +87,10 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
             data,
             alloc_kind: _,
             alloc_map: _,
-            cur_frame,
             tcx: _,
         } = self;
 
         data.hash(state);
-        cur_frame.hash(state);
 
         // We ignore some fields which don't change between evaluation steps.
 
@@ -114,7 +116,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             alloc_kind: FxHashMap::default(),
             alloc_map: FxHashMap::default(),
             tcx,
-            cur_frame: usize::max_value(),
         }
     }
 
@@ -264,7 +265,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.tcx.data_layout.endian
     }
 
-    /// Check that the pointer is aligned AND non-NULL.
+    /// Check that the pointer is aligned AND non-NULL. This supports scalars
+    /// for the benefit of other parts of miri that need to check alignment even for ZST.
     pub fn check_align(&self, ptr: Scalar, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
@@ -301,6 +303,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
+    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
+    /// in-bounds!  This follows C's/LLVM's rules.
     pub fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
@@ -331,7 +336,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             assert!(self.tcx.is_static(def_id).is_some());
             EvalErrorKind::ReferencedConstant(err).into()
         }).map(|val| {
-            self.tcx.const_value_to_allocation(val)
+            self.tcx.const_to_allocation(val)
         })
     }
 
@@ -499,6 +504,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Byte accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    /// This checks alignment!
     fn get_bytes_unchecked(
         &self,
         ptr: Pointer,
@@ -519,6 +525,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(&alloc.bytes[offset..offset + size.bytes() as usize])
     }
 
+    /// This checks alignment!
     fn get_bytes_unchecked_mut(
         &mut self,
         ptr: Pointer,
@@ -556,7 +563,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0);
         self.clear_relocations(ptr, size)?;
-        self.mark_definedness(ptr.into(), size, true)?;
+        self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
@@ -635,10 +642,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         length: u64,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
-        // Empty accesses don't need to be valid pointers, but they should still be aligned
-        self.check_align(src, src_align)?;
-        self.check_align(dest, dest_align)?;
         if size.bytes() == 0 {
+            // Nothing to do for ZST, other than checking alignment and non-NULLness.
+            self.check_align(src, src_align)?;
+            self.check_align(dest, dest_align)?;
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -664,6 +671,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_relocations
         };
 
+        // This also checks alignment.
         let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
@@ -721,8 +729,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn read_bytes(&self, ptr: Scalar, size: Size) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if size.bytes() == 0 {
+            self.check_align(ptr, align)?;
             return Ok(&[]);
         }
         self.get_bytes(ptr.to_ptr()?, size, align)
@@ -731,8 +739,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_bytes(&mut self, ptr: Scalar, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if src.is_empty() {
+            self.check_align(ptr, align)?;
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, Size::from_bytes(src.len() as u64), align)?;
@@ -743,8 +751,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_repeat(&mut self, ptr: Scalar, val: u8, count: Size) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        self.check_align(ptr, align)?;
         if count.bytes() == 0 {
+            self.check_align(ptr, align)?;
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, align)?;
@@ -754,9 +762,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Read a *non-ZST* scalar
     pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
+        // get_bytes_unchecked tests alignment
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
@@ -789,17 +799,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
+    /// Write a *non-ZST* scalar
     pub fn write_scalar(
         &mut self,
-        ptr: Scalar,
+        ptr: Pointer,
         ptr_align: Align,
         val: ScalarMaybeUndef,
         type_size: Size,
-        type_align: Align,
-        signed: bool,
     ) -> EvalResult<'tcx> {
         let endianness = self.endianness();
-        self.check_align(ptr, ptr_align)?;
 
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
@@ -812,27 +820,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bits { size: 0, .. } => {
-                // nothing to do for ZSTs
-                assert_eq!(type_size.bytes(), 0);
-                return Ok(());
-            }
-
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, type_size.bytes());
+                assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                    "Unexpected value of size {} when writing to memory", size);
                 bits
             },
         };
 
-        let ptr = ptr.to_ptr()?;
-
         {
-            let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(type_align))?;
-            if signed {
-                write_target_int(endianness, dst, bytes as i128).unwrap();
-            } else {
-                write_target_uint(endianness, dst, bytes).unwrap();
-            }
+            // get_bytes_mut checks alignment
+            let dst = self.get_bytes_mut(ptr, type_size, ptr_align)?;
+            write_target_uint(endianness, dst, bytes).unwrap();
         }
 
         // See if we have to also write a relocation
@@ -849,9 +848,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, ptr_align, false)
+        self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
     }
 
     fn int_align(&self, size: Size) -> Align {
@@ -967,14 +966,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: Scalar,
+        ptr: Pointer,
         size: Size,
         new_state: bool,
     ) -> EvalResult<'tcx> {
         if size.bytes() == 0 {
             return Ok(());
         }
-        let ptr = ptr.to_ptr()?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(
             ptr.offset,
@@ -992,63 +990,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M>;
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M>;
-
-    /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
-    /// this may have to perform a load.
-    fn into_ptr(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        Ok(match value {
-            Value::ByRef(ptr, align) => {
-                self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
-            }
-            Value::Scalar(ptr) |
-            Value::ScalarPair(ptr, _) => ptr,
-        }.into())
-    }
-
-    fn into_ptr_vtable_pair(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, (ScalarMaybeUndef, Pointer)> {
-        match value {
-            Value::ByRef(ref_ptr, align) => {
-                let mem = self.memory();
-                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
-                let vtable = mem.read_ptr_sized(
-                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    align
-                )?.unwrap_or_err()?.to_ptr()?;
-                Ok((ptr, vtable))
-            }
-
-            Value::ScalarPair(ptr, vtable) => Ok((ptr, vtable.unwrap_or_err()?.to_ptr()?)),
-            _ => bug!("expected ptr and vtable, got {:?}", value),
-        }
-    }
-
-    fn into_slice(
-        &self,
-        value: Value,
-    ) -> EvalResult<'tcx, (ScalarMaybeUndef, u64)> {
-        match value {
-            Value::ByRef(ref_ptr, align) => {
-                let mem = self.memory();
-                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
-                let len = mem.read_ptr_sized(
-                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    align
-                )?.unwrap_or_err()?.to_bits(mem.pointer_size())? as u64;
-                Ok((ptr, len))
-            }
-            Value::ScalarPair(ptr, val) => {
-                let len = val.unwrap_or_err()?.to_bits(self.memory().pointer_size())?;
-                Ok((ptr, len as u64))
-            }
-            Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
-        }
-    }
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {

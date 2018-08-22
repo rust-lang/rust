@@ -287,8 +287,8 @@ define_queries! { <'tcx>
         [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx>,
 
-        /// Converts a constant value to an constant allocation
-        [] fn const_value_to_allocation: const_value_to_allocation(
+        /// Converts a constant value to a constant allocation
+        [] fn const_to_allocation: const_to_allocation(
             &'tcx ty::Const<'tcx>
         ) -> &'tcx Allocation,
     },
@@ -706,10 +706,10 @@ fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::EraseRegionsTy { ty }
 }
 
-fn const_value_to_allocation<'tcx>(
+fn const_to_allocation<'tcx>(
     val: &'tcx ty::Const<'tcx>,
 ) -> DepConstructor<'tcx> {
-    DepConstructor::ConstValueToAllocation { val }
+    DepConstructor::ConstToAllocation { val }
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

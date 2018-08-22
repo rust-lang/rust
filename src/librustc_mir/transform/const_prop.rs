@@ -17,16 +17,16 @@ use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::mir::interpret::{ConstEvalErr, EvalErrorKind, ScalarMaybeUndef};
+use rustc::mir::interpret::{
+    ConstEvalErr, EvalErrorKind, ScalarMaybeUndef, Scalar, GlobalId, EvalResult
+};
 use rustc::ty::{TyCtxt, self, Instance};
-use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
-use interpret::EvalContext;
-use interpret::CompileTimeEvaluator;
-use interpret::{eval_promoted, mk_borrowck_eval_cx, ValTy};
+use interpret::{EvalContext, CompileTimeEvaluator, eval_promoted, mk_borrowck_eval_cx};
+use interpret::{Value, OpTy, MemoryKind};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::ty::ParamEnv;
 use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError,
@@ -65,7 +65,7 @@ impl MirPass for ConstProp {
     }
 }
 
-type Const<'tcx> = (Value, TyLayout<'tcx>, Span);
+type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
@@ -257,10 +257,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.const_to_value(c.literal.val) {
-            Ok(val) => {
+        match self.ecx.const_value_to_op(c.literal.val) {
+            Ok(op) => {
                 let layout = self.tcx.layout_of(self.param_env.and(c.literal.ty)).ok()?;
-                Some((val, layout, c.span))
+                Some((OpTy { op, layout }, c.span))
             },
             Err(error) => {
                 let (stacktrace, span) = self.ecx.generate_stacktrace(None);
@@ -284,12 +284,15 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
-                    let (base, layout, span) = self.eval_place(&proj.base, source_info)?;
-                    let valty = self.use_ecx(source_info, |this| {
-                        this.ecx.read_field(base, None, field, layout)
+                    let (base, span) = self.eval_place(&proj.base, source_info)?;
+                    let res = self.use_ecx(source_info, |this| {
+                        this.ecx.operand_field(base, field.index() as u64)
                     })?;
-                    Some((valty.0, valty.1, span))
+                    Some((res, span))
                 },
+                // We could get more projections by using e.g. `operand_projection`,
+                // but we do not even have the stack frame set up properly so
+                // an `Index` projection would throw us off-track.
                 _ => None,
             },
             Place::Promoted(ref promoted) => {
@@ -306,12 +309,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 };
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
-                let (value, _, ty) = self.use_ecx(source_info, |this| {
+                let res = self.use_ecx(source_info, |this| {
                     eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
                 })?;
-                let val = (value, ty, source_info.span);
-                trace!("evaluated promoted {:?} to {:?}", promoted, val);
-                Some(val)
+                trace!("evaluated promoted {:?} to {:?}", promoted, res);
+                Some((res, source_info.span))
             },
             _ => None,
         }
@@ -343,17 +345,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::Discriminant(..) => None,
 
             Rvalue::Cast(kind, ref operand, _) => {
-                let (value, layout, span) = self.eval_operand(operand, source_info)?;
+                let (op, span) = self.eval_operand(operand, source_info)?;
                 self.use_ecx(source_info, |this| {
-                    let dest_ptr = this.ecx.alloc_ptr(place_layout)?;
-                    let place_align = place_layout.align;
-                    let dest = ::interpret::Place::from_ptr(dest_ptr, place_align);
-                    this.ecx.cast(ValTy { value, ty: layout.ty }, kind, place_layout.ty, dest)?;
-                    Ok((
-                        Value::ByRef(dest_ptr.into(), place_align),
-                        place_layout,
-                        span,
-                    ))
+                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack)?;
+                    this.ecx.cast(op, kind, dest.into())?;
+                    Ok((dest.into(), span))
                 })
             }
 
@@ -361,11 +357,13 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
-                    Value::Scalar(Scalar::Bits {
-                        bits: n as u128,
-                        size: self.tcx.data_layout.pointer_size.bytes() as u8,
-                    }.into()),
-                    self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    OpTy::from_scalar_value(
+                        Scalar::Bits {
+                            bits: n as u128,
+                            size: self.tcx.data_layout.pointer_size.bytes() as u8,
+                        },
+                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    ),
                     span,
                 )))
             }
@@ -381,12 +379,12 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     return None;
                 }
 
-                let val = self.eval_operand(arg, source_info)?;
-                let prim = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1.ty })
+                let (arg, _) = self.eval_operand(arg, source_info)?;
+                let val = self.use_ecx(source_info, |this| {
+                    let prim = this.ecx.read_scalar(arg)?.not_undef()?;
+                    this.ecx.unary_op(op, prim, arg.layout)
                 })?;
-                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1))?;
-                Some((Value::Scalar(val.into()), place_layout, span))
+                Some((OpTy::from_scalar_value(val, place_layout), span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -404,7 +402,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
 
                 let r = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1.ty })
+                    this.ecx.read_value(right.0)
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let left_ty = left.ty(self.mir, self.tcx);
@@ -414,8 +412,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         .unwrap()
                         .size
                         .bits();
-                    let right_size = right.1.size;
-                    if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
+                    let right_size = right.0.layout.size;
+                    let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
+                    if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
                         let source_scope_local_data = match self.mir.source_scope_local_data {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
@@ -436,11 +435,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
                 let left = self.eval_operand(left, source_info)?;
                 let l = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1.ty })
+                    this.ecx.read_value(left.0)
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op(op, l, left.1.ty, r, right.1.ty)
+                    this.ecx.binary_op(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Value::ScalarPair(
@@ -455,7 +454,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     }
                     Value::Scalar(val.into())
                 };
-                Some((val, place_layout, span))
+                let res = OpTy {
+                    op: ::interpret::Operand::Immediate(val),
+                    layout: place_layout,
+                };
+                Some((res, span))
             },
         }
     }
@@ -571,7 +574,8 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond, source_info) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                if Value::Scalar(Scalar::from_bool(*expected).into()) != value.0 {
+                let expected = Value::Scalar(Scalar::from_bool(*expected).into());
+                if expected != value.0.to_immediate() {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -607,7 +611,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             let len = self
                                 .eval_operand(len, source_info)
                                 .expect("len must be const");
-                            let len = match len.0 {
+                            let len = match len.0.to_immediate() {
                                 Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,
@@ -616,7 +620,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             let index = self
                                 .eval_operand(index, source_info)
                                 .expect("index must be const");
-                            let index = match index.0 {
+                            let index = match index.0.to_immediate() {
                                 Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,

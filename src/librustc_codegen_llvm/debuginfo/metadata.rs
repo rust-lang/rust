@@ -1359,6 +1359,7 @@ fn describe_enum_variant(
     // If this is not a univariant enum, there is also the discriminant field.
     let (discr_offset, discr_arg) = match discriminant_info {
         RegularDiscriminant(_) => {
+            // We have the layout of an enum variant, we need the layout of the outer enum
             let enum_layout = cx.layout_of(layout.ty);
             (Some(enum_layout.fields.offset(0)),
              Some(("RUST$ENUM$DISR".to_string(), enum_layout.field(cx, 0).ty)))

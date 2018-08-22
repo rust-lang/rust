@@ -5,10 +5,10 @@
 use std::hash::Hash;
 
 use rustc::mir::interpret::{AllocId, EvalResult, Scalar, Pointer, AccessKind, GlobalId};
-use super::{EvalContext, Place, ValTy, Memory};
+use super::{EvalContext, PlaceTy, OpTy, Memory};
 
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, layout::TyLayout};
 use rustc::ty::layout::Size;
 use syntax::source_map::Span;
 use syntax::ast::Mutability;
@@ -31,19 +31,17 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Place, mir::BasicBlock)>,
-        args: &[ValTy<'tcx>],
+        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        args: &[OpTy<'tcx>],
         span: Span,
-        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
 
     /// directly process an intrinsic without pushing a stack frame.
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: ty::layout::TyLayout<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: PlaceTy<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
@@ -57,9 +55,9 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
-        left_ty: Ty<'tcx>,
+        left_layout: TyLayout<'tcx>,
         right: Scalar,
-        right_ty: Ty<'tcx>,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
 
     /// Called when trying to mark machine defined `MemoryKinds` as static
@@ -81,8 +79,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// Returns a pointer to the allocated memory
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ty: Ty<'tcx>,
-        dest: Place,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx>;
 
     /// Called when trying to access a global declared with a `linkage` attribute
