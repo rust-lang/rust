@@ -224,6 +224,14 @@ fn foo() {
     foo(1, 2, 3)
 }
 ");
+
+    do_check(r"
+struct Foo <|>{
+    f: u32,
+}<|>
+", r"
+struct Foo { f: u32 }
+");
 }
 
 fn file(text: &str) -> ParsedFile {

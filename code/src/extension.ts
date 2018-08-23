@@ -50,6 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
             let anchor = sel.isEmpty ? active : sel.anchor
             return new vscode.Selection(anchor, active)
         })
+        editor.revealRange(editor.selection)
     })
     registerCommand('libsyntax-rust.joinLines', async () => {
         let editor = vscode.window.activeTextEditor

@@ -72,9 +72,11 @@ fn remove_newline(
     if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
         match (node.prev_sibling(), node.next_sibling()) {
             (Some(prev), Some(next)) => {
+                let range = TextRange::from_to(prev.range().start(), node.range().end());
                 if prev.kind() == COMMA && (next.kind() == R_PAREN || next.kind() == R_BRACK) {
-                    let range = TextRange::from_to(prev.range().start(), node.range().end());
                     edit.delete(range);
+                } else if prev.kind() == COMMA && next.kind() == R_CURLY {
+                    edit.replace(range, " ".to_string());
                 } else {
                     edit.replace(
                         node.range(),
