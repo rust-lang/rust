@@ -72,7 +72,7 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX]
+            @max          [::std::u32::MAX - 1]
             @vis          [$v]
             @debug_format ["{}"]);
     );
@@ -82,7 +82,7 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX]
+            @max          [::std::u32::MAX - 1]
             @vis          [$v]
             @debug_format ["{}"]
                           $($tokens)+);
@@ -102,9 +102,13 @@ macro_rules! newtype_index {
         }
 
         impl $type {
+            $v const MAX_AS_U32: u32 = $max;
+
+            $v const MAX: $type = unsafe { $type::from_u32_unchecked($max) };
+
             #[inline]
             $v fn from_usize(value: usize) -> Self {
-                assert!(value < ($max as usize));
+                assert!(value <= ($max as usize));
                 unsafe {
                     $type::from_u32_unchecked(value as u32)
                 }
@@ -112,7 +116,7 @@ macro_rules! newtype_index {
 
             #[inline]
             $v fn from_u32(value: u32) -> Self {
-                assert!(value < $max);
+                assert!(value <= $max);
                 unsafe {
                     $type::from_u32_unchecked(value)
                 }
@@ -138,7 +142,7 @@ macro_rules! newtype_index {
             /// Extract value of this index as a u32.
             #[inline]
             $v const fn as_usize(self) -> usize {
-                self.private as usize
+                self.as_u32() as usize
             }
         }
 

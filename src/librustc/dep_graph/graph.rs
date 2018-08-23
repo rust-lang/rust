@@ -44,9 +44,7 @@ newtype_index! {
 }
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = unsafe {
-        DepNodeIndex::from_u32_unchecked(::std::u32::MAX)
-    };
+    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

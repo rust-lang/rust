@@ -361,6 +361,18 @@ impl Decodable for u32 {
     }
 }
 
+impl Encodable for ::std::num::NonZeroU32 {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.get())
+    }
+}
+
+impl Decodable for ::std::num::NonZeroU32 {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        d.read_u32().map(|d| ::std::num::NonZeroU32::new(d).unwrap())
+    }
+}
+
 impl Encodable for u64 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u64(*self)
@@ -895,3 +907,4 @@ impl<T: UseSpecializedDecodable> Decodable for T {
 impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {}
 impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {}
 impl<T: Decodable> UseSpecializedDecodable for Box<T> {}
+

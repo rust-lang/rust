@@ -27,21 +27,20 @@ newtype_index! {
         /// Virtual crate for builtin macros
         // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
         // `CrateNum`s.
-        const BUILTIN_MACROS_CRATE = u32::MAX,
+        const BUILTIN_MACROS_CRATE = CrateNum::MAX_AS_U32,
 
         /// A CrateNum value that indicates that something is wrong.
-        const INVALID_CRATE = u32::MAX - 1,
+        const INVALID_CRATE = CrateNum::MAX_AS_U32 - 1,
 
         /// A special CrateNum that we use for the tcx.rcache when decoding from
         /// the incr. comp. cache.
-        const RESERVED_FOR_INCR_COMP_CACHE = u32::MAX - 2,
+        const RESERVED_FOR_INCR_COMP_CACHE = CrateNum::MAX_AS_U32 - 2,
     }
 }
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
-        assert!(x < (u32::MAX as usize));
-        CrateNum::from_u32(x as u32)
+        CrateNum::from_usize(x)
     }
 
     pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
