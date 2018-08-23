@@ -68,12 +68,12 @@ impl<'t> Parser<'t> {
         self.current() == kind
     }
 
-    pub(crate) fn at_compound2(&self, c1: SyntaxKind, c2: SyntaxKind) -> bool {
-        self.0.at_compound2(c1, c2)
+    pub(crate) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
+        self.0.next2()
     }
 
-    pub(crate) fn at_compound3(&self, c1: SyntaxKind, c2: SyntaxKind, c3: SyntaxKind) -> bool {
-        self.0.at_compound3(c1, c2, c3)
+    pub(crate) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
+        self.0.next3()
     }
 
     /// Checks if the current token is contextual keyword with text `t`.

@@ -45,35 +45,33 @@ enum Op {
 }
 
 fn current_op(p: &Parser) -> (u8, Op) {
-    if p.at_compound2(PLUS, EQ) {
-        return (1, Op::Composite(PLUSEQ, 2));
+    if let Some(t) = p.next3() {
+        match t {
+            (L_ANGLE, L_ANGLE, EQ) =>
+                return (1, Op::Composite(SHLEQ, 3)),
+            (R_ANGLE, R_ANGLE, EQ) =>
+                return (1, Op::Composite(SHREQ, 3)),
+            _ => (),
+        }
     }
-    if p.at_compound2(MINUS, EQ) {
-        return (1, Op::Composite(MINUSEQ, 2));
-    }
-    if p.at_compound3(L_ANGLE, L_ANGLE, EQ) {
-        return (1, Op::Composite(SHLEQ, 3));
-    }
-    if p.at_compound3(R_ANGLE, R_ANGLE, EQ) {
-        return (1, Op::Composite(SHREQ, 3));
-    }
-    if p.at_compound2(PIPE, PIPE) {
-        return (3, Op::Composite(PIPEPIPE, 2));
-    }
-    if p.at_compound2(AMP, AMP) {
-        return (4, Op::Composite(AMPAMP, 2));
-    }
-    if p.at_compound2(L_ANGLE, EQ) {
-        return (5, Op::Composite(LTEQ, 2));
-    }
-    if p.at_compound2(R_ANGLE, EQ) {
-        return (5, Op::Composite(GTEQ, 2));
-    }
-    if p.at_compound2(L_ANGLE, L_ANGLE) {
-        return (9, Op::Composite(SHL, 2));
-    }
-    if p.at_compound2(R_ANGLE, R_ANGLE) {
-        return (9, Op::Composite(SHR, 2));
+
+    if let Some(t) = p.next2() {
+        match t {
+            (PLUS, EQ) => return (1, Op::Composite(PLUSEQ, 2)),
+            (MINUS, EQ) => return (1, Op::Composite(MINUSEQ, 2)),
+            (STAR, EQ) => return (1, Op::Composite(STAREQ, 2)),
+            (SLASH, EQ) => return (1, Op::Composite(SLASHEQ, 2)),
+            (PIPE, EQ) => return (1, Op::Composite(PIPEEQ, 2)),
+            (AMP, EQ) => return (1, Op::Composite(AMPEQ, 2)),
+            (CARET, EQ) => return (1, Op::Composite(CARETEQ, 2)),
+            (PIPE, PIPE) => return (3, Op::Composite(PIPEPIPE, 2)),
+            (AMP, AMP) => return (4, Op::Composite(AMPAMP, 2)),
+            (L_ANGLE, EQ) => return (5, Op::Composite(LTEQ, 2)),
+            (R_ANGLE, EQ) => return (5, Op::Composite(GTEQ, 2)),
+            (L_ANGLE, L_ANGLE) => return (9, Op::Composite(SHL, 2)),
+            (R_ANGLE, R_ANGLE) => return (9, Op::Composite(SHR, 2)),
+            _ => (),
+        }
     }
 
     let bp = match p.current() {

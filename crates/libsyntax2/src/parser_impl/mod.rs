@@ -65,15 +65,26 @@ impl<'t> ParserImpl<'t> {
         self.events
     }
 
-    pub(super) fn at_compound2(&self, c1: SyntaxKind, c2: SyntaxKind) -> bool {
-        self.inp.kind(self.pos) == c1 && self.inp.kind(self.pos + 1) == c2
-            && self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
+    pub(super) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
+        let c1 = self.inp.kind(self.pos);
+        let c2 = self.inp.kind(self.pos + 1);
+        if self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos) {
+            Some((c1, c2))
+        } else {
+            None
+        }
     }
 
-    pub(super) fn at_compound3(&self, c1: SyntaxKind, c2: SyntaxKind, c3: SyntaxKind) -> bool {
-        self.inp.kind(self.pos) == c1 && self.inp.kind(self.pos + 1) == c2 && self.inp.kind(self.pos + 2) == c3
-            && self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
-            && self.inp.start(self.pos + 2) == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1)
+    pub(super) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
+        let c1 = self.inp.kind(self.pos);
+        let c2 = self.inp.kind(self.pos + 1);
+        let c3 = self.inp.kind(self.pos + 2);
+        if self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
+           && self.inp.start(self.pos + 2) == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1){
+            Some((c1, c2, c3))
+        } else {
+            None
+        }
     }
 
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
