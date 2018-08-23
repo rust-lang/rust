@@ -1871,10 +1871,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "existential types are unstable"
                 );
             }
-
-            ast::ImplItemKind::Type(_) if !ii.generics.params.is_empty() => {
-                gate_feature_post!(&self, generic_associated_types, ii.span,
-                                   "generic associated types are unstable");
+            ast::ImplItemKind::Type(_) => {
+                if !ii.generics.params.is_empty() {
+                    gate_feature_post!(&self, generic_associated_types, ii.span,
+                                       "generic associated types are unstable");
+                }
+                if !ii.generics.where_clause.predicates.is_empty() {
+                    gate_feature_post!(&self, generic_associated_types, ii.span,
+                                       "where clauses on associated types are unstable");
+                }
             }
             _ => {}
         }
