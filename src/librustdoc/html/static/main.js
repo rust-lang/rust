@@ -223,8 +223,38 @@
             }
         }
     }
+
+    function expandSection() {
+        var hash = getPageId();
+        if (hash === null) {
+            return;
+        }
+
+        var elem = document.getElementById(hash);
+        if (elem && isHidden(elem.offsetParent)) {
+            var h3 = elem.parentNode.previousSibling;
+
+            if (h3.tagName !== 'H3') {
+                h3 = h3.previousSibling; // skip div.docblock
+            }
+
+            if (h3) {
+                var collapses = h3.getElementsByClassName("collapse-toggle");
+                if (collapses.length > 0) {
+                    // The element is not visible, we need to make it appear!
+                    collapseDocs(collapses[0], "show");
+                }
+            }
+        }
+    }
+
+    function onHashChange(ev) {
+        highlightSourceLines(ev);
+        expandSection();
+    }
+
     highlightSourceLines(null);
-    window.onhashchange = highlightSourceLines;
+    window.onhashchange = onHashChange;
 
     // Gets the human-readable string for the virtual-key code of the
     // given KeyboardEvent, ev.
@@ -2213,21 +2243,7 @@
     autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
 
     if (window.location.hash && window.location.hash.length > 0) {
-        var hash = getPageId();
-        if (hash !== null) {
-            var elem = document.getElementById(hash);
-            if (elem && elem.offsetParent === null) {
-                if (elem.parentNode && elem.parentNode.previousSibling) {
-                    var collapses = elem.parentNode
-                                        .previousSibling
-                                        .getElementsByClassName("collapse-toggle");
-                    if (collapses.length > 0) {
-                        // The element is not visible, we need to make it appear!
-                        collapseDocs(collapses[0], "show");
-                    }
-                }
-            }
-        }
+        expandSection();
     }
 }());
 
