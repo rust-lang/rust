@@ -1,10 +1,15 @@
-error[E0391]: cycle detected when normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All }, value: Foo }`
+error[E0391]: cycle detected when processing `Foo`
   --> $DIR/no_inferrable_concrete_type.rs:16:1
    |
 LL | existential type Foo: Copy; //~ cycle detected
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which again requires normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All }, value: Foo }`, completing the cycle
+note: ...which requires processing `bar`...
+  --> $DIR/no_inferrable_concrete_type.rs:19:23
+   |
+LL | fn bar(x: Foo) -> Foo { x }
+   |                       ^^^^^
+   = note: ...which again requires processing `Foo`, completing the cycle
 
 error: aborting due to previous error
 
