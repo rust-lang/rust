@@ -318,8 +318,14 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     }
 }
 
-/// A moderately sparse bit matrix: rows are appended lazily, but columns
-/// within appended rows are instantiated fully upon creation.
+/// A moderately sparse bit matrix, in which rows are instantiated lazily.
+///
+/// Initially, every row has no explicit representation. If any bit within a
+/// row is set, the entire row is instantiated as
+/// `Some(<full-column-width-BitArray>)`. Furthermore, any previously
+/// uninstantiated rows prior to it will be instantiated as `None`. Those prior
+/// rows may themselves become fully instantiated later on if any of their bits
+/// are set.
 #[derive(Clone, Debug)]
 pub struct SparseBitMatrix<R, C>
 where
@@ -327,7 +333,7 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, BitArray<C>>,
+    rows: IndexVec<R, Option<BitArray<C>>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
@@ -339,10 +345,14 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    fn ensure_row(&mut self, row: R) {
+    fn ensure_row(&mut self, row: R) -> &mut BitArray<C> {
+        // Instantiate any missing rows up to and including row `row` with an
+        // empty BitArray.
+        self.rows.ensure_contains_elem(row, || None);
+
+        // Then replace row `row` with a full BitArray if necessary.
         let num_columns = self.num_columns;
-        self.rows
-            .ensure_contains_elem(row, || BitArray::new(num_columns));
+        self.rows[row].get_or_insert_with(|| BitArray::new(num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -350,8 +360,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     ///
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: R, column: C) -> bool {
-        self.ensure_row(row);
-        self.rows[row].insert(column)
+        self.ensure_row(row).insert(column)
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
@@ -359,7 +368,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.rows.get(row).map_or(false, |r| r.contains(column))
+        self.row(row).map_or(false, |r| r.contains(column))
     }
 
     /// Add the bits from row `read` to the bits from row `write`,
@@ -370,30 +379,26 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// `write` can reach everything that `read` can (and
     /// potentially more).
     pub fn merge(&mut self, read: R, write: R) -> bool {
-        if read == write || self.rows.get(read).is_none() {
+        if read == write || self.row(read).is_none() {
             return false;
         }
 
         self.ensure_row(write);
-        let (bitvec_read, bitvec_write) = self.rows.pick2_mut(read, write);
-        bitvec_write.merge(bitvec_read)
+        if let (Some(bitvec_read), Some(bitvec_write)) = self.rows.pick2_mut(read, write) {
+            bitvec_write.merge(bitvec_read)
+        } else {
+            unreachable!()
+        }
     }
 
     /// Merge a row, `from`, into the `into` row.
     pub fn merge_into(&mut self, into: R, from: &BitArray<C>) -> bool {
-        self.ensure_row(into);
-        self.rows[into].merge(from)
+        self.ensure_row(into).merge(from)
     }
 
     /// Add all bits to the given row.
     pub fn add_all(&mut self, row: R) {
-        self.ensure_row(row);
-        self.rows[row].insert_all();
-    }
-
-    /// Number of elements in the matrix.
-    pub fn len(&self) -> usize {
-        self.rows.len()
+        self.ensure_row(row).insert_all();
     }
 
     pub fn rows(&self) -> impl Iterator<Item = R> {
@@ -403,16 +408,15 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
-        self.rows.get(row).into_iter().flat_map(|r| r.iter())
-    }
-
-    /// Iterates through each row and the accompanying bit set.
-    pub fn iter_enumerated<'a>(&'a self) -> impl Iterator<Item = (R, &'a BitArray<C>)> + 'a {
-        self.rows.iter_enumerated()
+        self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
     pub fn row(&self, row: R) -> Option<&BitArray<C>> {
-        self.rows.get(row)
+        if let Some(Some(row)) = self.rows.get(row) {
+            Some(row)
+        } else {
+            None
+        }
     }
 }
 
