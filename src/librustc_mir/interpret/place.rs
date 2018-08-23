@@ -494,33 +494,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         })
     }
 
-    /// Compute a place.  You should only use this if you intend to write into this
-    /// place; for reading, a more efficient alternative is `eval_place_for_read`.
-    pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, PlaceTy<'tcx>> {
+    /// Evaluate statics and promoteds to an `MPlace`.  Used to share some code between
+    /// `eval_place` and `eval_place_to_op`.
+    pub(super) fn eval_place_to_mplace(
+        &self,
+        mir_place: &mir::Place<'tcx>
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         use rustc::mir::Place::*;
-        let place = match *mir_place {
-            Local(mir::RETURN_PLACE) => PlaceTy {
-                place: self.frame().return_place,
-                layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
-            },
-            Local(local) => PlaceTy {
-                place: Place::Local {
-                    frame: self.cur_frame(),
-                    local,
-                },
-                layout: self.layout_of_local(self.cur_frame(), local)?,
-            },
-
+        Ok(match *mir_place {
             Promoted(ref promoted) => {
                 let instance = self.frame().instance;
                 let op = self.global_to_op(GlobalId {
                     instance,
                     promoted: Some(promoted.0),
                 })?;
-                let mplace = op.to_mem_place();
+                let mplace = op.to_mem_place(); // these are always in memory
                 let ty = self.monomorphize(promoted.1, self.substs());
-                PlaceTy {
-                    place: Place::Ptr(mplace),
+                MPlaceTy {
+                    mplace,
                     layout: self.layout_of(ty)?,
                 }
             }
@@ -539,17 +530,39 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // global table but not in its local memory.
                 let alloc = self.tcx.alloc_map.lock()
                     .intern_static(cid.instance.def_id());
-                MPlaceTy::from_aligned_ptr(alloc.into(), layout).into()
+                MPlaceTy::from_aligned_ptr(alloc.into(), layout)
             }
+
+            _ => bug!("eval_place_to_mplace called on {:?}", mir_place),
+        })
+    }
+
+    /// Compute a place.  You should only use this if you intend to write into this
+    /// place; for reading, a more efficient alternative is `eval_place_for_read`.
+    pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, PlaceTy<'tcx>> {
+        use rustc::mir::Place::*;
+        let place = match *mir_place {
+            Local(mir::RETURN_PLACE) => PlaceTy {
+                place: self.frame().return_place,
+                layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
+            },
+            Local(local) => PlaceTy {
+                place: Place::Local {
+                    frame: self.cur_frame(),
+                    local,
+                },
+                layout: self.layout_of_local(self.cur_frame(), local)?,
+            },
 
             Projection(ref proj) => {
                 let place = self.eval_place(&proj.base)?;
                 self.place_projection(place, &proj.elem)?
             }
+
+            _ => self.eval_place_to_mplace(mir_place)?.into(),
         };
 
         self.dump_place(place.place);
-
         Ok(place)
     }
 

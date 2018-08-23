@@ -52,8 +52,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ref targets,
                 ..
             } => {
-                let discr_val = self.eval_operand(discr, None)?;
-                let discr = self.read_value(discr_val)?;
+                let discr = self.read_value(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -164,19 +163,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_and_read_value(cond, None)?
-                    .to_scalar()?
-                    .to_bool()?;
+                let cond_val = self.read_value(self.eval_operand(cond, None)?)?
+                    .to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(Some(target))?;
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_and_read_value(len, None)
+                            let len = self.read_value(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.eval_operand_and_read_value(index, None)
+                            let index = self.read_value(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })

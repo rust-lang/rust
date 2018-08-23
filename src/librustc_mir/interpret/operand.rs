@@ -427,12 +427,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     // avoid allocations.  If you already know the layout, you can pass it in
     // to avoid looking it up again.
     fn eval_place_to_op(
-        &mut self,
+        &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
         use rustc::mir::Place::*;
-        Ok(match *mir_place {
+        let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
             Local(local) => {
                 let op = *self.frame().locals[local].access()?;
@@ -446,21 +446,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.operand_projection(op, &proj.elem)?
             }
 
-            // Everything else is an mplace, so we just call `eval_place`.
-            // Note that getting an mplace for a static aways requires `&mut`,
-            // so this does not "cost" us anything in terms if mutability.
-            Promoted(_) | Static(_) => {
-                let place = self.eval_place(mir_place)?;
-                place.to_mem_place().into()
-            }
-        })
+            _ => self.eval_place_to_mplace(mir_place)?.into(),
+        };
+
+        trace!("eval_place_to_op: got {:?}", *op);
+        Ok(op)
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
     /// if you already know the layout, you can save two some table lookups
     /// by passing it in here.
     pub fn eval_operand(
-        &mut self,
+        &self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
@@ -486,7 +483,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     /// Evaluate a bunch of operands at once
     pub(crate) fn eval_operands(
-        &mut self,
+        &self,
         ops: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, Vec<OpTy<'tcx>>> {
         ops.into_iter()
@@ -495,8 +492,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     // Also used e.g. when miri runs into a constant.
-    // Unfortunately, this needs an `&mut` to be able to allocate a copy of a `ByRef`
-    // constant.  This bleeds up to `eval_operand` needing `&mut`.
     pub fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
@@ -525,18 +520,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub(super) fn global_to_op(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
         let cv = self.const_eval(gid)?;
         self.const_value_to_op(cv.val)
-    }
-
-    /// We cannot do self.read_value(self.eval_operand) due to eval_operand taking &mut self,
-    /// so this helps avoid unnecessary let.
-    #[inline]
-    pub fn eval_operand_and_read_value(
-        &mut self,
-        op: &mir::Operand<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, ValTy<'tcx>> {
-        let op = self.eval_operand(op, layout)?;
-        self.read_value(op)
     }
 
     /// reads a tag and produces the corresponding variant index
