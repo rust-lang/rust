@@ -22,10 +22,40 @@ struct Foo {
 
 fn main() {
     unsafe {
-        panic::catch_unwind(|| mem::uninitialized::<!>()).is_err();
-        panic::catch_unwind(|| mem::zeroed::<!>()).is_err();
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::uninitialized::<!>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type ! using mem::uninitialized"
+            })),
+            Some(true)
+        );
 
-        panic::catch_unwind(|| mem::uninitialized::<Foo>()).is_err();
-        panic::catch_unwind(|| mem::zeroed::<Foo>()).is_err();
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::zeroed::<!>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type ! using mem::zeroed"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::uninitialized::<Foo>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Foo using mem::uninitialized"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::zeroed::<Foo>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Foo using mem::zeroed"
+            })),
+            Some(true)
+        );
     }
 }
