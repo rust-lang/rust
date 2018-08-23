@@ -14,6 +14,7 @@ use libsyntax2::{
 
 use {TextUnit, EditBuilder, Edit};
 
+#[derive(Debug)]
 pub struct ActionResult {
     pub edit: Edit,
     pub cursor_position: Option<TextUnit>,

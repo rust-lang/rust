@@ -7,11 +7,12 @@ mod symbols;
 mod line_index;
 mod edit;
 mod code_actions;
+mod typing;
 
 use libsyntax2::{
     ast::{self, NameOwner},
     AstNode,
-    algo::{walk, find_leaf_at_offset},
+    algo::{walk, find_leaf_at_offset, find_covering_node},
     SyntaxKind::{self, *},
 };
 pub use libsyntax2::{ParsedFile, TextRange, TextUnit};
@@ -24,6 +25,7 @@ pub use self::{
         ActionResult, find_node,
         flip_comma, add_derive, add_impl,
     },
+    typing::join_lines,
 };
 
 #[derive(Debug)]

@@ -8,6 +8,7 @@ use libeditor::{
     ParsedFile, TextUnit, TextRange, ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, add_impl, matching_brace,
+    join_lines,
 };
 
 #[test]
@@ -175,6 +176,54 @@ fn test_matching_brace() {
         "struct Foo { a: i32, }<|>",
         "struct Foo <|>{ a: i32, }",
     );
+}
+
+#[test]
+fn test_join_lines_cursor() {
+    fn do_check(before: &str, after: &str) {
+        check_action(before, after, |file, offset| {
+            let range = TextRange::offset_len(offset, 0.into());
+            let res = join_lines(file, range);
+            Some(res)
+        })
+    }
+
+    do_check(r"
+fn foo() {
+    <|>foo(1,
+    )
+}
+", r"
+fn foo() {
+    <|>foo(1, )
+}
+");
+}
+
+#[test]
+fn test_join_lines_selection() {
+    fn do_check(before: &str, after: &str) {
+        let (sel_start, before) = extract_cursor(before);
+        let (sel_end, before) = extract_cursor(&before);
+        let sel = TextRange::from_to(sel_start, sel_end);
+        let file = file(&before);
+        let result = join_lines(&file, sel);
+        let actual = result.edit.apply(&before);
+        assert_eq_text!(after, &actual);
+    }
+
+    do_check(r"
+fn foo() {
+    <|>foo(1,
+        2,
+        3,
+    <|>)
+}
+", r"
+fn foo() {
+    foo(1, 2, 3, )
+}
+");
 }
 
 fn file(text: &str) -> ParsedFile {
