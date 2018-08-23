@@ -441,9 +441,6 @@ declare_features! (
     (active, tbm_target_feature, "1.27.0", Some(44839), None),
     (active, wasm_target_feature, "1.30.0", Some(44839), None),
 
-    // Allows macro invocations of the form `#[foo::bar]`
-    (active, proc_macro_path_invoc, "1.27.0", Some(38356), None),
-
     // Allows macro invocations on modules expressions and statements and
     // procedural macros to expand to non-items.
     (active, proc_macro_mod, "1.27.0", Some(38356), None),
@@ -457,8 +454,6 @@ declare_features! (
     // Access to crate names passed via `--extern` through prelude
     (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
 
-    // Scoped attributes
-    (active, tool_attributes, "1.25.0", Some(44690), None),
     // Scoped lints
     (active, tool_lints, "1.28.0", Some(44690), None),
 
@@ -655,6 +650,10 @@ declare_features! (
     (accepted, use_extern_macros, "1.30.0", Some(35896), None),
     // Allows keywords to be escaped for use as identifiers
     (accepted, raw_identifiers, "1.30.0", Some(48589), None),
+    // Attributes scoped to tools
+    (accepted, tool_attributes, "1.30.0", Some(44690), None),
+    // Allows multi-segment paths in attributes and derives
+    (accepted, proc_macro_path_invoc, "1.30.0", Some(38356), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
