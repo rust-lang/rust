@@ -773,8 +773,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Turn a place that is a dyn trait (i.e., PlaceExtra::Vtable and the appropriate layout)
     /// or a slice into the specific fixed-size place and layout that is given by the vtable/len.
     /// This "unpacks" the existential quantifier, so to speak.
-    pub fn unpack_unsized_mplace(&self, mplace: MPlaceTy<'tcx>)
-        -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+    pub fn unpack_unsized_mplace(
+        &self,
+        mplace: MPlaceTy<'tcx>
+        ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         trace!("Unpacking {:?} ({:?})", *mplace, mplace.layout.ty);
         let layout = match mplace.extra {
             PlaceExtra::Vtable(vtable) => {

@@ -380,12 +380,12 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             Layout(_) =>
                 "rustc layout computation failed",
             UnterminatedCString(_) =>
-                "attempted to get length of a null terminated string, but no null found before end
+                "attempted to get length of a null terminated string, but no null found before end \
                 of allocation",
             HeapAllocZeroBytes =>
                 "tried to re-, de- or allocate zero bytes on the heap",
             HeapAllocNonPowerOfTwoAlignment(_) =>
-                "tried to re-, de-, or allocate heap memory with alignment that is not a power of
+                "tried to re-, de-, or allocate heap memory with alignment that is not a power of \
                 two",
             Unreachable =>
                 "entered unreachable code",
