@@ -145,7 +145,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     let mut tmp = MaybeUninit::<T>::uninitialized();
 
     // Perform the swap
-    copy_nonoverlapping(x, tmp.get_mut(), 1);
+    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
     copy(y, x, 1); // `x` and `y` may overlap
     copy_nonoverlapping(tmp.get_ref(), y, 1);
 }
@@ -293,7 +293,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninitialized();
-    copy_nonoverlapping(src, tmp.get_mut(), 1);
+    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
     tmp.into_inner()
 }
 

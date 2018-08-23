@@ -272,8 +272,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = unsafe { offsets_l.get_mut().as_mut_ptr() };
-            end_l = unsafe { offsets_l.get_mut().as_mut_ptr() };
+            start_l = offsets_l.as_mut_ptr() as *mut u8;
+            end_l = offsets_l.as_mut_ptr() as *mut u8;
             let mut elem = l;
 
             for i in 0..block_l {
@@ -288,8 +288,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = unsafe { offsets_r.get_mut().as_mut_ptr() };
-            end_r = unsafe {  offsets_r.get_mut().as_mut_ptr() };
+            start_r = offsets_r.as_mut_ptr() as *mut u8;
+            end_r = offsets_r.as_mut_ptr() as *mut u8;
             let mut elem = r;
 
             for i in 0..block_r {

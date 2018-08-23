@@ -26,9 +26,6 @@ union RawArray<T> {
 }
 
 impl<T> RawArray<T> {
-    fn ptr(&self) -> *mut T {
-        unsafe { &self.typed as *const T as *mut T }
-    }
     fn cap() -> usize {
         if mem::size_of::<T>() == 0 {
             usize::max_value()
@@ -85,8 +82,8 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
-    let buf = rawarray.get_ref().ptr();
+    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);
     if left <= right {
