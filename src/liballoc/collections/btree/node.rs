@@ -567,7 +567,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
             // the node, which is allowed by LLVM.
             unsafe {
                 slice::from_raw_parts(
-                    self.as_leaf().keys.get_ref().as_ptr(),
+                    self.as_leaf().keys.as_ptr() as *const K,
                     self.len()
                 )
             }
@@ -578,7 +578,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts(
-                self.as_leaf().vals.get_ref().as_ptr(),
+                self.as_leaf().vals.as_ptr() as *const V,
                 self.len()
             )
         }
@@ -1152,12 +1152,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
 
             ptr::copy_nonoverlapping(
                 self.node.keys().as_ptr().add(self.idx + 1),
-                new_node.keys.get_mut().as_mut_ptr(),
+                new_node.keys.as_mut_ptr() as *mut K,
                 new_len
             );
             ptr::copy_nonoverlapping(
                 self.node.vals().as_ptr().add(self.idx + 1),
-                new_node.vals.get_mut().as_mut_ptr(),
+                new_node.vals.as_mut_ptr() as *mut V,
                 new_len
             );
 
@@ -1210,12 +1210,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             ptr::copy_nonoverlapping(
                 self.node.keys().as_ptr().add(self.idx + 1),
-                new_node.data.keys.get_mut().as_mut_ptr(),
+                new_node.data.keys.as_mut_ptr() as *mut K,
                 new_len
             );
             ptr::copy_nonoverlapping(
                 self.node.vals().as_ptr().add(self.idx + 1),
-                new_node.data.vals.get_mut().as_mut_ptr(),
+                new_node.data.vals.as_mut_ptr() as *mut V,
                 new_len
             );
             ptr::copy_nonoverlapping(
