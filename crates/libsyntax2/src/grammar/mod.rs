@@ -54,7 +54,7 @@ impl BlockLike {
     fn is_block(self) -> bool { self == BlockLike::Block }
 }
 
-fn visibility(p: &mut Parser) {
+fn opt_visibility(p: &mut Parser) {
     match p.current() {
         PUB_KW => {
             let m = p.start();

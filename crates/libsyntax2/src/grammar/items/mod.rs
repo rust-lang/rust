@@ -63,7 +63,7 @@ pub(super) enum MaybeItem {
 
 pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     attributes::outer_attributes(p);
-    visibility(p);
+    opt_visibility(p);
     if let Some(kind) = items_without_modifiers(p) {
         return MaybeItem::Item(kind);
     }

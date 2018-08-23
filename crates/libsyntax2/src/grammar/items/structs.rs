@@ -91,7 +91,7 @@ fn named_fields(p: &mut Parser) {
         //     pub uri: Uri,
         // }
         attributes::outer_attributes(p);
-        visibility(p);
+        opt_visibility(p);
         if p.at(IDENT) {
             name(p);
             p.expect(COLON);
@@ -110,7 +110,7 @@ fn pos_fields(p: &mut Parser) {
     }
     while !p.at(R_PAREN) && !p.at(EOF) {
         let pos_field = p.start();
-        visibility(p);
+        opt_visibility(p);
         types::type_(p);
         pos_field.complete(p, POS_FIELD);
 
