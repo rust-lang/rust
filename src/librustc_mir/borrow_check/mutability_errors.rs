@@ -128,7 +128,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         }
                     } else {
                         item_msg = format!("data in a {}", pointer_type);
-                        reason = "".to_string();
+                        reason = String::new();
                     }
                 }
             }
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             Place::Static(box Static { def_id, ty: _ }) => {
                 if let Place::Static(_) = access_place {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
-                    reason = "".to_string();
+                    reason = String::new();
                 } else {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     let static_name = &self.tcx.item_name(*def_id);

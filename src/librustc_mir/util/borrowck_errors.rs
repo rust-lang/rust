@@ -474,7 +474,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     ) -> DiagnosticBuilder<'cx> {
         let moved_path = moved_path
             .map(|mp| format!(": `{}`", mp))
-            .unwrap_or("".to_owned());
+            .unwrap_or(String::new());
 
         let err = struct_span_err!(
             self,

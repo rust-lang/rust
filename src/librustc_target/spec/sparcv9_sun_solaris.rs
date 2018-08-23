@@ -30,7 +30,7 @@ pub fn target() -> TargetResult {
         // just be confusing.
         arch: "sparc64".to_string(),
         target_os: "solaris".to_string(),
-        target_env: "".to_string(),
+        target_env: String::new(),
         target_vendor: "sun".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,

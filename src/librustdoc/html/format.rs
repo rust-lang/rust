@@ -620,7 +620,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
         clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
             let lt = match *l {
                 Some(ref l) => format!("{} ", *l),
-                _ => "".to_string(),
+                _ => String::new(),
             };
             let m = MutableSpace(mutability);
             let amp = if f.alternate() {

@@ -2105,7 +2105,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     region
                 } else {
                     // Do not even print 'static
-                    "".to_owned()
+                    String::new()
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }

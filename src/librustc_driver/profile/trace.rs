@@ -85,7 +85,7 @@ pub fn html_of_effect(eff: &Effect) -> (String, String) {
 fn html_of_duration(_start: &Instant, dur: &Duration) -> (String, String) {
     use rustc::util::common::duration_to_secs_str;
     (duration_to_secs_str(dur.clone()),
-     "".to_string()
+     String::new()
     )
 }
 
