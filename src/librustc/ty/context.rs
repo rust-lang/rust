@@ -371,7 +371,7 @@ pub struct TypeckTables<'tcx> {
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
 
-    /// Stores the substitutions that the user explicit gave (if any)
+    /// Stores the substitutions that the user explicitly gave (if any)
     /// attached to `id`. These will not include any inferred
     /// values. The canonical form is used to capture things like `_`
     /// or other unspecified values.

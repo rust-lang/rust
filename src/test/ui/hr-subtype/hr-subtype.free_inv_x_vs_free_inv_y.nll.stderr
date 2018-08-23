@@ -18,17 +18,33 @@ LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
 
-error: compilation successful
-  --> $DIR/hr-subtype.rs:110:1
+error: unsatisfied lifetime constraints
+  --> $DIR/hr-subtype.rs:43:13
    |
-LL | / fn main() {
-LL | | //[bound_a_vs_bound_a]~^ ERROR compilation successful
-LL | | //[bound_a_vs_bound_b]~^^ ERROR compilation successful
-LL | | //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR compilation successful
-LL | | //[bound_co_a_vs_bound_co_b]~^^^^ ERROR compilation successful
-LL | | //[free_x_vs_free_x]~^^^^^ ERROR compilation successful
-LL | | }
-   | |_^
+LL |           fn subtype<'x,'y:'x,'z:'y>() {
+   |                      -- -- lifetime `'y` defined here
+   |                      |
+   |                      lifetime `'x` defined here
+LL |               gimme::<$t2>(None::<$t1>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
+...
+LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
+LL | |                                     fn(Inv<'y>)) }
+   | |__________________________________________________- in this macro invocation
 
-error: aborting due to previous error
+error: unsatisfied lifetime constraints
+  --> $DIR/hr-subtype.rs:49:13
+   |
+LL |           fn supertype<'x,'y:'x,'z:'y>() {
+   |                        -- -- lifetime `'y` defined here
+   |                        |
+   |                        lifetime `'x` defined here
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
+...
+LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
+LL | |                                     fn(Inv<'y>)) }
+   | |__________________________________________________- in this macro invocation
+
+error: aborting due to 2 previous errors
 
