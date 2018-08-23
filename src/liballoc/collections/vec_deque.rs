@@ -202,23 +202,6 @@ impl<T> VecDeque<T> {
                                  len);
     }
 
-    /// Returns a pair of slices which contain the contents of the buffer not used by the VecDeque.
-    #[inline]
-    unsafe fn unused_as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
-        let head = self.head;
-        let tail = self.tail;
-        let buf = self.buffer_as_mut_slice();
-        if head != tail {
-            // In buf, head..tail contains the VecDeque and tail..head is unused.
-            // So calling `ring_slices` with tail and head swapped returns unused slices.
-            RingSlices::ring_slices(buf, tail, head)
-        } else {
-            // Swapping doesn't help when head == tail.
-            let (before, after) = buf.split_at_mut(head);
-            (after, before)
-        }
-    }
-
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
@@ -1851,148 +1834,8 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // Copies all values from `src_slice` to the start of `dst_slice`.
-        unsafe fn copy_whole_slice<T>(src_slice: &[T], dst_slice: &mut [T]) {
-            let len = src_slice.len();
-            ptr::copy_nonoverlapping(src_slice.as_ptr(), dst_slice[..len].as_mut_ptr(), len);
-        }
-
-        let src_total = other.len();
-
-        // Guarantees there is space in `self` for `other`.
-        self.reserve(src_total);
-
-        self.head = {
-            let original_head = self.head;
-
-            // The goal is to copy all values from `other` into `self`. To avoid any
-            // mismatch, all valid values in `other` are retrieved...
-            let (src_high, src_low) = other.as_slices();
-            // and unoccupied parts of self are retrieved.
-            let (dst_high, dst_low) = unsafe { self.unused_as_mut_slices() };
-
-            // Then all that is needed is to copy all values from
-            // src (src_high and src_low) to dst (dst_high and dst_low).
-            //
-            // other [o o o . . . . . o o o o]
-            //       [5 6 7]         [1 2 3 4]
-            //       src_low         src_high
-            //
-            // self  [. . . . . . o o o o . .]
-            //       [3 4 5 6 7 .]       [1 2]
-            //       dst_low             dst_high
-            //
-            // Values are not copied one by one but as slices in `copy_whole_slice`.
-            // What slices are used depends on various properties of src and dst.
-            // There are 6 cases in total:
-            //     1. `src` is contiguous and fits in dst_high
-            //     2. `src` is contiguous and does not fit in dst_high
-            //     3. `src` is discontiguous and fits in dst_high
-            //     4. `src` is discontiguous and does not fit in dst_high
-            //        + src_high is smaller than dst_high
-            //     5. `src` is discontiguous and does not fit in dst_high
-            //        + dst_high is smaller than src_high
-            //     6. `src` is discontiguous and does not fit in dst_high
-            //        + dst_high is the same size as src_high
-            let src_contiguous = src_low.is_empty();
-            let dst_high_fits_src = dst_high.len() >= src_total;
-            match (src_contiguous, dst_high_fits_src) {
-                (true, true) => {
-                    // 1.
-                    // other [. . . o o o . . . . . .]
-                    //       []    [1 1 1]
-                    //
-                    // self  [. o o o o o . . . . . .]
-                    //       [.]         [1 1 1 . . .]
-
-                    unsafe {
-                        copy_whole_slice(src_high, dst_high);
-                    }
-                    original_head + src_total
-                }
-                (true, false) => {
-                    // 2.
-                    // other [. . . o o o o o . . . .]
-                    //       []    [1 1 2 2 2]
-                    //
-                    // self  [. . . . . . . o o o . .]
-                    //       [2 2 2 . . . .]     [1 1]
-
-                    let (src_1, src_2) = src_high.split_at(dst_high.len());
-                    unsafe {
-                        copy_whole_slice(src_1, dst_high);
-                        copy_whole_slice(src_2, dst_low);
-                    }
-                    src_total - dst_high.len()
-                }
-                (false, true) => {
-                    // 3.
-                    // other [o o . . . . . . . o o o]
-                    //       [2 2]             [1 1 1]
-                    //
-                    // self  [. o o . . . . . . . . .]
-                    //       [.]   [1 1 1 2 2 . . . .]
-
-                    let (dst_1, dst_2) = dst_high.split_at_mut(src_high.len());
-                    unsafe {
-                        copy_whole_slice(src_high, dst_1);
-                        copy_whole_slice(src_low, dst_2);
-                    }
-                    original_head + src_total
-                }
-                (false, false) => {
-                    if src_high.len() < dst_high.len() {
-                        // 4.
-                        // other [o o o . . . . . . o o o]
-                        //       [2 3 3]           [1 1 1]
-                        //
-                        // self  [. . . . . . o o . . . .]
-                        //       [3 3 . . . .]   [1 1 1 2]
-
-                        let (dst_1, dst_2) = dst_high.split_at_mut(src_high.len());
-                        let (src_2, src_3) = src_low.split_at(dst_2.len());
-                        unsafe {
-                            copy_whole_slice(src_high, dst_1);
-                            copy_whole_slice(src_2, dst_2);
-                            copy_whole_slice(src_3, dst_low);
-                        }
-                        src_3.len()
-                    } else if src_high.len() > dst_high.len() {
-                        // 5.
-                        // other [o o o . . . . . o o o o]
-                        //       [3 3 3]         [1 1 2 2]
-                        //
-                        // self  [. . . . . . o o o o . .]
-                        //       [2 2 3 3 3 .]       [1 1]
-
-                        let (src_1, src_2) = src_high.split_at(dst_high.len());
-                        let (dst_2, dst_3) = dst_low.split_at_mut(src_2.len());
-                        unsafe {
-                            copy_whole_slice(src_1, dst_high);
-                            copy_whole_slice(src_2, dst_2);
-                            copy_whole_slice(src_low, dst_3);
-                        }
-                        dst_2.len() + src_low.len()
-                    } else {
-                        // 6.
-                        // other [o o . . . . . . . o o o]
-                        //       [2 2]             [1 1 1]
-                        //
-                        // self  [. . . . . . . o o . . .]
-                        //       [2 2 . . . . .]   [1 1 1]
-
-                        unsafe {
-                            copy_whole_slice(src_high, dst_high);
-                            copy_whole_slice(src_low, dst_low);
-                        }
-                        src_low.len()
-                    }
-                }
-            }
-        };
-
-        // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
-        other.tail = other.head;
+        // naive impl
+        self.extend(other.drain(..));
     }
 
     /// Retains only the elements specified by the predicate.
@@ -2145,11 +1988,11 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         f.debug_tuple("Iter")
-         .field(&self.ring)
-         .field(&self.tail)
-         .field(&self.head)
-         .finish()
+            .field(&front)
+            .field(&back)
+            .finish()
     }
 }
 
@@ -2242,11 +2085,11 @@ pub struct IterMut<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
         f.debug_tuple("IterMut")
-         .field(&self.ring)
-         .field(&self.tail)
-         .field(&self.head)
-         .finish()
+            .field(&front)
+            .field(&back)
+            .finish()
     }
 }
 
@@ -3121,6 +2964,23 @@ mod tests {
                     create_vec_and_test_convert(cap, offset, len)
                 }
             }
+        }
+    }
+
+    #[test]
+    fn issue_53529() {
+        use boxed::Box;
+
+        let mut dst = VecDeque::new();
+        dst.push_front(Box::new(1));
+        dst.push_front(Box::new(2));
+        assert_eq!(*dst.pop_back().unwrap(), 1);
+
+        let mut src = VecDeque::new();
+        src.push_front(Box::new(2));
+        dst.append(&mut src);
+        for a in dst {
+            assert_eq!(*a, 2);
         }
     }
 
