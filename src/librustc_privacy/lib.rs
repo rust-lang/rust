@@ -18,7 +18,6 @@
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate rustc_typeck;
@@ -150,7 +149,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        debug!("visit_item({:?})", item);
         let inherited_item_level = match item.node {
             // Impls inherit level from their types and traits
             hir::ItemKind::Impl(..) => {
@@ -161,21 +159,12 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::ForeignMod(..) => {
                 self.prev_level
             }
-            // Impl trait return types mark their parent function.
-            // It (and its children) are revisited if the change applies.
-            hir::ItemKind::Existential(ref ty_data) => {
-                if let Some(impl_trait_fn) = ty_data.impl_trait_fn {
-                    if let Some(node_id) = self.tcx.hir.as_local_node_id(impl_trait_fn) {
-                        self.update(node_id, Some(AccessLevel::ReachableFromImplTrait));
-                    }
-                }
-                if item.vis.node.is_pub() { self.prev_level } else { None }
-            }
             // Other `pub` items inherit levels from parents
             hir::ItemKind::Const(..) | hir::ItemKind::Enum(..) | hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Fn(..) | hir::ItemKind::Mod(..) |
             hir::ItemKind::Static(..) | hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
+            hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
                 if item.vis.node.is_pub() { self.prev_level } else { None }
             }
@@ -183,8 +172,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
         // Update level of the item itself
         let item_level = self.update(item.id, inherited_item_level);
-
-        debug!("item_level = {:?}", item_level);
 
         // Update levels of nested things
         match item.node {
@@ -230,7 +217,15 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Existential(..) |
+            // Impl trait return types mark their parent function.
+            // It (and its children) are revisited if the change applies.
+            hir::ItemKind::Existential(ref ty_data) => {
+                if let Some(impl_trait_fn) = ty_data.impl_trait_fn {
+                    if let Some(node_id) = self.tcx.hir.as_local_node_id(impl_trait_fn) {
+                        self.update(node_id, Some(AccessLevel::ReachableFromImplTrait));
+                    }
+                }
+            }
             hir::ItemKind::Use(..) |
             hir::ItemKind::Static(..) |
             hir::ItemKind::Const(..) |
@@ -242,8 +237,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::ExternCrate(..) => {}
         }
 
-        let orig_level = self.prev_level;
-        self.prev_level = item_level;
+        // Store this node's access level here to propagate the correct
+        // reachability level through interfaces and children.
+        let orig_level = replace(&mut self.prev_level, item_level);
 
         // Mark all items in interfaces of reachable items as reachable
         match item.node {
@@ -1752,8 +1748,6 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
 
-    debug!("access levels after embargo: {:?}", &visitor.access_levels);
-
     {
         let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
             tcx,
@@ -1782,8 +1776,6 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
-
-    debug!("final access levels: {:?}", &visitor.access_levels);
 
     Lrc::new(visitor.access_levels)
 }
