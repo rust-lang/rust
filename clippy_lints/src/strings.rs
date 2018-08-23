@@ -9,8 +9,7 @@ use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, sp
 /// `let`!).
 ///
 /// **Why is this bad?** It's not really bad, but some people think that the
-/// `.push_str(_)` method is more readable. Also creates a new heap allocation and throws
-/// away the old one.
+/// `.push_str(_)` method is more readable.
 ///
 /// **Known problems:** None.
 ///
