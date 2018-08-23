@@ -87,7 +87,7 @@ This condition can be met using `#[used]` and `#[link_section]` plus a linker
 script.
 
 ``` rust,ignore
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![feature(used)]
 #![no_main]
 #![no_std]
@@ -102,8 +102,8 @@ extern "C" fn reset_handler() -> ! {
 #[used]
 static RESET_HANDLER: extern "C" fn() -> ! = reset_handler;
 
-#[panic_implementation]
-fn panic_impl(info: &PanicInfo) -> ! {
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 ```
