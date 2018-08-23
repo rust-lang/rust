@@ -1232,7 +1232,7 @@ impl<'a> Formatter<'a> {
             // If our string is longer that the precision, then we must have
             // truncation. However other flags like `fill`, `width` and `align`
             // must act as always.
-            if let Some((i, _)) = s.char_indices().skip(max).next() {
+            if let Some((i, _)) = s.char_indices().nth(max) {
                 // LLVM here can't prove that `..i` won't panic `&s[..i]`, but
                 // we know that it can't panic. Use `get` + `unwrap_or` to avoid
                 // `unsafe` and otherwise don't emit any panic-related code
