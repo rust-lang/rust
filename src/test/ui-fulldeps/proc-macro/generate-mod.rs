@@ -12,8 +12,6 @@
 
 // aux-build:generate-mod.rs
 
-#![feature(proc_macro_gen, proc_macro_path_invoc)]
-
 extern crate generate_mod;
 
 struct FromOutside;

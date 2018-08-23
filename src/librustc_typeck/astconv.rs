@@ -371,7 +371,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     quantifier,
                     bound,
                     kind,
-                    if required != 1 { "s" } else { "" },
+                    if bound != 1 { "s" } else { "" },
                 )
             };
 

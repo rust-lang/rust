@@ -666,30 +666,25 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             None => return,
         };
 
-        fragment.visit_with(&mut DisallowModules {
+        fragment.visit_with(&mut DisallowMacros {
             span,
             parse_sess: self.cx.parse_sess,
         });
 
-        struct DisallowModules<'a> {
+        struct DisallowMacros<'a> {
             span: Span,
             parse_sess: &'a ParseSess,
         }
 
-        impl<'ast, 'a> Visitor<'ast> for DisallowModules<'a> {
+        impl<'ast, 'a> Visitor<'ast> for DisallowMacros<'a> {
             fn visit_item(&mut self, i: &'ast ast::Item) {
-                let name = match i.node {
-                    ast::ItemKind::Mod(_) => Some("modules"),
-                    ast::ItemKind::MacroDef(_) => Some("macro definitions"),
-                    _ => None,
-                };
-                if let Some(name) = name {
+                if let ast::ItemKind::MacroDef(_) = i.node {
                     emit_feature_err(
                         self.parse_sess,
                         "proc_macro_gen",
                         self.span,
                         GateIssue::Language,
-                        &format!("procedural macros cannot expand to {}", name),
+                        &format!("procedural macros cannot expand to macro definitions"),
                     );
                 }
                 visit::walk_item(self, i);

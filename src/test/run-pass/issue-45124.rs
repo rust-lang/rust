@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_expr)]
+// compile-flags: --edition 2018
+
+#![feature(try_blocks)]
 
 fn main() {
     let mut a = 0;
     let () = {
-        let _: Result<(), ()> = do catch {
+        let _: Result<(), ()> = try {
             let _ = Err(())?;
             return
         };

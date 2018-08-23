@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
-
 #[derive(rustfmt::skip)] //~ ERROR expected a macro, found tool attribute
 struct S;
 

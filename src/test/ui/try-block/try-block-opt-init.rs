@@ -8,29 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-42708.rs
-// ignore-stage1
+// compile-flags: --edition 2018
 
-#![feature(decl_macro)]
-#![allow(unused)]
+#![feature(try_blocks)]
 
-extern crate issue_42708;
+fn use_val<T: Sized>(_x: T) {}
 
-macro m() {
-    #[derive(issue_42708::Test)]
-    struct S { x: () }
-
-    #[issue_42708::attr_test]
-    struct S2 { x: () }
-
-    #[derive(Clone)]
-    struct S3 { x: () }
-
-    fn g(s: S, s2: S2, s3: S3) {
-        (s.x, s2.x, s3.x);
-    }
+pub fn main() {
+    let cfg_res;
+    let _: Result<(), ()> = try {
+        Err(())?;
+        cfg_res = 5;
+        Ok::<(), ()>(())?;
+        use_val(cfg_res);
+    };
+    assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly uninitialized variable: `cfg_res`
 }
 
-m!();
-
-fn main() {}

@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
+// compile-flags: --edition 2018
+
+pub fn main() {
+    let try_result: Option<_> = try { //~ ERROR `try` expression is experimental
+        let x = 5;
+        x
+    };
+    assert_eq!(try_result, Some(5));
 }

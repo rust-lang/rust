@@ -412,7 +412,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
     QuestionMark,
     ExistentialReturnType,
     ForLoop,
-    Catch
+    TryBlock
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::FileName {

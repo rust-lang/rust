@@ -595,7 +595,7 @@ impl ExpnFormat {
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     QuestionMark,
-    Catch,
+    TryBlock,
     /// Desugaring of an `impl Trait` in return type position
     /// to an `existential type Foo: Trait;` + replacing the
     /// `impl Trait` with `Foo`.
@@ -609,7 +609,7 @@ impl CompilerDesugaringKind {
         Symbol::intern(match self {
             CompilerDesugaringKind::Async => "async",
             CompilerDesugaringKind::QuestionMark => "?",
-            CompilerDesugaringKind::Catch => "do catch",
+            CompilerDesugaringKind::TryBlock => "try block",
             CompilerDesugaringKind::ExistentialReturnType => "existential type",
             CompilerDesugaringKind::ForLoop => "for loop",
         })

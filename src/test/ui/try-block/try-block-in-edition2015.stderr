@@ -1,0 +1,18 @@
+error: expected identifier, found keyword `let`
+  --> $DIR/try-block-in-edition2015.rs:16:9
+   |
+LL |     let try_result: Option<_> = try {
+   |                                 --- while parsing this struct
+LL |     //~^ ERROR expected struct, variant or union type, found macro `try`
+LL |         let x = 5; //~ ERROR expected identifier, found keyword
+   |         ^^^ expected identifier, found keyword
+
+error[E0574]: expected struct, variant or union type, found macro `try`
+  --> $DIR/try-block-in-edition2015.rs:14:33
+   |
+LL |     let try_result: Option<_> = try {
+   |                                 ^^^ did you mean `try!(...)`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0574`.

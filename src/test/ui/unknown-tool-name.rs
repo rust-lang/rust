@@ -8,7 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(proc_macro_path_invoc)]
-
 #[foo::bar] //~ ERROR failed to resolve. Use of undeclared type or module `foo`
 fn main() {}

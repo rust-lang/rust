@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-50061.rs
-// ignore-stage1
+// compile-flags: --edition 2018
 
-#![feature(decl_macro)]
+#![feature(try_blocks)]
 
-extern crate issue_50061;
-
-macro inner(any_token $v: tt) {
-    $v
-}
-
-macro outer($v: tt) {
-    inner!(any_token $v)
-}
-
-#[issue_50061::check]
 fn main() {
-    //! this doc comment forces roundtrip through a string
-    let checkit = 0;
-    outer!(checkit);
+    while try { false } {} //~ ERROR expected expression, found reserved keyword `try`
 }
