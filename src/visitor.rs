@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use syntax::attr::HasAttrs;
-use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
+use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
 
 use attr::*;
-use codemap::{LineRangeUtils, SpanUtils};
 use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
 use config::{BraceStyle, Config};
 use items::{
@@ -26,6 +25,7 @@ use items::{
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
@@ -61,7 +61,7 @@ impl<'a> SnippetProvider<'a> {
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
-    pub codemap: &'a CodeMap,
+    pub source_map: &'a SourceMap,
     pub buffer: String,
     pub last_pos: BytePos,
     // FIXME: use an RAII util or closure for indenting
@@ -83,8 +83,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         debug!(
             "visit_stmt: {:?} {:?}",
-            self.codemap.lookup_char_pos(stmt.span.lo()),
-            self.codemap.lookup_char_pos(stmt.span.hi())
+            self.source_map.lookup_char_pos(stmt.span.lo()),
+            self.source_map.lookup_char_pos(stmt.span.hi())
         );
 
         match stmt.node {
@@ -121,8 +121,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     ) {
         debug!(
             "visit_block: {:?} {:?}",
-            self.codemap.lookup_char_pos(b.span.lo()),
-            self.codemap.lookup_char_pos(b.span.hi())
+            self.source_map.lookup_char_pos(b.span.lo()),
+            self.source_map.lookup_char_pos(b.span.hi())
         );
 
         // Check if this block has braces.
@@ -575,7 +575,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
-        FmtVisitor::from_codemap(
+        FmtVisitor::from_source_map(
             ctx.parse_session,
             ctx.config,
             ctx.snippet_provider,
@@ -583,7 +583,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         )
     }
 
-    pub(crate) fn from_codemap(
+    pub(crate) fn from_source_map(
         parse_session: &'a ParseSess,
         config: &'a Config,
         snippet_provider: &'a SnippetProvider,
@@ -591,7 +591,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     ) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session,
-            codemap: parse_session.codemap(),
+            source_map: parse_session.source_map(),
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
@@ -617,12 +617,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
             if attr.name() == DEPR_SKIP_ANNOTATION {
-                let file_name = self.codemap.span_to_filename(attr.span).into();
+                let file_name = self.source_map.span_to_filename(attr.span).into();
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
                         &attr.span,
-                        &self.codemap,
+                        &self.source_map,
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
@@ -630,12 +630,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 if attr.path.segments.len() == 1
                     || attr.path.segments[1].ident.to_string() != "skip"
                 {
-                    let file_name = self.codemap.span_to_filename(attr.span).into();
+                    let file_name = self.source_map.span_to_filename(attr.span).into();
                     self.report.append(
                         file_name,
                         vec![FormattingError::from_span(
                             &attr.span,
-                            &self.codemap,
+                            &self.source_map,
                             ErrorKind::BadAttr,
                         )],
                     );
@@ -741,10 +741,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    pub fn format_separate_mod(&mut self, m: &ast::Mod, filemap: &codemap::FileMap) {
+    pub fn format_separate_mod(&mut self, m: &ast::Mod, source_file: &source_map::SourceFile) {
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
-        self.format_missing_with_indent(filemap.end_pos);
+        self.format_missing_with_indent(source_file.end_pos);
     }
 
     pub fn skip_empty_lines(&mut self, end_pos: BytePos) {
@@ -779,7 +779,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub fn get_context(&self) -> RewriteContext {
         RewriteContext {
             parse_session: self.parse_session,
-            codemap: self.codemap,
+            source_map: self.source_map,
             config: self.config,
             inside_macro: RefCell::new(false),
             use_block: RefCell::new(false),

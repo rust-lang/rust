@@ -13,7 +13,7 @@
 use std::{self, borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use config::Config;
 use rewrite::RewriteContext;
@@ -1151,10 +1151,10 @@ pub fn recover_comment_removed(
         // We missed some comments. Warn and keep the original text.
         if context.config.error_on_unformatted() {
             context.report.append(
-                context.codemap.span_to_filename(span).into(),
+                context.source_map.span_to_filename(span).into(),
                 vec![FormattingError::from_span(
                     &span,
-                    &context.codemap,
+                    &context.source_map,
                     ErrorKind::LostComment,
                 )],
             );

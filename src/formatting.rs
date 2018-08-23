@@ -7,19 +7,19 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use syntax::ast;
-use syntax::codemap::{CodeMap, FilePathMapping, Span};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::errors::Handler;
 use syntax::parse::{self, ParseSess};
+use syntax::source_map::{FilePathMapping, SourceMap, Span};
 
 use comment::{CharClasses, FullCodeCharKind};
 use config::{Config, FileName, Verbosity};
 use issues::BadIssueSeeker;
 use visitor::{FmtVisitor, SnippetProvider};
-use {filemap, modules, ErrorKind, FormatReport, Input, Session};
+use {modules, source_file, ErrorKind, FormatReport, Input, Session};
 
 // A map of the files of a crate, with their new content
-pub(crate) type FileMap = Vec<FileRecord>;
+pub(crate) type SourceFile = Vec<FileRecord>;
 pub(crate) type FileRecord = (FileName, String);
 
 impl<'b, T: Write + 'b> Session<'b, T> {
@@ -70,19 +70,19 @@ fn format_project<T: FormatHandler>(
     let input_is_stdin = main_file == FileName::Stdin;
 
     // Parse the crate.
-    let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
-    let mut parse_session = make_parse_sess(codemap.clone(), config);
+    let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
+    let mut parse_session = make_parse_sess(source_map.clone(), config);
     let mut report = FormatReport::new();
     let krate = parse_crate(input, &parse_session, config, &mut report)?;
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
-    let silent_emitter = silent_emitter(codemap);
+    let silent_emitter = silent_emitter(source_map);
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
 
-    let files = modules::list_files(&krate, context.parse_session.codemap())?;
+    let files = modules::list_files(&krate, context.parse_session.source_map())?;
     for (path, module) in files {
         if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
             continue;
@@ -122,14 +122,14 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         module: &ast::Mod,
         is_root: bool,
     ) -> Result<(), ErrorKind> {
-        let filemap = self
+        let source_file = self
             .parse_session
-            .codemap()
+            .source_map()
             .lookup_char_pos(module.inner.lo())
             .file;
-        let big_snippet = filemap.src.as_ref().unwrap();
-        let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
-        let mut visitor = FmtVisitor::from_codemap(
+        let big_snippet = source_file.src.as_ref().unwrap();
+        let snippet_provider = SnippetProvider::new(source_file.start_pos, big_snippet);
+        let mut visitor = FmtVisitor::from_source_map(
             &self.parse_session,
             &self.config,
             &snippet_provider,
@@ -138,16 +138,16 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
 
         // Format inner attributes if available.
         if !self.krate.attrs.is_empty() && is_root {
-            visitor.skip_empty_lines(filemap.end_pos);
+            visitor.skip_empty_lines(source_file.end_pos);
             if visitor.visit_attrs(&self.krate.attrs, ast::AttrStyle::Inner) {
                 visitor.push_rewrite(module.inner, None);
             } else {
-                visitor.format_separate_mod(module, &*filemap);
+                visitor.format_separate_mod(module, &*source_file);
             }
         } else {
-            visitor.last_pos = filemap.start_pos;
-            visitor.skip_empty_lines(filemap.end_pos);
-            visitor.format_separate_mod(module, &*filemap);
+            visitor.last_pos = source_file.start_pos;
+            visitor.skip_empty_lines(source_file.end_pos);
+            visitor.format_separate_mod(module, &*source_file);
         };
 
         debug_assert_eq!(
@@ -155,9 +155,9 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             ::utils::count_newlines(&visitor.buffer)
         );
 
-        // For some reason, the codemap does not include terminating
+        // For some reason, the source_map does not include terminating
         // newlines so we must add one on for each file. This is sad.
-        filemap::append_newline(&mut visitor.buffer);
+        source_file::append_newline(&mut visitor.buffer);
 
         format_lines(
             &mut visitor.buffer,
@@ -198,7 +198,7 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
         report: &mut FormatReport,
     ) -> Result<(), ErrorKind> {
         if let Some(ref mut out) = self.out {
-            match filemap::write_file(&mut result, &path, out, &self.config) {
+            match source_file::write_file(&mut result, &path, out, &self.config) {
                 Ok(b) if b => report.add_diff(),
                 Err(e) => {
                     // Create a new error with path_str to help users see which files failed
@@ -209,7 +209,7 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
             }
         }
 
-        self.filemap.push((path, result));
+        self.source_file.push((path, result));
         Ok(())
     }
 }
@@ -223,13 +223,17 @@ pub(crate) struct FormattingError {
 }
 
 impl FormattingError {
-    pub(crate) fn from_span(span: &Span, codemap: &CodeMap, kind: ErrorKind) -> FormattingError {
+    pub(crate) fn from_span(
+        span: &Span,
+        source_map: &SourceMap,
+        kind: ErrorKind,
+    ) -> FormattingError {
         FormattingError {
-            line: codemap.lookup_char_pos(span.lo()).line,
+            line: source_map.lookup_char_pos(span.lo()).line,
             is_comment: kind.is_comment(),
             kind,
             is_string: false,
-            line_buffer: codemap
+            line_buffer: source_map
                 .span_to_lines(*span)
                 .ok()
                 .and_then(|fl| {
@@ -587,7 +591,7 @@ fn parse_crate(
         Input::File(file) => parse::new_parser_from_file(parse_session, &file),
         Input::Text(text) => parse::new_parser_from_source_str(
             parse_session,
-            syntax::codemap::FileName::Custom("stdin".to_owned()),
+            syntax::source_map::FileName::Custom("stdin".to_owned()),
             text,
         ),
     };
@@ -621,18 +625,18 @@ fn parse_crate(
     Err(ErrorKind::ParseError)
 }
 
-fn silent_emitter(codemap: Rc<CodeMap>) -> Box<EmitterWriter> {
+fn silent_emitter(source_map: Rc<SourceMap>) -> Box<EmitterWriter> {
     Box::new(EmitterWriter::new(
         Box::new(Vec::new()),
-        Some(codemap),
+        Some(source_map),
         false,
         false,
     ))
 }
 
-fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
+fn make_parse_sess(source_map: Rc<SourceMap>, config: &Config) -> ParseSess {
     let tty_handler = if config.hide_parse_errors() {
-        let silent_emitter = silent_emitter(codemap.clone());
+        let silent_emitter = silent_emitter(source_map.clone());
         Handler::with_emitter(true, false, silent_emitter)
     } else {
         let supports_color = term::stderr().map_or(false, |term| term.supports_color());
@@ -641,10 +645,10 @@ fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
         } else {
             ColorConfig::Never
         };
-        Handler::with_tty_emitter(color_cfg, true, false, Some(codemap.clone()))
+        Handler::with_tty_emitter(color_cfg, true, false, Some(source_map.clone()))
     };
 
-    ParseSess::with_span_handler(tty_handler, codemap)
+    ParseSess::with_span_handler(tty_handler, source_map)
 }
 
 fn should_emit_verbose<F>(is_stdin: bool, config: &Config, f: F)

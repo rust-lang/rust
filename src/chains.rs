@@ -65,7 +65,6 @@
 //!            .qux
 //! ```
 
-use codemap::SpanUtils;
 use comment::rewrite_comment;
 use config::IndentStyle;
 use expr::rewrite_call;
@@ -73,6 +72,7 @@ use lists::{extract_post_comment, extract_pre_comment, get_comment_end};
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use utils::{
     first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
     wrap_str,
@@ -82,7 +82,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 use std::iter;
 
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {

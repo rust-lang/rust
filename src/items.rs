@@ -16,11 +16,10 @@ use std::cmp::{min, Ordering};
 use config::lists::*;
 use regex::Regex;
 use rustc_target::spec::abi;
-use syntax::codemap::{self, BytePos, Span};
+use syntax::source_map::{self, BytePos, Span};
 use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
-use codemap::{LineRangeUtils, SpanUtils};
 use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
     recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
@@ -35,14 +34,15 @@ use macros::{rewrite_macro, MacroPosition};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use utils::*;
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
-const DEFAULT_VISIBILITY: ast::Visibility = codemap::Spanned {
+const DEFAULT_VISIBILITY: ast::Visibility = source_map::Spanned {
     node: ast::VisibilityKind::Inherited,
-    span: codemap::DUMMY_SP,
+    span: source_map::DUMMY_SP,
 };
 
 fn type_annotation_separator(config: &Config) -> &str {
@@ -380,16 +380,16 @@ impl<'a> FmtVisitor<'a> {
             return None;
         }
 
-        let codemap = self.get_context().codemap;
+        let source_map = self.get_context().source_map;
 
         if self.config.empty_item_single_line()
-            && is_empty_block(block, None, codemap)
+            && is_empty_block(block, None, source_map)
             && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
         {
             return Some(format!("{}{{}}", fn_str));
         }
 
-        if self.config.fn_single_line() && is_simple_block_stmt(block, None, codemap) {
+        if self.config.fn_single_line() && is_simple_block_stmt(block, None, source_map) {
             let rewrite = {
                 if let Some(stmt) = block.stmts.first() {
                     match stmt_expr(stmt) {

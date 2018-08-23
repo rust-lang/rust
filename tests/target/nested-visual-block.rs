@@ -1,7 +1,7 @@
 fn main() {
     // #1078
     let items = itemize_list(
-        context.codemap,
+        context.source_map,
         field_iter,
         "}",
         |item| match *item {
@@ -33,7 +33,7 @@ fn main() {
                 }
             }
         },
-        context.codemap.span_after(span, "{"),
+        context.source_map.span_after(span, "{"),
         span.hi(),
     );
 

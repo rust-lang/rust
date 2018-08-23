@@ -11,7 +11,7 @@ fn foo() -> bool {
         (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
 
     let is_internalxxxx =
-        self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
+        self.source_map.span_to_filename(s) == self.source_map.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb
         / (bbbbbb - function_call(x, *very_long_pointer, y))

@@ -22,17 +22,16 @@
 use std::collections::HashMap;
 
 use config::lists::*;
-use syntax::codemap::{BytePos, Span};
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::print::pprust;
+use syntax::source_map::{BytePos, Span};
 use syntax::symbol;
 use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, ptr};
 
-use codemap::SpanUtils;
 use comment::{
     contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented, FullCodeCharKind,
     LineClasses,
@@ -42,6 +41,7 @@ use lists::{itemize_list, write_list, ListFormatting};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{format_visibility, mk_sp, rewrite_ident, wrap_str};
 
