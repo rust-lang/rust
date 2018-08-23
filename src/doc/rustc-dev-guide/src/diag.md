@@ -11,9 +11,9 @@ HIR and MIR, allowing for more informative error reporting.
 
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.Span.html
 
-A `Span` can be looked up in a [`SourceMap`][sourcemap] to get a "snippet" useful
-for displaying errors with [`span_to_snippet`][sptosnip] and other similar
-methods on the `SourceMap`.
+A `Span` can be looked up in a [`SourceMap`][sourcemap] to get a "snippet"
+useful for displaying errors with [`span_to_snippet`][sptosnip] and other
+similar methods on the `SourceMap`.
 
 [sourcemap]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html
 [sptosnip]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html#method.span_to_snippet

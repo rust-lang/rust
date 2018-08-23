@@ -23,9 +23,10 @@ The `syntax` crate contains several main players,
   nodes.
 
 The main entrypoint to the parser is via the various `parse_*` functions in the
-[parser module]. They let you do things like turn a [`SourceFile`][sourcefile] (e.g.
-the source in a single file) into a token stream, create a parser from the
-token stream, and then execute the parser to get a `Crate` (the root AST node).
+[parser module]. They let you do things like turn a [`SourceFile`][sourcefile]
+(e.g. the source in a single file) into a token stream, create a parser from
+the token stream, and then execute the parser to get a `Crate` (the root AST
+node).
 
 To minimise the amount of copying that is done, both the `StringReader` and
 `Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
