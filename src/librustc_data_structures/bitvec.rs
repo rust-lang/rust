@@ -326,23 +326,23 @@ where
     R: Idx,
     C: Idx,
 {
-    columns: usize,
-    vector: IndexVec<R, BitArray<C>>,
+    num_columns: usize,
+    rows: IndexVec<R, BitArray<C>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Create a new empty sparse bit matrix with no rows or columns.
-    pub fn new(columns: usize) -> Self {
+    pub fn new(num_columns: usize) -> Self {
         Self {
-            columns,
-            vector: IndexVec::new(),
+            num_columns,
+            rows: IndexVec::new(),
         }
     }
 
     fn ensure_row(&mut self, row: R) {
-        let columns = self.columns;
-        self.vector
-            .ensure_contains_elem(row, || BitArray::new(columns));
+        let num_columns = self.num_columns;
+        self.rows
+            .ensure_contains_elem(row, || BitArray::new(num_columns));
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -351,7 +351,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: R, column: C) -> bool {
         self.ensure_row(row);
-        self.vector[row].insert(column)
+        self.rows[row].insert(column)
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
@@ -359,7 +359,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.vector.get(row).map_or(false, |r| r.contains(column))
+        self.rows.get(row).map_or(false, |r| r.contains(column))
     }
 
     /// Add the bits from row `read` to the bits from row `write`,
@@ -370,49 +370,49 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// `write` can reach everything that `read` can (and
     /// potentially more).
     pub fn merge(&mut self, read: R, write: R) -> bool {
-        if read == write || self.vector.get(read).is_none() {
+        if read == write || self.rows.get(read).is_none() {
             return false;
         }
 
         self.ensure_row(write);
-        let (bitvec_read, bitvec_write) = self.vector.pick2_mut(read, write);
+        let (bitvec_read, bitvec_write) = self.rows.pick2_mut(read, write);
         bitvec_write.merge(bitvec_read)
     }
 
     /// Merge a row, `from`, into the `into` row.
     pub fn merge_into(&mut self, into: R, from: &BitArray<C>) -> bool {
         self.ensure_row(into);
-        self.vector[into].merge(from)
+        self.rows[into].merge(from)
     }
 
     /// Add all bits to the given row.
     pub fn add_all(&mut self, row: R) {
         self.ensure_row(row);
-        self.vector[row].insert_all();
+        self.rows[row].insert_all();
     }
 
     /// Number of elements in the matrix.
     pub fn len(&self) -> usize {
-        self.vector.len()
+        self.rows.len()
     }
 
     pub fn rows(&self) -> impl Iterator<Item = R> {
-        self.vector.indices()
+        self.rows.indices()
     }
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
-        self.vector.get(row).into_iter().flat_map(|r| r.iter())
+        self.rows.get(row).into_iter().flat_map(|r| r.iter())
     }
 
     /// Iterates through each row and the accompanying bit set.
     pub fn iter_enumerated<'a>(&'a self) -> impl Iterator<Item = (R, &'a BitArray<C>)> + 'a {
-        self.vector.iter_enumerated()
+        self.rows.iter_enumerated()
     }
 
     pub fn row(&self, row: R) -> Option<&BitArray<C>> {
-        self.vector.get(row)
+        self.rows.get(row)
     }
 }
 
