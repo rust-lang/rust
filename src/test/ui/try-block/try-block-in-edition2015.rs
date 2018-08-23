@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2015
+
 pub fn main() {
-    let catch_result = do catch { //~ ERROR `catch` expression is experimental
-        let x = 5;
+    let try_result: Option<_> = try {
+    //~^ ERROR expected struct, variant or union type, found macro `try`
+        let x = 5; //~ ERROR expected identifier, found keyword
         x
     };
-    assert_eq!(catch_result, 5);
+    assert_eq!(try_result, Some(5));
 }

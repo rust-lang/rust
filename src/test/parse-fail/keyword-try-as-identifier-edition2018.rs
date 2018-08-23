@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_expr)]
+// compile-flags: -Z parse-only --edition 2018
 
-fn use_val<T: Sized>(_x: T) {}
-
-pub fn main() {
-    let cfg_res;
-    let _: Result<(), ()> = do catch {
-        Err(())?;
-        cfg_res = 5;
-        Ok::<(), ()>(())?;
-        use_val(cfg_res);
-    };
-    assert_eq!(cfg_res, 5); //~ ERROR use of possibly uninitialized variable
+fn main() {
+    let try = "foo"; //~ error: expected pattern, found reserved keyword `try`
 }
-

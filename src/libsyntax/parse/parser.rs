@@ -1757,9 +1757,17 @@ impl<'a> Parser<'a> {
 
             let parser_snapshot_before_pat = self.clone();
 
+            // Once we can use edition 2018 in the compiler,
+            // replace this with real try blocks.
+            macro_rules! try_block {
+                ($($inside:tt)*) => (
+                    (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
+                )
+            }
+
             // We're going to try parsing the argument as a pattern (even though it's not
             // allowed). This way we can provide better errors to the user.
-            let pat_arg: PResult<'a, _> = do catch {
+            let pat_arg: PResult<'a, _> = try_block! {
                 let pat = self.parse_pat()?;
                 self.expect(&token::Colon)?;
                 (pat, self.parse_ty()?)
@@ -2387,11 +2395,15 @@ impl<'a> Parser<'a> {
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
                 }
-                if self.is_catch_expr() {
+                if self.is_do_catch_block() {
+                    let mut db = self.fatal("found removed `do catch` syntax");
+                    db.help("Following RFC #2388, the new non-placeholder syntax is `try`");
+                    return Err(db);
+                }
+                if self.is_try_block() {
                     let lo = self.span;
-                    assert!(self.eat_keyword(keywords::Do));
-                    assert!(self.eat_keyword(keywords::Catch));
-                    return self.parse_catch_expr(lo, attrs);
+                    assert!(self.eat_keyword(keywords::Try));
+                    return self.parse_try_block(lo, attrs);
                 }
                 if self.eat_keyword(keywords::Return) {
                     if self.token.can_begin_expr() {
@@ -3453,13 +3465,13 @@ impl<'a> Parser<'a> {
             ExprKind::Async(capture_clause, ast::DUMMY_NODE_ID, body), attrs))
     }
 
-    /// Parse a `do catch {...}` expression (`do catch` token already eaten)
-    fn parse_catch_expr(&mut self, span_lo: Span, mut attrs: ThinVec<Attribute>)
+    /// Parse a `try {...}` expression (`try` token already eaten)
+    fn parse_try_block(&mut self, span_lo: Span, mut attrs: ThinVec<Attribute>)
         -> PResult<'a, P<Expr>>
     {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        Ok(self.mk_expr(span_lo.to(body.span), ExprKind::Catch(body), attrs))
+        Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
     }
 
     // `match` token already eaten
@@ -4408,12 +4420,20 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn is_catch_expr(&mut self) -> bool {
+    fn is_do_catch_block(&mut self) -> bool {
         self.token.is_keyword(keywords::Do) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
         self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
+        !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+    }
 
-        // prevent `while catch {} {}`, `if catch {} {} else {}`, etc.
+    fn is_try_block(&mut self) -> bool {
+        self.token.is_keyword(keywords::Try) &&
+        self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
+
+        self.span.edition() >= Edition::Edition2018 &&
+
+        // prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 

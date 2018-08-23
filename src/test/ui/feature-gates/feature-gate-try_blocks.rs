@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_expr)]
+// compile-flags: --edition 2018
 
-fn main() {
-    match do catch { false } { _ => {} } //~ ERROR expected expression, found reserved keyword `do`
+pub fn main() {
+    let try_result: Option<_> = try { //~ ERROR `try` expression is experimental
+        let x = 5;
+        x
+    };
+    assert_eq!(try_result, Some(5));
 }
