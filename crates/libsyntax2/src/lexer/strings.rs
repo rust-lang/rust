@@ -102,23 +102,11 @@ pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
 }
 
 fn scan_byte(ptr: &mut Ptr) {
-    if ptr.next_is('\'') {
-        ptr.bump();
-        return;
-    }
-    ptr.bump();
-    if ptr.next_is('\'') {
-        ptr.bump();
-        return;
-    }
+    scan_char(ptr)
 }
 
 fn scan_byte_string(ptr: &mut Ptr) {
-    while let Some(c) = ptr.bump() {
-        if c == '"' {
-            return;
-        }
-    }
+    scan_string(ptr)
 }
 
 fn scan_raw_byte_string(ptr: &mut Ptr) {
