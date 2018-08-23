@@ -32,7 +32,7 @@ pub struct Builder<'a, 'll: 'a, 'tcx: 'll, V : 'll> {
     pub cx: &'a CodegenCx<'ll, 'tcx, V>,
 }
 
-impl<V> Drop for Builder<'_, '_, '_, V> {
+impl<V> Drop for Builder<'a, 'll, 'tcx, V> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
