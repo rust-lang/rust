@@ -204,17 +204,34 @@ impl BuilderMethods<'a, 'll, 'tcx>
                args);
 
         let args = self.check_call("invoke", llfn, args);
-        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
-
-        unsafe {
-            llvm::LLVMRustBuildInvoke(self.llbuilder,
-                                      llfn,
-                                      args.as_ptr(),
-                                      args.len() as c_uint,
-                                      then,
-                                      catch,
-                                      bundle,
-                                      noname())
+        match bundle {
+            Some(b) => {
+                let llvm_bundle = OperandBundleDef::from_generic(b);
+                unsafe {
+                    llvm::LLVMRustBuildInvoke(
+                        self.llbuilder,
+                        llfn,
+                        args.as_ptr(),
+                        args.len() as c_uint,
+                        then,
+                        catch,
+                        Some(&*(llvm_bundle.raw)),
+                        noname()
+                    )
+                }
+            }
+            None => unsafe {
+                llvm::LLVMRustBuildInvoke(
+                    self.llbuilder,
+                    llfn,
+                    args.as_ptr(),
+                    args.len() as c_uint,
+                    then,
+                    catch,
+                    None,
+                    noname()
+                )
+            }
         }
     }
 
@@ -1252,16 +1269,28 @@ impl BuilderMethods<'a, 'll, 'tcx>
                args);
 
         let args = self.check_call("call", llfn, args);
-        let bundle = bundle.map(|b| &*(OperandBundleDef::from_generic(b)).raw);
-
-        unsafe {
-            llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                bundle, noname()
-            )
+        match bundle {
+            Some(b) => {
+                let bundle = OperandBundleDef::from_generic(b);
+                unsafe {
+                    llvm::LLVMRustBuildCall(
+                        self.llbuilder,
+                        llfn,
+                        args.as_ptr() as *const &llvm::Value,
+                        args.len() as c_uint,
+                        Some(&*(bundle.raw)), noname()
+                    )
+                }
+            }
+            None => unsafe {
+                llvm::LLVMRustBuildCall(
+                    self.llbuilder,
+                    llfn,
+                    args.as_ptr() as *const &llvm::Value,
+                    args.len() as c_uint,
+                    None, noname()
+                )
+            }
         }
     }
 
