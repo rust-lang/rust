@@ -12,7 +12,7 @@ mod typing;
 use libsyntax2::{
     ast::{self, NameOwner},
     AstNode,
-    algo::{walk, find_leaf_at_offset, find_covering_node},
+    algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };
 pub use libsyntax2::{ParsedFile, TextRange, TextUnit};

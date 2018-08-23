@@ -5,6 +5,7 @@ use libsyntax2::{
         walk::preorder,
         find_covering_node,
     },
+    SyntaxKind::*,
 };
 
 use {ActionResult, EditBuilder};
@@ -68,6 +69,24 @@ fn remove_newline(
     node_text: &str,
     offset: TextUnit,
 ) {
+    if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
+        match (node.prev_sibling(), node.next_sibling()) {
+            (Some(prev), Some(next)) => {
+                if prev.kind() == COMMA && (next.kind() == R_PAREN || next.kind() == R_BRACK) {
+                    let range = TextRange::from_to(prev.range().start(), node.range().end());
+                    edit.delete(range);
+                } else {
+                    edit.replace(
+                        node.range(),
+                        compute_ws(prev, next).to_string(),
+                    );
+                }
+                return;
+            }
+            _ => (),
+        }
+    }
+
     let suff = &node_text[TextRange::from_to(
         offset - node.range().start() + TextUnit::of_char('\n'),
         TextUnit::of_str(node_text),
@@ -78,4 +97,16 @@ fn remove_newline(
         TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
         " ".to_string(),
     );
+}
+
+fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
+    match left.kind() {
+        L_PAREN | L_BRACK => return "",
+        _ => (),
+    }
+    match right.kind() {
+        R_PAREN | R_BRACK => return "",
+        _ => (),
+    }
+    " "
 }
