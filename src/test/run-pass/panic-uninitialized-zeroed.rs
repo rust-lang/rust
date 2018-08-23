@@ -20,6 +20,8 @@ struct Foo {
     y: !,
 }
 
+enum Bar {}
+
 fn main() {
     unsafe {
         assert_eq!(
@@ -54,6 +56,24 @@ fn main() {
                 mem::zeroed::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
                 s == "Attempted to instantiate uninhabited type Foo using mem::zeroed"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::uninitialized::<Bar>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Bar using mem::uninitialized"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::zeroed::<Bar>()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Bar using mem::zeroed"
             })),
             Some(true)
         );
