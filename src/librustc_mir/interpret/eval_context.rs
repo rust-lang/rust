@@ -396,7 +396,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         &self,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>
-        ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);

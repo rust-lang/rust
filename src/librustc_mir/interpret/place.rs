@@ -776,7 +776,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn unpack_unsized_mplace(
         &self,
         mplace: MPlaceTy<'tcx>
-        ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         trace!("Unpacking {:?} ({:?})", *mplace, mplace.layout.ty);
         let layout = match mplace.extra {
             PlaceExtra::Vtable(vtable) => {

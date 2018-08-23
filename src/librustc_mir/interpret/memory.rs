@@ -789,8 +789,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// Read a *non-ZST* scalar
-    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size)
-        -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_scalar(
+        &self,
+        ptr: Pointer,
+        ptr_align: Align,
+        size: Size
+    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
         // Make sure we don't read part of a pointer as a pointer
         self.check_relocation_edges(ptr, size)?;
         let endianness = self.endianness();
