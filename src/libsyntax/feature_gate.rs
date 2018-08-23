@@ -1107,10 +1107,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 
     // RFC 2070 (deprecated attribute name)
     ("panic_implementation",
-     Normal, Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/44489#issuecomment-415140224"),
-                   "panic_implementation",
-                   "This attribute was renamed to `panic_handler`",
-                   cfg_fn!(panic_implementation))),
+     Normal,
+     Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/44489\
+                                  #issuecomment-415140224"),
+           "panic_implementation",
+           "This attribute was renamed to `panic_handler`",
+           cfg_fn!(panic_implementation))),
 
     // RFC 2070
     ("panic_handler", Normal, Gated(Stability::Unstable,
