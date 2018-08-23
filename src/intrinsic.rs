@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::layout::{self, LayoutOf, Size, Primitive, Integer::*};
+use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef};
@@ -15,7 +15,6 @@ pub trait EvalContextExt<'tcx> {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-        target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 }
 
@@ -25,8 +24,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-        target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
+        if self.emulate_intrinsic(instance, args, dest)? {
+            return Ok(());
+        }
+
         let substs = instance.substs;
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
@@ -194,24 +196,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 }
             }
 
-            "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
-                let ty = substs.type_at(0);
-                let num = self.read_scalar(args[0])?.to_bytes()?;
-                let kind = match self.layout_of(ty)?.abi {
-                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
-                };
-                let num = if intrinsic_name.ends_with("_nonzero") {
-                    if num == 0 {
-                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
-                    }
-                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), num, kind)?
-                } else {
-                    numeric_intrinsic(intrinsic_name, num, kind)?
-                };
-                self.write_scalar(num, dest)?;
-            }
-
             "discriminant_value" => {
                 let place = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let discr_val = self.read_discriminant_value(place.into())?;
@@ -314,14 +298,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         }
                     }
                 }
-            }
-
-            "min_align_of" => {
-                let elem_ty = substs.type_at(0);
-                let elem_align = self.layout_of(elem_ty)?.align.abi();
-                let ptr_size = self.memory.pointer_size();
-                let align_val = Scalar::from_uint(elem_align as u128, ptr_size);
-                self.write_scalar(align_val, dest)?;
             }
 
             "pref_align_of" => {
@@ -456,13 +432,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 )?;
             }
 
-            "size_of" => {
-                let ty = substs.type_at(0);
-                let size = self.layout_of(ty)?.size.bytes();
-                let ptr_size = self.memory.pointer_size();
-                self.write_scalar(Scalar::from_uint(size, ptr_size), dest)?;
-            }
-
             "size_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let (size, _) = self.size_and_align_of_mplace(mplace)?;
@@ -489,11 +458,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty_name = ty.to_string();
                 let value = self.str_to_value(&ty_name)?;
                 self.write_value(value, dest)?;
-            }
-            "type_id" => {
-                let ty = substs.type_at(0);
-                let n = self.tcx.type_id_hash(ty);
-                self.write_scalar(Scalar::Bits { bits: n as u128, size: 8 }, dest)?;
             }
 
             "transmute" => {
@@ -610,47 +574,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             name => return err!(Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
 
-        self.goto_block(target);
-
-        // Since we pushed no stack frame, the main loop will act
-        // as if the call just completed and it's returning to the
-        // current frame.
         Ok(())
     }
-}
-
-fn numeric_intrinsic<'tcx>(
-    name: &str,
-    bytes: u128,
-    kind: Primitive,
-) -> EvalResult<'tcx, Scalar> {
-    macro_rules! integer_intrinsic {
-        ($method:ident) => ({
-            let (result_bytes, size) = match kind {
-                Primitive::Int(I8, true) => ((bytes as i8).$method() as u128, 1),
-                Primitive::Int(I8, false) => ((bytes as u8).$method() as u128, 1),
-                Primitive::Int(I16, true) => ((bytes as i16).$method() as u128, 2),
-                Primitive::Int(I16, false) => ((bytes as u16).$method() as u128, 2),
-                Primitive::Int(I32, true) => ((bytes as i32).$method() as u128, 4),
-                Primitive::Int(I32, false) => ((bytes as u32).$method() as u128, 4),
-                Primitive::Int(I64, true) => ((bytes as i64).$method() as u128, 8),
-                Primitive::Int(I64, false) => ((bytes as u64).$method() as u128, 8),
-                Primitive::Int(I128, true) => ((bytes as i128).$method() as u128, 16),
-                Primitive::Int(I128, false) => (bytes.$method() as u128, 16),
-                _ => bug!("invalid `{}` argument: {:?}", name, bytes),
-            };
-
-            Scalar::from_uint(result_bytes, Size::from_bytes(size))
-        });
-    }
-
-    let result_val = match name {
-        "bswap" => integer_intrinsic!(swap_bytes),
-        "ctlz" => integer_intrinsic!(leading_zeros),
-        "ctpop" => integer_intrinsic!(count_ones),
-        "cttz" => integer_intrinsic!(trailing_zeros),
-        _ => bug!("not a numeric intrinsic: {}", name),
-    };
-
-    Ok(result_val)
 }

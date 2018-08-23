@@ -134,7 +134,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             self.write_scalar(ptr, dest)?;
 
             // step until out of stackframes
-            while self.step()? {}
+            self.run()?;
 
             dtor = match self.memory.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,

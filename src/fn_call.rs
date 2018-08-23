@@ -3,7 +3,6 @@ use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use syntax::attr;
-use syntax::source_map::Span;
 
 use std::mem;
 
@@ -13,122 +12,138 @@ use tls::MemoryExt;
 
 use super::memory::MemoryKind;
 
-pub trait EvalContextExt<'tcx> {
-    fn call_foreign_item(
+pub trait EvalContextExt<'tcx, 'mir> {
+    /// Emulate calling a foreign item, fail if the item is not supported.
+    /// This function will handle `goto_block` if needed.
+    fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-        dest_block: mir::BasicBlock,
+        ret: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
     fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>>;
 
-    fn call_missing_fn(
+    /// Emulate a function that should have MIR but does not.
+    /// This is solely to support execution without full MIR.
+    /// Fail if emulating this function is not supported.
+    /// This function will handle `goto_block` if needed.
+    fn emulate_missing_fn(
         &mut self,
-        instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
-        args: &[OpTy<'tcx>],
         path: String,
+        args: &[OpTy<'tcx>],
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx>;
 
-    fn eval_fn_call(
+    fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         args: &[OpTy<'tcx>],
-        span: Span,
-    ) -> EvalResult<'tcx, bool>;
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
 
     fn write_null(&mut self, dest: PlaceTy<'tcx>) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
-    fn eval_fn_call(
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+    fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         args: &[OpTy<'tcx>],
-        span: Span,
-    ) -> EvalResult<'tcx, bool> {
-        trace!("eval_fn_call: {:#?}, {:?}", instance, destination.map(|(place, bb)| (*place, bb)));
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+        trace!("eval_fn_call: {:#?}, {:?}", instance, dest.map(|place| *place));
 
+        // first run the common hooks also supported by CTFE
+        if self.hook_fn(instance, args, dest)? {
+            self.goto_block(ret)?;
+            return Ok(None);
+        }
+        // there are some more lang items we want to hook that CTFE does not hook (yet)
+        if self.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
+            // FIXME: return a real value in case the target allocation has an
+            // alignment bigger than the one requested
+            let n = u128::max_value();
+            let dest = dest.unwrap();
+            let n = self.truncate(n, dest.layout);
+            self.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
+            self.goto_block(ret)?;
+            return Ok(None);
+        }
+
+        // FIXME: Why are these hooked here, not in `emulate_missing_fn` or so?
         let def_id = instance.def_id();
         let item_path = self.tcx.absolute_item_path_str(def_id);
         match &*item_path {
             "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
                 // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
-                let (return_place, return_to_block) = destination.unwrap();
-                match return_place.layout.ty.sty {
+                let dest = dest.unwrap();
+                match dest.layout.ty.sty {
                     ty::Adt(ref adt_def, _) => {
                         assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
                         let none_variant_index = adt_def.variants.iter().position(|def| {
                             def.name.as_str() == "None"
                         }).expect("No None variant");
 
-                        self.write_discriminant_value(none_variant_index, return_place)?;
-                        self.goto_block(return_to_block);
-                        return Ok(true);
+                        self.write_discriminant_value(none_variant_index, dest)?;
+                        self.goto_block(ret)?;
+                        return Ok(None);
                     }
                     _ => panic!("Unexpected return type for {}", item_path)
                 }
             }
             "std::sys::unix::fast_thread_local::register_dtor" => {
                 // TODO: register the dtor
-                let (_return_place, return_to_block) = destination.unwrap();
-                self.goto_block(return_to_block);
-                return Ok(true);
+                self.goto_block(ret)?;
+                return Ok(None);
             }
             _ => {}
         }
 
-        if self.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            // FIXME: return a real value in case the target allocation has an
-            // alignment bigger than the one requested
-            let n = u128::max_value();
-            let (dest, return_to_block) = destination.unwrap();
-            let n = self.truncate(n, dest.layout);
-            self.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
-            self.goto_block(return_to_block);
-            return Ok(true);
+        // Try to see if we can do something about foreign items
+        if self.tcx.is_foreign_item(instance.def_id()) {
+            // An external function that we cannot find MIR for, but we can still run enough
+            // of them to make miri viable.
+            self.emulate_foreign_item(
+                instance.def_id(),
+                args,
+                dest.unwrap(),
+                ret.unwrap(),
+            )?;
+            // `goto_block` already handled
+            return Ok(None);
         }
 
+        // Otherwise we really want to see the MIR -- but if we do not have it, maybe we can
+        // emulate something. This is a HACK to support running without a full-MIR libstd.
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError { kind: EvalErrorKind::NoMirFor(path), .. }) => {
-                self.call_missing_fn(
-                    instance,
-                    destination,
-                    args,
+                self.emulate_missing_fn(
                     path,
+                    args,
+                    dest,
+                    ret,
                 )?;
-                return Ok(true);
+                // `goto_block` already handled
+                return Ok(None);
             }
             Err(other) => return Err(other),
         };
 
-        let (return_place, return_to_block) = match destination {
-            Some((place, block)) => (*place, StackPopCleanup::Goto(block)),
-            None => (Place::null(&self), StackPopCleanup::None),
-        };
-
-        self.push_stack_frame(
-            instance,
-            span,
-            mir,
-            return_place,
-            return_to_block,
-        )?;
-
-        Ok(false)
+        Ok(Some(mir))
     }
 
-    fn call_foreign_item(
+    fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-        dest_block: mir::BasicBlock,
+        ret: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
@@ -269,13 +284,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
                 // and of course eval_main.
                 let mir = self.load_mir(f_instance.def)?;
-                let ret = Place::null(&self);
+                let closure_dest = Place::null(&self);
                 self.push_stack_frame(
                     f_instance,
                     mir.span,
                     mir,
-                    ret,
-                    StackPopCleanup::Goto(dest_block),
+                    closure_dest,
+                    StackPopCleanup::Goto(Some(ret)), // directly return to caller
                 )?;
                 let mut args = self.frame().mir.args_iter();
 
@@ -290,16 +305,15 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                 assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
 
-                // We ourselves return 0
+                // We ourselves will return 0, eventually (because we will not return if we paniced)
                 self.write_null(dest)?;
 
-                // Don't fall through
+                // Don't fall through, we do NOT want to `goto_block`!
                 return Ok(());
             }
 
-            "__rust_start_panic" => {
-                return err!(Panic);
-            }
+            "__rust_start_panic" =>
+                return err!(MachineError("the evaluated program panicked".to_string())),
 
             "memcmp" => {
                 let left = self.read_scalar(args[0])?.not_undef()?;
@@ -624,11 +638,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
         }
 
-        // Since we pushed no stack frame, the main loop will act
-        // as if the call just completed and it's returning to the
-        // current frame.
+        self.goto_block(Some(ret))?;
         self.dump_place(*dest);
-        self.goto_block(dest_block);
         Ok(())
     }
 
@@ -666,37 +677,26 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             })
     }
 
-    fn call_missing_fn(
+    fn emulate_missing_fn(
         &mut self,
-        instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
-        args: &[OpTy<'tcx>],
         path: String,
+        _args: &[OpTy<'tcx>],
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx> {
         // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
         match &path[..] {
             "std::panicking::rust_panic_with_hook" |
             "core::panicking::panic_fmt::::panic_impl" |
-            "std::rt::begin_panic_fmt" => return err!(Panic),
+            "std::rt::begin_panic_fmt" =>
+                return err!(MachineError("the evaluated program panicked".to_string())),
             _ => {}
         }
 
-        let (dest, dest_block) = destination.ok_or_else(
+        let dest = dest.ok_or_else(
+            // Must be some function we do not support
             || EvalErrorKind::NoMirFor(path.clone()),
         )?;
-
-        if self.tcx.is_foreign_item(instance.def_id()) {
-            // An external function
-            // TODO: That functions actually has a similar preamble to what follows here.  May make sense to
-            // unify these two mechanisms for "hooking into missing functions".
-            self.call_foreign_item(
-                instance.def_id(),
-                args,
-                dest,
-                dest_block,
-            )?;
-            return Ok(());
-        }
 
         match &path[..] {
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
@@ -724,11 +724,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             _ => return err!(NoMirFor(path)),
         }
 
-        // Since we pushed no stack frame, the main loop will act
-        // as if the call just completed and it's returning to the
-        // current frame.
+        self.goto_block(ret)?;
         self.dump_place(*dest);
-        self.goto_block(dest_block);
         Ok(())
     }
 
