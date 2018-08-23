@@ -21,7 +21,6 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
-use syntax::source_map::DUMMY_SP;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
@@ -390,30 +389,19 @@ pub fn const_variant_index<'a, 'tcx>(
 }
 
 pub fn const_to_allocation_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    _tcx: TyCtxt<'a, 'tcx, 'tcx>,
     val: &'tcx ty::Const<'tcx>,
 ) -> &'tcx Allocation {
+    // FIXME: This really does not need to be a query.  Instead, we should have a query for statics
+    // that returns an allocation directly (or an `AllocId`?), after doing a sanity check of the
+    // value and centralizing error reporting.
     match val.val {
         ConstValue::ByRef(_, alloc, offset) => {
             assert_eq!(offset.bytes(), 0);
             return alloc;
         },
-        _ => ()
+        _ => bug!("const_to_allocation called on non-static"),
     }
-    let result = || -> EvalResult<'tcx, &'tcx Allocation> {
-        let mut ecx = EvalContext::new(
-            tcx.at(DUMMY_SP),
-            ty::ParamEnv::reveal_all(),
-            CompileTimeEvaluator,
-            ());
-        let op = const_to_op(&mut ecx, val)?;
-        // Make a new allocation, copy things there
-        let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
-        ecx.copy_op(op, ptr.into())?;
-        let alloc = ecx.memory.get(ptr.to_ptr()?.alloc_id)?;
-        Ok(tcx.intern_const_alloc(alloc.clone()))
-    };
-    result().expect("unable to convert ConstValue to Allocation")
 }
 
 pub fn const_eval_provider<'a, 'tcx>(
