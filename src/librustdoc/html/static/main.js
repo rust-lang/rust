@@ -231,10 +231,9 @@
         }
 
         var elem = document.getElementById(hash);
-        if (elem && isHidden(elem.offsetParent)) {
+        if (elem && elem.offsetParent && isHidden(elem.offsetParent)) {
             var h3 = elem.parentNode.previousSibling;
-
-            if (h3.tagName !== 'H3') {
+            if (h3 && h3.tagName !== 'H3') {
                 h3 = h3.previousSibling; // skip div.docblock
             }
 
