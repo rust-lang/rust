@@ -45,7 +45,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
     p.bump();
     if flavor.type_required() {
-        self_param(p);
+        opt_self_param(p);
     }
     while !p.at(EOF) && !p.at(ket) {
         value_parameter(p, flavor);
@@ -94,7 +94,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 //     fn d(&'a mut self, x: i32) {}
 //     fn e(mut self) {}
 // }
-fn self_param(p: &mut Parser) {
+fn opt_self_param(p: &mut Parser) {
     let m;
     if p.at(SELF_KW) || p.at(MUT_KW) && p.nth(1) == SELF_KW {
         m = p.start();

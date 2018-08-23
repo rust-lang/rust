@@ -113,7 +113,7 @@ fn abi(p: &mut Parser) {
     abi.complete(p, ABI);
 }
 
-fn fn_ret_type(p: &mut Parser) -> bool {
+fn opt_fn_ret_type(p: &mut Parser) -> bool {
     if p.at(THIN_ARROW) {
         p.bump();
         types::type_(p);

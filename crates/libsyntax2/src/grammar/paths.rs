@@ -69,7 +69,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
         match p.current() {
             IDENT => {
                 name_ref(p);
-                path_generic_args(p, mode);
+                opt_path_type_args(p, mode);
             }
             SELF_KW | SUPER_KW => p.bump(),
             _ => {
@@ -80,7 +80,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
     m.complete(p, PATH_SEGMENT);
 }
 
-fn path_generic_args(p: &mut Parser, mode: Mode) {
+fn opt_path_type_args(p: &mut Parser, mode: Mode) {
     match mode {
         Mode::Use => return,
         Mode::Type => {
@@ -88,11 +88,11 @@ fn path_generic_args(p: &mut Parser, mode: Mode) {
             // type F = Box<Fn(x: i32) -> ()>;
             if p.at(L_PAREN) {
                 params::param_list_opt_patterns(p);
-                fn_ret_type(p);
+                opt_fn_ret_type(p);
             } else {
-                type_args::type_arg_list(p, false)
+                type_args::opt_type_arg_list(p, false)
             }
         },
-        Mode::Expr => type_args::type_arg_list(p, true),
+        Mode::Expr => type_args::opt_type_arg_list(p, true),
     }
 }

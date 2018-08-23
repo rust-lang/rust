@@ -130,7 +130,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     p.eat(MOVE_KW);
     params::param_list_opt_types(p);
-    if fn_ret_type(p) {
+    if opt_fn_ret_type(p) {
         block(p);
     } else {
         expr(p);

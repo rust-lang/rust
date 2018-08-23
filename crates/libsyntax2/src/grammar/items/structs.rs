@@ -5,10 +5,10 @@ pub(super) fn struct_def(p: &mut Parser) {
     p.bump();
 
     name(p);
-    type_params::type_param_list(p);
+    type_params::opt_type_param_list(p);
     match p.current() {
         WHERE_KW => {
-            type_params::where_clause(p);
+            type_params::opt_where_clause(p);
             match p.current() {
                 SEMI => {
                     p.bump();
@@ -42,8 +42,8 @@ pub(super) fn enum_def(p: &mut Parser) {
     assert!(p.at(ENUM_KW));
     p.bump();
     name(p);
-    type_params::type_param_list(p);
-    type_params::where_clause(p);
+    type_params::opt_type_param_list(p);
+    type_params::opt_where_clause(p);
     if p.expect(L_CURLY) {
         while !p.at(EOF) && !p.at(R_CURLY) {
             let var = p.start();

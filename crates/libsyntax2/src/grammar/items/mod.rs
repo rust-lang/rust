@@ -225,7 +225,7 @@ fn function(p: &mut Parser, flavor: ItemFlavor) {
     name(p);
     // test function_type_params
     // fn foo<T: Clone + Copy>(){}
-    type_params::type_param_list(p);
+    type_params::opt_type_param_list(p);
 
     if p.at(L_PAREN) {
         match flavor {
@@ -240,11 +240,11 @@ fn function(p: &mut Parser, flavor: ItemFlavor) {
     // test function_ret_type
     // fn foo() {}
     // fn bar() -> () {}
-    fn_ret_type(p);
+    opt_fn_ret_type(p);
 
     // test function_where_clause
     // fn foo<T>() where T: Copy {}
-    type_params::where_clause(p);
+    type_params::opt_where_clause(p);
 
     // test fn_decl
     // trait T { fn foo(); }
@@ -263,7 +263,7 @@ fn type_def(p: &mut Parser) {
 
     // test type_item_type_params
     // type Result<T> = ();
-    type_params::type_param_list(p);
+    type_params::opt_type_param_list(p);
 
     if p.at(COLON) {
         type_params::bounds(p);
@@ -271,7 +271,7 @@ fn type_def(p: &mut Parser) {
 
     // test type_item_where_clause
     // type Foo where Foo: Copy = ();
-    type_params::where_clause(p);
+    type_params::opt_where_clause(p);
 
     if p.eat(EQ) {
         types::type_(p);

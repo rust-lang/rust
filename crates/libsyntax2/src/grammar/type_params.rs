@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn type_param_list(p: &mut Parser) {
+pub(super) fn opt_type_param_list(p: &mut Parser) {
     if !p.at(L_ANGLE) {
         return;
     }
@@ -96,7 +96,7 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
 //    T: Clone + Copy + 'static,
 //    Iterator::Item: 'a,
 // {}
-pub(super) fn where_clause(p: &mut Parser) {
+pub(super) fn opt_where_clause(p: &mut Parser) {
     if !p.at(WHERE_KW) {
         return;
     }
