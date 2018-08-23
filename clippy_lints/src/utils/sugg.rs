@@ -105,7 +105,6 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Block(..) |
             ast::ExprKind::Break(..) |
             ast::ExprKind::Call(..) |
-            ast::ExprKind::Catch(..) |
             ast::ExprKind::Continue(..) |
             ast::ExprKind::Yield(..) |
             ast::ExprKind::Field(..) |
@@ -122,6 +121,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Ret(..) |
             ast::ExprKind::Struct(..) |
             ast::ExprKind::Try(..) |
+            ast::ExprKind::TryBlock(..) |
             ast::ExprKind::Tup(..) |
             ast::ExprKind::Array(..) |
             ast::ExprKind::While(..) |
