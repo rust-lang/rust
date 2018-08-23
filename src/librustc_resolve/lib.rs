@@ -4477,9 +4477,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
                        cannot be referred to by absolute paths";
-            self.session.struct_span_err(span_use, msg)
-                        .span_note(span_def, "the macro is defined here")
-                        .emit();
+            self.session.buffer_lint_with_diagnostic(
+                lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+                CRATE_NODE_ID, span_use, msg,
+                lint::builtin::BuiltinLintDiagnostics::
+                    MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
+            );
         }
 
         for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
