@@ -60,7 +60,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
                 let (return_place, return_to_block) = destination.unwrap();
                 match return_place.layout.ty.sty {
-                    ty::TyAdt(ref adt_def, _) => {
+                    ty::Adt(ref adt_def, _) => {
                         assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
                         let none_variant_index = adt_def.variants.iter().position(|def| {
                             def.name.as_str() == "None"
