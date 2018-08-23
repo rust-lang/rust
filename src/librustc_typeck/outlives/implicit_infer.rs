@@ -65,8 +65,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let node_id = self
-            .tcx
+        let node_id = self.tcx
             .hir
             .as_local_node_id(item_did)
             .expect("expected local def-id");
@@ -108,8 +107,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         // Therefore mark `predicates_added` as true and which will ensure
         // we walk the crates again and re-calculate predicates for all
         // items.
-        let item_predicates_len: usize = self
-            .global_inferred_outlives
+        let item_predicates_len: usize = self.global_inferred_outlives
             .get(&item_did)
             .map(|p| p.len())
             .unwrap_or(0);
@@ -211,7 +209,10 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     // predicates in `check_explicit_predicates` we
                     // need to ignore checking the explicit_map for
                     // Self type.
-                    let substs = ex_trait_ref.with_self_ty(tcx, tcx.types.usize).skip_binder().substs;
+                    let substs = ex_trait_ref
+                        .with_self_ty(tcx, tcx.types.usize)
+                        .skip_binder()
+                        .substs;
                     check_explicit_predicates(
                         tcx,
                         &ex_trait_ref.skip_binder().def_id,
