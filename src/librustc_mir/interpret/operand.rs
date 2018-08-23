@@ -524,7 +524,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         rval: OpTy<'tcx>,
     ) -> EvalResult<'tcx, (u128, usize)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
-        if rval.layout.abi == layout::Abi::Uninhabited {
+        if rval.layout.abi.is_uninhabited() {
             return err!(Unreachable);
         }
 
