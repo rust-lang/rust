@@ -1347,7 +1347,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 self.normalize_ty(
                     span,
-                    tcx.mk_anon(did, substs),
+                    tcx.mk_opaque(did, substs),
                 )
             }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
@@ -1540,7 +1540,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         });
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 
-        let ty = tcx.mk_anon(def_id, substs);
+        let ty = tcx.mk_opaque(def_id, substs);
         debug!("impl_trait_ty_to_ty: {}", ty);
         ty
     }

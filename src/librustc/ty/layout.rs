@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Types with no meaningful known layout.
-            ty::Projection(_) | ty::Anon(..) => {
+            ty::Projection(_) | ty::Opaque(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Projection(_) | ty::Anon(..) => {
+            ty::Projection(_) | ty::Opaque(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -1685,7 +1685,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 }
             }
 
-            ty::Projection(_) | ty::Anon(..) | ty::Param(_) |
+            ty::Projection(_) | ty::Opaque(..) | ty::Param(_) |
             ty::Infer(_) | ty::Error => {
                 bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }

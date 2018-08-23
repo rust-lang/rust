@@ -144,7 +144,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
-            ty::Anon(..) |        // OutlivesNominalType (ish)
+            ty::Opaque(..) |        // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
             ty::Array(..) |       // ...

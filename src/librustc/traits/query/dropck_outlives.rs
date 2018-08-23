@@ -258,7 +258,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         ty::Dynamic(..)
         | ty::Projection(..)
         | ty::Param(_)
-        | ty::Anon(..)
+        | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Generator(..) => false,
     }

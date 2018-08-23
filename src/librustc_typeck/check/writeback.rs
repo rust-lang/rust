@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
-        wbcx.visit_anon_types(body.value.span);
+        wbcx.visit_opaque_types(body.value.span);
         wbcx.visit_cast_types();
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
@@ -393,18 +393,18 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_anon_types(&mut self, span: Span) {
-        for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
+    fn visit_opaque_types(&mut self, span: Span) {
+        for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-            let instantiated_ty = self.resolve(&anon_defn.concrete_ty, &node_id);
+            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &node_id);
 
             let generics = self.tcx().generics_of(def_id);
 
             let definition_ty = if generics.parent.is_some() {
                 // impl trait
-                self.fcx.infer_anon_definition_from_instantiation(
+                self.fcx.infer_opaque_definition_from_instantiation(
                     def_id,
-                    anon_defn,
+                    opaque_defn,
                     instantiated_ty,
                 )
             } else {
@@ -427,8 +427,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         // find a type parameter
                         if let ty::Param(..) = ty.sty {
                             // look it up in the substitution list
-                            assert_eq!(anon_defn.substs.len(), generics.params.len());
-                            for (subst, param) in anon_defn.substs.iter().zip(&generics.params) {
+                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
+                            for (subst, param) in opaque_defn.substs.iter().zip(&generics.params) {
                                 if let UnpackedKind::Type(subst) = subst.unpack() {
                                     if subst == ty {
                                         // found it in the substitution list, replace with the
@@ -460,7 +460,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                             ty::ReStatic => region,
                             _ => {
                                 trace!("checking {:?}", region);
-                                for (subst, p) in anon_defn.substs.iter().zip(&generics.params) {
+                                for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
                                     if let UnpackedKind::Lifetime(subst) = subst.unpack() {
                                         if subst == region {
                                             // found it in the substitution list, replace with the
@@ -477,7 +477,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                         }
                                     }
                                 }
-                                trace!("anon_defn: {:#?}", anon_defn);
+                                trace!("opaque_defn: {:#?}", opaque_defn);
                                 trace!("generics: {:#?}", generics);
                                 self.tcx()
                                     .sess
@@ -501,7 +501,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 })
             };
 
-            if let ty::Anon(defin_ty_def_id, _substs) = definition_ty.sty {
+            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
                     // Concrete type resolved to the existential type itself
                     // Force a cycle error
@@ -516,8 +516,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 if old != definition_ty {
                     span_bug!(
                         span,
-                        "visit_anon_types tried to write \
-                         different types for the same existential type: {:?}, {:?}, {:?}",
+                        "visit_opaque_types tried to write \
+                        different types for the same existential type: {:?}, {:?}, {:?}",
                         def_id,
                         definition_ty,
                         old,

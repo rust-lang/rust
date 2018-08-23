@@ -564,11 +564,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
         }
 
-        (&ty::Anon(a_def_id, a_substs), &ty::Anon(b_def_id, b_substs))
+        (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
             let substs = relate_substs(relation, None, a_substs, b_substs)?;
-            Ok(tcx.mk_anon(a_def_id, substs))
+            Ok(tcx.mk_opaque(a_def_id, substs))
         }
 
         _ =>

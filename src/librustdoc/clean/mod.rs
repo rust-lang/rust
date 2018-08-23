@@ -2672,11 +2672,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Param(ref p) => Generic(p.name.to_string()),
 
-            ty::Anon(def_id, substs) => {
+            ty::Opaque(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
                 let predicates_of = cx.tcx.predicates_of(def_id);
-                let substs = cx.tcx.lift(&substs).expect("Anon lift failed");
+                let substs = cx.tcx.lift(&substs).expect("Opaque lift failed");
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 let mut regions = vec![];
                 let mut has_sized = false;

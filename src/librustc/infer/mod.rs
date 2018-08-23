@@ -48,7 +48,7 @@ use self::outlives::env::OutlivesEnvironment;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
-pub mod anon_types;
+pub mod opaque_types;
 pub mod at;
 pub mod canonical;
 mod combine;

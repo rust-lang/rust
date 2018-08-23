@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+//n Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -62,7 +62,7 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         match t.sty {
-            ty::Projection(..) | ty::Anon(..) if !self.include_nonconstraining => {
+            ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return false;
             }
