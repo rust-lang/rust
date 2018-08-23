@@ -8,10 +8,8 @@
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
-#![allow(stable_features)]
 #![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
-#![feature(tool_attributes)]
 #![warn(rust_2018_idioms)]
 
 use toml;
