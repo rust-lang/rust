@@ -463,8 +463,28 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     return;
                 }
 
+                let extra_args = &args[sig.inputs().len()..];
+                let extra_args = extra_args.iter().map(|op_arg| {
+                    let op_ty = op_arg.ty(self.mir, bx.tcx());
+                    self.monomorphize(&op_ty)
+                }).collect::<Vec<_>>();
+
+                let fn_ty = match def {
+                    Some(ty::InstanceDef::Virtual(..)) => {
+                        FnType::new_vtable(bx.cx, sig, &extra_args)
+                    }
+                    Some(ty::InstanceDef::DropGlue(_, None)) => {
+                        // empty drop glue - a nop.
+                        let &(_, target) = destination.as_ref().unwrap();
+                        funclet_br(self, bx, target);
+                        return;
+                    }
+                    _ => FnType::new(bx.cx, sig, &extra_args)
+                };
+
+                // emit a panic instead of instantiating an uninhabited type
                 if (intrinsic == Some("init") || intrinsic == Some("uninit")) &&
-                    bx.cx.layout_of(sig.output()).abi.is_uninhabited()
+                    fn_ty.ret.layout.abi.is_uninhabited()
                 {
                     let loc = bx.sess().codemap().lookup_char_pos(span.lo());
                     let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
@@ -509,25 +529,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     );
                     return;
                 }
-
-                let extra_args = &args[sig.inputs().len()..];
-                let extra_args = extra_args.iter().map(|op_arg| {
-                    let op_ty = op_arg.ty(self.mir, bx.tcx());
-                    self.monomorphize(&op_ty)
-                }).collect::<Vec<_>>();
-
-                let fn_ty = match def {
-                    Some(ty::InstanceDef::Virtual(..)) => {
-                        FnType::new_vtable(bx.cx, sig, &extra_args)
-                    }
-                    Some(ty::InstanceDef::DropGlue(_, None)) => {
-                        // empty drop glue - a nop.
-                        let &(_, target) = destination.as_ref().unwrap();
-                        funclet_br(self, bx, target);
-                        return;
-                    }
-                    _ => FnType::new(bx.cx, sig, &extra_args)
-                };
 
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
