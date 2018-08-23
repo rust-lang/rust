@@ -11,10 +11,10 @@
 use std::fmt;
 use std::error::Error;
 
-use rustc::hir;
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
-use rustc::ty::{self, ParamEnv, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -325,22 +325,19 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         }
     }
 
+    fn find_foreign_static<'a>(
+        _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        _def_id: DefId,
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
+        err!(ReadForeignStatic)
+    }
+
     fn box_alloc<'a>(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
-        )
-    }
-
-    fn global_item_with_linkage<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx> {
-        Err(
-            ConstEvalError::NotConst("statics with `linkage` attribute".to_string()).into(),
         )
     }
 }
@@ -479,45 +476,5 @@ pub fn const_eval_provider<'a, 'tcx>(
             }
         }
         err.into()
-    })
-}
-
-
-/// Helper function to obtain the global (tcx) allocation for a static
-pub fn static_alloc<'a, 'tcx>(
-    tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-    id: AllocId,
-) -> EvalResult<'tcx, &'tcx Allocation> {
-    let alloc = tcx.alloc_map.lock().get(id);
-    let def_id = match alloc {
-        Some(AllocType::Memory(mem)) => {
-            return Ok(mem)
-        }
-        Some(AllocType::Function(..)) => {
-            return err!(DerefFunctionPointer)
-        }
-        Some(AllocType::Static(did)) => {
-            did
-        }
-        None =>
-            return err!(DanglingPointerDeref),
-    };
-    // We got a "lazy" static that has not been computed yet, do some work
-    trace!("static_alloc: Need to compute {:?}", def_id);
-    if tcx.is_foreign_item(def_id) {
-        return err!(ReadForeignStatic);
-    }
-    let instance = Instance::mono(tcx.tcx, def_id);
-    let gid = GlobalId {
-        instance,
-        promoted: None,
-    };
-    tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|err| {
-        // no need to report anything, the const_eval call takes care of that for statics
-        assert!(tcx.is_static(def_id).is_some());
-        EvalErrorKind::ReferencedConstant(err).into()
-    }).map(|val| {
-        // FIXME We got our static (will be a ByRef), now we make a *copy*?!?
-        tcx.const_to_allocation(val)
     })
 }

@@ -14,12 +14,12 @@
 
 use std::hash::Hash;
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{AllocId, Allocation, EvalResult, Scalar};
-use super::{EvalContext, PlaceTy, OpTy, Memory};
-
 use rustc::mir;
-use rustc::ty::{self, layout::TyLayout};
-use syntax::ast::Mutability;
+use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
+
+use super::{EvalContext, PlaceTy, OpTy, Memory};
 
 /// Used by the machine to tell if a certain allocation is for static memory
 pub trait IsStatic {
@@ -62,6 +62,12 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx>;
 
+    /// Called for read access to a foreign static item.
+    fn find_foreign_static<'a>(
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+    ) -> EvalResult<'tcx, &'tcx Allocation>;
+
     /// Called for all binary operations except on float types.
     ///
     /// Returns `None` if the operation should be handled by the integer
@@ -89,13 +95,6 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx>;
-
-    /// Called when trying to access a global declared with a `linkage` attribute
-    fn global_item_with_linkage<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        instance: ty::Instance<'tcx>,
-        mutability: Mutability,
     ) -> EvalResult<'tcx>;
 
     /// Execute a validation operation

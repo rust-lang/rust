@@ -20,21 +20,16 @@ use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::ptr;
 
-use rustc::ty::Instance;
-use rustc::ty::query::TyCtxtAt;
-use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, ScalarMaybeUndef,
+use rustc::ty::{self, Instance, query::TyCtxtAt};
+use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, ScalarMaybeUndef, GlobalId,
                             EvalResult, Scalar, EvalErrorKind, AllocType, truncate};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
 use syntax::ast::Mutability;
 
-use super::{EvalContext, Machine, IsStatic, static_alloc};
-
-////////////////////////////////////////////////////////////////////////////////
-// Allocations and pointers
-////////////////////////////////////////////////////////////////////////////////
+use super::{Machine, IsStatic};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -53,10 +48,6 @@ impl<T: IsStatic> IsStatic for MemoryKind<T> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Top-level interpreter memory
-////////////////////////////////////////////////////////////////////////////////
-
 #[derive(Clone)]
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Additional data required by the Machine
@@ -68,6 +59,13 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     alloc_map: FxHashMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+}
+
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
 }
 
 impl<'a, 'mir, 'tcx, M> Eq for Memory<'a, 'mir, 'tcx, M>
@@ -120,6 +118,45 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
             .fold(0u64, |hash, x| hash.wrapping_add(x))
             .hash(state);
     }
+}
+
+/// Helper function to obtain the global (tcx) allocation for a static
+fn const_eval_static<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>>(
+    tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+    id: AllocId
+) -> EvalResult<'tcx, &'tcx Allocation> {
+    let alloc = tcx.alloc_map.lock().get(id);
+    let def_id = match alloc {
+        Some(AllocType::Memory(mem)) => {
+            return Ok(mem)
+        }
+        Some(AllocType::Function(..)) => {
+            return err!(DerefFunctionPointer)
+        }
+        Some(AllocType::Static(did)) => {
+            did
+        }
+        None =>
+            return err!(DanglingPointerDeref),
+    };
+    // We got a "lazy" static that has not been computed yet, do some work
+    trace!("static_alloc: Need to compute {:?}", def_id);
+    if tcx.is_foreign_item(def_id) {
+        return M::find_foreign_static(tcx, def_id);
+    }
+    let instance = Instance::mono(tcx.tcx, def_id);
+    let gid = GlobalId {
+        instance,
+        promoted: None,
+    };
+    tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
+        // no need to report anything, the const_eval call takes care of that for statics
+        assert!(tcx.is_static(def_id).is_some());
+        EvalErrorKind::ReferencedConstant(err).into()
+    }).map(|val| {
+        // FIXME We got our static (will be a ByRef), now we make a *copy*?!?
+        tcx.const_to_allocation(val)
+    })
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
@@ -322,7 +359,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Some(alloc) => Ok(&alloc.1),
             // No need to make any copies, just provide read access to the global static
             // memory in tcx.
-            None => static_alloc(self.tcx, id),
+            None => const_eval_static::<M>(self.tcx, id),
         }
     }
 
@@ -588,7 +625,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         id: AllocId,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
-        let alloc = static_alloc(self.tcx, id)?;
+        let alloc = const_eval_static::<M>(self.tcx, id)?;
         if alloc.mutability == Mutability::Immutable {
             return err!(ModifiedConstantMemory);
         }
@@ -978,51 +1015,5 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_state,
         );
         Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Unaligned accesses
-////////////////////////////////////////////////////////////////////////////////
-
-pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M>;
-    fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M>;
-}
-
-impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
-{
-    #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
-        self
-    }
-
-    #[inline]
-    fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
-        self
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
-{
-    #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
-        &mut self.memory
-    }
-
-    #[inline]
-    fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
-        &self.memory
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
-{
-    #[inline]
-    fn data_layout(&self) -> &TargetDataLayout {
-        &self.tcx.data_layout
     }
 }

@@ -30,7 +30,7 @@ pub use self::eval_context::{
 
 pub use self::place::{Place, PlaceExtra, PlaceTy, MemPlace, MPlaceTy};
 
-pub use self::memory::{Memory, MemoryKind, HasMemory};
+pub use self::memory::{Memory, MemoryKind};
 
 pub use self::const_eval::{
     eval_promoted,
@@ -42,7 +42,6 @@ pub use self::const_eval::{
     const_field,
     const_variant_index,
     op_to_const,
-    static_alloc,
 };
 
 pub use self::machine::{Machine, IsStatic};
