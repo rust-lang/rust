@@ -14,14 +14,17 @@
 
 use std::hash::Hash;
 
-use rustc::mir::interpret::{AllocId, EvalResult, Scalar, Pointer, AccessKind, GlobalId};
+use rustc::mir::interpret::{AllocId, Allocation, EvalResult, Scalar};
 use super::{EvalContext, PlaceTy, OpTy, Memory};
 
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout};
-use rustc::ty::layout::Size;
-use syntax::source_map::Span;
 use syntax::ast::Mutability;
+
+/// Used by the machine to tell if a certain allocation is for static memory
+pub trait IsStatic {
+    fn is_static(self) -> bool;
+}
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
@@ -30,29 +33,33 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     type MemoryData: Clone + Eq + Hash;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
+    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq + Hash + IsStatic;
 
     /// Entry point to all function calls.
     ///
-    /// Returns Ok(true) when the function was handled completely
-    /// e.g. due to missing mir
-    ///
-    /// Returns Ok(false) if a new stack frame was pushed
-    fn eval_fn_call<'a>(
+    /// Returns either the mir to use for the call, or `None` if execution should
+    /// just proceed (which usually means this hook did all the work that the
+    /// called function should usually have done).  In the latter case, it is
+    /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
+    /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
+    /// nor just jump to `ret`, but instead push their own stack frame.)
+    /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
+    /// was used.
+    fn find_fn<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         args: &[OpTy<'tcx>],
-        span: Span,
-    ) -> EvalResult<'tcx, bool>;
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
 
-    /// directly process an intrinsic without pushing a stack frame.
+    /// Directly process an intrinsic without pushing a stack frame.
+    /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-        target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
     /// Called for all binary operations except on float types.
@@ -70,19 +77,11 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
 
-    /// Called when trying to mark machine defined `MemoryKinds` as static
-    fn mark_static_initialized<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx, bool>;
-
-    /// Called when requiring a pointer to a static. Non const eval can
-    /// create a mutable memory location for `static mut`
-    fn init_static<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        cid: GlobalId<'tcx>,
-    ) -> EvalResult<'tcx, AllocId>;
+    /// Called when requiring mutable access to data in a static.
+    fn access_static_mut<'a, 'm>(
+        mem: &'m mut Memory<'a, 'mir, 'tcx, Self>,
+        id: AllocId,
+    ) -> EvalResult<'tcx, &'m mut Allocation>;
 
     /// Heap allocations via the `box` keyword
     ///
@@ -99,35 +98,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         mutability: Mutability,
     ) -> EvalResult<'tcx>;
 
-    fn check_locks<'a>(
-        _mem: &Memory<'a, 'mir, 'tcx, Self>,
-        _ptr: Pointer,
-        _size: Size,
-        _access: AccessKind,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    fn add_lock<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-    ) {}
-
-    fn free_lock<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
-        _len: u64,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    fn end_region<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _reg: Option<::rustc::middle::region::Scope>,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
+    /// Execute a validation operation
     fn validation_op<'a>(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,

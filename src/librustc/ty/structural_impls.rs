@@ -1139,7 +1139,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
         match *self {
             ConstValue::Scalar(v) => ConstValue::Scalar(v),
             ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
-            ConstValue::ByRef(alloc, offset) => ConstValue::ByRef(alloc, offset),
+            ConstValue::ByRef(id, alloc, offset) => ConstValue::ByRef(id, alloc, offset),
             ConstValue::Unevaluated(def_id, substs) => {
                 ConstValue::Unevaluated(def_id, substs.fold_with(folder))
             }
@@ -1150,7 +1150,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
         match *self {
             ConstValue::Scalar(_) |
             ConstValue::ScalarPair(_, _) |
-            ConstValue::ByRef(_, _) => false,
+            ConstValue::ByRef(_, _, _) => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }

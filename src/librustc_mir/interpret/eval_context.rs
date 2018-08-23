@@ -85,7 +85,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
     ////////////////////////////////////////////////////////////////////////////////
-    /// The block to return to when returning from the current stack frame
+    /// Work to perform when returning from this function
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
@@ -155,6 +155,19 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
         block.hash(state);
         stmt.hash(state);
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum StackPopCleanup {
+    /// The stackframe existed to compute the initial value of a static/constant.
+    /// Call `M::intern_static` on the return value and all allocations it references
+    /// when this is done.  Must have a valid pointer as return place.
+    FinishStatic(Mutability),
+    /// Jump to the next block in the caller, or cause UB if None (that's a function
+    /// that may never return).
+    Goto(Option<mir::BasicBlock>),
+    /// Just do nohing: Used by Main and for the box_alloc hook in miri
+    None,
 }
 
 // State of a local variable
@@ -249,20 +262,6 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
         // Second cycle
         Err(EvalErrorKind::InfiniteLoop.into())
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum StackPopCleanup {
-    /// The stackframe existed to compute the initial value of a static/constant, make sure it
-    /// isn't modifyable afterwards in case of constants.
-    /// In case of `static mut`, mark the memory to ensure it's never marked as immutable through
-    /// references or deallocated
-    MarkStatic(Mutability),
-    /// A regular stackframe added due to a function call will need to get forwarded to the next
-    /// block
-    Goto(mir::BasicBlock),
-    /// The main function and diverging functions have nowhere to return to
-    None,
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
@@ -388,7 +387,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
-        let ptr = self.memory.allocate_bytes(s.as_bytes());
+        let ptr = self.memory.allocate_static_bytes(s.as_bytes());
         Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 
@@ -628,25 +627,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
-        M::end_region(self, None)?;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => {
-                if let Place::Ptr(MemPlace { ptr, .. }) = frame.return_place {
-                    // FIXME: to_ptr()? might be too extreme here,
-                    // static zsts might reach this under certain conditions
-                    self.memory.mark_static_initialized(
-                        ptr.to_ptr()?.alloc_id,
-                        mutable,
-                    )?
-                } else {
-                    bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_place);
-                }
+            StackPopCleanup::FinishStatic(mutability) => {
+                let mplace = frame.return_place.to_mem_place();
+                // to_ptr should be okay here; it is the responsibility of whoever pushed
+                // this frame to make sure that this works.
+                let ptr = mplace.ptr.to_ptr()?;
+                assert_eq!(ptr.offset.bytes(), 0);
+                self.memory.mark_static_initialized(ptr.alloc_id, mutability)?;
             }
-            StackPopCleanup::Goto(target) => self.goto_block(target),
-            StackPopCleanup::None => {}
+            StackPopCleanup::Goto(block) => {
+                self.goto_block(block)?;
+            }
+            StackPopCleanup::None => { }
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {

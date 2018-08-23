@@ -393,7 +393,8 @@ impl fmt::Display for AllocId {
 pub enum AllocType<'tcx, M> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),
-    /// The alloc id points to a static variable
+    /// The alloc id points to a "lazy" static variable that did not get computed (yet).
+    /// This is also used to break the cycle in recursive statics.
     Static(DefId),
     /// The alloc id points to memory
     Memory(M)
@@ -496,13 +497,14 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
-    /// Whether the allocation (of a static) should be put into mutable memory when codegenning
-    ///
-    /// Only happens for `static mut` or `static` with interior mutability
-    pub runtime_mutability: Mutability,
+    /// Whether the allocation is mutable.
+    /// Also used by codegen to determine if a static should be put into mutable memory,
+    /// which happens for `static mut` and `static` with interior mutability.
+    pub mutability: Mutability,
 }
 
 impl Allocation {
+    /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(Size::ZERO);
         undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
@@ -511,7 +513,7 @@ impl Allocation {
             relocations: Relocations::new(),
             undef_mask,
             align,
-            runtime_mutability: Mutability::Immutable,
+            mutability: Mutability::Immutable,
         }
     }
 
@@ -526,7 +528,7 @@ impl Allocation {
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size),
             align,
-            runtime_mutability: Mutability::Immutable,
+            mutability: Mutability::Mutable,
         }
     }
 }

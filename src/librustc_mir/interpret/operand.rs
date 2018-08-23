@@ -14,7 +14,7 @@
 use std::convert::TryInto;
 
 use rustc::mir;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
+use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{
@@ -300,6 +300,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
+    // operand must be a &str or compatible layout
+    pub fn read_str(
+        &self,
+        op: OpTy<'tcx>,
+    ) -> EvalResult<'tcx, &str> {
+        let val = self.read_value(op)?;
+        if let Value::ScalarPair(ptr, len) = *val {
+            let len = len.not_undef()?.to_bits(self.memory.pointer_size())?;
+            let bytes = self.memory.read_bytes(ptr.not_undef()?, Size::from_bytes(len as u64))?;
+            let str = ::std::str::from_utf8(bytes).map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+            Ok(str)
+        } else {
+            bug!("read_str: not a str")
+        }
+    }
+
     pub fn uninit_operand(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Operand> {
         // This decides which types we will use the Immediate optimization for, and hence should
         // match what `try_read_value` and `eval_place_to_op` support.
@@ -482,9 +498,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     // Unfortunately, this needs an `&mut` to be able to allocate a copy of a `ByRef`
     // constant.  This bleeds up to `eval_operand` needing `&mut`.
     pub fn const_value_to_op(
-        &mut self,
+        &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand> {
+        trace!("const_value_to_op: {:?}", val);
         match val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -493,9 +510,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     promoted: None,
                 })
             }
-            ConstValue::ByRef(alloc, offset) => {
-                // FIXME: Allocate new AllocId for all constants inside
-                let id = self.memory.allocate_value(alloc.clone(), MemoryKind::Stack)?;
+            ConstValue::ByRef(id, alloc, offset) => {
+                // We rely on mutability being set correctly in that allocation to prevent writes
+                // where none should happen -- and for `static mut`, we copy on demand anyway.
                 Ok(Operand::from_ptr(Pointer::new(id, offset), alloc.align))
             },
             ConstValue::ScalarPair(a, b) =>
@@ -505,7 +522,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn global_to_op(&mut self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
+    pub(super) fn global_to_op(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
         let cv = self.const_eval(gid)?;
         self.const_value_to_op(cv.val)
     }

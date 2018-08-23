@@ -76,8 +76,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.loop_detector.observe_and_analyze(&self.machine, &self.stack, &self.memory)
     }
 
+    pub fn run(&mut self) -> EvalResult<'tcx> {
+        while self.step()? {}
+        Ok(())
+    }
+
     /// Returns true as long as there are more things to do.
-    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+    fn step(&mut self) -> EvalResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
         }
@@ -147,10 +152,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     M::validation_op(self, op, operand)?;
                 }
             }
-            EndRegion(ce) => {
-                M::end_region(self, Some(ce))?;
-            }
 
+            EndRegion(..) => {}
             UserAssertTy(..) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
@@ -327,8 +330,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         debug!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;
+
+        let old_stack = self.cur_frame();
+        let old_bb = self.frame().block;
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
+            // This should change *something*
+            debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             debug!("// {:?}", self.frame().block);
         }
         Ok(())

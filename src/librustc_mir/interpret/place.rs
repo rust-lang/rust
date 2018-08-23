@@ -247,6 +247,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
         let mplace = match self.tcx.struct_tail(pointee_type).sty {
+            // Matching on the type is okay here, because we used `struct_tail` to get to
+            // the "core" of what makes this unsized.
             ty::Dynamic(..) => {
                 let (ptr, vtable) = val.to_scalar_dyn_trait()?;
                 MemPlace {
@@ -263,11 +265,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => MemPlace {
-                ptr: val.to_scalar()?,
-                align: layout.align,
-                extra: PlaceExtra::None,
-            },
+            _ => {
+                assert!(!layout.is_unsized(), "Unhandled unsized type {:?}", pointee_type);
+                MemPlace {
+                    ptr: val.to_scalar()?,
+                    align: layout.align,
+                    extra: PlaceExtra::None,
+                }
+            }
         };
         Ok(MPlaceTy { mplace, layout })
     }
@@ -371,6 +376,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Compute extra and new layout
         let inner_len = len - to - from;
         let (extra, ty) = match base.layout.ty.sty {
+            // It is not nice to match on the type, but that seems to be the only way to
+            // implement this.
             ty::Array(inner, _) =>
                 (PlaceExtra::None, self.tcx.mk_array(inner, inner_len)),
             ty::Slice(..) =>
@@ -526,7 +533,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     instance,
                     promoted: None
                 };
-                let alloc = Machine::init_static(self, cid)?;
+                // Just create a lazy reference, so we can support recursive statics.
+                // When the data here is ever actually used, memory will notice,
+                // and it knows how to deal with alloc_id that are present in the
+                // global table but not in its local memory.
+                let alloc = self.tcx.alloc_map.lock()
+                    .intern_static(cid.instance.def_id());
                 MPlaceTy::from_aligned_ptr(alloc.into(), layout).into()
             }
 
@@ -692,6 +704,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &mut self,
         OpTy { op, layout }: OpTy<'tcx>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+        trace!("allocate_op: {:?}", op);
         Ok(match op {
             Operand::Indirect(mplace) => MPlaceTy { mplace, layout },
             Operand::Immediate(value) => {

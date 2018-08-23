@@ -22,6 +22,7 @@ mod terminator;
 mod traits;
 mod const_eval;
 mod validity;
+mod intrinsics;
 
 pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup, LocalValue,
@@ -41,8 +42,9 @@ pub use self::const_eval::{
     const_field,
     const_variant_index,
     op_to_const,
+    static_alloc,
 };
 
-pub use self::machine::Machine;
+pub use self::machine::{Machine, IsStatic};
 
 pub use self::operand::{Value, ValTy, Operand, OpTy};

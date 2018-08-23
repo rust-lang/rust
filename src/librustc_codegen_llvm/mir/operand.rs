@@ -126,7 +126,7 @@ impl OperandRef<'ll, 'tcx> {
                 };
                 OperandValue::Pair(a_llval, b_llval)
             },
-            ConstValue::ByRef(alloc, offset) => {
+            ConstValue::ByRef(_, alloc, offset) => {
                 return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx));
             },
         };

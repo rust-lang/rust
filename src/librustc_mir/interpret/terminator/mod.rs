@@ -15,16 +15,22 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, Scalar};
-use super::{EvalContext, Machine, Value, OpTy, PlaceTy, ValTy, Operand};
+use super::{EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup};
 
 use rustc_data_structures::indexed_vec::Idx;
 
 mod drop;
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn goto_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().block = target;
-        self.frame_mut().stmt = 0;
+    #[inline]
+    pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> EvalResult<'tcx> {
+        if let Some(target) = target {
+            self.frame_mut().block = target;
+            self.frame_mut().stmt = 0;
+            Ok(())
+        } else {
+            err!(Unreachable)
+        }
     }
 
     pub(super) fn eval_terminator(
@@ -38,7 +44,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.pop_stack_frame()?
             }
 
-            Goto { target } => self.goto_block(target),
+            Goto { target } => self.goto_block(Some(target))?,
 
             SwitchInt {
                 ref discr,
@@ -69,7 +75,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                 }
 
-                self.goto_block(target_block);
+                self.goto_block(Some(target_block))?;
             }
 
             Call {
@@ -78,9 +84,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ref destination,
                 ..
             } => {
-                let destination = match *destination {
-                    Some((ref lv, target)) => Some((self.eval_place(lv)?, target)),
-                    None => None,
+                let (dest, ret) = match *destination {
+                    Some((ref lv, target)) => (Some(self.eval_place(lv)?), Some(target)),
+                    None => (None, None),
                 };
 
                 let func = self.eval_operand(func, None)?;
@@ -124,8 +130,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 );
                 self.eval_fn_call(
                     fn_def,
-                    destination,
                     &args[..],
+                    dest,
+                    ret,
                     terminator.source_info.span,
                     sig,
                 )?;
@@ -161,7 +168,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     .to_scalar()?
                     .to_bool()?;
                 if expected == cond_val {
-                    self.goto_block(target);
+                    self.goto_block(Some(target))?;
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
@@ -273,30 +280,51 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         args: &[OpTy<'tcx>],
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
-        if let Some((place, _)) = destination {
+        if let Some(place) = dest {
             assert_eq!(place.layout.ty, sig.output());
         }
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                let (ret, target) = match destination {
+                // The intrinsic itself cannot diverge, so if we got here without a return
+                // place... (can happen e.g. for transmute returning `!`)
+                let dest = match dest {
                     Some(dest) => dest,
-                    _ => return err!(Unreachable),
+                    None => return err!(Unreachable)
                 };
-                M::call_intrinsic(self, instance, args, ret, target)?;
-                self.dump_place(*ret);
+                M::call_intrinsic(self, instance, args, dest)?;
+                // No stack frame gets pushed, the main loop will just act as if the
+                // call completed.
+                self.goto_block(ret)?;
+                self.dump_place(*dest);
                 Ok(())
             }
             // FIXME: figure out why we can't just go through the shim
             ty::InstanceDef::ClosureOnceShim { .. } => {
-                if M::eval_fn_call(self, instance, destination, args, span)? {
-                    return Ok(());
-                }
+                let mir = match M::find_fn(self, instance, args, dest, ret)? {
+                    Some(mir) => mir,
+                    None => return Ok(()),
+                };
+
+                let return_place = match dest {
+                    Some(place) => *place,
+                    None => Place::null(&self),
+                };
+                self.push_stack_frame(
+                    instance,
+                    span,
+                    mir,
+                    return_place,
+                    StackPopCleanup::Goto(ret),
+                )?;
+
+                // Pass the arguments
                 let mut arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     // closure as closure once
@@ -333,13 +361,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
-                // Push the stack frame, and potentially be entirely done if the call got hooked
-                if M::eval_fn_call(self, instance, destination, args, span)? {
-                    // FIXME: Can we make it return the frame to push, instead
-                    // of the hook doing half of the work and us doing the argument
-                    // initialization?
-                    return Ok(());
-                }
+                let mir = match M::find_fn(self, instance, args, dest, ret)? {
+                    Some(mir) => mir,
+                    None => return Ok(()),
+                };
+
+                let return_place = match dest {
+                    Some(place) => *place,
+                    None => Place::null(&self),
+                };
+                self.push_stack_frame(
+                    instance,
+                    span,
+                    mir,
+                    return_place,
+                    StackPopCleanup::Goto(ret),
+                )?;
 
                 // Pass the arguments
                 let mut arg_locals = self.frame().mir.args_iter();
@@ -418,7 +455,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 args[0].op = Operand::Immediate(Value::Scalar(ptr.into())); // strip vtable
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(instance, destination, &args, span, sig)
+                self.eval_fn_call(instance, &args, dest, ret, span, sig)
             }
         }
     }
