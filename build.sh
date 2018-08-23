@@ -41,4 +41,4 @@ gcc target/out/mini_core.o target/out/mini_core_hello_world.o -o target/out/mini
 ./target/out/mini_core_hello_world
 
 $RUSTC target/libcore/src/libcore/lib.rs --color=always --crate-type lib -Cincremental=target/incremental 2>&1 | (head -n 20; echo "===="; tail -n 1000)
-cat target/out/log.txt | sort | uniq -c | grep -v "rval unsize move" | grep -v "rval len"
+cat target/out/log.txt | sort | uniq -c
