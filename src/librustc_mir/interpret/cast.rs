@@ -245,7 +245,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         bits: u128,
         fty: FloatTy,
         dest_ty: Ty<'tcx>
-        ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar> {
         use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {

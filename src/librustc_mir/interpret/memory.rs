@@ -1027,7 +1027,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 }
 
 impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M>
-where M: Machine<'mir, 'tcx>
+    where M: Machine<'mir, 'tcx>
 {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
@@ -1041,7 +1041,7 @@ where M: Machine<'mir, 'tcx>
 }
 
 impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M>
-where M: Machine<'mir, 'tcx>
+    where M: Machine<'mir, 'tcx>
 {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
@@ -1055,7 +1055,7 @@ where M: Machine<'mir, 'tcx>
 }
 
 impl<'a, 'mir, 'tcx, M> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M>
-where M: Machine<'mir, 'tcx>
+    where M: Machine<'mir, 'tcx>
 {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {

@@ -281,7 +281,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
 }
 
 impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M>
-where M: Machine<'mir, 'tcx>
+    where M: Machine<'mir, 'tcx>
 {
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
