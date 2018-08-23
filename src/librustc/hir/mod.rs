@@ -2287,25 +2287,59 @@ pub fn provide(providers: &mut Providers) {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
+    /// Parsed representation of the `#[inline]` attribute
     pub inline: InlineAttr,
+    /// The `#[export_name = "..."]` attribute, indicating a custom symbol a
+    /// function should be exported under
     pub export_name: Option<Symbol>,
+    /// The `#[link_name = "..."]` attribute, indicating a custom symbol an
+    /// imported function should be imported as. Note that `export_name`
+    /// probably isn't set when this is set, this is for foreign items while
+    /// `#[export_name]` is for Rust-defined functions.
+    pub link_name: Option<Symbol>,
+    /// The `#[target_feature(enable = "...")]` attribute and the enabled
+    /// features (only enabled features are supported right now).
     pub target_features: Vec<Symbol>,
+    /// The `#[linkage = "..."]` attribute and the value we found.
     pub linkage: Option<Linkage>,
+    /// The `#[link_section = "..."]` attribute, or what executable section this
+    /// should be placed in.
     pub link_section: Option<Symbol>,
 }
 
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable)]
     pub struct CodegenFnAttrFlags: u32 {
+        /// #[cold], a hint to LLVM that this function, when called, is never on
+        /// the hot path
         const COLD                      = 1 << 0;
+        /// #[allocator], a hint to LLVM that the pointer returned from this
+        /// function is never null
         const ALLOCATOR                 = 1 << 1;
+        /// #[unwind], an indicator that this function may unwind despite what
+        /// its ABI signature may otherwise imply
         const UNWIND                    = 1 << 2;
+        /// #[rust_allocator_nounwind], an indicator that an imported FFI
+        /// function will never unwind. Probably obsolete by recent changes with
+        /// #[unwind], but hasn't been removed/migrated yet
         const RUSTC_ALLOCATOR_NOUNWIND  = 1 << 3;
+        /// #[naked], indicates to LLVM that no function prologue/epilogue
+        /// should be generated
         const NAKED                     = 1 << 4;
+        /// #[no_mangle], the function's name should be the same as its symbol
         const NO_MANGLE                 = 1 << 5;
+        /// #[rustc_std_internal_symbol], and indicator that this symbol is a
+        /// "weird symbol" for the standard library in that it has slightly
+        /// different linkage, visibility, and reachability rules.
         const RUSTC_STD_INTERNAL_SYMBOL = 1 << 6;
+        /// #[no_debug], indicates that no debugging information should be
+        /// generated for this function by LLVM
         const NO_DEBUG                  = 1 << 7;
+        /// #[thread_local], indicates a static is actually a thread local
+        /// piece of memory
         const THREAD_LOCAL              = 1 << 8;
+        /// #[used], indicates that LLVM can't eliminate this function (but the
+        /// linker can!)
         const USED                      = 1 << 9;
     }
 }
@@ -2316,6 +2350,7 @@ impl CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
             export_name: None,
+            link_name: None,
             target_features: vec![],
             linkage: None,
             link_section: None,

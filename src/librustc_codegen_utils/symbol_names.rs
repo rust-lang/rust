@@ -99,9 +99,9 @@
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::middle::weak_lang_items;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
@@ -111,7 +111,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
 use rustc_mir::monomorphize::Instance;
 
-use syntax::attr;
 use syntax_pos::symbol::Symbol;
 
 use std::fmt::Write;
@@ -260,7 +259,6 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let attrs = tcx.get_attrs(def_id);
     let is_foreign = if let Some(id) = node_id {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(_) => true,
@@ -270,24 +268,21 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
         tcx.is_foreign_item(def_id)
     };
 
-    if let Some(name) = weak_lang_items::link_name(&attrs) {
-        return name.to_string();
-    }
-
+    let attrs = tcx.codegen_fn_attrs(def_id);
     if is_foreign {
-        if let Some(name) = attr::first_attr_value_str_by_name(&attrs, "link_name") {
+        if let Some(name) = attrs.link_name {
             return name.to_string();
         }
         // Don't mangle foreign items.
         return tcx.item_name(def_id).to_string();
     }
 
-    if let Some(name) = tcx.codegen_fn_attrs(def_id).export_name {
+    if let Some(name) = &attrs.export_name {
         // Use provided name
         return name.to_string();
     }
 
-    if attr::contains_name(&attrs, "no_mangle") {
+    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
         return tcx.item_name(def_id).to_string();
     }
