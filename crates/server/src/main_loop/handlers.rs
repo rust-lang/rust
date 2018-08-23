@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
-    SymbolInformation, Position, Location,
+    SymbolInformation, Position, Location, TextEdit,
 };
 use libanalysis::{Query};
 use libeditor;
@@ -56,6 +56,18 @@ pub fn handle_find_matching_brace(
         .map_conv_with(&line_index)
         .collect();
     Ok(res)
+}
+
+pub fn handle_join_lines(
+    world: ServerWorld,
+    params: req::JoinLinesParams,
+) -> Result<Vec<TextEdit>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_syntax(file_id)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let range = params.range.conv_with(&line_index);
+    let res = libeditor::join_lines(&file, range);
+    Ok(res.edit.conv_with(&line_index))
 }
 
 pub fn handle_document_symbol(

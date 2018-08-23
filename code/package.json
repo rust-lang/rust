@@ -44,6 +44,10 @@
       {
         "command": "libsyntax-rust.parentModule",
         "title": "Rust Parent Module"
+      },
+      {
+        "command": "libsyntax-rust.joinLines",
+        "title": "Rust Join Lines"
       }
     ],
     "keybindings": [
@@ -60,6 +64,11 @@
       {
         "command": "libsyntax-rust.extendSelection",
         "key": "ctrl+w",
+        "when": "editorTextFocus && editorLangId == rust"
+      },
+      {
+        "command": "libsyntax-rust.joinLines",
+        "key": "ctrl+shift+j",
         "when": "editorTextFocus && editorLangId == rust"
       }
     ],

@@ -51,6 +51,19 @@ export function activate(context: vscode.ExtensionContext) {
             return new vscode.Selection(anchor, active)
         })
     })
+    registerCommand('libsyntax-rust.joinLines', async () => {
+        let editor = vscode.window.activeTextEditor
+        if (editor == null || editor.document.languageId != "rust") return
+        let request: JoinLinesParams = {
+            textDocument: { uri: editor.document.uri.toString() },
+            range: client.code2ProtocolConverter.asRange(editor.selection),
+        }
+        let response = await client.sendRequest<lc.TextEdit[]>("m/joinLines", request)
+        let edits = client.protocol2CodeConverter.asTextEdits(response)
+        let wsEdit = new vscode.WorkspaceEdit()
+        wsEdit.set(editor.document.uri, edits)
+        return vscode.workspace.applyEdit(wsEdit)
+    })
     registerCommand('libsyntax-rust.parentModule', async () => {
         let editor = vscode.window.activeTextEditor
         if (editor == null || editor.document.languageId != "rust") return
@@ -235,6 +248,11 @@ interface ExtendSelectionResult {
 interface FindMatchingBraceParams {
     textDocument: lc.TextDocumentIdentifier;
     offsets: lc.Position[];
+}
+
+interface JoinLinesParams {
+    textDocument: lc.TextDocumentIdentifier;
+    range: lc.Range;
 }
 
 interface PublishDecorationsParams {

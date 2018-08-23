@@ -10,6 +10,7 @@ pub use languageserver_types::{
     ExecuteCommandParams,
     WorkspaceSymbolParams,
     TextDocumentPositionParams,
+    TextEdit,
 };
 
 
@@ -116,4 +117,19 @@ impl Request for ParentModule {
     type Params = TextDocumentIdentifier;
     type Result = Vec<Location>;
     const METHOD: &'static str = "m/parentModule";
+}
+
+pub enum JoinLines {}
+
+impl Request for JoinLines {
+    type Params = JoinLinesParams;
+    type Result = Vec<TextEdit>;
+    const METHOD: &'static str = "m/joinLines";
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JoinLinesParams {
+    pub text_document: TextDocumentIdentifier,
+    pub range: Range,
 }

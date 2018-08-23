@@ -27,6 +27,7 @@ use {
         handle_goto_definition,
         handle_find_matching_brace,
         handle_parent_module,
+        handle_join_lines,
     },
 };
 
@@ -144,6 +145,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::ParentModule>(
         &mut req, pool, world, sender, handle_parent_module,
+    )?;
+    handle_request_on_threadpool::<req::JoinLines>(
+        &mut req, pool, world, sender, handle_join_lines,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));
