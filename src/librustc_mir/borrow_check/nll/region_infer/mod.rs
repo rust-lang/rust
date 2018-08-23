@@ -27,7 +27,7 @@ use rustc::mir::{
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common;
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
+use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
 
@@ -468,7 +468,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // SCC. For each SCC, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.
-        let visited = &mut IdxSetBuf::new_empty(self.constraint_sccs.num_sccs());
+        let visited = &mut IdxSet::new_empty(self.constraint_sccs.num_sccs());
         for scc_index in self.constraint_sccs.all_sccs() {
             self.propagate_constraint_sccs_if_new(scc_index, visited);
         }
