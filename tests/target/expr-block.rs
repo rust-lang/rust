@@ -73,7 +73,7 @@ fn arrays() {
 
 fn function_calls() {
     let items = itemize_list(
-        context.codemap,
+        context.source_map,
         args.iter(),
         ")",
         |item| item.span.lo(),
@@ -92,7 +92,7 @@ fn function_calls() {
     );
 
     itemize_list(
-        context.codemap,
+        context.source_map,
         args.iter(),
         ")",
         |item| item.span.lo(),

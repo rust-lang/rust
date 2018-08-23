@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use macros::MacroArg;
 use utils::{mk_sp, outer_attributes};

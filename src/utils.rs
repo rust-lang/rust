@@ -15,7 +15,7 @@ use syntax::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, Path,
     Visibility, VisibilityKind,
 };
-use syntax::codemap::{BytePos, Span, NO_EXPANSION};
+use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 use syntax::ptr;
 
 use comment::filter_normal_code;
@@ -327,7 +327,7 @@ macro_rules! out_of_file_lines_range {
         !$self.config.file_lines().is_all() && !$self
             .config
             .file_lines()
-            .intersects(&$self.codemap.lookup_line_range($span))
+            .intersects(&$self.source_map.lookup_line_range($span))
     };
 }
 

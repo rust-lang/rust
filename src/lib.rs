@@ -49,7 +49,7 @@ use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{FileMap, FormatErrorMap, FormattingError, ReportedErrors};
+use formatting::{SourceFile, FormatErrorMap, FormattingError, ReportedErrors};
 use issues::Issue;
 use shape::Indent;
 
@@ -65,11 +65,11 @@ mod attr;
 mod chains;
 pub(crate) mod checkstyle;
 mod closures;
-pub(crate) mod codemap;
+pub(crate) mod source_map;
 mod comment;
 pub(crate) mod config;
 mod expr;
-pub(crate) mod filemap;
+pub(crate) mod source_file;
 pub(crate) mod formatting;
 mod imports;
 mod issues;
@@ -459,7 +459,7 @@ pub struct Session<'b, T: Write + 'b> {
     pub config: Config,
     pub out: Option<&'b mut T>,
     pub(crate) errors: ReportedErrors,
-    filemap: FileMap,
+    source_file: SourceFile,
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
@@ -472,7 +472,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             config,
             out,
             errors: ReportedErrors::default(),
-            filemap: FileMap::new(),
+            source_file: SourceFile::new(),
         }
     }
 

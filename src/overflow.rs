@@ -13,11 +13,11 @@
 
 use config::lists::*;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 use syntax::parse::token::DelimToken;
 
 use closures;
-use codemap::SpanUtils;
+use source_map::SpanUtils;
 use expr::{is_every_expr_simple, is_method_call, is_nested_call, maybe_get_args_offset, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};

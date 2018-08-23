@@ -10,7 +10,7 @@
 
 // A generic trait to abstract the rewriting of an element (of the AST).
 
-use syntax::codemap::{CodeMap, Span};
+use syntax::source_map::{SourceMap, Span};
 use syntax::parse::ParseSess;
 
 use config::{Config, IndentStyle};
@@ -28,7 +28,7 @@ pub trait Rewrite {
 #[derive(Clone)]
 pub struct RewriteContext<'a> {
     pub parse_session: &'a ParseSess,
-    pub codemap: &'a CodeMap,
+    pub source_map: &'a SourceMap,
     pub config: &'a Config,
     pub inside_macro: RefCell<bool>,
     // Force block indent style even if we are using visual indent style.

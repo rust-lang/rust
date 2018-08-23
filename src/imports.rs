@@ -12,9 +12,9 @@ use std::cmp::Ordering;
 
 use config::lists::*;
 use syntax::ast::{self, UseTreeKind};
-use syntax::codemap::{self, BytePos, Span, DUMMY_SP};
+use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
 
-use codemap::SpanUtils;
+use source_map::SpanUtils;
 use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
@@ -470,7 +470,7 @@ impl UseTree {
     fn same_visibility(&self, other: &UseTree) -> bool {
         match (&self.visibility, &other.visibility) {
             (
-                Some(codemap::Spanned {
+                Some(source_map::Spanned {
                     node: ast::VisibilityKind::Inherited,
                     ..
                 }),
@@ -478,7 +478,7 @@ impl UseTree {
             )
             | (
                 None,
-                Some(codemap::Spanned {
+                Some(source_map::Spanned {
                     node: ast::VisibilityKind::Inherited,
                     ..
                 }),
@@ -785,7 +785,7 @@ impl Rewrite for UseTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use syntax::codemap::DUMMY_SP;
+    use syntax::source_map::DUMMY_SP;
 
     // Parse the path part of an import. This parser is not robust and is only
     // suitable for use in a test harness.

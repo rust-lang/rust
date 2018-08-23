@@ -12,13 +12,13 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use config::lists::*;
-use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::parse::token::DelimToken;
 use syntax::{ast, ptr};
 
 use chains::rewrite_chain;
 use closures;
-use codemap::{LineRangeUtils, SpanUtils};
+use source_map::{LineRangeUtils, SpanUtils};
 use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
     rewrite_missing_comment, CharClasses, FindUncommented,
@@ -425,7 +425,7 @@ fn rewrite_empty_block(
         return None;
     }
 
-    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) && shape.width >= 2
+    if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) && shape.width >= 2
     {
         return Some(format!("{}{}{{}}", prefix, label_str));
     }
@@ -483,7 +483,7 @@ fn rewrite_single_line_block(
     label: Option<ast::Label>,
     shape: Shape,
 ) -> Option<String> {
-    if is_simple_block(block, attrs, context.codemap) {
+    if is_simple_block(block, attrs, context.source_map) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
         let label_str = rewrite_label(label);
@@ -769,8 +769,8 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node, _) = else_block.node {
-            if !is_simple_block(self.block, None, context.codemap)
-                || !is_simple_block(else_node, None, context.codemap)
+            if !is_simple_block(self.block, None, context.source_map)
+                || !is_simple_block(else_node, None, context.source_map)
                 || pat_expr_str.contains('\n')
             {
                 return None;
@@ -1113,8 +1113,8 @@ fn extract_comment(span: Span, context: &RewriteContext, shape: Shape) -> Option
     }
 }
 
-pub fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
-    let snippet = codemap.span_to_snippet(block.span).unwrap();
+pub fn block_contains_comment(block: &ast::Block, source_map: &SourceMap) -> bool {
+    let snippet = source_map.span_to_snippet(block.span).unwrap();
     contains_comment(&snippet)
 }
 
@@ -1125,11 +1125,11 @@ pub fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 pub fn is_simple_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    codemap: &CodeMap,
+    source_map: &SourceMap,
 ) -> bool {
     (block.stmts.len() == 1
         && stmt_is_expr(&block.stmts[0])
-        && !block_contains_comment(block, codemap)
+        && !block_contains_comment(block, source_map)
         && attrs.map_or(true, |a| a.is_empty()))
 }
 
@@ -1138,10 +1138,10 @@ pub fn is_simple_block(
 pub fn is_simple_block_stmt(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    codemap: &CodeMap,
+    source_map: &SourceMap,
 ) -> bool {
     block.stmts.len() <= 1
-        && !block_contains_comment(block, codemap)
+        && !block_contains_comment(block, source_map)
         && attrs.map_or(true, |a| a.is_empty())
 }
 
@@ -1150,10 +1150,10 @@ pub fn is_simple_block_stmt(
 pub fn is_empty_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    codemap: &CodeMap,
+    source_map: &SourceMap,
 ) -> bool {
     block.stmts.is_empty()
-        && !block_contains_comment(block, codemap)
+        && !block_contains_comment(block, source_map)
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 

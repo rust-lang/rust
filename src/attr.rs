@@ -22,7 +22,7 @@ use utils::{count_newlines, mk_sp};
 
 use std::borrow::Cow;
 use syntax::ast;
-use syntax::codemap::{BytePos, Span, DUMMY_SP};
+use syntax::source_map::{BytePos, Span, DUMMY_SP};
 
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {

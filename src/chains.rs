@@ -65,7 +65,7 @@
 //!            .qux
 //! ```
 
-use codemap::SpanUtils;
+use source_map::SpanUtils;
 use comment::rewrite_comment;
 use config::IndentStyle;
 use expr::rewrite_call;
@@ -82,7 +82,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 use std::iter;
 
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {

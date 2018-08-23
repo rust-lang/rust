@@ -14,7 +14,7 @@ use std::cmp;
 use std::iter::Peekable;
 
 use config::lists::*;
-use syntax::codemap::BytePos;
+use syntax::source_map::BytePos;
 
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};

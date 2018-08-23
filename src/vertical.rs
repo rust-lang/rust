@@ -14,9 +14,9 @@ use std::cmp;
 
 use config::lists::*;
 use syntax::ast;
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 
-use codemap::SpanUtils;
+use source_map::SpanUtils;
 use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
