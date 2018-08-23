@@ -1,5 +1,5 @@
-FILE@[0; 36)
-  TYPE_DEF@[0; 35)
+FILE@[0; 35)
+  TYPE_DEF@[0; 34)
     TYPE_KW@[0; 4)
     WHITESPACE@[4; 5)
     NAME@[5; 6)
@@ -36,5 +36,5 @@ FILE@[0; 36)
                     NAME_REF@[30; 33)
                       IDENT@[30; 33) "u64"
             R_ANGLE@[33; 34)
-    SEMI@[34; 35)
-  WHITESPACE@[35; 36)
+            err: `expected SEMI`
+  WHITESPACE@[34; 35)

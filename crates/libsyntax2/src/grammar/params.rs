@@ -94,20 +94,33 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 //     fn d(&'a mut self, x: i32) {}
 // }
 fn self_param(p: &mut Parser) {
-    let la1 = p.nth(1);
-    let la2 = p.nth(2);
-    let la3 = p.nth(3);
-    let n_toks = match (p.current(), la1, la2, la3) {
-        (SELF_KW, _, _, _) => 1,
-        (AMP, SELF_KW, _, _) => 2,
-        (AMP, MUT_KW, SELF_KW, _) => 3,
-        (AMP, LIFETIME, SELF_KW, _) => 3,
-        (AMP, LIFETIME, MUT_KW, SELF_KW) => 4,
-        _ => return,
-    };
-    let m = p.start();
-    for _ in 0..n_toks {
+    let m;
+    if p.at(SELF_KW) {
+        m = p.start();
         p.bump();
+        // test arb_self_types
+        // impl S {
+        //     fn a(self: &Self) {}
+        //     fn b(self: Box<Self>) {}
+        // }
+        if p.at(COLON) {
+            types::ascription(p);
+        }
+    } else {
+        let la1 = p.nth(1);
+        let la2 = p.nth(2);
+        let la3 = p.nth(3);
+        let n_toks = match (p.current(), la1, la2, la3) {
+            (AMP, SELF_KW, _, _) => 2,
+            (AMP, MUT_KW, SELF_KW, _) => 3,
+            (AMP, LIFETIME, SELF_KW, _) => 3,
+            (AMP, LIFETIME, MUT_KW, SELF_KW) => 4,
+            _ => return,
+        };
+        m = p.start();
+        for _ in 0..n_toks {
+            p.bump();
+        }
     }
     m.complete(p, SELF_PARAM);
     if !p.at(R_PAREN) {
