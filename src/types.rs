@@ -16,7 +16,6 @@ use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::source_map::{self, BytePos, Span};
 use syntax::symbol::keywords;
 
-use source_map::SpanUtils;
 use config::{IndentStyle, TypeDensity};
 use expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
@@ -25,6 +24,7 @@ use overflow;
 use pairs::{rewrite_pair, PairParts};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,

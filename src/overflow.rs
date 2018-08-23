@@ -13,15 +13,15 @@
 
 use config::lists::*;
 use syntax::ast;
-use syntax::source_map::Span;
 use syntax::parse::token::DelimToken;
+use syntax::source_map::Span;
 
 use closures;
-use source_map::SpanUtils;
 use expr::{is_every_expr_simple, is_method_call, is_nested_call, maybe_get_args_offset, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 

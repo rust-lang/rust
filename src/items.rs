@@ -20,7 +20,6 @@ use syntax::source_map::{self, BytePos, Span};
 use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
-use source_map::{LineRangeUtils, SpanUtils};
 use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
     recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
@@ -35,6 +34,7 @@ use macros::{rewrite_macro, MacroPosition};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use utils::*;
 use vertical::rewrite_with_alignment;

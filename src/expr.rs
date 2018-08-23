@@ -12,13 +12,12 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use config::lists::*;
-use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::parse::token::DelimToken;
+use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::{ast, ptr};
 
 use chains::rewrite_chain;
 use closures;
-use source_map::{LineRangeUtils, SpanUtils};
 use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
     rewrite_missing_comment, CharClasses, FindUncommented,
@@ -35,6 +34,7 @@ use pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
 use patterns::{can_be_overflowed_pat, is_short_pattern, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
@@ -425,7 +425,9 @@ fn rewrite_empty_block(
         return None;
     }
 
-    if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) && shape.width >= 2
+    if block.stmts.is_empty()
+        && !block_contains_comment(block, context.source_map)
+        && shape.width >= 2
     {
         return Some(format!("{}{}{{}}", prefix, label_str));
     }

@@ -49,7 +49,7 @@ use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{SourceFile, FormatErrorMap, FormattingError, ReportedErrors};
+use formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use issues::Issue;
 use shape::Indent;
 
@@ -65,11 +65,9 @@ mod attr;
 mod chains;
 pub(crate) mod checkstyle;
 mod closures;
-pub(crate) mod source_map;
 mod comment;
 pub(crate) mod config;
 mod expr;
-pub(crate) mod source_file;
 pub(crate) mod formatting;
 mod imports;
 mod issues;
@@ -86,6 +84,8 @@ mod reorder;
 mod rewrite;
 pub(crate) mod rustfmt_diff;
 mod shape;
+pub(crate) mod source_file;
+pub(crate) mod source_map;
 mod spanned;
 mod string;
 #[cfg(test)]

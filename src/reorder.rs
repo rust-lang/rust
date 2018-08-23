@@ -20,13 +20,13 @@ use config::Config;
 use syntax::{ast, attr, source_map::Span};
 
 use attr::filter_inline_attrs;
-use source_map::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
 use imports::{merge_use_trees, UseTree};
 use items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use lists::{itemize_list, write_list, ListFormatting, ListItem};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::LineRangeUtils;
 use spanned::Spanned;
 use utils::mk_sp;
 use visitor::FmtVisitor;

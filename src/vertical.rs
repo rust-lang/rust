@@ -16,13 +16,13 @@ use config::lists::*;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 
-use source_map::SpanUtils;
 use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{contains_skip, is_attributes_extendable, mk_sp, rewrite_ident};
 

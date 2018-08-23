@@ -20,9 +20,9 @@ use std::path::{Path, PathBuf};
 use std::str::Chars;
 
 use config::{Color, Config, EmitMode, FileName, ReportTactic};
-use source_file;
-use formatting::{SourceFile, ModifiedChunk};
+use formatting::{ModifiedChunk, SourceFile};
 use rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
+use source_file;
 use {FormatReport, Input, Session};
 
 const DIFF_CONTEXT_SIZE: usize = 3;

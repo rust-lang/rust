@@ -14,12 +14,12 @@ use config::lists::*;
 use syntax::ast::{self, UseTreeKind};
 use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
 
-use source_map::SpanUtils;
 use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{is_same_visibility, mk_sp, rewrite_ident};
 use visitor::FmtVisitor;

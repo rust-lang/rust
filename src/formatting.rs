@@ -7,16 +7,16 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use syntax::ast;
-use syntax::source_map::{SourceMap, FilePathMapping, Span};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::errors::Handler;
 use syntax::parse::{self, ParseSess};
+use syntax::source_map::{FilePathMapping, SourceMap, Span};
 
 use comment::{CharClasses, FullCodeCharKind};
 use config::{Config, FileName, Verbosity};
 use issues::BadIssueSeeker;
 use visitor::{FmtVisitor, SnippetProvider};
-use {source_file, modules, ErrorKind, FormatReport, Input, Session};
+use {modules, source_file, ErrorKind, FormatReport, Input, Session};
 
 // A map of the files of a crate, with their new content
 pub(crate) type SourceFile = Vec<FileRecord>;
@@ -223,7 +223,11 @@ pub(crate) struct FormattingError {
 }
 
 impl FormattingError {
-    pub(crate) fn from_span(span: &Span, source_map: &SourceMap, kind: ErrorKind) -> FormattingError {
+    pub(crate) fn from_span(
+        span: &Span,
+        source_map: &SourceMap,
+        kind: ErrorKind,
+    ) -> FormattingError {
         FormattingError {
             line: source_map.lookup_char_pos(span.lo()).line,
             is_comment: kind.is_comment(),

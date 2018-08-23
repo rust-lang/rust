@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use syntax::attr::HasAttrs;
-use syntax::source_map::{self, BytePos, SourceMap, Pos, Span};
 use syntax::parse::ParseSess;
+use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
 
 use attr::*;
-use source_map::{LineRangeUtils, SpanUtils};
 use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
 use config::{BraceStyle, Config};
 use items::{
@@ -26,6 +25,7 @@ use items::{
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,

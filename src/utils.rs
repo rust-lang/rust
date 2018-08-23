@@ -15,8 +15,8 @@ use syntax::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, Path,
     Visibility, VisibilityKind,
 };
-use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 use syntax::ptr;
+use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 
 use comment::filter_normal_code;
 use rewrite::RewriteContext;

@@ -16,7 +16,6 @@ use config::lists::*;
 use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
-use source_map::SpanUtils;
 use comment::{combine_strs_with_missing_comments, rewrite_comment};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use expr::{
@@ -26,6 +25,7 @@ use expr::{
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,

@@ -13,8 +13,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use syntax::ast;
-use syntax::source_map;
 use syntax::parse::{parser, DirectoryOwnership};
+use syntax::source_map;
 use syntax_pos::symbol::Symbol;
 
 use config::FileName;
@@ -66,8 +66,8 @@ fn list_submodules<'a>(
     for item in &module.items {
         if let ast::ItemKind::Mod(ref sub_mod) = item.node {
             if !contains_skip(&item.attrs) {
-                let is_internal =
-                    source_map.span_to_filename(item.span) == source_map.span_to_filename(sub_mod.inner);
+                let is_internal = source_map.span_to_filename(item.span)
+                    == source_map.span_to_filename(sub_mod.inner);
                 let (dir_path, relative) = if is_internal {
                     if let Some(path) = find_path_value(&item.attrs) {
                         (search_dir.join(&path.as_str()), None)
