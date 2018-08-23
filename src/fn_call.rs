@@ -75,35 +75,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             return Ok(None);
         }
 
-        // FIXME: Why are these hooked here, not in `emulate_missing_fn` or so?
-        let def_id = instance.def_id();
-        let item_path = self.tcx.absolute_item_path_str(def_id);
-        match &*item_path {
-            "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
-                // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
-                let dest = dest.unwrap();
-                match dest.layout.ty.sty {
-                    ty::Adt(ref adt_def, _) => {
-                        assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
-                        let none_variant_index = adt_def.variants.iter().position(|def| {
-                            def.name.as_str() == "None"
-                        }).expect("No None variant");
-
-                        self.write_discriminant_value(none_variant_index, dest)?;
-                        self.goto_block(ret)?;
-                        return Ok(None);
-                    }
-                    _ => panic!("Unexpected return type for {}", item_path)
-                }
-            }
-            "std::sys::unix::fast_thread_local::register_dtor" => {
-                // TODO: register the dtor
-                self.goto_block(ret)?;
-                return Ok(None);
-            }
-            _ => {}
-        }
-
         // Try to see if we can do something about foreign items
         if self.tcx.is_foreign_item(instance.def_id()) {
             // An external function that we cannot find MIR for, but we can still run enough
@@ -280,6 +251,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 let data = self.read_scalar(args[1])?.not_undef()?;
                 let f_instance = self.memory.get_fn(f)?;
                 self.write_null(dest)?;
+                trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
                 // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
                 // and of course eval_main.
@@ -478,7 +450,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             }
 
             "sysconf" => {
-                let name = self.read_scalar(args[0])?.to_usize(&self)?;
+                let name = self.read_scalar(args[0])?.to_i32()?;
 
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
@@ -494,7 +466,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                             promoted: None,
                         };
                         let const_val = self.const_eval(cid)?;
-                        let value = const_val.unwrap_usize(self.tcx.tcx);
+                        let value = const_val.unwrap_bits(
+                            self.tcx.tcx,
+                            ty::ParamEnv::empty().and(self.tcx.types.i32)) as i32;
                         if value == name {
                             result = Some(path_value);
                             break;
@@ -568,9 +542,26 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 return err!(Unimplemented("Thread-local store is not fully supported on macOS".to_owned()));
             },
 
-            // Stub out all the other pthread calls to just return 0
-            link_name if link_name.starts_with("pthread_") => {
-                debug!("ignoring C ABI call: {}", link_name);
+            // Determining stack base address
+            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_attr_get_np" |
+            "pthread_getattr_np" | "pthread_self" => {
+                self.write_null(dest)?;
+            }
+            "pthread_attr_getstack" => {
+                // second argument is where we are supposed to write the stack size
+                let ptr = self.ref_to_mplace(self.read_value(args[1])?)?;
+                self.write_scalar(Scalar::from_int(0x80000, args[1].layout.size), ptr.into())?;
+                // return 0
+                self.write_null(dest)?;
+            }
+
+            // Stub out calls for condvar, mutex and rwlock to just return 0
+            "pthread_mutexattr_init" | "pthread_mutexattr_settype" | "pthread_mutex_init" |
+            "pthread_mutexattr_destroy" | "pthread_mutex_lock" | "pthread_mutex_unlock" |
+            "pthread_mutex_destroy" | "pthread_rwlock_rdlock" | "pthread_rwlock_unlock" |
+            "pthread_rwlock_wrlock" | "pthread_rwlock_destroy" | "pthread_condattr_init" |
+            "pthread_condattr_setclock" | "pthread_cond_init" | "pthread_condattr_destroy" |
+            "pthread_cond_destroy" => {
                 self.write_null(dest)?;
             }
 

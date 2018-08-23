@@ -16,7 +16,7 @@ extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
 
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -24,6 +24,7 @@ use rustc::mir;
 use rustc_data_structures::fx::FxHasher;
 
 use syntax::ast::Mutability;
+use syntax::attr;
 
 use std::marker::PhantomData;
 use std::collections::{HashMap, BTreeMap};
@@ -359,12 +360,28 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn global_item_with_linkage<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx> {
-        panic!("remove this function from rustc");
+    fn find_foreign_static<'a>(
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
+        let attrs = tcx.get_attrs(def_id);
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+            Some(name) => name.as_str(),
+            None => tcx.item_name(def_id).as_str(),
+        };
+
+        let alloc = match &link_name[..] {
+            "__cxa_thread_atexit_impl" => {
+                // This should be all-zero, pointer-sized
+                let data = vec![0; tcx.data_layout.pointer_size.bytes() as usize];
+                let alloc = Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align);
+                tcx.intern_const_alloc(alloc)
+            }
+            _ => return err!(Unimplemented(
+                    format!("can't access foreign static: {}", link_name),
+                )),
+        };
+        Ok(alloc)
     }
 
     fn validation_op<'a>(
