@@ -2,7 +2,7 @@
 
 The [`rustc_driver`] is essentially `rustc`'s `main()` function. It acts as
 the glue for running the various phases of the compiler in the correct order,
-managing state such as the [`CodeMap`] \(maps AST nodes to source code),
+managing state such as the [`SourceMap`] \(maps AST nodes to source code),
 [`Session`] \(general build context and error messaging) and the [`TyCtxt`]
 \(the "typing context", allowing you to query the type system and other cool
 stuff). The `rustc_driver` crate also provides external users with a method
@@ -71,6 +71,6 @@ thread-locals, although you should rarely need to touch it.
 [`CompileState`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/struct.CompileState.html
 [`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
-[`CodeMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
+[`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
 [Appendix A]: appendix/stupid-stats.html

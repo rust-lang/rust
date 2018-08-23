@@ -14,7 +14,7 @@ Like most parsers, the parsing process is composed of two main steps,
 
 The `syntax` crate contains several main players,
 
-- a [`CodeMap`] for mapping AST nodes to their source code
+- a [`SourceMap`] for mapping AST nodes to their source code
 - the [ast module] contains types corresponding to each AST node
 - a [`StringReader`] for lexing source code into tokens
 - the [parser module] and [`Parser`] struct are in charge of actually parsing
@@ -23,21 +23,21 @@ The `syntax` crate contains several main players,
   nodes.
 
 The main entrypoint to the parser is via the various `parse_*` functions in the
-[parser module]. They let you do things like turn a [`FileMap`][filemap] (e.g.
+[parser module]. They let you do things like turn a [`SourceFile`][sourcefile] (e.g.
 the source in a single file) into a token stream, create a parser from the
 token stream, and then execute the parser to get a `Crate` (the root AST node).
 
 To minimise the amount of copying that is done, both the `StringReader` and
 `Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
-all the information needed while parsing, as well as the `CodeMap` itself.
+all the information needed while parsing, as well as the `SourceMap` itself.
 
 [libsyntax]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/index.html
 [rustc_errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-[`CodeMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
+[`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html
 [ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
 [parser module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/index.html
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/lexer/struct.StringReader.html
 [visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/index.html
-[filemap]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.FileMap.html
+[sourcefile]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceFile.html
