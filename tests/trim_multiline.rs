@@ -1,4 +1,4 @@
-#![feature(tool_attributes)]
+
 
 /// test the multiline-trim function
 extern crate clippy_lints;

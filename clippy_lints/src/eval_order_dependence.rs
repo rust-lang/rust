@@ -130,9 +130,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             ExprKind::Call(ref func, _) => {
                 let typ = self.cx.tables.expr_ty(func);
                 match typ.sty {
-                    ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                    ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
-                        if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&sig).output().sty {
+                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(&sig).output().sty {
                             self.report_diverging_sub_expr(e);
                         }
                     },

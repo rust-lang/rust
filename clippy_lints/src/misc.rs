@@ -465,7 +465,7 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::TyFloat(_))
+    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::Float(_))
 }
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {

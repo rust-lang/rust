@@ -1,4 +1,4 @@
-#![feature(tool_attributes)]
+
 
 #![allow(clippy)]
 #![warn(cyclomatic_complexity)]

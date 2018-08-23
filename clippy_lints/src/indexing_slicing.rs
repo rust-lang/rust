@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
                 // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
-                if let ty::TyArray(_, s) = ty.sty {
+                if let ty::Array(_, s) = ty.sty {
                     let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
                     // Index is a constant range.
                     if let Some((start, end)) = to_const_range(cx, range, size) {
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 );
             } else {
                 // Catchall non-range index, i.e. [n] or [n << m]
-                if let ty::TyArray(..) = ty.sty {
+                if let ty::Array(..) = ty.sty {
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.tables, index) {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.

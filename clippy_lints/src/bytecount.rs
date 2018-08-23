@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                                 _ => { return; }
                             }
                         };
-                        if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
+                        if ty::Uint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args) =

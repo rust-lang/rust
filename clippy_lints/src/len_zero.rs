@@ -265,12 +265,12 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::TyDynamic(ref tt, ..) => cx.tcx
+        ty::Dynamic(ref tt, ..) => cx.tcx
             .associated_items(tt.principal().expect("trait impl not found").def_id())
             .any(|item| is_is_empty(cx, &item)),
-        ty::TyProjection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
-        ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
-        ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
+        ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
+        ty::Adt(id, _) => has_is_empty_impl(cx, id.did),
+        ty::Array(..) | ty::Slice(..) | ty::Str => true,
         _ => false,
     }
 }

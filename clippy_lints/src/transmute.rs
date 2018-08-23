@@ -231,7 +231,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 e.span,
                                 &format!("transmute from a type (`{}`) to itself", from_ty),
                             ),
-                            (&ty::TyRef(_, rty, rty_mutbl), &ty::TyRawPtr(ptr_ty)) => span_lint_and_then(
+                            (&ty::Ref(_, rty, rty_mutbl), &ty::RawPtr(ptr_ty)) => span_lint_and_then(
                                 cx,
                                 USELESS_TRANSMUTE,
                                 e.span,
@@ -248,7 +248,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     db.span_suggestion(e.span, "try", sugg.to_string());
                                 },
                             ),
-                            (&ty::TyInt(_), &ty::TyRawPtr(_)) | (&ty::TyUint(_), &ty::TyRawPtr(_)) => {
+                            (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => {
                                 span_lint_and_then(
                                     cx,
                                     USELESS_TRANSMUTE,
@@ -259,16 +259,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     },
                                 )
                             },
-                            (&ty::TyFloat(_), &ty::TyRef(..)) |
-                            (&ty::TyFloat(_), &ty::TyRawPtr(_)) |
-                            (&ty::TyChar, &ty::TyRef(..)) |
-                            (&ty::TyChar, &ty::TyRawPtr(_)) => span_lint(
+                            (&ty::Float(_), &ty::Ref(..)) |
+                            (&ty::Float(_), &ty::RawPtr(_)) |
+                            (&ty::Char, &ty::Ref(..)) |
+                            (&ty::Char, &ty::RawPtr(_)) => span_lint(
                                 cx,
                                 WRONG_TRANSMUTE,
                                 e.span,
                                 &format!("transmute from a `{}` to a pointer", from_ty),
                             ),
-                            (&ty::TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
+                            (&ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
                                 cx,
                                 CROSSPOINTER_TRANSMUTE,
                                 e.span,
@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     to_ty
                                 ),
                             ),
-                            (_, &ty::TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
+                            (_, &ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
                                 cx,
                                 CROSSPOINTER_TRANSMUTE,
                                 e.span,
@@ -288,7 +288,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     to_ty
                                 ),
                             ),
-                            (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_ref_ty, mutbl)) => span_lint_and_then(
+                            (&ty::RawPtr(from_pty), &ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
                                 cx,
                                 TRANSMUTE_PTR_TO_REF,
                                 e.span,
@@ -315,16 +315,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
                                 },
                             ),
-                            (&ty::TyInt(ast::IntTy::I32), &ty::TyChar) |
-                            (&ty::TyUint(ast::UintTy::U32), &ty::TyChar) => span_lint_and_then(
+                            (&ty::Int(ast::IntTy::I32), &ty::Char) |
+                            (&ty::Uint(ast::UintTy::U32), &ty::Char) => span_lint_and_then(
                                 cx,
                                 TRANSMUTE_INT_TO_CHAR,
                                 e.span,
                                 &format!("transmute from a `{}` to a `char`", from_ty),
                                 |db| {
                                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let arg = if let ty::TyInt(_) = from_ty.sty {
-                                        arg.as_ty(ty::TyUint(ast::UintTy::U32))
+                                    let arg = if let ty::Int(_) = from_ty.sty {
+                                        arg.as_ty(ty::Uint(ast::UintTy::U32))
                                     } else {
                                         arg
                                     };
@@ -335,10 +335,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     );
                                 },
                             ),
-                            (&ty::TyRef(_, ty_from, from_mutbl), &ty::TyRef(_, ty_to, to_mutbl)) => {
+                            (&ty::Ref(_, ty_from, from_mutbl), &ty::Ref(_, ty_to, to_mutbl)) => {
                                 if_chain! {
-                                    if let (&ty::TySlice(slice_ty), &ty::TyStr) = (&ty_from.sty, &ty_to.sty);
-                                    if let ty::TyUint(ast::UintTy::U8) = slice_ty.sty;
+                                    if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.sty, &ty_to.sty);
+                                    if let ty::Uint(ast::UintTy::U8) = slice_ty.sty;
                                     if from_mutbl == to_mutbl;
                                     then {
                                         let postfix = if from_mutbl == Mutability::MutMutable {
@@ -387,7 +387,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     }
                                 }
                             },
-                            (&ty::TyRawPtr(_), &ty::TyRawPtr(to_ty)) => span_lint_and_then(
+                            (&ty::RawPtr(_), &ty::RawPtr(to_ty)) => span_lint_and_then(
                                 cx,
                                 TRANSMUTE_PTR_TO_PTR,
                                 e.span,
@@ -397,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     db.span_suggestion(e.span, "try", sugg.to_string());
                                 },
                             ),
-                            (&ty::TyInt(ast::IntTy::I8), &ty::TyBool) | (&ty::TyUint(ast::UintTy::U8), &ty::TyBool) => {
+                            (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {
                                 span_lint_and_then(
                                     cx,
                                     TRANSMUTE_INT_TO_BOOL,
@@ -414,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     },
                                 )
                             },
-                            (&ty::TyInt(_), &ty::TyFloat(_)) | (&ty::TyUint(_), &ty::TyFloat(_)) => {
+                            (&ty::Int(_), &ty::Float(_)) | (&ty::Uint(_), &ty::Float(_)) => {
                                 span_lint_and_then(
                                     cx,
                                     TRANSMUTE_INT_TO_FLOAT,
@@ -422,7 +422,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                                     |db| {
                                         let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                        let arg = if let ty::TyInt(int_ty) = from_ty.sty {
+                                        let arg = if let ty::Int(int_ty) = from_ty.sty {
                                             arg.as_ty(format!(
                                                 "u{}",
                                                 int_ty

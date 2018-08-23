@@ -141,18 +141,18 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
         }
 
         match ty.sty {
-            ty::TyAdt(def, _) if def.is_union() => return,
+            ty::Adt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
-            ty::TyAdt(def, substs) => for variant in &def.variants {
+            ty::Adt(def, substs) => for variant in &def.variants {
                 for field in &variant.fields {
-                    if let ty::TyFnDef(..) = field.ty(cx.tcx, substs).sty {
+                    if let ty::FnDef(..) = field.ty(cx.tcx, substs).sty {
                         return;
                     }
                 }
                 for subst in substs {
                     if let ty::subst::UnpackedKind::Type(subst) = subst.unpack() {
-                        if let ty::TyParam(_) = subst.sty {
+                        if let ty::Param(_) = subst.sty {
                             return;
                         }
                     }

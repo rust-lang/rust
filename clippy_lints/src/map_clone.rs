@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
                                 {
                                     // the argument is not an &mut T
-                                    if let ty::TyRef(_, _, mutbl) = ty.sty {
+                                    if let ty::Ref(_, _, mutbl) = ty.sty {
                                         if mutbl == MutImmutable {
                                             span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                                 "you seem to be using .map() to clone the contents of an {}, consider \
