@@ -475,14 +475,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         .max(tcx.data_layout.i32_align)
                         .max(tcx.data_layout.pointer_align);
 
-                    let str = if intrinsic == Some("init") {
-                        "Attempted to instantiate an uninhabited type (e.g. `!`) \
-                         using mem::zeroed()"
-                    } else {
-                        "Attempted to instantiate an uninhabited type (e.g. `!`) \
-                         using mem::uninitialized()"
-                    };
-                    let msg_str = Symbol::intern(str).as_str();
+                    let str = format!(
+                        "Attempted to instantiate uninhabited type {} using mem::{}",
+                        sig.output(),
+                        if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
+                    );
+                    let msg_str = Symbol::intern(&str).as_str();
                     let msg_str = C_str_slice(bx.cx, msg_str);
                     let msg_file_line_col = C_struct(bx.cx,
                                                     &[msg_str, filename, line, col],
