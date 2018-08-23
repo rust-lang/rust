@@ -472,7 +472,8 @@ fn to_str<'a, 'tcx, 'mir>(
     if let Value::ScalarPair(ptr, len) = val {
         let len = len.not_undef()?.to_bits(ecx.memory.pointer_size())?;
         let bytes = ecx.memory.read_bytes(ptr.not_undef()?, Size::from_bytes(len as u64))?;
-        let str = ::std::str::from_utf8(bytes).map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+        let str = ::std::str::from_utf8(bytes)
+            .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
         Ok(Symbol::intern(str))
     } else {
         bug!("panic arg is not a str")

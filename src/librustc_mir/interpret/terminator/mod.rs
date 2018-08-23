@@ -252,16 +252,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
-<<<<<<< HEAD
                         ty::Tuple(tys) if sig.inputs().len() == tys.len() =>
-                            if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
-=======
-                        ty::TyTuple(tys) if sig.inputs().len() == tys.len() =>
                             if sig.inputs()
-                                  .iter()
-                                  .zip(tys)
-                                  .all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
->>>>>>> 7d30ba9... Fixup long code lines
+                                .iter()
+                                .zip(tys)
+                                .all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
                                 return Ok(true)
                             },
                         _ => {}
