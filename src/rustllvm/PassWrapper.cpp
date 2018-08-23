@@ -359,6 +359,12 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
 }
 #endif
 
+extern "C" const char* LLVMRustGetHostCPUName(size_t *len) {
+  StringRef Name = sys::getHostCPUName();
+  *len = Name.size();
+  return Name.data();
+}
+
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
     LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
@@ -379,11 +385,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (TheTarget == nullptr) {
     LLVMRustSetLastError(Error.c_str());
     return nullptr;
-  }
-
-  StringRef RealCPU = CPU;
-  if (RealCPU == "native") {
-    RealCPU = sys::getHostCPUName();
   }
 
   TargetOptions Options;
@@ -417,7 +418,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (RustCM != LLVMRustCodeModel::None)
     CM = fromRust(RustCM);
   TargetMachine *TM = TheTarget->createTargetMachine(
-      Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
+      Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
 }
 

@@ -649,13 +649,6 @@ impl Session {
         }
     }
 
-    pub fn target_cpu(&self) -> &str {
-        match self.opts.cg.target_cpu {
-            Some(ref s) => &**s,
-            None => &*self.target.target.options.cpu
-        }
-    }
-
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         if let Some(x) = self.opts.cg.force_frame_pointers {
             x

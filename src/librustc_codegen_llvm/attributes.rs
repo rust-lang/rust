@@ -124,7 +124,8 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
-    let target_cpu = CString::new(cx.tcx.sess.target_cpu().to_string()).unwrap();
+    let cpu = llvm_util::target_cpu(cx.tcx.sess);
+    let target_cpu = CString::new(cpu).unwrap();
     llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
