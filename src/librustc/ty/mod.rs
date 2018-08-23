@@ -55,7 +55,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
-use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+use smallvec;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
@@ -2382,7 +2382,7 @@ impl<'tcx> TyS<'tcx> {
     /// Iterator that walks the immediate children of `self`.  Hence
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
-    pub fn walk_shallow(&'tcx self) -> AccIntoIter<walk::TypeWalkerArray<'tcx>> {
+    pub fn walk_shallow(&'tcx self) -> smallvec::IntoIter<walk::TypeWalkerArray<'tcx>> {
         walk::walk_shallow(self)
     }
 

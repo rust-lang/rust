@@ -131,7 +131,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
-    MacEager::items(OneVector::many(vec![
+    MacEager::items(OneVector::from_vec(vec![
         ecx.item_mod(
             span,
             span,
@@ -214,7 +214,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         ),
     );
 
-    MacEager::items(OneVector::many(vec![
+    MacEager::items(OneVector::from_vec(vec![
         P(ast::Item {
             ident: *name,
             attrs: Vec::new(),

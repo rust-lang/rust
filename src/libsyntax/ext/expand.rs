@@ -37,6 +37,7 @@ use visit::{self, Visitor};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
+use std::iter::FromIterator;
 use std::{iter, mem};
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -131,7 +132,7 @@ macro_rules! ast_fragments {
                 self.expand_fragment(AstFragment::$Kind(ast)).$make_ast()
             })*)*
             $($(fn $fold_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
-                self.expand_fragment(AstFragment::$Kind(OneVector::one(ast_elt))).$make_ast()
+                self.expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
             })*)*
         }
 
@@ -270,7 +271,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let orig_mod_span = krate.module.inner;
 
-        let krate_item = AstFragment::Items(OneVector::one(P(ast::Item {
+        let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
             node: ast::ItemKind::Mod(krate.module),
@@ -278,7 +279,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
             tokens: None,
-        })));
+        })]);
 
         match self.expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
             Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
@@ -1404,7 +1405,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         ui
                     });
 
-                    OneVector::many(
+                    OneVector::from_iter(
                         self.fold_unnameable(item).into_iter()
                             .chain(self.fold_unnameable(use_item)))
                 } else {

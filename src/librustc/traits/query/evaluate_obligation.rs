@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use traits::{EvaluationResult, PredicateObligation, SelectionContext,
              TraitQueryMode, OverflowError};
 

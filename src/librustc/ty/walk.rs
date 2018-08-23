@@ -13,8 +13,7 @@
 
 use mir::interpret::ConstValue;
 use ty::{self, Ty};
-use rustc_data_structures::small_vec::SmallVec;
-use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+use smallvec::{self, SmallVec};
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.
@@ -28,7 +27,7 @@ pub struct TypeWalker<'tcx> {
 
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: SmallVec::one(ty), last_subtree: 1, }
+        TypeWalker { stack: smallvec![ty], last_subtree: 1, }
     }
 
     /// Skips the subtree of types corresponding to the last type
@@ -67,7 +66,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
+pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> smallvec::IntoIter<TypeWalkerArray<'tcx>> {
     let mut stack = SmallVec::new();
     push_subtypes(&mut stack, ty);
     stack.into_iter()

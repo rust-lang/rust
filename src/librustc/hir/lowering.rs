@@ -3178,18 +3178,18 @@ impl<'a> LoweringContext<'a> {
     fn lower_item_id(&mut self, i: &Item) -> OneVector<hir::ItemId> {
         match i.node {
             ItemKind::Use(ref use_tree) => {
-                let mut vec = OneVector::one(hir::ItemId { id: i.id });
+                let mut vec = smallvec![hir::ItemId { id: i.id }];
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
                 vec
             }
             ItemKind::MacroDef(..) => OneVector::new(),
             ItemKind::Fn(ref decl, ref header, ..) => {
-                let mut ids = OneVector::one(hir::ItemId { id: i.id });
+                let mut ids = smallvec![hir::ItemId { id: i.id }];
                 self.lower_impl_trait_ids(decl, header, &mut ids);
                 ids
             },
             ItemKind::Impl(.., None, _, ref items) => {
-                let mut ids = OneVector::one(hir::ItemId { id: i.id });
+                let mut ids = smallvec![hir::ItemId { id: i.id }];
                 for item in items {
                     if let ImplItemKind::Method(ref sig, _) = item.node {
                         self.lower_impl_trait_ids(&sig.decl, &sig.header, &mut ids);
@@ -3197,7 +3197,7 @@ impl<'a> LoweringContext<'a> {
                 }
                 ids
             },
-            _ => OneVector::one(hir::ItemId { id: i.id }),
+            _ => smallvec![hir::ItemId { id: i.id }],
         }
     }
 
@@ -4297,7 +4297,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> OneVector<hir::Stmt> {
-        OneVector::one(match s.node {
+        smallvec![match s.node {
             StmtKind::Local(ref l) => Spanned {
                 node: hir::StmtKind::Decl(
                     P(Spanned {
@@ -4336,7 +4336,7 @@ impl<'a> LoweringContext<'a> {
                 span: s.span,
             },
             StmtKind::Mac(..) => panic!("Shouldn't exist here"),
-        })
+        }]
     }
 
     fn lower_capture_clause(&mut self, c: CaptureBy) -> hir::CaptureClause {

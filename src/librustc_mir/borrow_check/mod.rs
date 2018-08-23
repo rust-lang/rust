@@ -29,7 +29,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 
 use std::rc::Rc;
 

@@ -61,6 +61,7 @@ extern crate log_settings;
 extern crate rustc_apfloat;
 extern crate byteorder;
 extern crate core;
+extern crate smallvec;
 
 // Once we can use edition 2018 in the compiler,
 // replace this with real try blocks.

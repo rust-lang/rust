@@ -33,7 +33,7 @@
 
 use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use std::ops::Index;

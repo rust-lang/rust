@@ -28,6 +28,7 @@ extern crate rustc;
 extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
+extern crate smallvec;
 
 mod chalk_context;
 mod dropck_outlives;

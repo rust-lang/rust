@@ -41,6 +41,7 @@ use ptr::P;
 use OneVector;
 use symbol::{self, Symbol, keywords};
 use ThinVec;
+use rustc_data_structures::small_vec::ExpectOne;
 
 enum ShouldPanic {
     No,
@@ -183,7 +184,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
-        OneVector::one(P(item))
+        smallvec![P(item)]
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
@@ -235,7 +236,7 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::OtherMain => folded,
         };
 
-        OneVector::one(folded)
+        smallvec![folded]
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }

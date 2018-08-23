@@ -27,7 +27,7 @@ use ty::{self, CanonicalVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
@@ -380,7 +380,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         // avoid allocations in those cases. We also don't use `indices` to
         // determine if a kind has been seen before until the limit of 8 has
         // been exceeded, to also avoid allocations for `indices`.
-        if var_values.is_array() {
+        if !var_values.spilled() {
             // `var_values` is stack-allocated. `indices` isn't used yet. Do a
             // direct linear search of `var_values`.
             if let Some(idx) = var_values.iter().position(|&k| k == kind) {
@@ -395,7 +395,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
 
                 // If `var_values` has become big enough to be heap-allocated,
                 // fill up `indices` to facilitate subsequent lookups.
-                if !var_values.is_array() {
+                if var_values.spilled() {
                     assert!(indices.is_empty());
                     *indices =
                         var_values.iter()

@@ -12,7 +12,7 @@ use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::env;
 use std::hash::Hash;
@@ -1025,7 +1025,7 @@ impl CurrentDepGraph {
         } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
-            self.alloc_node(node, SmallVec::one(krate_idx))
+            self.alloc_node(node, smallvec![krate_idx])
         } else {
             bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }

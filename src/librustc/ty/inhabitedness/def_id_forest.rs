@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::mem;
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use syntax::ast::CRATE_NODE_ID;
 use ty::context::TyCtxt;
 use ty::{DefId, DefIdTree};
@@ -83,14 +83,14 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         let mut next_ret = SmallVec::new();
         let mut old_ret: SmallVec<[DefId; 1]> = SmallVec::new();
         for next_forest in iter {
-            for id in ret.root_ids.drain(..) {
+            for id in ret.root_ids.drain() {
                 if next_forest.contains(tcx, id) {
                     next_ret.push(id);
                 } else {
                     old_ret.push(id);
                 }
             }
-            ret.root_ids.extend(old_ret.drain(..));
+            ret.root_ids.extend(old_ret.drain());
 
             for id in next_forest.root_ids {
                 if ret.contains(tcx, id) {
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
             }
 
             mem::swap(&mut next_ret, &mut ret.root_ids);
-            next_ret.drain(..);
+            next_ret.drain();
         }
         ret
     }
@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         let mut ret = DefIdForest::empty();
         let mut next_ret = SmallVec::new();
         for next_forest in iter {
-            for id in ret.root_ids.drain(..) {
+            for id in ret.root_ids.drain() {
                 if !next_forest.contains(tcx, id) {
                     next_ret.push(id);
                 }
@@ -125,7 +125,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
             }
 
             mem::swap(&mut next_ret, &mut ret.root_ids);
-            next_ret.drain(..);
+            next_ret.drain();
         }
         ret
     }

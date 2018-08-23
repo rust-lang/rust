@@ -18,8 +18,6 @@
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
-use rustc_data_structures::small_vec::OneVector;
-
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::ext::base;
@@ -52,7 +50,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         None => return DummyResult::any(sp),
     };
 
-    MacEager::items(OneVector::one(P(ast::Item {
+    MacEager::items(smallvec![P(ast::Item {
         ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -63,5 +61,5 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
         span: sp,
         tokens: None,
-    })))
+    })])
 }
