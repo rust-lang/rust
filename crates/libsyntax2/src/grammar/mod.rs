@@ -92,14 +92,14 @@ fn opt_visibility(p: &mut Parser) {
         _ => (),
     }
 }
-fn alias(p: &mut Parser) -> bool {
+
+fn opt_alias(p: &mut Parser) {
     if p.at(AS_KW) {
-        let alias = p.start();
+        let m = p.start();
         p.bump();
         name(p);
-        alias.complete(p, ALIAS);
+        m.complete(p, ALIAS);
     }
-    true //FIXME: return false if three are errors
 }
 
 fn abi(p: &mut Parser) {

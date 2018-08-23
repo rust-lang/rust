@@ -26,7 +26,7 @@ fn use_tree(p: &mut Parser) {
             paths::use_path(p);
             match p.current() {
                 AS_KW => {
-                    alias(p);
+                    opt_alias(p);
                 }
                 COLONCOLON => {
                     p.bump();

@@ -92,16 +92,18 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 //     fn b(&self,) {}
 //     fn c(&'a self,) {}
 //     fn d(&'a mut self, x: i32) {}
+//     fn e(mut self) {}
 // }
 fn self_param(p: &mut Parser) {
     let m;
-    if p.at(SELF_KW) {
+    if p.at(SELF_KW) || p.at(MUT_KW) && p.nth(1) == SELF_KW {
         m = p.start();
-        p.bump();
+        p.eat(MUT_KW);
+        p.eat(SELF_KW);
         // test arb_self_types
         // impl S {
         //     fn a(self: &Self) {}
-        //     fn b(self: Box<Self>) {}
+        //     fn b(mut self: Box<Self>) {}
         // }
         if p.at(COLON) {
             types::ascription(p);

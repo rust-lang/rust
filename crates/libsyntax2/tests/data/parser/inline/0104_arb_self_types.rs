@@ -1,4 +1,4 @@
 impl S {
     fn a(self: &Self) {}
-    fn b(self: Box<Self>) {}
+    fn b(mut self: Box<Self>) {}
 }
