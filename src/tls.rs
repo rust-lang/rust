@@ -125,7 +125,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 mir.span,
                 mir,
                 ret,
-                StackPopCleanup::None,
+                StackPopCleanup::None { cleanup: true },
             )?;
             let arg_local = self.frame().mir.args_iter().next().ok_or_else(
                 || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),

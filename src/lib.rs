@@ -104,7 +104,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             start_mir.span,
             start_mir,
             Place::from_ptr(ret_ptr, align),
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
@@ -124,9 +124,9 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let foo = ecx.memory.allocate_static_bytes(b"foo\0");
         let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
         let foo_layout = ecx.layout_of(foo_ty)?;
-        let foo_place = ecx.allocate(foo_layout, MemoryKind::Stack)?; // will be marked as static in just a second
+        let foo_place = ecx.allocate(foo_layout, MemoryKind::Stack)?; // will be interned in just a second
         ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-        ecx.memory.mark_static_initialized(foo_place.to_ptr()?.alloc_id, Mutability::Immutable)?; // marked as static
+        ecx.memory.intern_static(foo_place.to_ptr()?.alloc_id, Mutability::Immutable)?;
         ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
@@ -136,7 +136,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             main_mir.span,
             main_mir,
             Place::from_scalar_ptr(Scalar::from_int(1, ptr_size).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         // No arguments
@@ -338,7 +338,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             // Don't do anything when we are done.  The statement() function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
             // exchange_malloc returns, we go on evaluating exactly where we want to be.
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
