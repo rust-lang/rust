@@ -1434,7 +1434,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
 
-    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).skip(1).next()
+    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
         .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
