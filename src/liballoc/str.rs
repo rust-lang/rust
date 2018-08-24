@@ -513,7 +513,7 @@ impl str {
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
-    /// Create a [`String`] by repeating a string `n` times.
+    /// Creates a new [`String`] by repeating a string `n` times.
     ///
     /// [`String`]: string/struct.String.html
     ///
