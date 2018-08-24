@@ -93,19 +93,19 @@ fn trans_const_value<'a, 'tcx: 'a>(
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
     match ty.sty {
-        TypeVariants::TyBool => {
-            let bits = const_.val.to_bits(layout.size).unwrap();
+        ty::Bool => {
+            let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as u64 as i64)
         }
-        TypeVariants::TyUint(_) => {
-            let bits = const_.val.to_bits(layout.size).unwrap();
+        ty::Uint(_) => {
+            let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as u64 as i64)
         }
-        TypeVariants::TyInt(_) => {
-            let bits = const_.val.to_bits(layout.size).unwrap();
+        ty::Int(_) => {
+            let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as i128 as i64)
         }
-        TypeVariants::TyFnDef(def_id, substs) => {
+        ty::FnDef(def_id, substs) => {
             let func_ref = fx.get_function_ref(
                 Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             );
@@ -120,7 +120,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
-    let alloc = fx.tcx.const_value_to_allocation(const_);
+    let alloc = fx.tcx.const_to_allocation(const_);
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
     fx.constants.todo.insert(TodoItem::Alloc(alloc_id));

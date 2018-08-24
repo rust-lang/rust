@@ -57,7 +57,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().sty {
-                ty::TyTuple(ref tupled_arguments) => tupled_arguments,
+                ty::Tuple(ref tupled_arguments) => tupled_arguments,
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
@@ -104,10 +104,10 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
 
 fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'tcx> {
     let sig = match ty.sty {
-        ty::TyFnDef(..) |
+        ty::FnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(tcx),
-        ty::TyClosure(def_id, substs) => {
+        ty::FnPtr(_) => ty.fn_sig(tcx),
+        ty::Closure(def_id, substs) => {
             let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -119,7 +119,7 @@ fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'
                 sig.abi
             ))
         }
-        ty::TyGenerator(def_id, substs, _) => {
+        ty::Generator(def_id, substs, _) => {
             let sig = substs.poly_sig(def_id, tcx);
 
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
@@ -213,7 +213,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
                 )
             }).unzip();
         let return_layout = self.layout_of(return_ty);
-        let return_ty = if let TypeVariants::TyTuple(tup) = return_ty.sty {
+        let return_ty = if let ty::Tuple(tup) = return_ty.sty {
             if !tup.is_empty() {
                 bug!("easy_call( (...) -> <non empty tuple> ) is not allowed");
             }
@@ -278,7 +278,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 // individual function arguments.
 
                 let tupled_arg_tys = match arg_ty.sty {
-                    ty::TyTuple(ref tys) => tys,
+                    ty::Tuple(ref tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
 
@@ -431,7 +431,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         let mut args = Vec::new();
         args.push(self_arg);
         match pack_arg.layout().ty.sty {
-            ty::TyTuple(ref tupled_arguments) => {
+            ty::Tuple(ref tupled_arguments) => {
                 for (i, _) in tupled_arguments.iter().enumerate() {
                     args.push(pack_arg.value_field(fx, mir::Field::new(i)));
                 }
@@ -476,7 +476,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         })).collect::<Vec<_>>();
 
     let call_inst = match fn_ty.sty {
-        TypeVariants::TyFnDef(def_id, substs) => {
+        ty::FnDef(def_id, substs) => {
             let func_ref = fx.get_function_ref(
                 Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             );
@@ -528,7 +528,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     args: &[CValue<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) -> bool {
-    if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
+    if let ty::FnDef(def_id, substs) = fn_ty.sty {
         if sig.abi == Abi::RustIntrinsic {
             let intrinsic = fx.tcx.item_name(def_id).as_str();
             let intrinsic = &intrinsic[..];
@@ -621,7 +621,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                         _ => unimplemented!("intrinsic {}", intrinsic),
                     };
                     let res = match ret.layout().ty.sty {
-                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                        ty::Uint(_) => crate::base::trans_int_binop(
                             fx,
                             bin_op,
                             args[0],
@@ -629,7 +629,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             ret.layout().ty,
                             false,
                         ),
-                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                        ty::Int(_) => crate::base::trans_int_binop(
                             fx,
                             bin_op,
                             args[0],
@@ -651,7 +651,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                         _ => unimplemented!("intrinsic {}", intrinsic),
                     };
                     let res = match args[0].layout().ty.sty {
-                        TypeVariants::TyUint(_) => crate::base::trans_checked_int_binop(
+                        ty::Uint(_) => crate::base::trans_checked_int_binop(
                             fx,
                             bin_op,
                             args[0],
@@ -659,7 +659,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             ret.layout().ty,
                             false,
                         ),
-                        TypeVariants::TyInt(_) => crate::base::trans_checked_int_binop(
+                        ty::Int(_) => crate::base::trans_checked_int_binop(
                             fx,
                             bin_op,
                             args[0],
@@ -681,7 +681,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                         _ => unimplemented!("intrinsic {}", intrinsic),
                     };
                     let res = match args[0].layout().ty.sty {
-                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                        ty::Uint(_) => crate::base::trans_int_binop(
                             fx,
                             bin_op,
                             args[0],
@@ -689,7 +689,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             ret.layout().ty,
                             false,
                         ),
-                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                        ty::Int(_) => crate::base::trans_int_binop(
                             fx,
                             bin_op,
                             args[0],

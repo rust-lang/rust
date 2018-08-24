@@ -24,8 +24,8 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
 ) -> Option<types::Type> {
     Some(match ty.sty {
-        TypeVariants::TyBool => types::I8,
-        TypeVariants::TyUint(size) => match size {
+        ty::Bool => types::I8,
+        ty::Uint(size) => match size {
             UintTy::U8 => types::I8,
             UintTy::U16 => types::I16,
             UintTy::U32 => types::I32,
@@ -33,7 +33,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             UintTy::U128 => unimpl!("u128"),
             UintTy::Usize => pointer_ty(tcx),
         },
-        TypeVariants::TyInt(size) => match size {
+        ty::Int(size) => match size {
             IntTy::I8 => types::I8,
             IntTy::I16 => types::I16,
             IntTy::I32 => types::I32,
@@ -41,20 +41,20 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
             IntTy::I128 => unimpl!("i128"),
             IntTy::Isize => pointer_ty(tcx),
         },
-        TypeVariants::TyChar => types::I32,
-        TypeVariants::TyFloat(size) => match size {
+        ty::Char => types::I32,
+        ty::Float(size) => match size {
             FloatTy::F32 => types::F32,
             FloatTy::F64 => types::F64,
         },
-        TypeVariants::TyFnPtr(_) => pointer_ty(tcx),
-        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
+        ty::FnPtr(_) => pointer_ty(tcx),
+        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) | ty::Ref(_, ty, _) => {
             if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
                 pointer_ty(tcx)
             } else {
                 return None;
             }
         }
-        TypeVariants::TyParam(_) => bug!("{:?}: {:?}", ty, ty.sty),
+        ty::Param(_) => bug!("{:?}: {:?}", ty, ty.sty),
         _ => return None,
     })
 }
@@ -279,7 +279,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
         match (&self.layout().ty.sty, &from.layout().ty.sty) {
-            (TypeVariants::TyRef(_, t, dest_mut), TypeVariants::TyRef(_, u, src_mut))
+            (ty::Ref(_, t, dest_mut), ty::Ref(_, u, src_mut))
                 if (if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
                     false
                 } else if t != u {
@@ -369,7 +369,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         let addr = self.expect_addr();
         let layout = self.layout();
         match layout.ty.sty {
-            TypeVariants::TyArray(elem_ty, _) => {
+            ty::Array(elem_ty, _) => {
                 let elem_layout = fx.layout_of(elem_ty);
                 let offset = fx
                     .bcx
@@ -377,7 +377,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     .imul_imm(index, elem_layout.size.bytes() as i64);
                 CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
             }
-            TypeVariants::TySlice(_elem_ty) => unimplemented!("place_index(TySlice)"),
+            ty::Slice(_elem_ty) => unimplemented!("place_index(TySlice)"),
             _ => bug!("place_index({:?})", layout.ty),
         }
     }

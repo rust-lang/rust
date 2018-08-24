@@ -31,7 +31,7 @@ use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{config::OutputFilenames, CompileIncomplete};
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::{build_link_meta, out_filename};
+use rustc_codegen_utils::link::out_filename;
 use rustc_data_structures::svh::Svh;
 use syntax::symbol::Symbol;
 
@@ -66,7 +66,7 @@ mod prelude {
     pub use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
-        TypeAndMut, TypeFoldable, TypeVariants,
+        TypeAndMut, TypeFoldable,
     };
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
@@ -75,7 +75,7 @@ mod prelude {
     };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::codemap::DUMMY_SP;
+    pub use syntax::source_map::DUMMY_SP;
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -209,8 +209,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         tcx.sess.abort_if_errors();
 
-        let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
-        let metadata = tcx.encode_metadata(&link_meta);
+        let metadata = tcx.encode_metadata();
 
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();

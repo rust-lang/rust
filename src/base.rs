@@ -317,22 +317,22 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
-                        TypeVariants::TyBool => {
+                        ty::Bool => {
                             trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
-                        TypeVariants::TyUint(_) => {
+                        ty::Uint(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
-                        TypeVariants::TyInt(_) => {
+                        ty::Int(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
                         }
-                        TypeVariants::TyFloat(_) => {
+                        ty::Float(_) => {
                             trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
-                        TypeVariants::TyChar => {
+                        ty::Char => {
                             trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
-                        TypeVariants::TyRawPtr(..) => {
+                        ty::RawPtr(..) => {
                             trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
                         _ => unimplemented!("binop {:?} for {:?}", bin_op, ty),
@@ -345,10 +345,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
-                        TypeVariants::TyUint(_) => {
+                        ty::Uint(_) => {
                             trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
-                        TypeVariants::TyInt(_) => {
+                        ty::Int(_) => {
                             trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
                         }
                         _ => unimplemented!("checked binop {:?} for {:?}", bin_op, ty),
@@ -362,12 +362,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let res = match un_op {
                         UnOp::Not => fx.bcx.ins().bnot(val),
                         UnOp::Neg => match ty.sty {
-                            TypeVariants::TyInt(_) => {
+                            ty::Int(_) => {
                                 let clif_ty = fx.cton_type(ty).unwrap();
                                 let zero = fx.bcx.ins().iconst(clif_ty, 0);
                                 fx.bcx.ins().isub(zero, val)
                             }
-                            TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
+                            ty::Float(_) => fx.bcx.ins().fneg(val),
                             _ => unimplemented!("un op Neg for {:?}", ty),
                         },
                     };
@@ -387,27 +387,27 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
                     match (&from_ty.sty, &to_ty.sty) {
-                        (TypeVariants::TyRef(..), TypeVariants::TyRef(..))
-                        | (TypeVariants::TyRef(..), TypeVariants::TyRawPtr(..))
-                        | (TypeVariants::TyRawPtr(..), TypeVariants::TyRef(..))
-                        | (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
+                        (ty::Ref(..), ty::Ref(..))
+                        | (ty::Ref(..), ty::RawPtr(..))
+                        | (ty::RawPtr(..), ty::Ref(..))
+                        | (ty::RawPtr(..), ty::RawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (TypeVariants::TyRawPtr(..), TypeVariants::TyUint(_))
-                        | (TypeVariants::TyFnPtr(..), TypeVariants::TyUint(_))
+                        (ty::RawPtr(..), ty::Uint(_))
+                        | (ty::FnPtr(..), ty::Uint(_))
                             if to_ty.sty == fx.tcx.types.usize.sty =>
                         {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (TypeVariants::TyUint(_), TypeVariants::TyRawPtr(..))
+                        (ty::Uint(_), ty::RawPtr(..))
                             if from_ty.sty == fx.tcx.types.usize.sty =>
                         {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (TypeVariants::TyChar, TypeVariants::TyUint(_))
-                        | (TypeVariants::TyUint(_), TypeVariants::TyChar)
-                        | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
-                        | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
+                        (ty::Char, ty::Uint(_))
+                        | (ty::Uint(_), ty::Char)
+                        | (ty::Uint(_), ty::Int(_))
+                        | (ty::Uint(_), ty::Uint(_)) => {
                             let from = operand.load_value(fx);
                             let res = crate::common::cton_intcast(
                                 fx,
@@ -417,8 +417,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyInt(_), TypeVariants::TyInt(_))
-                        | (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
+                        (ty::Int(_), ty::Int(_))
+                        | (ty::Int(_), ty::Uint(_)) => {
                             let from = operand.load_value(fx);
                             let res = crate::common::cton_intcast(
                                 fx,
@@ -428,7 +428,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyFloat(from_flt), TypeVariants::TyFloat(to_flt)) => {
+                        (ty::Float(from_flt), ty::Float(to_flt)) => {
                             let from = operand.load_value(fx);
                             let res = match (from_flt, to_flt) {
                                 (FloatTy::F32, FloatTy::F64) => {
@@ -441,20 +441,20 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             };
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyInt(_), TypeVariants::TyFloat(_)) => {
+                        (ty::Int(_), ty::Float(_)) => {
                             let from = operand.load_value(fx);
                             let f_type = fx.cton_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_sint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyUint(_), TypeVariants::TyFloat(_)) => {
+                        (ty::Uint(_), ty::Float(_)) => {
                             let from = operand.load_value(fx);
                             let f_type = fx.cton_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyBool, TypeVariants::TyUint(_))
-                        | (TypeVariants::TyBool, TypeVariants::TyInt(_)) => {
+                        (ty::Bool, ty::Uint(_))
+                        | (ty::Bool, ty::Int(_)) => {
                             let to_ty = fx.cton_type(to_ty).unwrap();
                             let from = operand.load_value(fx);
                             let res = if to_ty != types::I8 {
@@ -744,7 +744,7 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
         );
     }
     let res_ty = match out_ty.sty {
-        TypeVariants::TyTuple(tys) => tys[0],
+        ty::Tuple(tys) => tys[0],
         _ => bug!(
             "Checked int binop requires tuple as output, but got {:?}",
             out_ty
@@ -798,8 +798,8 @@ fn trans_float_binop<'a, 'tcx: 'a>(
             assert_eq!(lhs.layout().ty, ty);
             assert_eq!(rhs.layout().ty, ty);
             match ty.sty {
-                TypeVariants::TyFloat(FloatTy::F32) => fx.easy_call("fmodf", &[lhs, rhs], ty),
-                TypeVariants::TyFloat(FloatTy::F64) => fx.easy_call("fmod", &[lhs, rhs], ty),
+                ty::Float(FloatTy::F32) => fx.easy_call("fmodf", &[lhs, rhs], ty),
+                ty::Float(FloatTy::F64) => fx.easy_call("fmod", &[lhs, rhs], ty),
                 _ => bug!(),
             }
         });
@@ -863,7 +863,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     match lhs.layout().ty.sty {
-        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) => {
+        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
             if !ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
                 unimpl!("Unsized values are not yet implemented");
             }
