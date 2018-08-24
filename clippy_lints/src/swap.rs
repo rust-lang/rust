@@ -20,6 +20,10 @@ use crate::utils::sugg::Sugg;
 /// b = a;
 /// a = t;
 /// ```
+/// Use std::mem::swap():
+/// ```rust
+/// std::mem::swap(&mut a, &mut b);
+/// ```
 declare_clippy_lint! {
     pub MANUAL_SWAP,
     complexity,
