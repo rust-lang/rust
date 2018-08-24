@@ -309,7 +309,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::PlaceBase<'gcx> {
     }
 }
 
-impl_stable_hash_for!(struct mir::Place<'tcx> { base, elems} );
+impl_stable_hash_for!(struct mir::Place<'tcx> { base, elems });
 
 impl<'a, 'gcx, V, T> HashStable<StableHashingContext<'a>>
 for mir::ProjectionElem<'gcx, V, T>
