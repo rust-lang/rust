@@ -16,10 +16,8 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, Place, PlaceTy, PlaceExtra, ValTy, Operand, StackPopCleanup
 };
-
-mod drop;
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
@@ -441,5 +439,50 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.eval_fn_call(instance, &args, dest, ret, span, sig)
             }
         }
+    }
+
+    fn drop_in_place(
+        &mut self,
+        place: PlaceTy<'tcx>,
+        instance: ty::Instance<'tcx>,
+        span: Span,
+        target: mir::BasicBlock,
+    ) -> EvalResult<'tcx> {
+        trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
+        // We take the address of the object.  This may well be unaligned, which is fine
+        // for us here.  However, unaligned accesses will probably make the actual drop
+        // implementation fail -- a problem shared by rustc.
+        let place = self.force_allocation(place)?;
+
+        let (instance, place) = match place.layout.ty.sty {
+            ty::Dynamic(..) => {
+                // Dropping a trait object.
+                let vtable = match place.extra {
+                    PlaceExtra::Vtable(vtable) => vtable,
+                    _ => bug!("Expected vtable when dropping {:#?}", place),
+                };
+                let place = self.unpack_unsized_mplace(place)?;
+                let instance = self.read_drop_type_from_vtable(vtable)?;
+                (instance, place)
+            }
+            _ => (instance, place),
+        };
+
+        let arg = OpTy {
+            op: Operand::Immediate(place.to_ref(&self)),
+            layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
+        };
+
+        let ty = self.tcx.mk_tup((&[] as &[ty::Ty<'tcx>]).iter()); // return type is ()
+        let dest = PlaceTy::null(&self, self.layout_of(ty)?);
+
+        self.eval_fn_call(
+            instance,
+            &[arg],
+            Some(dest),
+            Some(target),
+            span,
+            None,
+        )
     }
 }
