@@ -33,10 +33,6 @@ pub enum PlaceTy<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
-    pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy::Ty { ty }
-    }
-
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             PlaceTy::Ty { ty } => ty,
@@ -45,19 +41,6 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 substs,
                 variant_index: _,
             } => tcx.mk_adt(adt_def, substs),
-        }
-    }
-
-    fn base_ty<T>(local_decls: &T, base: &PlaceBase<'tcx>) -> PlaceTy<'tcx>
-    where
-        T: HasLocalDecls<'tcx>,
-    {
-        match base {
-            PlaceBase::Local(index) => PlaceTy::Ty {
-                ty: local_decls.local_decls()[*index].ty,
-            },
-            PlaceBase::Promoted(data) => PlaceTy::Ty { ty: data.1 },
-            PlaceBase::Static(data) => PlaceTy::Ty { ty: data.ty },
         }
     }
 
@@ -110,6 +93,12 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     }
 }
 
+impl From<Ty<'tcx>> for PlaceTy<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Self {
+        PlaceTy::Ty { ty }
+    }
+}
+
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
         (PlaceTy::Ty) { ty },
@@ -117,11 +106,22 @@ EnumTypeFoldableImpl! {
     }
 }
 
+impl<'tcx> PlaceBase<'tcx> {
+    pub fn ty(&self, local_decls: &impl HasLocalDecls<'tcx>) -> Ty<'tcx> {
+        match self {
+            PlaceBase::Local(index) => local_decls.local_decls()[*index].ty,
+            PlaceBase::Promoted(data) => data.1,
+            PlaceBase::Static(data) => data.ty,
+        }
+    }
+}
+
 impl<'tcx> Place<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn ty<'a, 'gcx>(
+        &self,
+        local_decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> PlaceTy<'tcx> {
         // the PlaceTy is the *final* type with all projection applied
         // if there is no projection, that just refers to `base`:
         //
@@ -133,7 +133,7 @@ impl<'tcx> Place<'tcx> {
         //             ^^-- no projection
         //        ^^^^-- PlaceTy
 
-        let mut place_ty = PlaceTy::base_ty(local_decls, &self.base);
+        let mut place_ty = PlaceTy::from(self.base.ty(local_decls));
 
         // apply .projection_ty() to all elems but only returns the final one.
         if !self.elems.is_empty() {
