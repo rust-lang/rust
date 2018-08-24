@@ -32,7 +32,6 @@ use rustc::mir::interpret::{
 };
 
 use syntax::source_map::{self, Span};
-use syntax::ast::Mutability;
 
 use super::{
     Value, Operand, MemPlace, MPlaceTy, Place, PlaceExtra,
@@ -159,15 +158,14 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
-    /// The stackframe existed to compute the initial value of a static/constant.
-    /// Call `M::intern_static` on the return value and all allocations it references
-    /// when this is done.  Must have a valid pointer as return place.
-    FinishStatic(Mutability),
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return).
     Goto(Option<mir::BasicBlock>),
-    /// Just do nohing: Used by Main and for the box_alloc hook in miri
-    None,
+    /// Just do nohing: Used by Main and for the box_alloc hook in miri.
+    /// `cleanup` says whether locals are deallocated.  Static computation
+    /// wants them leaked to intern what they need (and just throw away
+    /// the entire `ecx` when it is done).
+    None { cleanup: bool },
 }
 
 // State of a local variable
@@ -631,18 +629,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             "tried to pop a stack frame, but there were none",
         );
         match frame.return_to_block {
-            StackPopCleanup::FinishStatic(mutability) => {
-                let mplace = frame.return_place.to_mem_place();
-                // to_ptr should be okay here; it is the responsibility of whoever pushed
-                // this frame to make sure that this works.
-                let ptr = mplace.ptr.to_ptr()?;
-                assert_eq!(ptr.offset.bytes(), 0);
-                self.memory.mark_static_initialized(ptr.alloc_id, mutability)?;
-            }
             StackPopCleanup::Goto(block) => {
                 self.goto_block(block)?;
             }
-            StackPopCleanup::None => { }
+            StackPopCleanup::None { cleanup } => {
+                if !cleanup {
+                    // Leak the locals
+                    return Ok(());
+                }
+            }
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {

@@ -157,14 +157,6 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
-    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-    let is_static = tcx.is_static(cid.instance.def_id());
-    let mutability = if is_static == Some(hir::Mutability::MutMutable) || internally_mutable {
-        Mutability::Mutable
-    } else {
-        Mutability::Immutable
-    };
-    let cleanup = StackPopCleanup::FinishStatic(mutability);
 
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
@@ -175,11 +167,21 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
         mir.span,
         mir,
         Place::Ptr(*ret),
-        cleanup,
+        StackPopCleanup::None { cleanup: false },
     )?;
 
     // The main interpreter loop.
     ecx.run()?;
+
+    // Intern the result
+    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
+    let is_static = tcx.is_static(cid.instance.def_id());
+    let mutability = if is_static == Some(hir::Mutability::MutMutable) || internally_mutable {
+        Mutability::Mutable
+    } else {
+        Mutability::Immutable
+    };
+    ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret.into())

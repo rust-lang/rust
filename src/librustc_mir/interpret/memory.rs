@@ -570,22 +570,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Reading and writing
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    /// mark an allocation pointed to by a static as static and initialized
-    fn mark_inner_allocation_initialized(
-        &mut self,
-        alloc: AllocId,
-        mutability: Mutability,
-    ) -> EvalResult<'tcx> {
-        match self.alloc_map.contains_key(&alloc) {
-            // already interned
-            false => Ok(()),
-            // this still needs work
-            true => self.mark_static_initialized(alloc, mutability),
-        }
-    }
-
     /// mark an allocation as static and initialized, either mutable or not
-    pub fn mark_static_initialized(
+    pub fn intern_static(
         &mut self,
         alloc_id: AllocId,
         mutability: Mutability,
@@ -613,7 +599,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // at references.  So whenever we follow a reference, we should likely
             // assume immutability -- and we should make sure that the compiler
             // does not permit code that would break this!
-            self.mark_inner_allocation_initialized(alloc, mutability)?;
+            if self.alloc_map.contains_key(&alloc) {
+                // Not yet interned, so proceed recursively
+                self.intern_static(alloc, mutability)?;
+            }
         }
         Ok(())
     }
