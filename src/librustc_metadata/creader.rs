@@ -132,7 +132,8 @@ impl<'a> CrateLoader<'a> {
             // from the strings on the command line.
             let source = &self.cstore.get_crate_data(cnum).source;
             if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
-                let found = locs.iter().any(|l| {
+                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
+                let found = locs.iter().filter_map(|l| l.as_ref()).any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
