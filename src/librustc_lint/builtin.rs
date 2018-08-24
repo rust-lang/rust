@@ -295,7 +295,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 declare_lint! {
     pub MISSING_DOCS,
     Allow,
-    "detects missing documentation for public members"
+    "detects missing documentation for public members",
+    report_in_external_macro: true
 }
 
 pub struct MissingDoc {
