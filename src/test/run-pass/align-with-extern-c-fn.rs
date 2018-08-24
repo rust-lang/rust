@@ -11,7 +11,6 @@
 // #45662
 
 #![feature(repr_align)]
-#![feature(attr_literals)]
 
 #[repr(align(16))]
 pub struct A(i64);

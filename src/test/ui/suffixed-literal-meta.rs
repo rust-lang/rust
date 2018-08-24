@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
-
 #[path = 1usize] //~ ERROR: suffixed literals are not allowed in attributes
 #[path = 1u8] //~ ERROR: suffixed literals are not allowed in attributes
 #[path = 1u16] //~ ERROR: suffixed literals are not allowed in attributes

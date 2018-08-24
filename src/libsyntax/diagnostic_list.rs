@@ -213,19 +213,18 @@ Delete the offending feature attribute.
 "##,
 
 E0565: r##"
-A literal was used in an attribute that doesn't support literals.
+A literal was used in a built-in attribute that doesn't support literals.
 
 Erroneous code example:
 
 ```ignore (compile_fail not working here; see Issue #43707)
-#![feature(attr_literals)]
-
 #[inline("always")] // error: unsupported literal
 pub fn something() {}
 ```
 
-Literals in attributes are new and largely unsupported. Work to support literals
-where appropriate is ongoing. Try using an unquoted name instead:
+Literals in attributes are new and largely unsupported in built-in attributes.
+Work to support literals where appropriate is ongoing. Try using an unquoted
+name instead:
 
 ```
 #[inline(always)]

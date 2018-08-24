@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
-
 // repr currently doesn't support literals
 #[repr("C")] //~ ERROR E0565
 struct A {  }

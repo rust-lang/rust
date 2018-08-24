@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
 #![feature(repr_simd)]
 
 #[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union

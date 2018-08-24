@@ -10,7 +10,7 @@
 
 // Check that literals in attributes parse just fine.
 
-#![feature(rustc_attrs, attr_literals)]
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
