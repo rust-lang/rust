@@ -110,6 +110,18 @@ Code-gen tasks, used to develop libsyntax2:
 VS Code plugin
 
 
+## Performance
+
+Non-incremental, but seems pretty fast:
+
+```
+$ cargo build --release --package cli
+$ wc -l ~/projects/rust/src/libsyntax/parse/parser.rs
+7546 /home/matklad/projects/rust/src/libsyntax/parse/parser.rs
+$ ./target/release/cli parse < ~/projects/rust/src/libsyntax/parse/parser.rs --no-dump  > /dev/null
+parsing: 21.067065ms
+```
+
 ## Getting in touch
 
 @matklad can be found at Rust
