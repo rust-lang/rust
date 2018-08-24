@@ -386,7 +386,7 @@ mod test {
         );
     }
 
-    use super::json::{self, json, json_internal};
+    use super::json::{self, json};
     use super::{FileLines, FileName};
     use std::{collections::HashMap, path::PathBuf};
 

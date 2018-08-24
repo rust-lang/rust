@@ -149,12 +149,10 @@ impl UseSegment {
         if name.is_empty() || name == "{{root}}" {
             return None;
         }
-        Some(if name == "self" {
-            UseSegment::Slf(None)
-        } else if name == "super" {
-            UseSegment::Super(None)
-        } else {
-            UseSegment::Ident((*name).to_owned(), None)
+        Some(match name {
+            "self" => UseSegment::Slf(None),
+            "super" => UseSegment::Super(None),
+            _ => UseSegment::Ident((*name).to_owned(), None),
         })
     }
 }
@@ -350,19 +348,19 @@ impl UseTree {
             UseTreeKind::Simple(ref rename, ..) => {
                 let name = rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned();
                 let alias = rename.and_then(|ident| {
-                    if ident == path_to_imported_ident(&a.prefix) {
+                    if ident.name == "_" {
+                        // for impl-only-use
+                        Some("_".to_owned())
+                    } else if ident == path_to_imported_ident(&a.prefix) {
                         None
                     } else {
                         Some(rewrite_ident(context, ident).to_owned())
                     }
                 });
-
-                let segment = if &name == "self" {
-                    UseSegment::Slf(alias)
-                } else if &name == "super" {
-                    UseSegment::Super(alias)
-                } else {
-                    UseSegment::Ident(name, alias)
+                let segment = match name.as_ref() {
+                    "self" => UseSegment::Slf(alias),
+                    "super" => UseSegment::Super(alias),
+                    _ => UseSegment::Ident(name, alias),
                 };
 
                 // `name` is already in result.
@@ -746,7 +744,7 @@ fn rewrite_nested_use_tree(
 
 impl Rewrite for UseSegment {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        Some(match *self {
+        Some(match self {
             UseSegment::Ident(ref ident, Some(ref rename)) => format!("{} as {}", ident, rename),
             UseSegment::Ident(ref ident, None) => ident.clone(),
             UseSegment::Slf(Some(ref rename)) => format!("self as {}", rename),
