@@ -103,6 +103,7 @@ ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
+ENV TARGETS=$TARGETS,armebv7r-none-eabi
 ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
