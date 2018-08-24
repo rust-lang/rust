@@ -1,7 +1,10 @@
 pub mod walk;
 pub mod visit;
 
-use {SyntaxNodeRef, TextUnit, TextRange};
+use {
+    SyntaxNodeRef, TextUnit, TextRange,
+    text_utils::{contains_offset_nonstrict, is_subrange},
+};
 
 pub fn find_leaf_at_offset(node: SyntaxNodeRef, offset: TextUnit) -> LeafAtOffset {
     let range = node.range();
@@ -114,14 +117,6 @@ fn common_ancestor<'a>(n1: SyntaxNodeRef<'a>, n2: SyntaxNodeRef<'a>) -> SyntaxNo
         }
     }
     panic!("Can't find common ancestor of {:?} and {:?}", n1, n2)
-}
-
-fn contains_offset_nonstrict(range: TextRange, offset: TextUnit) -> bool {
-    range.start() <= offset && offset <= range.end()
-}
-
-fn is_subrange(range: TextRange, subrange: TextRange) -> bool {
-    range.start() <= subrange.start() && subrange.end() <= range.end()
 }
 
 fn generate<T>(seed: Option<T>, step: impl Fn(&T) -> Option<T>) -> impl Iterator<Item=T> {

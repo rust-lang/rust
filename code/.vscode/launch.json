@@ -10,6 +10,9 @@
             "request": "launch",
             "runtimeExecutable": "${execPath}",
             "args": ["--extensionDevelopmentPath='./'"],
+            "env": {
+                "RUST_LOG": "m=trace"
+            },
             "stopOnEntry": false,
             "sourceMaps": true,
             "outFiles": [ "./out/src/**/*.js" ],

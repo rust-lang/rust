@@ -28,6 +28,28 @@
     "onLanguage:rust"
   ],
   "contributes": {
+    "taskDefinitions": [
+      {
+        "type": "cargo",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array"
+          },
+          "env": {
+            "type": "object"
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "command": "libsyntax-rust.syntaxTree",
@@ -48,6 +70,10 @@
       {
         "command": "libsyntax-rust.joinLines",
         "title": "Rust Join Lines"
+      },
+      {
+        "command": "libsyntax-rust.run",
+        "title": "Rust Run"
       }
     ],
     "keybindings": [

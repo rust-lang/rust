@@ -5,10 +5,13 @@ use languageserver_types::{
     Command, TextDocumentIdentifier, WorkspaceEdit,
     SymbolInformation, Position, Location, TextEdit,
 };
+use serde_json::{to_value, from_value};
 use libanalysis::{Query};
 use libeditor;
-use libsyntax2::TextUnit;
-use serde_json::{to_value, from_value};
+use libsyntax2::{
+    TextUnit,
+    text_utils::contains_offset_nonstrict,
+};
 
 use ::{
     req::{self, Decoration}, Result,
@@ -117,7 +120,7 @@ pub fn handle_code_action(
     let file = world.analysis().file_syntax(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let offset = params.range.conv_with(&line_index).start();
-    let mut ret = Vec::new();
+    let mut res = Vec::new();
 
     let actions = &[
         (ActionId::FlipComma, libeditor::flip_comma(&file, offset).is_some()),
@@ -128,10 +131,52 @@ pub fn handle_code_action(
     for (id, edit) in actions {
         if *edit {
             let cmd = apply_code_action_cmd(*id, params.text_document.clone(), offset);
-            ret.push(cmd);
+            res.push(cmd);
         }
     }
-    return Ok(Some(ret));
+    for runnable in libeditor::runnables(&file) {
+        if !contains_offset_nonstrict(runnable.range, offset) {
+            continue;
+        }
+
+        #[derive(Serialize)]
+        struct ProcessSpec {
+            bin: String,
+            args: Vec<String>,
+            env: HashMap<String, String>,
+        }
+
+        let spec = ProcessSpec {
+            bin: "cargo".to_string(),
+            args: match runnable.kind {
+                libeditor::RunnableKind::Test { name } => {
+                    vec![
+                        "test".to_string(),
+                        "--".to_string(),
+                        name,
+                        "--nocapture".to_string(),
+                    ]
+                }
+                libeditor::RunnableKind::Bin => vec!["run".to_string()]
+            },
+            env: {
+                let mut m = HashMap::new();
+                m.insert(
+                    "RUST_BACKTRACE".to_string(),
+                    "short".to_string(),
+                );
+                m
+            }
+        };
+
+        let cmd = Command {
+            title: "Run ...".to_string(),
+            command: "libsyntax-rust.run".to_string(),
+            arguments: Some(vec![to_value(spec).unwrap()]),
+        };
+        res.push(cmd);
+    }
+    return Ok(Some(res));
 }
 
 pub fn handle_workspace_symbol(
@@ -257,11 +302,7 @@ struct ActionRequest {
 }
 
 fn apply_code_action_cmd(id: ActionId, doc: TextDocumentIdentifier, offset: TextUnit) -> Command {
-    let action_request = ActionRequest {
-        id,
-        text_document: doc,
-        offset,
-    };
+    let action_request = ActionRequest { id, text_document: doc, offset };
     Command {
         title: id.title().to_string(),
         command: "apply_code_action".to_string(),

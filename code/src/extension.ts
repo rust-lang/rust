@@ -81,6 +81,11 @@ export function activate(context: vscode.ExtensionContext) {
         let e = await vscode.window.showTextDocument(doc)
         e.revealRange(range, vscode.TextEditorRevealType.InCenter)
     })
+    console.log("ping")
+    registerCommand('libsyntax-rust.run', async (cmd: ProcessSpec) => {
+        let task = createTask(cmd)
+        await vscode.tasks.executeTask(task)
+    })
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(
         'libsyntax-rust',
@@ -264,4 +269,41 @@ interface PublishDecorationsParams {
 interface Decoration {
     range: lc.Range,
     tag: string,
+}
+
+interface ProcessSpec {
+    bin: string;
+    args: string[];
+    env: { [key: string]: string };
+}
+
+interface CargoTaskDefinition extends vscode.TaskDefinition {
+    type: 'cargo';
+    label: string;
+    command: string;
+    args: Array<string>;
+    env?: { [key: string]: string };
+}
+
+
+function createTask(spec: ProcessSpec): vscode.Task {
+    const TASK_SOURCE = 'Rust';
+    let definition: CargoTaskDefinition = {
+        type: 'cargo',
+        label: 'cargo',
+        command: spec.bin,
+        args: spec.args,
+        env: spec.env
+    }
+
+    let execCmd = `${definition.command} ${definition.args.join(' ')}`;
+    let execOption: vscode.ShellExecutionOptions = {
+        cwd: '.',
+        env: definition.env,
+    };
+    let exec = new vscode.ShellExecution(execCmd, execOption);
+
+    let f = vscode.workspace.workspaceFolders[0]
+    let t = new vscode.Task(definition, f, definition.label, TASK_SOURCE, exec, ['$rustc']);
+    return t;
 }

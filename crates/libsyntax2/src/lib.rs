@@ -39,6 +39,7 @@ mod syntax_kinds;
 mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;
+pub mod text_utils;
 
 pub use {
     text_unit::{TextRange, TextUnit},
