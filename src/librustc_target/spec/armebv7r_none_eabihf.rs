@@ -30,7 +30,7 @@ pub fn target() -> TargetResult {
             executables: true,
             relocation_model: "static".to_string(),
             panic_strategy: PanicStrategy::Abort,
-            features: "+v7,+vfp3,+d16,+fp-only-sp".to_string(),
+            features: "+vfp3,+d16,+fp-only-sp".to_string(),
             max_atomic_width: Some(32),
             abi_blacklist: super::arm_base::abi_blacklist(),
             emit_debug_gdb_scripts: false,
