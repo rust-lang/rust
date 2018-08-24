@@ -32,7 +32,7 @@ mod type_params;
 mod types;
 
 use {
-    parser_api::{CompletedMarker, Parser, TokenSet},
+    parser_api::{Marker, CompletedMarker, Parser, TokenSet},
     SyntaxKind::{self, *},
 };
 

@@ -30,7 +30,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
     token_set_union![
         LITERAL_FIRST,
         token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW, L_CURLY, RETURN_KW,
-                   IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW ],
+                   IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
     ];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
@@ -48,9 +48,24 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         PIPE => lambda_expr(p),
         MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
-        WHILE_KW => while_expr(p),
-        LOOP_KW => loop_expr(p),
-        FOR_KW => for_expr(p),
+
+        LOOP_KW => loop_expr(p, None),
+        FOR_KW => for_expr(p, None),
+        WHILE_KW => while_expr(p, None),
+        LIFETIME if la == COLON => {
+            let m = p.start();
+            label(p);
+            match p.current() {
+                LOOP_KW => loop_expr(p, Some(m)),
+                FOR_KW => for_expr(p, Some(m)),
+                WHILE_KW => while_expr(p, Some(m)),
+                _ => {
+                    p.error("expected a loop");
+                    return None;
+                }
+            }
+        }
+
         MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
@@ -164,39 +179,53 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
     m.complete(p, IF_EXPR)
 }
 
-// test while_expr
+// test label
 // fn foo() {
-//     while true {};
-//     while let Some(x) = it.next() {};
+//     'a: loop {}
+//     'b: while true {}
+//     'c: for x in () {}
 // }
-fn while_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(WHILE_KW));
+fn label(p: &mut Parser) {
+    assert!(p.at(LIFETIME) && p.nth(1) == COLON);
     let m = p.start();
     p.bump();
-    cond(p);
-    block(p);
-    m.complete(p, WHILE_EXPR)
+    p.bump();
+    m.complete(p, LABEL);
 }
 
 // test loop_expr
 // fn foo() {
 //     loop {};
 // }
-fn loop_expr(p: &mut Parser) -> CompletedMarker {
+fn loop_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(LOOP_KW));
-    let m = p.start();
+    let m = m.unwrap_or_else(|| p.start());
     p.bump();
     block(p);
     m.complete(p, LOOP_EXPR)
+}
+
+// test while_expr
+// fn foo() {
+//     while true {};
+//     while let Some(x) = it.next() {};
+// }
+fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+    assert!(p.at(WHILE_KW));
+    let m = m.unwrap_or_else(|| p.start());
+    p.bump();
+    cond(p);
+    block(p);
+    m.complete(p, WHILE_EXPR)
 }
 
 // test for_expr
 // fn foo() {
 //     for x in [] {};
 // }
-fn for_expr(p: &mut Parser) -> CompletedMarker {
+fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(FOR_KW));
-    let m = p.start();
+    let m = m.unwrap_or_else(|| p.start());
     p.bump();
     patterns::pattern(p);
     p.expect(IN_KW);
