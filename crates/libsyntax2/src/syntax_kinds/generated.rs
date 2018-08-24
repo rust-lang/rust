@@ -82,6 +82,8 @@ pub enum SyntaxKind {
     FOR_KW,
     LOOP_KW,
     WHILE_KW,
+    CONTINUE_KW,
+    BREAK_KW,
     IF_KW,
     ELSE_KW,
     MATCH_KW,
@@ -157,6 +159,8 @@ pub enum SyntaxKind {
     IF_EXPR,
     WHILE_EXPR,
     LOOP_EXPR,
+    CONTINUE_EXPR,
+    BREAK_EXPR,
     FOR_EXPR,
     BLOCK_EXPR,
     RETURN_EXPR,
@@ -232,6 +236,8 @@ impl SyntaxKind {
             | FOR_KW
             | LOOP_KW
             | WHILE_KW
+            | CONTINUE_KW
+            | BREAK_KW
             | IF_KW
             | ELSE_KW
             | MATCH_KW
@@ -325,6 +331,8 @@ impl SyntaxKind {
             FOR_KW => &SyntaxInfo { name: "FOR_KW" },
             LOOP_KW => &SyntaxInfo { name: "LOOP_KW" },
             WHILE_KW => &SyntaxInfo { name: "WHILE_KW" },
+            CONTINUE_KW => &SyntaxInfo { name: "CONTINUE_KW" },
+            BREAK_KW => &SyntaxInfo { name: "BREAK_KW" },
             IF_KW => &SyntaxInfo { name: "IF_KW" },
             ELSE_KW => &SyntaxInfo { name: "ELSE_KW" },
             MATCH_KW => &SyntaxInfo { name: "MATCH_KW" },
@@ -400,6 +408,8 @@ impl SyntaxKind {
             IF_EXPR => &SyntaxInfo { name: "IF_EXPR" },
             WHILE_EXPR => &SyntaxInfo { name: "WHILE_EXPR" },
             LOOP_EXPR => &SyntaxInfo { name: "LOOP_EXPR" },
+            CONTINUE_EXPR => &SyntaxInfo { name: "CONTINUE_EXPR" },
+            BREAK_EXPR => &SyntaxInfo { name: "BREAK_EXPR" },
             FOR_EXPR => &SyntaxInfo { name: "FOR_EXPR" },
             BLOCK_EXPR => &SyntaxInfo { name: "BLOCK_EXPR" },
             RETURN_EXPR => &SyntaxInfo { name: "RETURN_EXPR" },
@@ -475,6 +485,8 @@ impl SyntaxKind {
             "for" => FOR_KW,
             "loop" => LOOP_KW,
             "while" => WHILE_KW,
+            "continue" => CONTINUE_KW,
+            "break" => BREAK_KW,
             "if" => IF_KW,
             "else" => ELSE_KW,
             "match" => MATCH_KW,

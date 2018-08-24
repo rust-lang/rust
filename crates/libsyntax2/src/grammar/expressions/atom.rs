@@ -30,7 +30,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
     token_set_union![
         LITERAL_FIRST,
         token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW, L_CURLY, RETURN_KW,
-                   IDENT, SELF_KW, SUPER_KW, COLONCOLON ],
+                   IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW ],
     ];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
@@ -55,6 +55,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
         RETURN_KW => return_expr(p),
+        CONTINUE_KW => continue_expr(p),
+        BREAK_KW => break_expr(p),
         _ => {
             p.err_and_bump("expected expression");
             return None;
@@ -345,4 +347,39 @@ fn return_expr(p: &mut Parser) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, RETURN_EXPR)
+}
+
+// test continue_expr
+// fn foo() {
+//     loop {
+//         continue;
+//         continue 'l;
+//     }
+// }
+fn continue_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(CONTINUE_KW));
+    let m = p.start();
+    p.bump();
+    p.eat(LIFETIME);
+    m.complete(p, CONTINUE_EXPR)
+}
+
+// test break_expr
+// fn foo() {
+//     loop {
+//         break;
+//         break 'l;
+//         break 92;
+//         break 'l 92;
+//     }
+// }
+fn break_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(BREAK_KW));
+    let m = p.start();
+    p.bump();
+    p.eat(LIFETIME);
+    if EXPR_FIRST.contains(p.current()) {
+        expr(p);
+    }
+    m.complete(p, BREAK_EXPR)
 }
