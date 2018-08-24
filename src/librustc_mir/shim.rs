@@ -440,6 +440,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let func = Operand::Constant(box Constant {
             span: self.span,
             ty: func_ty,
+            user_ty: None,
             literal: ty::Const::zero_sized(self.tcx, func_ty),
         });
 
@@ -498,6 +499,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         box Constant {
             span: self.span,
             ty: self.tcx.types.usize,
+            user_ty: None,
             literal: ty::Const::from_usize(self.tcx, value),
         }
     }
@@ -725,6 +727,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (Operand::Constant(box Constant {
                 span,
                 ty,
+                user_ty: None,
                 literal: ty::Const::zero_sized(tcx, ty),
              }),
              vec![rcvr])
@@ -847,7 +850,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
             kind: StatementKind::Assign(
                 Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
-                    box AggregateKind::Adt(adt_def, variant_no, substs, None),
+                    box AggregateKind::Adt(adt_def, variant_no, substs, None, None),
                     (1..sig.inputs().len()+1).map(|i| {
                         Operand::Move(Place::Local(Local::new(i)))
                     }).collect()

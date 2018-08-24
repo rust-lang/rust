@@ -31,8 +31,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match kind {
             ExprKind::Scope { region_scope: _, lint_level: _, value } =>
                 this.as_constant(value),
-            ExprKind::Literal { literal } =>
-                Constant { span: span, ty: ty, literal: literal },
+            ExprKind::Literal { literal, user_ty } =>
+                Constant { span, ty, user_ty, literal },
             _ =>
                 span_bug!(
                     span,

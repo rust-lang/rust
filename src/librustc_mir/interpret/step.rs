@@ -208,7 +208,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                    mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
                         self.write_discriminant_value(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)

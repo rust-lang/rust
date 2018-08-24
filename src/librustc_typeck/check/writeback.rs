@@ -35,7 +35,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let item_id = self.tcx.hir.body_owner(body.id());
         let item_def_id = self.tcx.hir.local_def_id(item_id);
 
-        let mut wbcx = WritebackCx::new(self, body);
+        // This attribute causes us to dump some writeback information
+        // in the form of errors, which is used for unit tests.
+        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, "rustc_dump_user_substs");
+
+        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
         for arg in &body.arguments {
             wbcx.visit_node_id(arg.pat.span, arg.hir_id);
         }
@@ -84,12 +88,15 @@ struct WritebackCx<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     tables: ty::TypeckTables<'gcx>,
 
     body: &'gcx hir::Body,
+
+    rustc_dump_user_substs: bool,
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
         body: &'gcx hir::Body,
+        rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'gcx, 'tcx> {
         let owner = fcx.tcx.hir.definitions().node_to_hir_id(body.id().node_id);
 
@@ -97,6 +104,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             fcx,
             tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
             body,
+            rustc_dump_user_substs,
         }
     }
 
@@ -557,6 +565,22 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
             assert!(!substs.needs_infer() && !substs.has_skol());
             self.tables.node_substs_mut().insert(hir_id, substs);
+        }
+
+        // Copy over any user-substs
+        if let Some(user_substs) = self.fcx.tables.borrow().user_substs(hir_id) {
+            let user_substs = self.tcx().lift_to_global(&user_substs).unwrap();
+            self.tables.user_substs_mut().insert(hir_id, user_substs);
+
+            // Unit-testing mechanism:
+            if self.rustc_dump_user_substs {
+                let node_id = self.tcx().hir.hir_to_node_id(hir_id);
+                let span = self.tcx().hir.span(node_id);
+                self.tcx().sess.span_err(
+                    span,
+                    &format!("user substs: {:?}", user_substs),
+                );
+            }
         }
     }
 

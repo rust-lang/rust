@@ -239,6 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         operands.push(Operand::Constant(box Constant {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
+                            user_ty: None,
                             literal: ty::Const::from_bits(
                                 this.hir.tcx(),
                                 0,
@@ -254,7 +255,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Adt {
-                adt_def, variant_index, substs, fields, base
+                adt_def, variant_index, substs, user_ty, fields, base
             } => { // see (*) above
                 let is_union = adt_def.is_union();
                 let active_field_index = if is_union { Some(fields[0].name.index()) } else { None };
@@ -284,8 +285,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
                 };
 
-                let adt =
-                    box AggregateKind::Adt(adt_def, variant_index, substs, active_field_index);
+                let adt = box AggregateKind::Adt(
+                    adt_def,
+                    variant_index,
+                    substs,
+                    user_ty,
+                    active_field_index,
+                );
                 block.and(Rvalue::Aggregate(adt, fields))
             }
             ExprKind::Assign { .. } |

@@ -33,7 +33,7 @@ use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{self, Mir, interpret};
 use mir::interpret::Allocation;
-use ty::subst::{Kind, Substs, Subst};
+use ty::subst::{CanonicalSubsts, Kind, Substs, Subst};
 use ty::ReprOptions;
 use traits;
 use traits::{Clause, Clauses, Goal, Goals};
@@ -371,6 +371,18 @@ pub struct TypeckTables<'tcx> {
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
 
+    /// Stores the substitutions that the user explicitly gave (if any)
+    /// attached to `id`. These will not include any inferred
+    /// values. The canonical form is used to capture things like `_`
+    /// or other unspecified values.
+    ///
+    /// Example:
+    ///
+    /// If the user wrote `foo.collect::<Vec<_>>()`, then the
+    /// canonical substitutions would include only `for<X> { Vec<X>
+    /// }`.
+    user_substs: ItemLocalMap<CanonicalSubsts<'tcx>>,
+
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     /// Stores the actual binding mode for all instances of hir::BindingAnnotation.
@@ -444,6 +456,7 @@ impl<'tcx> TypeckTables<'tcx> {
             user_provided_tys: ItemLocalMap(),
             node_types: ItemLocalMap(),
             node_substs: ItemLocalMap(),
+            user_substs: ItemLocalMap(),
             adjustments: ItemLocalMap(),
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
@@ -559,6 +572,18 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned()
+    }
+
+    pub fn user_substs_mut(&mut self) -> LocalTableInContextMut<CanonicalSubsts<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.user_substs
+        }
+    }
+
+    pub fn user_substs(&self, id: hir::HirId) -> Option<CanonicalSubsts<'tcx>> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
+        self.user_substs.get(&id.local_id).cloned()
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -740,6 +765,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             ref user_provided_tys,
             ref node_types,
             ref node_substs,
+            ref user_substs,
             ref adjustments,
             ref pat_binding_modes,
             ref pat_adjustments,
@@ -762,6 +788,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             user_provided_tys.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);
+            user_substs.hash_stable(hcx, hasher);
             adjustments.hash_stable(hcx, hasher);
             pat_binding_modes.hash_stable(hcx, hasher);
             pat_adjustments.hash_stable(hcx, hasher);

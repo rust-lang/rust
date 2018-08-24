@@ -1367,7 +1367,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                      -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        debug!("base_def_to_ty(def={:?}, opt_self_ty={:?}, path_segments={:?})",
+        debug!("def_to_ty(def={:?}, opt_self_ty={:?}, path_segments={:?})",
                path.def, opt_self_ty, path.segments);
 
         let span = path.span;

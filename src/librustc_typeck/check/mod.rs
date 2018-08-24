@@ -95,7 +95,7 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{CanonicalSubsts, UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -122,6 +122,7 @@ use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
+use syntax::source_map::DUMMY_SP;
 use syntax::source_map::original_sp;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
@@ -2058,11 +2059,47 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_method_call(&self,
                              hir_id: hir::HirId,
                              method: MethodCallee<'tcx>) {
+        debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
         self.tables
             .borrow_mut()
             .type_dependent_defs_mut()
             .insert(hir_id, Def::Method(method.def_id));
+
         self.write_substs(hir_id, method.substs);
+
+        // When the method is confirmed, the `method.substs` includes
+        // parameters from not just the method, but also the impl of
+        // the method -- in particular, the `Self` type will be fully
+        // resolved. However, those are not something that the "user
+        // specified" -- i.e., those types come from the inferred type
+        // of the receiver, not something the user wrote. So when we
+        // create the user-substs, we want to replace those earlier
+        // types with just the types that the user actually wrote --
+        // that is, those that appear on the *method itself*.
+        //
+        // As an example, if the user wrote something like
+        // `foo.bar::<u32>(...)` -- the `Self` type here will be the
+        // type of `foo` (possibly adjusted), but we don't want to
+        // include that. We want just the `[_, u32]` part.
+        if !method.substs.is_noop() {
+            let method_generics = self.tcx.generics_of(method.def_id);
+            if !method_generics.params.is_empty() {
+                let user_substs = self.infcx.probe(|_| {
+                    let just_method_substs = Substs::for_item(self.tcx, method.def_id, |param, _| {
+                        let i = param.index as usize;
+                        if i < method_generics.parent_count {
+                            self.infcx.var_for_def(DUMMY_SP, param)
+                        } else {
+                            method.substs[i]
+                        }
+                    });
+                    self.infcx.canonicalize_response(&just_method_substs)
+                });
+
+                debug!("write_method_call: user_substs = {:?}", user_substs);
+                self.write_user_substs(hir_id, user_substs);
+            }
+        }
     }
 
     pub fn write_substs(&self, node_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
@@ -2073,6 +2110,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    self.tag());
 
             self.tables.borrow_mut().node_substs_mut().insert(node_id, substs);
+        }
+    }
+
+    /// Given the substs that we just converted from the HIR, try to
+    /// canonicalize them and store them as user-given substitutions
+    /// (i.e., substitutions that must be respected by the NLL check).
+    ///
+    /// This should be invoked **before any unifications have
+    /// occurred**, so that annotations like `Vec<_>` are preserved
+    /// properly.
+    pub fn write_user_substs_from_substs(&self, hir_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+        if !substs.is_noop() {
+            let user_substs = self.infcx.canonicalize_response(&substs);
+            debug!("instantiate_value_path: user_substs = {:?}", user_substs);
+            self.write_user_substs(hir_id, user_substs);
+        }
+    }
+
+    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalSubsts<'tcx>) {
+        debug!(
+            "write_user_substs({:?}, {:?}) in fcx {}",
+            hir_id,
+            substs,
+            self.tag(),
+        );
+
+        if !substs.is_identity() {
+            self.tables.borrow_mut().user_substs_mut().insert(hir_id, substs);
+        } else {
+            debug!("write_user_substs: skipping identity substs");
         }
     }
 
@@ -3544,6 +3611,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some((variant, did, substs)) = variant {
+            debug!("check_struct_path: did={:?} substs={:?}", did, substs);
+            let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+            self.write_user_substs_from_substs(hir_id, substs);
+
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
             let cause = traits::ObligationCause::new(path_span, self.body_id,
@@ -5083,7 +5154,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
-        self.write_substs(self.tcx.hir.node_to_hir_id(node_id), substs);
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        self.write_substs(hir_id, substs);
+
+        self.write_user_substs_from_substs(hir_id, substs);
+
         ty_substituted
     }
 

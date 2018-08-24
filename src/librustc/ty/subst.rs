@@ -11,13 +11,15 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, List, Ty, TyCtxt};
+use infer::canonical::Canonical;
+use ty::{self, CanonicalVar, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::array_vec::ArrayVec;
+use rustc_data_structures::indexed_vec::Idx;
 
 use core::intrinsics;
 use std::cmp::Ordering;
@@ -336,6 +338,33 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
+    }
+}
+
+pub type CanonicalSubsts<'gcx> = Canonical<'gcx, &'gcx Substs<'gcx>>;
+
+impl<'gcx> CanonicalSubsts<'gcx> {
+    /// True if this represents a substitution like
+    ///
+    /// ```text
+    /// [?0, ?1, ?2]
+    /// ```
+    ///
+    /// i.e., each thing is mapped to a canonical variable with the same index.
+    pub fn is_identity(&self) -> bool {
+        self.value.iter().zip(CanonicalVar::new(0)..).all(|(kind, cvar)| {
+            match kind.unpack() {
+                UnpackedKind::Type(ty) => match ty.sty {
+                    ty::Infer(ty::CanonicalTy(cvar1)) => cvar == cvar1,
+                    _ => false,
+                },
+
+                UnpackedKind::Lifetime(r) => match r {
+                    ty::ReCanonical(cvar1) => cvar == *cvar1,
+                    _ => false,
+                },
+            }
+        })
     }
 }
 

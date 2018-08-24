@@ -213,6 +213,10 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
+            fn visit_canonical_ty(&mut self, ty: & $($mutability)* CanonicalTy<'tcx>) {
+                self.super_canonical_ty(ty);
+            }
+
             fn visit_region(&mut self,
                             region: & $($mutability)* ty::Region<'tcx>,
                             _: Location) {
@@ -585,6 +589,7 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Adt(_adt_def,
                                                _variant_index,
                                                ref $($mutability)* substs,
+                                               _user_substs,
                                                _active_field_index) => {
                                 self.visit_substs(substs, location);
                             }
@@ -625,9 +630,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_user_assert_ty(&mut self,
-                                    _c_ty: & $($mutability)* CanonicalTy<'tcx>,
+                                    c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                     local: & $($mutability)* Local,
                                     location: Location) {
+                self.visit_canonical_ty(c_ty);
                 self.visit_local(local, PlaceContext::Validate, location);
             }
 
@@ -740,11 +746,13 @@ macro_rules! make_mir_visitor {
                 let Constant {
                     ref $($mutability)* span,
                     ref $($mutability)* ty,
+                    ref $($mutability)* user_ty,
                     ref $($mutability)* literal,
                 } = *constant;
 
                 self.visit_span(span);
                 self.visit_ty(ty, TyContext::Location(location));
+                drop(user_ty); // no visit method for this
                 self.visit_const(literal, location);
             }
 
@@ -762,6 +770,9 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_source_scope(scope);
+            }
+
+            fn super_canonical_ty(&mut self, _ty: & $($mutability)* CanonicalTy<'tcx>) {
             }
 
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {

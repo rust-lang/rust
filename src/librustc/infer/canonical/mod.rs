@@ -188,6 +188,36 @@ impl<'tcx, R> Canonical<'tcx, QueryResult<'tcx, R>> {
     }
 }
 
+impl<'gcx, V> Canonical<'gcx, V> {
+    /// Allows you to map the `value` of a canonical while keeping the
+    /// same set of bound variables.
+    ///
+    /// **WARNING:** This function is very easy to mis-use, hence the
+    /// name!  In particular, the new value `W` must use all **the
+    /// same type/region variables** in **precisely the same order**
+    /// as the original! (The ordering is defined by the
+    /// `TypeFoldable` implementation of the type in question.)
+    ///
+    /// An example of a **correct** use of this:
+    ///
+    /// ```rust,ignore (not real code)
+    /// let a: Canonical<'_, T> = ...;
+    /// let b: Canonical<'_, (T,)> = a.unchecked_map(|v| (v, ));
+    /// ```
+    ///
+    /// An example of an **incorrect** use of this:
+    ///
+    /// ```rust,ignore (not real code)
+    /// let a: Canonical<'tcx, T> = ...;
+    /// let ty: Ty<'tcx> = ...;
+    /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
+    /// ```
+    pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<'gcx, W> {
+        let Canonical { variables, value } = self;
+        Canonical { variables, value: map_op(value) }
+    }
+}
+
 pub type QueryRegionConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {

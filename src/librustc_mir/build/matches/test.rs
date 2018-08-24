@@ -344,7 +344,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         func: Operand::Constant(box Constant {
                             span: test.span,
                             ty: mty,
-                            literal: method
+
+                            // FIXME(#47184): This constant comes from user
+                            // input (a constant in a pattern).  Are
+                            // there forms where users can add type
+                            // annotations here?  For example, an
+                            // associated constant? Need to
+                            // experiment.
+                            user_ty: None,
+
+                            literal: method,
                         }),
                         args: vec![val, expect],
                         destination: Some((eq_result.clone(), eq_block)),

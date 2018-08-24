@@ -1,0 +1,41 @@
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-ufcs-3.rs:48:53
+   |
+LL |     <_ as Bazoom<_>>::method::<&'static u32>(&a, b, &c); //~ ERROR
+   |                                                     ^^ borrowed value does not live long enough
+LL | }
+   | - `c` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-ufcs-3.rs:55:48
+   |
+LL |     <_ as Bazoom<_>>::method::<&'a u32>(&a, b, &c); //~ ERROR
+   |                                                ^^ borrowed value does not live long enough
+LL | }
+   | - `c` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 51:35...
+  --> $DIR/method-ufcs-3.rs:51:35
+   |
+LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
+   |                                   ^^
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/method-ufcs-3.rs:69:52
+   |
+LL |         <_ as Bazoom<_>>::method::<&'a u32>(&a, b, &c); //~ ERROR
+   |                                                    ^^ borrowed value does not live long enough
+LL |     };
+   |     - `c` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:46...
+  --> $DIR/method-ufcs-3.rs:64:46
+   |
+LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
+   |                                              ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

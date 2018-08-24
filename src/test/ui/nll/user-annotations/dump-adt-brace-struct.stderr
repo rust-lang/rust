@@ -1,0 +1,8 @@
+error: user substs: Canonical { variables: [], value: [u32] }
+  --> $DIR/dump-adt-brace-struct.rs:28:5
+   |
+LL |     SomeStruct::<u32> { t: 22 }; //~ ERROR [u32]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

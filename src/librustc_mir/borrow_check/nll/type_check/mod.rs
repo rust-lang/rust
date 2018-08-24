@@ -15,7 +15,7 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
+use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
@@ -256,6 +256,22 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.super_constant(constant, location);
         self.sanitize_constant(constant, location);
         self.sanitize_type(constant, constant.ty);
+
+        if let Some(user_ty) = constant.user_ty {
+            if let Err(terr) =
+                self.cx
+                    .eq_canonical_type_and_type(user_ty, constant.ty, location.boring())
+            {
+                span_mirbug!(
+                    self,
+                    constant,
+                    "bad constant user type {:?} vs {:?}: {:?}",
+                    user_ty,
+                    constant.ty,
+                    terr,
+                );
+            }
+        }
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -343,8 +359,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         debug!("sanitize_constant: expected_ty={:?}", constant.literal.ty);
 
-        if let Err(terr) = self
-            .cx
+        if let Err(terr) = self.cx
             .eq_types(constant.literal.ty, constant.ty, location.boring())
         {
             span_mirbug!(
@@ -902,6 +917,24 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         terr
                     );
                 }
+
+                if let Some(user_ty) = self.rvalue_user_ty(rv) {
+                    if let Err(terr) = self.eq_canonical_type_and_type(
+                        user_ty,
+                        rv_ty,
+                        location.boring(),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            stmt,
+                            "bad user type on rvalue ({:?} = {:?}): {:?}",
+                            user_ty,
+                            rv_ty,
+                            terr
+                        );
+                    }
+                }
+
                 self.check_rvalue(mir, rv, location);
                 if !self.tcx().features().unsized_locals {
                     let trait_ref = ty::TraitRef {
@@ -1376,7 +1409,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let tcx = self.tcx();
 
         match *ak {
-            AggregateKind::Adt(def, variant_index, substs, active_field_index) => {
+            AggregateKind::Adt(def, variant_index, substs, _, active_field_index) => {
                 let variant = &def.variants[variant_index];
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
@@ -1539,6 +1572,36 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             | Rvalue::CheckedBinaryOp(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..) => {}
+        }
+    }
+
+    /// If this rvalue supports a user-given type annotation, then
+    /// extract and return it. This represents the final type of the
+    /// rvalue and will be unified with the inferred type.
+    fn rvalue_user_ty(
+        &self,
+        rvalue: &Rvalue<'tcx>,
+    ) -> Option<CanonicalTy<'tcx>> {
+        match rvalue {
+            Rvalue::Use(_) |
+            Rvalue::Repeat(..) |
+            Rvalue::Ref(..) |
+            Rvalue::Len(..) |
+            Rvalue::Cast(..) |
+            Rvalue::BinaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::NullaryOp(..) |
+            Rvalue::UnaryOp(..) |
+            Rvalue::Discriminant(..) =>
+                None,
+
+            Rvalue::Aggregate(aggregate, _) => match **aggregate {
+                AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
+                AggregateKind::Array(_) => None,
+                AggregateKind::Tuple => None,
+                AggregateKind::Closure(_, _) => None,
+                AggregateKind::Generator(_, _, _) => None,
+            }
         }
     }
 
@@ -1735,7 +1798,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
 
         let instantiated_predicates = match aggregate_kind {
-            AggregateKind::Adt(def, _, substs, _) => {
+            AggregateKind::Adt(def, _, substs, _, _) => {
                 tcx.predicates_of(def.did).instantiate(tcx, substs)
             }
 

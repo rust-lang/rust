@@ -157,7 +157,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     // Make a GeneratorState rvalue
     fn make_state(&self, idx: usize, val: Operand<'tcx>) -> Rvalue<'tcx> {
-        let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None);
+        let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
         Rvalue::Aggregate(box adt, vec![val])
     }
 
@@ -177,6 +177,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         let val = Operand::Constant(box Constant {
             span: source_info.span,
             ty: self.tcx.types.u32,
+            user_ty: None,
             literal: ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
@@ -710,6 +711,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cond: Operand::Constant(box Constant {
             span: mir.span,
             ty: tcx.types.bool,
+            user_ty: None,
             literal: ty::Const::from_bool(tcx, false),
         }),
         expected: true,

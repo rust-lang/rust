@@ -397,10 +397,13 @@ impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
 impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let Constant { span, ty, literal } = constant;
+        let Constant { span, ty, user_ty, literal } = constant;
         self.push("mir::Constant");
         self.push(&format!("+ span: {:?}", span));
         self.push(&format!("+ ty: {:?}", ty));
+        if let Some(user_ty) = user_ty {
+            self.push(&format!("+ user_ty: {:?}", user_ty));
+        }
         self.push(&format!("+ literal: {:?}", literal));
     }
 
@@ -427,6 +430,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
                     self.push(&format!("+ movability: {:?}", movability));
+                }
+
+                AggregateKind::Adt(_, _, _, Some(user_ty), _) => {
+                    self.push("adt");
+                    self.push(&format!("+ user_ty: {:?}", user_ty));
                 }
 
                 _ => {}
