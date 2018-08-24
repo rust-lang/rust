@@ -7,25 +7,6 @@ use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
 
-/// **What it does:** Checks for compound assignment operations (`+=` and
-/// similar).
-///
-/// **Why is this bad?** Projects with many developers from languages without
-/// those operations may find them unreadable and not worth their weight.
-///
-/// **Known problems:** Types implementing `OpAssign` don't necessarily
-/// implement `Op`.
-///
-/// **Example:**
-/// ```rust
-/// a += 1;
-/// ```
-declare_clippy_lint! {
-    pub ASSIGN_OPS,
-    restriction,
-    "any compound assignment operation"
-}
-
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
 ///
@@ -73,7 +54,7 @@ pub struct AssignOps;
 
 impl LintPass for AssignOps {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ASSIGN_OPS, ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
+        lint_array!(ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
     }
 }
 
@@ -81,16 +62,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
-                span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
-                    let lhs = &sugg::Sugg::hir(cx, lhs, "..");
-                    let rhs = &sugg::Sugg::hir(cx, rhs, "..");
-
-                    db.span_suggestion(
-                        expr.span,
-                        "replace it with",
-                        format!("{} = {}", lhs, sugg::make_binop(higher::binop(op.node), lhs, rhs)),
-                    );
-                });
                 if let hir::ExprKind::Binary(binop, ref l, ref r) = rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
