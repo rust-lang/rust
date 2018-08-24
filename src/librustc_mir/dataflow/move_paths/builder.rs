@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::tcx::RvalueInitializationState;
+use rustc::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
@@ -107,18 +107,23 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     {
         debug!("lookup({:?})", place);
         let mut result = match place.base {
-            PlaceBase::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
+            PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[local],
             PlaceBase::Promoted(..) |
-            PlaceBase::Static(..) => {
-                Err(MoveError::cannot_move_out_of(self.loc, Static))
-            }
+            PlaceBase::Static(..) =>
+                return Err(MoveError::cannot_move_out_of(self.loc, Static)),
         };
+
         if !place.elems.is_empty() {
+            let mir = self.builder.mir;
+            let tcx = self.builder.tcx;
+            let mut result_ty = place.base.ty(mir);
             for elem in place.elems.iter() {
-                result = self.move_path_for_projection(place,  place, elem);
+                result = self.move_path_for_projection(place, result, result_ty, elem)?;
+                result_ty = PlaceTy::from(result_ty).projection_ty(tcx, elem).to_ty(tcx);
             }
         }
-        result
+
+        Ok(result)
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
@@ -127,16 +132,15 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let _ = self.move_path_for(place);
     }
 
-    fn move_path_for_projection(&mut self,
-                                place: &Place<'tcx>,
-                                base_place: &Place<'tcx>,
-                                projection: &PlaceElem<'tcx>
+    fn move_path_for_projection(
+        &mut self,
+        place: &Place<'tcx>,
+        base: MovePathIndex,
+        base_ty: Ty<'tcx>,
+        projection: &PlaceElem<'tcx>
     ) -> Result<MovePathIndex, MoveError<'tcx>> {
-        let base = try!(self.move_path_for(base_place));
-        let mir = self.builder.mir;
         let tcx = self.builder.tcx;
-        let place_ty = base_place.ty(mir, tcx).to_ty(tcx);
-        match place_ty.sty {
+        match base_ty.sty {
             ty::TyRef(..) | ty::TyRawPtr(..) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
@@ -144,7 +148,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                 return Err(MoveError::cannot_move_out_of(self.loc,
                                                          InteriorOfTypeWithDestructor {
-                    container_ty: place_ty
+                    container_ty: base_ty
                 })),
             // move out of union - always move the entire union
             ty::TyAdt(adt, _) if adt.is_union() =>
@@ -153,7 +157,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
                     InteriorOfSliceOrArray {
-                        ty: place_ty, is_index: match projection {
+                        ty: base_ty, is_index: match projection {
                             ProjectionElem::Index(..) => true,
                             _ => false
                         },
@@ -163,7 +167,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
                         InteriorOfSliceOrArray {
-                            ty: place_ty, is_index: true
+                            ty: base_ty, is_index: true
                         })),
                 _ => {
                     // FIXME: still badly broken
