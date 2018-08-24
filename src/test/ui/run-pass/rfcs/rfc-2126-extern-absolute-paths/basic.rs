@@ -10,6 +10,7 @@
 
 // run-pass
 // aux-build:xcrate.rs
+// compile-flags:--extern xcrate
 // edition:2018
 
 use xcrate::Z;

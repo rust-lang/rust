@@ -10,6 +10,6 @@
 
 // edition:2018
 
-use xcrate::S; //~ ERROR can't find crate for `xcrate`
+use xcrate::S; //~ ERROR unresolved import `xcrate`
 
 fn main() {}

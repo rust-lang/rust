@@ -10,6 +10,7 @@
 
 // run-pass
 // aux-build:xcrate.rs
+// compile-flags:--extern xcrate
 
 #![feature(extern_in_paths)]
 

@@ -10,6 +10,6 @@
 
 // edition:2018
 
-use ycrate; //~ ERROR can't find crate for `ycrate`
+use ycrate; //~ ERROR unresolved import `ycrate`
 
 fn main() {}

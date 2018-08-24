@@ -1,9 +1,9 @@
-error[E0463]: can't find crate for `xcrate`
+error[E0433]: failed to resolve. Could not find `xcrate` in `extern`
   --> $DIR/non-existent-2.rs:14:21
    |
-LL |     let s = extern::xcrate::S; //~ ERROR can't find crate for `xcrate`
-   |                     ^^^^^^ can't find crate
+LL |     let s = extern::xcrate::S;
+   |                     ^^^^^^ Could not find `xcrate` in `extern`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0463`.
+For more information about this error, try `rustc --explain E0433`.

@@ -1,9 +1,9 @@
-error[E0463]: can't find crate for `ycrate`
-  --> $DIR/non-existent-3.rs:13:13
+error[E0432]: unresolved import `extern::ycrate`
+  --> $DIR/non-existent-3.rs:13:5
    |
-LL | use extern::ycrate; //~ ERROR can't find crate for `ycrate`
-   |             ^^^^^^ can't find crate
+LL | use extern::ycrate; //~ ERROR unresolved import `extern::ycrate`
+   |     ^^^^^^^^^^^^^^ no `ycrate` external crate
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0463`.
+For more information about this error, try `rustc --explain E0432`.
