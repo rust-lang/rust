@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use chalk_engine;
-use rustc_data_structures::accumulate_vec::AccumulateVec;
+use smallvec::SmallVec;
 use traits;
 use traits::project::Normalized;
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -624,7 +624,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
-            .collect::<AccumulateVec<[_; 8]>>();
+            .collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_goals(&v)
     }
 
@@ -662,7 +662,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Clause<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
-            .collect::<AccumulateVec<[_; 8]>>();
+            .collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_clauses(&v)
     }
 

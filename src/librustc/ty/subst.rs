@@ -17,9 +17,8 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::array_vec::ArrayVec;
 use rustc_data_structures::indexed_vec::Idx;
+use smallvec::SmallVec;
 
 use core::intrinsics;
 use std::cmp::Ordering;
@@ -203,11 +202,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     {
         let defs = tcx.generics_of(def_id);
         let count = defs.count();
-        let mut substs = if count <= 8 {
-            AccumulateVec::Array(ArrayVec::new())
-        } else {
-            AccumulateVec::Heap(Vec::with_capacity(count))
-        };
+        let mut substs = SmallVec::with_capacity(count);
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_kind);
         tcx.intern_substs(&substs)
     }
@@ -227,7 +222,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
-    fn fill_item<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
+    fn fill_item<F>(substs: &mut SmallVec<[Kind<'tcx>; 8]>,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     defs: &ty::Generics,
                     mk_kind: &mut F)
@@ -240,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::fill_single(substs, defs, mk_kind)
     }
 
-    fn fill_single<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
+    fn fill_single<F>(substs: &mut SmallVec<[Kind<'tcx>; 8]>,
                       defs: &ty::Generics,
                       mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
@@ -248,10 +243,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
-            match *substs {
-                AccumulateVec::Array(ref mut arr) => arr.push(kind),
-                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
-            }
+            substs.push(kind);
         }
     }
 
@@ -325,7 +317,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let params: AccumulateVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
+        let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
 
         // If folding doesn't change the substs, it's faster to avoid
         // calling `mk_substs` and instead reuse the existing substs.

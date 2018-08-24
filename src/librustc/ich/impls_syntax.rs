@@ -25,9 +25,9 @@ use syntax_pos::SourceFile;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
+use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 impl<'a> HashStable<StableHashingContext<'a>> for InternedString {
     #[inline]
@@ -207,7 +207,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         }
 
         // Some attributes are always ignored during hashing.
-        let filtered: AccumulateVec<[&ast::Attribute; 8]> = self
+        let filtered: SmallVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
                 !attr.is_sugared_doc && !hcx.is_ignored_attr(attr.name())

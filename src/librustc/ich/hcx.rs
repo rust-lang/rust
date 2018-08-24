@@ -34,8 +34,8 @@ use syntax_pos::hygiene;
 use rustc_data_structures::stable_hasher::{HashStable,
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use smallvec::SmallVec;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
@@ -405,7 +405,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
           R: std_hash::BuildHasher,
 {
     {
-        let mut blanket_impls: AccumulateVec<[_; 8]> = blanket_impls
+        let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
             .iter()
             .map(|&def_id| hcx.def_path_hash(def_id))
             .collect();
@@ -418,7 +418,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     }
 
     {
-        let mut keys: AccumulateVec<[_; 8]> =
+        let mut keys: SmallVec<[_; 8]> =
             non_blanket_impls.keys()
                              .map(|k| (k, k.map_def(|d| hcx.def_path_hash(d))))
                              .collect();
@@ -426,7 +426,7 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
         keys.len().hash_stable(hcx, hasher);
         for (key, ref stable_key) in keys {
             stable_key.hash_stable(hcx, hasher);
-            let mut impls : AccumulateVec<[_; 8]> = non_blanket_impls[key]
+            let mut impls : SmallVec<[_; 8]> = non_blanket_impls[key]
                 .iter()
                 .map(|&impl_id| hcx.def_path_hash(impl_id))
                 .collect();
