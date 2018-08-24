@@ -46,7 +46,7 @@ regex = "1"
 semver = "0.9"
 
 [dev-dependencies]
-cargo_metadata = "0.5"
+cargo_metadata = "0.6"
 compiletest_rs = "0.3.7"
 lazy_static = "1.0"
 serde_derive = "1.0"
