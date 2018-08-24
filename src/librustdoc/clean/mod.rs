@@ -568,7 +568,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.expect("No name provided").clean(cx)
         } else {
-            "".to_string()
+            String::new()
         };
 
         // maintain a stack of mod ids, for doc comment path resolution
@@ -1760,7 +1760,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
                 values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
-                        name: names.next().map_or("".to_string(), |name| name.to_string()),
+                        name: names.next().map_or(String::new(), |name| name.to_string()),
                     }
                 }).collect(),
             },
@@ -3596,7 +3596,7 @@ impl Clean<Item> for hir::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: "".to_string(),
+                    expr: String::new(),
                 })
             }
             hir::ForeignItemKind::Type => {
@@ -3628,7 +3628,7 @@ impl ToSource for syntax_pos::Span {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().source_map().span_to_snippet(*self) {
             Ok(x) => x.to_string(),
-            Err(_) => "".to_string()
+            Err(_) => String::new()
         };
         debug!("got snippet {}", sn);
         sn
@@ -3824,19 +3824,19 @@ impl Clean<Stability> for attr::Stability {
             feature: self.feature.to_string(),
             since: match self.level {
                 attr::Stable {ref since} => since.to_string(),
-                _ => "".to_string(),
+                _ => String::new(),
             },
             deprecated_since: match self.rustc_depr {
                 Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
-                _=> "".to_string(),
+                _=> String::new(),
             },
             deprecated_reason: match self.rustc_depr {
                 Some(ref depr) => depr.reason.to_string(),
-                _ => "".to_string(),
+                _ => String::new(),
             },
             unstable_reason: match self.level {
                 attr::Unstable { reason: Some(ref reason), .. } => reason.to_string(),
-                _ => "".to_string(),
+                _ => String::new(),
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),
@@ -3855,8 +3855,8 @@ impl<'a> Clean<Stability> for &'a attr::Stability {
 impl Clean<Deprecation> for attr::Deprecation {
     fn clean(&self, _: &DocContext) -> Deprecation {
         Deprecation {
-            since: self.since.as_ref().map_or("".to_string(), |s| s.to_string()),
-            note: self.note.as_ref().map_or("".to_string(), |s| s.to_string()),
+            since: self.since.as_ref().map_or(String::new(), |s| s.to_string()),
+            note: self.note.as_ref().map_or(String::new(), |s| s.to_string()),
         }
     }
 }

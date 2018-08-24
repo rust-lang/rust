@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         data_layout: "E-m:e-i64:64-n32:64-S128".to_string(),
         arch: "sparc64".to_string(),
         target_os: "netbsd".to_string(),
-        target_env: "".to_string(),
+        target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,

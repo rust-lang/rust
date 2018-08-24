@@ -22,8 +22,8 @@ pub fn target() -> TargetResult {
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
         target_os: "fuchsia".to_string(),
-        target_env: "".to_string(),
-        target_vendor: "".to_string(),
+        target_env: String::new(),
+        target_vendor: String::new(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             abi_blacklist: super::arm_base::abi_blacklist(),

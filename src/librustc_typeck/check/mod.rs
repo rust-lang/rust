@@ -3471,7 +3471,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             displayable_field_names.sort();
 
             let truncated_fields_error = if len <= 3 {
-                "".to_string()
+                String::new()
             } else {
                 format!(" and {} other field{}", (len - 3), if len - 3 == 1 {""} else {"s"})
             };
@@ -4783,7 +4783,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err.span_suggestion_with_applicability(
             span_semi,
             "consider removing this semicolon",
-            "".to_string(),
+            String::new(),
             Applicability::MachineApplicable);
     }
 

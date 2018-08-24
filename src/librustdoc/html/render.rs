@@ -504,8 +504,8 @@ pub fn run(mut krate: clean::Crate,
         local_sources: FxHashMap(),
         issue_tracker_base_url: None,
         layout: layout::Layout {
-            logo: "".to_string(),
-            favicon: "".to_string(),
+            logo: String::new(),
+            favicon: String::new(),
             external_html: external_html.clone(),
             krate: krate.name.clone(),
         },
@@ -2183,7 +2183,7 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
                 !chr.is_whitespace()
             })
         }).collect::<Vec<_>>().join("\n"),
-        None => "".to_string()
+        None => String::new()
     }
 }
 
@@ -2479,7 +2479,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab_docs = stab_docs,
                        docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
-                       stab = myitem.stability_class().unwrap_or("".to_string()),
+                       stab = myitem.stability_class().unwrap_or(String::new()),
                        unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                        title_type = myitem.type_(),

@@ -102,7 +102,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 
                 let mbps = if bs.mb_s == 0 {
-                    "".into()
+                    String::new()
                 } else {
                     format!(r#", "mib_per_second": {}"#, bs.mb_s)
                 };

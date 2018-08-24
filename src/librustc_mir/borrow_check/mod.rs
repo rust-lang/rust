@@ -327,7 +327,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             err.span_suggestion_short_with_applicability(
                 mut_span,
                 "remove this `mut`",
-                "".to_owned(),
+                String::new(),
                 Applicability::MachineApplicable);
 
             err.buffer(&mut mbcx.errors_buffer);

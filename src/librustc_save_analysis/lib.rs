@@ -1050,7 +1050,7 @@ impl<'a> DumpHandler<'a> {
                     .iter()
                     .any(|ct| *ct == CrateType::Executable);
                 let mut out_name = if executable {
-                    "".to_owned()
+                    String::new()
                 } else {
                     "lib".to_owned()
                 };

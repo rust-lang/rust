@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
             let b = i.next()
-                     .map_or("".to_string(), |t| t.to_string());
+                     .map_or(String::new(), |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
                 if tokens.len() > 2 && i == tokens.len() - 2 {
                     b.push_str(", or ");
@@ -786,7 +786,7 @@ impl<'a> Parser<'a> {
         } else {
             err.span_label(self.span, "expected identifier");
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                err.span_suggestion(self.span, "remove this comma", "".into());
+                err.span_suggestion(self.span, "remove this comma", String::new());
             }
         }
         err
@@ -2518,7 +2518,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion_short_with_applicability(
                         self.span,
                         "remove this comma",
-                        "".to_owned(),
+                        String::new(),
                         Applicability::MachineApplicable
                     );
                     err.note("the base struct must always be the last field");
@@ -3485,7 +3485,7 @@ impl<'a> Parser<'a> {
                 e.span_suggestion_short_with_applicability(
                     match_span,
                     "try removing this `match`",
-                    "".to_owned(),
+                    String::new(),
                     Applicability::MaybeIncorrect // speculative
                 );
             }
@@ -3862,7 +3862,7 @@ impl<'a> Parser<'a> {
                 if self.token == token::CloseDelim(token::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
-                        err.span_suggestion_short(sp, "remove this comma", "".into());
+                        err.span_suggestion_short(sp, "remove this comma", String::new());
                     }
                     err.emit();
                     break;
@@ -3902,7 +3902,7 @@ impl<'a> Parser<'a> {
                 err.multipart_suggestion(
                     "move the `..` to the end of the field list",
                     vec![
-                        (etc_span, "".into()),
+                        (etc_span, String::new()),
                         (self.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
                     ],
                 );
@@ -6210,7 +6210,7 @@ impl<'a> Parser<'a> {
             if token_str == ";" {
                 let msg = "consider removing this semicolon";
                 err.span_suggestion_short_with_applicability(
-                    self.span, msg, "".to_string(), Applicability::MachineApplicable
+                    self.span, msg, String::new(), Applicability::MachineApplicable
                 );
                 if !items.is_empty() {  // Issue #51603
                     let previous_item = &items[items.len()-1];

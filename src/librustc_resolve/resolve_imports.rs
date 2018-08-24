@@ -994,7 +994,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 let lev_suggestion =
                     match find_best_match_for_name(names, &ident.as_str(), None) {
                         Some(name) => format!(". Did you mean to use `{}`?", name),
-                        None => "".to_owned(),
+                        None => String::new(),
                     };
                 let msg = match module {
                     ModuleOrUniformRoot::Module(module) => {

@@ -120,13 +120,13 @@ impl IntercrateAmbiguityCause {
             &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
                 let self_desc = if let &Some(ref ty) = self_desc {
                     format!(" for type `{}`", ty)
-                } else { "".to_string() };
+                } else { String::new() };
                 format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
             }
             &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
                 let self_desc = if let &Some(ref ty) = self_desc {
                     format!(" for type `{}`", ty)
-                } else { "".to_string() };
+                } else { String::new() };
                 format!("upstream crates may add new impl of trait `{}`{} \
                          in future versions",
                         trait_desc, self_desc)
