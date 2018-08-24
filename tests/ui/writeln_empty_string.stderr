@@ -1,10 +1,16 @@
-error: using `writeln!(v, "")`
+error: using `writeln!(&mut v, "")`
  --> $DIR/writeln_empty_string.rs:9:5
   |
 9 |     writeln!(&mut v, "");
-  |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(v)`
+  |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut v)`
   |
   = note: `-D writeln-empty-string` implied by `-D warnings`
 
-error: aborting due to previous error
+error: using `writeln!(&mut suggestion, "")`
+  --> $DIR/writeln_empty_string.rs:12:5
+   |
+12 |     writeln!(&mut suggestion, "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut suggestion)`
+
+error: aborting due to 2 previous errors
 

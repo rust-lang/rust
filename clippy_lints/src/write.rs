@@ -3,7 +3,8 @@ use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::tokenstream::{ThinTokenStream, TokenStream};
 use syntax::parse::{token, parser};
-use crate::utils::{span_lint, span_lint_and_sugg};
+use std::borrow::Cow;
+use crate::utils::{span_lint, span_lint_and_sugg, snippet};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -179,7 +180,7 @@ impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
         if mac.node.path == "println" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr == "" {
                     span_lint_and_sugg(
                         cx,
@@ -193,7 +194,7 @@ impl EarlyLintPass for Pass {
             }
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, PRINT_WITH_NEWLINE, mac.span,
                             "using `print!()` with a format string that ends in a \
@@ -201,7 +202,7 @@ impl EarlyLintPass for Pass {
                 }
             }
         } else if mac.node.path == "write" {
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
                     span_lint(cx, WRITE_WITH_NEWLINE, mac.span,
                             "using `write!()` with a format string that ends in a \
@@ -209,15 +210,18 @@ impl EarlyLintPass for Pass {
                 }
             }
         } else if mac.node.path == "writeln" {
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+            let check_tts = check_tts(cx, &mac.node.tts, true);
+            if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
+                    let suggestion = check_tts.1.map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
+
                     span_lint_and_sugg(
                         cx,
                         WRITELN_EMPTY_STRING,
                         mac.span,
-                        "using `writeln!(v, \"\")`",
+                        format!("using `writeln!({}, \"\")`", suggestion).as_str(),
                         "replace it with",
-                        "writeln!(v)".to_string(),
+                        format!("writeln!({})", suggestion),
                     );
                 }
             }
@@ -225,7 +229,7 @@ impl EarlyLintPass for Pass {
     }
 }
 
-fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Option<String> {
+fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     let tts = TokenStream::from(tts.clone());
     let mut parser = parser::Parser::new(
         &cx.sess.parse_sess,
@@ -234,20 +238,29 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
         false,
         false,
     );
+    let mut expr: Option<Expr> = None;
     if is_write {
-        // skip the initial write target
-        parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
+        expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+            Ok(p) => Some(p.into_inner()),
+            Err(_) => return (None, None),
+        };
         // might be `writeln!(foo)`
-        parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok()?;
+        if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
+            return (None, expr);
+        }
     }
-    let fmtstr = parser.parse_str().map_err(|mut err| err.cancel()).ok()?.0.to_string();
+
+    let fmtstr = match parser.parse_str().map_err(|mut err| err.cancel()) {
+        Ok(token) => token.0.to_string(),
+        Err(_) => return (None, expr),
+    };
     use fmt_macros::*;
     let tmp = fmtstr.clone();
     let mut args = vec![];
     let mut fmt_parser = Parser::new(&tmp, None);
     while let Some(piece) = fmt_parser.next() {
         if !fmt_parser.errors.is_empty() {
-            return None;
+            return (None, expr);
         }
         if let Piece::NextArgument(arg) = piece {
             if arg.format.ty == "?" {
@@ -266,9 +279,12 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     loop {
         if !parser.eat(&token::Comma) {
             assert!(parser.eat(&token::Eof));
-            return Some(fmtstr);
+            return (Some(fmtstr), expr);
         }
-        let expr = parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
+        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+            Ok(expr) => expr,
+            Err(_) => return (Some(fmtstr), None),
+        };
         const SIMPLE: FormatSpec<'_> = FormatSpec {
             fill: None,
             align: AlignUnknown,
@@ -277,7 +293,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             width: CountImplied,
             ty: "",
         };
-        match &expr.node {
+        match &token_expr.node {
             ExprKind::Lit(_) => {
                 let mut all_simple = true;
                 let mut seen = false;
@@ -293,7 +309,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                     }
                 }
                 if all_simple && seen {
-                    span_lint(cx, lint, expr.span, "literal with an empty format string");
+                    span_lint(cx, lint, token_expr.span, "literal with an empty format string");
                 }
                 idx += 1;
             },

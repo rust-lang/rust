@@ -5,8 +5,11 @@ use std::io::Write;
 fn main() {
     let mut v = Vec::new();
 
-    // This should fail
+    // These should fail
     writeln!(&mut v, "");
+
+    let mut suggestion = Vec::new();
+    writeln!(&mut suggestion, "");
 
     // These should be fine
     writeln!(&mut v);
