@@ -103,6 +103,9 @@ ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
+ENV TARGETS=$TARGETS,armebv7r-none-eabihf
+ENV TARGETS=$TARGETS,armv7r-none-eabi
+ENV TARGETS=$TARGETS,armv7r-none-eabihf
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
@@ -120,7 +123,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-emscripten \
       --disable-docs
 
-ENV SCRIPT \ 
+ENV SCRIPT \
       python2.7 ../x.py test --target $RUN_MAKE_TARGETS src/test/run-make && \
       python2.7 ../x.py dist --target $TARGETS
 
