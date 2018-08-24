@@ -11,7 +11,7 @@
 // Targets the Little-endian Cortex-R4F/R5F processor (ARMv7-R)
 
 use std::default::Default;
-use spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -24,10 +24,11 @@ pub fn target() -> TargetResult {
         target_os: "none".to_string(),
         target_env: "".to_string(),
         target_vendor: "".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
             executables: true,
+            linker: Some("rust-lld".to_owned()),
             relocation_model: "static".to_string(),
             panic_strategy: PanicStrategy::Abort,
             features: "+vfp3,+d16,+fp-only-sp".to_string(),
