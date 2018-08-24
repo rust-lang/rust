@@ -712,7 +712,7 @@ impl Step for Rustc {
 
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
-        for root_crate in &["rustc", "rustc_driver"] {
+        for root_crate in &["rustc", "rustc_driver", "rustc_codegen_llvm"] {
             let interned_root_crate = INTERNER.intern_str(root_crate);
             find_compiler_crates(builder, &interned_root_crate, &mut compiler_crates);
         }
