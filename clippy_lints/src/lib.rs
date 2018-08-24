@@ -66,6 +66,7 @@ pub mod bytecount;
 pub mod collapsible_if;
 pub mod const_static_lifetime;
 pub mod copies;
+pub mod copy_iterator;
 pub mod cyclomatic_complexity;
 pub mod default_trait_access;
 pub mod derive;
@@ -338,6 +339,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box types::InvalidUpcastComparisons);
     reg.register_late_lint_pass(box regex::Pass::default());
     reg.register_late_lint_pass(box copies::CopyAndPaste);
+    reg.register_late_lint_pass(box copy_iterator::CopyIterator);
     reg.register_late_lint_pass(box format::Pass);
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
@@ -431,6 +433,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_lint_group("clippy_pedantic", vec![
         attrs::INLINE_ALWAYS,
         copies::MATCH_SAME_ARMS,
+        copy_iterator::COPY_ITERATOR,
         default_trait_access::DEFAULT_TRAIT_ACCESS,
         derive::EXPL_IMPL_CLONE_ON_COPY,
         doc::DOC_MARKDOWN,
