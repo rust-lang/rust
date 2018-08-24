@@ -93,7 +93,7 @@ fn structure_node(node: SyntaxNodeRef) -> Option<StructureNode> {
     visitor()
         .visit(decl::<ast::FnDef>)
         .visit(decl::<ast::StructDef>)
-        .visit(decl::<ast::NamedField>)
+        .visit(decl::<ast::NamedFieldDef>)
         .visit(decl::<ast::EnumDef>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)

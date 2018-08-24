@@ -283,25 +283,25 @@ impl<'a> AstNode<'a> for NameRef<'a> {
 
 impl<'a> NameRef<'a> {}
 
-// NamedField
+// NamedFieldDef
 #[derive(Debug, Clone, Copy)]
-pub struct NamedField<'a> {
+pub struct NamedFieldDef<'a> {
     syntax: SyntaxNodeRef<'a>,
 }
 
-impl<'a> AstNode<'a> for NamedField<'a> {
+impl<'a> AstNode<'a> for NamedFieldDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
         match syntax.kind() {
-            NAMED_FIELD => Some(NamedField { syntax }),
+            NAMED_FIELD_DEF => Some(NamedFieldDef { syntax }),
             _ => None,
         }
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> ast::NameOwner<'a> for NamedField<'a> {}
-impl<'a> ast::AttrsOwner<'a> for NamedField<'a> {}
-impl<'a> NamedField<'a> {}
+impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
+impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
+impl<'a> NamedFieldDef<'a> {}
 
 // NeverType
 #[derive(Debug, Clone, Copy)]
@@ -498,7 +498,7 @@ impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
 impl<'a> StructDef<'a> {
-    pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
+    pub fn fields(self) -> impl Iterator<Item = NamedFieldDef<'a>> + 'a {
         super::children(self)
     }
 }

@@ -148,7 +148,11 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(MOVE_KW);
     params::param_list_opt_types(p);
     if opt_fn_ret_type(p) {
-        block(p);
+        if p.at(L_CURLY) {
+            block(p);
+        } else {
+            p.error("expected a block");
+        }
     } else {
         expr(p);
     }
@@ -254,6 +258,17 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     p.bump();
     expr_no_struct(p);
+    if p.at(L_CURLY) {
+        match_arm_list(p);
+    } else {
+        p.error("expected `{`")
+    }
+    m.complete(p, MATCH_EXPR)
+}
+
+fn match_arm_list(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    let m = p.start();
     p.eat(L_CURLY);
     while !p.at(EOF) && !p.at(R_CURLY) {
         // test match_arms_commas
@@ -271,7 +286,7 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
         }
     }
     p.expect(R_CURLY);
-    m.complete(p, MATCH_EXPR)
+    m.complete(p, MATCH_ARM_LIST);
 }
 
 // test match_arm
@@ -307,60 +322,8 @@ pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_CURLY) || p.at(UNSAFE_KW) && p.nth(1) == L_CURLY);
     let m = p.start();
     p.eat(UNSAFE_KW);
-    p.bump();
-    while !p.at(EOF) && !p.at(R_CURLY) {
-        match p.current() {
-            LET_KW => let_stmt(p),
-            _ => {
-                // test block_items
-                // fn a() { fn b() {} }
-                let m = p.start();
-                match items::maybe_item(p, items::ItemFlavor::Mod) {
-                    items::MaybeItem::Item(kind) => {
-                        m.complete(p, kind);
-                    }
-                    items::MaybeItem::Modifiers => {
-                        m.abandon(p);
-                        p.error("expected an item");
-                    }
-                    // test pub_expr
-                    // fn foo() { pub 92; } //FIXME
-                    items::MaybeItem::None => {
-                        let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
-                        if p.eat(SEMI) || (is_blocklike && !p.at(R_CURLY)) {
-                            m.complete(p, EXPR_STMT);
-                        } else {
-                            m.abandon(p);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    p.expect(R_CURLY);
+    block(p);
     m.complete(p, BLOCK_EXPR)
-}
-
-// test let_stmt;
-// fn foo() {
-//     let a;
-//     let b: i32;
-//     let c = 92;
-//     let d: i32 = 92;
-// }
-fn let_stmt(p: &mut Parser) {
-    assert!(p.at(LET_KW));
-    let m = p.start();
-    p.bump();
-    patterns::pattern(p);
-    if p.at(COLON) {
-        types::ascription(p);
-    }
-    if p.eat(EQ) {
-        expressions::expr(p);
-    }
-    p.expect(SEMI);
-    m.complete(p, LET_STMT);
 }
 
 // test return_expr

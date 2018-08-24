@@ -11,18 +11,29 @@ pub(super) fn trait_def(p: &mut Parser) {
         type_params::bounds(p);
     }
     type_params::opt_where_clause(p);
-    p.expect(L_CURLY);
-    // test trait_item_items
-    // impl F {
-    //     type A: Clone;
-    //     const B: i32;
-    //     fn foo() {}
-    //     fn bar(&self);
-    // }
+    if p.at(L_CURLY) {
+        trait_item_list(p);
+    } else {
+        p.error("expected `{`");
+    }
+}
+
+// test trait_item_list
+// impl F {
+//     type A: Clone;
+//     const B: i32;
+//     fn foo() {}
+//     fn bar(&self);
+// }
+fn trait_item_list(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    let m = p.start();
+    p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
         item_or_macro(p, true, ItemFlavor::Trait);
     }
     p.expect(R_CURLY);
+    m.complete(p, ITEM_LIST);
 }
 
 // test impl_item
@@ -45,19 +56,30 @@ pub(super) fn impl_item(p: &mut Parser) {
         types::type_(p);
     }
     type_params::opt_where_clause(p);
-    p.expect(L_CURLY);
+    if p.at(L_CURLY) {
+        impl_item_list(p);
+    } else {
+        p.error("expected `{`");
+    }
+}
 
-    // test impl_item_items
-    // impl F {
-    //     type A = i32;
-    //     const B: i32 = 92;
-    //     fn foo() {}
-    //     fn bar(&self) {}
-    // }
+// test impl_item_list
+// impl F {
+//     type A = i32;
+//     const B: i32 = 92;
+//     fn foo() {}
+//     fn bar(&self) {}
+// }
+fn impl_item_list(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    let m = p.start();
+    p.bump();
+
     while !p.at(EOF) && !p.at(R_CURLY) {
         item_or_macro(p, true, ItemFlavor::Mod);
     }
     p.expect(R_CURLY);
+    m.complete(p, ITEM_LIST);
 }
 
 fn choose_type_params_over_qpath(p: &Parser) -> bool {

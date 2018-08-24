@@ -149,6 +149,7 @@ Grammar(
         "PLACEHOLDER_PAT",
         "PATH_PAT",
         "STRUCT_PAT",
+        "FIELD_PAT_LIST",
         "TUPLE_STRUCT_PAT",
         "TUPLE_PAT",
         "SLICE_PAT",
@@ -170,10 +171,12 @@ Grammar(
         "BLOCK_EXPR",
         "RETURN_EXPR",
         "MATCH_EXPR",
+        "MATCH_ARM_LIST",
         "MATCH_ARM",
         "MATCH_GUARD",
         "STRUCT_LIT",
-        "STRUCT_LIT_FIELD",
+        "NAMED_FIELD_LIST",
+        "NAMED_FIELD",
 
         // postfix
         "CALL_EXPR",
@@ -190,14 +193,20 @@ Grammar(
         "RANGE_EXPR", // just weird
         "BIN_EXPR",
 
-
-        "EXTERN_BLOCK_EXPR",
+        "BLOCK",
+        "EXTERN_BLOCK",
+        "EXTERN_ITEM_LIST",
         "ENUM_VARIANT",
-        "NAMED_FIELD",
+        "NAMED_FIELD_DEF_LIST",
+        "NAMED_FIELD_DEF",
+        "POS_FIELD_LIST",
         "POS_FIELD",
+        "ENUM_VARIANT_LIST",
+        "ITEM_LIST",
         "ATTR",
         "META_ITEM", // not an item actually
         "USE_TREE",
+        "USE_TREE_LIST",
         "PATH",
         "PATH_SEGMENT",
         "LITERAL",
@@ -244,10 +253,10 @@ Grammar(
                 "AttrsOwner",
             ],
             collections: [
-                ["fields", "NamedField"]
+                ["fields", "NamedFieldDef"]
             ]
         ),
-        "NamedField": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "EnumDef": ( traits: [
             "NameOwner",
             "TypeParamsOwner",

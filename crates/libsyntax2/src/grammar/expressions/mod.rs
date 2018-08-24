@@ -26,11 +26,62 @@ fn expr_no_struct(p: &mut Parser) {
 // fn c() { 1; 2; }
 // fn d() { 1; 2 }
 pub(super) fn block(p: &mut Parser) {
-    if !p.at(L_CURLY) {
-        p.error("expected block");
-        return;
+    assert!(p.at(L_CURLY));
+    let m = p.start();
+    p.bump();
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        match p.current() {
+            LET_KW => let_stmt(p),
+            _ => {
+                // test block_items
+                // fn a() { fn b() {} }
+                let m = p.start();
+                match items::maybe_item(p, items::ItemFlavor::Mod) {
+                    items::MaybeItem::Item(kind) => {
+                        m.complete(p, kind);
+                    }
+                    items::MaybeItem::Modifiers => {
+                        m.abandon(p);
+                        p.error("expected an item");
+                    }
+                    // test pub_expr
+                    // fn foo() { pub 92; } //FIXME
+                    items::MaybeItem::None => {
+                        let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
+                        if p.eat(SEMI) || (is_blocklike && !p.at(R_CURLY)) {
+                            m.complete(p, EXPR_STMT);
+                        } else {
+                            m.abandon(p);
+                        }
+                    }
+                }
+            }
+        }
     }
-    atom::block_expr(p);
+    p.expect(R_CURLY);
+    m.complete(p, BLOCK);
+
+    // test let_stmt;
+    // fn foo() {
+    //     let a;
+    //     let b: i32;
+    //     let c = 92;
+    //     let d: i32 = 92;
+    // }
+    fn let_stmt(p: &mut Parser) {
+        assert!(p.at(LET_KW));
+        let m = p.start();
+        p.bump();
+        patterns::pattern(p);
+        if p.at(COLON) {
+            types::ascription(p);
+        }
+        if p.eat(EQ) {
+            expressions::expr(p);
+        }
+        p.expect(SEMI);
+        m.complete(p, LET_STMT);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -339,7 +390,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     paths::expr_path(p);
     match p.current() {
         L_CURLY if !r.forbid_structs => {
-            struct_lit(p);
+            named_field_list(p);
             m.complete(p, STRUCT_LIT)
         }
         EXCL => {
@@ -356,8 +407,9 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
 // }
-fn struct_lit(p: &mut Parser) {
+fn named_field_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
+    let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
@@ -367,7 +419,7 @@ fn struct_lit(p: &mut Parser) {
                 if p.eat(COLON) {
                     expr(p);
                 }
-                m.complete(p, STRUCT_LIT_FIELD);
+                m.complete(p, NAMED_FIELD);
             }
             DOTDOT => {
                 p.bump();
@@ -380,4 +432,5 @@ fn struct_lit(p: &mut Parser) {
         }
     }
     p.expect(R_CURLY);
+    m.complete(p, NAMED_FIELD_LIST);
 }

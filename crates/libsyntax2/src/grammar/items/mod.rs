@@ -194,8 +194,8 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         // extern {}
         EXTERN_KW if la == L_CURLY || ((la == STRING || la == RAW_STRING) && p.nth(2) == L_CURLY) => {
             abi(p);
-            extern_block(p);
-            EXTERN_BLOCK_EXPR
+            extern_item_list(p);
+            EXTERN_BLOCK
         }
         _ => return None,
     };
@@ -212,10 +212,12 @@ fn extern_crate_item(p: &mut Parser) {
     p.expect(SEMI);
 }
 
-fn extern_block(p: &mut Parser) {
+fn extern_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
+    let m = p.start();
     p.bump();
     p.expect(R_CURLY);
+    m.complete(p, EXTERN_ITEM_LIST);
 }
 
 fn function(p: &mut Parser, flavor: ItemFlavor) {
@@ -284,12 +286,20 @@ fn mod_item(p: &mut Parser) {
     p.bump();
 
     name(p);
-    if !p.eat(SEMI) {
-        if p.expect(L_CURLY) {
-            mod_contents(p, true);
-            p.expect(R_CURLY);
-        }
+    if p.at(L_CURLY) {
+        mod_item_list(p);
+    } else if !p.eat(SEMI) {
+        p.error("expected `;` or `{`");
     }
+}
+
+fn mod_item_list(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    let m = p.start();
+    p.bump();
+    mod_contents(p, true);
+    p.expect(R_CURLY);
+    m.complete(p, ITEM_LIST);
 }
 
 fn macro_call(p: &mut Parser) -> BlockLike {

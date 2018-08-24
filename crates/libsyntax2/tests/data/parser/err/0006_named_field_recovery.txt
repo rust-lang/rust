@@ -5,69 +5,70 @@ FILE@[0; 74)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9)
-    L_CURLY@[9; 10)
-    WHITESPACE@[10; 15)
-    NAMED_FIELD@[15; 21)
-      NAME@[15; 16)
-        IDENT@[15; 16) "f"
-      COLON@[16; 17)
-      WHITESPACE@[17; 18)
-      PATH_TYPE@[18; 21)
-        PATH@[18; 21)
-          PATH_SEGMENT@[18; 21)
-            NAME_REF@[18; 21)
-              IDENT@[18; 21) "u32"
-    COMMA@[21; 22)
-    WHITESPACE@[22; 27)
-    VISIBILITY@[27; 30)
-      PUB_KW@[27; 30)
-    WHITESPACE@[30; 31)
-    err: `expected field declaration`
-    ERROR@[31; 33)
-      INT_NUMBER@[31; 33) "92"
-      err: `expected COMMA`
-    WHITESPACE@[33; 38)
-    err: `expected field declaration`
-    ERROR@[38; 39)
-      PLUS@[38; 39)
-      err: `expected COMMA`
-    WHITESPACE@[39; 40)
-    err: `expected field declaration`
-    ERROR@[40; 41)
-      MINUS@[40; 41)
-      err: `expected COMMA`
-    WHITESPACE@[41; 42)
-    err: `expected field declaration`
-    ERROR@[42; 43)
-      STAR@[42; 43)
-      err: `expected COMMA`
-    WHITESPACE@[43; 48)
-    NAMED_FIELD@[48; 58)
-      VISIBILITY@[48; 51)
-        PUB_KW@[48; 51)
-      WHITESPACE@[51; 52)
-      NAME@[52; 53)
-        IDENT@[52; 53) "x"
-      COLON@[53; 54)
-      WHITESPACE@[54; 55)
-      PATH_TYPE@[55; 58)
-        PATH@[55; 58)
-          PATH_SEGMENT@[55; 58)
-            NAME_REF@[55; 58)
-              IDENT@[55; 58) "u32"
-    COMMA@[58; 59)
-    WHITESPACE@[59; 64)
-    NAMED_FIELD@[64; 70)
-      NAME@[64; 65)
-        IDENT@[64; 65) "z"
-      COLON@[65; 66)
-      WHITESPACE@[66; 67)
-      PATH_TYPE@[67; 70)
-        PATH@[67; 70)
-          PATH_SEGMENT@[67; 70)
-            NAME_REF@[67; 70)
-              IDENT@[67; 70) "f64"
-    COMMA@[70; 71)
-    WHITESPACE@[71; 72)
-    R_CURLY@[72; 73)
+    NAMED_FIELD_DEF_LIST@[9; 73)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 15)
+      NAMED_FIELD_DEF@[15; 21)
+        NAME@[15; 16)
+          IDENT@[15; 16) "f"
+        COLON@[16; 17)
+        WHITESPACE@[17; 18)
+        PATH_TYPE@[18; 21)
+          PATH@[18; 21)
+            PATH_SEGMENT@[18; 21)
+              NAME_REF@[18; 21)
+                IDENT@[18; 21) "u32"
+      COMMA@[21; 22)
+      WHITESPACE@[22; 27)
+      VISIBILITY@[27; 30)
+        PUB_KW@[27; 30)
+      WHITESPACE@[30; 31)
+      err: `expected field declaration`
+      ERROR@[31; 33)
+        INT_NUMBER@[31; 33) "92"
+        err: `expected COMMA`
+      WHITESPACE@[33; 38)
+      err: `expected field declaration`
+      ERROR@[38; 39)
+        PLUS@[38; 39)
+        err: `expected COMMA`
+      WHITESPACE@[39; 40)
+      err: `expected field declaration`
+      ERROR@[40; 41)
+        MINUS@[40; 41)
+        err: `expected COMMA`
+      WHITESPACE@[41; 42)
+      err: `expected field declaration`
+      ERROR@[42; 43)
+        STAR@[42; 43)
+        err: `expected COMMA`
+      WHITESPACE@[43; 48)
+      NAMED_FIELD_DEF@[48; 58)
+        VISIBILITY@[48; 51)
+          PUB_KW@[48; 51)
+        WHITESPACE@[51; 52)
+        NAME@[52; 53)
+          IDENT@[52; 53) "x"
+        COLON@[53; 54)
+        WHITESPACE@[54; 55)
+        PATH_TYPE@[55; 58)
+          PATH@[55; 58)
+            PATH_SEGMENT@[55; 58)
+              NAME_REF@[55; 58)
+                IDENT@[55; 58) "u32"
+      COMMA@[58; 59)
+      WHITESPACE@[59; 64)
+      NAMED_FIELD_DEF@[64; 70)
+        NAME@[64; 65)
+          IDENT@[64; 65) "z"
+        COLON@[65; 66)
+        WHITESPACE@[66; 67)
+        PATH_TYPE@[67; 70)
+          PATH@[67; 70)
+            PATH_SEGMENT@[67; 70)
+              NAME_REF@[67; 70)
+                IDENT@[67; 70) "f64"
+      COMMA@[70; 71)
+      WHITESPACE@[71; 72)
+      R_CURLY@[72; 73)
   WHITESPACE@[73; 74)

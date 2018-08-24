@@ -69,7 +69,7 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
             TUPLE_STRUCT_PAT
         }
         L_CURLY => {
-            struct_pat_fields(p);
+            field_pat_list(p);
             STRUCT_PAT
         }
         _ => PATH_PAT
@@ -99,15 +99,16 @@ fn tuple_pat_fields(p: &mut Parser) {
     p.expect(R_PAREN);
 }
 
-// test struct_pat_fields
+// test field_pat_list
 // fn foo() {
 //     let S {} = ();
 //     let S { f, ref mut g } = ();
 //     let S { h: _, ..} = ();
 //     let S { h: _, } = ();
 // }
-fn struct_pat_fields(p: &mut Parser) {
+fn field_pat_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
+    let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
@@ -126,6 +127,7 @@ fn struct_pat_fields(p: &mut Parser) {
         }
     }
     p.expect(R_CURLY);
+    m.complete(p, FIELD_PAT_LIST);
 }
 
 // test placeholder_pat

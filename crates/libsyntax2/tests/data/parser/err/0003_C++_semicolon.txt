@@ -5,34 +5,35 @@ FILE@[0; 40)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9)
-    L_CURLY@[9; 10)
-    WHITESPACE@[10; 15)
-    NAMED_FIELD@[15; 21)
-      NAME@[15; 16)
-        IDENT@[15; 16) "a"
-      COLON@[16; 17)
-      WHITESPACE@[17; 18)
-      PATH_TYPE@[18; 21)
-        PATH@[18; 21)
-          PATH_SEGMENT@[18; 21)
-            NAME_REF@[18; 21)
-              IDENT@[18; 21) "i32"
-    COMMA@[21; 22)
-    WHITESPACE@[22; 27)
-    NAMED_FIELD@[27; 36)
-      NAME@[27; 28)
-        IDENT@[27; 28) "b"
-      COLON@[28; 29)
-      WHITESPACE@[29; 30)
-      PATH_TYPE@[30; 36)
-        PATH@[30; 36)
-          PATH_SEGMENT@[30; 36)
-            NAME_REF@[30; 36)
-              IDENT@[30; 36) "String"
-    COMMA@[36; 37)
-    WHITESPACE@[37; 38)
-    R_CURLY@[38; 39)
-    err: `expected item, found `;`
+    NAMED_FIELD_DEF_LIST@[9; 39)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 15)
+      NAMED_FIELD_DEF@[15; 21)
+        NAME@[15; 16)
+          IDENT@[15; 16) "a"
+        COLON@[16; 17)
+        WHITESPACE@[17; 18)
+        PATH_TYPE@[18; 21)
+          PATH@[18; 21)
+            PATH_SEGMENT@[18; 21)
+              NAME_REF@[18; 21)
+                IDENT@[18; 21) "i32"
+      COMMA@[21; 22)
+      WHITESPACE@[22; 27)
+      NAMED_FIELD_DEF@[27; 36)
+        NAME@[27; 28)
+          IDENT@[27; 28) "b"
+        COLON@[28; 29)
+        WHITESPACE@[29; 30)
+        PATH_TYPE@[30; 36)
+          PATH@[30; 36)
+            PATH_SEGMENT@[30; 36)
+              NAME_REF@[30; 36)
+                IDENT@[30; 36) "String"
+      COMMA@[36; 37)
+      WHITESPACE@[37; 38)
+      R_CURLY@[38; 39)
+      err: `expected item, found `;`
 consider removing this semicolon`
     ERROR@[39; 40)
       SEMI@[39; 40)

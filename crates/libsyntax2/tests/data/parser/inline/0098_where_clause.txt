@@ -63,7 +63,7 @@ FILE@[0; 87)
         LIFETIME@[80; 82) "'a"
       COMMA@[82; 83)
     WHITESPACE@[83; 84)
-    BLOCK_EXPR@[84; 86)
+    BLOCK@[84; 86)
       L_CURLY@[84; 85)
       R_CURLY@[85; 86)
   WHITESPACE@[86; 87)

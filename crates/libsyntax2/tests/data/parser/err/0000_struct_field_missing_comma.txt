@@ -5,29 +5,30 @@ FILE@[0; 34)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9)
-    L_CURLY@[9; 10)
-    WHITESPACE@[10; 15)
-    NAMED_FIELD@[15; 21)
-      NAME@[15; 16)
-        IDENT@[15; 16) "a"
-      COLON@[16; 17)
-      WHITESPACE@[17; 18)
-      PATH_TYPE@[18; 21)
-        PATH@[18; 21)
-          PATH_SEGMENT@[18; 21)
-            NAME_REF@[18; 21)
-              IDENT@[18; 21) "u32"
-              err: `expected COMMA`
-    WHITESPACE@[21; 26)
-    NAMED_FIELD@[26; 32)
-      NAME@[26; 27)
-        IDENT@[26; 27) "b"
-      COLON@[27; 28)
-      WHITESPACE@[28; 29)
-      PATH_TYPE@[29; 32)
-        PATH@[29; 32)
-          PATH_SEGMENT@[29; 32)
-            NAME_REF@[29; 32)
-              IDENT@[29; 32) "u32"
-    WHITESPACE@[32; 33)
-    R_CURLY@[33; 34)
+    NAMED_FIELD_DEF_LIST@[9; 34)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 15)
+      NAMED_FIELD_DEF@[15; 21)
+        NAME@[15; 16)
+          IDENT@[15; 16) "a"
+        COLON@[16; 17)
+        WHITESPACE@[17; 18)
+        PATH_TYPE@[18; 21)
+          PATH@[18; 21)
+            PATH_SEGMENT@[18; 21)
+              NAME_REF@[18; 21)
+                IDENT@[18; 21) "u32"
+                err: `expected COMMA`
+      WHITESPACE@[21; 26)
+      NAMED_FIELD_DEF@[26; 32)
+        NAME@[26; 27)
+          IDENT@[26; 27) "b"
+        COLON@[27; 28)
+        WHITESPACE@[28; 29)
+        PATH_TYPE@[29; 32)
+          PATH@[29; 32)
+            PATH_SEGMENT@[29; 32)
+              NAME_REF@[29; 32)
+                IDENT@[29; 32) "u32"
+      WHITESPACE@[32; 33)
+      R_CURLY@[33; 34)

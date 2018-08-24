@@ -53,5 +53,31 @@ pub use {
 
 pub fn parse(text: &str) -> SyntaxNode {
     let tokens = tokenize(&text);
-    parser_impl::parse::<yellow::GreenBuilder>(text, &tokens)
+    let res = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
+    validate_block_structure(res.borrowed());
+    res
+}
+
+fn validate_block_structure(root: SyntaxNodeRef) {
+    let mut stack = Vec::new();
+    for node in algo::walk::preorder(root) {
+        match node.kind() {
+            SyntaxKind::L_CURLY => {
+                stack.push(node)
+            }
+            SyntaxKind::R_CURLY => {
+                if let Some(pair) = stack.pop() {
+                    assert_eq!(node.parent(), pair.parent());
+                    assert!(
+                        node.next_sibling().is_none() && pair.prev_sibling().is_none(),
+                        "floating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
+                        node,
+                        root.text(),
+                        node.text(),
+                    );
+                }
+            }
+            _ => (),
+        }
+    }
 }
