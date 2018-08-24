@@ -20,11 +20,10 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
         MonoItem::Fn(inst) => {
             let _print_guard = PrintOnPanic(format!("{:?}", inst));
             let mir = match inst.def {
-                InstanceDef::Item(_)
-                | InstanceDef::DropGlue(_, _)
-                | InstanceDef::Virtual(_, _) => {
+                InstanceDef::Item(_) | InstanceDef::DropGlue(_, _) | InstanceDef::Virtual(_, _) => {
                     let mut mir = ::std::io::Cursor::new(Vec::new());
-                    ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir).unwrap();
+                    ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
+                        .unwrap();
                     mir.into_inner()
                 }
                 InstanceDef::FnPtrShim(_, _)
@@ -40,7 +39,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
             ::std::fs::write(mir_file_name, mir).unwrap();
 
             trans_fn(tcx, cx.module, &mut cx.ccx, context, inst);
-        },
+        }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.ccx, def_id);
         }
@@ -317,24 +316,16 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
-                        ty::Bool => {
-                            trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
+                        ty::Bool => trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
                         ty::Uint(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
                         ty::Int(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
                         }
-                        ty::Float(_) => {
-                            trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
-                        ty::Char => {
-                            trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
-                        ty::RawPtr(..) => {
-                            trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
+                        ty::Float(_) => trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
+                        ty::Char => trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
+                        ty::RawPtr(..) => trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
                         _ => unimplemented!("binop {:?} for {:?}", bin_op, ty),
                     };
                     lval.write_cvalue(fx, res);
@@ -393,15 +384,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         | (ty::RawPtr(..), ty::RawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (ty::RawPtr(..), ty::Uint(_))
-                        | (ty::FnPtr(..), ty::Uint(_))
+                        (ty::RawPtr(..), ty::Uint(_)) | (ty::FnPtr(..), ty::Uint(_))
                             if to_ty.sty == fx.tcx.types.usize.sty =>
                         {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (ty::Uint(_), ty::RawPtr(..))
-                            if from_ty.sty == fx.tcx.types.usize.sty =>
-                        {
+                        (ty::Uint(_), ty::RawPtr(..)) if from_ty.sty == fx.tcx.types.usize.sty => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
                         (ty::Char, ty::Uint(_))
@@ -417,8 +405,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (ty::Int(_), ty::Int(_))
-                        | (ty::Int(_), ty::Uint(_)) => {
+                        (ty::Int(_), ty::Int(_)) | (ty::Int(_), ty::Uint(_)) => {
                             let from = operand.load_value(fx);
                             let res = crate::common::cton_intcast(
                                 fx,
@@ -453,8 +440,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (ty::Bool, ty::Uint(_))
-                        | (ty::Bool, ty::Int(_)) => {
+                        (ty::Bool, ty::Uint(_)) | (ty::Bool, ty::Int(_)) => {
                             let to_ty = fx.cton_type(to_ty).unwrap();
                             let from = operand.load_value(fx);
                             let res = if to_ty != types::I8 {
