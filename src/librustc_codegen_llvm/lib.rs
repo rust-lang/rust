@@ -27,6 +27,7 @@
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(quote)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]

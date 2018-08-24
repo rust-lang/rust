@@ -77,6 +77,7 @@ This API is completely unstable and subject to change.
 #![feature(exhaustive_patterns)]
 #![feature(iterator_find_map)]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]

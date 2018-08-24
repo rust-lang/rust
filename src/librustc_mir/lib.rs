@@ -15,6 +15,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 */
 
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(infer_outlives_requirements)]
 #![feature(in_band_lifetimes)]
 #![feature(slice_patterns)]

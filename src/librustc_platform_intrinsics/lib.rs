@@ -11,6 +11,7 @@
 #![allow(bad_style)]
 
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],
