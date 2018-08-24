@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/variance-use-covariant-struct-2.rs:26:16
+  --> $DIR/variance-use-covariant-struct-2.rs:16:16
    |
 LL | #[rustc_error] fn main() { } //~ ERROR compilation successful
    |                ^^^^^^^^^^^^^

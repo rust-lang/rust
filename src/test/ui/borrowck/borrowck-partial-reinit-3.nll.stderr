@@ -1,5 +1,5 @@
 error[E0382]: assign of moved value: `x.0`
-  --> $DIR/borrowck-partial-reinit-3.rs:20:5
+  --> $DIR/borrowck-partial-reinit-3.rs:11:5
    |
 LL |     mem::drop(x.0);
    |               --- value moved here

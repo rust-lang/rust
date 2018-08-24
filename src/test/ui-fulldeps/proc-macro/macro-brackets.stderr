@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/macro-brackets.rs:21:21
+  --> $DIR/macro-brackets.rs:11:21
    |
 LL | id![static X: u32 = 'a';]; //~ ERROR: mismatched types
    |                     ^^^ expected u32, found char

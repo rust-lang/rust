@@ -1,5 +1,5 @@
 error[E0609]: no field `trace` on type `&T`
-  --> $DIR/issue-31011.rs:13:17
+  --> $DIR/issue-31011.rs:3:17
    |
 LL |         if $ctx.trace {
    |                 ^^^^^

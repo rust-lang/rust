@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/by-move-pattern-binding.rs:26:9
+  --> $DIR/by-move-pattern-binding.rs:16:9
    |
 LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
    |         ^^^^^^^^----------^

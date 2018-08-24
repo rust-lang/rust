@@ -1,11 +1,11 @@
 error[E0412]: cannot find type `NotDefined` in this scope
-  --> $DIR/issue-50480.rs:13:12
+  --> $DIR/issue-50480.rs:3:12
    |
 LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |            ^^^^^^^^^^ not found in this scope
 
 error[E0277]: the trait bound `i32: std::iter::Iterator` is not satisfied
-  --> $DIR/issue-50480.rs:13:24
+  --> $DIR/issue-50480.rs:3:24
    |
 LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator; maybe try calling `.iter()` or a similar method
@@ -13,7 +13,7 @@ LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    = help: the trait `std::iter::Iterator` is not implemented for `i32`
 
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/issue-50480.rs:11:17
+  --> $DIR/issue-50480.rs:1:17
    |
 LL | #[derive(Clone, Copy)]
    |                 ^^^^

@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-trait-object-subtyping.rs:25:5
+  --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
 LL |     x //~ ERROR lifetime bound not satisfied
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-trait-object-subtyping.rs:32:5
+  --> $DIR/regions-trait-object-subtyping.rs:22:5
    |
 LL |     x //~ ERROR mismatched types
    |     ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-trait-object-subtyping.rs:23:51
+  --> $DIR/regions-trait-object-subtyping.rs:13:51
    |
 LL |   fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
    |  _________--_--_____________________________________^
@@ -25,7 +25,7 @@ LL | | }
    | |_^ returning this value requires that `'a` must outlive `'b`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-trait-object-subtyping.rs:32:5
+  --> $DIR/regions-trait-object-subtyping.rs:22:5
    |
 LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut Dummy>) -> Wrapper<&'b mut Dummy> {
    |         --    -- lifetime `'b` defined here

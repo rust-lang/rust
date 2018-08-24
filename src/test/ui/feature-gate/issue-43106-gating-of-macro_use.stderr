@@ -1,17 +1,17 @@
 error: arguments to macro_use are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:16:1
+  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
    |
 LL | #![macro_use                  = "4900"] //~ ERROR arguments to macro_use are not allowed here
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to macro_use are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:18:1
+  --> $DIR/issue-43106-gating-of-macro_use.rs:8:1
    |
 LL | #[macro_use = "2700"]
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to macro_use are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:21:17
+  --> $DIR/issue-43106-gating-of-macro_use.rs:11:17
    |
 LL |     mod inner { #![macro_use="2700"] }
    |                 ^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0599]: no method named `unwrap` found for type `std::result::Result<(), Foo>` in the current scope
-  --> $DIR/method-help-unsatisfied-bound.rs:15:7
+  --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
 LL |     a.unwrap();
    |       ^^^^^^

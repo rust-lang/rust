@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `iter` in this scope
-  --> $DIR/for-loop.rs:16:9
+  --> $DIR/for-loop.rs:6:9
    |
 LL |         iter.next();  //~ ERROR cannot find value `iter` in this scope
    |         ^^^^ not found in this scope

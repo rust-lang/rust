@@ -1,5 +1,5 @@
 error[E0658]: msp430-interrupt ABI is experimental and subject to change (see issue #38487)
-  --> $DIR/feature-gate-abi-msp430-interrupt.rs:14:1
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:4:1
    |
 LL | extern "msp430-interrupt" fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

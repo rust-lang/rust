@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-17728.rs:25:28
+  --> $DIR/issue-17728.rs:15:28
    |
 LL |     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
    |                                     -----                         -------------------
@@ -10,7 +10,7 @@ LL |             Some(entry) => Ok(entry),
    |                            ^^^^^^^^^ ...but data from `room` is returned here
 
 error[E0308]: match arms have incompatible types
-  --> $DIR/issue-17728.rs:110:5
+  --> $DIR/issue-17728.rs:100:5
    |
 LL | /     match to_parse { //~ ERROR match arms have incompatible types
 LL | |         "w" | "west" => RoomDirection::West,

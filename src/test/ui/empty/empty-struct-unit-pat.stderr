@@ -1,35 +1,35 @@
 error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
-  --> $DIR/empty-struct-unit-pat.rs:31:9
+  --> $DIR/empty-struct-unit-pat.rs:21:9
    |
 LL |         Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
    |         ^^^^^^ did you mean `XEmpty6`?
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
-  --> $DIR/empty-struct-unit-pat.rs:34:9
+  --> $DIR/empty-struct-unit-pat.rs:24:9
    |
 LL |         XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
    |         ^^^^^^^ did you mean `XEmpty6`?
 
 error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
-  --> $DIR/empty-struct-unit-pat.rs:37:9
+  --> $DIR/empty-struct-unit-pat.rs:27:9
    |
 LL |         Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
    |         ^^^^^^ did you mean `XEmpty6`?
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
-  --> $DIR/empty-struct-unit-pat.rs:40:9
+  --> $DIR/empty-struct-unit-pat.rs:30:9
    |
 LL |         XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
    |         ^^^^^^^ did you mean `XEmpty6`?
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
-  --> $DIR/empty-struct-unit-pat.rs:44:9
+  --> $DIR/empty-struct-unit-pat.rs:34:9
    |
 LL |         E::Empty4() => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
    |         ^^^^^^^^^ not a tuple struct/variant
 
 error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`
-  --> $DIR/empty-struct-unit-pat.rs:47:9
+  --> $DIR/empty-struct-unit-pat.rs:37:9
    |
 LL |         XE::XEmpty4() => (),
    |         ^^^^-------
@@ -37,13 +37,13 @@ LL |         XE::XEmpty4() => (),
    |             did you mean `XEmpty5`?
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
-  --> $DIR/empty-struct-unit-pat.rs:52:9
+  --> $DIR/empty-struct-unit-pat.rs:42:9
    |
 LL |         E::Empty4(..) => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
    |         ^^^^^^^^^ not a tuple struct/variant
 
 error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`
-  --> $DIR/empty-struct-unit-pat.rs:55:9
+  --> $DIR/empty-struct-unit-pat.rs:45:9
    |
 LL |         XE::XEmpty4(..) => (),
    |         ^^^^-------

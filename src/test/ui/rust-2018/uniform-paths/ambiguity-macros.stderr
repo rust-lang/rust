@@ -1,5 +1,5 @@
 error: `std` import is ambiguous
-  --> $DIR/ambiguity-macros.rs:17:5
+  --> $DIR/ambiguity-macros.rs:7:5
    |
 LL |   use std::io;
    |       ^^^ can refer to external crate `::std`

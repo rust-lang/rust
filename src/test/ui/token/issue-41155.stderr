@@ -1,5 +1,5 @@
 error: expected one of `(`, `async`, `const`, `default`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `}`
-  --> $DIR/issue-41155.rs:13:1
+  --> $DIR/issue-41155.rs:3:1
    |
 LL |     pub
    |        - expected one of 9 possible tokens here
@@ -7,7 +7,7 @@ LL | } //~ ERROR expected one of
    | ^ unexpected token
 
 error[E0412]: cannot find type `S` in this scope
-  --> $DIR/issue-41155.rs:11:6
+  --> $DIR/issue-41155.rs:1:6
    |
 LL | impl S { //~ ERROR cannot find type
    |      ^ not found in this scope

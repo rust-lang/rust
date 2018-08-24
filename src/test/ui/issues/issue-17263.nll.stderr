@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-17263.rs:15:1
+  --> $DIR/issue-17263.rs:5:1
    |
 LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
 LL | |     let mut x: Box<_> = box Foo { a: 1, b: 2 };

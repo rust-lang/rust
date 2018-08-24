@@ -1,5 +1,5 @@
 error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
-  --> $DIR/macros-in-extern.rs:36:5
+  --> $DIR/macros-in-extern.rs:26:5
    |
 LL |     returns_isize!(rust_get_test_int);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     returns_isize!(rust_get_test_int);
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
-  --> $DIR/macros-in-extern.rs:38:5
+  --> $DIR/macros-in-extern.rs:28:5
    |
 LL |     takes_u32_returns_u32!(rust_dbg_extern_identity_u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     takes_u32_returns_u32!(rust_dbg_extern_identity_u32);
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
-  --> $DIR/macros-in-extern.rs:40:5
+  --> $DIR/macros-in-extern.rs:30:5
    |
 LL |     emits_nothing!();
    |     ^^^^^^^^^^^^^^^^^

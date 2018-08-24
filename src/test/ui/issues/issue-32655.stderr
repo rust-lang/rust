@@ -1,5 +1,5 @@
 error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
-  --> $DIR/issue-32655.rs:16:11
+  --> $DIR/issue-32655.rs:6:11
    |
 LL |         #[derive_Clone] //~ ERROR attributes of the form
    |           ^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | foo!();
    = help: add #![feature(custom_derive)] to the crate attributes to enable
 
 error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
-  --> $DIR/issue-32655.rs:28:7
+  --> $DIR/issue-32655.rs:18:7
    |
 LL |     #[derive_Clone] //~ ERROR attributes of the form
    |       ^^^^^^^^^^^^

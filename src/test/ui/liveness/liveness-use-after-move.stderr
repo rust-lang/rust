@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `*x`
-  --> $DIR/liveness-use-after-move.rs:16:20
+  --> $DIR/liveness-use-after-move.rs:6:20
    |
 LL |     let y = x;
    |         - value moved here

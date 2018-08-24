@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex2c-push-inference-variable.rs:16:13
+  --> $DIR/ex2c-push-inference-variable.rs:6:13
    |
 LL |     let z = Ref { data: y.data };
    |             ^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex2c-push-inference-variable.rs:17:5
+  --> $DIR/ex2c-push-inference-variable.rs:7:5
    |
 LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
    |            --  -- lifetime `'c` defined here

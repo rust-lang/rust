@@ -1,5 +1,5 @@
 error[E0599]: no method named `a` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:77:7
+  --> $DIR/trait-item-privacy.rs:67:7
    |
 LL | struct S;
    | --------- method `a` not found for this
@@ -12,7 +12,7 @@ LL |     S.a(); //~ ERROR no method named `a` found for type `S` in the current 
            candidate #1: `method::A`
 
 error[E0599]: no method named `b` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:78:7
+  --> $DIR/trait-item-privacy.rs:68:7
    |
 LL | struct S;
    | --------- method `b` not found for this
@@ -27,13 +27,13 @@ LL | use method::B;
    |
 
 error[E0624]: method `a` is private
-  --> $DIR/trait-item-privacy.rs:82:7
+  --> $DIR/trait-item-privacy.rs:72:7
    |
 LL |     c.a(); //~ ERROR method `a` is private
    |       ^
 
 error[E0599]: no function or associated item named `a` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:88:5
+  --> $DIR/trait-item-privacy.rs:78:5
    |
 LL | struct S;
    | --------- function or associated item `a` not found for this
@@ -46,7 +46,7 @@ LL |     S::a(&S);
            candidate #1: `method::A`
 
 error[E0599]: no function or associated item named `b` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:90:5
+  --> $DIR/trait-item-privacy.rs:80:5
    |
 LL | struct S;
    | --------- function or associated item `b` not found for this
@@ -61,13 +61,13 @@ LL | use method::B;
    |
 
 error[E0624]: method `a` is private
-  --> $DIR/trait-item-privacy.rs:94:5
+  --> $DIR/trait-item-privacy.rs:84:5
    |
 LL |     C::a(&S); //~ ERROR method `a` is private
    |     ^^^^
 
 error[E0599]: no associated item named `A` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:107:5
+  --> $DIR/trait-item-privacy.rs:97:5
    |
 LL | struct S;
    | --------- associated item `A` not found for this
@@ -80,7 +80,7 @@ LL |     S::A; //~ ERROR no associated item named `A` found for type `S` in the 
            candidate #1: `assoc_const::A`
 
 error[E0599]: no associated item named `B` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:108:5
+  --> $DIR/trait-item-privacy.rs:98:5
    |
 LL | struct S;
    | --------- associated item `B` not found for this
@@ -95,37 +95,37 @@ LL | use assoc_const::B;
    |
 
 error[E0624]: associated constant `A` is private
-  --> $DIR/trait-item-privacy.rs:111:5
+  --> $DIR/trait-item-privacy.rs:101:5
    |
 LL |     C::A; //~ ERROR associated constant `A` is private
    |     ^^^^
 
 error[E0277]: the trait bound `dyn assoc_const::C: assoc_const::A` is not satisfied
-  --> $DIR/trait-item-privacy.rs:111:5
+  --> $DIR/trait-item-privacy.rs:101:5
    |
 LL |     C::A; //~ ERROR associated constant `A` is private
    |     ^^^^ the trait `assoc_const::A` is not implemented for `dyn assoc_const::C`
    |
 note: required by `assoc_const::A::A`
-  --> $DIR/trait-item-privacy.rs:35:9
+  --> $DIR/trait-item-privacy.rs:25:9
    |
 LL |         const A: u8 = 0;
    |         ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `dyn assoc_const::C: assoc_const::B` is not satisfied
-  --> $DIR/trait-item-privacy.rs:114:5
+  --> $DIR/trait-item-privacy.rs:104:5
    |
 LL |     C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
    |     ^^^^ the trait `assoc_const::B` is not implemented for `dyn assoc_const::C`
    |
 note: required by `assoc_const::B::B`
-  --> $DIR/trait-item-privacy.rs:39:9
+  --> $DIR/trait-item-privacy.rs:29:9
    |
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^^^^^^
 
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
-  --> $DIR/trait-item-privacy.rs:111:5
+  --> $DIR/trait-item-privacy.rs:101:5
    |
 LL |     C::A; //~ ERROR associated constant `A` is private
    |     ^^^^ the trait `assoc_const::C` cannot be made into an object
@@ -135,7 +135,7 @@ LL |     C::A; //~ ERROR associated constant `A` is private
    = note: the trait cannot contain associated consts like `A`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/trait-item-privacy.rs:127:12
+  --> $DIR/trait-item-privacy.rs:117:12
    |
 LL |     let _: S::A; //~ ERROR ambiguous associated type
    |            ^^^^ ambiguous associated type
@@ -143,7 +143,7 @@ LL |     let _: S::A; //~ ERROR ambiguous associated type
    = note: specify the type using the syntax `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/trait-item-privacy.rs:128:12
+  --> $DIR/trait-item-privacy.rs:118:12
    |
 LL |     let _: S::B; //~ ERROR ambiguous associated type
    |            ^^^^ ambiguous associated type
@@ -151,7 +151,7 @@ LL |     let _: S::B; //~ ERROR ambiguous associated type
    = note: specify the type using the syntax `<S as Trait>::B`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/trait-item-privacy.rs:129:12
+  --> $DIR/trait-item-privacy.rs:119:12
    |
 LL |     let _: S::C; //~ ERROR ambiguous associated type
    |            ^^^^ ambiguous associated type
@@ -159,13 +159,13 @@ LL |     let _: S::C; //~ ERROR ambiguous associated type
    = note: specify the type using the syntax `<S as Trait>::C`
 
 error: associated type `A` is private
-  --> $DIR/trait-item-privacy.rs:131:12
+  --> $DIR/trait-item-privacy.rs:121:12
    |
 LL |     let _: T::A; //~ ERROR associated type `A` is private
    |            ^^^^
 
 error: associated type `A` is private
-  --> $DIR/trait-item-privacy.rs:140:9
+  --> $DIR/trait-item-privacy.rs:130:9
    |
 LL |         A = u8, //~ ERROR associated type `A` is private
    |         ^^^^^^

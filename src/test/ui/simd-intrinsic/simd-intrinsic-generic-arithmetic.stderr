@@ -1,83 +1,83 @@
 error[E0511]: invalid monomorphization of `simd_add` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:72:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:62:9
    |
 LL |         simd_add(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_sub` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:74:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:64:9
    |
 LL |         simd_sub(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_mul` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:76:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:66:9
    |
 LL |         simd_mul(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_div` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:78:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:68:9
    |
 LL |         simd_div(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shl` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:80:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:70:9
    |
 LL |         simd_shl(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shr` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:82:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:72:9
    |
 LL |         simd_shr(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:84:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:74:9
    |
 LL |         simd_and(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_or` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:86:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:76:9
    |
 LL |         simd_or(0, 0);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_xor` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:88:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:78:9
    |
 LL |         simd_xor(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shl` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:92:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:82:9
    |
 LL |         simd_shl(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shr` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:94:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:84:9
    |
 LL |         simd_shr(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:96:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:86:9
    |
 LL |         simd_and(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_or` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:98:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:88:9
    |
 LL |         simd_or(z, z);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_xor` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:100:9
+  --> $DIR/simd-intrinsic-generic-arithmetic.rs:90:9
    |
 LL |         simd_xor(z, z);
    |         ^^^^^^^^^^^^^^

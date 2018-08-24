@@ -1,5 +1,5 @@
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
-  --> $DIR/modrs_mod/inner_foors_mod.rs:11:9
+  --> $DIR/modrs_mod/inner_foors_mod.rs:1:9
    |
 LL | pub mod innest;
    |         ^^^^^^
@@ -8,7 +8,7 @@ LL | pub mod innest;
    = help: on stable builds, rename this file to inner_foors_mod/mod.rs
 
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
-  --> $DIR/foors_mod.rs:13:9
+  --> $DIR/foors_mod.rs:4:9
    |
 LL | pub mod inner_modrs_mod;
    |         ^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | pub mod inner_modrs_mod;
    = help: on stable builds, rename this file to foors_mod/mod.rs
 
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
-  --> $DIR/foors_mod.rs:14:9
+  --> $DIR/foors_mod.rs:5:9
    |
 LL | pub mod inner_foors_mod;
    |         ^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | pub mod inner_foors_mod;
    = help: on stable builds, rename this file to foors_mod/mod.rs
 
 error[E0658]: mod statements in non-mod.rs files are unstable (see issue #44660)
-  --> $DIR/foors_mod/inner_foors_mod.rs:11:9
+  --> $DIR/foors_mod/inner_foors_mod.rs:1:9
    |
 LL | pub mod innest;
    |         ^^^^^^

@@ -1,5 +1,5 @@
 error: `std` import is ambiguous
-  --> $DIR/ambiguity-nested.rs:18:13
+  --> $DIR/ambiguity-nested.rs:8:13
    |
 LL |       pub use std::io;
    |               ^^^ can refer to external crate `::std`

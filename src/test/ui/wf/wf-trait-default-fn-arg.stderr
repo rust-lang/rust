@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
-  --> $DIR/wf-trait-default-fn-arg.rs:21:5
+  --> $DIR/wf-trait-default-fn-arg.rs:11:5
    |
 LL | /     fn bar(&self, x: &Bar<Self>) {
 LL | |         //~^ ERROR E0277
@@ -10,7 +10,7 @@ LL | |     }
    |
    = help: consider adding a `where Self: std::cmp::Eq` bound
 note: required by `Bar`
-  --> $DIR/wf-trait-default-fn-arg.rs:18:1
+  --> $DIR/wf-trait-default-fn-arg.rs:8:1
    |
 LL | struct Bar<T:Eq+?Sized> { value: Box<T> }
    | ^^^^^^^^^^^^^^^^^^^^^^^

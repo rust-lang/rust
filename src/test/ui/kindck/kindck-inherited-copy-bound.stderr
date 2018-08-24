@@ -1,18 +1,18 @@
 error[E0277]: the trait bound `std::boxed::Box<{integer}>: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-inherited-copy-bound.rs:28:5
+  --> $DIR/kindck-inherited-copy-bound.rs:18:5
    |
 LL |     take_param(&x); //~ ERROR E0277
    |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
    |
    = note: required because of the requirements on the impl of `Foo` for `std::boxed::Box<{integer}>`
 note: required by `take_param`
-  --> $DIR/kindck-inherited-copy-bound.rs:24:1
+  --> $DIR/kindck-inherited-copy-bound.rs:14:1
    |
 LL | fn take_param<T:Foo>(foo: &T) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/kindck-inherited-copy-bound.rs:34:19
+  --> $DIR/kindck-inherited-copy-bound.rs:24:19
    |
 LL |     let z = &x as &Foo;
    |                   ^^^^ the trait `Foo` cannot be made into an object
@@ -20,7 +20,7 @@ LL |     let z = &x as &Foo;
    = note: the trait cannot require that `Self : Sized`
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/kindck-inherited-copy-bound.rs:34:13
+  --> $DIR/kindck-inherited-copy-bound.rs:24:13
    |
 LL |     let z = &x as &Foo;
    |             ^^ the trait `Foo` cannot be made into an object

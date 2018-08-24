@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `u.n1`
-  --> $DIR/borrowck-union-move.rs:36:17
+  --> $DIR/borrowck-union-move.rs:26:17
    |
 LL |             let a = u.n1;
    |                 - value moved here
@@ -9,7 +9,7 @@ LL |             let a = u.n1; //~ ERROR use of moved value: `u.n1`
    = note: move occurs because `u.n1` has type `NonCopy`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value: `u`
-  --> $DIR/borrowck-union-move.rs:41:17
+  --> $DIR/borrowck-union-move.rs:31:17
    |
 LL |             let a = u.n1;
    |                 - value moved here
@@ -19,7 +19,7 @@ LL |             let a = u; //~ ERROR use of partially moved value: `u`
    = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u.n2`
-  --> $DIR/borrowck-union-move.rs:46:17
+  --> $DIR/borrowck-union-move.rs:36:17
    |
 LL |             let a = u.n1;
    |                 - value moved here
@@ -29,7 +29,7 @@ LL |             let a = u.n2; //~ ERROR use of moved value: `u.n2`
    = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u.n`
-  --> $DIR/borrowck-union-move.rs:73:17
+  --> $DIR/borrowck-union-move.rs:63:17
    |
 LL |             let a = u.n;
    |                 - value moved here
@@ -39,7 +39,7 @@ LL |             let a = u.n; //~ ERROR use of moved value: `u.n`
    = note: move occurs because `u.n` has type `NonCopy`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u.c`
-  --> $DIR/borrowck-union-move.rs:78:17
+  --> $DIR/borrowck-union-move.rs:68:17
    |
 LL |             let a = u.n;
    |                 - value moved here
@@ -49,7 +49,7 @@ LL |             let a = u.c; //~ ERROR use of moved value: `u.c`
    = note: move occurs because `u.c` has type `[type error]`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value: `u`
-  --> $DIR/borrowck-union-move.rs:93:17
+  --> $DIR/borrowck-union-move.rs:83:17
    |
 LL |             let a = u.n;
    |                 - value moved here

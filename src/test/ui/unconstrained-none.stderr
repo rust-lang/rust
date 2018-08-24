@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/unconstrained-none.rs:14:5
+  --> $DIR/unconstrained-none.rs:4:5
    |
 LL |     None; //~ ERROR type annotations needed [E0282]
    |     ^^^^ cannot infer type for `T`

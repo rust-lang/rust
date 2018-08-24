@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `bar`
-  --> $DIR/feature-gate-uniform-paths.rs:12:13
+  --> $DIR/feature-gate-uniform-paths.rs:2:13
    |
 LL |     pub use bar::Bar;
    |             ^^^ Did you mean `self::bar`?

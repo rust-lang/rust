@@ -1,5 +1,5 @@
 error[E0665]: `Default` cannot be derived for enums, only structs
-  --> $DIR/E0665.rs:11:10
+  --> $DIR/E0665.rs:1:10
    |
 LL | #[derive(Default)] //~ ERROR E0665
    |          ^^^^^^^

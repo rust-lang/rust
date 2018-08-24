@@ -1,5 +1,5 @@
 error[E0658]: the `#[needs_allocator]` attribute is an experimental feature
-  --> $DIR/feature-gate-needs-allocator.rs:11:1
+  --> $DIR/feature-gate-needs-allocator.rs:1:1
    |
 LL | #![needs_allocator] //~ ERROR the `#[needs_allocator]` attribute is
    | ^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0597]: `raw_lines` does not live long enough
-  --> $DIR/drop-with-active-borrows-2.rs:13:5
+  --> $DIR/drop-with-active-borrows-2.rs:3:5
    |
 LL |     raw_lines.iter().map(|l| l.trim()).collect()
    |     ^^^^^^^^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     //~^ ERROR `raw_lines` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 11:24...
-  --> $DIR/drop-with-active-borrows-2.rs:11:24
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 1:24...
+  --> $DIR/drop-with-active-borrows-2.rs:1:24
    |
 LL | fn read_lines_borrowed<'a>() -> Vec<&'a str> {
    |                        ^^

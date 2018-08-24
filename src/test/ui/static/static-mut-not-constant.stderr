@@ -1,5 +1,5 @@
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/static-mut-not-constant.rs:13:28
+  --> $DIR/static-mut-not-constant.rs:3:28
    |
 LL | static mut a: Box<isize> = box 3;
    |                            ^^^^^ allocation not allowed in statics

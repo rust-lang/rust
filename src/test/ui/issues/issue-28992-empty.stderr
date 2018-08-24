@@ -1,11 +1,11 @@
 error[E0532]: expected tuple struct/variant, found constant `C1`
-  --> $DIR/issue-28992-empty.rs:23:12
+  --> $DIR/issue-28992-empty.rs:13:12
    |
 LL |     if let C1(..) = 0 {} //~ ERROR expected tuple struct/variant, found constant `C1`
    |            ^^ not a tuple struct/variant
 
 error[E0164]: expected tuple struct/variant, found associated constant `<S>::C2`
-  --> $DIR/issue-28992-empty.rs:24:12
+  --> $DIR/issue-28992-empty.rs:14:12
    |
 LL |     if let S::C2(..) = 0 {}
    |            ^^^^^^^^^ not a tuple variant or struct

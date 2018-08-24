@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/or-patter-mismatch.rs:15:68
+  --> $DIR/or-patter-mismatch.rs:5:68
    |
 LL | fn main() { match blah::a(1, 1, 2) { blah::a(_, x, y) | blah::b(x, y) => { } } }
    |                                                                    ^ expected usize, found isize

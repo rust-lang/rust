@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/region-bound-extra-bound-in-inherent-impl.rs:26:1
+  --> $DIR/region-bound-extra-bound-in-inherent-impl.rs:16:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

@@ -3,7 +3,7 @@ error[E0601]: `main` function not found in crate `enum_discrim_autosizing`
    = note: consider adding a `main` function to `$DIR/enum-discrim-autosizing.rs`
 
 error[E0081]: discriminant value `0` already exists
-  --> $DIR/enum-discrim-autosizing.rs:18:12
+  --> $DIR/enum-discrim-autosizing.rs:8:12
    |
 LL |     Au64 = 0,
    |            - first use of `0`

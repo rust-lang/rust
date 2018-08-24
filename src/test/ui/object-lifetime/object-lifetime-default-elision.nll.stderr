@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/object-lifetime-default-elision.rs:81:5
+  --> $DIR/object-lifetime-default-elision.rs:71:5
    |
 LL |     ss
    |     ^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/object-lifetime-default-elision.rs:64:53
+  --> $DIR/object-lifetime-default-elision.rs:54:53
    |
 LL |   fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
    |  __________--_--______________________________________^

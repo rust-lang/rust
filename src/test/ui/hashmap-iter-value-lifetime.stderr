@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `my_stuff` as mutable because it is also borrowed as immutable
-  --> $DIR/hashmap-iter-value-lifetime.rs:17:5
+  --> $DIR/hashmap-iter-value-lifetime.rs:7:5
    |
 LL |     let (_, thing) = my_stuff.iter().next().unwrap();
    |                      -------- immutable borrow occurs here

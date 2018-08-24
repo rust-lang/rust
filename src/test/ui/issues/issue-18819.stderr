@@ -1,5 +1,5 @@
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/issue-18819.rs:26:5
+  --> $DIR/issue-18819.rs:16:5
    |
 LL | fn print_x(_: &Foo<Item=bool>, extra: &str) {
    | ------------------------------------------- defined here

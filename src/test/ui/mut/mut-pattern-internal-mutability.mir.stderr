@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/mut-pattern-internal-mutability.rs:18:5
+  --> $DIR/mut-pattern-internal-mutability.rs:8:5
    |
 LL |     let &mut x = foo;
    |              -
@@ -10,7 +10,7 @@ LL |     x += 1; //[ast]~ ERROR cannot assign twice to immutable variable
    |     ^^^^^^ cannot assign twice to immutable variable
 
 error[E0506]: cannot assign to `*foo` because it is borrowed
-  --> $DIR/mut-pattern-internal-mutability.rs:27:5
+  --> $DIR/mut-pattern-internal-mutability.rs:17:5
    |
 LL |     let &mut ref x = foo;
    |              ----- borrow of `*foo` occurs here

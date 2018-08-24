@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-despite-same-free-region.rs:54:21
+  --> $DIR/propagate-despite-same-free-region.rs:44:21
    |
 LL |             let p = x.get();
    |                     ^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-despite-same-free-region.rs:52:9
+  --> $DIR/propagate-despite-same-free-region.rs:42:9
    |
 LL | /         |_outlives1, _outlives2, x, y| {
 LL | |             // Only works if 'x: 'y:
@@ -22,7 +22,7 @@ LL | |         },
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/propagate-despite-same-free-region.rs:49:1
+  --> $DIR/propagate-despite-same-free-region.rs:39:1
    |
 LL | / fn supply<'a>(cell_a: Cell<&'a u32>) {
 LL | |     establish_relationships(

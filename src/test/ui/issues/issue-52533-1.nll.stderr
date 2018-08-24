@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-52533-1.rs:19:18
+  --> $DIR/issue-52533-1.rs:9:18
    |
 LL |     gimme(|x, y| y)
    |                  ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52533-1.rs:19:18
+  --> $DIR/issue-52533-1.rs:9:18
    |
 LL |     gimme(|x, y| y)
    |            -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`

@@ -1,5 +1,5 @@
 error[E0624]: method `foo` is private
-  --> $DIR/private-impl-method.rs:30:7
+  --> $DIR/private-impl-method.rs:20:7
    |
 LL |     s.foo();    //~ ERROR method `foo` is private
    |       ^^^

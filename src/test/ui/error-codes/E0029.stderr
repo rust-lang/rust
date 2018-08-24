@@ -1,5 +1,5 @@
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/E0029.rs:15:9
+  --> $DIR/E0029.rs:5:9
    |
 LL |         "hello" ..= "world" => {}
    |         ^^^^^^^^^^^^^^^^^^^ ranges require char or numeric types

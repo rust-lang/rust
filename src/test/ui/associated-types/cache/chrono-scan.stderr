@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/chrono-scan.rs:39:1
+  --> $DIR/chrono-scan.rs:29:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

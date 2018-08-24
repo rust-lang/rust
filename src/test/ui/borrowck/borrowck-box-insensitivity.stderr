@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-box-insensitivity.rs:37:9
+  --> $DIR/borrowck-box-insensitivity.rs:27:9
    |
 LL |     let _x = a.x;
    |         -- value moved here
@@ -10,7 +10,7 @@ LL |     let _y = a.y; //~ ERROR use of moved
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-box-insensitivity.rs:46:9
+  --> $DIR/borrowck-box-insensitivity.rs:36:9
    |
 LL |     let _x = a.x;
    |         -- value moved here
@@ -21,7 +21,7 @@ LL |     let _y = a.y; //~ ERROR use of moved
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-box-insensitivity.rs:55:15
+  --> $DIR/borrowck-box-insensitivity.rs:45:15
    |
 LL |     let _x = a.x;
    |         -- value moved here
@@ -32,7 +32,7 @@ LL |     let _y = &a.y; //~ ERROR use of moved
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:63:9
+  --> $DIR/borrowck-box-insensitivity.rs:53:9
    |
 LL |     let _x = &a.x;
    |               --- borrow of `a.x` occurs here
@@ -40,7 +40,7 @@ LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
 error[E0503]: cannot use `a.y` because it was mutably borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:71:9
+  --> $DIR/borrowck-box-insensitivity.rs:61:9
    |
 LL |     let _x = &mut a.x;
    |                   --- borrow of `a.x` occurs here
@@ -48,7 +48,7 @@ LL |     let _y = a.y; //~ ERROR cannot use
    |         ^^ use of borrowed `a.x`
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:77:9
+  --> $DIR/borrowck-box-insensitivity.rs:67:9
    |
 LL |     let _x = &mut a.x;
    |                   --- borrow of `a.x` occurs here
@@ -56,7 +56,7 @@ LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
 error[E0502]: cannot borrow `a` (via `a.y`) as immutable because `a` is also borrowed as mutable (via `a.x`)
-  --> $DIR/borrowck-box-insensitivity.rs:85:15
+  --> $DIR/borrowck-box-insensitivity.rs:75:15
    |
 LL |     let _x = &mut a.x;
    |                   --- mutable borrow occurs here (via `a.x`)
@@ -67,7 +67,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `a` (via `a.y`) as mutable because `a` is also borrowed as immutable (via `a.x`)
-  --> $DIR/borrowck-box-insensitivity.rs:92:19
+  --> $DIR/borrowck-box-insensitivity.rs:82:19
    |
 LL |     let _x = &a.x;
    |               --- immutable borrow occurs here (via `a.x`)
@@ -78,7 +78,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0382]: use of collaterally moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:100:9
+  --> $DIR/borrowck-box-insensitivity.rs:90:9
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
@@ -89,7 +89,7 @@ LL |     let _y = a.y; //~ ERROR use of collaterally moved
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of collaterally moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:108:9
+  --> $DIR/borrowck-box-insensitivity.rs:98:9
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
@@ -100,7 +100,7 @@ LL |     let _y = a.y; //~ ERROR use of collaterally moved
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of collaterally moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:116:15
+  --> $DIR/borrowck-box-insensitivity.rs:106:15
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
@@ -111,7 +111,7 @@ LL |     let _y = &a.y; //~ ERROR use of collaterally moved
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:124:9
+  --> $DIR/borrowck-box-insensitivity.rs:114:9
    |
 LL |     let _x = &a.x.x;
    |               ----- borrow of `a.x.x` occurs here
@@ -120,7 +120,7 @@ LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
 error[E0503]: cannot use `a.y` because it was mutably borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:132:9
+  --> $DIR/borrowck-box-insensitivity.rs:122:9
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- borrow of `a.x.x` occurs here
@@ -128,7 +128,7 @@ LL |     let _y = a.y; //~ ERROR cannot use
    |         ^^ use of borrowed `a.x.x`
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
-  --> $DIR/borrowck-box-insensitivity.rs:138:9
+  --> $DIR/borrowck-box-insensitivity.rs:128:9
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- borrow of `a.x.x` occurs here
@@ -136,7 +136,7 @@ LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
 error[E0502]: cannot borrow `a.y` as immutable because `a.x.x` is also borrowed as mutable
-  --> $DIR/borrowck-box-insensitivity.rs:147:15
+  --> $DIR/borrowck-box-insensitivity.rs:137:15
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- mutable borrow occurs here
@@ -148,7 +148,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `a.y` as mutable because `a.x.x` is also borrowed as immutable
-  --> $DIR/borrowck-box-insensitivity.rs:155:19
+  --> $DIR/borrowck-box-insensitivity.rs:145:19
    |
 LL |     let _x = &a.x.x;
    |               ----- immutable borrow occurs here

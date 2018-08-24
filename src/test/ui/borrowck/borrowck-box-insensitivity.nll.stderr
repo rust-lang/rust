@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:46:14
+  --> $DIR/borrowck-box-insensitivity.rs:36:14
    |
 LL |     let _x = a.x;
    |              --- value moved here
@@ -10,7 +10,7 @@ LL |     let _y = a.y; //~ ERROR use of moved
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:108:14
+  --> $DIR/borrowck-box-insensitivity.rs:98:14
    |
 LL |     let _x = a.x.x;
    |              ----- value moved here

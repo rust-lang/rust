@@ -1,5 +1,5 @@
 error[E0316]: nested quantification of lifetimes
-  --> $DIR/where-for-self.rs:25:26
+  --> $DIR/where-for-self.rs:15:26
    |
 LL |     where for<'a> &'a T: for<'b> Bar<'b>
    |                          ^^^^^^^^^^^^^^^

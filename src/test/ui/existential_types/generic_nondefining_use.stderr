@@ -1,5 +1,5 @@
 error: non-defining existential type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:19:1
+  --> $DIR/generic_nondefining_use.rs:8:1
    |
 LL | / fn cmp() -> Cmp<u32> { //~ ERROR non-defining existential type use in defining scope
 LL | |     5u32
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: used non-generic type u32 for generic parameter
-  --> $DIR/generic_nondefining_use.rs:16:22
+  --> $DIR/generic_nondefining_use.rs:5:22
    |
 LL | existential type Cmp<T>: 'static;
    |                      ^

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:16:27
+  --> $DIR/as-ref.rs:6:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
    |       -                   ^^^ expected &Foo, found struct `Foo`
@@ -10,7 +10,7 @@ LL |   opt.map(|arg| takes_ref(arg));
               found type `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:18:37
+  --> $DIR/as-ref.rs:8:37
    |
 LL |   opt.and_then(|arg| Some(takes_ref(arg)));
    |       -                             ^^^ expected &Foo, found struct `Foo`
@@ -21,7 +21,7 @@ LL |   opt.and_then(|arg| Some(takes_ref(arg)));
               found type `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:21:27
+  --> $DIR/as-ref.rs:11:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
    |       -                   ^^^ expected &Foo, found struct `Foo`
@@ -32,7 +32,7 @@ LL |   opt.map(|arg| takes_ref(arg));
               found type `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:23:35
+  --> $DIR/as-ref.rs:13:35
    |
 LL |   opt.and_then(|arg| Ok(takes_ref(arg)));
    |       -                           ^^^ expected &Foo, found struct `Foo`

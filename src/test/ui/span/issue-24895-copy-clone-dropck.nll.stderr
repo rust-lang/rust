@@ -1,5 +1,5 @@
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24895-copy-clone-dropck.rs:37:14
+  --> $DIR/issue-24895-copy-clone-dropck.rs:27:14
    |
 LL |     d2 = D(S(&d1, "inner"), "d2");
    |              ^^^ borrowed value does not live long enough

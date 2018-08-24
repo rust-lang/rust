@@ -1,11 +1,11 @@
 error: unreachable statement
-  --> $DIR/issue-2150.rs:18:5
+  --> $DIR/issue-2150.rs:8:5
    |
 LL |     for x in &v { i += 1; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-2150.rs:11:9
+  --> $DIR/issue-2150.rs:1:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

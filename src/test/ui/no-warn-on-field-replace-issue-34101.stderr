@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/no-warn-on-field-replace-issue-34101.rs:53:1
+  --> $DIR/no-warn-on-field-replace-issue-34101.rs:43:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     inline();

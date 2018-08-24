@@ -1,5 +1,5 @@
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:24:1
+  --> $DIR/const-eval-overflow2c.rs:14:1
    |
 LL | / const VALS_I8: (i8,) =
 LL | |      //~^ ERROR this constant cannot be used
@@ -10,13 +10,13 @@ LL | |      );
    | |_______^
    |
 note: lint level defined here
-  --> $DIR/const-eval-overflow2c.rs:18:9
+  --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:30:1
+  --> $DIR/const-eval-overflow2c.rs:20:1
    |
 LL | / const VALS_I16: (i16,) =
 LL | |      //~^ ERROR this constant cannot be used
@@ -27,7 +27,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:36:1
+  --> $DIR/const-eval-overflow2c.rs:26:1
    |
 LL | / const VALS_I32: (i32,) =
 LL | |      //~^ ERROR this constant cannot be used
@@ -38,7 +38,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:42:1
+  --> $DIR/const-eval-overflow2c.rs:32:1
    |
 LL | / const VALS_I64: (i64,) =
 LL | |      //~^ ERROR this constant cannot be used
@@ -49,7 +49,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:48:1
+  --> $DIR/const-eval-overflow2c.rs:38:1
    |
 LL | / const VALS_U8: (u8,) =
 LL | |      //~^ ERROR this constant cannot be used
@@ -60,7 +60,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:54:1
+  --> $DIR/const-eval-overflow2c.rs:44:1
    |
 LL | / const VALS_U16: (u16,) = (
 LL | |      //~^ ERROR this constant cannot be used
@@ -70,7 +70,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:59:1
+  --> $DIR/const-eval-overflow2c.rs:49:1
    |
 LL | / const VALS_U32: (u32,) = (
 LL | |      //~^ ERROR this constant cannot be used
@@ -80,7 +80,7 @@ LL | |      );
    | |_______^
 
 error: this constant cannot be used
-  --> $DIR/const-eval-overflow2c.rs:64:1
+  --> $DIR/const-eval-overflow2c.rs:54:1
    |
 LL | / const VALS_U64: (u64,) =
 LL | |      //~^ ERROR this constant cannot be used

@@ -1,5 +1,5 @@
 error[E0277]: cannot add `std::option::Option<{integer}>` to `{integer}`
-  --> $DIR/binops.rs:12:7
+  --> $DIR/binops.rs:2:7
    |
 LL |     1 + Some(1); //~ ERROR cannot add `std::option::Option<{integer}>` to `{integer}`
    |       ^ no implementation for `{integer} + std::option::Option<{integer}>`
@@ -7,7 +7,7 @@ LL |     1 + Some(1); //~ ERROR cannot add `std::option::Option<{integer}>` to `
    = help: the trait `std::ops::Add<std::option::Option<{integer}>>` is not implemented for `{integer}`
 
 error[E0277]: cannot subtract `std::option::Option<{integer}>` from `usize`
-  --> $DIR/binops.rs:13:16
+  --> $DIR/binops.rs:3:16
    |
 LL |     2 as usize - Some(1); //~ ERROR cannot subtract `std::option::Option<{integer}>` from `usize`
    |                ^ no implementation for `usize - std::option::Option<{integer}>`
@@ -15,7 +15,7 @@ LL |     2 as usize - Some(1); //~ ERROR cannot subtract `std::option::Option<{i
    = help: the trait `std::ops::Sub<std::option::Option<{integer}>>` is not implemented for `usize`
 
 error[E0277]: cannot multiply `()` to `{integer}`
-  --> $DIR/binops.rs:14:7
+  --> $DIR/binops.rs:4:7
    |
 LL |     3 * (); //~ ERROR cannot multiply `()` to `{integer}`
    |       ^ no implementation for `{integer} * ()`
@@ -23,7 +23,7 @@ LL |     3 * (); //~ ERROR cannot multiply `()` to `{integer}`
    = help: the trait `std::ops::Mul<()>` is not implemented for `{integer}`
 
 error[E0277]: cannot divide `{integer}` by `&str`
-  --> $DIR/binops.rs:15:7
+  --> $DIR/binops.rs:5:7
    |
 LL |     4 / ""; //~ ERROR cannot divide `{integer}` by `&str`
    |       ^ no implementation for `{integer} / &str`
@@ -31,7 +31,7 @@ LL |     4 / ""; //~ ERROR cannot divide `{integer}` by `&str`
    = help: the trait `std::ops::Div<&str>` is not implemented for `{integer}`
 
 error[E0277]: can't compare `{integer}` with `std::string::String`
-  --> $DIR/binops.rs:16:7
+  --> $DIR/binops.rs:6:7
    |
 LL |     5 < String::new(); //~ ERROR can't compare `{integer}` with `std::string::String`
    |       ^ no implementation for `{integer} < std::string::String` and `{integer} > std::string::String`
@@ -39,7 +39,7 @@ LL |     5 < String::new(); //~ ERROR can't compare `{integer}` with `std::strin
    = help: the trait `std::cmp::PartialOrd<std::string::String>` is not implemented for `{integer}`
 
 error[E0277]: can't compare `{integer}` with `std::result::Result<{integer}, _>`
-  --> $DIR/binops.rs:17:7
+  --> $DIR/binops.rs:7:7
    |
 LL |     6 == Ok(1); //~ ERROR can't compare `{integer}` with `std::result::Result<{integer}, _>`
    |       ^^ no implementation for `{integer} == std::result::Result<{integer}, _>`

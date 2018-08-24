@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:12:24
+  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:2:24
    |
 LL |     let sixteen: f32 = 16;
    |                        ^^
@@ -11,7 +11,7 @@ LL |     let sixteen: f32 = 16;
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:15:38
+  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:5:38
    |
 LL |     let a_million_and_seventy: f64 = 1_000_070;
    |                                      ^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let a_million_and_seventy: f64 = 1_000_070;
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:18:30
+  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:8:30
    |
 LL |     let negative_nine: f32 = -9;
    |                              ^^
@@ -35,7 +35,7 @@ LL |     let negative_nine: f32 = -9;
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:25:30
+  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:15:30
    |
 LL |     let sixteen_again: f64 = 0x10;
    |                              ^^^^ expected f64, found integral variable
@@ -44,7 +44,7 @@ LL |     let sixteen_again: f64 = 0x10;
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:27:30
+  --> $DIR/issue-53280-expected-float-found-integer-literal.rs:17:30
    |
 LL |     let and_once_more: f32 = 0o20;
    |                              ^^^^ expected f32, found integral variable

@@ -1,11 +1,11 @@
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:20:9
+  --> $DIR/issue-41255.rs:10:9
    |
 LL |         5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |         ^^^
    |
 note: lint level defined here
-  --> $DIR/issue-41255.rs:15:11
+  --> $DIR/issue-41255.rs:5:11
    |
 LL | #![forbid(illegal_floating_point_literal_pattern)]
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![forbid(illegal_floating_point_literal_pattern)]
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:22:9
+  --> $DIR/issue-41255.rs:12:9
    |
 LL |         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patterns
    |         ^^^^^^
@@ -22,7 +22,7 @@ LL |         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patt
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:24:10
+  --> $DIR/issue-41255.rs:14:10
    |
 LL |         -5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |          ^^^
@@ -31,7 +31,7 @@ LL |         -5.0 => {}, //~ ERROR floating-point types cannot be used in patter
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:26:9
+  --> $DIR/issue-41255.rs:16:9
    |
 LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |         ^^^
@@ -40,7 +40,7 @@ LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:26:16
+  --> $DIR/issue-41255.rs:16:16
    |
 LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |                ^^^^
@@ -49,7 +49,7 @@ LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:30:9
+  --> $DIR/issue-41255.rs:20:9
    |
 LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |         ^^^^
@@ -58,7 +58,7 @@ LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used 
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:30:18
+  --> $DIR/issue-41255.rs:20:18
    |
 LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
    |                  ^^^^
@@ -67,7 +67,7 @@ LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used 
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:39:10
+  --> $DIR/issue-41255.rs:29:10
    |
 LL |         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
    |          ^^^^
@@ -76,7 +76,7 @@ LL |         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:46:18
+  --> $DIR/issue-41255.rs:36:18
    |
 LL |         Foo { x: 2.0 } => {}, //~ ERROR floating-point types cannot be used
    |                  ^^^

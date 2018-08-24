@@ -1,11 +1,11 @@
 error[E0416]: identifier `foo` is bound more than once in the same pattern
-  --> $DIR/issue-9725.rs:14:18
+  --> $DIR/issue-9725.rs:4:18
    |
 LL |     let A { foo, foo } = A { foo: 3 };
    |                  ^^^ used in a pattern more than once
 
 error[E0025]: field `foo` bound multiple times in the pattern
-  --> $DIR/issue-9725.rs:14:18
+  --> $DIR/issue-9725.rs:4:18
    |
 LL |     let A { foo, foo } = A { foo: 3 };
    |             ---  ^^^ multiple uses of `foo` in pattern

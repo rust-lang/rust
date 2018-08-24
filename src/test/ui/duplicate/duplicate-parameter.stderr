@@ -1,5 +1,5 @@
 error[E0415]: identifier `a` is bound more than once in this parameter list
-  --> $DIR/duplicate-parameter.rs:11:16
+  --> $DIR/duplicate-parameter.rs:1:16
    |
 LL | fn f(a: isize, a: isize) {}
    |                ^ used as parameter more than once

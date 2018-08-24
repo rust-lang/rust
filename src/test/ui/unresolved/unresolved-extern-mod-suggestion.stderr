@@ -1,5 +1,5 @@
 error[E0254]: the name `core` is defined multiple times
-  --> $DIR/unresolved-extern-mod-suggestion.rs:12:5
+  --> $DIR/unresolved-extern-mod-suggestion.rs:2:5
    |
 LL | extern crate core;
    | ------------------ previous import of the extern crate `core` here

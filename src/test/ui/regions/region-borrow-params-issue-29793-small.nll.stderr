@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:19:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:9:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL |     };
    |      - `x` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:19:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:9:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -21,7 +21,7 @@ LL |     };
    |      - `y` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:34:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:24:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL |     };
    |      - `x` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:34:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:24:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -43,7 +43,7 @@ LL |     };
    |      - `y` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:65:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:55:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -53,14 +53,14 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:10...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:64:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 54:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:54:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |          ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:65:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:55:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -70,14 +70,14 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:10...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:64:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 54:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:54:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |          ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:76:34
+  --> $DIR/region-borrow-params-issue-29793-small.rs:66:34
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------        ^ borrowed value does not live long enough
@@ -87,14 +87,14 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:10...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:75:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 65:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:65:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |          ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:76:45
+  --> $DIR/region-borrow-params-issue-29793-small.rs:66:45
    |
 LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ---------                   ^ borrowed value does not live long enough
@@ -104,14 +104,14 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:10...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:75:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 65:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:65:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |          ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:100:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:90:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -121,14 +121,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:99:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 89:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:89:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:100:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:90:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -138,14 +138,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:99:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 89:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:89:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:114:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:104:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -155,14 +155,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:113:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 103:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:103:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:114:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:104:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -172,14 +172,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:113:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 103:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:103:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:142:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:132:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -189,14 +189,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:141:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 131:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:131:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:142:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:132:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -206,14 +206,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:141:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 131:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:131:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:157:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:147:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -223,14 +223,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:156:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 146:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:146:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:157:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:147:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -240,14 +240,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:156:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 146:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:146:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:185:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:175:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -257,14 +257,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:184:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 174:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:174:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:185:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:175:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -274,14 +274,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:184:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 174:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:174:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:199:38
+  --> $DIR/region-borrow-params-issue-29793-small.rs:189:38
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------        ^ borrowed value does not live long enough
@@ -291,14 +291,14 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `x` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:198:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 188:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:188:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/region-borrow-params-issue-29793-small.rs:199:49
+  --> $DIR/region-borrow-params-issue-29793-small.rs:189:49
    |
 LL |             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ---------                   ^ borrowed value does not live long enough
@@ -308,8 +308,8 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - `y` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:14...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:198:14
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 188:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:188:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
    |              ^^

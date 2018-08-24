@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/method-call-lifetime-args-subst-index.rs:25:1
+  --> $DIR/method-call-lifetime-args-subst-index.rs:15:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

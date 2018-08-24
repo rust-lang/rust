@@ -1,11 +1,11 @@
 error[E0383]: partial reinitialization of uninitialized structure `t`
-  --> $DIR/borrowck-partial-reinit-1.rs:37:5
+  --> $DIR/borrowck-partial-reinit-1.rs:27:5
    |
 LL |     t.b = Some(u);
    |     ^^^^^^^^^^^^^
 
 error[E0383]: partial reinitialization of uninitialized structure `t`
-  --> $DIR/borrowck-partial-reinit-1.rs:43:5
+  --> $DIR/borrowck-partial-reinit-1.rs:33:5
    |
 LL |     t.0 = Some(u);
    |     ^^^^^^^^^^^^^

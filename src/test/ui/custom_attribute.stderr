@@ -1,5 +1,5 @@
 error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/custom_attribute.rs:13:3
+  --> $DIR/custom_attribute.rs:3:3
    |
 LL | #[foo] //~ ERROR The attribute `foo`
    |   ^^^
@@ -7,7 +7,7 @@ LL | #[foo] //~ ERROR The attribute `foo`
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/custom_attribute.rs:15:7
+  --> $DIR/custom_attribute.rs:5:7
    |
 LL |     #[foo] //~ ERROR The attribute `foo`
    |       ^^^
@@ -15,7 +15,7 @@ LL |     #[foo] //~ ERROR The attribute `foo`
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/custom_attribute.rs:17:7
+  --> $DIR/custom_attribute.rs:7:7
    |
 LL |     #[foo] //~ ERROR The attribute `foo`
    |       ^^^

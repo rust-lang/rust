@@ -1,5 +1,5 @@
 error: function is marked #[no_mangle], but not exported
-  --> $DIR/lint-unexported-no-mangle.rs:14:1
+  --> $DIR/lint-unexported-no-mangle.rs:4:1
    |
 LL |   fn foo() { //~ ERROR function is marked #[no_mangle], but not exported
    |   ^
@@ -12,7 +12,7 @@ LL | | }
    = note: requested on the command line with `-F private-no-mangle-fns`
 
 error: const items should never be #[no_mangle]
-  --> $DIR/lint-unexported-no-mangle.rs:19:1
+  --> $DIR/lint-unexported-no-mangle.rs:9:1
    |
 LL | const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    | -----^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    = note: requested on the command line with `-F no-mangle-const-items`
 
 error: const items should never be #[no_mangle]
-  --> $DIR/lint-unexported-no-mangle.rs:22:1
+  --> $DIR/lint-unexported-no-mangle.rs:12:1
    |
 LL | pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    | ---------^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL | pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mang
    | help: try a static value: `pub static`
 
 error: static is marked #[no_mangle], but not exported
-  --> $DIR/lint-unexported-no-mangle.rs:33:1
+  --> $DIR/lint-unexported-no-mangle.rs:23:1
    |
 LL | static PRIVATE_BAR: u64 = 1; //~ ERROR static is marked #[no_mangle], but not exported
    | -^^^^^^^^^^^^^^^^^^^^^^^^^^^

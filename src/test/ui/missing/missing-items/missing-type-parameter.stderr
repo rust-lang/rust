@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/missing-type-parameter.rs:14:5
+  --> $DIR/missing-type-parameter.rs:4:5
    |
 LL |     foo(); //~ ERROR type annotations needed
    |     ^^^ cannot infer type for `X`

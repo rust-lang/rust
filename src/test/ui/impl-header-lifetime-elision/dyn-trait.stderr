@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/dyn-trait.rs:32:16
+  --> $DIR/dyn-trait.rs:22:16
    |
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 31:26...
-  --> $DIR/dyn-trait.rs:31:26
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 21:26...
+  --> $DIR/dyn-trait.rs:21:26
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
    |                          ^^

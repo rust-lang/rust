@@ -1,5 +1,5 @@
 error[E0091]: type parameter `U` is unused
-  --> $DIR/generic_duplicate_param_use.rs:16:25
+  --> $DIR/generic_duplicate_param_use.rs:5:25
    |
 LL | existential type Two<T, U>: 'static; //~ ERROR type parameter `U` is unused
    |                         ^ unused type parameter

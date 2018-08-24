@@ -1,5 +1,5 @@
 error[E0253]: `foo` is not directly importable
-  --> $DIR/import-trait-method.rs:15:5
+  --> $DIR/import-trait-method.rs:5:5
    |
 LL | use Foo::foo; //~ ERROR not directly importable
    |     ^^^^^^^^ cannot be imported directly

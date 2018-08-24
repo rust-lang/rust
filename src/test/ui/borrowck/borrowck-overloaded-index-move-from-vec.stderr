@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of indexed content
-  --> $DIR/borrowck-overloaded-index-move-from-vec.rs:30:15
+  --> $DIR/borrowck-overloaded-index-move-from-vec.rs:20:15
    |
 LL |     let bad = v[0];
    |               ^^^^

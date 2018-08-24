@@ -1,5 +1,5 @@
 error[E0658]: #[unwind] is experimental
-  --> $DIR/feature-gate-unwind-attributes.rs:21:5
+  --> $DIR/feature-gate-unwind-attributes.rs:11:5
    |
 LL |     #[unwind] //~ ERROR #[unwind] is experimental
    |     ^^^^^^^^^

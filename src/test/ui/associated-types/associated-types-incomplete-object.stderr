@@ -1,23 +1,23 @@
 error[E0191]: the value of the associated type `B` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:33:26
+  --> $DIR/associated-types-incomplete-object.rs:23:26
    |
 LL |     let b = &42isize as &Foo<A=usize>;
    |                          ^^^^^^^^^^^^ missing associated type `B` value
 
 error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:36:26
+  --> $DIR/associated-types-incomplete-object.rs:26:26
    |
 LL |     let c = &42isize as &Foo<B=char>;
    |                          ^^^^^^^^^^^ missing associated type `A` value
 
 error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:39:26
+  --> $DIR/associated-types-incomplete-object.rs:29:26
    |
 LL |     let d = &42isize as &Foo;
    |                          ^^^ missing associated type `A` value
 
 error[E0191]: the value of the associated type `B` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:39:26
+  --> $DIR/associated-types-incomplete-object.rs:29:26
    |
 LL |     let d = &42isize as &Foo;
    |                          ^^^ missing associated type `B` value

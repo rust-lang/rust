@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of static item
-  --> $DIR/borrowck-move-out-of-static-item.rs:28:10
+  --> $DIR/borrowck-move-out-of-static-item.rs:18:10
    |
 LL |     test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
    |          ^^^ cannot move out of static item

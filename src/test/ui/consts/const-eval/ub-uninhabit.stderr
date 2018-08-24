@@ -1,5 +1,5 @@
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/ub-uninhabit.rs:19:1
+  --> $DIR/ub-uninhabit.rs:9:1
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { Foo { a: 1 }.b};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type

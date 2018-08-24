@@ -1,35 +1,35 @@
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/parameter_number_and_kind.rs:11:12
+  --> $DIR/parameter_number_and_kind.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:27:27
+  --> $DIR/parameter_number_and_kind.rs:17:27
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                           ^^^^^^^ lifetime parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:27:36
+  --> $DIR/parameter_number_and_kind.rs:17:36
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                                    ^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:30:26
+  --> $DIR/parameter_number_and_kind.rs:20:26
    |
 LL |     type FErr1 = Self::E<'static, 'static>; // Error
    |                          ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:32:29
+  --> $DIR/parameter_number_and_kind.rs:22:29
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
    |                             ^^^^^^^ lifetime parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:32:38
+  --> $DIR/parameter_number_and_kind.rs:22:38
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
    |                                      ^ type parameter not allowed

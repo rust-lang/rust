@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/type-arg-out-of-scope.rs:13:25
+  --> $DIR/type-arg-out-of-scope.rs:3:25
    |
 LL | fn foo<T>(x: T) {
    |        - type variable from outer function
@@ -9,7 +9,7 @@ LL |     fn bar(f: Box<FnMut(T) -> T>) { }
    |        help: try using a local type parameter instead: `bar<T>`
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/type-arg-out-of-scope.rs:13:31
+  --> $DIR/type-arg-out-of-scope.rs:3:31
    |
 LL | fn foo<T>(x: T) {
    |        - type variable from outer function

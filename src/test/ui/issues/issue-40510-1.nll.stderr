@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-40510-1.rs:18:9
+  --> $DIR/issue-40510-1.rs:8:9
    |
 LL |     || {
    |     --

@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence_local_err_tuple.rs:26:1
+  --> $DIR/coherence_local_err_tuple.rs:16:1
    |
 LL | impl lib::MyCopy for (MyType,) { } //~ ERROR E0117
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate

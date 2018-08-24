@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `i16`:
-  --> $DIR/coherence-overlap-upstream.rs:22:1
+  --> $DIR/coherence-overlap-upstream.rs:12:1
    |
 LL | impl<T> Foo for T where T: Remote {}
    | --------------------------------- first implementation here

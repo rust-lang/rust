@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:23:5
+  --> $DIR/stmt_expr_attrs_no_feature.rs:13:5
    |
 LL |     #[attr] //~ ERROR attributes on expressions are experimental
    |     ^^^^^^^
@@ -7,7 +7,7 @@ LL |     #[attr] //~ ERROR attributes on expressions are experimental
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:104:18
+  --> $DIR/stmt_expr_attrs_no_feature.rs:94:18
    |
 LL |     fn y(a: [u8; #[attr] 5]); //~ ERROR 15701
    |                  ^^^^^^^
@@ -15,7 +15,7 @@ LL |     fn y(a: [u8; #[attr] 5]); //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:111:19
+  --> $DIR/stmt_expr_attrs_no_feature.rs:101:19
    |
 LL |     const Y: u8 = #[attr] 5; //~ ERROR 15701
    |                   ^^^^^^^
@@ -23,7 +23,7 @@ LL |     const Y: u8 = #[attr] 5; //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:117:19
+  --> $DIR/stmt_expr_attrs_no_feature.rs:107:19
    |
 LL |     const Y: [u8; #[attr] 5]; //~ ERROR 15701
    |                   ^^^^^^^
@@ -31,7 +31,7 @@ LL |     const Y: [u8; #[attr] 5]; //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:123:18
+  --> $DIR/stmt_expr_attrs_no_feature.rs:113:18
    |
 LL |     field2: [u8; #[attr] 5] //~ ERROR 15701
    |                  ^^^^^^^
@@ -39,7 +39,7 @@ LL |     field2: [u8; #[attr] 5] //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:128:10
+  --> $DIR/stmt_expr_attrs_no_feature.rs:118:10
    |
 LL |     [u8; #[attr] 5] //~ ERROR 15701
    |          ^^^^^^^
@@ -47,7 +47,7 @@ LL |     [u8; #[attr] 5] //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:134:14
+  --> $DIR/stmt_expr_attrs_no_feature.rs:124:14
    |
 LL |         [u8; #[attr] 5] //~ ERROR 15701
    |              ^^^^^^^
@@ -55,7 +55,7 @@ LL |         [u8; #[attr] 5] //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:139:22
+  --> $DIR/stmt_expr_attrs_no_feature.rs:129:22
    |
 LL |         field2: [u8; #[attr] 5] //~ ERROR 15701
    |                      ^^^^^^^
@@ -63,7 +63,7 @@ LL |         field2: [u8; #[attr] 5] //~ ERROR 15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental. (see issue #15701)
-  --> $DIR/stmt_expr_attrs_no_feature.rs:147:14
+  --> $DIR/stmt_expr_attrs_no_feature.rs:137:14
    |
 LL |         6 => #[attr] (), //~ ERROR 15701
    |              ^^^^^^^

@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
-  --> $DIR/slice-mut-2.rs:17:18
+  --> $DIR/slice-mut-2.rs:7:18
    |
 LL |     let _ = &mut x[2..4]; //~ERROR cannot borrow immutable borrowed content `*x` as mutable
    |                  ^ cannot borrow as mutable

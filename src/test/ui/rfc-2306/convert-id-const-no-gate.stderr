@@ -1,5 +1,5 @@
 error: `std::convert::identity` is not yet stable as a const fn
-  --> $DIR/convert-id-const-no-gate.rs:16:22
+  --> $DIR/convert-id-const-no-gate.rs:6:22
    |
 LL |     const _FOO: u8 = ::std::convert::identity(42u8);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

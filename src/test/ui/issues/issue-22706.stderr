@@ -1,5 +1,5 @@
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/issue-22706.rs:11:29
+  --> $DIR/issue-22706.rs:1:29
    |
 LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
    |                             ^^^ type parameter not allowed

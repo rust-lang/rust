@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/region-object-lifetime-3.rs:28:1
+  --> $DIR/region-object-lifetime-3.rs:18:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

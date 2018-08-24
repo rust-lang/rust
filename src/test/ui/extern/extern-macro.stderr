@@ -1,5 +1,5 @@
 error: fail to resolve non-ident macro path
-  --> $DIR/extern-macro.rs:15:13
+  --> $DIR/extern-macro.rs:5:13
    |
 LL |     let _ = Foo::bar!(); //~ ERROR fail to resolve non-ident macro path
    |             ^^^^^^^^

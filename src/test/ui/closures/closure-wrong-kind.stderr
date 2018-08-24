@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/closure-wrong-kind.rs:20:19
+  --> $DIR/closure-wrong-kind.rs:10:19
    |
 LL |     let closure = |_| foo(x);  //~ ERROR E0525
    |                   ^^^^^^^^-^

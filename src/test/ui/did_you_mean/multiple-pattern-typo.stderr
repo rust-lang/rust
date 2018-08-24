@@ -1,5 +1,5 @@
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:14:15
+  --> $DIR/multiple-pattern-typo.rs:4:15
    |
 LL |         1 | 2 || 3 => (), //~ ERROR unexpected token `||` after pattern
    |               ^^ help: use a single `|` to specify multiple patterns: `|`

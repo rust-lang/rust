@@ -1,5 +1,5 @@
 error[E0658]: box pattern syntax is experimental (see issue #29641)
-  --> $DIR/feature-gate-box_patterns.rs:12:9
+  --> $DIR/feature-gate-box_patterns.rs:2:9
    |
 LL |     let box x = Box::new('c'); //~ ERROR box pattern syntax is experimental
    |         ^^^^^

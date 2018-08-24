@@ -1,16 +1,16 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
-  --> $DIR/normalization-bounds-error.rs:23:1
+  --> $DIR/normalization-bounds-error.rs:13:1
    |
 LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'd as defined on the function body at 23:14...
-  --> $DIR/normalization-bounds-error.rs:23:14
+note: first, the lifetime cannot outlive the lifetime 'd as defined on the function body at 13:14...
+  --> $DIR/normalization-bounds-error.rs:13:14
    |
 LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
    |              ^^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the function body at 23:18...
-  --> $DIR/normalization-bounds-error.rs:23:18
+note: ...but the lifetime must also be valid for the lifetime 'a as defined on the function body at 13:18...
+  --> $DIR/normalization-bounds-error.rs:13:18
    |
 LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
    |                  ^^

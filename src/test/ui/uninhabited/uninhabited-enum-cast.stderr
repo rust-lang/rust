@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `E` as `isize`
-  --> $DIR/uninhabited-enum-cast.rs:14:20
+  --> $DIR/uninhabited-enum-cast.rs:4:20
    |
 LL |     println!("{}", (e as isize).to_string());   //~ ERROR non-primitive cast
    |                    ^^^^^^^^^^^^

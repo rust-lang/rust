@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/projection-implied-bounds.rs:45:36
+  --> $DIR/projection-implied-bounds.rs:35:36
    |
 LL |     twice(value, |value_ref, item| invoke2(value_ref, item));
    |                                    ^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/projection-implied-bounds.rs:45:18
+  --> $DIR/projection-implied-bounds.rs:35:18
    |
 LL |     twice(value, |value_ref, item| invoke2(value_ref, item));
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

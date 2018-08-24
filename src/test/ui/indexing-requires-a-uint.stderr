@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
-  --> $DIR/indexing-requires-a-uint.rs:16:5
+  --> $DIR/indexing-requires-a-uint.rs:6:5
    |
 LL |     [0][0u8]; //~ ERROR: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
    |     ^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
@@ -8,7 +8,7 @@ LL |     [0][0u8]; //~ ERROR: the trait bound `u8: std::slice::SliceIndex<[{inte
    = note: required because of the requirements on the impl of `std::ops::Index<u8>` for `[{integer}]`
 
 error[E0308]: mismatched types
-  --> $DIR/indexing-requires-a-uint.rs:22:18
+  --> $DIR/indexing-requires-a-uint.rs:12:18
    |
 LL |     bar::<isize>(i);  // i should not be re-coerced back to an isize
    |                  ^ expected isize, found usize

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `(dyn AbstractRenderer + 'static)` cannot be known at compilation time
-  --> $DIR/issue-18107.rs:14:5
+  --> $DIR/issue-18107.rs:4:5
    |
 LL |     AbstractRenderer
    |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

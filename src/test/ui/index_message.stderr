@@ -1,5 +1,5 @@
 error[E0608]: cannot index into a value of type `()`
-  --> $DIR/index_message.rs:13:13
+  --> $DIR/index_message.rs:3:13
    |
 LL |     let _ = z[0]; //~ ERROR cannot index into a value of type `()`
    |             ^^^^ help: to access tuple elements, use: `z.0`

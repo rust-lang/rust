@@ -1,5 +1,5 @@
 error[E0658]: unsized tuple coercion is not stable enough for use and is subject to change (see issue #42877)
-  --> $DIR/feature-gate-unsized_tuple_coercion.rs:12:24
+  --> $DIR/feature-gate-unsized_tuple_coercion.rs:2:24
    |
 LL |     let _ : &(Send,) = &((),);
    |                        ^^^^^^

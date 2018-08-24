@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/move-into-dead-array-2.rs:24:5
+  --> $DIR/move-into-dead-array-2.rs:14:5
    |
 LL |     drop(a);
    |          - value moved here

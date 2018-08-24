@@ -1,5 +1,5 @@
 warning: unnecessary parentheses around function argument
-  --> $DIR/issue-47775-nested-macro-unnecessary-parens-arg.rs:32:83
+  --> $DIR/issue-47775-nested-macro-unnecessary-parens-arg.rs:22:83
    |
 LL |         #[allow(dead_code)] fn the_night_for_the_morrow() -> Option<isize> { Some((2)) }
    |                                                                                   ^^^ help: remove these parentheses
@@ -8,7 +8,7 @@ LL | and_the_heavens_reject_not!();
    | ------------------------------ in this macro invocation
    |
 note: lint level defined here
-  --> $DIR/issue-47775-nested-macro-unnecessary-parens-arg.rs:13:9
+  --> $DIR/issue-47775-nested-macro-unnecessary-parens-arg.rs:3:9
    |
 LL | #![warn(unused_parens)]
    |         ^^^^^^^^^^^^^

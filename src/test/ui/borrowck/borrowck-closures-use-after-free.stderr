@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*ptr` as immutable because `ptr` is also borrowed as mutable
-  --> $DIR/borrowck-closures-use-after-free.rs:32:9
+  --> $DIR/borrowck-closures-use-after-free.rs:22:9
    |
 LL |   let mut test = |foo: &Foo| {
    |                  ----------- mutable borrow occurs here

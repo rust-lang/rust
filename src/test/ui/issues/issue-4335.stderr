@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function
-  --> $DIR/issue-4335.rs:16:17
+  --> $DIR/issue-4335.rs:6:17
    |
 LL |     id(Box::new(|| *v))
    |                 ^^  - `v` is borrowed here
@@ -11,7 +11,7 @@ LL |     id(Box::new(move || *v))
    |                 ^^^^^^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-4335.rs:16:20
+  --> $DIR/issue-4335.rs:6:20
    |
 LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of borrowed content

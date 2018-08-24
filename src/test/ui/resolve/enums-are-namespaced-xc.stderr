@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `A` in module `namespaced_enums`
-  --> $DIR/enums-are-namespaced-xc.rs:15:31
+  --> $DIR/enums-are-namespaced-xc.rs:5:31
    |
 LL |     let _ = namespaced_enums::A;
    |                               ^ not found in `namespaced_enums`
@@ -9,7 +9,7 @@ LL | use namespaced_enums::Foo::A;
    |
 
 error[E0425]: cannot find function `B` in module `namespaced_enums`
-  --> $DIR/enums-are-namespaced-xc.rs:17:31
+  --> $DIR/enums-are-namespaced-xc.rs:7:31
    |
 LL |     let _ = namespaced_enums::B(10);
    |                               ^ not found in `namespaced_enums`
@@ -19,7 +19,7 @@ LL | use namespaced_enums::Foo::B;
    |
 
 error[E0422]: cannot find struct, variant or union type `C` in module `namespaced_enums`
-  --> $DIR/enums-are-namespaced-xc.rs:19:31
+  --> $DIR/enums-are-namespaced-xc.rs:9:31
    |
 LL |     let _ = namespaced_enums::C { a: 10 };
    |                               ^ not found in `namespaced_enums`

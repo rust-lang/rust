@@ -1,5 +1,5 @@
 error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
-  --> $DIR/feature-gate-custom_derive.rs:11:3
+  --> $DIR/feature-gate-custom_derive.rs:1:3
    |
 LL | #[derive_Clone]
    |   ^^^^^^^^^^^^

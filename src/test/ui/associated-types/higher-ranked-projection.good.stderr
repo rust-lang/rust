@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/higher-ranked-projection.rs:34:1
+  --> $DIR/higher-ranked-projection.rs:24:1
    |
 LL | / fn main() { //[good]~ ERROR compilation successful
 LL | |     foo(());

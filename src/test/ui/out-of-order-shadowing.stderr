@@ -1,5 +1,5 @@
 error: `bar` is already in scope
-  --> $DIR/out-of-order-shadowing.rs:15:1
+  --> $DIR/out-of-order-shadowing.rs:5:1
    |
 LL | define_macro!(bar);
    | ^^^^^^^^^^^^^^^^^^^

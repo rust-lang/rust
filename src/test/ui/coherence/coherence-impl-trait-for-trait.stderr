@@ -1,17 +1,17 @@
 error[E0371]: the object type `(dyn Baz + 'static)` automatically implements the trait `Foo`
-  --> $DIR/coherence-impl-trait-for-trait.rs:19:1
+  --> $DIR/coherence-impl-trait-for-trait.rs:9:1
    |
 LL | impl Foo for Baz { }   //~ ERROR E0371
    | ^^^^^^^^^^^^^^^^ `(dyn Baz + 'static)` automatically implements trait `Foo`
 
 error[E0371]: the object type `(dyn Baz + 'static)` automatically implements the trait `Bar`
-  --> $DIR/coherence-impl-trait-for-trait.rs:20:1
+  --> $DIR/coherence-impl-trait-for-trait.rs:10:1
    |
 LL | impl Bar for Baz { }   //~ ERROR E0371
    | ^^^^^^^^^^^^^^^^ `(dyn Baz + 'static)` automatically implements trait `Bar`
 
 error[E0371]: the object type `(dyn Baz + 'static)` automatically implements the trait `Baz`
-  --> $DIR/coherence-impl-trait-for-trait.rs:21:1
+  --> $DIR/coherence-impl-trait-for-trait.rs:11:1
    |
 LL | impl Baz for Baz { }   //~ ERROR E0371
    | ^^^^^^^^^^^^^^^^ `(dyn Baz + 'static)` automatically implements trait `Baz`

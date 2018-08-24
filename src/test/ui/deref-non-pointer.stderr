@@ -1,5 +1,5 @@
 error[E0614]: type `{integer}` cannot be dereferenced
-  --> $DIR/deref-non-pointer.rs:12:9
+  --> $DIR/deref-non-pointer.rs:2:9
    |
 LL |   match *1 { //~ ERROR: cannot be dereferenced
    |         ^^

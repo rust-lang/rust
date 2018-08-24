@@ -1,5 +1,5 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/static-vec-repeat-not-constant.rs:13:25
+  --> $DIR/static-vec-repeat-not-constant.rs:3:25
    |
 LL | static a: [isize; 2] = [foo(); 2];
    |                         ^^^^^

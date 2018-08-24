@@ -1,23 +1,39 @@
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:23:7
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:13:7
    |
 LL | #[cfg(target_has_atomic = "8")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:19:7
+   |
+LL | #[cfg(target_has_atomic = "8")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:24:7
+   |
+LL | #[cfg(target_has_atomic = "16")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:29:7
    |
-LL | #[cfg(target_has_atomic = "8")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[cfg(target_has_atomic = "16")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:34:7
    |
-LL | #[cfg(target_has_atomic = "16")]
+LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
@@ -25,7 +41,7 @@ LL | #[cfg(target_has_atomic = "16")]
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:39:7
    |
-LL | #[cfg(target_has_atomic = "16")]
+LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
@@ -33,7 +49,7 @@ LL | #[cfg(target_has_atomic = "16")]
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:44:7
    |
-LL | #[cfg(target_has_atomic = "32")]
+LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
@@ -41,7 +57,7 @@ LL | #[cfg(target_has_atomic = "32")]
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:49:7
    |
-LL | #[cfg(target_has_atomic = "32")]
+LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
@@ -49,37 +65,21 @@ LL | #[cfg(target_has_atomic = "32")]
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:54:7
    |
-LL | #[cfg(target_has_atomic = "64")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[cfg(target_has_atomic = "ptr")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:59:7
    |
-LL | #[cfg(target_has_atomic = "64")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
-
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:64:7
-   |
 LL | #[cfg(target_has_atomic = "ptr")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:69:7
-   |
-LL | #[cfg(target_has_atomic = "ptr")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
-
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:76:10
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:66:10
    |
 LL |     cfg!(target_has_atomic = "8");
    |          ^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |     cfg!(target_has_atomic = "8");
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:78:10
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:68:10
    |
 LL |     cfg!(target_has_atomic = "16");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     cfg!(target_has_atomic = "16");
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:80:10
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:70:10
    |
 LL |     cfg!(target_has_atomic = "32");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     cfg!(target_has_atomic = "32");
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:82:10
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:72:10
    |
 LL |     cfg!(target_has_atomic = "64");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL |     cfg!(target_has_atomic = "64");
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
-  --> $DIR/feature-gate-cfg-target-has-atomic.rs:84:10
+  --> $DIR/feature-gate-cfg-target-has-atomic.rs:74:10
    |
 LL |     cfg!(target_has_atomic = "ptr");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^

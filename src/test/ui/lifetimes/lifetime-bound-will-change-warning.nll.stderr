@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/lifetime-bound-will-change-warning.rs:44:13
+  --> $DIR/lifetime-bound-will-change-warning.rs:34:13
    |
 LL |     ref_obj(x) //~ ERROR mismatched types
    |             ^
 
 warning: not reporting region error due to nll
-  --> $DIR/lifetime-bound-will-change-warning.rs:49:18
+  --> $DIR/lifetime-bound-will-change-warning.rs:39:18
    |
 LL |     lib::ref_obj(x) //~ ERROR mismatched types
    |                  ^
 
 error: borrowed data escapes outside of function
-  --> $DIR/lifetime-bound-will-change-warning.rs:44:5
+  --> $DIR/lifetime-bound-will-change-warning.rs:34:5
    |
 LL | fn test2<'a>(x: &'a Box<Fn()+'a>) {
    |              - `x` is a reference that is only valid in the function body
@@ -20,7 +20,7 @@ LL |     ref_obj(x) //~ ERROR mismatched types
    |     ^^^^^^^^^^ `x` escapes the function body here
 
 error: borrowed data escapes outside of function
-  --> $DIR/lifetime-bound-will-change-warning.rs:49:5
+  --> $DIR/lifetime-bound-will-change-warning.rs:39:5
    |
 LL | fn test2cc<'a>(x: &'a Box<Fn()+'a>) {
    |                - `x` is a reference that is only valid in the function body

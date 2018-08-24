@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-closures-mut-and-imm.rs:31:14
+  --> $DIR/borrowck-closures-mut-and-imm.rs:21:14
    |
 LL |     let c1 = || x = 4;
    |              -- - previous borrow occurs due to use of `x` in closure
@@ -14,7 +14,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-closures-mut-and-imm.rs:39:14
+  --> $DIR/borrowck-closures-mut-and-imm.rs:29:14
    |
 LL |     let c1 = || set(&mut x);
    |              --          - previous borrow occurs due to use of `x` in closure
@@ -29,7 +29,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-closures-mut-and-imm.rs:47:14
+  --> $DIR/borrowck-closures-mut-and-imm.rs:37:14
    |
 LL |     let c1 = || set(&mut x);
    |              --          - previous borrow occurs due to use of `x` in closure
@@ -44,7 +44,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/borrowck-closures-mut-and-imm.rs:55:5
+  --> $DIR/borrowck-closures-mut-and-imm.rs:45:5
    |
 LL |     let c2 = || x * 5;
    |              -- borrow of `x` occurs here
@@ -52,7 +52,7 @@ LL |     x = 5; //[ast]~ ERROR cannot assign
    |     ^^^^^ assignment to borrowed `x` occurs here
 
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/borrowck-closures-mut-and-imm.rs:63:5
+  --> $DIR/borrowck-closures-mut-and-imm.rs:53:5
    |
 LL |     let c1 = || get(&x);
    |              -- borrow of `x` occurs here
@@ -60,7 +60,7 @@ LL |     x = 5; //[ast]~ ERROR cannot assign
    |     ^^^^^ assignment to borrowed `x` occurs here
 
 error[E0506]: cannot assign to `*x` because it is borrowed
-  --> $DIR/borrowck-closures-mut-and-imm.rs:71:5
+  --> $DIR/borrowck-closures-mut-and-imm.rs:61:5
    |
 LL |     let c1 = || get(&*x);
    |              -- borrow of `*x` occurs here
@@ -68,7 +68,7 @@ LL |     *x = 5; //[ast]~ ERROR cannot assign to `*x`
    |     ^^^^^^ assignment to borrowed `*x` occurs here
 
 error[E0506]: cannot assign to `*x.f` because it is borrowed
-  --> $DIR/borrowck-closures-mut-and-imm.rs:83:5
+  --> $DIR/borrowck-closures-mut-and-imm.rs:73:5
    |
 LL |     let c1 = || get(&*x.f);
    |              -- borrow of `*x.f` occurs here
@@ -76,7 +76,7 @@ LL |     *x.f = 5; //[ast]~ ERROR cannot assign to `*x.f`
    |     ^^^^^^^^ assignment to borrowed `*x.f` occurs here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-mut-and-imm.rs:95:14
+  --> $DIR/borrowck-closures-mut-and-imm.rs:85:14
    |
 LL |     let c1 = || get(&*x.f);
    |              --       - previous borrow occurs due to use of `x` in closure

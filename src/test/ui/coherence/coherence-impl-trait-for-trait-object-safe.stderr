@@ -1,5 +1,5 @@
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
-  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:17:6
+  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:7:6
    |
 LL | impl NotObjectSafe for NotObjectSafe { } //~ ERROR E0038
    |      ^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object

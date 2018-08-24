@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-trait-formatting.rs:16:17
+  --> $DIR/fn-trait-formatting.rs:6:17
    |
 LL |     let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
@@ -8,7 +8,7 @@ LL |     let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
               found type `std::boxed::Box<dyn std::ops::FnOnce(isize)>`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-trait-formatting.rs:20:17
+  --> $DIR/fn-trait-formatting.rs:10:17
    |
 LL |     let _: () = (box |_: isize, isize| {}) as Box<Fn(isize, isize)>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
@@ -17,7 +17,7 @@ LL |     let _: () = (box |_: isize, isize| {}) as Box<Fn(isize, isize)>;
               found type `std::boxed::Box<dyn std::ops::Fn(isize, isize)>`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-trait-formatting.rs:24:17
+  --> $DIR/fn-trait-formatting.rs:14:17
    |
 LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> isize>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
@@ -26,14 +26,14 @@ LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> is
               found type `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
 
 error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
-  --> $DIR/fn-trait-formatting.rs:29:5
+  --> $DIR/fn-trait-formatting.rs:19:5
    |
 LL |     needs_fn(1);
    |     ^^^^^^^^ expected an `Fn<(isize,)>` closure, found `{integer}`
    |
    = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `{integer}`
 note: required by `needs_fn`
-  --> $DIR/fn-trait-formatting.rs:13:1
+  --> $DIR/fn-trait-formatting.rs:3:1
    |
 LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

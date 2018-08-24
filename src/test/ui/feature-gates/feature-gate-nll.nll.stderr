@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/feature-gate-nll.rs:13:1
+  --> $DIR/feature-gate-nll.rs:4:1
    |
 LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
 LL | |     let mut x = 33;

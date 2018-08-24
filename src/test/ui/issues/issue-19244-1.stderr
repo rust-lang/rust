@@ -1,5 +1,5 @@
 error[E0609]: no field `1` on type `(usize,)`
-  --> $DIR/issue-19244-1.rs:14:24
+  --> $DIR/issue-19244-1.rs:4:24
    |
 LL |     let a: [isize; TUP.1];
    |                        ^

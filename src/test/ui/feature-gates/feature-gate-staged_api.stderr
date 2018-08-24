@@ -1,11 +1,11 @@
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/feature-gate-staged_api.rs:11:1
+  --> $DIR/feature-gate-staged_api.rs:1:1
    |
 LL | #![stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/feature-gate-staged_api.rs:18:1
+  --> $DIR/feature-gate-staged_api.rs:8:1
    |
 LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

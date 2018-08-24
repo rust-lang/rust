@@ -1,5 +1,5 @@
 error[E0045]: variadic function must have C or cdecl calling convention
-  --> $DIR/E0045.rs:11:17
+  --> $DIR/E0045.rs:1:17
    |
 LL | extern "Rust" { fn foo(x: u8, ...); }   //~ ERROR E0045
    |                 ^^^^^^^^^^^^^^^^^^^ variadics require C or cdecl calling convention

@@ -1,5 +1,5 @@
 error[E0255]: the name `XStruct` is defined multiple times
-  --> $DIR/variant-namespacing.rs:34:35
+  --> $DIR/variant-namespacing.rs:24:35
    |
 LL | type XStruct = u8;
    | ------------------ previous definition of the type `XStruct` here
@@ -14,7 +14,7 @@ LL | pub use variant_namespacing::XE::{XStruct as OtherXStruct, XTuple, XUnit};
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `XTuple` is defined multiple times
-  --> $DIR/variant-namespacing.rs:34:44
+  --> $DIR/variant-namespacing.rs:24:44
    |
 LL | type XTuple = u8;
    | ----------------- previous definition of the type `XTuple` here
@@ -29,7 +29,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple as OtherXTuple, XUnit};
    |                                            ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `XUnit` is defined multiple times
-  --> $DIR/variant-namespacing.rs:34:52
+  --> $DIR/variant-namespacing.rs:24:52
    |
 LL | type XUnit = u8;
    | ---------------- previous definition of the type `XUnit` here
@@ -44,7 +44,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit as OtherXUnit};
    |                                                    ^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Struct` is defined multiple times
-  --> $DIR/variant-namespacing.rs:38:13
+  --> $DIR/variant-namespacing.rs:28:13
    |
 LL | type Struct = u8;
    | ----------------- previous definition of the type `Struct` here
@@ -59,7 +59,7 @@ LL | pub use E::{Struct as OtherStruct, Tuple, Unit};
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Tuple` is defined multiple times
-  --> $DIR/variant-namespacing.rs:38:21
+  --> $DIR/variant-namespacing.rs:28:21
    |
 LL | type Tuple = u8;
    | ---------------- previous definition of the type `Tuple` here
@@ -74,7 +74,7 @@ LL | pub use E::{Struct, Tuple as OtherTuple, Unit};
    |                     ^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Unit` is defined multiple times
-  --> $DIR/variant-namespacing.rs:38:28
+  --> $DIR/variant-namespacing.rs:28:28
    |
 LL | type Unit = u8;
    | --------------- previous definition of the type `Unit` here

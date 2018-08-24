@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/issue-21174.rs:17:30
+  --> $DIR/issue-21174.rs:7:30
    |
 LL |     let new: T::B = unsafe { std::mem::transmute(value) };
    |                              ^^^^^^^^^^^^^^^^^^^

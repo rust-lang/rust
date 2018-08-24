@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/match-unresolved-one-arm.rs:14:9
+  --> $DIR/match-unresolved-one-arm.rs:4:9
    |
 LL |     let x = match () { //~ ERROR type annotations needed
    |         ^

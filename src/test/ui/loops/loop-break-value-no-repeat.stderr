@@ -1,5 +1,5 @@
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value-no-repeat.rs:22:9
+  --> $DIR/loop-break-value-no-repeat.rs:12:9
    |
 LL |         break 22 //~ ERROR `break` with value from a `for` loop
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block

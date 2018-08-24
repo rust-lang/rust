@@ -1,5 +1,5 @@
 error[E0503]: cannot use `*x` because it was mutably borrowed
-  --> $DIR/two-phase-nonrecv-autoref.rs:41:12
+  --> $DIR/two-phase-nonrecv-autoref.rs:31:12
    |
 LL |     foo(x, *x);
    |         -  ^^ use of borrowed `*x`
@@ -7,7 +7,7 @@ LL |     foo(x, *x);
    |         borrow of `*x` occurs here
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:70:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:60:11
    |
 LL |         f(f(10));
    |         - ^    - first borrow ends here
@@ -16,7 +16,7 @@ LL |         f(f(10));
    |         first mutable borrow occurs here
 
 error[E0382]: use of moved value: `*f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:79:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:69:11
    |
 LL |         f(f(10));
    |         - ^ value used here after move
@@ -26,7 +26,7 @@ LL |         f(f(10));
    = note: move occurs because `*f` has type `F`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:86:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:76:11
    |
 LL |         f(f(10));
    |         - ^    - first borrow ends here
@@ -35,7 +35,7 @@ LL |         f(f(10));
    |         first mutable borrow occurs here
 
 error[E0382]: use of moved value: `*f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:95:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
 LL |         f(f(10));
    |         - ^ value used here after move
@@ -45,7 +45,7 @@ LL |         f(f(10));
    = note: move occurs because `*f` has type `(dyn std::ops::FnOnce(i32) -> i32 + 'static)`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:139:28
+  --> $DIR/two-phase-nonrecv-autoref.rs:129:28
    |
 LL |     double_access(&mut a, &a);
    |                        -   ^- mutable borrow ends here
@@ -54,7 +54,7 @@ LL |     double_access(&mut a, &a);
    |                        mutable borrow occurs here
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:145:9
+  --> $DIR/two-phase-nonrecv-autoref.rs:135:9
    |
 LL |     a.m(a.i(10));
    |     -   ^      - mutable borrow ends here
@@ -63,7 +63,7 @@ LL |     a.m(a.i(10));
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:167:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:157:7
    |
 LL |     i[i[3]] = 4;
    |     - ^   - mutable borrow ends here
@@ -72,7 +72,7 @@ LL |     i[i[3]] = 4;
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:173:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:163:7
    |
 LL |     i[i[3]] = i[4];
    |     - ^   - mutable borrow ends here
@@ -81,7 +81,7 @@ LL |     i[i[3]] = i[4];
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `v` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:182:12
+  --> $DIR/two-phase-nonrecv-autoref.rs:172:12
    |
 LL |     v.push(v.len());
    |     -      ^      - mutable borrow ends here
@@ -90,7 +90,7 @@ LL |     v.push(v.len());
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:193:9
+  --> $DIR/two-phase-nonrecv-autoref.rs:183:9
    |
 LL |     s.m(s.i(10));
    |     -   ^      - mutable borrow ends here
@@ -99,7 +99,7 @@ LL |     s.m(s.i(10));
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `t` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:198:9
+  --> $DIR/two-phase-nonrecv-autoref.rs:188:9
    |
 LL |     t.m(t.i(10));
    |     -   ^      - mutable borrow ends here

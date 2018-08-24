@@ -1,17 +1,17 @@
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43023.rs:14:5
+  --> $DIR/issue-43023.rs:4:5
    |
 LL |     #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43023.rs:21:5
+  --> $DIR/issue-43023.rs:11:5
    |
 LL |     #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43023.rs:26:5
+  --> $DIR/issue-43023.rs:16:5
    |
 LL |     #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
    |     ^^^^^^^^^^^^^^^^

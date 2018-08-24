@@ -1,5 +1,5 @@
 error[E0599]: no method named `f` found for type `()` in the current scope
-  --> $DIR/shadowed-trait-methods.rs:23:8
+  --> $DIR/shadowed-trait-methods.rs:13:8
    |
 LL |     ().f() //~ ERROR no method
    |        ^

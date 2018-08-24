@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `std::vec::Vec<_>`:
-  --> $DIR/specialization-overlap.rs:15:1
+  --> $DIR/specialization-overlap.rs:5:1
    |
 LL | impl<T: Clone> Foo for T {}
    | ------------------------ first implementation here
@@ -7,7 +7,7 @@ LL | impl<T> Foo for Vec<T> {} //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::vec::Vec<_>`
 
 error[E0119]: conflicting implementations of trait `Bar` for type `(u8, u8)`:
-  --> $DIR/specialization-overlap.rs:19:1
+  --> $DIR/specialization-overlap.rs:9:1
    |
 LL | impl<T> Bar for (T, u8) {}
    | ----------------------- first implementation here
@@ -15,7 +15,7 @@ LL | impl<T> Bar for (u8, T) {} //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(u8, u8)`
 
 error[E0119]: conflicting implementations of trait `Baz<u8>` for type `u8`:
-  --> $DIR/specialization-overlap.rs:23:1
+  --> $DIR/specialization-overlap.rs:13:1
    |
 LL | impl<T> Baz<T> for u8 {}
    | --------------------- first implementation here
@@ -23,7 +23,7 @@ LL | impl<T> Baz<u8> for T {} //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
 error[E0119]: conflicting implementations of trait `Qux`:
-  --> $DIR/specialization-overlap.rs:27:1
+  --> $DIR/specialization-overlap.rs:17:1
    |
 LL | impl<T: Clone> Qux for T {}
    | ------------------------ first implementation here

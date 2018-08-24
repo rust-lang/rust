@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:24:10
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
    |
 LL | impl<'a> Foo<'static> for &'a i32 {
    |          ^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 24:6...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:24:6
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 14:6...
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:6
    |
 LL | impl<'a> Foo<'static> for &'a i32 {
    |      ^^
@@ -14,32 +14,32 @@ LL | impl<'a> Foo<'static> for &'a i32 {
               found Foo<'static>
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:24:10
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
    |
 LL | impl<'a> Foo<'static> for &'a i32 {
    |          ^^^^^^^^^^^^
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:29:13
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:13
    |
 LL | impl<'a,'b> Foo<'b> for &'a i64 {
    |             ^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 29:6...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:29:6
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 19:6...
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:6
    |
 LL | impl<'a,'b> Foo<'b> for &'a i64 {
    |      ^^
    = note: ...so that the types are compatible:
            expected Foo<'b>
               found Foo<'_>
-note: but, the lifetime must be valid for the lifetime 'b as defined on the impl at 29:9...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:29:9
+note: but, the lifetime must be valid for the lifetime 'b as defined on the impl at 19:9...
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:9
    |
 LL | impl<'a,'b> Foo<'b> for &'a i64 {
    |         ^^
 note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:29:13
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:13
    |
 LL | impl<'a,'b> Foo<'b> for &'a i64 {
    |             ^^^^^^^

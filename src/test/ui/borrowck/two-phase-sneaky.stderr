@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `v` as mutable more than once at a time
-  --> $DIR/two-phase-sneaky.rs:22:9
+  --> $DIR/two-phase-sneaky.rs:12:9
    |
 LL |     v[0].push_str({
    |     - first mutable borrow occurs here

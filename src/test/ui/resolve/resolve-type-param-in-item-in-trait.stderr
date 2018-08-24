@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/resolve-type-param-in-item-in-trait.rs:18:22
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:8:22
    |
 LL | trait TraitA<A> {
    |              - type variable from outer function
@@ -10,7 +10,7 @@ LL |             Variance(A)
    |                      ^ use of type variable from outer function
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/resolve-type-param-in-item-in-trait.rs:26:23
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:16:23
    |
 LL | trait TraitB<A> {
    |              - type variable from outer function
@@ -20,7 +20,7 @@ LL |         struct Foo<B>(A);
    |                       ^ use of type variable from outer function
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/resolve-type-param-in-item-in-trait.rs:33:28
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:23:28
    |
 LL | trait TraitC<A> {
    |              - type variable from outer function
@@ -30,7 +30,7 @@ LL |         struct Foo<B> { a: A }
    |                            ^ use of type variable from outer function
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/resolve-type-param-in-item-in-trait.rs:40:22
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:30:22
    |
 LL | trait TraitD<A> {
    |              - type variable from outer function

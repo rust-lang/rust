@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to immutable indexed content
-  --> $DIR/borrowck-overloaded-index-ref-index.rs:71:5
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:61:5
    |
 LL |     s[2] = 20;
    |     ^^^^^^^^^ cannot borrow as mutable
@@ -7,7 +7,7 @@ LL |     s[2] = 20;
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `Bar`
 
 error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-overloaded-index-ref-index.rs:62:23
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:52:23
    |
 LL |     let rs = &mut s;
    |                   - mutable borrow occurs here
@@ -18,7 +18,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-overloaded-index-ref-index.rs:65:8
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:55:8
    |
 LL |     let rs = &mut s;
    |                   - mutable borrow occurs here

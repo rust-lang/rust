@@ -1,5 +1,5 @@
 error[E0308]: try expression alternatives have incompatible types
-  --> $DIR/issue-51632-try-desugar-incompatible-types.rs:20:5
+  --> $DIR/issue-51632-try-desugar-incompatible-types.rs:10:5
    |
 LL |     missing_discourses()?
    |     ^^^^^^^^^^^^^^^^^^^^^

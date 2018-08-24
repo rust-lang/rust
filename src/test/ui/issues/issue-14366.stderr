@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-14366.rs:12:14
+  --> $DIR/issue-14366.rs:2:14
    |
 LL |     let _x = "test" as &::std::any::Any;
    |              ^^^^^^ doesn't have a size known at compile-time

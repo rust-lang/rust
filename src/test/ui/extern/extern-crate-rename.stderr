@@ -1,5 +1,5 @@
 error[E0259]: the name `m1` is defined multiple times
-  --> $DIR/extern-crate-rename.rs:16:1
+  --> $DIR/extern-crate-rename.rs:6:1
    |
 LL | extern crate m1;
    | ---------------- previous import of the extern crate `m1` here

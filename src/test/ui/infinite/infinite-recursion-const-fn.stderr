@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate constant expression
-  --> $DIR/infinite-recursion-const-fn.rs:16:1
+  --> $DIR/infinite-recursion-const-fn.rs:6:1
    |
 LL | const fn a() -> usize { b() }
    |                         ---

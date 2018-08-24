@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/match-tag-unary.rs:16:43
+  --> $DIR/match-tag-unary.rs:6:43
    |
 LL | fn main() { let x: a = a::A(0); match x { b::B(y) => { } } }
    |                                           ^^^^^^^ expected enum `a`, found enum `b`

@@ -1,11 +1,11 @@
 error[E0026]: struct `S` does not have fields named `a`, `b`, `c`, `d`
-  --> $DIR/missing-fields-in-struct-pattern.rs:14:16
+  --> $DIR/missing-fields-in-struct-pattern.rs:4:16
    |
 LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
    |                ^  ^  ^  ^ struct `S` does not have these fields
 
 error[E0027]: pattern does not mention fields `0`, `1`, `2`, `3`
-  --> $DIR/missing-fields-in-struct-pattern.rs:14:12
+  --> $DIR/missing-fields-in-struct-pattern.rs:4:12
    |
 LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
    |            ^^^^^^^^^^^^^^^^ missing fields `0`, `1`, `2`, `3`

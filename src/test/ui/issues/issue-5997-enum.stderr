@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/issue-5997-enum.rs:12:16
+  --> $DIR/issue-5997-enum.rs:2:16
    |
 LL | fn f<Z>() -> bool {
    |    - - type variable from outer function

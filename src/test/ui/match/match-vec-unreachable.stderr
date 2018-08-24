@@ -1,23 +1,23 @@
 error: unreachable pattern
-  --> $DIR/match-vec-unreachable.rs:19:9
+  --> $DIR/match-vec-unreachable.rs:9:9
    |
 LL |         [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
    |         ^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/match-vec-unreachable.rs:12:9
+  --> $DIR/match-vec-unreachable.rs:2:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-vec-unreachable.rs:29:9
+  --> $DIR/match-vec-unreachable.rs:19:9
    |
 LL |         [_, _, _, _, _] => { } //~ ERROR unreachable pattern
    |         ^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-vec-unreachable.rs:37:9
+  --> $DIR/match-vec-unreachable.rs:27:9
    |
 LL |         ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern
    |         ^^^^^^^^^^^^^^^

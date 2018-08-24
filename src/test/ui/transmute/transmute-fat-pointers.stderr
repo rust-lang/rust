@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-fat-pointers.rs:20:14
+  --> $DIR/transmute-fat-pointers.rs:10:14
    |
 LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
    |              ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of differ
    = note: target type: &U (pointer to U)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-fat-pointers.rs:24:14
+  --> $DIR/transmute-fat-pointers.rs:14:14
    |
 LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
    |              ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of differ
    = note: target type: &U (pointer to U)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-fat-pointers.rs:36:14
+  --> $DIR/transmute-fat-pointers.rs:26:14
    |
 LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
    |              ^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of differ
    = note: target type: &U (N bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-fat-pointers.rs:40:14
+  --> $DIR/transmute-fat-pointers.rs:30:14
    |
 LL |     unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
    |              ^^^^^^^^^

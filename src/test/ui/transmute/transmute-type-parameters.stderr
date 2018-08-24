@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:21:18
+  --> $DIR/transmute-type-parameters.rs:6:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _: i32 = transmute(x);
    = note: target type: i32 (32 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:26:18
+  --> $DIR/transmute-type-parameters.rs:11:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _: i32 = transmute(x);
    = note: target type: i32 (32 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:31:18
+  --> $DIR/transmute-type-parameters.rs:16:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let _: i32 = transmute(x);
    = note: target type: i32 (32 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:40:18
+  --> $DIR/transmute-type-parameters.rs:25:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     let _: i32 = transmute(x);
    = note: target type: i32 (32 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:50:18
+  --> $DIR/transmute-type-parameters.rs:35:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     let _: i32 = transmute(x);
    = note: target type: i32 (32 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-type-parameters.rs:55:18
+  --> $DIR/transmute-type-parameters.rs:40:18
    |
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^

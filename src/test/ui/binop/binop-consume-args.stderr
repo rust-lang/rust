@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:17:10
+  --> $DIR/binop-consume-args.rs:7:10
    |
 LL |     lhs + rhs;
    |     --- value moved here
@@ -9,7 +9,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:18:10
+  --> $DIR/binop-consume-args.rs:8:10
    |
 LL |     lhs + rhs;
    |           --- value moved here
@@ -20,7 +20,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:23:10
+  --> $DIR/binop-consume-args.rs:13:10
    |
 LL |     lhs - rhs;
    |     --- value moved here
@@ -30,7 +30,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:24:10
+  --> $DIR/binop-consume-args.rs:14:10
    |
 LL |     lhs - rhs;
    |           --- value moved here
@@ -41,7 +41,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:29:10
+  --> $DIR/binop-consume-args.rs:19:10
    |
 LL |     lhs * rhs;
    |     --- value moved here
@@ -51,7 +51,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:30:10
+  --> $DIR/binop-consume-args.rs:20:10
    |
 LL |     lhs * rhs;
    |           --- value moved here
@@ -62,7 +62,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:35:10
+  --> $DIR/binop-consume-args.rs:25:10
    |
 LL |     lhs / rhs;
    |     --- value moved here
@@ -72,7 +72,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:36:10
+  --> $DIR/binop-consume-args.rs:26:10
    |
 LL |     lhs / rhs;
    |           --- value moved here
@@ -83,7 +83,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:41:10
+  --> $DIR/binop-consume-args.rs:31:10
    |
 LL |     lhs % rhs;
    |     --- value moved here
@@ -93,7 +93,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:42:10
+  --> $DIR/binop-consume-args.rs:32:10
    |
 LL |     lhs % rhs;
    |           --- value moved here
@@ -104,7 +104,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:47:10
+  --> $DIR/binop-consume-args.rs:37:10
    |
 LL |     lhs & rhs;
    |     --- value moved here
@@ -114,7 +114,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:48:10
+  --> $DIR/binop-consume-args.rs:38:10
    |
 LL |     lhs & rhs;
    |           --- value moved here
@@ -125,7 +125,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:53:10
+  --> $DIR/binop-consume-args.rs:43:10
    |
 LL |     lhs | rhs;
    |     --- value moved here
@@ -135,7 +135,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:54:10
+  --> $DIR/binop-consume-args.rs:44:10
    |
 LL |     lhs | rhs;
    |           --- value moved here
@@ -146,7 +146,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:59:10
+  --> $DIR/binop-consume-args.rs:49:10
    |
 LL |     lhs ^ rhs;
    |     --- value moved here
@@ -156,7 +156,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:60:10
+  --> $DIR/binop-consume-args.rs:50:10
    |
 LL |     lhs ^ rhs;
    |           --- value moved here
@@ -167,7 +167,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:65:10
+  --> $DIR/binop-consume-args.rs:55:10
    |
 LL |     lhs << rhs;
    |     --- value moved here
@@ -177,7 +177,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:66:10
+  --> $DIR/binop-consume-args.rs:56:10
    |
 LL |     lhs << rhs;
    |            --- value moved here
@@ -188,7 +188,7 @@ LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `lhs`
-  --> $DIR/binop-consume-args.rs:71:10
+  --> $DIR/binop-consume-args.rs:61:10
    |
 LL |     lhs >> rhs;
    |     --- value moved here
@@ -198,7 +198,7 @@ LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `rhs`
-  --> $DIR/binop-consume-args.rs:72:10
+  --> $DIR/binop-consume-args.rs:62:10
    |
 LL |     lhs >> rhs;
    |            --- value moved here

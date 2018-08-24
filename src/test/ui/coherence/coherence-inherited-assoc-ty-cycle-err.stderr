@@ -1,12 +1,12 @@
 error[E0391]: cycle detected when processing `Trait`
-  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:19:1
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
    |
    = note: ...which again requires processing `Trait`, completing the cycle
 note: cycle used when coherence checking all impls of trait `Trait`
-  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:19:1
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^

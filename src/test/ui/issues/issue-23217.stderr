@@ -1,5 +1,5 @@
 error[E0599]: no variant named `A` found for type `SomeEnum` in the current scope
-  --> $DIR/issue-23217.rs:12:9
+  --> $DIR/issue-23217.rs:2:9
    |
 LL | pub enum SomeEnum {
    | ----------------- variant `A` not found here

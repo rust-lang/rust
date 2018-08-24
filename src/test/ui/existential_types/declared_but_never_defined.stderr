@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/declared_but_never_defined.rs:17:1
+  --> $DIR/declared_but_never_defined.rs:6:1
    |
 LL | existential type Bar: std::fmt::Debug; //~ ERROR could not find defining uses
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

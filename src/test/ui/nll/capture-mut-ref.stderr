@@ -1,5 +1,5 @@
 error: variable does not need to be mutable
-  --> $DIR/capture-mut-ref.rs:18:9
+  --> $DIR/capture-mut-ref.rs:8:9
    |
 LL |     let mut x = &mut 0;
    |         ----^
@@ -7,7 +7,7 @@ LL |     let mut x = &mut 0;
    |         help: remove this `mut`
    |
 note: lint level defined here
-  --> $DIR/capture-mut-ref.rs:15:9
+  --> $DIR/capture-mut-ref.rs:5:9
    |
 LL | #![deny(unused_mut)]
    |         ^^^^^^^^^^

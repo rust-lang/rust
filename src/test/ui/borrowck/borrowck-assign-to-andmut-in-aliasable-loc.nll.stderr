@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `*s.pointer` which is behind a `&` reference
-  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:19:5
+  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:9:5
    |
 LL | fn a(s: &S) {
    |         -- help: consider changing this to be a mutable reference: `&mut S<'_>`
@@ -7,7 +7,7 @@ LL |     *s.pointer += 1; //~ ERROR cannot assign
    |     ^^^^^^^^^^^^^^^ `s` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*s.pointer` which is behind a `&` reference
-  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:27:5
+  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:17:5
    |
 LL | fn c(s: & &mut S) {
    |         -------- help: consider changing this to be a mutable reference: `&mut &mut S<'_>`

@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-2.rs:14:15
+  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-2.rs:4:15
    |
 LL |    if x > y { x } else { y } //~ ERROR explicit lifetime
    |               ^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-2.rs:14:15
+  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-2.rs:4:15
    |
 LL | fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
    |               ---- help: add explicit lifetime `'a` to the type of `x`: `&'a i32`

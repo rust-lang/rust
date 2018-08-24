@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `loop`
-  --> $DIR/lifetime_starts_expressions.rs:16:26
+  --> $DIR/lifetime_starts_expressions.rs:6:26
    |
 LL |     loop { break 'label: loop { break 'label 42; }; }
    |                          ^^^^ expected identifier, found keyword
 
 error: expected type, found keyword `loop`
-  --> $DIR/lifetime_starts_expressions.rs:16:26
+  --> $DIR/lifetime_starts_expressions.rs:6:26
    |
 LL |     loop { break 'label: loop { break 'label 42; }; }
    |                          ^^^^ expecting a type here because of type ascription

@@ -1,13 +1,13 @@
-error[E0599]: no method named `closure` found for type `&Obj<[closure@$DIR/issue-33784.rs:35:43: 35:48]>` in the current scope
-  --> $DIR/issue-33784.rs:37:7
+error[E0599]: no method named `closure` found for type `&Obj<[closure@$DIR/issue-33784.rs:25:43: 25:48]>` in the current scope
+  --> $DIR/issue-33784.rs:27:7
    |
 LL |     p.closure(); //~ ERROR no method named `closure` found
    |       ^^^^^^^ field, not a method
    |
    = help: use `(p.closure)(...)` if you meant to call the function stored in the `closure` field
 
-error[E0599]: no method named `fn_ptr` found for type `&&Obj<[closure@$DIR/issue-33784.rs:35:43: 35:48]>` in the current scope
-  --> $DIR/issue-33784.rs:39:7
+error[E0599]: no method named `fn_ptr` found for type `&&Obj<[closure@$DIR/issue-33784.rs:25:43: 25:48]>` in the current scope
+  --> $DIR/issue-33784.rs:29:7
    |
 LL |     q.fn_ptr(); //~ ERROR no method named `fn_ptr` found
    |       ^^^^^^ field, not a method
@@ -15,7 +15,7 @@ LL |     q.fn_ptr(); //~ ERROR no method named `fn_ptr` found
    = help: use `(q.fn_ptr)(...)` if you meant to call the function stored in the `fn_ptr` field
 
 error[E0599]: no method named `c_fn_ptr` found for type `&D` in the current scope
-  --> $DIR/issue-33784.rs:42:7
+  --> $DIR/issue-33784.rs:32:7
    |
 LL |     s.c_fn_ptr(); //~ ERROR no method named `c_fn_ptr` found
    |       ^^^^^^^^ field, not a method

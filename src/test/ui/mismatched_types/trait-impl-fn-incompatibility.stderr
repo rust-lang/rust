@@ -1,5 +1,5 @@
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/trait-impl-fn-incompatibility.rs:21:15
+  --> $DIR/trait-impl-fn-incompatibility.rs:11:15
    |
 LL |     fn foo(x: u16);
    |               --- type in trait
@@ -11,7 +11,7 @@ LL |     fn foo(x: i16) { } //~ ERROR incompatible type
               found type `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/trait-impl-fn-incompatibility.rs:22:28
+  --> $DIR/trait-impl-fn-incompatibility.rs:12:28
    |
 LL |     fn bar(&mut self, bar: &mut Bar);
    |                            -------- type in trait

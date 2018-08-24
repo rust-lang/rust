@@ -1,71 +1,71 @@
 error: the `?` macro repetition operator does not take a separator
-  --> $DIR/macro-at-most-once-rep-2018.rs:22:10
+  --> $DIR/macro-at-most-once-rep-2018.rs:12:10
    |
 LL |     ($(a),?) => {} //~ERROR the `?` macro repetition operator
    |          ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:36:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:26:11
    |
 LL |     foo!(a?); //~ ERROR no rules expected the token `?`
    |           ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:37:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:27:11
    |
 LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
    |           ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:38:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:28:11
    |
 LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
    |           ^
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:40:5
+  --> $DIR/macro-at-most-once-rep-2018.rs:30:5
    |
 LL |     barplus!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:41:14
+  --> $DIR/macro-at-most-once-rep-2018.rs:31:14
    |
 LL |     barplus!(a); //~ERROR unexpected end of macro invocation
    |              ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:42:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:32:15
    |
 LL |     barplus!(a?); //~ ERROR no rules expected the token `?`
    |               ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:43:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:33:15
    |
 LL |     barplus!(a?a); //~ ERROR no rules expected the token `?`
    |               ^
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:47:5
+  --> $DIR/macro-at-most-once-rep-2018.rs:37:5
    |
 LL |     barstar!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:48:14
+  --> $DIR/macro-at-most-once-rep-2018.rs:38:14
    |
 LL |     barstar!(a); //~ERROR unexpected end of macro invocation
    |              ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:49:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:39:15
    |
 LL |     barstar!(a?); //~ ERROR no rules expected the token `?`
    |               ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:50:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:40:15
    |
 LL |     barstar!(a?a); //~ ERROR no rules expected the token `?`
    |               ^

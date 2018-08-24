@@ -1,53 +1,53 @@
 error[E0412]: cannot find type `field` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:26:16
+  --> $DIR/resolve-assoc-suggestions.rs:16:16
    |
 LL |         let _: field;
    |                ^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `field` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:28:13
+  --> $DIR/resolve-assoc-suggestions.rs:18:13
    |
 LL |         let field(..);
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `field` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:30:9
+  --> $DIR/resolve-assoc-suggestions.rs:20:9
    |
 LL |         field;
    |         ^^^^^ help: try: `self.field`
 
 error[E0412]: cannot find type `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:33:16
+  --> $DIR/resolve-assoc-suggestions.rs:23:16
    |
 LL |         let _: Type;
    |                ^^^^ help: try: `Self::Type`
 
 error[E0531]: cannot find tuple struct/variant `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:35:13
+  --> $DIR/resolve-assoc-suggestions.rs:25:13
    |
 LL |         let Type(..);
    |             ^^^^ not found in this scope
 
 error[E0425]: cannot find value `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:37:9
+  --> $DIR/resolve-assoc-suggestions.rs:27:9
    |
 LL |         Type;
    |         ^^^^ not found in this scope
 
 error[E0412]: cannot find type `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:40:16
+  --> $DIR/resolve-assoc-suggestions.rs:30:16
    |
 LL |         let _: method;
    |                ^^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:42:13
+  --> $DIR/resolve-assoc-suggestions.rs:32:13
    |
 LL |         let method(..);
    |             ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:44:9
+  --> $DIR/resolve-assoc-suggestions.rs:34:9
    |
 LL |         method;
    |         ^^^^^^ help: try: `self.method`

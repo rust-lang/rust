@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/integral-variable-unification-error.rs:13:9
+  --> $DIR/integral-variable-unification-error.rs:3:9
    |
 LL |     x = 5.0;
    |         ^^^ expected integral variable, found floating-point variable

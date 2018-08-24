@@ -1,5 +1,5 @@
 error[E0253]: `do_something` is not directly importable
-  --> $DIR/E0253.rs:17:5
+  --> $DIR/E0253.rs:7:5
    |
 LL | use foo::MyTrait::do_something;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly

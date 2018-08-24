@@ -1,5 +1,5 @@
 error: variable does not need to be mutable
-  --> $DIR/unused-mut-issue-50343.rs:15:33
+  --> $DIR/unused-mut-issue-50343.rs:5:33
    |
 LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
    |                                 ----^
@@ -7,7 +7,7 @@ LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
    |                                 help: remove this `mut`
    |
 note: lint level defined here
-  --> $DIR/unused-mut-issue-50343.rs:12:9
+  --> $DIR/unused-mut-issue-50343.rs:2:9
    |
 LL | #![deny(unused_mut)]
    |         ^^^^^^^^^^

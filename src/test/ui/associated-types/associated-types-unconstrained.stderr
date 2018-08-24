@@ -1,5 +1,5 @@
 error[E0284]: type annotations required: cannot resolve `<_ as Foo>::A == _`
-  --> $DIR/associated-types-unconstrained.rs:24:20
+  --> $DIR/associated-types-unconstrained.rs:14:20
    |
 LL |     let x: isize = Foo::bar();
    |                    ^^^^^^^^

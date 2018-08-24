@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `t`
-  --> $DIR/issue-25700.rs:23:10
+  --> $DIR/issue-25700.rs:13:10
    |
 LL |     drop(t);
    |          - value moved here

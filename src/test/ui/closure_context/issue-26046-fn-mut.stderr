@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
-  --> $DIR/issue-26046-fn-mut.rs:14:19
+  --> $DIR/issue-26046-fn-mut.rs:4:19
    |
 LL |     let closure = || { //~ ERROR expected a closure that
    |                   ^^ this closure implements `FnMut`, not `Fn`

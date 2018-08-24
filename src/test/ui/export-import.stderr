@@ -1,5 +1,5 @@
 error[E0603]: function `unexported` is private
-  --> $DIR/export-import.rs:11:5
+  --> $DIR/export-import.rs:1:5
    |
 LL | use m::unexported;
    |     ^^^^^^^^^^^^^

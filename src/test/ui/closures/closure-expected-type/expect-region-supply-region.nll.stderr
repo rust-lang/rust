@@ -1,29 +1,29 @@
 warning: not reporting region error due to nll
+  --> $DIR/expect-region-supply-region.rs:18:13
+   |
+LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
+   |             ^^^^^^^
+
+warning: not reporting region error due to nll
   --> $DIR/expect-region-supply-region.rs:28:13
    |
 LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
    |             ^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/expect-region-supply-region.rs:38:13
-   |
-LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
-   |             ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/expect-region-supply-region.rs:47:33
+  --> $DIR/expect-region-supply-region.rs:37:33
    |
 LL |     closure_expecting_bound(|x: &'x u32| {
    |                                 ^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/expect-region-supply-region.rs:52:13
+  --> $DIR/expect-region-supply-region.rs:42:13
    |
 LL |         f = Some(x);
    |             ^^^^^^^
 
 error: borrowed data escapes outside of closure
-  --> $DIR/expect-region-supply-region.rs:28:9
+  --> $DIR/expect-region-supply-region.rs:18:9
    |
 LL |     let mut f: Option<&u32> = None;
    |         ----- `f` is declared here, outside of the closure body
@@ -33,7 +33,7 @@ LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of it
    |         ^^^^^^^^^^^ `x` escapes the closure body here
 
 error: borrowed data escapes outside of closure
-  --> $DIR/expect-region-supply-region.rs:38:9
+  --> $DIR/expect-region-supply-region.rs:28:9
    |
 LL |     let mut f: Option<&u32> = None;
    |         ----- `f` is declared here, outside of the closure body
@@ -43,7 +43,7 @@ LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of it
    |         ^^^^^^^^^^^ `x` escapes the closure body here
 
 error: borrowed data escapes outside of closure
-  --> $DIR/expect-region-supply-region.rs:52:9
+  --> $DIR/expect-region-supply-region.rs:42:9
    |
 LL |     let mut f: Option<&u32> = None;
    |         ----- `f` is declared here, outside of the closure body

@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-impl.rs:31:18
+  --> $DIR/transmute-impl.rs:21:18
    |
 LL |         unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
    |                  ^^^^^^^^^

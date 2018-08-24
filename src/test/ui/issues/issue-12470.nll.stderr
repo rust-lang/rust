@@ -1,5 +1,5 @@
 error[E0597]: `*b` does not live long enough
-  --> $DIR/issue-12470.rs:38:18
+  --> $DIR/issue-12470.rs:28:18
    |
 LL |     let bb: &B = &*b;    //~ ERROR does not live long enough
    |                  ^^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     make_a(bb)
 LL | }
    | - `*b` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 36:16...
-  --> $DIR/issue-12470.rs:36:16
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 26:16...
+  --> $DIR/issue-12470.rs:26:16
    |
 LL | fn make_make_a<'a>() -> A<'a> {
    |                ^^

@@ -1,11 +1,11 @@
 error: unexpected generic arguments in path
-  --> $DIR/import-ty-params.rs:24:15
+  --> $DIR/import-ty-params.rs:14:15
    |
 LL |     import! { a::b::c::S<u8> } //~ ERROR unexpected generic arguments in path
    |               ^^^^^^^^^^^^^^
 
 error: unexpected generic arguments in path
-  --> $DIR/import-ty-params.rs:27:15
+  --> $DIR/import-ty-params.rs:17:15
    |
 LL |     import! { a::b::c::S<> } //~ ERROR unexpected generic arguments in path
    |               ^^^^^^^^^^^^

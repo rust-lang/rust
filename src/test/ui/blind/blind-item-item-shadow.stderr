@@ -1,5 +1,5 @@
 error[E0255]: the name `foo` is defined multiple times
-  --> $DIR/blind-item-item-shadow.rs:13:5
+  --> $DIR/blind-item-item-shadow.rs:3:5
    |
 LL | mod foo { pub mod foo {  } }
    | ------- previous definition of the module `foo` here

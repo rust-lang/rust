@@ -1,5 +1,5 @@
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:20:11
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:10:11
    |
 LL |     match (S {f:"foo".to_string()}) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
@@ -8,13 +8,13 @@ LL |         S {f:_s} => {}
    |              -- data moved here
    |
 note: move occurs because `_s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:22:14
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:12:14
    |
 LL |         S {f:_s} => {}
    |              ^^
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:28:20
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:18:20
    |
 LL |     let S {f:_s} = S {f:"foo".to_string()};
    |              --    ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
@@ -22,13 +22,13 @@ LL |     let S {f:_s} = S {f:"foo".to_string()};
    |              data moved here
    |
 note: move occurs because `_s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:28:14
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:18:14
    |
 LL |     let S {f:_s} = S {f:"foo".to_string()};
    |              ^^
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:33:19
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:23:19
    |
 LL | fn move_in_fn_arg(S {f:_s}: S) {
    |                   ^^^^^--^
@@ -37,7 +37,7 @@ LL | fn move_in_fn_arg(S {f:_s}: S) {
    |                   cannot move out of here
    |
 note: move occurs because `_s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:33:24
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:23:24
    |
 LL | fn move_in_fn_arg(S {f:_s}: S) {
    |                        ^^

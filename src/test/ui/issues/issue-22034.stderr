@@ -1,5 +1,5 @@
 error[E0277]: expected a `std::ops::Fn<()>` closure, found `()`
-  --> $DIR/issue-22034.rs:18:16
+  --> $DIR/issue-22034.rs:8:16
    |
 LL |         &mut *(ptr as *mut Fn())
    |                ^^^ expected an `Fn<()>` closure, found `()`

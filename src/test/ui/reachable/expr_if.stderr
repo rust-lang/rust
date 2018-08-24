@@ -1,11 +1,11 @@
 error: unreachable statement
-  --> $DIR/expr_if.rs:37:5
+  --> $DIR/expr_if.rs:27:5
    |
 LL |     println!("But I am.");
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_if.rs:14:9
+  --> $DIR/expr_if.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

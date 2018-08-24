@@ -1,5 +1,5 @@
 error: variable `_InappropriateCamelCasing` should have a snake case name such as `_inappropriate_camel_casing`
-  --> $DIR/command-line-lint-group-deny.rs:14:9
+  --> $DIR/command-line-lint-group-deny.rs:4:9
    |
 LL |     let _InappropriateCamelCasing = true; //~ ERROR should have a snake
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^

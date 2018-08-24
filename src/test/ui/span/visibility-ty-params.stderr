@@ -1,11 +1,11 @@
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:16:5
+  --> $DIR/visibility-ty-params.rs:6:5
    |
 LL | m!{ S<u8> } //~ ERROR unexpected generic arguments in path
    |     ^^^^^
 
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:19:9
+  --> $DIR/visibility-ty-params.rs:9:9
    |
 LL |     m!{ m<> } //~ ERROR unexpected generic arguments in path
    |         ^^^

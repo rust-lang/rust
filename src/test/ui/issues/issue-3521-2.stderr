@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-3521-2.rs:14:23
+  --> $DIR/issue-3521-2.rs:4:23
    |
 LL |     static y: isize = foo + 1;
    |                       ^^^

@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-free-region-ordering-incorrect.rs:27:15
+  --> $DIR/regions-free-region-ordering-incorrect.rs:17:15
    |
 LL |       None => &self.val //~ ERROR cannot infer
    |               ^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-free-region-ordering-incorrect.rs:25:5
+  --> $DIR/regions-free-region-ordering-incorrect.rs:15:5
    |
 LL |   impl<'b, T> Node<'b, T> {
    |        -- lifetime `'b` defined here

@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A`
-  --> $DIR/issue-21946.rs:17:6
+  --> $DIR/issue-21946.rs:7:6
    |
 LL | impl Foo for FooStruct {
    |      ^^^

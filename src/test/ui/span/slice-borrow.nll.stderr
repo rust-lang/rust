@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/slice-borrow.rs:16:28
+  --> $DIR/slice-borrow.rs:6:28
    |
 LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
    |                            ^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough

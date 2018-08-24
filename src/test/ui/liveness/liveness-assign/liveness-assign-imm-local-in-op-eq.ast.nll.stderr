@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/liveness-assign-imm-local-in-op-eq.rs:19:5
+  --> $DIR/liveness-assign-imm-local-in-op-eq.rs:9:5
    |
 LL |     let v: isize;
    |         - consider changing this to `mut v`

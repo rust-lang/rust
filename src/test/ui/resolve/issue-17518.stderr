@@ -1,5 +1,5 @@
 error[E0422]: cannot find struct, variant or union type `E` in this scope
-  --> $DIR/issue-17518.rs:16:5
+  --> $DIR/issue-17518.rs:6:5
    |
 LL |     E { name: "foobar" }; //~ ERROR cannot find struct, variant or union type `E`
    |     ^ not found in this scope

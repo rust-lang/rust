@@ -1,18 +1,18 @@
 error: `extern` block uses type `Foo` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-16250.rs:16:20
+  --> $DIR/issue-16250.rs:6:20
    |
 LL |     pub fn foo(x: (Foo)); //~ ERROR unspecified layout
    |                    ^^^
    |
 note: lint level defined here
-  --> $DIR/issue-16250.rs:11:9
+  --> $DIR/issue-16250.rs:1:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: #[deny(improper_ctypes)] implied by #[deny(warnings)]
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-16250.rs:13:1
+  --> $DIR/issue-16250.rs:3:1
    |
 LL | pub struct Foo;
    | ^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-lend-flow-loop.rs:35:17
+  --> $DIR/borrowck-lend-flow-loop.rs:25:17
    |
 LL |     let mut x = &mut v;
    |                      - mutable borrow occurs here
@@ -11,7 +11,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-lend-flow-loop.rs:45:17
+  --> $DIR/borrowck-lend-flow-loop.rs:35:17
    |
 LL |     let mut x = &mut v;
    |                      - mutable borrow occurs here
@@ -23,7 +23,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-loop.rs:57:25
+  --> $DIR/borrowck-lend-flow-loop.rs:47:25
    |
 LL |         borrow_mut(&mut *v); //~ ERROR cannot borrow
    |                         ^^ mutable borrow occurs here
@@ -34,7 +34,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-loop.rs:69:25
+  --> $DIR/borrowck-lend-flow-loop.rs:59:25
    |
 LL |         borrow_mut(&mut *v); //~ ERROR cannot borrow
    |                         ^^ mutable borrow occurs here
@@ -45,7 +45,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-loop.rs:86:21
+  --> $DIR/borrowck-lend-flow-loop.rs:76:21
    |
 LL |         _x = &v;
    |               - immutable borrow occurs here
@@ -56,7 +56,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-loop.rs:100:21
+  --> $DIR/borrowck-lend-flow-loop.rs:90:21
    |
 LL |         _x = &v;
    |               - immutable borrow occurs here
@@ -67,7 +67,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-lend-flow-loop.rs:109:17
+  --> $DIR/borrowck-lend-flow-loop.rs:99:17
    |
 LL |         borrow(&*v); //~ ERROR cannot borrow
    |                 ^^ immutable borrow occurs here
@@ -79,7 +79,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0499]: cannot borrow `v` as mutable more than once at a time
-  --> $DIR/borrowck-lend-flow-loop.rs:111:22
+  --> $DIR/borrowck-lend-flow-loop.rs:101:22
    |
 LL |             x = &mut v; //~ ERROR cannot borrow
    |                      ^ mutable borrow starts here in previous iteration of loop

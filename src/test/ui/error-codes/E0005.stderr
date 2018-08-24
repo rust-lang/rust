@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `None` not covered
-  --> $DIR/E0005.rs:13:9
+  --> $DIR/E0005.rs:3:9
    |
 LL |     let Some(y) = x; //~ ERROR E0005
    |         ^^^^^^^ pattern `None` not covered

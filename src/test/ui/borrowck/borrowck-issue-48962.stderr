@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `src`
-  --> $DIR/borrowck-issue-48962.rs:26:5
+  --> $DIR/borrowck-issue-48962.rs:16:5
    |
 LL |     {src};
    |      --- value moved here
@@ -9,7 +9,7 @@ LL |     src.next = None; //~ ERROR use of moved value: `src` [E0382]
    = note: move occurs because `src` has type `&mut Node`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `src`
-  --> $DIR/borrowck-issue-48962.rs:32:5
+  --> $DIR/borrowck-issue-48962.rs:22:5
    |
 LL |     {src};
    |      --- value moved here

@@ -1,23 +1,23 @@
 error[E0574]: expected struct, variant or union type, found module `A`
-  --> $DIR/issue-27815.rs:14:13
+  --> $DIR/issue-27815.rs:4:13
    |
 LL |     let u = A { x: 1 }; //~ ERROR expected struct, variant or union type, found module `A`
    |             ^ not a struct, variant or union type
 
 error[E0574]: expected struct, variant or union type, found builtin type `u32`
-  --> $DIR/issue-27815.rs:15:13
+  --> $DIR/issue-27815.rs:5:13
    |
 LL |     let v = u32 { x: 1 }; //~ ERROR expected struct, variant or union type, found builtin type `u32`
    |             ^^^ not a struct, variant or union type
 
 error[E0574]: expected struct, variant or union type, found module `A`
-  --> $DIR/issue-27815.rs:17:9
+  --> $DIR/issue-27815.rs:7:9
    |
 LL |         A { x: 1 } => {}
    |         ^ not a struct, variant or union type
 
 error[E0574]: expected struct, variant or union type, found builtin type `u32`
-  --> $DIR/issue-27815.rs:19:9
+  --> $DIR/issue-27815.rs:9:9
    |
 LL |         u32 { x: 1 } => {}
    |         ^^^ not a struct, variant or union type

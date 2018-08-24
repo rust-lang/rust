@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `x` (via `x.b`) as mutable more than once at a time
-  --> $DIR/issue-17263.rs:17:34
+  --> $DIR/issue-17263.rs:7:34
    |
 LL |     let (a, b) = (&mut x.a, &mut x.b);
    |                        ---       ^^^ second mutable borrow occurs here (via `x.b`)
@@ -10,7 +10,7 @@ LL | }
    | - first borrow ends here
 
 error[E0502]: cannot borrow `foo` (via `foo.b`) as immutable because `foo` is also borrowed as mutable (via `foo.a`)
-  --> $DIR/issue-17263.rs:21:32
+  --> $DIR/issue-17263.rs:11:32
    |
 LL |     let (c, d) = (&mut foo.a, &foo.b);
    |                        -----   ^^^^^ immutable borrow occurs here (via `foo.b`)

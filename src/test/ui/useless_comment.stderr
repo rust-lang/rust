@@ -1,29 +1,29 @@
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:14:5
+  --> $DIR/useless_comment.rs:4:5
    |
 LL |     /// a //~ ERROR doc comment not used by rustdoc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/useless_comment.rs:11:9
+  --> $DIR/useless_comment.rs:1:9
    |
 LL | #![deny(unused_doc_comments)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:17:5
+  --> $DIR/useless_comment.rs:7:5
    |
 LL |     /// b //~ doc comment not used by rustdoc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:19:9
+  --> $DIR/useless_comment.rs:9:9
    |
 LL |         /// c //~ ERROR doc comment not used by rustdoc
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:24:5
+  --> $DIR/useless_comment.rs:14:5
    |
 LL |     /// foo //~ ERROR doc comment not used by rustdoc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

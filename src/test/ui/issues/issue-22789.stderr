@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-22789.rs:14:1
+  --> $DIR/issue-22789.rs:4:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     let k = |x: i32| { x + 1 };

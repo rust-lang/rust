@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-39974.rs:14:19
+  --> $DIR/issue-39974.rs:4:19
    |
 LL |     f: [[f64; 2]; LENGTH],
    |                   ^^^^^^ expected usize, found f64

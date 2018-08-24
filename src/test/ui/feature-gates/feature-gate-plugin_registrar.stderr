@@ -1,5 +1,5 @@
 error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
-  --> $DIR/feature-gate-plugin_registrar.rs:16:1
+  --> $DIR/feature-gate-plugin_registrar.rs:6:1
    |
 LL | pub fn registrar() {}
    | ^^^^^^^^^^^^^^^^^^^^^

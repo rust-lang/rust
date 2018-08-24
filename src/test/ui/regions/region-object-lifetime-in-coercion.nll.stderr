@@ -1,29 +1,29 @@
 warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:18:42
+  --> $DIR/region-object-lifetime-in-coercion.rs:8:42
    |
 LL |     let x: Box<Foo + 'static> = Box::new(v);
    |                                          ^
 
 warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:14
+  --> $DIR/region-object-lifetime-in-coercion.rs:14:14
    |
 LL |     Box::new(v)
    |              ^
 
 warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:31:14
+  --> $DIR/region-object-lifetime-in-coercion.rs:21:14
    |
 LL |     Box::new(v)
    |              ^
 
 warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:36:14
+  --> $DIR/region-object-lifetime-in-coercion.rs:26:14
    |
 LL |     Box::new(v)
    |              ^
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:18:33
+  --> $DIR/region-object-lifetime-in-coercion.rs:8:33
    |
 LL | fn a(v: &[u8]) -> Box<Foo + 'static> {
    |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
@@ -31,7 +31,7 @@ LL |     let x: Box<Foo + 'static> = Box::new(v);
    |                                 ^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:23:38
+  --> $DIR/region-object-lifetime-in-coercion.rs:13:38
    |
 LL |   fn b(v: &[u8]) -> Box<Foo + 'static> {
    |  _________-----________________________^
@@ -43,7 +43,7 @@ LL | | }
    | |_^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:28:28
+  --> $DIR/region-object-lifetime-in-coercion.rs:18:28
    |
 LL |   fn c(v: &[u8]) -> Box<Foo> {
    |  _________-----______________^
@@ -57,7 +57,7 @@ LL | | }
    | |_^ lifetime `'static` required
 
 error: unsatisfied lifetime constraints
-  --> $DIR/region-object-lifetime-in-coercion.rs:35:41
+  --> $DIR/region-object-lifetime-in-coercion.rs:25:41
    |
 LL |   fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
    |  ______--_--______________________________^

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/closures-in-loops.rs:18:9
+  --> $DIR/closures-in-loops.rs:8:9
    |
 LL |         || x; //~ ERROR
    |         ^^ - use occurs due to use in closure
@@ -9,7 +9,7 @@ LL |         || x; //~ ERROR
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/closures-in-loops.rs:25:16
+  --> $DIR/closures-in-loops.rs:15:16
    |
 LL |         v.push(|| x = String::new()); //~ ERROR
    |                ^^ - borrows occur due to use of `x` in closure
@@ -17,7 +17,7 @@ LL |         v.push(|| x = String::new()); //~ ERROR
    |                mutable borrow starts here in previous iteration of loop
 
 error[E0524]: two closures require unique access to `x` at the same time
-  --> $DIR/closures-in-loops.rs:32:16
+  --> $DIR/closures-in-loops.rs:22:16
    |
 LL |         v.push(|| *x = String::new()); //~ ERROR
    |                ^^  - borrows occur due to use of `x` in closure

@@ -1,5 +1,5 @@
 error[E0366]: Implementations of Drop cannot be specialized
-  --> $DIR/issue-38868.rs:15:1
+  --> $DIR/issue-38868.rs:5:1
    |
 LL | / impl Drop for List<i32> { //~ ERROR E0366
 LL | |     fn drop(&mut self) {
@@ -9,7 +9,7 @@ LL | | }
    | |_^
    |
 note: Use same sequence of generic type and region parameters that is on the struct/enum definition
-  --> $DIR/issue-38868.rs:11:1
+  --> $DIR/issue-38868.rs:1:1
    |
 LL | / pub struct List<T> {
 LL | |     head: T,

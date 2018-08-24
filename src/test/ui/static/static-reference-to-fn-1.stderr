@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/static-reference-to-fn-1.rs:27:15
+  --> $DIR/static-reference-to-fn-1.rs:17:15
    |
 LL |         func: &foo, //~ ERROR mismatched types
    |               ^^^^ expected fn pointer, found fn item

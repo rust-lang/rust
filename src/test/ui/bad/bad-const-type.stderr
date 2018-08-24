@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/bad-const-type.rs:11:20
+  --> $DIR/bad-const-type.rs:1:20
    |
 LL | static i: String = 10;
    |                    ^^

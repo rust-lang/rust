@@ -1,5 +1,5 @@
 error[E0128]: type parameters with a default cannot use forward declared identifiers
-  --> $DIR/issue-26812.rs:13:10
+  --> $DIR/issue-26812.rs:3:10
    |
 LL | fn avg<T=T::Item>(_: T) {}
    |          ^^^^^^^ defaulted type parameters cannot be forward declared

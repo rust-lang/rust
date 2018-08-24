@@ -1,11 +1,11 @@
 error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
-  --> $DIR/bound-lifetime-constrained.rs:38:56
+  --> $DIR/bound-lifetime-constrained.rs:28:56
    |
 LL | fn object1(_: Box<for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32>) {
    |                                                        ^^^^^^^
 
 error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
-  --> $DIR/bound-lifetime-constrained.rs:43:35
+  --> $DIR/bound-lifetime-constrained.rs:33:35
    |
 LL | fn object2(_: Box<for<'a> Fn() -> <() as Foo<'a>>::Item>) {
    |                                   ^^^^^^^^^^^^^^^^^^^^^

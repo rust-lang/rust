@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `u.z.c` as immutable because it is also borrowed as mutable
-  --> $DIR/issue-45157.rs:37:20
+  --> $DIR/issue-45157.rs:27:20
    |
 LL |         let mref = &mut u.s.a;
    |                    ---------- mutable borrow occurs here

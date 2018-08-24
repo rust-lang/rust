@@ -1,5 +1,5 @@
 error[E0609]: no field `homura` on type `&'static str`
-  --> $DIR/no-type-for-node-ice.rs:14:8
+  --> $DIR/no-type-for-node-ice.rs:4:8
    |
 LL |     "".homura[""]; //~ no field `homura` on type `&'static str`
    |        ^^^^^^

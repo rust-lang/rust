@@ -1,5 +1,5 @@
 error[E0663]: input operand constraint contains '+'
-  --> $DIR/E0663.rs:16:12
+  --> $DIR/E0663.rs:6:12
    |
 LL |          : "+test"("a") //~ ERROR E0663
    |            ^^^^^^^

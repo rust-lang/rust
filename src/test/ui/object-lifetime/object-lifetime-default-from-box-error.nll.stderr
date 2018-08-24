@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/object-lifetime-default-from-box-error.rs:28:5
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
    |     ^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/object-lifetime-default-from-box-error.rs:41:12
+  --> $DIR/object-lifetime-default-from-box-error.rs:31:12
    |
 LL |     ss.r = b; //~ ERROR 41:12: 41:13: explicit lifetime required in the type of `ss` [E0621]
    |            ^
 
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:24:48
+  --> $DIR/object-lifetime-default-from-box-error.rs:14:48
    |
 LL |   fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
    |  _____________---------------____________________^
@@ -25,13 +25,13 @@ LL | | }
    | |_^ lifetime `'static` required
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/object-lifetime-default-from-box-error.rs:28:5
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
    |     ^^^^ cannot move out of borrowed content
 
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:41:5
+  --> $DIR/object-lifetime-default-from-box-error.rs:31:5
    |
 LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
    |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`

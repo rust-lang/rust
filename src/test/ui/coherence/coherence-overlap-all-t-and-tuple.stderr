@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `From<(_,)>` for type `(_,)`:
-  --> $DIR/coherence-overlap-all-t-and-tuple.rs:26:1
+  --> $DIR/coherence-overlap-all-t-and-tuple.rs:16:1
    |
 LL | impl <T> From<T> for T {
    | ---------------------- first implementation here

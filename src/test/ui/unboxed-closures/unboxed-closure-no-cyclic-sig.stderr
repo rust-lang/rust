@@ -1,5 +1,5 @@
 error[E0644]: closure/generator type that references itself
-  --> $DIR/unboxed-closure-no-cyclic-sig.rs:18:7
+  --> $DIR/unboxed-closure-no-cyclic-sig.rs:8:7
    |
 LL |     g(|_| {  }); //~ ERROR closure/generator type that references itself
    |       ^^^^^^^^ cyclic type of infinite size

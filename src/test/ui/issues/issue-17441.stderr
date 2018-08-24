@@ -1,17 +1,17 @@
 error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
-  --> $DIR/issue-17441.rs:12:16
+  --> $DIR/issue-17441.rs:2:16
    |
 LL |     let _foo = &[1_usize, 2] as [usize];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using an implicit coercion to `&[usize]` instead
-  --> $DIR/issue-17441.rs:12:16
+  --> $DIR/issue-17441.rs:2:16
    |
 LL |     let _foo = &[1_usize, 2] as [usize];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0620]: cast to unsized type: `std::boxed::Box<usize>` as `dyn std::fmt::Debug`
-  --> $DIR/issue-17441.rs:15:16
+  --> $DIR/issue-17441.rs:5:16
    |
 LL |     let _bar = Box::new(1_usize) as std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^^---------------
@@ -19,25 +19,25 @@ LL |     let _bar = Box::new(1_usize) as std::fmt::Debug;
    |                                     help: try casting to a `Box` instead: `Box<std::fmt::Debug>`
 
 error[E0620]: cast to unsized type: `usize` as `dyn std::fmt::Debug`
-  --> $DIR/issue-17441.rs:18:16
+  --> $DIR/issue-17441.rs:8:16
    |
 LL |     let _baz = 1_usize as std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using a box or reference as appropriate
-  --> $DIR/issue-17441.rs:18:16
+  --> $DIR/issue-17441.rs:8:16
    |
 LL |     let _baz = 1_usize as std::fmt::Debug;
    |                ^^^^^^^
 
 error[E0620]: cast to unsized type: `[usize; 2]` as `[usize]`
-  --> $DIR/issue-17441.rs:21:17
+  --> $DIR/issue-17441.rs:11:17
    |
 LL |     let _quux = [1_usize, 2] as [usize];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using a box or reference as appropriate
-  --> $DIR/issue-17441.rs:21:17
+  --> $DIR/issue-17441.rs:11:17
    |
 LL |     let _quux = [1_usize, 2] as [usize];
    |                 ^^^^^^^^^^^^

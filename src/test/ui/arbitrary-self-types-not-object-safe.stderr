@@ -1,5 +1,5 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:33
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:31:33
    |
 LL |     let x = Box::new(5usize) as Box<Foo>;
    |                                 ^^^^^^^^ the trait `Foo` cannot be made into an object
@@ -7,7 +7,7 @@ LL |     let x = Box::new(5usize) as Box<Foo>;
    = note: method `foo` has a non-standard `self` type
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:13
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:31:13
    |
 LL |     let x = Box::new(5usize) as Box<Foo>;
    |             ^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object

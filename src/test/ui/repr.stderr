@@ -1,5 +1,5 @@
 warning: `repr` attribute must have a hint
-  --> $DIR/repr.rs:13:1
+  --> $DIR/repr.rs:3:1
    |
 LL | #[repr]
    | ^^^^^^^ needs a hint
@@ -9,7 +9,7 @@ LL | #[repr]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
-  --> $DIR/repr.rs:17:1
+  --> $DIR/repr.rs:7:1
    |
 LL | #[repr = "B"]
    | ^^^^^^^^^^^^^ needs a hint
@@ -18,7 +18,7 @@ LL | #[repr = "B"]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
-  --> $DIR/repr.rs:21:1
+  --> $DIR/repr.rs:11:1
    |
 LL | #[repr = "C"]
    | ^^^^^^^^^^^^^ help: give `repr` a hint: `#[repr(C)]`

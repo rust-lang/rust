@@ -1,5 +1,5 @@
 error[E0529]: expected an array or slice, found `()`
-  --> $DIR/match-vec-mismatch-2.rs:13:9
+  --> $DIR/match-vec-mismatch-2.rs:3:9
    |
 LL |         [()] => { }
    |         ^^^^ pattern cannot match with input type `()`

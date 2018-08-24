@@ -1,5 +1,5 @@
 error: expected string literal
-  --> $DIR/extenv-not-string-literal.rs:11:18
+  --> $DIR/extenv-not-string-literal.rs:1:18
    |
 LL | fn main() { env!(10, "two"); } //~ ERROR: expected string literal
    |                  ^^

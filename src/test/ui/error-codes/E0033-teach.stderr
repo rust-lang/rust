@@ -1,11 +1,11 @@
 error[E0423]: expected value, found trait `SomeTrait`
-  --> $DIR/E0033-teach.rs:18:33
+  --> $DIR/E0033-teach.rs:8:33
    |
 LL |     let trait_obj: &SomeTrait = SomeTrait;
    |                                 ^^^^^^^^^ not a value
 
 error[E0038]: the trait `SomeTrait` cannot be made into an object
-  --> $DIR/E0033-teach.rs:18:20
+  --> $DIR/E0033-teach.rs:8:20
    |
 LL |     let trait_obj: &SomeTrait = SomeTrait;
    |                    ^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
@@ -13,7 +13,7 @@ LL |     let trait_obj: &SomeTrait = SomeTrait;
    = note: method `foo` has no receiver
 
 error[E0033]: type `&dyn SomeTrait` cannot be dereferenced
-  --> $DIR/E0033-teach.rs:23:9
+  --> $DIR/E0033-teach.rs:13:9
    |
 LL |     let &invalid = trait_obj;
    |         ^^^^^^^^ type `&dyn SomeTrait` cannot be dereferenced

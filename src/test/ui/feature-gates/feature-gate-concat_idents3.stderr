@@ -1,5 +1,5 @@
 error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
-  --> $DIR/feature-gate-concat_idents3.rs:17:20
+  --> $DIR/feature-gate-concat_idents3.rs:7:20
    |
 LL |     assert_eq!(10, concat_idents!(X, Y_1)); //~ ERROR `concat_idents` is not stable
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     assert_eq!(10, concat_idents!(X, Y_1)); //~ ERROR `concat_idents` is no
    = help: add #![feature(concat_idents)] to the crate attributes to enable
 
 error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
-  --> $DIR/feature-gate-concat_idents3.rs:18:20
+  --> $DIR/feature-gate-concat_idents3.rs:8:20
    |
 LL |     assert_eq!(20, concat_idents!(X, Y_2)); //~ ERROR `concat_idents` is not stable
    |                    ^^^^^^^^^^^^^^^^^^^^^^

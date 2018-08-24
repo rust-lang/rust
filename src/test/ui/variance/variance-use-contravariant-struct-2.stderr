@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/variance-use-contravariant-struct-2.rs:27:1
+  --> $DIR/variance-use-contravariant-struct-2.rs:17:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

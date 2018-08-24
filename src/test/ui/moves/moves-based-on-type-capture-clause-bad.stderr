@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/moves-based-on-type-capture-clause-bad.rs:18:20
+  --> $DIR/moves-based-on-type-capture-clause-bad.rs:8:20
    |
 LL |     thread::spawn(move|| {
    |                   ------ value moved (into closure) here

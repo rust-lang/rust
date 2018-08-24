@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:32:40
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
    |
 LL |     x: <I as Foo<&'a isize>>::A,
    |                  --------- these two types are declared with different lifetimes...

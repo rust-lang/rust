@@ -1,35 +1,35 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-4.rs:20:5
+  --> $DIR/regions-close-object-into-object-4.rs:10:5
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |     ^^^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-4.rs:20:11
+  --> $DIR/regions-close-object-into-object-4.rs:10:11
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |           ^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-4.rs:20:9
+  --> $DIR/regions-close-object-into-object-4.rs:10:9
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |         ^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-4.rs:20:9
+  --> $DIR/regions-close-object-into-object-4.rs:10:9
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |         ^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-4.rs:20:5
+  --> $DIR/regions-close-object-into-object-4.rs:10:5
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |     ^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-close-object-into-object-4.rs:19:51
+  --> $DIR/regions-close-object-into-object-4.rs:9:51
    |
 LL |   fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
    |  ______--___________________________________________^
@@ -40,7 +40,7 @@ LL | | }
    | |_^ returning this value requires that `'a` must outlive `'static`
 
 error[E0310]: the parameter type `U` may not live long enough
-  --> $DIR/regions-close-object-into-object-4.rs:20:5
+  --> $DIR/regions-close-object-into-object-4.rs:10:5
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |     ^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    = help: consider adding an explicit lifetime bound `U: 'static`...
 
 error[E0310]: the parameter type `U` may not live long enough
-  --> $DIR/regions-close-object-into-object-4.rs:20:9
+  --> $DIR/regions-close-object-into-object-4.rs:10:9
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |         ^^^^^^
@@ -56,7 +56,7 @@ LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    = help: consider adding an explicit lifetime bound `U: 'static`...
 
 error[E0597]: `*v` does not live long enough
-  --> $DIR/regions-close-object-into-object-4.rs:20:11
+  --> $DIR/regions-close-object-into-object-4.rs:10:11
    |
 LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |           ^^^ borrowed value does not live long enough

@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/regions-in-enums-anon.rs:14:9
+  --> $DIR/regions-in-enums-anon.rs:4:9
    |
 LL |     Bar(&isize) //~ ERROR missing lifetime specifier
    |         ^ expected lifetime parameter

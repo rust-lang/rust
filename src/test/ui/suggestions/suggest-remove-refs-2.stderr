@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>: std::iter::Iterator` is not satisfied
-  --> $DIR/suggest-remove-refs-2.rs:14:19
+  --> $DIR/suggest-remove-refs-2.rs:4:19
    |
 LL |     for (i, n) in & & & & &v.iter().enumerate() {
    |                   ---------^^^^^^^^^^^^^^^^^^^^

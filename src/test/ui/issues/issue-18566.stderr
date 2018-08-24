@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*s` as mutable more than once at a time
-  --> $DIR/issue-18566.rs:33:19
+  --> $DIR/issue-18566.rs:23:19
    |
 LL |     MyPtr(s).poke(s);
    |           -       ^- first borrow ends here

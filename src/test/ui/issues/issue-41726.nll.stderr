@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-41726.rs:15:9
+  --> $DIR/issue-41726.rs:5:9
    |
 LL |         things[src.as_str()].sort(); //~ ERROR cannot borrow immutable
    |         ^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable

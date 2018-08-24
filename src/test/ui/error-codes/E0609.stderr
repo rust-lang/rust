@@ -1,5 +1,5 @@
 error[E0609]: no field `foo` on type `Foo`
-  --> $DIR/E0609.rs:18:15
+  --> $DIR/E0609.rs:8:15
    |
 LL |     let _ = x.foo; //~ ERROR E0609
    |               ^^^ unknown field
@@ -7,7 +7,7 @@ LL |     let _ = x.foo; //~ ERROR E0609
    = note: available fields are: `x`
 
 error[E0609]: no field `1` on type `Bar`
-  --> $DIR/E0609.rs:21:7
+  --> $DIR/E0609.rs:11:7
    |
 LL |     y.1; //~ ERROR E0609
    |       ^ unknown field

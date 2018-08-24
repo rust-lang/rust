@@ -1,5 +1,5 @@
 error: irrefutable if-let pattern
-  --> $DIR/should-fail-with_gate_irrefutable_pattern_deny.rs:15:5
+  --> $DIR/should-fail-with_gate_irrefutable_pattern_deny.rs:5:5
    |
 LL |     if let _ = 5 {}
    |     ^^^^^^^^^^^^^^^

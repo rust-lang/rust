@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/object-safety-by-value-self.rs:55:1
+  --> $DIR/object-safety-by-value-self.rs:45:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | | }

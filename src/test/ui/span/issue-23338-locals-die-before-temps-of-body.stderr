@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:20:5
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:10:5
    |
 LL |     y.borrow().clone()
    |     ^ borrowed value does not live long enough
@@ -9,7 +9,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:27:9
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:17:9
    |
 LL |         y.borrow().clone()
    |         ^ borrowed value does not live long enough

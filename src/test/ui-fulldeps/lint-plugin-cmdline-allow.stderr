@@ -1,11 +1,11 @@
 warning: function is never used: `lintme`
-  --> $DIR/lint-plugin-cmdline-allow.rs:20:1
+  --> $DIR/lint-plugin-cmdline-allow.rs:10:1
    |
 LL | fn lintme() { }
    | ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-plugin-cmdline-allow.rs:17:9
+  --> $DIR/lint-plugin-cmdline-allow.rs:7:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^

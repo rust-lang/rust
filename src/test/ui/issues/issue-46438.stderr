@@ -1,5 +1,5 @@
 error: expected a trait, found type
-  --> $DIR/issue-46438.rs:21:4
+  --> $DIR/issue-46438.rs:11:4
    |
 LL | m!(&'static u8); //~ ERROR expected a trait, found type
    |    ^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `become`
-  --> $DIR/reserved-become.rs:12:9
+  --> $DIR/reserved-become.rs:2:9
    |
 LL |     let become = 0;
    |         ^^^^^^ expected pattern

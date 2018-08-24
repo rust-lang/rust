@@ -1,5 +1,5 @@
 error[E0408]: variable `a` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:14:12
+  --> $DIR/resolve-inconsistent-names.rs:4:12
    |
 LL |        a | b => {} //~  ERROR variable `a` is not bound in all patterns
    |        -   ^ pattern doesn't bind `a`
@@ -7,7 +7,7 @@ LL |        a | b => {} //~  ERROR variable `a` is not bound in all patterns
    |        variable not in all patterns
 
 error[E0408]: variable `b` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:14:8
+  --> $DIR/resolve-inconsistent-names.rs:4:8
    |
 LL |        a | b => {} //~  ERROR variable `a` is not bound in all patterns
    |        ^   - variable not in all patterns

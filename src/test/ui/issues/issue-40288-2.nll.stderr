@@ -1,41 +1,41 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:17:20
+  --> $DIR/issue-40288-2.rs:7:20
    |
 LL |         slice[0] = y;
    |                    ^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:16:20
+  --> $DIR/issue-40288-2.rs:6:20
    |
 LL |         let slice: &mut [_] = &mut out;
    |                    ^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:14:19
+  --> $DIR/issue-40288-2.rs:4:19
    |
 LL |     let mut out = [x];
    |                   ^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:32:20
+  --> $DIR/issue-40288-2.rs:22:20
    |
 LL |         dst.head = y;
    |                    ^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:31:18
+  --> $DIR/issue-40288-2.rs:21:18
    |
 LL |         let dst: &mut Struct<_, [()]> = &mut out;
    |                  ^^^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-40288-2.rs:29:19
+  --> $DIR/issue-40288-2.rs:19:19
    |
 LL |     let mut out = Struct { head: x, _tail: [()] };
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/issue-40288-2.rs:17:9
+  --> $DIR/issue-40288-2.rs:7:9
    |
 LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
    |                                                         -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`
@@ -44,7 +44,7 @@ LL |         slice[0] = y;
    |         ^^^^^^^^^^^^ lifetime `'a` required
 
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/issue-40288-2.rs:32:9
+  --> $DIR/issue-40288-2.rs:22:9
    |
 LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
    |                                                          -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`

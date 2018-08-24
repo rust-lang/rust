@@ -1,5 +1,5 @@
 error[E0597]: `*v` does not live long enough
-  --> $DIR/regions-close-object-into-object-1.rs:22:12
+  --> $DIR/regions-close-object-into-object-1.rs:12:12
    |
 LL |     box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
    |            ^^ borrowed value does not live long enough

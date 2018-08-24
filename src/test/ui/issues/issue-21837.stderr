@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `T: Bound` is not satisfied
-  --> $DIR/issue-21837.rs:18:9
+  --> $DIR/issue-21837.rs:8:9
    |
 LL | impl<T> Trait2 for Foo<T> {} //~ ERROR the trait bound `T: Bound` is not satisfied
    |         ^^^^^^ the trait `Bound` is not implemented for `T`
    |
    = help: consider adding a `where T: Bound` bound
 note: required by `Foo`
-  --> $DIR/issue-21837.rs:12:1
+  --> $DIR/issue-21837.rs:2:1
    |
 LL | pub struct Foo<T: Bound>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

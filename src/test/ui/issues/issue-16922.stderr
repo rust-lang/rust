@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `value`
-  --> $DIR/issue-16922.rs:14:5
+  --> $DIR/issue-16922.rs:4:5
    |
 LL | fn foo<T: Any>(value: &T) -> Box<Any> {
    |                       -- help: add explicit lifetime `'static` to the type of `value`: `&'static T`

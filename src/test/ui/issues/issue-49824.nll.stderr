@@ -1,10 +1,10 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-49824.rs:22:9
+  --> $DIR/issue-49824.rs:12:9
    |
 LL |       || {
    |       --
    |       ||
-   |       |return type of closure is [closure@$DIR/issue-49824.rs:22:9: 24:10 x:&'2 mut i32]
+   |       |return type of closure is [closure@$DIR/issue-49824.rs:12:9: 14:10 x:&'2 mut i32]
    |       lifetime `'1` represents this closure's body
 LL | /         || {
 LL | |             let _y = &mut x;

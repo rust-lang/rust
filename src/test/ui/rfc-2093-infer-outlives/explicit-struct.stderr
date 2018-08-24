@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/explicit-struct.rs:15:1
+  --> $DIR/explicit-struct.rs:5:1
    |
 LL | / struct Foo<'b, U> { //~ ERROR 15:1: 17:2: rustc_outlives
 LL | |     bar: Bar<'b, U>

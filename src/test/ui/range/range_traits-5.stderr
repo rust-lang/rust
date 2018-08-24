@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/range_traits-5.rs:19:1
+  --> $DIR/range_traits-5.rs:9:1
    |
 LL | fn main() {} //~ ERROR success
    | ^^^^^^^^^^^^

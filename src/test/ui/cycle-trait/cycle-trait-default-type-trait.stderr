@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when processing `Foo::X`
-  --> $DIR/cycle-trait-default-type-trait.rs:14:19
+  --> $DIR/cycle-trait-default-type-trait.rs:4:19
    |
 LL | trait Foo<X = Box<Foo>> {
    |                   ^^^

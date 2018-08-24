@@ -1,5 +1,5 @@
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-36617.rs:11:1
+  --> $DIR/issue-36617.rs:1:1
    |
 LL | #![derive(Copy)] //~ ERROR `derive` may only be applied to structs, enums and unions
    | ^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Copy)]`

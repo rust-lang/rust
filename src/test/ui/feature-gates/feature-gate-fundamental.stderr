@@ -1,5 +1,5 @@
 error[E0658]: the `#[fundamental]` attribute is an experimental feature (see issue #29635)
-  --> $DIR/feature-gate-fundamental.rs:11:1
+  --> $DIR/feature-gate-fundamental.rs:1:1
    |
 LL | #[fundamental] //~ ERROR the `#[fundamental]` attribute is an experimental feature
    | ^^^^^^^^^^^^^^

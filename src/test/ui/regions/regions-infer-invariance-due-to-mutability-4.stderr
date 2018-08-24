@@ -1,13 +1,13 @@
 error[E0308]: mismatched types
-  --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:21:5
+  --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:10:5
    |
 LL |     b_isize //~ ERROR mismatched types
    |     ^^^^^^^ lifetime mismatch
    |
    = note: expected type `Invariant<'static>`
               found type `Invariant<'r>`
-note: the lifetime 'r as defined on the function body at 20:23...
-  --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:20:23
+note: the lifetime 'r as defined on the function body at 9:23...
+  --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:9:23
    |
 LL | fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {
    |                       ^^

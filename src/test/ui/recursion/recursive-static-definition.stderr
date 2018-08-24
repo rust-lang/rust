@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when const-evaluating `FOO`
-  --> $DIR/recursive-static-definition.rs:11:23
+  --> $DIR/recursive-static-definition.rs:1:23
    |
 LL | pub static FOO: u32 = FOO;
    |                       ^^^

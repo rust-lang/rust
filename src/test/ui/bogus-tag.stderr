@@ -1,5 +1,5 @@
 error[E0599]: no variant named `hsl` found for type `color` in the current scope
-  --> $DIR/bogus-tag.rs:18:7
+  --> $DIR/bogus-tag.rs:7:7
    |
 LL | enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
    | ---------- variant `hsl` not found here

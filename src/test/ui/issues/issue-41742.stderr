@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-41742.rs:34:7
+  --> $DIR/issue-41742.rs:24:7
    |
 LL |     H["?"].f(); //~ ERROR mismatched types
    |       ^^^ expected u32, found reference

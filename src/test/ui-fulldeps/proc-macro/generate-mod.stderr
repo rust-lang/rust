@@ -1,29 +1,29 @@
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:19:1
+  --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!(); //~ ERROR cannot find type `FromOutside` in this scope
    | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
-  --> $DIR/generate-mod.rs:19:1
+  --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!(); //~ ERROR cannot find type `FromOutside` in this scope
    | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:22:1
+  --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr] //~ ERROR cannot find type `FromOutside` in this scope
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `OuterAttr` in this scope
-  --> $DIR/generate-mod.rs:22:1
+  --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr] //~ ERROR cannot find type `FromOutside` in this scope
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 warning: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:26:10
+  --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
@@ -33,7 +33,7 @@ LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `OuterDerive` in this scope
-  --> $DIR/generate-mod.rs:26:10
+  --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
@@ -42,7 +42,7 @@ LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:33:14
+  --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
@@ -51,7 +51,7 @@ LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOut
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `OuterDerive` in this scope
-  --> $DIR/generate-mod.rs:33:14
+  --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import

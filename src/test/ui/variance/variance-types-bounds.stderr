@@ -1,5 +1,5 @@
 error[E0208]: [+, +]
-  --> $DIR/variance-types-bounds.rs:17:1
+  --> $DIR/variance-types-bounds.rs:7:1
    |
 LL | / struct TestImm<A, B> { //~ ERROR [+, +]
 LL | |     x: A,
@@ -8,7 +8,7 @@ LL | | }
    | |_^
 
 error[E0208]: [+, o]
-  --> $DIR/variance-types-bounds.rs:23:1
+  --> $DIR/variance-types-bounds.rs:13:1
    |
 LL | / struct TestMut<A, B:'static> { //~ ERROR [+, o]
 LL | |     x: A,
@@ -17,7 +17,7 @@ LL | | }
    | |_^
 
 error[E0208]: [+, o]
-  --> $DIR/variance-types-bounds.rs:29:1
+  --> $DIR/variance-types-bounds.rs:19:1
    |
 LL | / struct TestIndirect<A:'static, B:'static> { //~ ERROR [+, o]
 LL | |     m: TestMut<A, B>
@@ -25,7 +25,7 @@ LL | | }
    | |_^
 
 error[E0208]: [o, o]
-  --> $DIR/variance-types-bounds.rs:34:1
+  --> $DIR/variance-types-bounds.rs:24:1
    |
 LL | / struct TestIndirect2<A:'static, B:'static> { //~ ERROR [o, o]
 LL | |     n: TestMut<A, B>,
@@ -34,7 +34,7 @@ LL | | }
    | |_^
 
 error[E0208]: [o, o]
-  --> $DIR/variance-types-bounds.rs:48:1
+  --> $DIR/variance-types-bounds.rs:38:1
    |
 LL | / struct TestObject<A, R> { //~ ERROR [o, o]
 LL | |     n: Box<Setter<A>+Send>,

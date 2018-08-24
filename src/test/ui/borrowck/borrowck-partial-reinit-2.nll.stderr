@@ -1,5 +1,5 @@
 error[E0382]: assign of moved value: `t`
-  --> $DIR/borrowck-partial-reinit-2.rs:25:5
+  --> $DIR/borrowck-partial-reinit-2.rs:15:5
    |
 LL |     let mut u = Test { a: 2, b: Some(Box::new(t))};
    |                                               - value moved here

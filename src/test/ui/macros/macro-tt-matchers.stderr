@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/macro-tt-matchers.rs:21:1
+  --> $DIR/macro-tt-matchers.rs:11:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

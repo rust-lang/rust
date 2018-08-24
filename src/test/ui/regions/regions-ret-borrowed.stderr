@@ -1,24 +1,24 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/regions-ret-borrowed.rs:23:14
+  --> $DIR/regions-ret-borrowed.rs:13:14
    |
 LL |     with(|o| o)
    |              ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 23:10...
-  --> $DIR/regions-ret-borrowed.rs:23:10
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 13:10...
+  --> $DIR/regions-ret-borrowed.rs:13:10
    |
 LL |     with(|o| o)
    |          ^^^^^
    = note: ...so that the expression is assignable:
            expected &isize
               found &isize
-note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 22:14...
-  --> $DIR/regions-ret-borrowed.rs:22:14
+note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 12:14...
+  --> $DIR/regions-ret-borrowed.rs:12:14
    |
 LL | fn return_it<'a>() -> &'a isize {
    |              ^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-ret-borrowed.rs:23:5
+  --> $DIR/regions-ret-borrowed.rs:13:5
    |
 LL |     with(|o| o)
    |     ^^^^^^^^^^^

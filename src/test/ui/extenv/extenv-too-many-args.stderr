@@ -1,5 +1,5 @@
 error: env! takes 1 or 2 arguments
-  --> $DIR/extenv-too-many-args.rs:11:13
+  --> $DIR/extenv-too-many-args.rs:1:13
    |
 LL | fn main() { env!("one", "two", "three"); } //~ ERROR: env! takes 1 or 2 arguments
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

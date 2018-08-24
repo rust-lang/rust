@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `v` because it is borrowed
-  --> $DIR/borrowck-loan-blocks-move-cc.rs:24:19
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:14:19
    |
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
@@ -12,7 +12,7 @@ LL |     w.use_ref();
    |     - borrow later used here
 
 error[E0505]: cannot move out of `v` because it is borrowed
-  --> $DIR/borrowck-loan-blocks-move-cc.rs:34:19
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:24:19
    |
 LL |     let w = &v;
    |             -- borrow of `v` occurs here

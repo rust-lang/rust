@@ -1,5 +1,5 @@
 error[E0599]: no function or associated item named `new` found for type `T` in the current scope
-  --> $DIR/dont-suggest-private-trait-method.rs:14:5
+  --> $DIR/dont-suggest-private-trait-method.rs:4:5
    |
 LL | struct T;
    | --------- function or associated item `new` not found for this

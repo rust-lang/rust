@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Struct: Trait<isize>` is not satisfied
-  --> $DIR/trait-coercion-generic-bad.rs:26:32
+  --> $DIR/trait-coercion-generic-bad.rs:16:32
    |
 LL |     let s: Box<Trait<isize>> = Box::new(Struct { person: "Fred" });
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<isize>` is not implemented for `Struct`

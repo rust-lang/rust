@@ -1,29 +1,29 @@
 error: unused attribute
-  --> $DIR/lint-misplaced-attr.rs:17:5
+  --> $DIR/lint-misplaced-attr.rs:7:5
    |
 LL |     #![crate_type = "bin"] //~ ERROR unused attribute
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-misplaced-attr.rs:14:9
+  --> $DIR/lint-misplaced-attr.rs:4:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: crate-level attribute should be in the root module
-  --> $DIR/lint-misplaced-attr.rs:17:5
+  --> $DIR/lint-misplaced-attr.rs:7:5
    |
 LL |     #![crate_type = "bin"] //~ ERROR unused attribute
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/lint-misplaced-attr.rs:21:1
+  --> $DIR/lint-misplaced-attr.rs:11:1
    |
 LL | #[crate_type = "bin"] fn main() {} //~ ERROR unused attribute
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/lint-misplaced-attr.rs:21:1
+  --> $DIR/lint-misplaced-attr.rs:11:1
    |
 LL | #[crate_type = "bin"] fn main() {} //~ ERROR unused attribute
    | ^^^^^^^^^^^^^^^^^^^^^

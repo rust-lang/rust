@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/unboxed-closure-sugar-lifetime-elision.rs:36:35
+  --> $DIR/unboxed-closure-sugar-lifetime-elision.rs:26:35
    |
 LL |     let _: Foo(&isize, &usize) -> &usize; //~ ERROR missing lifetime specifier
    |                                   ^ expected lifetime parameter

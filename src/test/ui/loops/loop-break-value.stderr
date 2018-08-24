@@ -1,5 +1,5 @@
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:38:9
+  --> $DIR/loop-break-value.rs:28:9
    |
 LL |         break (); //~ ERROR `break` with value from a `while` loop
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -9,7 +9,7 @@ LL |         break; //~ ERROR `break` with value from a `while` loop
    |         ^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:40:13
+  --> $DIR/loop-break-value.rs:30:13
    |
 LL |             break 'while_loop 123;
    |             ^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -19,7 +19,7 @@ LL |             break;
    |             ^^^^^
 
 error[E0571]: `break` with value from a `while let` loop
-  --> $DIR/loop-break-value.rs:48:12
+  --> $DIR/loop-break-value.rs:38:12
    |
 LL |         if break () { //~ ERROR `break` with value from a `while let` loop
    |            ^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -29,7 +29,7 @@ LL |         if break { //~ ERROR `break` with value from a `while let` loop
    |            ^^^^^
 
 error[E0571]: `break` with value from a `while let` loop
-  --> $DIR/loop-break-value.rs:53:9
+  --> $DIR/loop-break-value.rs:43:9
    |
 LL |         break None;
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -39,7 +39,7 @@ LL |         break;
    |         ^^^^^
 
 error[E0571]: `break` with value from a `while let` loop
-  --> $DIR/loop-break-value.rs:59:13
+  --> $DIR/loop-break-value.rs:49:13
    |
 LL |             break 'while_let_loop "nope";
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -49,7 +49,7 @@ LL |             break;
    |             ^^^^^
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:66:9
+  --> $DIR/loop-break-value.rs:56:9
    |
 LL |         break (); //~ ERROR `break` with value from a `for` loop
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -59,7 +59,7 @@ LL |         break; //~ ERROR `break` with value from a `for` loop
    |         ^^^^^
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:67:9
+  --> $DIR/loop-break-value.rs:57:9
    |
 LL |         break [()];
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -69,7 +69,7 @@ LL |         break;
    |         ^^^^^
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:74:13
+  --> $DIR/loop-break-value.rs:64:13
    |
 LL |             break 'for_loop Some(17);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -79,7 +79,7 @@ LL |             break;
    |             ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:14:31
+  --> $DIR/loop-break-value.rs:4:31
    |
 LL |     let val: ! = loop { break break; };
    |                               ^^^^^ expected (), found !
@@ -88,7 +88,7 @@ LL |     let val: ! = loop { break break; };
               found type `!`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:21:19
+  --> $DIR/loop-break-value.rs:11:19
    |
 LL |             break 123; //~ ERROR mismatched types
    |                   ^^^ expected &str, found integral variable
@@ -97,7 +97,7 @@ LL |             break 123; //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:26:15
+  --> $DIR/loop-break-value.rs:16:15
    |
 LL |         break "asdf"; //~ ERROR mismatched types
    |               ^^^^^^ expected i32, found reference
@@ -106,7 +106,7 @@ LL |         break "asdf"; //~ ERROR mismatched types
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:31:31
+  --> $DIR/loop-break-value.rs:21:31
    |
 LL |             break 'outer_loop "nope"; //~ ERROR mismatched types
    |                               ^^^^^^ expected i32, found reference
@@ -115,7 +115,7 @@ LL |             break 'outer_loop "nope"; //~ ERROR mismatched types
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:83:26
+  --> $DIR/loop-break-value.rs:73:26
    |
 LL |                 break 'c 123; //~ ERROR mismatched types
    |                          ^^^ expected (), found integral variable
@@ -124,7 +124,7 @@ LL |                 break 'c 123; //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:90:15
+  --> $DIR/loop-break-value.rs:80:15
    |
 LL |         break (break, break); //~ ERROR mismatched types
    |               ^^^^^^^^^^^^^^ expected (), found tuple
@@ -133,7 +133,7 @@ LL |         break (break, break); //~ ERROR mismatched types
               found type `(!, !)`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:95:15
+  --> $DIR/loop-break-value.rs:85:15
    |
 LL |         break 2; //~ ERROR mismatched types
    |               ^ expected (), found integral variable
@@ -142,7 +142,7 @@ LL |         break 2; //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:100:9
+  --> $DIR/loop-break-value.rs:90:9
    |
 LL |         break; //~ ERROR mismatched types
    |         ^^^^^ expected (), found integral variable

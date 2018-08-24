@@ -1,11 +1,11 @@
 error[E0271]: type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
-  --> $DIR/higher-ranked-projection.rs:35:5
+  --> $DIR/higher-ranked-projection.rs:25:5
    |
 LL |     foo(());
    |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
    |
 note: required by `foo`
-  --> $DIR/higher-ranked-projection.rs:24:1
+  --> $DIR/higher-ranked-projection.rs:14:1
    |
 LL | / fn foo<U, T>(_t: T)
 LL | |     where for<'a> &'a T: Mirror<Image=U>

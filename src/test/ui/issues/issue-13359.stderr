@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-13359.rs:16:9
+  --> $DIR/issue-13359.rs:6:9
    |
 LL |     foo(1*(1 as isize));
    |         ^^^^^^^^^^^^^^ expected i16, found isize
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13359.rs:20:9
+  --> $DIR/issue-13359.rs:10:9
    |
 LL |     bar(1*(1 as usize));
    |         ^^^^^^^^^^^^^^ expected u32, found usize

@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-fn-in-const-b.rs:17:9
+  --> $DIR/borrowck-fn-in-const-b.rs:7:9
    |
 LL |     fn broken(x: &Vec<String>) {
    |                  ------------ help: consider changing this to be a mutable reference: `&mut std::vec::Vec<std::string::String>`

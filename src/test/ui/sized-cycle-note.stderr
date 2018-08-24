@@ -1,5 +1,5 @@
 error[E0072]: recursive type `Baz` has infinite size
-  --> $DIR/sized-cycle-note.rs:19:1
+  --> $DIR/sized-cycle-note.rs:9:1
    |
 LL | struct Baz { q: Option<Foo> }
    | ^^^^^^^^^^   -------------- recursive without indirection
@@ -9,7 +9,7 @@ LL | struct Baz { q: Option<Foo> }
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Baz` representable
 
 error[E0072]: recursive type `Foo` has infinite size
-  --> $DIR/sized-cycle-note.rs:21:1
+  --> $DIR/sized-cycle-note.rs:11:1
    |
 LL | struct Foo { q: Option<Baz> }
    | ^^^^^^^^^^   -------------- recursive without indirection

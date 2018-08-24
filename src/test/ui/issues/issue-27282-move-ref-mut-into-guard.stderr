@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-27282-move-ref-mut-into-guard.rs:24:18
+  --> $DIR/issue-27282-move-ref-mut-into-guard.rs:14:18
    |
 LL |             if { (|| { let bar = foo; bar.take() })(); false } => {},
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content

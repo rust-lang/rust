@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/do-not-ignore-lifetime-bounds-in-copy.rs:20:17
+  --> $DIR/do-not-ignore-lifetime-bounds-in-copy.rs:10:17
    |
 LL |     let a = Foo(&s); //~ ERROR `s` does not live long enough [E0597]
    |                 ^^ borrowed value does not live long enough

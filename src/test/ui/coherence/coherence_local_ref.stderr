@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/coherence_local_ref.rs:27:1
+  --> $DIR/coherence_local_ref.rs:17:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

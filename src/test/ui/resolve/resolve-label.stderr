@@ -1,5 +1,5 @@
 error[E0426]: use of undeclared label `'l`
-  --> $DIR/resolve-label.rs:15:23
+  --> $DIR/resolve-label.rs:5:23
    |
 LL |                 break 'l; //~ ERROR use of undeclared label
    |                       ^^ undeclared label `'l`

@@ -1,5 +1,5 @@
 error[E0423]: expected value, found module `a`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:17:5
    |
 LL |     a.I
    |     ^--
@@ -7,7 +7,7 @@ LL |     a.I
    |     did you mean `a::I`?
 
 error[E0423]: expected value, found module `a`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:32:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:22:5
    |
 LL |     a.g()
    |     ^----
@@ -15,7 +15,7 @@ LL |     a.g()
    |     did you mean `a::g(...)`?
 
 error[E0423]: expected value, found module `a`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
    |
 LL |     a.b.J
    |     ^--
@@ -23,7 +23,7 @@ LL |     a.b.J
    |     did you mean `a::b`?
 
 error[E0423]: expected value, found module `a::b`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:42:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:32:5
    |
 LL |     a::b.J
    |     ^^^---
@@ -32,7 +32,7 @@ LL |     a::b.J
    |     did you mean `a::b::J`?
 
 error[E0423]: expected value, found module `a`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:47:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
    |
 LL |     a.b.f();
    |     ^--
@@ -40,7 +40,7 @@ LL |     a.b.f();
    |     did you mean `a::b`?
 
 error[E0423]: expected value, found module `a::b`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:12
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:40:12
    |
 LL |     v.push(a::b);
    |            ^^^-
@@ -48,7 +48,7 @@ LL |     v.push(a::b);
    |               did you mean `I`?
 
 error[E0423]: expected value, found module `a::b`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:45:5
    |
 LL |     a::b.f()
    |     ^^^-----
@@ -57,7 +57,7 @@ LL |     a::b.f()
    |     did you mean `a::b::f(...)`?
 
 error[E0423]: expected value, found module `a::b`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:60:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:5
    |
 LL |     a::b
    |     ^^^-
@@ -65,7 +65,7 @@ LL |     a::b
    |        did you mean `I`?
 
 error[E0423]: expected function, found module `a::b`
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:65:5
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:5
    |
 LL |     a::b()
    |     ^^^-

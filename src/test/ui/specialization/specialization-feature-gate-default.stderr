@@ -1,5 +1,5 @@
 error[E0658]: specialization is unstable (see issue #31844)
-  --> $DIR/specialization-feature-gate-default.rs:20:5
+  --> $DIR/specialization-feature-gate-default.rs:10:5
    |
 LL |     default fn foo(&self) {} //~ ERROR specialization is unstable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

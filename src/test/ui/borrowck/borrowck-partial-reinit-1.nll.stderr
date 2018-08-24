@@ -1,5 +1,5 @@
 error[E0382]: assign of moved value: `t`
-  --> $DIR/borrowck-partial-reinit-1.rs:37:5
+  --> $DIR/borrowck-partial-reinit-1.rs:27:5
    |
 LL |     drop(t);
    |          - value moved here
@@ -9,7 +9,7 @@ LL |     t.b = Some(u);
    = note: move occurs because `t` has type `Test2`, which does not implement the `Copy` trait
 
 error[E0382]: assign of moved value: `t`
-  --> $DIR/borrowck-partial-reinit-1.rs:43:5
+  --> $DIR/borrowck-partial-reinit-1.rs:33:5
    |
 LL |     drop(t);
    |          - value moved here

@@ -1,47 +1,47 @@
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:27:16
+  --> $DIR/discrim-ill-typed.rs:17:16
    |
 LL |         OhNo = 0_u8,
    |                ^^^^ expected i8, found u8
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:40:16
+  --> $DIR/discrim-ill-typed.rs:30:16
    |
 LL |         OhNo = 0_i8,
    |                ^^^^ expected u8, found i8
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:53:16
+  --> $DIR/discrim-ill-typed.rs:43:16
    |
 LL |         OhNo = 0_u16,
    |                ^^^^^ expected i16, found u16
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:66:16
+  --> $DIR/discrim-ill-typed.rs:56:16
    |
 LL |         OhNo = 0_i16,
    |                ^^^^^ expected u16, found i16
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:79:16
+  --> $DIR/discrim-ill-typed.rs:69:16
    |
 LL |         OhNo = 0_u32,
    |                ^^^^^ expected i32, found u32
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:92:16
+  --> $DIR/discrim-ill-typed.rs:82:16
    |
 LL |         OhNo = 0_i32,
    |                ^^^^^ expected u32, found i32
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:105:16
+  --> $DIR/discrim-ill-typed.rs:95:16
    |
 LL |         OhNo = 0_u64,
    |                ^^^^^ expected i64, found u64
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:118:16
+  --> $DIR/discrim-ill-typed.rs:108:16
    |
 LL |         OhNo = 0_i64,
    |                ^^^^^ expected u64, found i64

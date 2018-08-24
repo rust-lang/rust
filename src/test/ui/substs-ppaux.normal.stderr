@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/substs-ppaux.rs:25:17
+  --> $DIR/substs-ppaux.rs:16:17
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found fn item
@@ -8,7 +8,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
               found type `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
 error[E0308]: mismatched types
-  --> $DIR/substs-ppaux.rs:34:17
+  --> $DIR/substs-ppaux.rs:25:17
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found fn item
@@ -17,7 +17,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
               found type `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 
 error[E0308]: mismatched types
-  --> $DIR/substs-ppaux.rs:42:17
+  --> $DIR/substs-ppaux.rs:33:17
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found fn item
@@ -26,7 +26,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
               found type `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 
 error[E0308]: mismatched types
-  --> $DIR/substs-ppaux.rs:50:17
+  --> $DIR/substs-ppaux.rs:41:17
    |
 LL |     let x: () = foo::<'static>;
    |                 ^^^^^^^^^^^^^^ expected (), found fn item
@@ -35,7 +35,7 @@ LL |     let x: () = foo::<'static>;
               found type `fn() {foo::<'static>}`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/substs-ppaux.rs:58:5
+  --> $DIR/substs-ppaux.rs:49:5
    |
 LL |     <str as Foo<u8>>::bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -44,7 +44,7 @@ LL |     <str as Foo<u8>>::bar;
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because of the requirements on the impl of `Foo<'_, '_, u8>` for `str`
 note: required by `Foo::bar`
-  --> $DIR/substs-ppaux.rs:16:5
+  --> $DIR/substs-ppaux.rs:7:5
    |
 LL |     fn bar<'a, T>() where T: 'a {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

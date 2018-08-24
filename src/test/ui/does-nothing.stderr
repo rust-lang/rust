@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `this_does_nothing_what_the` in this scope
-  --> $DIR/does-nothing.rs:11:32
+  --> $DIR/does-nothing.rs:1:32
    |
 LL | fn main() { println!("doing"); this_does_nothing_what_the; println!("boing"); }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope

@@ -1,11 +1,11 @@
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/shadowing-in-the-same-pattern.rs:13:10
+  --> $DIR/shadowing-in-the-same-pattern.rs:3:10
    |
 LL | fn f((a, a): (isize, isize)) {} //~ ERROR identifier `a` is bound more than once
    |          ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/shadowing-in-the-same-pattern.rs:16:13
+  --> $DIR/shadowing-in-the-same-pattern.rs:6:13
    |
 LL |     let (a, a) = (1, 1);    //~ ERROR identifier `a` is bound more than once
    |             ^ used in a pattern more than once

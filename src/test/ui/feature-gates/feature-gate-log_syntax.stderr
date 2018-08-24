@@ -1,5 +1,5 @@
 error[E0658]: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/feature-gate-log_syntax.rs:12:5
+  --> $DIR/feature-gate-log_syntax.rs:2:5
    |
 LL |     log_syntax!() //~ ERROR `log_syntax!` is not stable enough
    |     ^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: allocators must be statics
-  --> $DIR/function-allocator.rs:13:1
+  --> $DIR/function-allocator.rs:2:1
    |
 LL | fn foo() {} //~ ERROR: allocators must be statics
    | ^^^^^^^^^^^

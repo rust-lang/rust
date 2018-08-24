@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `tick`
-  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:20:5
+  --> $DIR/unboxed-closures-infer-fnonce-move-call-twice.rs:10:5
    |
 LL |     tick();
    |     ---- value moved here

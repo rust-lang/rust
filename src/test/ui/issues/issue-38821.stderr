@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:33:17
+  --> $DIR/issue-38821.rs:23:17
    |
 LL | #[derive(Debug, Copy, Clone)]
    |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`

@@ -1,5 +1,5 @@
 error[E0446]: private type `Foo::Bar` in public interface
-  --> $DIR/E0446.rs:14:5
+  --> $DIR/E0446.rs:4:5
    |
 LL |       struct Bar(u32);
    |       - `Foo::Bar` declared as private

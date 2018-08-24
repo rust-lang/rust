@@ -1,11 +1,11 @@
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/extern-crate-rename.rs:22:5
+  --> $DIR/extern-crate-rename.rs:12:5
    |
 LL | use my_crate::foo;
    |     ^^^^^^^^^^^^^ help: use `crate`: `crate::my_crate::foo`
    |
 note: lint level defined here
-  --> $DIR/extern-crate-rename.rs:18:9
+  --> $DIR/extern-crate-rename.rs:8:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

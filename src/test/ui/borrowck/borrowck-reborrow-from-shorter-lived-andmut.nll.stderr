@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:18
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:9:18
    |
 LL |     S { pointer: &mut *p.pointer }
    |                  ^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:5
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:9:5
    |
 LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
    |                      -- -- lifetime `'b` defined here

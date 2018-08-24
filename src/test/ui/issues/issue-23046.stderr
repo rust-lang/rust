@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-23046.rs:27:15
+  --> $DIR/issue-23046.rs:17:15
    |
 LL |     let ex = |x| { //~ ERROR type annotations needed
    |               ^ consider giving this closure parameter a type

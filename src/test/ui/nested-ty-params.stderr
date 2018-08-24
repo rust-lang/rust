@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/nested-ty-params.rs:13:16
+  --> $DIR/nested-ty-params.rs:3:16
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function
@@ -9,7 +9,7 @@ LL |     fn hd1(w: [U]) -> U { return w[0]; }
    |        help: try using a local type parameter instead: `hd1<U>`
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/nested-ty-params.rs:13:23
+  --> $DIR/nested-ty-params.rs:3:23
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function

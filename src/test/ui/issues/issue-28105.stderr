@@ -1,11 +1,11 @@
 error[E0268]: `continue` outside of loop
-  --> $DIR/issue-28105.rs:14:5
+  --> $DIR/issue-28105.rs:4:5
    |
 LL |     continue //~ ERROR `continue` outside of loop
    |     ^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `break` outside of loop
-  --> $DIR/issue-28105.rs:16:5
+  --> $DIR/issue-28105.rs:6:5
    |
 LL |     break //~ ERROR `break` outside of loop
    |     ^^^^^ cannot break outside of a loop

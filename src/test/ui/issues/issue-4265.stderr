@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `bar`:
-  --> $DIR/issue-4265.rs:20:5
+  --> $DIR/issue-4265.rs:10:5
    |
 LL | /     fn bar() {
 LL | |         Foo { baz: 0 }.bar();

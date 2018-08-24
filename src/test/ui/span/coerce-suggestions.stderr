@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:17:20
+  --> $DIR/coerce-suggestions.rs:7:20
    |
 LL |     let x: usize = String::new();
    |                    ^^^^^^^^^^^^^ expected usize, found struct `std::string::String`
@@ -8,7 +8,7 @@ LL |     let x: usize = String::new();
               found type `std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:19:19
+  --> $DIR/coerce-suggestions.rs:9:19
    |
 LL |     let x: &str = String::new();
    |                   ^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     let x: &str = String::new();
               found type `std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:22:10
+  --> $DIR/coerce-suggestions.rs:12:10
    |
 LL |     test(&y);
    |          ^^ types differ in mutability
@@ -29,7 +29,7 @@ LL |     test(&y);
               found type `&std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:24:11
+  --> $DIR/coerce-suggestions.rs:14:11
    |
 LL |     test2(&y);
    |           ^^ types differ in mutability
@@ -38,7 +38,7 @@ LL |     test2(&y);
               found type `&std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:27:9
+  --> $DIR/coerce-suggestions.rs:17:9
    |
 LL |     f = box f;
    |         ^^^^^
@@ -47,7 +47,7 @@ LL |     f = box f;
    |         help: try using a conversion method: `box f.to_string()`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:31:9
+  --> $DIR/coerce-suggestions.rs:21:9
    |
 LL |     s = format!("foo");
    |         ^^^^^^^^^^^^^^

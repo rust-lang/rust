@@ -1,5 +1,5 @@
 error: extern items cannot be `const`
-  --> $DIR/extern-const.rs:15:5
+  --> $DIR/extern-const.rs:5:5
    |
 LL |     const C: u8; //~ ERROR extern items cannot be `const`
    |     ^^^^^ help: try using a static value: `static`

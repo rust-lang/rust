@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `i32: std::convert::From<&str>` is not satisfied
-  --> $DIR/try-block-bad-type.rs:17:9
+  --> $DIR/try-block-bad-type.rs:7:9
    |
 LL |         Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>` is not satisfied
    |         ^^^^^^^^ the trait `std::convert::From<&str>` is not implemented for `i32`
@@ -13,7 +13,7 @@ LL |         Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>`
    = note: required by `std::convert::From::from`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == &str`
-  --> $DIR/try-block-bad-type.rs:22:9
+  --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         "" //~ ERROR type mismatch
    |         ^^ expected i32, found &str
@@ -22,7 +22,7 @@ LL |         "" //~ ERROR type mismatch
               found type `&str`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == ()`
-  --> $DIR/try-block-bad-type.rs:25:39
+  --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
    |                                       ^ expected i32, found ()
@@ -31,7 +31,7 @@ LL |     let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
               found type `()`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-block-bad-type.rs:27:23
+  --> $DIR/try-block-bad-type.rs:17:23
    |
 LL |     let res: () = try { }; //~ the trait bound `(): std::ops::Try` is not satisfied
    |                       ^^^ the trait `std::ops::Try` is not implemented for `()`
@@ -39,7 +39,7 @@ LL |     let res: () = try { }; //~ the trait bound `(): std::ops::Try` is not s
    = note: required by `std::ops::Try::from_ok`
 
 error[E0277]: the trait bound `i32: std::ops::Try` is not satisfied
-  --> $DIR/try-block-bad-type.rs:29:24
+  --> $DIR/try-block-bad-type.rs:19:24
    |
 LL |     let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: std::ops::Try` is not satisfied
    |                        ^^^^^ the trait `std::ops::Try` is not implemented for `i32`

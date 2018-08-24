@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `isize: Clone2` is not satisfied
-  --> $DIR/impl-bounds-checking.rs:20:6
+  --> $DIR/impl-bounds-checking.rs:10:6
    |
 LL | impl Getter<isize> for isize { //~ ERROR `isize: Clone2` is not satisfied
    |      ^^^^^^^^^^^^^ the trait `Clone2` is not implemented for `isize`

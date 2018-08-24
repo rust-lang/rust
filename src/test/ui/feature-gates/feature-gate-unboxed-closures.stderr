@@ -1,5 +1,5 @@
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures.rs:16:5
+  --> $DIR/feature-gate-unboxed-closures.rs:6:5
    |
 LL | /     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
 LL | |         a + b

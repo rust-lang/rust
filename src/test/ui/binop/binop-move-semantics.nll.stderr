@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/binop-move-semantics.rs:18:5
+  --> $DIR/binop-move-semantics.rs:8:5
    |
 LL |     x
    |     - value moved here
@@ -10,7 +10,7 @@ LL |     x;  //~ ERROR: use of moved value
    = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/binop-move-semantics.rs:24:5
+  --> $DIR/binop-move-semantics.rs:14:5
    |
 LL |     x
    |     - value moved here
@@ -21,19 +21,19 @@ LL |     x.clone();  //~ ERROR: use of moved value
    = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/binop-move-semantics.rs:40:5
+  --> $DIR/binop-move-semantics.rs:30:5
    |
 LL |     *m  //~ ERROR: cannot move out of borrowed content
    |     ^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/binop-move-semantics.rs:42:5
+  --> $DIR/binop-move-semantics.rs:32:5
    |
 LL |     *n;  //~ ERROR: cannot move out of borrowed content
    |     ^^ cannot move out of borrowed content
 
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
-  --> $DIR/binop-move-semantics.rs:64:5
+  --> $DIR/binop-move-semantics.rs:54:5
    |
 LL |       &mut f
    |       ------
@@ -48,7 +48,7 @@ LL | |     &f;  //~ ERROR: cannot borrow `f` as immutable because it is also bor
    |       immutable borrow occurs here
 
 error[E0502]: cannot borrow `f` as mutable because it is also borrowed as immutable
-  --> $DIR/binop-move-semantics.rs:72:5
+  --> $DIR/binop-move-semantics.rs:62:5
    |
 LL |       &f
    |       --

@@ -1,5 +1,5 @@
 error[E0664]: clobber should not be surrounded by braces
-  --> $DIR/E0664.rs:17:12
+  --> $DIR/E0664.rs:7:12
    |
 LL |          : "{eax}" //~ ERROR E0664
    |            ^^^^^^^

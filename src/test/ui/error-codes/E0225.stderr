@@ -1,5 +1,5 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/E0225.rs:12:32
+  --> $DIR/E0225.rs:2:32
    |
 LL |     let _: Box<std::io::Read + std::io::Write>;
    |                                ^^^^^^^^^^^^^^ non-auto additional trait

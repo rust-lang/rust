@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-46302.rs:13:27
+  --> $DIR/issue-46302.rs:3:27
    |
 LL |   let u: &str = if true { s[..2] } else { s };
    |                           ^^^^^^

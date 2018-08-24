@@ -1,5 +1,5 @@
 error[E0599]: no method named `foo` found for type `Bar` in the current scope
-  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:30:8
+  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:20:8
    |
 LL | struct Bar;
    | ----------- method `foo` not found for this

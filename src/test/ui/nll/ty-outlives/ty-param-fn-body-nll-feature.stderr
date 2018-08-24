@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn-body-nll-feature.rs:30:5
+  --> $DIR/ty-param-fn-body-nll-feature.rs:20:5
    |
 LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0277]: `NoSend` cannot be sent between threads safely
-  --> $DIR/no_send-enum.rs:26:5
+  --> $DIR/no_send-enum.rs:16:5
    |
 LL |     bar(x);
    |     ^^^ `NoSend` cannot be sent between threads safely
@@ -7,7 +7,7 @@ LL |     bar(x);
    = help: within `Foo`, the trait `std::marker::Send` is not implemented for `NoSend`
    = note: required because it appears within the type `Foo`
 note: required by `bar`
-  --> $DIR/no_send-enum.rs:22:1
+  --> $DIR/no_send-enum.rs:12:1
    |
 LL | fn bar<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^

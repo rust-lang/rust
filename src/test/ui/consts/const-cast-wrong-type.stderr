@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/const-cast-wrong-type.rs:12:23
+  --> $DIR/const-cast-wrong-type.rs:2:23
    |
 LL | static b: *const i8 = &a as *const i8; //~ ERROR mismatched types
    |                       ^^^^^^^^^^^^^^^ expected u8, found i8

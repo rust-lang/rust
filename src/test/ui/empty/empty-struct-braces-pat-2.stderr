@@ -1,5 +1,5 @@
 error[E0532]: expected tuple struct/variant, found struct `Empty1`
-  --> $DIR/empty-struct-braces-pat-2.rs:25:9
+  --> $DIR/empty-struct-braces-pat-2.rs:15:9
    |
 LL |         Empty1() => () //~ ERROR expected tuple struct/variant, found struct `Empty1`
    |         ^^^^^^
@@ -8,7 +8,7 @@ LL |         Empty1() => () //~ ERROR expected tuple struct/variant, found struc
    |         did you mean `Empty1 { /* fields */ }`?
 
 error[E0532]: expected tuple struct/variant, found struct `XEmpty1`
-  --> $DIR/empty-struct-braces-pat-2.rs:28:9
+  --> $DIR/empty-struct-braces-pat-2.rs:18:9
    |
 LL |         XEmpty1() => () //~ ERROR expected tuple struct/variant, found struct `XEmpty1`
    |         ^^^^^^^
@@ -17,7 +17,7 @@ LL |         XEmpty1() => () //~ ERROR expected tuple struct/variant, found stru
    |         did you mean `XEmpty1 { /* fields */ }`?
 
 error[E0532]: expected tuple struct/variant, found struct `Empty1`
-  --> $DIR/empty-struct-braces-pat-2.rs:31:9
+  --> $DIR/empty-struct-braces-pat-2.rs:21:9
    |
 LL |         Empty1(..) => () //~ ERROR expected tuple struct/variant, found struct `Empty1`
    |         ^^^^^^
@@ -26,7 +26,7 @@ LL |         Empty1(..) => () //~ ERROR expected tuple struct/variant, found str
    |         did you mean `Empty1 { /* fields */ }`?
 
 error[E0532]: expected tuple struct/variant, found struct `XEmpty1`
-  --> $DIR/empty-struct-braces-pat-2.rs:34:9
+  --> $DIR/empty-struct-braces-pat-2.rs:24:9
    |
 LL |         XEmpty1(..) => () //~ ERROR expected tuple struct/variant, found struct `XEmpty1`
    |         ^^^^^^^

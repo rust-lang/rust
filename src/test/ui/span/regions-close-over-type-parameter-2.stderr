@@ -1,5 +1,5 @@
 error[E0597]: `tmp0` does not live long enough
-  --> $DIR/regions-close-over-type-parameter-2.rs:33:21
+  --> $DIR/regions-close-over-type-parameter-2.rs:23:21
    |
 LL |         let tmp1 = &tmp0;
    |                     ^^^^ borrowed value does not live long enough

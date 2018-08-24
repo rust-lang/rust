@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `(dyn I + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5035-2.rs:14:8
+  --> $DIR/issue-5035-2.rs:4:8
    |
 LL | fn foo(_x: K) {}
    |        ^^ doesn't have a size known at compile-time

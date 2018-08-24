@@ -1,5 +1,5 @@
 error: `global_allocator` cannot be used in submodules
-  --> $DIR/allocator-submodule.rs:37:5
+  --> $DIR/allocator-submodule.rs:27:5
    |
 LL |     static MY_HEAP: MyAlloc = MyAlloc; //~ ERROR global_allocator
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

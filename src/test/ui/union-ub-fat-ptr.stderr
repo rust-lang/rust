@@ -1,5 +1,5 @@
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:79:1
+  --> $DIR/union-ub-fat-ptr.rs:69:1
    |
 LL | const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access at offset N, outside bounds of allocation N which has size N
@@ -7,7 +7,7 @@ LL | const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:82:1
+  --> $DIR/union-ub-fat-ptr.rs:72:1
    |
 LL | const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered fat pointer length is not a valid integer
@@ -15,7 +15,7 @@ LL | const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:85:1
+  --> $DIR/union-ub-fat-ptr.rs:75:1
    |
 LL | const C2: &Str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered fat pointer length is not a valid integer
@@ -23,7 +23,7 @@ LL | const C2: &Str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, le
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:91:1
+  --> $DIR/union-ub-fat-ptr.rs:81:1
    |
 LL | const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access at offset N, outside bounds of allocation N which has size N
@@ -31,7 +31,7 @@ LL | const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:94:1
+  --> $DIR/union-ub-fat-ptr.rs:84:1
    |
 LL | const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered fat pointer length is not a valid integer
@@ -39,7 +39,7 @@ LL | const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, l
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:98:1
+  --> $DIR/union-ub-fat-ptr.rs:88:1
    |
 LL | const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tried to access memory with alignment N, but alignment N is required
@@ -47,7 +47,7 @@ LL | const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable:
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:101:1
+  --> $DIR/union-ub-fat-ptr.rs:91:1
    |
 LL | const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a memory access tried to interpret some bytes as a pointer
@@ -55,7 +55,7 @@ LL | const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtabl
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:104:1
+  --> $DIR/union-ub-fat-ptr.rs:94:1
    |
 LL | const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered fat pointer vtable is not a valid pointer
@@ -63,7 +63,7 @@ LL | const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtabl
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:108:1
+  --> $DIR/union-ub-fat-ptr.rs:98:1
    |
 LL | const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>, but expected something in the range 0..=1
@@ -71,7 +71,7 @@ LL | const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:112:1
+  --> $DIR/union-ub-fat-ptr.rs:102:1
    |
 LL | const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected something in the range 0..=1

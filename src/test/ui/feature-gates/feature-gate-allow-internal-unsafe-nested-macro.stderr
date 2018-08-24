@@ -1,5 +1,5 @@
 error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/feature-gate-allow-internal-unsafe-nested-macro.rs:18:9
+  --> $DIR/feature-gate-allow-internal-unsafe-nested-macro.rs:8:9
    |
 LL |         #[allow_internal_unsafe] //~ ERROR allow_internal_unsafe side-steps
    |         ^^^^^^^^^^^^^^^^^^^^^^^^

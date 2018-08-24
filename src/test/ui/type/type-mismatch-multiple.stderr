@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch-multiple.rs:13:27
+  --> $DIR/type-mismatch-multiple.rs:3:27
    |
 LL | fn main() { let a: bool = 1; let b: i32 = true; }
    |                           ^ expected bool, found integral variable
@@ -8,7 +8,7 @@ LL | fn main() { let a: bool = 1; let b: i32 = true; }
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch-multiple.rs:13:43
+  --> $DIR/type-mismatch-multiple.rs:3:43
    |
 LL | fn main() { let a: bool = 1; let b: i32 = true; }
    |                                           ^^^^ expected i32, found bool

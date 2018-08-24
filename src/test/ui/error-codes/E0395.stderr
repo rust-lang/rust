@@ -1,5 +1,5 @@
 error[E0658]: comparing raw pointers inside static (see issue #53020)
-  --> $DIR/E0395.rs:16:22
+  --> $DIR/E0395.rs:6:22
    |
 LL | static BAZ: bool = { (&FOO as *const i32) == (&BAR as *const i32) }; //~ ERROR issue #53020
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

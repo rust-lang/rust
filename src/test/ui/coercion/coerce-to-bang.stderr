@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:16:17
+  --> $DIR/coerce-to-bang.rs:6:17
    |
 LL |     foo(return, 22, 44);
    |                 ^^ expected !, found integral variable
@@ -8,7 +8,7 @@ LL |     foo(return, 22, 44);
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:28:13
+  --> $DIR/coerce-to-bang.rs:18:13
    |
 LL |     foo(22, 44, return); //~ ERROR mismatched types
    |             ^^ expected !, found integral variable
@@ -17,7 +17,7 @@ LL |     foo(22, 44, return); //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:36:12
+  --> $DIR/coerce-to-bang.rs:26:12
    |
 LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
    |            ^ expected !, found integral variable
@@ -26,7 +26,7 @@ LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverg
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:46:12
+  --> $DIR/coerce-to-bang.rs:36:12
    |
 LL |     foo(a, b, c); //~ ERROR mismatched types
    |            ^ expected !, found integral variable
@@ -35,7 +35,7 @@ LL |     foo(a, b, c); //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:55:12
+  --> $DIR/coerce-to-bang.rs:45:12
    |
 LL |     foo(a, b, c); //~ ERROR mismatched types
    |            ^ expected !, found integral variable
@@ -44,7 +44,7 @@ LL |     foo(a, b, c); //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:60:21
+  --> $DIR/coerce-to-bang.rs:50:21
    |
 LL |     let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
    |                     ^^^^^^^^^^^^ expected !, found integral variable
@@ -53,7 +53,7 @@ LL |     let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
               found type `[{integer}; 2]`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:65:22
+  --> $DIR/coerce-to-bang.rs:55:22
    |
 LL |     let x: [!; 2] = [22, return]; //~ ERROR mismatched types
    |                      ^^ expected !, found integral variable
@@ -62,7 +62,7 @@ LL |     let x: [!; 2] = [22, return]; //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:70:37
+  --> $DIR/coerce-to-bang.rs:60:37
    |
 LL |     let x: (usize, !, usize) = (22, 44, 66); //~ ERROR mismatched types
    |                                     ^^ expected !, found integral variable
@@ -71,7 +71,7 @@ LL |     let x: (usize, !, usize) = (22, 44, 66); //~ ERROR mismatched types
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:75:41
+  --> $DIR/coerce-to-bang.rs:65:41
    |
 LL |     let x: (usize, !, usize) = (return, 44, 66);
    |                                         ^^ expected !, found integral variable
@@ -80,7 +80,7 @@ LL |     let x: (usize, !, usize) = (return, 44, 66);
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:86:37
+  --> $DIR/coerce-to-bang.rs:76:37
    |
 LL |     let x: (usize, !, usize) = (22, 44, return); //~ ERROR mismatched types
    |                                     ^^ expected !, found integral variable

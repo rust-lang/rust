@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `Foo(_, _)` not covered
-  --> $DIR/tuple-struct-nonexhaustive.rs:15:11
+  --> $DIR/tuple-struct-nonexhaustive.rs:5:11
    |
 LL |     match x {   //~ ERROR non-exhaustive
    |           ^ pattern `Foo(_, _)` not covered

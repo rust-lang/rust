@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U: std::cmp::Eq` is not satisfied
-  --> $DIR/specialization-wfcheck.rs:17:17
+  --> $DIR/specialization-wfcheck.rs:7:17
    |
 LL | default impl<U> Foo<'static, U> for () {}
    |                 ^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `U`

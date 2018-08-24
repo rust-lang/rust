@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `)`
-  --> $DIR/issue-10636-1.rs:15:1
+  --> $DIR/issue-10636-1.rs:5:1
    |
 LL | struct Obj { //~ NOTE: unclosed delimiter
    |            - unclosed delimiter

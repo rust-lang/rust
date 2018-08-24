@@ -1,11 +1,11 @@
 error: variable `X` should have a snake case name such as `x`
-  --> $DIR/expr_attr_paren_order.rs:29:17
+  --> $DIR/expr_attr_paren_order.rs:19:17
    |
 LL |             let X = 0; //~ ERROR snake case name
    |                 ^
    |
 note: lint level defined here
-  --> $DIR/expr_attr_paren_order.rs:27:17
+  --> $DIR/expr_attr_paren_order.rs:17:17
    |
 LL |         #![deny(non_snake_case)]
    |                 ^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/feature-gate-trace_macros.rs:12:5
+  --> $DIR/feature-gate-trace_macros.rs:2:5
    |
 LL |     trace_macros!(true); //~ ERROR: `trace_macros` is not stable
    |     ^^^^^^^^^^^^^^^^^^^^

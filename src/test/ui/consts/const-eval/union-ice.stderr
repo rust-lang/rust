@@ -1,5 +1,5 @@
 error: this constant cannot be used
-  --> $DIR/union-ice.rs:23:1
+  --> $DIR/union-ice.rs:13:1
    |
 LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant cannot be used
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
@@ -7,7 +7,7 @@ LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant can
    = note: #[deny(const_err)] on by default
 
 error: this constant cannot be used
-  --> $DIR/union-ice.rs:25:1
+  --> $DIR/union-ice.rs:15:1
    |
 LL | / const FIELD_PATH: Struct = Struct { //~ ERROR this constant cannot be used
 LL | |     a: 42,
@@ -16,7 +16,7 @@ LL | | };
    | |__^ attempted to read undefined bytes
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ice.rs:35:1
+  --> $DIR/union-ice.rs:25:1
    |
 LL | / const FIELD_PATH2: Struct2 = Struct2 { //~ ERROR this constant likely exhibits undefined behavior
 LL | |     b: [

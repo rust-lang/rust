@@ -1,5 +1,5 @@
 error[E0661]: output operand constraint lacks '=' or '+'
-  --> $DIR/asm-out-no-modifier.rs:32:29
+  --> $DIR/asm-out-no-modifier.rs:22:29
    |
 LL |         asm!("mov $1, $0" : "r"(x) : "r"(5)); //~ ERROR output operand constraint lacks '='
    |                             ^^^

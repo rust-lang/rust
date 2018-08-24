@@ -1,5 +1,5 @@
 error: invalid `crate_type` value
-  --> $DIR/invalid-crate-type.rs:12:1
+  --> $DIR/invalid-crate-type.rs:2:1
    |
 LL | #![crate_type="foo"]    //~ ERROR invalid `crate_type` value
    | ^^^^^^^^^^^^^^^^^^^^

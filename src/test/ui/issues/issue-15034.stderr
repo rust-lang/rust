@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `lexer`
-  --> $DIR/issue-15034.rs:27:25
+  --> $DIR/issue-15034.rs:17:25
    |
 LL |     pub fn new(lexer: &'a mut Lexer) -> Parser<'a> {
    |                       ------------- help: add explicit lifetime `'a` to the type of `lexer`: `&'a mut Lexer<'a>`

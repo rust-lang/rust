@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `T`
-  --> $DIR/missing_trait_impl.rs:15:13
+  --> $DIR/missing_trait_impl.rs:5:13
    |
 LL |     let z = x + y; //~ ERROR binary operation `+` cannot be applied to type `T`
    |             ^^^^^
@@ -7,7 +7,7 @@ LL |     let z = x + y; //~ ERROR binary operation `+` cannot be applied to type
    = note: `T` might need a bound for `std::ops::Add`
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
-  --> $DIR/missing_trait_impl.rs:19:5
+  --> $DIR/missing_trait_impl.rs:9:5
    |
 LL |     x += x; //~ ERROR binary assignment operation `+=` cannot be applied to type `T`
    |     -^^^^^

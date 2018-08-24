@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `asdf_fdsa` in this scope
-  --> $DIR/syntax-extension-minor.rs:20:13
+  --> $DIR/syntax-extension-minor.rs:10:13
    |
 LL |     assert!(concat_idents!(asd, f_f, dsa) == "<.<".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope

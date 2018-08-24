@@ -1,35 +1,35 @@
 warning: not reporting region error due to nll
-  --> $DIR/must_outlive_least_region_or_bound.rs:13:35
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
    |                                   ^
 
 warning: not reporting region error due to nll
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:44
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                                            ^
 
 warning: not reporting region error due to nll
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                                                     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/must_outlive_least_region_or_bound.rs:29:5
+  --> $DIR/must_outlive_least_region_or_bound.rs:19:5
    |
 LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/must_outlive_least_region_or_bound.rs:32:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                                   ^^^^^^^^^^^^^^^^^^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/must_outlive_least_region_or_bound.rs:13:35
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
    |              ----                 ^ lifetime `'static` required
@@ -37,19 +37,19 @@ LL | fn elided(x: &i32) -> impl Copy { x }
    |              help: add explicit lifetime `'static` to the type of `x`: `&'static i32`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:44
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             -- lifetime `'a` defined here  ^ returning this value requires that `'a` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               -- lifetime `'a` defined here                         ^ returning this value requires that `'a` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/must_outlive_least_region_or_bound.rs:29:5
+  --> $DIR/must_outlive_least_region_or_bound.rs:19:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                          --  -- lifetime `'b` defined here
@@ -60,7 +60,7 @@ LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:34:5
+  --> $DIR/must_outlive_least_region_or_bound.rs:24:5
    |
 LL |     x
    |     ^

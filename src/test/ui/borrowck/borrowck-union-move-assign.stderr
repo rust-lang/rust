@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `u.a`
-  --> $DIR/borrowck-union-move-assign.rs:27:17
+  --> $DIR/borrowck-union-move-assign.rs:17:17
    |
 LL |             let a = u.a;
    |                 - value moved here

@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `()` as `u32`
-  --> $DIR/cast-from-nil.rs:12:21
+  --> $DIR/cast-from-nil.rs:2:21
    |
 LL | fn main() { let u = (assert!(true) as u32); }
    |                     ^^^^^^^^^^^^^^^^^^^^^^

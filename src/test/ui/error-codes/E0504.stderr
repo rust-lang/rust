@@ -1,5 +1,5 @@
 error[E0504]: cannot move `fancy_num` into closure because it is borrowed
-  --> $DIR/E0504.rs:20:40
+  --> $DIR/E0504.rs:10:40
    |
 LL |     let fancy_ref = &fancy_num;
    |                      --------- borrow of `fancy_num` occurs here

@@ -1,5 +1,5 @@
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-21546.rs:17:1
+  --> $DIR/issue-21546.rs:7:1
    |
 LL | mod Foo { }
    | ------- previous definition of the module `Foo` here
@@ -10,7 +10,7 @@ LL | struct Foo;
    = note: `Foo` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Bar` is defined multiple times
-  --> $DIR/issue-21546.rs:24:1
+  --> $DIR/issue-21546.rs:14:1
    |
 LL | mod Bar { }
    | ------- previous definition of the module `Bar` here
@@ -21,7 +21,7 @@ LL | struct Bar(i32);
    = note: `Bar` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Baz` is defined multiple times
-  --> $DIR/issue-21546.rs:32:1
+  --> $DIR/issue-21546.rs:22:1
    |
 LL | struct Baz(i32);
    | ---------------- previous definition of the type `Baz` here
@@ -32,7 +32,7 @@ LL | mod Baz { }
    = note: `Baz` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Qux` is defined multiple times
-  --> $DIR/issue-21546.rs:40:1
+  --> $DIR/issue-21546.rs:30:1
    |
 LL | struct Qux { x: bool }
    | ---------- previous definition of the type `Qux` here
@@ -43,7 +43,7 @@ LL | mod Qux { }
    = note: `Qux` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Quux` is defined multiple times
-  --> $DIR/issue-21546.rs:48:1
+  --> $DIR/issue-21546.rs:38:1
    |
 LL | struct Quux;
    | ------------ previous definition of the type `Quux` here
@@ -54,7 +54,7 @@ LL | mod Quux { }
    = note: `Quux` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `Corge` is defined multiple times
-  --> $DIR/issue-21546.rs:56:1
+  --> $DIR/issue-21546.rs:46:1
    |
 LL | enum Corge { A, B }
    | ---------- previous definition of the type `Corge` here

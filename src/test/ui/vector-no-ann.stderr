@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/vector-no-ann.rs:13:16
+  --> $DIR/vector-no-ann.rs:2:16
    |
 LL |     let _foo = Vec::new();
    |         ----   ^^^^^^^^ cannot infer type for `T`

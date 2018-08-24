@@ -1,5 +1,5 @@
 error[E0646]: `main` function is not allowed to have a `where` clause
-  --> $DIR/issue-50714.rs:13:17
+  --> $DIR/issue-50714.rs:3:17
    |
 LL | fn main() where fn(&()): Eq {} //~ ERROR [E0646]
    |                 ^^^^^^^^^^^ `main` cannot have a `where` clause

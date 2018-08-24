@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:25:8
+  --> $DIR/assignment-in-if.rs:15:8
    |
 LL |     if x = x {
    |        ^^^^^
@@ -11,7 +11,7 @@ LL |     if x = x {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:30:8
+  --> $DIR/assignment-in-if.rs:20:8
    |
 LL |     if (x = x) {
    |        ^^^^^^^
@@ -23,7 +23,7 @@ LL |     if (x = x) {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:35:8
+  --> $DIR/assignment-in-if.rs:25:8
    |
 LL |     if y = (Foo { foo: x }) {
    |        ^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     if y = (Foo { foo: x }) {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:40:8
+  --> $DIR/assignment-in-if.rs:30:8
    |
 LL |     if 3 = x {
    |        ^^^^^
@@ -47,7 +47,7 @@ LL |     if 3 = x {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:44:8
+  --> $DIR/assignment-in-if.rs:34:8
    |
 LL |     if (if true { x = 4 } else { x = 5 }) {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found ()

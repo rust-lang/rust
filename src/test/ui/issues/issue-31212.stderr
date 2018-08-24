@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `self::*`
-  --> $DIR/issue-31212.rs:15:13
+  --> $DIR/issue-31212.rs:5:13
    |
 LL |     pub use self::*; //~ ERROR unresolved
    |             ^^^^^^^ Cannot glob-import a module into itself.
 
 error[E0425]: cannot find function `f` in module `foo`
-  --> $DIR/issue-31212.rs:19:10
+  --> $DIR/issue-31212.rs:9:10
    |
 LL |     foo::f(); //~ ERROR cannot find function `f` in module `foo`
    |          ^ not found in `foo`

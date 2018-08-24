@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-20005.rs:18:5
+  --> $DIR/issue-20005.rs:8:5
    |
 LL | /     fn to<Dst>(  //~ ERROR the size for values of type
 LL | |         self
@@ -12,7 +12,7 @@ LL | |     }
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where Self: std::marker::Sized` bound
 note: required by `From`
-  --> $DIR/issue-20005.rs:11:1
+  --> $DIR/issue-20005.rs:1:1
    |
 LL | trait From<Src> {
    | ^^^^^^^^^^^^^^^

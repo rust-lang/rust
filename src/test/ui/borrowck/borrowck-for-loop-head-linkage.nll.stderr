@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `vector` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-for-loop-head-linkage.rs:17:9
+  --> $DIR/borrowck-for-loop-head-linkage.rs:7:9
    |
 LL |     for &x in &vector {
    |               -------
@@ -11,7 +11,7 @@ LL |         vector.extend(repeat(0));      //~ ERROR cannot borrow
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `vector` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-for-loop-head-linkage.rs:18:9
+  --> $DIR/borrowck-for-loop-head-linkage.rs:8:9
    |
 LL |     for &x in &vector {
    |               -------

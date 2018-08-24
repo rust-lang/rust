@@ -1,5 +1,5 @@
 error[E0054]: cannot cast as `bool`
-  --> $DIR/cast-rfc0401-2.rs:16:13
+  --> $DIR/cast-rfc0401-2.rs:6:13
    |
 LL |     let _ = 3 as bool;
    |             ^^^^^^^^^ unsupported cast

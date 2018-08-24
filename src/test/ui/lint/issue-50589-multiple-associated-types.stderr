@@ -1,5 +1,5 @@
 warning: associated type binding `Item` specified more than once
-  --> $DIR/issue-50589-multiple-associated-types.rs:17:39
+  --> $DIR/issue-50589-multiple-associated-types.rs:7:39
    |
 LL | fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
    |                            ---------  ^^^^^^^^^^^ used more than once
@@ -11,7 +11,7 @@ LL | fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
    = note: for more information, see issue #50589 <https://github.com/rust-lang/rust/issues/50589>
 
 warning: associated type binding `Item` specified more than once
-  --> $DIR/issue-50589-multiple-associated-types.rs:17:39
+  --> $DIR/issue-50589-multiple-associated-types.rs:7:39
    |
 LL | fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
    |                            ---------  ^^^^^^^^^^^ used more than once

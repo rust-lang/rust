@@ -1,178 +1,178 @@
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:16:5
+  --> $DIR/variance-btree-invariant-types.rs:6:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, &'new (), _>`
               found type `std::collections::btree_map::IterMut<'_, &'static (), _>`
-note: the lifetime 'new as defined on the function body at 15:21...
-  --> $DIR/variance-btree-invariant-types.rs:15:21
+note: the lifetime 'new as defined on the function body at 5:21...
+  --> $DIR/variance-btree-invariant-types.rs:5:21
    |
 LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
    |                     ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:19:5
+  --> $DIR/variance-btree-invariant-types.rs:9:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, _, &'new ()>`
               found type `std::collections::btree_map::IterMut<'_, _, &'static ()>`
-note: the lifetime 'new as defined on the function body at 18:21...
-  --> $DIR/variance-btree-invariant-types.rs:18:21
+note: the lifetime 'new as defined on the function body at 8:21...
+  --> $DIR/variance-btree-invariant-types.rs:8:21
    |
 LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (), &'new ()> {
    |                     ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:22:5
+  --> $DIR/variance-btree-invariant-types.rs:12:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, &'static (), _>`
               found type `std::collections::btree_map::IterMut<'_, &'new (), _>`
-note: the lifetime 'new as defined on the function body at 21:24...
-  --> $DIR/variance-btree-invariant-types.rs:21:24
+note: the lifetime 'new as defined on the function body at 11:24...
+  --> $DIR/variance-btree-invariant-types.rs:11:24
    |
 LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'static (), ()> {
    |                        ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:25:5
+  --> $DIR/variance-btree-invariant-types.rs:15:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, _, &'static ()>`
               found type `std::collections::btree_map::IterMut<'_, _, &'new ()>`
-note: the lifetime 'new as defined on the function body at 24:24...
-  --> $DIR/variance-btree-invariant-types.rs:24:24
+note: the lifetime 'new as defined on the function body at 14:24...
+  --> $DIR/variance-btree-invariant-types.rs:14:24
    |
 LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
    |                        ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:30:5
+  --> $DIR/variance-btree-invariant-types.rs:20:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
               found type `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
-note: the lifetime 'new as defined on the function body at 28:20...
-  --> $DIR/variance-btree-invariant-types.rs:28:20
+note: the lifetime 'new as defined on the function body at 18:20...
+  --> $DIR/variance-btree-invariant-types.rs:18:20
    |
 LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
    |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:34:5
+  --> $DIR/variance-btree-invariant-types.rs:24:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
               found type `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
-note: the lifetime 'new as defined on the function body at 32:20...
-  --> $DIR/variance-btree-invariant-types.rs:32:20
+note: the lifetime 'new as defined on the function body at 22:20...
+  --> $DIR/variance-btree-invariant-types.rs:22:20
    |
 LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
    |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:38:5
+  --> $DIR/variance-btree-invariant-types.rs:28:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
               found type `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
-note: the lifetime 'new as defined on the function body at 36:23...
-  --> $DIR/variance-btree-invariant-types.rs:36:23
+note: the lifetime 'new as defined on the function body at 26:23...
+  --> $DIR/variance-btree-invariant-types.rs:26:23
    |
 LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
    |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:42:5
+  --> $DIR/variance-btree-invariant-types.rs:32:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
               found type `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
-note: the lifetime 'new as defined on the function body at 40:23...
-  --> $DIR/variance-btree-invariant-types.rs:40:23
+note: the lifetime 'new as defined on the function body at 30:23...
+  --> $DIR/variance-btree-invariant-types.rs:30:23
    |
 LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
    |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:47:5
+  --> $DIR/variance-btree-invariant-types.rs:37:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
               found type `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
-note: the lifetime 'new as defined on the function body at 45:20...
-  --> $DIR/variance-btree-invariant-types.rs:45:20
+note: the lifetime 'new as defined on the function body at 35:20...
+  --> $DIR/variance-btree-invariant-types.rs:35:20
    |
 LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
    |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:51:5
+  --> $DIR/variance-btree-invariant-types.rs:41:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
               found type `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
-note: the lifetime 'new as defined on the function body at 49:20...
-  --> $DIR/variance-btree-invariant-types.rs:49:20
+note: the lifetime 'new as defined on the function body at 39:20...
+  --> $DIR/variance-btree-invariant-types.rs:39:20
    |
 LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
    |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:55:5
+  --> $DIR/variance-btree-invariant-types.rs:45:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
               found type `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
-note: the lifetime 'new as defined on the function body at 53:23...
-  --> $DIR/variance-btree-invariant-types.rs:53:23
+note: the lifetime 'new as defined on the function body at 43:23...
+  --> $DIR/variance-btree-invariant-types.rs:43:23
    |
 LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
    |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:59:5
+  --> $DIR/variance-btree-invariant-types.rs:49:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
               found type `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
-note: the lifetime 'new as defined on the function body at 57:23...
-  --> $DIR/variance-btree-invariant-types.rs:57:23
+note: the lifetime 'new as defined on the function body at 47:23...
+  --> $DIR/variance-btree-invariant-types.rs:47:23
    |
 LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
    |                       ^^^^

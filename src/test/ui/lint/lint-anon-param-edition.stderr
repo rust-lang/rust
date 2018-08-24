@@ -1,5 +1,5 @@
 warning: anonymous parameters are deprecated and will be removed in the next edition.
-  --> $DIR/lint-anon-param-edition.rs:18:12
+  --> $DIR/lint-anon-param-edition.rs:8:12
    |
 LL |     fn foo(u8);
    |            ^^ help: Try naming the parameter or explicitly ignoring it: `_: u8`

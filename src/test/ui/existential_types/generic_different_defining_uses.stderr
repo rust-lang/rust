@@ -1,5 +1,5 @@
 error: defining existential type use differs from previous
-  --> $DIR/generic_different_defining_uses.rs:22:1
+  --> $DIR/generic_different_defining_uses.rs:11:1
    |
 LL | / fn my_iter2<T>(t: T) -> MyIter<T> { //~ ERROR defining existential type use differs from previous
 LL | |     Some(t).into_iter()
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: previous use here
-  --> $DIR/generic_different_defining_uses.rs:18:1
+  --> $DIR/generic_different_defining_uses.rs:7:1
    |
 LL | / fn my_iter<T>(t: T) -> MyIter<T> {
 LL | |     std::iter::once(t)

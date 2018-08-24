@@ -1,5 +1,5 @@
 error[E0597]: `b` does not live long enough
-  --> $DIR/ref-escapes-but-not-over-yield.rs:24:13
+  --> $DIR/ref-escapes-but-not-over-yield.rs:14:13
    |
 LL |         a = &b;
    |             ^^ borrowed value does not live long enough

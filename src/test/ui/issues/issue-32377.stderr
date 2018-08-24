@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/issue-32377.rs:25:14
+  --> $DIR/issue-32377.rs:15:14
    |
 LL |     unsafe { mem::transmute(x) }
    |              ^^^^^^^^^^^^^^

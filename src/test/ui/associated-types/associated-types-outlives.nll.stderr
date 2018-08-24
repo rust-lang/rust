@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/associated-types-outlives.rs:32:14
+  --> $DIR/associated-types-outlives.rs:22:14
    |
 LL |         's: loop { y = denormalise(&x); break }
    |                                    -- borrow of `x` occurs here

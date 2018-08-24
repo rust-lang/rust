@@ -1,5 +1,5 @@
 error[E0599]: no method named `example` found for type `Example` in the current scope
-  --> $DIR/issue-32128.rs:22:10
+  --> $DIR/issue-32128.rs:12:10
    |
 LL | struct Example {
    | -------------- method `example` not found for this

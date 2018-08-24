@@ -1,24 +1,24 @@
 error: trivial numeric cast: `i32` as `i32`
-  --> $DIR/trivial-casts-featuring-type-ascription.rs:15:22
+  --> $DIR/trivial-casts-featuring-type-ascription.rs:5:22
    |
 LL |     let lugubrious = 12i32 as i32;
    |                      ^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/trivial-casts-featuring-type-ascription.rs:11:24
+  --> $DIR/trivial-casts-featuring-type-ascription.rs:1:24
    |
 LL | #![deny(trivial_casts, trivial_numeric_casts)]
    |                        ^^^^^^^^^^^^^^^^^^^^^
    = help: cast can be replaced by coercion; this might require type ascription or a temporary variable
 
 error: trivial cast: `&u32` as `*const u32`
-  --> $DIR/trivial-casts-featuring-type-ascription.rs:18:13
+  --> $DIR/trivial-casts-featuring-type-ascription.rs:8:13
    |
 LL |     let _ = haunted as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/trivial-casts-featuring-type-ascription.rs:11:9
+  --> $DIR/trivial-casts-featuring-type-ascription.rs:1:9
    |
 LL | #![deny(trivial_casts, trivial_numeric_casts)]
    |         ^^^^^^^^^^^^^

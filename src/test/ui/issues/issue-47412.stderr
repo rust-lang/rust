@@ -1,5 +1,5 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-47412.rs:21:11
+  --> $DIR/issue-47412.rs:11:11
    |
 LL |     match u.void {}
    |           ^^^^^^ access to union field
@@ -7,7 +7,7 @@ LL |     match u.void {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
-  --> $DIR/issue-47412.rs:27:11
+  --> $DIR/issue-47412.rs:17:11
    |
 LL |     match *ptr {}
    |           ^^^^ dereference of raw pointer

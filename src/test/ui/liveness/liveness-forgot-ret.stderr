@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-forgot-ret.rs:13:25
+  --> $DIR/liveness-forgot-ret.rs:3:25
    |
 LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected isize, found ()

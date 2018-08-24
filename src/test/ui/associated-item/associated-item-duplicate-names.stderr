@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `Ty`:
-  --> $DIR/associated-item-duplicate-names.rs:21:5
+  --> $DIR/associated-item-duplicate-names.rs:11:5
    |
 LL |     type Ty = ();
    |     ------------- previous definition of `Ty` here
@@ -7,7 +7,7 @@ LL |     type Ty = usize; //~ ERROR duplicate definitions
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `BAR`:
-  --> $DIR/associated-item-duplicate-names.rs:23:5
+  --> $DIR/associated-item-duplicate-names.rs:13:5
    |
 LL |     const BAR: u32 = 7;
    |     ------------------- previous definition of `BAR` here

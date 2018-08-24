@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-3.rs:12:13
+  --> $DIR/ex3-both-anon-regions-3.rs:2:13
    |
 LL |     z.push((x,y)); //~ ERROR lifetime mismatch
    |             ^
 
 warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-3.rs:12:15
+  --> $DIR/ex3-both-anon-regions-3.rs:2:15
    |
 LL |     z.push((x,y)); //~ ERROR lifetime mismatch
    |               ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex3-both-anon-regions-3.rs:12:5
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                     -                   - let's call the lifetime of this reference `'1`
@@ -21,7 +21,7 @@ LL |     z.push((x,y)); //~ ERROR lifetime mismatch
    |     ^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex3-both-anon-regions-3.rs:12:5
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                         -                    - let's call the lifetime of this reference `'1`

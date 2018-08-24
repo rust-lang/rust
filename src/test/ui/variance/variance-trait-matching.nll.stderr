@@ -1,23 +1,23 @@
 warning: not reporting region error due to nll
-  --> $DIR/variance-trait-matching.rs:34:10
+  --> $DIR/variance-trait-matching.rs:24:10
    |
 LL |     pick(get, &22) //~ ERROR 34:5: 34:9: explicit lifetime required in the type of `get` [E0621]
    |          ^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-trait-matching.rs:34:5
+  --> $DIR/variance-trait-matching.rs:24:5
    |
 LL |     pick(get, &22) //~ ERROR 34:5: 34:9: explicit lifetime required in the type of `get` [E0621]
    |     ^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-trait-matching.rs:34:5
+  --> $DIR/variance-trait-matching.rs:24:5
    |
 LL |     pick(get, &22) //~ ERROR 34:5: 34:9: explicit lifetime required in the type of `get` [E0621]
    |     ^^^^
 
 error[E0621]: explicit lifetime required in the type of `get`
-  --> $DIR/variance-trait-matching.rs:34:5
+  --> $DIR/variance-trait-matching.rs:24:5
    |
 LL | fn get<'a, G>(get: &G) -> i32
    |                    -- help: add explicit lifetime `'a` to the type of `get`: `&'a G`

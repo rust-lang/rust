@@ -1,41 +1,41 @@
 error[E0541]: unknown meta item 'reason'
-  --> $DIR/deprecation-sanity.rs:14:43
+  --> $DIR/deprecation-sanity.rs:4:43
    |
 LL |     #[deprecated(since = "a", note = "a", reason)] //~ ERROR unknown meta item 'reason'
    |                                           ^^^^^^ expected one of `since`, `note`
 
 error[E0551]: incorrect meta item
-  --> $DIR/deprecation-sanity.rs:17:31
+  --> $DIR/deprecation-sanity.rs:7:31
    |
 LL |     #[deprecated(since = "a", note)] //~ ERROR incorrect meta item
    |                               ^^^^
 
 error[E0551]: incorrect meta item
-  --> $DIR/deprecation-sanity.rs:20:18
+  --> $DIR/deprecation-sanity.rs:10:18
    |
 LL |     #[deprecated(since, note = "a")] //~ ERROR incorrect meta item
    |                  ^^^^^
 
 error[E0551]: incorrect meta item
-  --> $DIR/deprecation-sanity.rs:23:31
+  --> $DIR/deprecation-sanity.rs:13:31
    |
 LL |     #[deprecated(since = "a", note(b))] //~ ERROR incorrect meta item
    |                               ^^^^^^^
 
 error[E0551]: incorrect meta item
-  --> $DIR/deprecation-sanity.rs:26:18
+  --> $DIR/deprecation-sanity.rs:16:18
    |
 LL |     #[deprecated(since(b), note = "a")] //~ ERROR incorrect meta item
    |                  ^^^^^^^^
 
 error[E0550]: multiple deprecated attributes
-  --> $DIR/deprecation-sanity.rs:32:1
+  --> $DIR/deprecation-sanity.rs:22:1
    |
 LL | fn multiple1() { } //~ ERROR multiple deprecated attributes
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0538]: multiple 'since' items
-  --> $DIR/deprecation-sanity.rs:34:27
+  --> $DIR/deprecation-sanity.rs:24:27
    |
 LL | #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items
    |                           ^^^^^^^^^^^

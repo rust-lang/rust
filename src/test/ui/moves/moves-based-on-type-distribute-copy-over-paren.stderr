@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:21:12
+  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:11:12
    |
 LL |     let _y = Foo { f:x };
    |                      - value moved here
@@ -10,7 +10,7 @@ LL |     touch(&x); //~ ERROR use of moved value: `x`
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:30:12
+  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:20:12
    |
 LL |     let _y = Foo { f:(((x))) };
    |                      ------- value moved here

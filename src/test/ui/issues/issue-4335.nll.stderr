@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/issue-4335.rs:16:20
+  --> $DIR/issue-4335.rs:6:20
    |
 LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
    |             - captured outer variable
@@ -7,7 +7,7 @@ LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/issue-4335.rs:16:21
+  --> $DIR/issue-4335.rs:6:21
    |
 LL |     id(Box::new(|| *v))
    |                 --  ^ borrowed value does not live long enough
@@ -17,8 +17,8 @@ LL |     id(Box::new(|| *v))
 LL | }
    | - `v` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:6...
-  --> $DIR/issue-4335.rs:15:6
+note: borrowed value must be valid for the lifetime 'r as defined on the function body at 5:6...
+  --> $DIR/issue-4335.rs:5:6
    |
 LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
    |      ^^

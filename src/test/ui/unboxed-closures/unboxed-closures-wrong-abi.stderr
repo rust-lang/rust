@@ -1,38 +1,38 @@
 error[E0277]: expected a `std::ops::Fn<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-abi.rs:22:13
+  --> $DIR/unboxed-closures-wrong-abi.rs:12:13
    |
 LL |     let x = call_it(&square, 22);
    |             ^^^^^^^ expected an `Fn<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
    |
    = help: the trait `for<'r> std::ops::Fn<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by `call_it`
-  --> $DIR/unboxed-closures-wrong-abi.rs:17:1
+  --> $DIR/unboxed-closures-wrong-abi.rs:7:1
    |
 LL | fn call_it<F:Fn(&isize)->isize>(_: &F, _: isize) -> isize { 0 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: expected a `std::ops::FnMut<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-abi.rs:27:13
+  --> $DIR/unboxed-closures-wrong-abi.rs:17:13
    |
 LL |     let y = call_it_mut(&mut square, 22);
    |             ^^^^^^^^^^^ expected an `FnMut<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
    |
    = help: the trait `for<'r> std::ops::FnMut<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by `call_it_mut`
-  --> $DIR/unboxed-closures-wrong-abi.rs:18:1
+  --> $DIR/unboxed-closures-wrong-abi.rs:8:1
    |
 LL | fn call_it_mut<F:FnMut(&isize)->isize>(_: &mut F, _: isize) -> isize { 0 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: expected a `std::ops::FnOnce<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-abi.rs:32:13
+  --> $DIR/unboxed-closures-wrong-abi.rs:22:13
    |
 LL |     let z = call_it_once(square, 22);
    |             ^^^^^^^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `for<'r> extern "C" fn(&'r isize) -> isize {square}`
    |
    = help: the trait `for<'r> std::ops::FnOnce<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by `call_it_once`
-  --> $DIR/unboxed-closures-wrong-abi.rs:19:1
+  --> $DIR/unboxed-closures-wrong-abi.rs:9:1
    |
 LL | fn call_it_once<F:FnOnce(&isize)->isize>(_: F, _: isize) -> isize { 0 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

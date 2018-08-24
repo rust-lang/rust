@@ -1,35 +1,35 @@
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/streaming_iterator.rs:11:12
+  --> $DIR/streaming_iterator.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:28:41
+  --> $DIR/streaming_iterator.rs:18:41
    |
 LL |     bar: <T as StreamingIterator>::Item<'static>,
    |                                         ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:36:64
+  --> $DIR/streaming_iterator.rs:26:64
    |
 LL | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
    |                                                                ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:22:48
+  --> $DIR/streaming_iterator.rs:12:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
    |                                                ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:48:37
+  --> $DIR/streaming_iterator.rs:38:37
    |
 LL |     type Item<'a> = (usize, I::Item<'a>);
    |                                     ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/streaming_iterator.rs:50:48
+  --> $DIR/streaming_iterator.rs:40:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
    |                                                ^^ lifetime parameter not allowed

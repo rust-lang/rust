@@ -1,5 +1,5 @@
 error[E0658]: #[panic_implementation] is an unstable feature (see issue #44489)
-  --> $DIR/feature-gate-panic-implementation.rs:18:1
+  --> $DIR/feature-gate-panic-implementation.rs:8:1
    |
 LL | #[panic_implementation] //~ ERROR #[panic_implementation] is an unstable feature (see issue #44489)
    | ^^^^^^^^^^^^^^^^^^^^^^^

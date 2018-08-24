@@ -1,5 +1,5 @@
 error: `Foo` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:21:9
+  --> $DIR/block-scoped-shadow.rs:11:9
    |
 LL | enum Foo { A, B }
    | ----------------- can refer to `self::Foo`
@@ -13,7 +13,7 @@ LL |     use Foo::*;
    = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
 
 error: `std` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:28:9
+  --> $DIR/block-scoped-shadow.rs:18:9
    |
 LL | struct std;
    | ----------- can refer to `self::std`
@@ -27,7 +27,7 @@ LL |     use std as foo;
    = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
 
 error: `std` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:28:9
+  --> $DIR/block-scoped-shadow.rs:18:9
    |
 LL | struct std;
    | ----------- can refer to `self::std`

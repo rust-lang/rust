@@ -1,5 +1,5 @@
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `=>`
-  --> $DIR/missing-comma-in-match.rs:16:18
+  --> $DIR/missing-comma-in-match.rs:6:18
    |
 LL |         &None => 1
    |                   - help: missing a comma here to end this `match` arm

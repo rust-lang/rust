@@ -1,5 +1,5 @@
 error[E0603]: function `fly` is private
-  --> $DIR/issue-3993.rs:11:5
+  --> $DIR/issue-3993.rs:1:5
    |
 LL | use zoo::fly; //~ ERROR: function `fly` is private
    |     ^^^^^^^^

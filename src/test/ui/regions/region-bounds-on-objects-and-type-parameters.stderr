@@ -1,28 +1,28 @@
 error[E0226]: only a single explicit lifetime bound is permitted
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:31:22
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:22
    |
 LL |     z: Box<Is<'a>+'b+'c>,
    |                      ^^
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:31:5
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:5
    |
 LL |     z: Box<Is<'a>+'b+'c>,
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime 'b as defined on the struct at 21:15
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:15
+note: lifetime parameter instantiated with the lifetime 'b as defined on the struct at 11:15
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:15
    |
 LL | struct Foo<'a,'b,'c> { //~ ERROR parameter `'c` is never used
    |               ^^
-note: but lifetime parameter must outlive the lifetime 'a as defined on the struct at 21:12
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:12
+note: but lifetime parameter must outlive the lifetime 'a as defined on the struct at 11:12
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:12
    |
 LL | struct Foo<'a,'b,'c> { //~ ERROR parameter `'c` is never used
    |            ^^
 
 error[E0392]: parameter `'c` is never used
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:18
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:18
    |
 LL | struct Foo<'a,'b,'c> { //~ ERROR parameter `'c` is never used
    |                  ^^ unused type parameter

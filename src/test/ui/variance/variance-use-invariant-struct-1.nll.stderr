@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/variance-use-invariant-struct-1.rs:22:5
+  --> $DIR/variance-use-invariant-struct-1.rs:12:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-use-invariant-struct-1.rs:29:5
+  --> $DIR/variance-use-invariant-struct-1.rs:19:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-use-invariant-struct-1.rs:22:5
+  --> $DIR/variance-use-invariant-struct-1.rs:12:5
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        ---- ---- lifetime `'max` defined here
@@ -22,7 +22,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-use-invariant-struct-1.rs:29:5
+  --> $DIR/variance-use-invariant-struct-1.rs:19:5
    |
 LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |        ---- ---- lifetime `'max` defined here

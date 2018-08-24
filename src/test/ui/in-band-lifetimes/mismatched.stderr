@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/mismatched.rs:14:42
+  --> $DIR/mismatched.rs:4:42
    |
 LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime required
    |                       ----               ^ lifetime `'a` required
@@ -7,7 +7,7 @@ LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime re
    |                       help: add explicit lifetime `'a` to the type of `y`: `&'a u32`
 
 error[E0623]: lifetime mismatch
-  --> $DIR/mismatched.rs:16:46
+  --> $DIR/mismatched.rs:6:46
    |
 LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
    |                        -------     -------   ^ ...but data from `y` is returned here

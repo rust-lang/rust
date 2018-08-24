@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `heap` as immutable because it is also borrowed as mutable
-  --> $DIR/issue-47646.rs:22:30
+  --> $DIR/issue-47646.rs:12:30
    |
 LL |     let borrow = heap.peek_mut();
    |                  ---- mutable borrow occurs here

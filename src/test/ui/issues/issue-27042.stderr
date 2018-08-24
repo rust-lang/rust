@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-27042.rs:16:16
+  --> $DIR/issue-27042.rs:6:16
    |
 LL |         loop { break }; //~ ERROR mismatched types
    |                ^^^^^ expected (), found i32
@@ -8,7 +8,7 @@ LL |         loop { break }; //~ ERROR mismatched types
               found type `i32`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-27042.rs:18:9
+  --> $DIR/issue-27042.rs:8:9
    |
 LL | /         'b: //~ ERROR mismatched types
 LL | |         while true { break }; // but here we cite the whole loop
@@ -18,7 +18,7 @@ LL | |         while true { break }; // but here we cite the whole loop
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-27042.rs:21:9
+  --> $DIR/issue-27042.rs:11:9
    |
 LL | /         'c: //~ ERROR mismatched types
 LL | |         for _ in None { break }; // but here we cite the whole loop
@@ -28,7 +28,7 @@ LL | |         for _ in None { break }; // but here we cite the whole loop
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-27042.rs:24:9
+  --> $DIR/issue-27042.rs:14:9
    |
 LL | /         'd: //~ ERROR mismatched types
 LL | |         while let Some(_) = None { break };

@@ -1,5 +1,5 @@
 error[E0583]: file not found for module `baz`
-  --> $DIR/auxiliary/foo/bar.rs:11:9
+  --> $DIR/auxiliary/foo/bar.rs:1:9
    |
 LL | pub mod baz;
    |         ^^^

@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/macro-use-scope.rs:32:1
+  --> $DIR/macro-use-scope.rs:22:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

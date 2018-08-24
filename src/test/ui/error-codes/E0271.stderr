@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
-  --> $DIR/E0271.rs:20:5
+  --> $DIR/E0271.rs:10:5
    |
 LL |     foo(3_i8); //~ ERROR E0271
    |     ^^^ expected reference, found u32
@@ -7,7 +7,7 @@ LL |     foo(3_i8); //~ ERROR E0271
    = note: expected type `&'static str`
               found type `u32`
 note: required by `foo`
-  --> $DIR/E0271.rs:13:1
+  --> $DIR/E0271.rs:3:1
    |
 LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

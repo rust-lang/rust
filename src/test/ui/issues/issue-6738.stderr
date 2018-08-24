@@ -1,5 +1,5 @@
 error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
-  --> $DIR/issue-6738.rs:16:9
+  --> $DIR/issue-6738.rs:6:9
    |
 LL |         self.x += v.x;
    |         ------^^^^^^^

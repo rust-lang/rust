@@ -1,5 +1,5 @@
 error[E0658]: :literal fragment specifier is experimental and subject to change (see issue #35625)
-  --> $DIR/feature-gate-macro-literal-matcher.rs:14:19
+  --> $DIR/feature-gate-macro-literal-matcher.rs:4:19
    |
 LL | macro_rules! m { ($lt:literal) => {} }
    |                   ^^^^^^^^^^^

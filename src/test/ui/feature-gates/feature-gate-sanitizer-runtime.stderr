@@ -1,5 +1,5 @@
 error[E0658]: the `#[sanitizer_runtime]` attribute is used to identify crates that contain the runtime of a sanitizer and will never be stable
-  --> $DIR/feature-gate-sanitizer-runtime.rs:11:1
+  --> $DIR/feature-gate-sanitizer-runtime.rs:1:1
    |
 LL | #![sanitizer_runtime] //~ ERROR the `#[sanitizer_runtime]` attribute is
    | ^^^^^^^^^^^^^^^^^^^^^

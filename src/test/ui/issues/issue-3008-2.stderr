@@ -1,5 +1,5 @@
 error[E0072]: recursive type `bar` has infinite size
-  --> $DIR/issue-3008-2.rs:12:1
+  --> $DIR/issue-3008-2.rs:2:1
    |
 LL | struct bar { x: bar }
    | ^^^^^^^^^^   ------ recursive without indirection

@@ -1,17 +1,17 @@
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
-  --> $DIR/E0023.rs:20:9
+  --> $DIR/E0023.rs:10:9
    |
 LL |         Fruit::Apple(a) => {}, //~ ERROR E0023
    |         ^^^^^^^^^^^^^^^ expected 2 fields, found 1
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
-  --> $DIR/E0023.rs:21:9
+  --> $DIR/E0023.rs:11:9
    |
 LL |         Fruit::Apple(a, b, c) => {}, //~ ERROR E0023
    |         ^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
-  --> $DIR/E0023.rs:22:9
+  --> $DIR/E0023.rs:12:9
    |
 LL |         Fruit::Pear(1, 2) => {}, //~ ERROR E0023
    |         ^^^^^^^^^^^^^^^^^ expected 1 field, found 2

@@ -1,11 +1,11 @@
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/issue-24267-flow-exit.rs:22:20
+  --> $DIR/issue-24267-flow-exit.rs:12:20
    |
 LL |     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
    |                    ^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/issue-24267-flow-exit.rs:28:20
+  --> $DIR/issue-24267-flow-exit.rs:18:20
    |
 LL |     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
    |                    ^ use of possibly uninitialized `x`

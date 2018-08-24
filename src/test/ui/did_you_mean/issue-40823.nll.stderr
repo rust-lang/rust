@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*buf` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-40823.rs:13:5
+  --> $DIR/issue-40823.rs:3:5
    |
 LL |     let mut buf = &[1, 2, 3, 4];
    |                   ------------- help: consider changing this to be a mutable reference: `&mut [1, 2, 3, 4]`

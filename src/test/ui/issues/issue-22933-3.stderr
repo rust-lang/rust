@@ -1,5 +1,5 @@
 error[E0599]: no associated item named `MIN` found for type `u8` in the current scope
-  --> $DIR/issue-22933-3.rs:11:18
+  --> $DIR/issue-22933-3.rs:1:18
    |
 LL | const FOO: [u32; u8::MIN as usize] = [];
    |                  ^^^^^^^ associated item not found in `u8`

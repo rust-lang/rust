@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:14:9
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:4:9
    |
 LL | fn foo(mut x: Ref, y: &u32) {
    |               ---     ----

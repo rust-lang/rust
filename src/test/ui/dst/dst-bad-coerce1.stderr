@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce1.rs:26:29
+  --> $DIR/dst-bad-coerce1.rs:16:29
    |
 LL |     let f3: &Fat<[usize]> = f2;
    |                             ^^ expected slice, found array of 3 elements
@@ -8,7 +8,7 @@ LL |     let f3: &Fat<[usize]> = f2;
               found type `&Fat<[isize; 3]>`
 
 error[E0277]: the trait bound `Foo: Bar` is not satisfied
-  --> $DIR/dst-bad-coerce1.rs:32:25
+  --> $DIR/dst-bad-coerce1.rs:22:25
    |
 LL |     let f3: &Fat<Bar> = f2;
    |                         ^^ the trait `Bar` is not implemented for `Foo`
@@ -16,7 +16,7 @@ LL |     let f3: &Fat<Bar> = f2;
    = note: required for the cast to the object type `dyn Bar`
 
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce1.rs:38:27
+  --> $DIR/dst-bad-coerce1.rs:28:27
    |
 LL |     let f3: &([usize],) = f2;
    |                           ^^ expected slice, found array of 3 elements
@@ -25,7 +25,7 @@ LL |     let f3: &([usize],) = f2;
               found type `&([isize; 3],)`
 
 error[E0277]: the trait bound `Foo: Bar` is not satisfied
-  --> $DIR/dst-bad-coerce1.rs:44:23
+  --> $DIR/dst-bad-coerce1.rs:34:23
    |
 LL |     let f3: &(Bar,) = f2;
    |                       ^^ the trait `Bar` is not implemented for `Foo`

@@ -1,29 +1,29 @@
 error: rustc_peek: bit not set
-  --> $DIR/uninits-1.rs:29:14
+  --> $DIR/uninits-1.rs:19:14
    |
 LL |     unsafe { rustc_peek(&x) }; //~ ERROR rustc_peek: bit not set
    |              ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/uninits-1.rs:30:14
+  --> $DIR/uninits-1.rs:20:14
    |
 LL |     unsafe { rustc_peek(&y) }; //~ ERROR rustc_peek: bit not set
    |              ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/uninits-1.rs:31:14
+  --> $DIR/uninits-1.rs:21:14
    |
 LL |     unsafe { rustc_peek(&z) }; //~ ERROR rustc_peek: bit not set
    |              ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/uninits-1.rs:47:14
+  --> $DIR/uninits-1.rs:37:14
    |
 LL |     unsafe { rustc_peek(&x); } //~ ERROR rustc_peek: bit not set
    |              ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/uninits-1.rs:55:14
+  --> $DIR/uninits-1.rs:45:14
    |
 LL |     unsafe { rustc_peek(&ret); } //~ ERROR rustc_peek: bit not set
    |              ^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `<T as Get>::Value` cannot be known at compilation time
-  --> $DIR/associated-types-unsized.rs:17:9
+  --> $DIR/associated-types-unsized.rs:7:9
    |
 LL |     let x = t.get(); //~ ERROR the size for values of type
    |         ^ doesn't have a size known at compile-time

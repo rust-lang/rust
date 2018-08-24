@@ -1,5 +1,5 @@
 error[E0697]: closures cannot be static
-  --> $DIR/static-closures.rs:12:5
+  --> $DIR/static-closures.rs:2:5
    |
 LL |     static || {};
    |     ^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0268]: `break` outside of loop
-  --> $DIR/E0268.rs:12:5
+  --> $DIR/E0268.rs:2:5
    |
 LL |     break; //~ ERROR E0268
    |     ^^^^^ cannot break outside of a loop

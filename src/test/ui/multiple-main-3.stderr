@@ -1,5 +1,5 @@
 error[E0137]: multiple functions with a #[main] attribute
-  --> $DIR/multiple-main-3.rs:19:5
+  --> $DIR/multiple-main-3.rs:9:5
    |
 LL | / fn main1() {
 LL | | }

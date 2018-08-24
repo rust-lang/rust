@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `orange`:
-  --> $DIR/impl-duplicate-methods.rs:15:5
+  --> $DIR/impl-duplicate-methods.rs:5:5
    |
 LL |     fn orange(&self) {}
    |     ------------------- previous definition of `orange` here

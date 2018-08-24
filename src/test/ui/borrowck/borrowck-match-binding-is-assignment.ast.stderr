@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:27:13
+  --> $DIR/borrowck-match-binding-is-assignment.rs:17:13
    |
 LL |         x => {
    |         - first assignment to `x`
@@ -7,7 +7,7 @@ LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variabl
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:34:13
+  --> $DIR/borrowck-match-binding-is-assignment.rs:24:13
    |
 LL |         E::Foo(x) => {
    |                - first assignment to `x`
@@ -15,7 +15,7 @@ LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variabl
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:41:13
+  --> $DIR/borrowck-match-binding-is-assignment.rs:31:13
    |
 LL |         S { bar: x } => {
    |                  - first assignment to `x`
@@ -23,7 +23,7 @@ LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variabl
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:48:13
+  --> $DIR/borrowck-match-binding-is-assignment.rs:38:13
    |
 LL |         (x,) => {
    |          - first assignment to `x`
@@ -31,7 +31,7 @@ LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variabl
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:55:13
+  --> $DIR/borrowck-match-binding-is-assignment.rs:45:13
    |
 LL |         [x,_,_] => {
    |          - first assignment to `x`

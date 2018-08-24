@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `Foo: std::marker::Sync`
-  --> $DIR/recursive-requirements.rs:26:12
+  --> $DIR/recursive-requirements.rs:16:12
    |
 LL |     let _: AssertSync<Foo> = unimplemented!(); //~ ERROR E0275
    |            ^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable-noallow.rs:26:5
+  --> $DIR/internal-unstable-noallow.rs:16:5
    |
 LL |     call_unstable_noallow!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     call_unstable_noallow!();
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'struct_field'
-  --> $DIR/internal-unstable-noallow.rs:28:5
+  --> $DIR/internal-unstable-noallow.rs:18:5
    |
 LL |     construct_unstable_noallow!(0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     construct_unstable_noallow!(0);
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'method'
-  --> $DIR/internal-unstable-noallow.rs:30:35
+  --> $DIR/internal-unstable-noallow.rs:20:35
    |
 LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     |x: internal_unstable::Foo| { call_method_noallow!(x) };
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'struct2_field'
-  --> $DIR/internal-unstable-noallow.rs:32:35
+  --> $DIR/internal-unstable-noallow.rs:22:35
    |
 LL |     |x: internal_unstable::Bar| { access_field_noallow!(x) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^

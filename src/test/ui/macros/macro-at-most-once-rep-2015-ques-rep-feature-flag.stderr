@@ -1,5 +1,5 @@
 error: expected `*` or `+`
-  --> $DIR/macro-at-most-once-rep-2015-ques-rep-feature-flag.rs:20:10
+  --> $DIR/macro-at-most-once-rep-2015-ques-rep-feature-flag.rs:10:10
    |
 LL |     ($(a)?) => {} //~ERROR expected `*` or `+`
    |          ^
@@ -7,7 +7,7 @@ LL |     ($(a)?) => {} //~ERROR expected `*` or `+`
    = note: `?` is not a macro repetition operator
 
 error: expected `*` or `+`
-  --> $DIR/macro-at-most-once-rep-2015-ques-rep-feature-flag.rs:24:11
+  --> $DIR/macro-at-most-once-rep-2015-ques-rep-feature-flag.rs:14:11
    |
 LL |     ($(a),?) => {} //~ERROR expected `*` or `+`
    |           ^

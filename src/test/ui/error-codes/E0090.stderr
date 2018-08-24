@@ -1,5 +1,5 @@
 error[E0090]: wrong number of lifetime arguments: expected 2, found 1
-  --> $DIR/E0090.rs:14:5
+  --> $DIR/E0090.rs:4:5
    |
 LL |     foo::<'static>(); //~ ERROR wrong number of lifetime arguments: expected 2, found 1 [E0090]
    |     ^^^^^^^^^^^^^^ expected 2 lifetime arguments

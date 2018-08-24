@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:27:15
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:15
    |
 LL |         x.set(y); //~ ERROR E0312
    |               ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:27:9
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:9
    |
 LL |     doit(0, &|x, y| {
    |               -  - has type `&'1 i32`

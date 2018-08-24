@@ -1,5 +1,5 @@
 error[E0597]: `*m` does not live long enough
-  --> $DIR/dropck-object-cycle.rs:37:32
+  --> $DIR/dropck-object-cycle.rs:27:32
    |
 LL |     assert_eq!(object_invoke1(&*m), (4,5));
    |                                ^^ borrowed value does not live long enough

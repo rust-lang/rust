@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Sweet` for type `std::boxed::Box<_>`:
-  --> $DIR/coherence-overlap-issue-23516.rs:18:1
+  --> $DIR/coherence-overlap-issue-23516.rs:8:1
    |
 LL | impl<T:Sugar> Sweet for T { }
    | ------------------------- first implementation here

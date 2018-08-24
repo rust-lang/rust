@@ -1,5 +1,5 @@
 error[E0624]: method `new` is private
-  --> $DIR/static-method-privacy.rs:19:13
+  --> $DIR/static-method-privacy.rs:9:13
    |
 LL |     let _ = a::S::new();    //~ ERROR method `new` is private
    |             ^^^^^^^^^

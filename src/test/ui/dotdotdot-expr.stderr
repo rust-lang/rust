@@ -1,5 +1,5 @@
 error: unexpected token: `...`
-  --> $DIR/dotdotdot-expr.rs:12:24
+  --> $DIR/dotdotdot-expr.rs:2:24
    |
 LL |     let _redemptive = 1...21;
    |                        ^^^

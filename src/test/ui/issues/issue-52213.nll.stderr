@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-52213.rs:12:11
+  --> $DIR/issue-52213.rs:2:11
    |
 LL |     match (&t,) { //~ ERROR cannot infer an appropriate lifetime
    |           ^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52213.rs:13:20
+  --> $DIR/issue-52213.rs:3:20
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
    |                       --  -- lifetime `'b` defined here

@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to immutable static item `FOO`
-  --> $DIR/constant-thread-locals-issue-47053.rs:20:5
+  --> $DIR/constant-thread-locals-issue-47053.rs:10:5
    |
 LL |     FOO = 6; //~ ERROR cannot assign to immutable static item `FOO` [E0594]
    |     ^^^^^^^ cannot assign

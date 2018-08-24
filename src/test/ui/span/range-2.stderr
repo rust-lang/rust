@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/range-2.rs:17:10
+  --> $DIR/range-2.rs:7:10
    |
 LL |         &a..&b
    |          ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    | - borrowed value needs to live until here
 
 error[E0597]: `b` does not live long enough
-  --> $DIR/range-2.rs:17:14
+  --> $DIR/range-2.rs:7:14
    |
 LL |         &a..&b
    |              ^ borrowed value does not live long enough

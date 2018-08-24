@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `b` because it is borrowed
-  --> $DIR/issue-27282-move-match-input-into-guard.rs:26:17
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:16:17
    |
 LL |     match b {
    |           - borrow of `b` occurs here
@@ -13,7 +13,7 @@ LL |         &mut true => { println!("You might think we should get here"); },
    |         --------- borrow later used here
 
 error[E0382]: use of moved value: `*b`
-  --> $DIR/issue-27282-move-match-input-into-guard.rs:29:14
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:19:14
    |
 LL |         _ if { (|| { let bar = b; *bar = false; })();
    |                 --             - variable moved due to use in closure

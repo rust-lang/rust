@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-38954.rs:11:23
+  --> $DIR/issue-38954.rs:1:23
    |
 LL | fn _test(ref _p: str) {}
    |                       ^ doesn't have a size known at compile-time

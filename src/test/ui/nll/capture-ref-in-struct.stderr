@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/capture-ref-in-struct.rs:31:16
+  --> $DIR/capture-ref-in-struct.rs:21:16
    |
 LL |             y: &y,
    |                ^^ borrowed value does not live long enough

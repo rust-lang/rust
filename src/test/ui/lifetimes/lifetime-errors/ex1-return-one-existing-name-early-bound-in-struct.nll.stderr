@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:21:21
+  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:11:21
    |
 LL |                     other //~ ERROR explicit lifetime
    |                     ^^^^^
 
 error[E0621]: explicit lifetime required in the type of `other`
-  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:21:21
+  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:11:21
    |
 LL |     fn bar(&self, other: Foo) -> Foo<'a> {
    |                          --- help: add explicit lifetime `'a` to the type of `other`: `Foo<'a>`

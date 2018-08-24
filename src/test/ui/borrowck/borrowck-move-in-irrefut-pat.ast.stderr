@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:16:13
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:6:13
    |
 LL | fn arg_item(&_x: &String) {}
    |             ^--
@@ -8,7 +8,7 @@ LL | fn arg_item(&_x: &String) {}
    |             cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:21:11
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:11:11
    |
 LL |     with(|&_x| ())
    |           ^--
@@ -17,7 +17,7 @@ LL |     with(|&_x| ())
    |           cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:27:9
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:17:9
    |
 LL |     let &_x = &"hi".to_string();
    |         ^--

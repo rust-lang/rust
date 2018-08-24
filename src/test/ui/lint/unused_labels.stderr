@@ -1,59 +1,59 @@
 warning: unused label
-  --> $DIR/unused_labels.rs:21:5
+  --> $DIR/unused_labels.rs:11:5
    |
 LL |     'unused_while_label: while 0 == 0 {
    |     ^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/unused_labels.rs:18:9
+  --> $DIR/unused_labels.rs:8:9
    |
 LL | #![warn(unused_labels)]
    |         ^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:26:5
+  --> $DIR/unused_labels.rs:16:5
    |
 LL |     'unused_while_let_label: while let Some(_) = opt {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:30:5
+  --> $DIR/unused_labels.rs:20:5
    |
 LL |     'unused_for_label: for _ in 0..10 {
    |     ^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:46:9
+  --> $DIR/unused_labels.rs:36:9
    |
 LL |         'unused_loop_label_inner_2: for _ in 0..10 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:52:5
+  --> $DIR/unused_labels.rs:42:5
    |
 LL |     'unused_loop_label_outer_3: for _ in 0..10 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:70:5
+  --> $DIR/unused_labels.rs:60:5
    |
 LL |     'many_used_shadowed: for _ in 0..10 {
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:82:5
+  --> $DIR/unused_labels.rs:72:5
    |
 LL |     'unused_loop_label: loop {
    |     ^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:88:5
+  --> $DIR/unused_labels.rs:78:5
    |
 LL |     'unused_block_label: {
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: label name `'many_used_shadowed` shadows a label name that is already in scope
-  --> $DIR/unused_labels.rs:72:9
+  --> $DIR/unused_labels.rs:62:9
    |
 LL |     'many_used_shadowed: for _ in 0..10 {
    |     ------------------- first declared here

@@ -1,5 +1,5 @@
 error[E0380]: auto traits cannot have methods or associated items
-  --> $DIR/issue-23080-2.rs:17:1
+  --> $DIR/issue-23080-2.rs:7:1
    |
 LL | / unsafe auto trait Trait {
 LL | | //~^ ERROR E0380

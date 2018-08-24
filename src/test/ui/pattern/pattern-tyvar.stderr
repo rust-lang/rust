@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-tyvar.rs:17:18
+  --> $DIR/pattern-tyvar.rs:7:18
    |
 LL |       bar::t1(_, Some::<isize>(x)) => {
    |                  ^^^^^^^^^^^^^^^^ expected struct `std::vec::Vec`, found isize

@@ -1,5 +1,5 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-25901.rs:14:24
+  --> $DIR/issue-25901.rs:4:24
    |
 LL | static S: &'static B = &A;
    |                        ^^

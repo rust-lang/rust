@@ -1,5 +1,5 @@
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:24:1
+  --> $DIR/object-safety-generics.rs:14:1
    |
 LL | fn make_bar<T:Bar>(t: &T) -> &Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
@@ -7,7 +7,7 @@ LL | fn make_bar<T:Bar>(t: &T) -> &Bar {
    = note: method `bar` has generic type parameters
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:29:1
+  --> $DIR/object-safety-generics.rs:19:1
    |
 LL | fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object

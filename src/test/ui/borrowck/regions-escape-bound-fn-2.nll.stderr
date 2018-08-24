@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-escape-bound-fn-2.rs:18:27
+  --> $DIR/regions-escape-bound-fn-2.rs:8:27
    |
 LL |     with_int(|y| x = Some(y));
    |                           ^
 
 error: borrowed data escapes outside of closure
-  --> $DIR/regions-escape-bound-fn-2.rs:18:18
+  --> $DIR/regions-escape-bound-fn-2.rs:8:18
    |
 LL |     let mut x = None;
    |         ----- `x` is declared here, outside of the closure body

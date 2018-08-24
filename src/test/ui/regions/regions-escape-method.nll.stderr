@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-escape-method.rs:25:13
+  --> $DIR/regions-escape-method.rs:15:13
    |
 LL |     s.f(|p| p) //~ ERROR cannot infer
    |             ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-escape-method.rs:25:13
+  --> $DIR/regions-escape-method.rs:15:13
    |
 LL |     s.f(|p| p) //~ ERROR cannot infer
    |          -- ^ returning this value requires that `'1` must outlive `'2`

@@ -1,5 +1,5 @@
 error[E0599]: no method named `homura` found for type `{integer}` in the current scope
-  --> $DIR/issue-29181.rs:16:7
+  --> $DIR/issue-29181.rs:6:7
    |
 LL |     0.homura(); //~ ERROR no method named `homura` found
    |       ^^^^^^

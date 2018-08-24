@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when processing `Foo`
-  --> $DIR/no_inferrable_concrete_type.rs:16:1
+  --> $DIR/no_inferrable_concrete_type.rs:6:1
    |
 LL | existential type Foo: Copy; //~ cycle detected
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires processing `bar`...
-  --> $DIR/no_inferrable_concrete_type.rs:19:23
+  --> $DIR/no_inferrable_concrete_type.rs:9:23
    |
 LL | fn bar(x: Foo) -> Foo { x }
    |                       ^^^^^

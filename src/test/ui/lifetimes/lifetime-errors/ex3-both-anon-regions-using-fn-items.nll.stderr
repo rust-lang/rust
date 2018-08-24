@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:10
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:10
    |
 LL |   y.push(z); //~ ERROR lifetime mismatch
    |          ^
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
-  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:3
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
    |
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                        - help: consider changing this to be mutable: `mut y`
@@ -13,7 +13,7 @@ LL |   y.push(z); //~ ERROR lifetime mismatch
    |   ^ cannot borrow as mutable
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:3
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
    |
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                               -        - let's call the lifetime of this reference `'1`

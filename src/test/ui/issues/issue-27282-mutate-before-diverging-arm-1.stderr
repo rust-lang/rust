@@ -1,5 +1,5 @@
 error[E0500]: closure requires unique access to `x` but it is already borrowed
-  --> $DIR/issue-27282-mutate-before-diverging-arm-1.rs:33:14
+  --> $DIR/issue-27282-mutate-before-diverging-arm-1.rs:23:14
    |
 LL |     match x {
    |           - borrow occurs here

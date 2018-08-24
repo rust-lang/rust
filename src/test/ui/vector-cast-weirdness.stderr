@@ -1,5 +1,5 @@
 error[E0606]: casting `&mut [u8; 2]` as `*mut u8` is invalid
-  --> $DIR/vector-cast-weirdness.rs:31:23
+  --> $DIR/vector-cast-weirdness.rs:21:23
    |
 LL |     let p1: *mut u8 = &mut x1.y as *mut _;  //~ ERROR casting
    |                       ^^^^^^^^^^^^^^^^^^^

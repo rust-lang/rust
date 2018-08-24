@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-trait-impl-trait-arg.rs:18:17
+  --> $DIR/unsized-trait-impl-trait-arg.rs:8:17
    |
 LL | impl<X: ?Sized> T2<X> for S4<X> {
    |                 ^^^^^ doesn't have a size known at compile-time

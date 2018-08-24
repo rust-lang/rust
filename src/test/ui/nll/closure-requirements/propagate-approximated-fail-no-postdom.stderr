@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:45:21
    |
 LL |             let p = x.get();
    |                     ^^^^^^^
 
 note: No external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:43:9
    |
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
@@ -21,7 +21,7 @@ LL | |         },
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:57:13
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:47:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |          ----------              ---------- has type `std::cell::Cell<&'2 &u32>`
@@ -32,7 +32,7 @@ LL |             demand_y(x, y, p) //~ ERROR
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:48:1
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1
    |
 LL | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
 LL | |     establish_relationships(

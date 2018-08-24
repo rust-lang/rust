@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found type parameter `Add`
-  --> $DIR/issue-35987.rs:15:21
+  --> $DIR/issue-35987.rs:5:21
    |
 LL | impl<T: Clone, Add> Add for Foo<T> {
    |                     ^^^ not a trait

@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `s` because it is borrowed
-  --> $DIR/borrowck-overloaded-index-move-index.rs:60:22
+  --> $DIR/borrowck-overloaded-index-move-index.rs:50:22
    |
 LL |     let rs = &mut s;
    |                   - borrow of `s` occurs here
@@ -8,7 +8,7 @@ LL |     println!("{}", f[s]);
    |                      ^ move out of `s` occurs here
 
 error[E0505]: cannot move out of `s` because it is borrowed
-  --> $DIR/borrowck-overloaded-index-move-index.rs:63:7
+  --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
    |
 LL |     let rs = &mut s;
    |                   - borrow of `s` occurs here
@@ -17,7 +17,7 @@ LL |     f[s] = 10;
    |       ^ move out of `s` occurs here
 
 error[E0382]: use of moved value: `s`
-  --> $DIR/borrowck-overloaded-index-move-index.rs:63:7
+  --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
    |
 LL |     println!("{}", f[s]);
    |                      - value moved here

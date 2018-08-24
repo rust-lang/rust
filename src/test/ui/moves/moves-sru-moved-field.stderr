@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `f.moved`
-  --> $DIR/moves-sru-moved-field.rs:30:37
+  --> $DIR/moves-sru-moved-field.rs:20:37
    |
 LL |     let _b = Foo {noncopyable: g, ..f};
    |                                     - value moved here

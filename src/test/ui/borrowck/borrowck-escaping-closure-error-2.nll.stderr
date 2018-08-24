@@ -1,5 +1,5 @@
 error[E0597]: `books` does not live long enough
-  --> $DIR/borrowck-escaping-closure-error-2.rs:21:17
+  --> $DIR/borrowck-escaping-closure-error-2.rs:11:17
    |
 LL |     Box::new(|| books.push(4))
    |              -- ^^^^^ borrowed value does not live long enough
@@ -9,8 +9,8 @@ LL |     //~^ ERROR E0373
 LL | }
    | - `books` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 19:8...
-  --> $DIR/borrowck-escaping-closure-error-2.rs:19:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 9:8...
+  --> $DIR/borrowck-escaping-closure-error-2.rs:9:8
    |
 LL | fn foo<'a>(x: &'a i32) -> Box<FnMut()+'a> {
    |        ^^

@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:9
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:9
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         ^-
@@ -8,7 +8,7 @@ LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:9
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:9
    |
 LL |     for &a in &f.a {  //~ ERROR cannot move out
    |         ^-
@@ -17,7 +17,7 @@ LL |     for &a in &f.a {  //~ ERROR cannot move out
    |         cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:9
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:9
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         ^-

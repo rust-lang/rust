@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*self` as mutable more than once at a time
-  --> $DIR/unboxed-closures-recursive-fn-using-fn-mut.rs:32:21
+  --> $DIR/unboxed-closures-recursive-fn-using-fn-mut.rs:22:21
    |
 LL |         (self.func)(self, arg)
    |         ----------- ^^^^     - first borrow ends here

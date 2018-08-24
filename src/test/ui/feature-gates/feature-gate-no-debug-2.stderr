@@ -1,11 +1,11 @@
 error: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
-  --> $DIR/feature-gate-no-debug-2.rs:14:1
+  --> $DIR/feature-gate-no-debug-2.rs:4:1
    |
 LL | #[no_debug] //~ ERROR use of deprecated attribute `no_debug`
    | ^^^^^^^^^^^ help: remove this attribute
    |
 note: lint level defined here
-  --> $DIR/feature-gate-no-debug-2.rs:11:9
+  --> $DIR/feature-gate-no-debug-2.rs:1:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

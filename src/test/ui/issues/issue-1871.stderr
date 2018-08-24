@@ -1,5 +1,5 @@
 error[E0599]: no method named `honk` found for type `{integer}` in the current scope
-  --> $DIR/issue-1871.rs:17:9
+  --> $DIR/issue-1871.rs:7:9
    |
 LL |       f.honk() //~ ERROR no method named `honk` found
    |         ^^^^

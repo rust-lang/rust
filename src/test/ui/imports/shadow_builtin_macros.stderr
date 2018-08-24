@@ -1,11 +1,11 @@
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:43:5
+  --> $DIR/shadow_builtin_macros.rs:33:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
    |     ^^^^^
    |
 note: `panic` could refer to the name defined here
-  --> $DIR/shadow_builtin_macros.rs:40:9
+  --> $DIR/shadow_builtin_macros.rs:30:9
    |
 LL |         macro_rules! panic { () => {} }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,13 +16,13 @@ LL |     m!();
    = note: macro-expanded macros do not shadow
 
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:25:14
+  --> $DIR/shadow_builtin_macros.rs:15:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^
    |
 note: `panic` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:24:9
+  --> $DIR/shadow_builtin_macros.rs:14:9
    |
 LL |     use foo::*;
    |         ^^^^^^
@@ -30,13 +30,13 @@ LL |     use foo::*;
    = note: consider adding an explicit import of `panic` to disambiguate
 
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:30:14
+  --> $DIR/shadow_builtin_macros.rs:20:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^
    |
 note: `panic` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:29:26
+  --> $DIR/shadow_builtin_macros.rs:19:26
    |
 LL |     ::two_macros::m!(use foo::panic;);
    |                          ^^^^^^^^^^
@@ -44,18 +44,18 @@ LL |     ::two_macros::m!(use foo::panic;);
    = note: macro-expanded macro imports do not shadow
 
 error[E0659]: `n` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:59:5
+  --> $DIR/shadow_builtin_macros.rs:49:5
    |
 LL |     n!(); //~ ERROR ambiguous
    |     ^
    |
 note: `n` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:58:9
+  --> $DIR/shadow_builtin_macros.rs:48:9
    |
 LL |     use bar::*;
    |         ^^^^^^
 note: `n` could also refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:46:13
+  --> $DIR/shadow_builtin_macros.rs:36:13
    |
 LL | #[macro_use(n)]
    |             ^

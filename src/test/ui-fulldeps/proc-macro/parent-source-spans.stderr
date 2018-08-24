@@ -1,5 +1,5 @@
 error: first final: "hello"
-  --> $DIR/parent-source-spans.rs:27:12
+  --> $DIR/parent-source-spans.rs:17:12
    |
 LL |     three!($a, $b);
    |            ^^
@@ -8,7 +8,7 @@ LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
 
 error: second final: "world"
-  --> $DIR/parent-source-spans.rs:27:16
+  --> $DIR/parent-source-spans.rs:17:16
    |
 LL |     three!($a, $b);
    |                ^^
@@ -17,7 +17,7 @@ LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
 
 error: first parent: "hello"
-  --> $DIR/parent-source-spans.rs:21:5
+  --> $DIR/parent-source-spans.rs:11:5
    |
 LL |     two!($a, $b);
    |     ^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
 
 error: second parent: "world"
-  --> $DIR/parent-source-spans.rs:21:5
+  --> $DIR/parent-source-spans.rs:11:5
    |
 LL |     two!($a, $b);
    |     ^^^^^^^^^^^^^
@@ -35,31 +35,31 @@ LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
 
 error: first grandparent: "hello"
-  --> $DIR/parent-source-spans.rs:44:5
+  --> $DIR/parent-source-spans.rs:34:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: second grandparent: "world"
-  --> $DIR/parent-source-spans.rs:44:5
+  --> $DIR/parent-source-spans.rs:34:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: first source: "hello"
-  --> $DIR/parent-source-spans.rs:44:5
+  --> $DIR/parent-source-spans.rs:34:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: second source: "world"
-  --> $DIR/parent-source-spans.rs:44:5
+  --> $DIR/parent-source-spans.rs:34:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: first final: "yay"
-  --> $DIR/parent-source-spans.rs:27:12
+  --> $DIR/parent-source-spans.rs:17:12
    |
 LL |     three!($a, $b);
    |            ^^
@@ -68,7 +68,7 @@ LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
 
 error: second final: "rust"
-  --> $DIR/parent-source-spans.rs:27:16
+  --> $DIR/parent-source-spans.rs:17:16
    |
 LL |     three!($a, $b);
    |                ^^
@@ -77,49 +77,49 @@ LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
 
 error: first parent: "yay"
-  --> $DIR/parent-source-spans.rs:50:5
+  --> $DIR/parent-source-spans.rs:40:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: second parent: "rust"
-  --> $DIR/parent-source-spans.rs:50:5
+  --> $DIR/parent-source-spans.rs:40:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: first source: "yay"
-  --> $DIR/parent-source-spans.rs:50:5
+  --> $DIR/parent-source-spans.rs:40:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: second source: "rust"
-  --> $DIR/parent-source-spans.rs:50:5
+  --> $DIR/parent-source-spans.rs:40:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: first final: "hip"
-  --> $DIR/parent-source-spans.rs:56:12
+  --> $DIR/parent-source-spans.rs:46:12
    |
 LL |     three!("hip", "hop");
    |            ^^^^^
 
 error: second final: "hop"
-  --> $DIR/parent-source-spans.rs:56:19
+  --> $DIR/parent-source-spans.rs:46:19
    |
 LL |     three!("hip", "hop");
    |                   ^^^^^
 
 error: first source: "hip"
-  --> $DIR/parent-source-spans.rs:56:12
+  --> $DIR/parent-source-spans.rs:46:12
    |
 LL |     three!("hip", "hop");
    |            ^^^^^
 
 error: second source: "hop"
-  --> $DIR/parent-source-spans.rs:56:19
+  --> $DIR/parent-source-spans.rs:46:19
    |
 LL |     three!("hip", "hop");
    |                   ^^^^^

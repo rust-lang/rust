@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-11681.rs:22:20
+  --> $DIR/issue-11681.rs:12:20
    |
 LL |   let testValue = &Test; //~ ERROR borrowed value does not live long enough
    |                    ^^^^ temporary value does not live long enough
@@ -7,8 +7,8 @@ LL |   return testValue;
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:15...
-  --> $DIR/issue-11681.rs:21:15
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 11:15...
+  --> $DIR/issue-11681.rs:11:15
    |
 LL | fn createTest<'a>() -> &'a Test {
    |               ^^

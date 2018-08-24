@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/issue-26046-fn-once.rs:14:19
+  --> $DIR/issue-26046-fn-once.rs:4:19
    |
 LL |     let closure = move || { //~ ERROR expected a closure
    |                   ^^^^^^^ this closure implements `FnOnce`, not `Fn`

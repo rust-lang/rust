@@ -1,17 +1,17 @@
 error[E0533]: expected unit struct/variant or constant, found method `<Foo>::bar`
-  --> $DIR/method-path-in-pattern.rs:25:9
+  --> $DIR/method-path-in-pattern.rs:15:9
    |
 LL |         Foo::bar => {}
    |         ^^^^^^^^
 
 error[E0533]: expected unit struct/variant or constant, found method `<Foo>::bar`
-  --> $DIR/method-path-in-pattern.rs:29:9
+  --> $DIR/method-path-in-pattern.rs:19:9
    |
 LL |         <Foo>::bar => {}
    |         ^^^^^^^^^^
 
 error[E0533]: expected unit struct/variant or constant, found method `<Foo>::trait_bar`
-  --> $DIR/method-path-in-pattern.rs:33:9
+  --> $DIR/method-path-in-pattern.rs:23:9
    |
 LL |         <Foo>::trait_bar => {}
    |         ^^^^^^^^^^^^^^^^

@@ -1,24 +1,24 @@
 error: constant item is never used: `foo`
-  --> $DIR/issue-17718-const-naming.rs:14:1
+  --> $DIR/issue-17718-const-naming.rs:4:1
    |
 LL | const foo: isize = 3;
    | ^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-17718-const-naming.rs:12:8
+  --> $DIR/issue-17718-const-naming.rs:2:8
    |
 LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: #[deny(dead_code)] implied by #[deny(warnings)]
 
 error: constant `foo` should have an upper case name such as `FOO`
-  --> $DIR/issue-17718-const-naming.rs:14:1
+  --> $DIR/issue-17718-const-naming.rs:4:1
    |
 LL | const foo: isize = 3;
    | ^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-17718-const-naming.rs:12:8
+  --> $DIR/issue-17718-const-naming.rs:2:8
    |
 LL | #[deny(warnings)]
    |        ^^^^^^^^

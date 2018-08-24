@@ -3,25 +3,25 @@ error[E0601]: `main` function not found in crate `repr_transparent_other_reprs`
    = note: consider adding a `main` function to `$DIR/repr-transparent-other-reprs.rs`
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:15:8
+  --> $DIR/repr-transparent-other-reprs.rs:5:8
    |
 LL | #[repr(transparent, C)] //~ ERROR cannot have other repr
    |        ^^^^^^^^^^^  ^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:20:8
+  --> $DIR/repr-transparent-other-reprs.rs:10:8
    |
 LL | #[repr(transparent, packed)] //~ ERROR cannot have other repr
    |        ^^^^^^^^^^^  ^^^^^^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:23:8
+  --> $DIR/repr-transparent-other-reprs.rs:13:8
    |
 LL | #[repr(transparent, align(2))] //~ ERROR cannot have other repr
    |        ^^^^^^^^^^^  ^^^^^^^^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:26:8
+  --> $DIR/repr-transparent-other-reprs.rs:16:8
    |
 LL | #[repr(transparent)] //~ ERROR cannot have other repr
    |        ^^^^^^^^^^^

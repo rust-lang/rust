@@ -1,11 +1,11 @@
 error[E0603]: enum `Foo` is private
-  --> $DIR/issue-11680.rs:16:14
+  --> $DIR/issue-11680.rs:6:14
    |
 LL |     let _b = other::Foo::Bar(1);
    |              ^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Foo` is private
-  --> $DIR/issue-11680.rs:19:14
+  --> $DIR/issue-11680.rs:9:14
    |
 LL |     let _b = other::test::Foo::Bar(1);
    |              ^^^^^^^^^^^^^^^^^^^^^

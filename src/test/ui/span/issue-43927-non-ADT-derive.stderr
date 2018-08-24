@@ -1,5 +1,5 @@
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43927-non-ADT-derive.rs:13:1
+  --> $DIR/issue-43927-non-ADT-derive.rs:3:1
    |
 LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug, PartialEq, Eq)]`

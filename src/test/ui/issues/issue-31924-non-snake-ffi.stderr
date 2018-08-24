@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-31924-non-snake-ffi.rs:18:1
+  --> $DIR/issue-31924-non-snake-ffi.rs:8:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

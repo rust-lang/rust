@@ -1,5 +1,5 @@
 error[E0597]: `vec` does not live long enough
-  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:15:26
+  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:5:26
    |
 LL |     let vec: &[isize] = &vec; //~ ERROR `vec` does not live long enough
    |                          ^^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     let vec: &[isize] = &vec; //~ ERROR `vec` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:6...
-  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:13:6
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 3:6...
+  --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:3:6
    |
 LL | fn a<'a>() -> &'a isize {
    |      ^^

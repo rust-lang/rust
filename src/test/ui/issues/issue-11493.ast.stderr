@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough (Ast)
-  --> $DIR/issue-11493.rs:20:35
+  --> $DIR/issue-11493.rs:10:35
    |
 LL |     let y = x.as_ref().unwrap_or(&id(5));
    |                                   ^^^^^ - temporary value dropped here while still borrowed

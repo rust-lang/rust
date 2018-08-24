@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+  --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
 LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
    |                                         ^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+  --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
 LL |         let _f = || {
    |                  -- lifetime `'1` represents this closure's body
@@ -15,7 +15,7 @@ LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot in
    = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-addr-of-upvar-self.rs:19:13
+  --> $DIR/regions-addr-of-upvar-self.rs:9:13
    |
 LL |     pub fn chase_cat(&mut self) {
    |                      - let's call the lifetime of this reference `'1`
@@ -23,7 +23,7 @@ LL |         let _f = || {
    |             ^^ requires that `'1` must outlive `'static`
 
 error[E0597]: `self` does not live long enough
-  --> $DIR/regions-addr-of-upvar-self.rs:20:46
+  --> $DIR/regions-addr-of-upvar-self.rs:10:46
    |
 LL |         let _f = || {
    |                  -- value captured here

@@ -1,5 +1,5 @@
 warning: unknown lint: `not_a_real_lint`
-  --> $DIR/lint-unknown-lint.rs:11:10
+  --> $DIR/lint-unknown-lint.rs:1:10
    |
 LL | #![allow(not_a_real_lint)] //~ WARN unknown lint
    |          ^^^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL | #![allow(not_a_real_lint)] //~ WARN unknown lint
    = note: #[warn(unknown_lints)] on by default
 
 error: unused variable: `unused`
-  --> $DIR/lint-unknown-lint.rs:13:17
+  --> $DIR/lint-unknown-lint.rs:3:17
    |
 LL | fn main() { let unused = (); } //~ ERROR unused variable
    |                 ^^^^^^ help: consider using `_unused` instead
    |
 note: lint level defined here
-  --> $DIR/lint-unknown-lint.rs:12:9
+  --> $DIR/lint-unknown-lint.rs:2:9
    |
 LL | #![deny(unused)]
    |         ^^^^^^

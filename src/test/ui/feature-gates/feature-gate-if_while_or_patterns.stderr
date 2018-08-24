@@ -1,5 +1,5 @@
 error[E0658]: multiple patterns in `if let` and `while let` are unstable (see issue #48215)
-  --> $DIR/feature-gate-if_while_or_patterns.rs:12:5
+  --> $DIR/feature-gate-if_while_or_patterns.rs:2:5
    |
 LL | /     if let 0 | 1 = 0 { //~ ERROR multiple patterns in `if let` and `while let` are unstable
 LL | |         ;
@@ -9,7 +9,7 @@ LL | |     }
    = help: add #![feature(if_while_or_patterns)] to the crate attributes to enable
 
 error[E0658]: multiple patterns in `if let` and `while let` are unstable (see issue #48215)
-  --> $DIR/feature-gate-if_while_or_patterns.rs:15:5
+  --> $DIR/feature-gate-if_while_or_patterns.rs:5:5
    |
 LL | /     while let 0 | 1 = 1 { //~ ERROR multiple patterns in `if let` and `while let` are unstable
 LL | |         break;

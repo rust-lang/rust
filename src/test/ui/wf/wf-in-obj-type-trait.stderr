@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/wf-in-obj-type-trait.rs:21:5
+  --> $DIR/wf-in-obj-type-trait.rs:11:5
    |
 LL |     x: Object<MustBeCopy<T>> //~ ERROR E0277
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
    = help: consider adding a `where T: std::marker::Copy` bound
 note: required by `MustBeCopy`
-  --> $DIR/wf-in-obj-type-trait.rs:15:1
+  --> $DIR/wf-in-obj-type-trait.rs:5:1
    |
 LL | struct MustBeCopy<T:Copy> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

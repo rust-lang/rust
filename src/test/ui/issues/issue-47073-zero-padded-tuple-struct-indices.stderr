@@ -1,11 +1,11 @@
 error[E0609]: no field `00` on type `Verdict`
-  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:18:30
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:8:30
    |
 LL |     let _condemned = justice.00;
    |                              ^^ did you mean `0`?
 
 error[E0609]: no field `001` on type `Verdict`
-  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:20:31
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:10:31
    |
 LL |     let _punishment = justice.001;
    |                               ^^^ unknown field

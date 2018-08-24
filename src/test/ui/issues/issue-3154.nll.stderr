@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-3154.rs:16:15
+  --> $DIR/issue-3154.rs:6:15
    |
 LL |     thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the type of `x` [E0621]
    |               ^
 
 warning: not reporting region error due to nll
-  --> $DIR/issue-3154.rs:16:5
+  --> $DIR/issue-3154.rs:6:5
    |
 LL |     thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the type of `x` [E0621]
    |     ^^^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/issue-3154.rs:16:5
+  --> $DIR/issue-3154.rs:6:5
    |
 LL | fn thing<'a,Q>(x: &Q) -> thing<'a,Q> {
    |                   -- help: add explicit lifetime `'a` to the type of `x`: `&'a Q`

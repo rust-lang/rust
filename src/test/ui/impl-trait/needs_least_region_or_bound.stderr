@@ -1,5 +1,5 @@
 error: ambiguous lifetime bound in `impl Trait`
-  --> $DIR/needs_least_region_or_bound.rs:16:55
+  --> $DIR/needs_least_region_or_bound.rs:6:55
    |
 LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ neither `'a` nor `'b` outlives the other

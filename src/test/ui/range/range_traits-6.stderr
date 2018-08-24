@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/range_traits-6.rs:13:10
+  --> $DIR/range_traits-6.rs:3:10
    |
 LL | #[derive(Copy, Clone)] //~ ERROR Copy
    |          ^^^^

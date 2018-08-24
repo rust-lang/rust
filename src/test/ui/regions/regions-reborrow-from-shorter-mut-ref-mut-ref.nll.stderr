@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:14:5
+  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:4:5
    |
 LL |     &mut ***p //~ ERROR 14:5: 14:14: lifetime mismatch [E0623]
    |     ^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:13:85
+  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:3:85
    |
 LL |   fn copy_borrowed_ptr<'a, 'b, 'c>(p: &'a mut &'b mut &'c mut isize) -> &'b mut isize {
    |  ______________________--__--_________________________________________________________^

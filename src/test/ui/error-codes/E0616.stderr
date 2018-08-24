@@ -1,5 +1,5 @@
 error[E0616]: field `x` of struct `a::Foo` is private
-  --> $DIR/E0616.rs:23:5
+  --> $DIR/E0616.rs:13:5
    |
 LL |     f.x; //~ ERROR E0616
    |     ^^^

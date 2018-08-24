@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `usize: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums-static.rs:19:1
+  --> $DIR/trait-bounds-on-structs-and-enums-static.rs:9:1
    |
 LL | / static X: Foo<usize> = Foo {
 LL | | //~^ ERROR E0277
@@ -8,7 +8,7 @@ LL | | };
    | |__^ the trait `Trait` is not implemented for `usize`
    |
 note: required by `Foo`
-  --> $DIR/trait-bounds-on-structs-and-enums-static.rs:15:1
+  --> $DIR/trait-bounds-on-structs-and-enums-static.rs:5:1
    |
 LL | struct Foo<T:Trait> {
    | ^^^^^^^^^^^^^^^^^^^

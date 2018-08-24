@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[NonCopy; 1]`, a non-copy array
-  --> $DIR/E0508.rs:15:18
+  --> $DIR/E0508.rs:5:18
    |
 LL |     let _value = array[0];  //~ ERROR [E0508]
    |                  ^^^^^^^^

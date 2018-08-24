@@ -1,5 +1,5 @@
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-sized-2.rs:20:1
+  --> $DIR/object-safety-sized-2.rs:10:1
    |
 LL | fn make_bar<T:Bar>(t: &T) -> &Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object

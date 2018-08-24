@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/explicit-dyn.rs:19:1
+  --> $DIR/explicit-dyn.rs:9:1
    |
 LL | / struct Foo<'a, A> //~ ERROR 19:1: 22:2: rustc_outlives
 LL | | {

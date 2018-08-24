@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `i32`:
-  --> $DIR/coherence-impls-copy.rs:15:1
+  --> $DIR/coherence-impls-copy.rs:5:1
    |
 LL | impl Copy for i32 {}
    | ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | impl Copy for i32 {}
            - impl std::marker::Copy for i32;
 
 error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`:
-  --> $DIR/coherence-impls-copy.rs:41:1
+  --> $DIR/coherence-impls-copy.rs:31:1
    |
 LL | impl Copy for &'static NotSync {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | impl Copy for &'static NotSync {}
              where T: ?Sized;
 
 error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`:
-  --> $DIR/coherence-impls-copy.rs:48:1
+  --> $DIR/coherence-impls-copy.rs:38:1
    |
 LL | impl Copy for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,25 +28,25 @@ LL | impl Copy for &'static [NotSync] {}
              where T: ?Sized;
 
 error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:33:15
+  --> $DIR/coherence-impls-copy.rs:23:15
    |
 LL | impl Copy for &'static mut MyType {}
    |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:37:15
+  --> $DIR/coherence-impls-copy.rs:27:15
    |
 LL | impl Copy for (MyType, MyType) {}
    |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:44:15
+  --> $DIR/coherence-impls-copy.rs:34:15
    |
 LL | impl Copy for [MyType] {}
    |               ^^^^^^^^ type is not a structure or enumeration
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:15:1
+  --> $DIR/coherence-impls-copy.rs:5:1
    |
 LL | impl Copy for i32 {}
    | ^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
@@ -55,7 +55,7 @@ LL | impl Copy for i32 {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:37:1
+  --> $DIR/coherence-impls-copy.rs:27:1
    |
 LL | impl Copy for (MyType, MyType) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
@@ -64,7 +64,7 @@ LL | impl Copy for (MyType, MyType) {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:44:1
+  --> $DIR/coherence-impls-copy.rs:34:1
    |
 LL | impl Copy for [MyType] {}
    | ^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
@@ -73,7 +73,7 @@ LL | impl Copy for [MyType] {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:48:1
+  --> $DIR/coherence-impls-copy.rs:38:1
    |
 LL | impl Copy for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate

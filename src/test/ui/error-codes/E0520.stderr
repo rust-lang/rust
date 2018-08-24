@@ -1,5 +1,5 @@
 error[E0520]: `fly` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/E0520.rs:26:5
+  --> $DIR/E0520.rs:16:5
    |
 LL | / impl<T: Clone> SpaceLlama for T {
 LL | |     fn fly(&self) {}

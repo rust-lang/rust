@@ -1,5 +1,5 @@
 error[E0597]: `*cell` does not live long enough
-  --> $DIR/dropck.rs:19:40
+  --> $DIR/dropck.rs:9:40
    |
 LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
    |                                        ^^^^ borrowed value does not live long enough
@@ -11,7 +11,7 @@ LL | }
    | borrow later used here, when `gen` is dropped
 
 error[E0597]: `ref_` does not live long enough
-  --> $DIR/dropck.rs:22:11
+  --> $DIR/dropck.rs:12:11
    |
 LL |       gen = || {
    |  ___________^

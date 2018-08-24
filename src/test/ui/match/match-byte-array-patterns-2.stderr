@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `&[_, _, _, _]` not covered
-  --> $DIR/match-byte-array-patterns-2.rs:14:11
+  --> $DIR/match-byte-array-patterns-2.rs:4:11
    |
 LL |     match buf { //~ ERROR non-exhaustive
    |           ^^^ pattern `&[_, _, _, _]` not covered
 
 error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 3 more not covered
-  --> $DIR/match-byte-array-patterns-2.rs:20:11
+  --> $DIR/match-byte-array-patterns-2.rs:10:11
    |
 LL |     match buf { //~ ERROR non-exhaustive
    |           ^^^ patterns `&[]`, `&[_]`, `&[_, _]` and 3 more not covered

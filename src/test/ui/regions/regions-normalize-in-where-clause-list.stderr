@@ -1,5 +1,5 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-normalize-in-where-clause-list.rs:32:1
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
    |
 LL | / fn bar<'a, 'b>() //~ ERROR cannot infer
 LL | |     where <() as Project<'a, 'b>>::Item : Eq
@@ -7,13 +7,13 @@ LL | | {
 LL | | }
    | |_^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 32:8...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:32:8
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 22:8...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
    |
 LL | fn bar<'a, 'b>() //~ ERROR cannot infer
    |        ^^
-note: ...but the lifetime must also be valid for the lifetime 'b as defined on the function body at 32:12...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:32:12
+note: ...but the lifetime must also be valid for the lifetime 'b as defined on the function body at 22:12...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:12
    |
 LL | fn bar<'a, 'b>() //~ ERROR cannot infer
    |            ^^

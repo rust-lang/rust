@@ -1,17 +1,17 @@
 error: unnecessary `unsafe` block
-  --> $DIR/issue-48131.rs:18:9
+  --> $DIR/issue-48131.rs:8:9
    |
 LL |         unsafe { /* unnecessary */ } //~ ERROR unnecessary `unsafe`
    |         ^^^^^^ unnecessary `unsafe` block
    |
 note: lint level defined here
-  --> $DIR/issue-48131.rs:13:9
+  --> $DIR/issue-48131.rs:3:9
    |
 LL | #![deny(unused_unsafe)] //~ NOTE
    |         ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
-  --> $DIR/issue-48131.rs:29:13
+  --> $DIR/issue-48131.rs:19:13
    |
 LL |             unsafe { /* unnecessary */ } //~ ERROR unnecessary `unsafe`
    |             ^^^^^^ unnecessary `unsafe` block

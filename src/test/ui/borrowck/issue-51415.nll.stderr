@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-51415.rs:16:42
+  --> $DIR/issue-51415.rs:6:42
    |
 LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
    |                                          ^^^^^-^
@@ -8,7 +8,7 @@ LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
    |                                          cannot move out of borrowed content
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/issue-51415.rs:16:47
+  --> $DIR/issue-51415.rs:6:47
    |
 LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
    |                                               ^

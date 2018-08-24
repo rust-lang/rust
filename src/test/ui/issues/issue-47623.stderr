@@ -1,5 +1,5 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/issue-47623.rs:11:5
+  --> $DIR/issue-47623.rs:1:5
    |
 LL | use self; //~ERROR `self` imports are only allowed within a { } list
    |     ^^^^

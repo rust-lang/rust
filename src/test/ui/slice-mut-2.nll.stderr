@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/slice-mut-2.rs:17:18
+  --> $DIR/slice-mut-2.rs:7:18
    |
 LL |     let x: &[isize] = &[1, 2, 3, 4, 5];
    |                       ---------------- help: consider changing this to be a mutable reference: `&mut [1, 2, 3, 4, 5]`

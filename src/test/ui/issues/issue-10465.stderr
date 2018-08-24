@@ -1,5 +1,5 @@
 error[E0599]: no method named `foo` found for type `&b::B` in the current scope
-  --> $DIR/issue-10465.rs:27:15
+  --> $DIR/issue-10465.rs:17:15
    |
 LL |             b.foo(); //~ ERROR: no method named `foo` found
    |               ^^^

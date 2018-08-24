@@ -1,11 +1,11 @@
 error[E0283]: type annotations required: cannot resolve `S5<_>: Foo`
-  --> $DIR/issue-29147.rs:31:13
+  --> $DIR/issue-29147.rs:21:13
    |
 LL |     let _ = <S5<_>>::xxx; //~ ERROR cannot resolve `S5<_>: Foo`
    |             ^^^^^^^^^^^^
    |
 note: required by `Foo::xxx`
-  --> $DIR/issue-29147.rs:20:13
+  --> $DIR/issue-29147.rs:10:13
    |
 LL | trait Foo { fn xxx(&self); }
    |             ^^^^^^^^^^^^^^

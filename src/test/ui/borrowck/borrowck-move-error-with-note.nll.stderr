@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-error-with-note.rs:21:11
+  --> $DIR/borrowck-move-error-with-note.rs:11:11
    |
 LL |     match *f {             //~ ERROR cannot move out of
    |           ^^
@@ -15,7 +15,7 @@ LL |         Foo::Foo2(num) => (),
    |                   --- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/borrowck-move-error-with-note.rs:23:19
+  --> $DIR/borrowck-move-error-with-note.rs:13:19
    |
 LL |         Foo::Foo1(num1,
    |                   ^^^^
@@ -25,7 +25,7 @@ LL |         Foo::Foo2(num) => (),
    |                   ^^^
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-error-with-note.rs:39:11
+  --> $DIR/borrowck-move-error-with-note.rs:29:11
    |
 LL |     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
@@ -36,7 +36,7 @@ LL |             g: _t
    |                -- ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/borrowck-move-error-with-note.rs:42:16
+  --> $DIR/borrowck-move-error-with-note.rs:32:16
    |
 LL |             f: _s,
    |                ^^
@@ -44,7 +44,7 @@ LL |             g: _t
    |                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-error-with-note.rs:57:11
+  --> $DIR/borrowck-move-error-with-note.rs:47:11
    |
 LL |     match a.a {           //~ ERROR cannot move out of
    |           ^^^
@@ -56,7 +56,7 @@ LL |         n => {
    |         - data moved here
    |
 note: move occurs because `n` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-error-with-note.rs:59:9
+  --> $DIR/borrowck-move-error-with-note.rs:49:9
    |
 LL |         n => {
    |         ^

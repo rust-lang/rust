@@ -1,5 +1,5 @@
 error[E0277]: cannot add `()` to `{integer}`
-  --> $DIR/issue-11771.rs:13:7
+  --> $DIR/issue-11771.rs:3:7
    |
 LL |     1 +
    |       ^ no implementation for `{integer} + ()`
@@ -7,7 +7,7 @@ LL |     1 +
    = help: the trait `std::ops::Add<()>` is not implemented for `{integer}`
 
 error[E0277]: cannot add `()` to `{integer}`
-  --> $DIR/issue-11771.rs:18:7
+  --> $DIR/issue-11771.rs:8:7
    |
 LL |     1 +
    |       ^ no implementation for `{integer} + ()`

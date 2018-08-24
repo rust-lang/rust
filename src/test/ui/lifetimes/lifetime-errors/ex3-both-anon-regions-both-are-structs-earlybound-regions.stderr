@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-both-are-structs-earlybound-regions.rs:18:12
+  --> $DIR/ex3-both-anon-regions-both-are-structs-earlybound-regions.rs:9:12
    |
 LL | fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>)
    |                           -------      ------- these two types are declared with different lifetimes...

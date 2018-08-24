@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `bar` in module `mod_file_aux`
-  --> $DIR/mod_file_correct_spans.rs:16:27
+  --> $DIR/mod_file_correct_spans.rs:6:27
    |
 LL |     assert!(mod_file_aux::bar() == 10);
    |                           ^^^ not found in `mod_file_aux`

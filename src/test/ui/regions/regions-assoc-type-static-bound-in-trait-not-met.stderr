@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:19:10
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10
    |
 LL | impl<'a> Foo for &'a i32 {
    |          ^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 19:6...
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:19:6
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 9:6...
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:6
    |
 LL | impl<'a> Foo for &'a i32 {
    |      ^^
@@ -14,7 +14,7 @@ LL | impl<'a> Foo for &'a i32 {
               found Foo
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:19:10
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10
    |
 LL | impl<'a> Foo for &'a i32 {
    |          ^^^

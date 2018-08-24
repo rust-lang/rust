@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/assign-imm-local-twice.rs:20:5
+  --> $DIR/assign-imm-local-twice.rs:10:5
    |
 LL |     v = 1; //[ast]~ NOTE first assignment
    |     ----- first assignment to `v`

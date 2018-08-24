@@ -1,5 +1,5 @@
 error[E0053]: method `fmt` has an incompatible type for trait
-  --> $DIR/trait_type.rs:17:4
+  --> $DIR/trait_type.rs:7:4
    |
 LL |    fn fmt(&self, x: &str) -> () { }
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
@@ -8,7 +8,7 @@ LL |    fn fmt(&self, x: &str) -> () { }
               found type `fn(&MyType, &str)`
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
-  --> $DIR/trait_type.rs:22:11
+  --> $DIR/trait_type.rs:12:11
    |
 LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
@@ -16,7 +16,7 @@ LL |    fn fmt(&self) -> () { }
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
-  --> $DIR/trait_type.rs:27:4
+  --> $DIR/trait_type.rs:17:4
    |
 LL |    fn fmt() -> () { }
    |    ^^^^^^^^^^^^^^ expected `&self` in impl
@@ -24,7 +24,7 @@ LL |    fn fmt() -> () { }
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0046]: not all trait items implemented, missing: `fmt`
-  --> $DIR/trait_type.rs:31:1
+  --> $DIR/trait_type.rs:21:1
    |
 LL | impl std::fmt::Display for MyType4 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation

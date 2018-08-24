@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/self-dyn.rs:20:1
+  --> $DIR/self-dyn.rs:10:1
    |
 LL | / struct Foo<'a, 'b, A> //~ ERROR 20:1: 23:2: rustc_outlives
 LL | | {

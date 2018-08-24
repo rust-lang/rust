@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-40402-2.rs:15:18
+  --> $DIR/issue-40402-2.rs:5:18
    |
 LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          -  -    ^^^^
@@ -10,7 +10,7 @@ LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          data moved here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/issue-40402-2.rs:15:10
+  --> $DIR/issue-40402-2.rs:5:10
    |
 LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          ^  ^

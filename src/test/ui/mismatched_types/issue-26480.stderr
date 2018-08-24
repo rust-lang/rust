@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-26480.rs:26:19
+  --> $DIR/issue-26480.rs:16:19
    |
 LL |                   $arr.len() * size_of($arr[0])); //~ ERROR mismatched types
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected u64, found usize
@@ -8,7 +8,7 @@ LL |     write!(hello);
    |     -------------- in this macro invocation
 
 error[E0605]: non-primitive cast: `{integer}` as `()`
-  --> $DIR/issue-26480.rs:32:19
+  --> $DIR/issue-26480.rs:22:19
    |
 LL |     ($x:expr) => ($x as ()) //~ ERROR non-primitive cast
    |                   ^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/proj-outlives-region.rs:19:5
+  --> $DIR/proj-outlives-region.rs:9:5
    |
 LL |     fn foo() where T: 'a;
    |     --------------------- definition of `foo` from trait

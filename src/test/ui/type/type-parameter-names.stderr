@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-parameter-names.rs:15:5
+  --> $DIR/type-parameter-names.rs:5:5
    |
 LL | fn foo<Foo, Bar>(x: Foo) -> Bar {
    |                             --- expected `Bar` because of return type

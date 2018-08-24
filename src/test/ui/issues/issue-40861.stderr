@@ -1,5 +1,5 @@
 error[E0608]: cannot index into a value of type `()`
-  --> $DIR/issue-40861.rs:14:5
+  --> $DIR/issue-40861.rs:4:5
    |
 LL |     ()[f(&[1.0])];
    |     ^^^^^^^^^^^^^

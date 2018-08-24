@@ -1,5 +1,5 @@
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:20:5
+  --> $DIR/issue-43197.rs:10:5
    |
 LL |     const X: u32 = 0-1;
    |     ^^^^^^^^^^^^^^^---^
@@ -7,13 +7,13 @@ LL |     const X: u32 = 0-1;
    |                    attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/issue-43197.rs:11:9
+  --> $DIR/issue-43197.rs:1:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:22:5
+  --> $DIR/issue-43197.rs:12:5
    |
 LL |     const Y: u32 = foo(0-1);
    |     ^^^^^^^^^^^^^^^^^^^---^^
@@ -21,7 +21,7 @@ LL |     const Y: u32 = foo(0-1);
    |                        attempt to subtract with overflow
 
 error[E0080]: referenced constant has errors
-  --> $DIR/issue-43197.rs:24:14
+  --> $DIR/issue-43197.rs:14:14
    |
 LL |     const X: u32 = 0-1;
    |                    --- attempt to subtract with overflow
@@ -30,13 +30,13 @@ LL |     println!("{} {}", X, Y);
    |              ^^^^^^^
 
 error[E0080]: erroneous constant used
-  --> $DIR/issue-43197.rs:24:14
+  --> $DIR/issue-43197.rs:14:14
    |
 LL |     println!("{} {}", X, Y);
    |              ^^^^^^^  - referenced constant has errors
 
 error[E0080]: referenced constant has errors
-  --> $DIR/issue-43197.rs:24:26
+  --> $DIR/issue-43197.rs:14:26
    |
 LL |     const Y: u32 = foo(0-1);
    |                        --- attempt to subtract with overflow
@@ -45,13 +45,13 @@ LL |     println!("{} {}", X, Y);
    |                          ^
 
 error[E0080]: erroneous constant used
-  --> $DIR/issue-43197.rs:24:26
+  --> $DIR/issue-43197.rs:14:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
 error[E0080]: referenced constant has errors
-  --> $DIR/issue-43197.rs:24:23
+  --> $DIR/issue-43197.rs:14:23
    |
 LL |     const X: u32 = 0-1;
    |                    --- attempt to subtract with overflow
@@ -60,7 +60,7 @@ LL |     println!("{} {}", X, Y);
    |                       ^
 
 error[E0080]: erroneous constant used
-  --> $DIR/issue-43197.rs:24:23
+  --> $DIR/issue-43197.rs:14:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors

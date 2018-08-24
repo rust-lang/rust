@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `bar`:
-  --> $DIR/method-macro-backtrace.rs:32:5
+  --> $DIR/method-macro-backtrace.rs:22:5
    |
 LL |     fn bar(&self) { }
    |     ----------------- previous definition of `bar` here

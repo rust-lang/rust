@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `i32: std::slice::SliceIndex<[{integer}]>` is not satisfied
-  --> $DIR/index-help.rs:13:5
+  --> $DIR/index-help.rs:3:5
    |
 LL |     x[0i32]; //~ ERROR E0277
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`

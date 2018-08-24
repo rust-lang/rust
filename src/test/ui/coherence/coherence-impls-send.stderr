@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-send.rs:27:1
+  --> $DIR/coherence-impls-send.rs:17:1
    |
 LL | unsafe impl Send for (MyType, MyType) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
@@ -8,13 +8,13 @@ LL | unsafe impl Send for (MyType, MyType) {}
    = note: define and implement a trait or new type instead
 
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `&'static NotSync`
-  --> $DIR/coherence-impls-send.rs:30:1
+  --> $DIR/coherence-impls-send.rs:20:1
    |
 LL | unsafe impl Send for &'static NotSync {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-send.rs:33:1
+  --> $DIR/coherence-impls-send.rs:23:1
    |
 LL | unsafe impl Send for [MyType] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
@@ -23,7 +23,7 @@ LL | unsafe impl Send for [MyType] {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-send.rs:36:1
+  --> $DIR/coherence-impls-send.rs:26:1
    |
 LL | unsafe impl Send for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate

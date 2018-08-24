@@ -1,5 +1,5 @@
 error[E0597]: `pointer` does not live long enough
-  --> $DIR/wf-method-late-bound-regions.rs:30:19
+  --> $DIR/wf-method-late-bound-regions.rs:20:19
    |
 LL |         f2.xmute(&pointer)
    |                   ^^^^^^^ borrowed value does not live long enough

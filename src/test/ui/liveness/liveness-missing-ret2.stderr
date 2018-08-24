@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-missing-ret2.rs:11:17
+  --> $DIR/liveness-missing-ret2.rs:1:17
    |
 LL |   fn f() -> isize { //~ ERROR mismatched types
    |  _________________^

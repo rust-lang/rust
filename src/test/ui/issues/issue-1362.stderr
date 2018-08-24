@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-1362.rs:14:16
+  --> $DIR/issue-1362.rs:4:16
    |
 LL |   let x: u32 = 20i32; //~ ERROR mismatched types
    |                ^^^^^ expected u32, found i32

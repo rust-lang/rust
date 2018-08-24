@@ -1,5 +1,5 @@
 error[E0658]: scoped lint `clippy::assign_ops` is experimental (see issue #44690)
-  --> $DIR/feature-gate-tool_lints-fail.rs:11:8
+  --> $DIR/feature-gate-tool_lints-fail.rs:1:8
    |
 LL | #[warn(clippy::assign_ops)] //~ ERROR scoped lint `clippy::assign_ops` is experimental
    |        ^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-28113.rs:14:5
+  --> $DIR/issue-28113.rs:4:5
    |
 LL |     || -> u8 { 5 }()
    |     ^^^^^^^^^^^^^^^^

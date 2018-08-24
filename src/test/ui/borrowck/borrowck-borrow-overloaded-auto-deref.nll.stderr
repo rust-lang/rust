@@ -1,83 +1,83 @@
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:57:19
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:47:19
    |
 LL |     let __isize = &mut x.y; //~ ERROR cannot borrow
    |                   ^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:61:19
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:51:19
    |
 LL |     let __isize = &mut x.y; //~ ERROR cannot borrow
    |                   ^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:69:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:59:5
    |
 LL |     &mut x.y //~ ERROR cannot borrow
    |     ^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:73:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:63:5
    |
 LL |     &mut x.y //~ ERROR cannot borrow
    |     ^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:77:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:67:5
    |
 LL |     x.y = 3; //~ ERROR cannot assign
    |     ^^^^^^^ cannot assign
 
 error[E0594]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:81:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:71:5
    |
 LL |     x.y = 3; //~ ERROR cannot assign
    |     ^^^^^^^ cannot assign
 
 error[E0594]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:85:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:75:5
    |
 LL |     x.y = 3; //~ ERROR cannot assign
    |     ^^^^^^^ cannot assign
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:93:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:83:5
    |
 LL |     x.set(0, 0); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:97:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:87:5
    |
 LL |     x.set(0, 0); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:105:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:95:5
    |
 LL |     x.y_mut() //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:109:5
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:99:5
    |
 LL |     x.y_mut() //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:113:6
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:103:6
    |
 LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
    |      ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:117:6
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:107:6
    |
 LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
    |      ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:121:6
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:111:6
    |
 LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
    |      ^ cannot borrow as mutable

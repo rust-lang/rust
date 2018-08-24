@@ -1,287 +1,287 @@
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:61:13
+  --> $DIR/privacy5.rs:51:13
    |
 LL |     let a = a::A(()); //~ ERROR tuple struct `A` is private
    |             ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:62:13
+  --> $DIR/privacy5.rs:52:13
    |
 LL |     let b = a::B(2); //~ ERROR tuple struct `B` is private
    |             ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:63:13
+  --> $DIR/privacy5.rs:53:13
    |
 LL |     let c = a::C(2, 3); //~ ERROR tuple struct `C` is private
    |             ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:66:9
+  --> $DIR/privacy5.rs:56:9
    |
 LL |     let a::A(()) = a; //~ ERROR tuple struct `A` is private
    |         ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:67:9
+  --> $DIR/privacy5.rs:57:9
    |
 LL |     let a::A(_) = a; //~ ERROR tuple struct `A` is private
    |         ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:68:15
+  --> $DIR/privacy5.rs:58:15
    |
 LL |     match a { a::A(()) => {} } //~ ERROR tuple struct `A` is private
    |               ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:69:15
+  --> $DIR/privacy5.rs:59:15
    |
 LL |     match a { a::A(_) => {} } //~ ERROR tuple struct `A` is private
    |               ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:71:9
+  --> $DIR/privacy5.rs:61:9
    |
 LL |     let a::B(_) = b; //~ ERROR tuple struct `B` is private
    |         ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:72:9
+  --> $DIR/privacy5.rs:62:9
    |
 LL |     let a::B(_b) = b; //~ ERROR tuple struct `B` is private
    |         ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:73:15
+  --> $DIR/privacy5.rs:63:15
    |
 LL |     match b { a::B(_) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:74:15
+  --> $DIR/privacy5.rs:64:15
    |
 LL |     match b { a::B(_b) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:75:15
+  --> $DIR/privacy5.rs:65:15
    |
 LL |     match b { a::B(1) => {} a::B(_) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:75:29
+  --> $DIR/privacy5.rs:65:29
    |
 LL |     match b { a::B(1) => {} a::B(_) => {} } //~ ERROR tuple struct `B` is private
    |                             ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:78:9
+  --> $DIR/privacy5.rs:68:9
    |
 LL |     let a::C(_, _) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:79:9
+  --> $DIR/privacy5.rs:69:9
    |
 LL |     let a::C(_a, _) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:80:9
+  --> $DIR/privacy5.rs:70:9
    |
 LL |     let a::C(_, _b) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:81:9
+  --> $DIR/privacy5.rs:71:9
    |
 LL |     let a::C(_a, _b) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:82:15
+  --> $DIR/privacy5.rs:72:15
    |
 LL |     match c { a::C(_, _) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:83:15
+  --> $DIR/privacy5.rs:73:15
    |
 LL |     match c { a::C(_a, _) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:84:15
+  --> $DIR/privacy5.rs:74:15
    |
 LL |     match c { a::C(_, _b) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:85:15
+  --> $DIR/privacy5.rs:75:15
    |
 LL |     match c { a::C(_a, _b) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:93:14
+  --> $DIR/privacy5.rs:83:14
    |
 LL |     let a2 = a::A; //~ ERROR tuple struct `A` is private
    |              ^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:94:14
+  --> $DIR/privacy5.rs:84:14
    |
 LL |     let b2 = a::B; //~ ERROR tuple struct `B` is private
    |              ^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:95:14
+  --> $DIR/privacy5.rs:85:14
    |
 LL |     let c2 = a::C; //~ ERROR tuple struct `C` is private
    |              ^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:100:13
+  --> $DIR/privacy5.rs:90:13
    |
 LL |     let a = other::A(()); //~ ERROR tuple struct `A` is private
    |             ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:101:13
+  --> $DIR/privacy5.rs:91:13
    |
 LL |     let b = other::B(2); //~ ERROR tuple struct `B` is private
    |             ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:102:13
+  --> $DIR/privacy5.rs:92:13
    |
 LL |     let c = other::C(2, 3); //~ ERROR tuple struct `C` is private
    |             ^^^^^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:105:9
+  --> $DIR/privacy5.rs:95:9
    |
 LL |     let other::A(()) = a; //~ ERROR tuple struct `A` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:106:9
+  --> $DIR/privacy5.rs:96:9
    |
 LL |     let other::A(_) = a; //~ ERROR tuple struct `A` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:107:15
+  --> $DIR/privacy5.rs:97:15
    |
 LL |     match a { other::A(()) => {} } //~ ERROR tuple struct `A` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:108:15
+  --> $DIR/privacy5.rs:98:15
    |
 LL |     match a { other::A(_) => {} } //~ ERROR tuple struct `A` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:110:9
+  --> $DIR/privacy5.rs:100:9
    |
 LL |     let other::B(_) = b; //~ ERROR tuple struct `B` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:111:9
+  --> $DIR/privacy5.rs:101:9
    |
 LL |     let other::B(_b) = b; //~ ERROR tuple struct `B` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:112:15
+  --> $DIR/privacy5.rs:102:15
    |
 LL |     match b { other::B(_) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:113:15
+  --> $DIR/privacy5.rs:103:15
    |
 LL |     match b { other::B(_b) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:114:15
+  --> $DIR/privacy5.rs:104:15
    |
 LL |     match b { other::B(1) => {} other::B(_) => {} } //~ ERROR tuple struct `B` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:114:33
+  --> $DIR/privacy5.rs:104:33
    |
 LL |     match b { other::B(1) => {} other::B(_) => {} } //~ ERROR tuple struct `B` is private
    |                                 ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:117:9
+  --> $DIR/privacy5.rs:107:9
    |
 LL |     let other::C(_, _) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:118:9
+  --> $DIR/privacy5.rs:108:9
    |
 LL |     let other::C(_a, _) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:119:9
+  --> $DIR/privacy5.rs:109:9
    |
 LL |     let other::C(_, _b) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:120:9
+  --> $DIR/privacy5.rs:110:9
    |
 LL |     let other::C(_a, _b) = c; //~ ERROR tuple struct `C` is private
    |         ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:121:15
+  --> $DIR/privacy5.rs:111:15
    |
 LL |     match c { other::C(_, _) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:122:15
+  --> $DIR/privacy5.rs:112:15
    |
 LL |     match c { other::C(_a, _) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:123:15
+  --> $DIR/privacy5.rs:113:15
    |
 LL |     match c { other::C(_, _b) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:124:15
+  --> $DIR/privacy5.rs:114:15
    |
 LL |     match c { other::C(_a, _b) => {} } //~ ERROR tuple struct `C` is private
    |               ^^^^^^^^
 
 error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:132:14
+  --> $DIR/privacy5.rs:122:14
    |
 LL |     let a2 = other::A; //~ ERROR tuple struct `A` is private
    |              ^^^^^^^^
 
 error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:133:14
+  --> $DIR/privacy5.rs:123:14
    |
 LL |     let b2 = other::B; //~ ERROR tuple struct `B` is private
    |              ^^^^^^^^
 
 error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:134:14
+  --> $DIR/privacy5.rs:124:14
    |
 LL |     let c2 = other::C; //~ ERROR tuple struct `C` is private
    |              ^^^^^^^^

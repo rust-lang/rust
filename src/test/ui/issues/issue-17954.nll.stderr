@@ -1,5 +1,5 @@
 error[E0712]: thread-local variable borrowed past end of function
-  --> $DIR/issue-17954.rs:17:13
+  --> $DIR/issue-17954.rs:7:13
    |
 LL |     let a = &FOO;
    |             ^^^^ thread-local variables cannot be borrowed beyond the end of the function

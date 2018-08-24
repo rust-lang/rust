@@ -1,11 +1,11 @@
 error[E0389]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:5
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:9:5
    |
 LL |     **t1 = 22; //~ ERROR cannot assign
    |     ^^^^^^^^^ assignment into an immutable reference
 
 error[E0502]: cannot borrow `**t0` as immutable because `*t0` is also borrowed as mutable
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:24:22
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:14:22
    |
 LL |     let t1 = &mut *t0;
    |                   --- mutable borrow occurs here
@@ -16,7 +16,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0389]: cannot borrow data mutably in a `&` reference
-  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:29:31
+  --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:31
    |
 LL | fn foo4(t0: & &mut isize) {
    |             ------------ use `&mut &mut isize` here to make mutable

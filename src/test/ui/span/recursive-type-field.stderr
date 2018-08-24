@@ -1,5 +1,5 @@
 error[E0072]: recursive type `Foo` has infinite size
-  --> $DIR/recursive-type-field.rs:13:1
+  --> $DIR/recursive-type-field.rs:3:1
    |
 LL | struct Foo<'a> { //~ ERROR recursive type
    | ^^^^^^^^^^^^^^ recursive type has infinite size
@@ -9,7 +9,7 @@ LL |     bar: Bar<'a>,
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
 
 error[E0072]: recursive type `Bar` has infinite size
-  --> $DIR/recursive-type-field.rs:18:1
+  --> $DIR/recursive-type-field.rs:8:1
    |
 LL | struct Bar<'a> { //~ ERROR recursive type
    | ^^^^^^^^^^^^^^ recursive type has infinite size

@@ -1,5 +1,5 @@
 error[E0599]: no method named `push` found for type `!` in the current scope
-  --> $DIR/issue-15207.rs:13:15
+  --> $DIR/issue-15207.rs:3:15
    |
 LL |         break.push(1) //~ ERROR no method named `push` found for type `!`
    |               ^^^^

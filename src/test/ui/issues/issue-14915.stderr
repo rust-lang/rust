@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
-  --> $DIR/issue-14915.rs:16:20
+  --> $DIR/issue-14915.rs:6:20
    |
 LL |     println!("{}", x + 1);
    |                    ^^^^^

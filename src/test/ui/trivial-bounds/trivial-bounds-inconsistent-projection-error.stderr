@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/trivial-bounds-inconsistent-projection-error.rs:30:5
+  --> $DIR/trivial-bounds-inconsistent-projection-error.rs:20:5
    |
 LL | fn global_bound_is_hidden() -> u8
    |                                -- expected `u8` because of return type

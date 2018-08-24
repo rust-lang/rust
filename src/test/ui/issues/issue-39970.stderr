@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
-  --> $DIR/issue-39970.rs:29:5
+  --> $DIR/issue-39970.rs:19:5
    |
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected &(), found ()
@@ -8,7 +8,7 @@ LL |     <() as Visit>::visit();
               found type `()`
    = note: required because of the requirements on the impl of `Visit` for `()`
 note: required by `Visit::visit`
-  --> $DIR/issue-39970.rs:16:5
+  --> $DIR/issue-39970.rs:6:5
    |
 LL |     fn visit() {}
    |     ^^^^^^^^^^

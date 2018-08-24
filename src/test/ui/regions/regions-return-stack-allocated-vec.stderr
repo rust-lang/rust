@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-return-stack-allocated-vec.rs:14:6
+  --> $DIR/regions-return-stack-allocated-vec.rs:4:6
    |
 LL |     &[x] //~ ERROR borrowed value does not live long enough
    |      ^^^ temporary value does not live long enough

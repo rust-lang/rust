@@ -1,5 +1,5 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/E0393.rs:13:43
+  --> $DIR/E0393.rs:3:43
    |
 LL | fn together_we_will_rule_the_galaxy(son: &A) {}
    |                                           ^ missing reference to `T`

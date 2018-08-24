@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:34:17
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:17
    |
 LL |     let mut x = Vec::new();
    |         -----   ^^^^^^^^ cannot infer type for `T`
@@ -7,7 +7,7 @@ LL |     let mut x = Vec::new();
    |         consider giving `x` a type
 
 error[E0308]: mismatched types
-  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:43:20
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
    |
 LL |     let y: usize = x.foo(); //~ ERROR mismatched types
    |                    ^^^^^^^ expected usize, found isize

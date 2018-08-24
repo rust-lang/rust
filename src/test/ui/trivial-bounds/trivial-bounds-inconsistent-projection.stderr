@@ -1,5 +1,5 @@
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:29:1
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:19:1
    |
 LL | / fn underspecified_bound() -> u8
 LL | | where
@@ -12,7 +12,7 @@ LL | | }
    = note: #[warn(trivial_bounds)] on by default
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:36:1
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:26:1
    |
 LL | / fn inconsistent_bound() -> i32
 LL | | where
@@ -23,7 +23,7 @@ LL | | }
    | |_^
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:43:1
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:33:1
    |
 LL | / fn redundant_bound() -> u8
 LL | | where
@@ -34,7 +34,7 @@ LL | | }
    | |_^
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:50:1
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:40:1
    |
 LL | / fn inconsistent_dup_bound() -> i32
 LL | | where
@@ -45,7 +45,7 @@ LL | | }
    | |_^
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:57:1
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:47:1
    |
 LL | / fn redundant_dup_bound() -> u8
 LL | | where

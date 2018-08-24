@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-37510.rs:16:1
+  --> $DIR/issue-37510.rs:6:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     let opt = Some(92);

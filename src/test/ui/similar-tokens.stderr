@@ -1,5 +1,5 @@
 error: expected one of `,`, `::`, `as`, or `}`, found `.`
-  --> $DIR/similar-tokens.rs:17:10
+  --> $DIR/similar-tokens.rs:7:10
    |
 LL | use x::{A. B}; //~ ERROR expected one of `,`, `::`, `as`, or `}`, found `.`
    |          ^ expected one of `,`, `::`, `as`, or `}` here

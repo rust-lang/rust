@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-13624.rs:17:5
+  --> $DIR/issue-13624.rs:7:5
    |
 LL |   pub fn get_enum_struct_variant() -> () {
    |                                       -- expected `()` because of return type
@@ -10,7 +10,7 @@ LL |     Enum::EnumStructVariant { x: 1, y: 2, z: 3 }
               found type `a::Enum`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13624.rs:32:9
+  --> $DIR/issue-13624.rs:22:9
    |
 LL |         a::Enum::EnumStructVariant { x, y, z } => {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found enum `a::Enum`

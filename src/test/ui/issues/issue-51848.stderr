@@ -1,5 +1,5 @@
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/issue-51848.rs:16:20
+  --> $DIR/issue-51848.rs:6:20
    |
 LL |         println!("{"); //~ ERROR invalid
    |                    ^ expected `'}'` in format string
@@ -10,7 +10,7 @@ LL |     macro_with_error!();
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/issue-51848.rs:28:15
+  --> $DIR/issue-51848.rs:18:15
    |
 LL |     println!("}"); //~ ERROR invalid
    |               ^ unmatched `}` in format string

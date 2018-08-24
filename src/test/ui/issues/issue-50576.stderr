@@ -1,17 +1,17 @@
 error[E0426]: use of undeclared label `'L`
-  --> $DIR/issue-50576.rs:12:23
+  --> $DIR/issue-50576.rs:2:23
    |
 LL |     |bool: [u8; break 'L]| 0;
    |                       ^^ undeclared label `'L`
 
 error[E0268]: `break` outside of loop
-  --> $DIR/issue-50576.rs:12:17
+  --> $DIR/issue-50576.rs:2:17
    |
 LL |     |bool: [u8; break 'L]| 0;
    |                 ^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `break` outside of loop
-  --> $DIR/issue-50576.rs:15:16
+  --> $DIR/issue-50576.rs:5:16
    |
 LL |     Vec::<[u8; break]>::new(); //~ ERROR [E0268]
    |                ^^^^^ cannot break outside of a loop

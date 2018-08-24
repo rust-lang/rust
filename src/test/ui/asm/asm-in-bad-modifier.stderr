@@ -1,11 +1,11 @@
 error[E0662]: input operand constraint contains '='
-  --> $DIR/asm-in-bad-modifier.rs:33:39
+  --> $DIR/asm-in-bad-modifier.rs:23:39
    |
 LL |         asm!("mov $1, $0" : "=r"(x) : "=r"(5)); //~ ERROR operand constraint contains '='
    |                                       ^^^^
 
 error[E0663]: input operand constraint contains '+'
-  --> $DIR/asm-in-bad-modifier.rs:34:39
+  --> $DIR/asm-in-bad-modifier.rs:24:39
    |
 LL |         asm!("mov $1, $0" : "=r"(y) : "+r"(5)); //~ ERROR operand constraint contains '+'
    |                                       ^^^^

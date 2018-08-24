@@ -1,5 +1,5 @@
 error[E0428]: the name `foo` is defined multiple times
-  --> $DIR/issue-28472.rs:16:3
+  --> $DIR/issue-28472.rs:6:3
    |
 LL |     fn foo();
    |     --------- previous definition of the value `foo` here
@@ -11,7 +11,7 @@ LL | |   fn foo();
    = note: `foo` must be defined only once in the value namespace of this module
 
 error[E0428]: the name `foo` is defined multiple times
-  --> $DIR/issue-28472.rs:19:3
+  --> $DIR/issue-28472.rs:9:3
    |
 LL |     fn foo();
    |     --------- previous definition of the value `foo` here

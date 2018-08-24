@@ -1,11 +1,11 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/dyn-trait-underscore-in-struct.rs:19:24
+  --> $DIR/dyn-trait-underscore-in-struct.rs:9:24
    |
 LL |     x: Box<dyn Debug + '_>, //~ ERROR missing lifetime specifier
    |                        ^^ expected lifetime parameter
 
 error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
-  --> $DIR/dyn-trait-underscore-in-struct.rs:19:12
+  --> $DIR/dyn-trait-underscore-in-struct.rs:9:12
    |
 LL |     x: Box<dyn Debug + '_>, //~ ERROR missing lifetime specifier
    |            ^^^^^^^^^^^^^^

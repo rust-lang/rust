@@ -1,11 +1,11 @@
 error[E0120]: the Drop trait may only be implemented on structures
-  --> $DIR/drop-on-non-struct.rs:11:19
+  --> $DIR/drop-on-non-struct.rs:1:19
    |
 LL | impl<'a> Drop for &'a mut isize {
    |                   ^^^^^^^^^^^^^ implementing Drop requires a struct
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/drop-on-non-struct.rs:11:1
+  --> $DIR/drop-on-non-struct.rs:1:1
    |
 LL | impl<'a> Drop for &'a mut isize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate

@@ -1,5 +1,5 @@
 error: expected identifier, found `,`
-  --> $DIR/struct-duplicate-comma.rs:22:14
+  --> $DIR/struct-duplicate-comma.rs:12:14
    |
 LL |     let bar = Foo {
    |               --- while parsing this struct

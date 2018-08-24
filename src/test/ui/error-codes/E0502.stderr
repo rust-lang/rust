@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*a` as mutable because `a` is also borrowed as immutable
-  --> $DIR/E0502.rs:14:9
+  --> $DIR/E0502.rs:4:9
    |
 LL |     let ref y = a;
    |         ----- immutable borrow occurs here

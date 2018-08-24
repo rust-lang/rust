@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/borrow-tuple-fields.rs:22:9
+  --> $DIR/borrow-tuple-fields.rs:12:9
    |
 LL |     let r = &x.0;
    |              --- borrow of `x.0` occurs here
@@ -7,7 +7,7 @@ LL |     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
    |         ^ move out of `x` occurs here
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
-  --> $DIR/borrow-tuple-fields.rs:28:18
+  --> $DIR/borrow-tuple-fields.rs:18:18
    |
 LL |     let a = &x.0;
    |              --- immutable borrow occurs here
@@ -18,7 +18,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0499]: cannot borrow `x.0` as mutable more than once at a time
-  --> $DIR/borrow-tuple-fields.rs:33:18
+  --> $DIR/borrow-tuple-fields.rs:23:18
    |
 LL |     let a = &mut x.0;
    |                  --- first mutable borrow occurs here
@@ -29,7 +29,7 @@ LL | }
    | - first borrow ends here
 
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/borrow-tuple-fields.rs:38:9
+  --> $DIR/borrow-tuple-fields.rs:28:9
    |
 LL |     let r = &x.0;
    |              --- borrow of `x.0` occurs here
@@ -37,7 +37,7 @@ LL |     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
    |         ^ move out of `x` occurs here
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
-  --> $DIR/borrow-tuple-fields.rs:43:18
+  --> $DIR/borrow-tuple-fields.rs:33:18
    |
 LL |     let a = &x.0;
    |              --- immutable borrow occurs here
@@ -48,7 +48,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0499]: cannot borrow `x.0` as mutable more than once at a time
-  --> $DIR/borrow-tuple-fields.rs:48:18
+  --> $DIR/borrow-tuple-fields.rs:38:18
    |
 LL |     let a = &mut x.0;
    |                  --- first mutable borrow occurs here

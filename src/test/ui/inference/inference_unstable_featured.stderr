@@ -1,5 +1,5 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/inference_unstable_featured.rs:26:20
+  --> $DIR/inference_unstable_featured.rs:16:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 0);   //~ ERROR E0034
    |                    ^^^^^^^^^^^ multiple `ipu_flatten` found

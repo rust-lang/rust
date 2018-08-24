@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `U` cannot be known at compilation time
-  --> $DIR/trait-suggest-where-clause.rs:17:5
+  --> $DIR/trait-suggest-where-clause.rs:7:5
    |
 LL |     mem::size_of::<U>();
    |     ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -10,7 +10,7 @@ LL |     mem::size_of::<U>();
    = note: required by `std::mem::size_of`
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
-  --> $DIR/trait-suggest-where-clause.rs:20:5
+  --> $DIR/trait-suggest-where-clause.rs:10:5
    |
 LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -22,7 +22,7 @@ LL |     mem::size_of::<Misc<U>>();
    = note: required by `std::mem::size_of`
 
 error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
-  --> $DIR/trait-suggest-where-clause.rs:25:5
+  --> $DIR/trait-suggest-where-clause.rs:15:5
    |
 LL |     <u64 as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `u64`
@@ -31,7 +31,7 @@ LL |     <u64 as From<T>>::from;
    = note: required by `std::convert::From::from`
 
 error[E0277]: the trait bound `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
-  --> $DIR/trait-suggest-where-clause.rs:28:5
+  --> $DIR/trait-suggest-where-clause.rs:18:5
    |
 LL |     <u64 as From<<T as Iterator>::Item>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<<T as std::iter::Iterator>::Item>` is not implemented for `u64`
@@ -40,7 +40,7 @@ LL |     <u64 as From<<T as Iterator>::Item>>::from;
    = note: required by `std::convert::From::from`
 
 error[E0277]: the trait bound `Misc<_>: std::convert::From<T>` is not satisfied
-  --> $DIR/trait-suggest-where-clause.rs:33:5
+  --> $DIR/trait-suggest-where-clause.rs:23:5
    |
 LL |     <Misc<_> as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `Misc<_>`
@@ -48,7 +48,7 @@ LL |     <Misc<_> as From<T>>::from;
    = note: required by `std::convert::From::from`
 
 error[E0277]: the size for values of type `[T]` cannot be known at compilation time
-  --> $DIR/trait-suggest-where-clause.rs:38:5
+  --> $DIR/trait-suggest-where-clause.rs:28:5
    |
 LL |     mem::size_of::<[T]>();
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -58,7 +58,7 @@ LL |     mem::size_of::<[T]>();
    = note: required by `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
-  --> $DIR/trait-suggest-where-clause.rs:41:5
+  --> $DIR/trait-suggest-where-clause.rs:31:5
    |
 LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `*const isize` as `&isize`
-  --> $DIR/issue-2995.rs:12:22
+  --> $DIR/issue-2995.rs:2:22
    |
 LL |     let _q: &isize = p as &isize; //~ ERROR non-primitive cast
    |                      ^^^^^^^^^^^

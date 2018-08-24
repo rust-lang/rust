@@ -1,5 +1,5 @@
 error: unexpected generic arguments in path
-  --> $DIR/issue-43424.rs:20:4
+  --> $DIR/issue-43424.rs:10:4
    |
 LL | m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
    |    ^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-lend-flow-loop.rs:45:16
+  --> $DIR/borrowck-lend-flow-loop.rs:35:16
    |
 LL |     let mut x = &mut v;
    |                 ------ mutable borrow occurs here
@@ -11,7 +11,7 @@ LL |     *x = box 5;
    |     -- borrow used here in later iteration of loop
 
 error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-lend-flow-loop.rs:109:16
+  --> $DIR/borrowck-lend-flow-loop.rs:99:16
    |
 LL |         **x += 1;
    |         -------- borrow used here in later iteration of loop

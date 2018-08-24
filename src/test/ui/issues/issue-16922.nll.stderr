@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-16922.rs:14:14
+  --> $DIR/issue-16922.rs:4:14
    |
 LL |     Box::new(value) as Box<Any>
    |              ^^^^^
 
 error[E0621]: explicit lifetime required in the type of `value`
-  --> $DIR/issue-16922.rs:14:5
+  --> $DIR/issue-16922.rs:4:5
    |
 LL | fn foo<T: Any>(value: &T) -> Box<Any> {
    |                       -- help: add explicit lifetime `'static` to the type of `value`: `&'static T`

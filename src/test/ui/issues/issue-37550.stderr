@@ -1,5 +1,5 @@
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/issue-37550.rs:14:13
+  --> $DIR/issue-37550.rs:4:13
    |
 LL |     let t = true;
    |             ^^^^
@@ -7,7 +7,7 @@ LL |     let t = true;
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/issue-37550.rs:14:13
+  --> $DIR/issue-37550.rs:4:13
    |
 LL |     let t = true;
    |             ^^^^
@@ -15,7 +15,7 @@ LL |     let t = true;
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/issue-37550.rs:17:13
+  --> $DIR/issue-37550.rs:7:13
    |
 LL |     let x = || t;
    |             ^^^^
@@ -23,7 +23,7 @@ LL |     let x = || t;
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/issue-37550.rs:17:13
+  --> $DIR/issue-37550.rs:7:13
    |
 LL |     let x = || t;
    |             ^^^^

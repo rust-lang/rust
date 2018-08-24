@@ -1,5 +1,5 @@
 error[E0586]: inclusive range with no end
-  --> $DIR/E0586.rs:13:22
+  --> $DIR/E0586.rs:3:22
    |
 LL |     let x = &tmp[1..=]; //~ ERROR E0586
    |                      ^

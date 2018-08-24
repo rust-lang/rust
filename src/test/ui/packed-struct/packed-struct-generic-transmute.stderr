@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/packed-struct-generic-transmute.rs:34:38
+  --> $DIR/packed-struct-generic-transmute.rs:24:38
    |
 LL |         let oof: Oof<[u8; 5], i32> = mem::transmute(foo);
    |                                      ^^^^^^^^^^^^^^

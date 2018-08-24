@@ -1,5 +1,5 @@
 error[E0252]: the name `foo` is defined multiple times
-  --> $DIR/double-import.rs:23:5
+  --> $DIR/double-import.rs:13:5
    |
 LL | use sub1::foo;
    |     --------- previous import of the value `foo` here

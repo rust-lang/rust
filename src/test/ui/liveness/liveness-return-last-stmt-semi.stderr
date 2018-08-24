@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:13:45
+  --> $DIR/liveness-return-last-stmt-semi.rs:4:45
    |
 LL | macro_rules! test { () => { fn foo() -> i32 { 1; } } }
    |                                             ^^^-^^
@@ -14,7 +14,7 @@ LL |     test!();
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:16:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:7:23
    |
 LL | fn no_return() -> i32 {} //~ ERROR mismatched types
    |                       ^^ expected i32, found ()
@@ -23,7 +23,7 @@ LL | fn no_return() -> i32 {} //~ ERROR mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:18:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:9:23
    |
 LL |   fn bar(x: u32) -> u32 { //~ ERROR mismatched types
    |  _______________________^
@@ -36,7 +36,7 @@ LL | | }
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:22:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:13:23
    |
 LL |   fn baz(x: u64) -> u32 { //~ ERROR mismatched types
    |  _______________________^

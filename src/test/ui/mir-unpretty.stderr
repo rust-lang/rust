@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/mir-unpretty.rs:14:17
+  --> $DIR/mir-unpretty.rs:4:17
    |
 LL |     let x: () = 0; //~ ERROR: mismatched types
    |                 ^ expected (), found integral variable

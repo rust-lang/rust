@@ -1,17 +1,17 @@
 error: `extern` block uses type `A` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-14309.rs:40:15
+  --> $DIR/issue-14309.rs:30:15
    |
 LL |     fn foo(x: A); //~ ERROR type `A` which is not FFI-safe
    |               ^
    |
 note: lint level defined here
-  --> $DIR/issue-14309.rs:11:9
+  --> $DIR/issue-14309.rs:1:9
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-14309.rs:14:1
+  --> $DIR/issue-14309.rs:4:1
    |
 LL | / struct A {
 LL | |     x: i32
@@ -19,14 +19,14 @@ LL | | }
    | |_^
 
 error: `extern` block uses type `A` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-14309.rs:41:15
+  --> $DIR/issue-14309.rs:31:15
    |
 LL |     fn bar(x: B); //~ ERROR type `A`
    |               ^
    |
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-14309.rs:14:1
+  --> $DIR/issue-14309.rs:4:1
    |
 LL | / struct A {
 LL | |     x: i32
@@ -34,14 +34,14 @@ LL | | }
    | |_^
 
 error: `extern` block uses type `A` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-14309.rs:43:15
+  --> $DIR/issue-14309.rs:33:15
    |
 LL |     fn qux(x: A2); //~ ERROR type `A`
    |               ^^
    |
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-14309.rs:14:1
+  --> $DIR/issue-14309.rs:4:1
    |
 LL | / struct A {
 LL | |     x: i32
@@ -49,14 +49,14 @@ LL | | }
    | |_^
 
 error: `extern` block uses type `A` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-14309.rs:44:16
+  --> $DIR/issue-14309.rs:34:16
    |
 LL |     fn quux(x: B2); //~ ERROR type `A`
    |                ^^
    |
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-14309.rs:14:1
+  --> $DIR/issue-14309.rs:4:1
    |
 LL | / struct A {
 LL | |     x: i32
@@ -64,14 +64,14 @@ LL | | }
    | |_^
 
 error: `extern` block uses type `A` which is not FFI-safe: this struct has unspecified layout
-  --> $DIR/issue-14309.rs:46:16
+  --> $DIR/issue-14309.rs:36:16
    |
 LL |     fn fred(x: D); //~ ERROR type `A`
    |                ^
    |
    = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 note: type defined here
-  --> $DIR/issue-14309.rs:14:1
+  --> $DIR/issue-14309.rs:4:1
    |
 LL | / struct A {
 LL | |     x: i32

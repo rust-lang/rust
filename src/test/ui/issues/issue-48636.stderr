@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/issue-48636.rs:17:5
+  --> $DIR/issue-48636.rs:7:5
    |
 LL |     x: u8
    |          - help: missing comma here: `,`

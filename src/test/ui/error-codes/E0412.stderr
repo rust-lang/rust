@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Something` in this scope
-  --> $DIR/E0412.rs:11:6
+  --> $DIR/E0412.rs:1:6
    |
 LL | impl Something {} //~ ERROR E0412
    |      ^^^^^^^^^ not found in this scope

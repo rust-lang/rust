@@ -1,5 +1,5 @@
 error[E0532]: expected unit struct/variant or constant, found function `foo::bar`
-  --> $DIR/issue-12863.rs:15:9
+  --> $DIR/issue-12863.rs:5:9
    |
 LL |         foo::bar => {} //~ ERROR expected unit struct/variant or constant, found function `foo::bar`
    |         ^^^^^^^^ not a unit struct/variant or constant

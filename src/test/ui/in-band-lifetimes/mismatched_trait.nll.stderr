@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/mismatched_trait.rs:16:9
+  --> $DIR/mismatched_trait.rs:6:9
    |
 LL |         y //~ ERROR explicit lifetime required
    |         ^
 
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/mismatched_trait.rs:16:9
+  --> $DIR/mismatched_trait.rs:6:9
    |
 LL |     fn baz(&self, x: &'a u32, y: &u32) -> &'a u32 {
    |                                  ---- help: add explicit lifetime `'a` to the type of `y`: `&'a u32`

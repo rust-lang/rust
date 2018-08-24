@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<std::option::Option<f32> as std::ops::Try>::Ok == {integer}`
-  --> $DIR/try-block-type-error.rs:20:9
+  --> $DIR/try-block-type-error.rs:10:9
    |
 LL |         42
    |         ^^
@@ -11,7 +11,7 @@ LL |         42
               found type `{integer}`
 
 error[E0271]: type mismatch resolving `<std::option::Option<i32> as std::ops::Try>::Ok == ()`
-  --> $DIR/try-block-type-error.rs:26:5
+  --> $DIR/try-block-type-error.rs:16:5
    |
 LL |     };
    |     ^ expected i32, found ()

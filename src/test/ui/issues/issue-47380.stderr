@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-47380.rs:12:33
+  --> $DIR/issue-47380.rs:3:33
    |
 LL |     println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!";
    |                                      ^^^^^^^^^^^^^^ `+` can't be used to concatenate two `&str` strings

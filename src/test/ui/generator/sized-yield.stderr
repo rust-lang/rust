@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/sized-yield.rs:17:26
+  --> $DIR/sized-yield.rs:7:26
    |
 LL |      let mut gen = move || {
    |  __________________________^
@@ -13,7 +13,7 @@ LL | |    };
    = note: the yield type of a generator must have a statically known size
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/sized-yield.rs:21:17
+  --> $DIR/sized-yield.rs:11:17
    |
 LL |    unsafe { gen.resume(); }
    |                 ^^^^^^ doesn't have a size known at compile-time

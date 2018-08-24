@@ -1,5 +1,5 @@
 error[E0199]: implementing the trait `Bar` is not unsafe
-  --> $DIR/E0199.rs:16:1
+  --> $DIR/E0199.rs:6:1
    |
 LL | unsafe impl Bar for Foo { } //~ ERROR implementing the trait `Bar` is not unsafe [E0199]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^

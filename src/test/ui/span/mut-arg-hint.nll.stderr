@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
-  --> $DIR/mut-arg-hint.rs:13:9
+  --> $DIR/mut-arg-hint.rs:3:9
    |
 LL |     fn foo(mut a: &String) {
    |                   ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
@@ -7,7 +7,7 @@ LL |         a.push_str("bar"); //~ ERROR cannot borrow immutable borrowed conte
    |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
-  --> $DIR/mut-arg-hint.rs:18:5
+  --> $DIR/mut-arg-hint.rs:8:5
    |
 LL | pub fn foo<'a>(mut a: &'a String) {
    |                       ---------- help: consider changing this to be a mutable reference: `&'a mut String`
@@ -15,7 +15,7 @@ LL |     a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
    |     ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
-  --> $DIR/mut-arg-hint.rs:25:9
+  --> $DIR/mut-arg-hint.rs:15:9
    |
 LL |     pub fn foo(mut a: &String) {
    |                       ------- help: consider changing this to be a mutable reference: `&mut std::string::String`

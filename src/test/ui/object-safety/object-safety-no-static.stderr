@@ -1,5 +1,5 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety-no-static.rs:18:1
+  --> $DIR/object-safety-no-static.rs:8:1
    |
 LL | fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object

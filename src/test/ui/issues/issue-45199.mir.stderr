@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `b`
-  --> $DIR/issue-45199.rs:19:5
+  --> $DIR/issue-45199.rs:9:5
    |
 LL |     let b: Box<isize>;
    |         - consider changing this to `mut b`
@@ -11,7 +11,7 @@ LL |     b = Box::new(2);    //[ast]~ ERROR cannot assign twice to immutable var
    |     ^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `b`
-  --> $DIR/issue-45199.rs:29:5
+  --> $DIR/issue-45199.rs:19:5
    |
 LL |     let b = Box::new(1);    //[ast]~ NOTE first assignment
    |         -
@@ -23,7 +23,7 @@ LL |     b = Box::new(2);        //[ast]~ ERROR cannot assign twice to immutable
    |     ^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign to immutable argument `b`
-  --> $DIR/issue-45199.rs:37:5
+  --> $DIR/issue-45199.rs:27:5
    |
 LL | fn test_args(b: Box<i32>) {  //[ast]~ NOTE first assignment
    |              - consider changing this to `mut b`

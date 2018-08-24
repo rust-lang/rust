@@ -1,5 +1,5 @@
 error[E0208]: [-]
-  --> $DIR/variance-trait-object-bound.rs:24:1
+  --> $DIR/variance-trait-object-bound.rs:14:1
    |
 LL | / struct TOption<'a> { //~ ERROR [-]
 LL | |     v: Option<Box<T + 'a>>,

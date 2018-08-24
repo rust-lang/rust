@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*bar` as mutable more than once at a time
-  --> $DIR/issue-51117.rs:20:13
+  --> $DIR/issue-51117.rs:10:13
    |
 LL |         Some(baz) => {
    |              --- first mutable borrow occurs here

@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-closure.rs:35:31
+  --> $DIR/projection-no-regions-closure.rs:25:31
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-closure.rs:53:31
+  --> $DIR/projection-no-regions-closure.rs:43:31
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:35:23
+  --> $DIR/projection-no-regions-closure.rs:25:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:31:1
+  --> $DIR/projection-no-regions-closure.rs:21:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -43,7 +43,7 @@ LL | | }
            ]
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:35:23
+  --> $DIR/projection-no-regions-closure.rs:25:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:45:23
+  --> $DIR/projection-no-regions-closure.rs:35:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:41:1
+  --> $DIR/projection-no-regions-closure.rs:31:1
    |
 LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -82,7 +82,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:53:23
+  --> $DIR/projection-no-regions-closure.rs:43:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:49:1
+  --> $DIR/projection-no-regions-closure.rs:39:1
    |
 LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -116,7 +116,7 @@ LL | | }
            ]
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:53:23
+  --> $DIR/projection-no-regions-closure.rs:43:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:64:23
+  --> $DIR/projection-no-regions-closure.rs:54:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -140,7 +140,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-no-regions-closure.rs:59:1
+  --> $DIR/projection-no-regions-closure.rs:49:1
    |
 LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where

@@ -1,5 +1,5 @@
 error[E0185]: method `bar` has a `&self` declaration in the impl, but not in the trait
-  --> $DIR/staticness-mismatch.rs:17:5
+  --> $DIR/staticness-mismatch.rs:7:5
    |
 LL |     fn bar();
    |     --------- trait method declared without `&self`

@@ -1,5 +1,5 @@
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:47:19
+  --> $DIR/dropck-eyepatch-extern-crate.rs:37:19
    |
 LL |     dt = Dt("dt", &c_shortest);
    |                   ^^^^^^^^^^^ borrowed value does not live long enough

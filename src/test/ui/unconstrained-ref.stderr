@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/unconstrained-ref.rs:16:5
+  --> $DIR/unconstrained-ref.rs:6:5
    |
 LL |     S { o: &None }; //~ ERROR type annotations needed [E0282]
    |     ^ cannot infer type for `T`

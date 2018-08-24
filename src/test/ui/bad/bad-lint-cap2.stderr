@@ -1,11 +1,11 @@
 error: unused import: `std::option`
-  --> $DIR/bad-lint-cap2.rs:16:5
+  --> $DIR/bad-lint-cap2.rs:6:5
    |
 LL | use std::option; //~ ERROR
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/bad-lint-cap2.rs:14:9
+  --> $DIR/bad-lint-cap2.rs:4:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^

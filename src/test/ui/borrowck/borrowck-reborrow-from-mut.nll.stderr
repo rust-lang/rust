@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-reborrow-from-mut.rs:98:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:88:17
    |
 LL | fn borrow_mut_from_imm(foo: &Foo) {
    |                             ---- help: consider changing this to be a mutable reference: `&mut Foo`

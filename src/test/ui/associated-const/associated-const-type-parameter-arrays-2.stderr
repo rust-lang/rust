@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `A: Foo` is not satisfied
-  --> $DIR/associated-const-type-parameter-arrays-2.rs:27:22
+  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:22
    |
 LL |     let _array = [4; <A as Foo>::Y];
    |                      ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
    |
    = help: consider adding a `where A: Foo` bound
 note: required by `Foo::Y`
-  --> $DIR/associated-const-type-parameter-arrays-2.rs:13:5
+  --> $DIR/associated-const-type-parameter-arrays-2.rs:2:5
    |
 LL |     const Y: usize;
    |     ^^^^^^^^^^^^^^^

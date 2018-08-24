@@ -1,5 +1,5 @@
 error: This node does not have a stability attribute
-  --> $DIR/stability-attribute-issue-43027.rs:15:23
+  --> $DIR/stability-attribute-issue-43027.rs:5:23
    |
 LL | pub struct Reverse<T>(pub T); //~ ERROR This node does not have a stability attribute
    |                       ^^^^^

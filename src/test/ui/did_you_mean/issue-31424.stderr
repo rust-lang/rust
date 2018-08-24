@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:17:15
+  --> $DIR/issue-31424.rs:7:15
    |
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^
@@ -8,7 +8,7 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               try removing `&mut` here
 
 error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:23:15
+  --> $DIR/issue-31424.rs:13:15
    |
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^ cannot borrow mutably

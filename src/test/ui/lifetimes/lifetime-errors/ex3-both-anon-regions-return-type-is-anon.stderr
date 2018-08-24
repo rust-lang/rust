@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-return-type-is-anon.rs:17:5
+  --> $DIR/ex3-both-anon-regions-return-type-is-anon.rs:7:5
    |
 LL |   fn foo<'a>(&self, x: &i32) -> &i32 {
    |                        ----     ----

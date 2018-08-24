@@ -1,5 +1,5 @@
 error: concat_idents! takes 1 or more arguments.
-  --> $DIR/issue-50403.rs:14:13
+  --> $DIR/issue-50403.rs:4:13
    |
 LL |     let x = concat_idents!(); //~ ERROR concat_idents! takes 1 or more arguments
    |             ^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-var-type-out-of-scope.rs:19:14
+  --> $DIR/regions-var-type-out-of-scope.rs:9:14
    |
 LL |         x = &id(3); //~ ERROR borrowed value does not live long enough
    |              ^^^^^- temporary value dropped here while still borrowed

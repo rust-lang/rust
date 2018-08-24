@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-38147-1.rs:27:9
+  --> $DIR/issue-38147-1.rs:17:9
    |
 LL |     fn f(&self) {
    |          ----- help: consider changing this to be a mutable reference: `&mut self`

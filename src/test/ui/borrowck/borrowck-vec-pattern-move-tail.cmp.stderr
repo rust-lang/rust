@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `a[..]` because it is borrowed (Ast)
-  --> $DIR/borrowck-vec-pattern-move-tail.rs:24:5
+  --> $DIR/borrowck-vec-pattern-move-tail.rs:16:5
    |
 LL |         [1, 2, ref tail..] => tail,
    |                -------- borrow of `a[..]` occurs here
@@ -8,7 +8,7 @@ LL |     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowe
    |     ^^^^^^^^ assignment to borrowed `a[..]` occurs here
 
 error[E0506]: cannot assign to `a[..]` because it is borrowed (Mir)
-  --> $DIR/borrowck-vec-pattern-move-tail.rs:24:5
+  --> $DIR/borrowck-vec-pattern-move-tail.rs:16:5
    |
 LL |         [1, 2, ref tail..] => tail,
    |                -------- borrow of `a[..]` occurs here

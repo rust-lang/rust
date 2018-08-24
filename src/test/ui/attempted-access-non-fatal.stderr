@@ -1,11 +1,11 @@
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
-  --> $DIR/attempted-access-non-fatal.rs:14:15
+  --> $DIR/attempted-access-non-fatal.rs:4:15
    |
 LL |     let _ = x.foo; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
    |               ^^^
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
-  --> $DIR/attempted-access-non-fatal.rs:15:15
+  --> $DIR/attempted-access-non-fatal.rs:5:15
    |
 LL |     let _ = x.bar; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
    |               ^^^

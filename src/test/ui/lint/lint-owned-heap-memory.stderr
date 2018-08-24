@@ -1,17 +1,17 @@
 error: type uses owned (Box type) pointers: std::boxed::Box<isize>
-  --> $DIR/lint-owned-heap-memory.rs:16:5
+  --> $DIR/lint-owned-heap-memory.rs:6:5
    |
 LL |     x: Box<isize> //~ ERROR type uses owned
    |     ^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-owned-heap-memory.rs:12:11
+  --> $DIR/lint-owned-heap-memory.rs:2:11
    |
 LL | #![forbid(box_pointers)]
    |           ^^^^^^^^^^^^
 
 error: type uses owned (Box type) pointers: std::boxed::Box<isize>
-  --> $DIR/lint-owned-heap-memory.rs:20:29
+  --> $DIR/lint-owned-heap-memory.rs:10:29
    |
 LL |     let _x : Foo = Foo {x : box 10};
    |                             ^^^^^^

@@ -1,11 +1,11 @@
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/issue-43250.rs:19:8
+  --> $DIR/issue-43250.rs:9:8
    |
 LL |     m!(y);
    |        ^
 
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/issue-43250.rs:21:8
+  --> $DIR/issue-43250.rs:11:8
    |
 LL |     m!(C);
    |        ^

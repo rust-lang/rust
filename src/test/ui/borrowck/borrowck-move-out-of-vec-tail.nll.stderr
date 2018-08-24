@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:29:19
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:19:19
    |
 LL |             match tail {
    |                   ^^^^ cannot move out of here
@@ -10,7 +10,7 @@ LL |                   Foo { string: b }] => {
    |                                 - ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:30:33
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:20:33
    |
 LL |                 &[Foo { string: a },
    |                                 ^

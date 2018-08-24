@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/region-extra.rs:19:5
+  --> $DIR/region-extra.rs:9:5
    |
 LL |     fn foo();
    |     --------- definition of `foo` from trait

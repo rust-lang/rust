@@ -1,29 +1,29 @@
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/pointer_family.rs:11:12
+  --> $DIR/pointer_family.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:47:21
+  --> $DIR/pointer_family.rs:37:21
    |
 LL |     bar: P::Pointer<String>,
    |                     ^^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:22:42
+  --> $DIR/pointer_family.rs:12:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T>;
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:30:42
+  --> $DIR/pointer_family.rs:20:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/pointer_family.rs:40:42
+  --> $DIR/pointer_family.rs:30:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed

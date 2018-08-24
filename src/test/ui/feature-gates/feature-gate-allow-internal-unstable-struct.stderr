@@ -1,5 +1,5 @@
 error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
-  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:14:1
+  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:4:1
    |
 LL | #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

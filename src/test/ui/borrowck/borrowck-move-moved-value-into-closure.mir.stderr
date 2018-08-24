@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `t`
-  --> $DIR/borrowck-move-moved-value-into-closure.rs:24:12
+  --> $DIR/borrowck-move-moved-value-into-closure.rs:14:12
    |
 LL |     call_f(move|| { *t + 1 });
    |            ------    - variable moved due to use in closure

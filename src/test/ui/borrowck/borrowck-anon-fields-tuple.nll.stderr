@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `y` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-anon-fields-tuple.rs:21:19
+  --> $DIR/borrowck-anon-fields-tuple.rs:11:19
    |
 LL |         (ref mut a, _) => a
    |          --------- mutable borrow occurs here
@@ -11,7 +11,7 @@ LL |     *a += 1;
    |     ------- borrow later used here
 
 error[E0502]: cannot borrow `y` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-anon-fields-tuple.rs:36:19
+  --> $DIR/borrowck-anon-fields-tuple.rs:26:19
    |
 LL |         (ref mut a, _) => a
    |          --------- mutable borrow occurs here
@@ -23,7 +23,7 @@ LL |     *a += 1;
    |     ------- borrow later used here
 
 error[E0499]: cannot borrow `y.0` as mutable more than once at a time
-  --> $DIR/borrowck-anon-fields-tuple.rs:37:10
+  --> $DIR/borrowck-anon-fields-tuple.rs:27:10
    |
 LL |         (ref mut a, _) => a
    |          --------- first mutable borrow occurs here

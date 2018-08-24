@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/rustc-error.rs:14:1
+  --> $DIR/rustc-error.rs:4:1
    |
 LL | / fn main() {
 LL | |     //~^ ERROR compilation successful

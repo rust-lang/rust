@@ -1,5 +1,5 @@
 error[E0592]: duplicate definitions with name `dummy`
-  --> $DIR/coherence-overlap-upstream-inherent.rs:21:32
+  --> $DIR/coherence-overlap-upstream-inherent.rs:11:32
    |
 LL | impl<T> A<T> where T: Remote { fn dummy(&self) { } }
    |                                ^^^^^^^^^^^^^^^^^^^ duplicate definitions for `dummy`

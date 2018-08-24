@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
-  --> $DIR/writing-to-immutable-vec.rs:14:5
+  --> $DIR/writing-to-immutable-vec.rs:3:5
    |
 LL |     let v: Vec<isize> = vec![1, 2, 3];
    |         - help: consider changing this to be mutable: `mut v`

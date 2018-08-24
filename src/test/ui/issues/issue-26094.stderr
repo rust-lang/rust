@@ -1,5 +1,5 @@
 error[E0061]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/issue-26094.rs:13:9
+  --> $DIR/issue-26094.rs:3:9
    |
 LL |         $other(None)
    |         ^^^^^^^^^^^^ expected 0 parameters

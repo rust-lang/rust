@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-2951.rs:13:10
+  --> $DIR/issue-2951.rs:3:10
    |
 LL |     xx = y;
    |          ^ expected type parameter, found a different type parameter

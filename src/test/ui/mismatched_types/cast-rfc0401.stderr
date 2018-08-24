@@ -1,5 +1,5 @@
 error[E0606]: casting `*const U` as `*const V` is invalid
-  --> $DIR/cast-rfc0401.rs:13:5
+  --> $DIR/cast-rfc0401.rs:3:5
    |
 LL |     u as *const V //~ ERROR is invalid
    |     ^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     u as *const V //~ ERROR is invalid
    = note: vtable kinds may not match
 
 error[E0606]: casting `*const U` as `*const str` is invalid
-  --> $DIR/cast-rfc0401.rs:18:5
+  --> $DIR/cast-rfc0401.rs:8:5
    |
 LL |     u as *const str //~ ERROR is invalid
    |     ^^^^^^^^^^^^^^^
@@ -15,13 +15,13 @@ LL |     u as *const str //~ ERROR is invalid
    = note: vtable kinds may not match
 
 error[E0609]: no field `f` on type `fn() {main}`
-  --> $DIR/cast-rfc0401.rs:75:18
+  --> $DIR/cast-rfc0401.rs:65:18
    |
 LL |     let _ = main.f as *const u32; //~ ERROR no field
    |                  ^
 
 error[E0605]: non-primitive cast: `*const u8` as `&u8`
-  --> $DIR/cast-rfc0401.rs:39:13
+  --> $DIR/cast-rfc0401.rs:29:13
    |
 LL |     let _ = v as &u8; //~ ERROR non-primitive cast
    |             ^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let _ = v as &u8; //~ ERROR non-primitive cast
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0605]: non-primitive cast: `*const u8` as `E`
-  --> $DIR/cast-rfc0401.rs:40:13
+  --> $DIR/cast-rfc0401.rs:30:13
    |
 LL |     let _ = v as E; //~ ERROR non-primitive cast
    |             ^^^^^^
@@ -37,7 +37,7 @@ LL |     let _ = v as E; //~ ERROR non-primitive cast
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0605]: non-primitive cast: `*const u8` as `fn()`
-  --> $DIR/cast-rfc0401.rs:41:13
+  --> $DIR/cast-rfc0401.rs:31:13
    |
 LL |     let _ = v as fn(); //~ ERROR non-primitive cast
    |             ^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     let _ = v as fn(); //~ ERROR non-primitive cast
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0605]: non-primitive cast: `*const u8` as `(u32,)`
-  --> $DIR/cast-rfc0401.rs:42:13
+  --> $DIR/cast-rfc0401.rs:32:13
    |
 LL |     let _ = v as (u32,); //~ ERROR non-primitive cast
    |             ^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     let _ = v as (u32,); //~ ERROR non-primitive cast
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0605]: non-primitive cast: `std::option::Option<&*const u8>` as `*const u8`
-  --> $DIR/cast-rfc0401.rs:43:13
+  --> $DIR/cast-rfc0401.rs:33:13
    |
 LL |     let _ = Some(&v) as *const u8; //~ ERROR non-primitive cast
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -61,19 +61,19 @@ LL |     let _ = Some(&v) as *const u8; //~ ERROR non-primitive cast
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0606]: casting `*const u8` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:45:13
+  --> $DIR/cast-rfc0401.rs:35:13
    |
 LL |     let _ = v as f32; //~ ERROR is invalid
    |             ^^^^^^^^
 
 error[E0606]: casting `fn() {main}` as `f64` is invalid
-  --> $DIR/cast-rfc0401.rs:46:13
+  --> $DIR/cast-rfc0401.rs:36:13
    |
 LL |     let _ = main as f64; //~ ERROR is invalid
    |             ^^^^^^^^^^^
 
 error[E0606]: casting `&*const u8` as `usize` is invalid
-  --> $DIR/cast-rfc0401.rs:47:13
+  --> $DIR/cast-rfc0401.rs:37:13
    |
 LL |     let _ = &v as usize; //~ ERROR is invalid
    |             ^^^^^^^^^^^
@@ -81,13 +81,13 @@ LL |     let _ = &v as usize; //~ ERROR is invalid
    = help: cast through a raw pointer first
 
 error[E0606]: casting `f32` as `*const u8` is invalid
-  --> $DIR/cast-rfc0401.rs:48:13
+  --> $DIR/cast-rfc0401.rs:38:13
    |
 LL |     let _ = f as *const u8; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^
 
 error[E0054]: cannot cast as `bool`
-  --> $DIR/cast-rfc0401.rs:49:13
+  --> $DIR/cast-rfc0401.rs:39:13
    |
 LL |     let _ = 3_i32 as bool; //~ ERROR cannot cast
    |             ^^^^^^^^^^^^^ unsupported cast
@@ -95,7 +95,7 @@ LL |     let _ = 3_i32 as bool; //~ ERROR cannot cast
    = help: compare with zero instead
 
 error[E0054]: cannot cast as `bool`
-  --> $DIR/cast-rfc0401.rs:50:13
+  --> $DIR/cast-rfc0401.rs:40:13
    |
 LL |     let _ = E::A as bool; //~ ERROR cannot cast
    |             ^^^^^^^^^^^^ unsupported cast
@@ -103,13 +103,13 @@ LL |     let _ = E::A as bool; //~ ERROR cannot cast
    = help: compare with zero instead
 
 error[E0604]: only `u8` can be cast as `char`, not `u32`
-  --> $DIR/cast-rfc0401.rs:51:13
+  --> $DIR/cast-rfc0401.rs:41:13
    |
 LL |     let _ = 0x61u32 as char; //~ ERROR can be cast as
    |             ^^^^^^^^^^^^^^^
 
 error[E0606]: casting `bool` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:53:13
+  --> $DIR/cast-rfc0401.rs:43:13
    |
 LL |     let _ = false as f32; //~ ERROR is invalid
    |             ^^^^^^^^^^^^
@@ -117,7 +117,7 @@ LL |     let _ = false as f32; //~ ERROR is invalid
    = help: cast through an integer first
 
 error[E0606]: casting `E` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:54:13
+  --> $DIR/cast-rfc0401.rs:44:13
    |
 LL |     let _ = E::A as f32; //~ ERROR is invalid
    |             ^^^^^^^^^^^
@@ -125,7 +125,7 @@ LL |     let _ = E::A as f32; //~ ERROR is invalid
    = help: cast through an integer first
 
 error[E0606]: casting `char` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:55:13
+  --> $DIR/cast-rfc0401.rs:45:13
    |
 LL |     let _ = 'a' as f32; //~ ERROR is invalid
    |             ^^^^^^^^^^
@@ -133,67 +133,67 @@ LL |     let _ = 'a' as f32; //~ ERROR is invalid
    = help: cast through an integer first
 
 error[E0606]: casting `bool` as `*const u8` is invalid
-  --> $DIR/cast-rfc0401.rs:57:13
+  --> $DIR/cast-rfc0401.rs:47:13
    |
 LL |     let _ = false as *const u8; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `E` as `*const u8` is invalid
-  --> $DIR/cast-rfc0401.rs:58:13
+  --> $DIR/cast-rfc0401.rs:48:13
    |
 LL |     let _ = E::A as *const u8; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `char` as `*const u8` is invalid
-  --> $DIR/cast-rfc0401.rs:59:13
+  --> $DIR/cast-rfc0401.rs:49:13
    |
 LL |     let _ = 'a' as *const u8; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `usize` as `*const [u8]` is invalid
-  --> $DIR/cast-rfc0401.rs:61:13
+  --> $DIR/cast-rfc0401.rs:51:13
    |
 LL |     let _ = 42usize as *const [u8]; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
-  --> $DIR/cast-rfc0401.rs:62:13
+  --> $DIR/cast-rfc0401.rs:52:13
    |
 LL |     let _ = v as *const [u8]; //~ ERROR cannot cast
    |             ^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `&dyn Foo` as `*const str` is invalid
-  --> $DIR/cast-rfc0401.rs:64:13
+  --> $DIR/cast-rfc0401.rs:54:13
    |
 LL |     let _ = foo as *const str; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `&dyn Foo` as `*mut str` is invalid
-  --> $DIR/cast-rfc0401.rs:65:13
+  --> $DIR/cast-rfc0401.rs:55:13
    |
 LL |     let _ = foo as *mut str; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^
 
 error[E0606]: casting `fn() {main}` as `*mut str` is invalid
-  --> $DIR/cast-rfc0401.rs:66:13
+  --> $DIR/cast-rfc0401.rs:56:13
    |
 LL |     let _ = main as *mut str; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `&f32` as `*mut f32` is invalid
-  --> $DIR/cast-rfc0401.rs:67:13
+  --> $DIR/cast-rfc0401.rs:57:13
    |
 LL |     let _ = &f as *mut f32; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^
 
 error[E0606]: casting `&f32` as `*const f64` is invalid
-  --> $DIR/cast-rfc0401.rs:68:13
+  --> $DIR/cast-rfc0401.rs:58:13
    |
 LL |     let _ = &f as *const f64; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `*const [i8]` as `usize` is invalid
-  --> $DIR/cast-rfc0401.rs:69:13
+  --> $DIR/cast-rfc0401.rs:59:13
    |
 LL |     let _ = fat_sv as usize; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^
@@ -201,7 +201,7 @@ LL |     let _ = fat_sv as usize; //~ ERROR is invalid
    = help: cast through a thin pointer first
 
 error[E0606]: casting `*const dyn Foo` as `*const [u16]` is invalid
-  --> $DIR/cast-rfc0401.rs:78:13
+  --> $DIR/cast-rfc0401.rs:68:13
    |
 LL |     let _ = cf as *const [u16]; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL |     let _ = cf as *const [u16]; //~ ERROR is invalid
    = note: vtable kinds may not match
 
 error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
-  --> $DIR/cast-rfc0401.rs:79:13
+  --> $DIR/cast-rfc0401.rs:69:13
    |
 LL |     let _ = cf as *const Bar; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^
@@ -217,7 +217,7 @@ LL |     let _ = cf as *const Bar; //~ ERROR is invalid
    = note: vtable kinds may not match
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/cast-rfc0401.rs:63:13
+  --> $DIR/cast-rfc0401.rs:53:13
    |
 LL |     let _ = fat_v as *const Foo; //~ ERROR the size for values of type
    |             ^^^^^ doesn't have a size known at compile-time
@@ -227,7 +227,7 @@ LL |     let _ = fat_v as *const Foo; //~ ERROR the size for values of type
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/cast-rfc0401.rs:72:13
+  --> $DIR/cast-rfc0401.rs:62:13
    |
 LL |     let _ = a as *const Foo; //~ ERROR the size for values of type
    |             ^ doesn't have a size known at compile-time
@@ -237,13 +237,13 @@ LL |     let _ = a as *const Foo; //~ ERROR the size for values of type
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0606]: casting `&{float}` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:81:30
+  --> $DIR/cast-rfc0401.rs:71:30
    |
 LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>(); //~ ERROR is invalid
    |                              ^^^^^^^^ cannot cast `&{float}` as `f32`
    |
 help: did you mean `*s`?
-  --> $DIR/cast-rfc0401.rs:81:30
+  --> $DIR/cast-rfc0401.rs:71:30
    |
 LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>(); //~ ERROR is invalid
    |                              ^

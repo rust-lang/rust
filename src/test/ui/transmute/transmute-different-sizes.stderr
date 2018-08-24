@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-different-sizes.rs:21:17
+  --> $DIR/transmute-different-sizes.rs:11:17
    |
 LL |     let _: i8 = transmute(16i16);
    |                 ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _: i8 = transmute(16i16);
    = note: target type: i8 (N bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-different-sizes.rs:26:17
+  --> $DIR/transmute-different-sizes.rs:16:17
    |
 LL |     let _: i8 = transmute(x);
    |                 ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _: i8 = transmute(x);
    = note: target type: i8 (N bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-different-sizes.rs:37:5
+  --> $DIR/transmute-different-sizes.rs:27:5
    |
 LL |     transmute(x)
    |     ^^^^^^^^^

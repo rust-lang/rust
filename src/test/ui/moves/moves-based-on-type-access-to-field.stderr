@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/moves-based-on-type-access-to-field.rs:21:12
+  --> $DIR/moves-based-on-type-access-to-field.rs:11:12
    |
 LL |     consume(x.into_iter().next().unwrap());
    |             - value moved here

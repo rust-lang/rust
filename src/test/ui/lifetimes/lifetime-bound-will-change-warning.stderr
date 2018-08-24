@@ -1,28 +1,28 @@
 error[E0308]: mismatched types
-  --> $DIR/lifetime-bound-will-change-warning.rs:44:13
+  --> $DIR/lifetime-bound-will-change-warning.rs:34:13
    |
 LL |     ref_obj(x) //~ ERROR mismatched types
    |             ^ lifetime mismatch
    |
    = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
               found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
-note: the lifetime 'a as defined on the function body at 42:10...
-  --> $DIR/lifetime-bound-will-change-warning.rs:42:10
+note: the lifetime 'a as defined on the function body at 32:10...
+  --> $DIR/lifetime-bound-will-change-warning.rs:32:10
    |
 LL | fn test2<'a>(x: &'a Box<Fn()+'a>) {
    |          ^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/lifetime-bound-will-change-warning.rs:49:18
+  --> $DIR/lifetime-bound-will-change-warning.rs:39:18
    |
 LL |     lib::ref_obj(x) //~ ERROR mismatched types
    |                  ^ lifetime mismatch
    |
    = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
               found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
-note: the lifetime 'a as defined on the function body at 47:12...
-  --> $DIR/lifetime-bound-will-change-warning.rs:47:12
+note: the lifetime 'a as defined on the function body at 37:12...
+  --> $DIR/lifetime-bound-will-change-warning.rs:37:12
    |
 LL | fn test2cc<'a>(x: &'a Box<Fn()+'a>) {
    |            ^^

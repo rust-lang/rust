@@ -1,11 +1,11 @@
 error[E0381]: use of possibly uninitialized variable: `a.x`
-  --> $DIR/borrowck-uninit-field-access.rs:34:13
+  --> $DIR/borrowck-uninit-field-access.rs:24:13
    |
 LL |     let _ = a.x + 1; //[ast]~ ERROR use of possibly uninitialized variable: `a.x`
    |             ^^^ use of possibly uninitialized `a.x`
 
 error[E0382]: use of moved value: `line1.origin.x`
-  --> $DIR/borrowck-uninit-field-access.rs:39:13
+  --> $DIR/borrowck-uninit-field-access.rs:29:13
    |
 LL |     let _moved = line1.origin;
    |         ------ value moved here
@@ -15,7 +15,7 @@ LL |     let _ = line1.origin.x + 1; //[ast]~ ERROR use of moved value: `line1.o
    = note: move occurs because `line1.origin` has type `Point`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value: `line2`
-  --> $DIR/borrowck-uninit-field-access.rs:44:5
+  --> $DIR/borrowck-uninit-field-access.rs:34:5
    |
 LL |     let _moved = (line2.origin, line2.middle);
    |                   ------------ value moved here

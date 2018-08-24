@@ -1,11 +1,11 @@
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/patkind-litrange-no-expr.rs:30:13
+  --> $DIR/patkind-litrange-no-expr.rs:20:13
    |
 LL |     Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
    |             ^^^^^
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/patkind-litrange-no-expr.rs:30:13
+  --> $DIR/patkind-litrange-no-expr.rs:20:13
    |
 LL |     Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
    |             ^^^^^ ranges require char or numeric types

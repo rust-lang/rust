@@ -1,5 +1,5 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-43431.rs:19:27
+  --> $DIR/issue-43431.rs:9:27
    |
 LL |         <Self as Fn(A) -> B>::call(self, (a,))
    |                           ^ associated type not allowed here

@@ -1,23 +1,23 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-20801.rs:36:22
+  --> $DIR/issue-20801.rs:26:22
    |
 LL |     let a = unsafe { *mut_ref() };
    |                      ^^^^^^^^^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-20801.rs:39:22
+  --> $DIR/issue-20801.rs:29:22
    |
 LL |     let b = unsafe { *imm_ref() };
    |                      ^^^^^^^^^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of dereference of raw pointer
-  --> $DIR/issue-20801.rs:42:22
+  --> $DIR/issue-20801.rs:32:22
    |
 LL |     let c = unsafe { *mut_ptr() };
    |                      ^^^^^^^^^^ cannot move out of dereference of raw pointer
 
 error[E0507]: cannot move out of dereference of raw pointer
-  --> $DIR/issue-20801.rs:45:22
+  --> $DIR/issue-20801.rs:35:22
    |
 LL |     let d = unsafe { *const_ptr() };
    |                      ^^^^^^^^^^^^ cannot move out of dereference of raw pointer

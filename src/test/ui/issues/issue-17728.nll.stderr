@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-17728.rs:23:49
+  --> $DIR/issue-17728.rs:13:49
    |
 LL |         let maybe_room = room.direction_to_room.get(&direction);
    |                                                 ^^^
 
 error[E0308]: match arms have incompatible types
-  --> $DIR/issue-17728.rs:110:5
+  --> $DIR/issue-17728.rs:100:5
    |
 LL | /     match to_parse { //~ ERROR match arms have incompatible types
 LL | |         "w" | "west" => RoomDirection::West,

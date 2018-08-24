@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `<Self as std::ops::Deref>::Target` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:14:29
+  --> $DIR/issue-42312.rs:4:29
    |
 LL |     fn baz(_: Self::Target) where Self: Deref {}
    |                             ^ doesn't have a size known at compile-time
@@ -11,7 +11,7 @@ LL |     fn baz(_: Self::Target) where Self: Deref {}
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `(dyn std::string::ToString + 'static)` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:18:23
+  --> $DIR/issue-42312.rs:8:23
    |
 LL | pub fn f(_: ToString) {}
    |                       ^ doesn't have a size known at compile-time

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `start.test`
-  --> $DIR/walk-struct-literal-with.rs:26:20
+  --> $DIR/walk-struct-literal-with.rs:16:20
    |
 LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
    |                                   ----- value moved here

@@ -1,5 +1,5 @@
 error[E0576]: cannot find associated type `Dst` in trait `From`
-  --> $DIR/issue-19883.rs:19:30
+  --> $DIR/issue-19883.rs:9:30
    |
 LL |         <Dst as From<Self>>::Dst
    |                              ^^^ not found in `From`

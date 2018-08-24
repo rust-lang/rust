@@ -1,17 +1,17 @@
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:16:17
+  --> $DIR/thread-local-in-ctfe.rs:6:17
    |
 LL | static B: u32 = A;
    |                 ^
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:19:18
+  --> $DIR/thread-local-in-ctfe.rs:9:18
    |
 LL | static C: &u32 = &A;
    |                  ^^
 
 error[E0712]: thread-local variable borrowed past end of function
-  --> $DIR/thread-local-in-ctfe.rs:19:18
+  --> $DIR/thread-local-in-ctfe.rs:9:18
    |
 LL | static C: &u32 = &A;
    |                  ^^- end of enclosing function is here
@@ -19,19 +19,19 @@ LL | static C: &u32 = &A;
    |                  thread-local variables cannot be borrowed beyond the end of the function
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:22:16
+  --> $DIR/thread-local-in-ctfe.rs:12:16
    |
 LL | const D: u32 = A;
    |                ^
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:25:17
+  --> $DIR/thread-local-in-ctfe.rs:15:17
    |
 LL | const E: &u32 = &A;
    |                 ^^
 
 error[E0712]: thread-local variable borrowed past end of function
-  --> $DIR/thread-local-in-ctfe.rs:25:17
+  --> $DIR/thread-local-in-ctfe.rs:15:17
    |
 LL | const E: &u32 = &A;
    |                 ^^- end of enclosing function is here
@@ -39,7 +39,7 @@ LL | const E: &u32 = &A;
    |                 thread-local variables cannot be borrowed beyond the end of the function
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:29:5
+  --> $DIR/thread-local-in-ctfe.rs:19:5
    |
 LL |     A
    |     ^

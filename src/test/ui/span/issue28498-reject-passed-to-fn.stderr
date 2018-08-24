@@ -1,5 +1,5 @@
 error[E0597]: `last_dropped` does not live long enough
-  --> $DIR/issue28498-reject-passed-to-fn.rs:44:20
+  --> $DIR/issue28498-reject-passed-to-fn.rs:34:20
    |
 LL |     foo0 = Foo(0, &last_dropped, Box::new(callback));
    |                    ^^^^^^^^^^^^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `first_dropped` does not live long enough
-  --> $DIR/issue28498-reject-passed-to-fn.rs:46:20
+  --> $DIR/issue28498-reject-passed-to-fn.rs:36:20
    |
 LL |     foo1 = Foo(1, &first_dropped, Box::new(callback));
    |                    ^^^^^^^^^^^^^ borrowed value does not live long enough

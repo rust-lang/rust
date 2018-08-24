@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `get`
-  --> $DIR/variance-trait-matching.rs:34:5
+  --> $DIR/variance-trait-matching.rs:24:5
    |
 LL | fn get<'a, G>(get: &G) -> i32
    |                    -- help: add explicit lifetime `'a` to the type of `get`: `&'a G`

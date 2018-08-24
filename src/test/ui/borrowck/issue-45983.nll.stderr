@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/issue-45983.rs:36:27
+  --> $DIR/issue-45983.rs:26:27
    |
 LL |     give_any(|y| x = Some(y));
    |                           ^
 
 error: borrowed data escapes outside of closure
-  --> $DIR/issue-45983.rs:36:18
+  --> $DIR/issue-45983.rs:26:18
    |
 LL |     let x = None;
    |         - `x` is declared here, outside of the closure body
@@ -15,7 +15,7 @@ LL |     give_any(|y| x = Some(y));
    |               `y` is a reference that is only valid in the closure body
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-45983.rs:36:18
+  --> $DIR/issue-45983.rs:26:18
    |
 LL |     let x = None;
    |         - help: consider changing this to be mutable: `mut x`

@@ -1,5 +1,5 @@
 error[E0609]: no field `a` on type `Foo`
-  --> $DIR/issue-23253.rs:14:14
+  --> $DIR/issue-23253.rs:4:14
    |
 LL |     Foo::Bar.a;
    |              ^

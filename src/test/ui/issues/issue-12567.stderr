@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:16:16
+  --> $DIR/issue-12567.rs:6:16
    |
 LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                ^--^^^^^
@@ -8,7 +8,7 @@ LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                cannot move out of here
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:16:30
+  --> $DIR/issue-12567.rs:6:30
    |
 LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                              ^--^^^^^
@@ -17,7 +17,7 @@ LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                              cannot move out of here
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:20:11
+  --> $DIR/issue-12567.rs:10:11
    |
 LL |         (&[hd1, ..], &[hd2, ..])
    |           ^---^^^^^
@@ -26,7 +26,7 @@ LL |         (&[hd1, ..], &[hd2, ..])
    |           cannot move out of here
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:20:23
+  --> $DIR/issue-12567.rs:10:23
    |
 LL |         (&[hd1, ..], &[hd2, ..])
    |                       ^---^^^^^

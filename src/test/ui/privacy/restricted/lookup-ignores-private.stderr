@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/lookup-ignores-private.rs:40:1
+  --> $DIR/lookup-ignores-private.rs:30:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     let s = foo::S::default();

@@ -1,5 +1,5 @@
 error[E0647]: start function is not allowed to have a `where` clause
-  --> $DIR/issue-50714-1.rs:19:56
+  --> $DIR/issue-50714-1.rs:9:56
    |
 LL | fn start(_: isize, _: *const *const u8) -> isize where fn(&()): Eq { //~ ERROR [E0647]
    |                                                        ^^^^^^^^^^^ start function cannot have a `where` clause

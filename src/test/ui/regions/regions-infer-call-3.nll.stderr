@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-infer-call-3.rs:18:24
+  --> $DIR/regions-infer-call-3.rs:8:24
    |
 LL |     let z = with(|y| { select(x, y) });
    |                        ^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-infer-call-3.rs:18:24
+  --> $DIR/regions-infer-call-3.rs:8:24
    |
 LL |     let z = with(|y| { select(x, y) });
    |                   --   ^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`

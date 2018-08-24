@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `y` as mutable more than once at a time
-  --> $DIR/issue-18783.rs:17:21
+  --> $DIR/issue-18783.rs:7:21
    |
 LL |     c.push(Box::new(|| y = 0));
    |                     -- - previous borrow occurs due to use of `y` in closure
@@ -14,7 +14,7 @@ LL | }
    | - first borrow ends here
 
 error[E0499]: cannot borrow `y` as mutable more than once at a time
-  --> $DIR/issue-18783.rs:26:29
+  --> $DIR/issue-18783.rs:16:29
    |
 LL |     Push::push(&c, Box::new(|| y = 0));
    |                             -- - previous borrow occurs due to use of `y` in closure

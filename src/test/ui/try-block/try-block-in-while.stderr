@@ -1,5 +1,5 @@
 error: expected expression, found reserved keyword `try`
-  --> $DIR/try-block-in-while.rs:16:11
+  --> $DIR/try-block-in-while.rs:6:11
    |
 LL |     while try { false } {} //~ ERROR expected expression, found reserved keyword `try`
    |           ^^^ expected expression

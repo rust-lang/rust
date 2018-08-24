@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-loan-in-overloaded-op.rs:31:20
+  --> $DIR/borrowck-loan-in-overloaded-op.rs:21:20
    |
 LL |     let _y = {x} + x.clone(); // the `{x}` forces a move to occur
    |               -    ^ value borrowed here after move

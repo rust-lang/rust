@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:19:5
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:9:5
    |
 LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
    |                                -------------     -----

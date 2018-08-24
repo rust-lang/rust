@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-11740.rs:35:1
+  --> $DIR/issue-11740.rs:25:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     let element = Element { attrs: Vec::new() };

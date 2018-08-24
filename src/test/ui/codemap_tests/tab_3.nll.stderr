@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `some_vec`
-  --> $DIR/tab_3.rs:17:20
+  --> $DIR/tab_3.rs:7:20
    |
 LL |     some_vec.into_iter();
    |     -------- value moved here

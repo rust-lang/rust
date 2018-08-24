@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/issue-3601.rs:40:44
+  --> $DIR/issue-3601.rs:30:44
    |
 LL |         box NodeKind::Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
    |                                            ^^^^^^^ pattern `_` not covered

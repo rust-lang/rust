@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/E0046.rs:17:1
+  --> $DIR/E0046.rs:7:1
    |
 LL |     fn foo();
    |     --------- `foo` from trait

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `n`
-  --> $DIR/use-after-move-implicity-coerced-object.rs:38:13
+  --> $DIR/use-after-move-implicity-coerced-object.rs:28:13
    |
 LL |     l.push(n);
    |            - value moved here

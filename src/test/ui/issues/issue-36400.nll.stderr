@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
-  --> $DIR/issue-36400.rs:15:7
+  --> $DIR/issue-36400.rs:5:7
    |
 LL |     let x = Box::new(3);
    |         - help: consider changing this to be mutable: `mut x`

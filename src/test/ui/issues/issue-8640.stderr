@@ -1,5 +1,5 @@
 error[E0255]: the name `bar` is defined multiple times
-  --> $DIR/issue-8640.rs:15:5
+  --> $DIR/issue-8640.rs:5:5
    |
 LL |     use baz::bar;
    |         -------- previous import of the module `bar` here

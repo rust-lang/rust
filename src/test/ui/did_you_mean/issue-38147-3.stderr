@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow borrowed content `*self.s` of immutable binding as mutable
-  --> $DIR/issue-38147-3.rs:17:9
+  --> $DIR/issue-38147-3.rs:7:9
    |
 LL |     s: &'a String
    |        ---------- use `&'a mut String` here to make mutable

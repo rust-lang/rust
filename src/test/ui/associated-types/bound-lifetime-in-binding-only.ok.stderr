@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/bound-lifetime-in-binding-only.rs:81:1
+  --> $DIR/bound-lifetime-in-binding-only.rs:71:1
    |
 LL | fn main() { } //[ok]~ ERROR compilation successful
    | ^^^^^^^^^^^^^

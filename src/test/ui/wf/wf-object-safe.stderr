@@ -1,5 +1,5 @@
 error[E0038]: the trait `A` cannot be made into an object
-  --> $DIR/wf-object-safe.rs:19:13
+  --> $DIR/wf-object-safe.rs:9:13
    |
 LL |     let _x: &A; //~ ERROR E0038
    |             ^^ the trait `A` cannot be made into an object

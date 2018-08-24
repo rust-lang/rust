@@ -1,5 +1,5 @@
 error[E0367]: The requirement `T: std::marker::Sized` is added only by the Drop impl.
-  --> $DIR/issue-17959.rs:21:1
+  --> $DIR/issue-17959.rs:11:1
    |
 LL | / impl<T> Drop for G<T> {
 LL | | //~^ ERROR: The requirement `T: std::marker::Sized` is added only by the Drop impl. [E0367]
@@ -11,7 +11,7 @@ LL | | }
    | |_^
    |
 note: The same requirement must be part of the struct/enum definition
-  --> $DIR/issue-17959.rs:17:1
+  --> $DIR/issue-17959.rs:7:1
    |
 LL | / struct G<T: ?Sized> {
 LL | |     _ptr: *const T

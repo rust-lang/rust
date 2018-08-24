@@ -1,5 +1,5 @@
 error: emplacement syntax is obsolete (for now, anyway)
-  --> $DIR/placement-syntax.rs:13:8
+  --> $DIR/placement-syntax.rs:3:8
    |
 LL |     if x<-1 {
    |        ^^^^

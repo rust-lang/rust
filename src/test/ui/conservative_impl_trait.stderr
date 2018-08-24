@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): std::iter::Iterator` is not satisfied
-  --> $DIR/conservative_impl_trait.rs:13:33
+  --> $DIR/conservative_impl_trait.rs:3:33
    |
 LL | fn will_ice(something: &u32) -> impl Iterator<Item = &u32> {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator; maybe try calling `.iter()` or a similar method

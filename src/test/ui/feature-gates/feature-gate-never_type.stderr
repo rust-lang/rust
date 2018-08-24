@@ -1,5 +1,5 @@
 error[E0658]: The `!` type is experimental (see issue #35121)
-  --> $DIR/feature-gate-never_type.rs:17:17
+  --> $DIR/feature-gate-never_type.rs:7:17
    |
 LL | type Ma = (u32, !, i32); //~ ERROR type is experimental
    |                 ^
@@ -7,7 +7,7 @@ LL | type Ma = (u32, !, i32); //~ ERROR type is experimental
    = help: add #![feature(never_type)] to the crate attributes to enable
 
 error[E0658]: The `!` type is experimental (see issue #35121)
-  --> $DIR/feature-gate-never_type.rs:18:20
+  --> $DIR/feature-gate-never_type.rs:8:20
    |
 LL | type Meeshka = Vec<!>; //~ ERROR type is experimental
    |                    ^
@@ -15,7 +15,7 @@ LL | type Meeshka = Vec<!>; //~ ERROR type is experimental
    = help: add #![feature(never_type)] to the crate attributes to enable
 
 error[E0658]: The `!` type is experimental (see issue #35121)
-  --> $DIR/feature-gate-never_type.rs:19:16
+  --> $DIR/feature-gate-never_type.rs:9:16
    |
 LL | type Mow = &fn(!) -> !; //~ ERROR type is experimental
    |                ^
@@ -23,7 +23,7 @@ LL | type Mow = &fn(!) -> !; //~ ERROR type is experimental
    = help: add #![feature(never_type)] to the crate attributes to enable
 
 error[E0658]: The `!` type is experimental (see issue #35121)
-  --> $DIR/feature-gate-never_type.rs:20:19
+  --> $DIR/feature-gate-never_type.rs:10:19
    |
 LL | type Skwoz = &mut !; //~ ERROR type is experimental
    |                   ^
@@ -31,7 +31,7 @@ LL | type Skwoz = &mut !; //~ ERROR type is experimental
    = help: add #![feature(never_type)] to the crate attributes to enable
 
 error[E0658]: The `!` type is experimental (see issue #35121)
-  --> $DIR/feature-gate-never_type.rs:23:16
+  --> $DIR/feature-gate-never_type.rs:13:16
    |
 LL |     type Wub = !; //~ ERROR type is experimental
    |                ^

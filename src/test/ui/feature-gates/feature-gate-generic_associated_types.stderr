@@ -1,5 +1,5 @@
 error[E0658]: generic associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:14:5
+  --> $DIR/feature-gate-generic_associated_types.rs:4:5
    |
 LL |     type Pointer<T>: Deref<Target = T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     type Pointer<T>: Deref<Target = T>;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:16:5
+  --> $DIR/feature-gate-generic_associated_types.rs:6:5
    |
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:16:5
+  --> $DIR/feature-gate-generic_associated_types.rs:6:5
    |
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:24:5
+  --> $DIR/feature-gate-generic_associated_types.rs:14:5
    |
 LL |     type Pointer<usize> = Box<usize>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     type Pointer<usize> = Box<usize>;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:26:5
+  --> $DIR/feature-gate-generic_associated_types.rs:16:5
    |
 LL |     type Pointer2<u32> = Box<u32>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     type Pointer2<u32> = Box<u32>;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:31:5
+  --> $DIR/feature-gate-generic_associated_types.rs:21:5
    |
 LL |     type Assoc where Self: Sized;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |     type Assoc where Self: Sized;
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable (see issue #44265)
-  --> $DIR/feature-gate-generic_associated_types.rs:36:5
+  --> $DIR/feature-gate-generic_associated_types.rs:26:5
    |
 LL |     type Assoc where Self: Sized = Foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

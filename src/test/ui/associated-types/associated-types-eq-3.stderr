@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/associated-types-eq-3.rs:33:18
+  --> $DIR/associated-types-eq-3.rs:23:18
    |
 LL |     let _: Bar = x.boo();
    |                  ^^^^^^^ expected struct `Bar`, found associated type
@@ -8,7 +8,7 @@ LL |     let _: Bar = x.boo();
               found type `<I as Foo>::A`
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:48:5
+  --> $DIR/associated-types-eq-3.rs:38:5
    |
 LL |     foo1(a);
    |     ^^^^ expected usize, found struct `Bar`
@@ -16,13 +16,13 @@ LL |     foo1(a);
    = note: expected type `usize`
               found type `Bar`
 note: required by `foo1`
-  --> $DIR/associated-types-eq-3.rs:28:1
+  --> $DIR/associated-types-eq-3.rs:18:1
    |
 LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:51:9
+  --> $DIR/associated-types-eq-3.rs:41:9
    |
 LL |     baz(&a);
    |         ^^ expected usize, found struct `Bar`

@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/type_parameters_captured.rs:17:20
+  --> $DIR/type_parameters_captured.rs:7:20
    |
 LL | fn foo<T>(x: T) -> impl Any + 'static {
    |                    ^^^^^^^^^^^^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/type_parameters_captured.rs:19:5
+  --> $DIR/type_parameters_captured.rs:9:5
    |
 LL |     x
    |     ^

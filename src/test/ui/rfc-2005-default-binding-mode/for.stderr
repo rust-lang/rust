@@ -1,5 +1,5 @@
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/for.rs:16:13
+  --> $DIR/for.rs:6:13
    |
 LL |     for (n, mut m) in &tups {
    |          -  ^^^^^ by-move pattern here

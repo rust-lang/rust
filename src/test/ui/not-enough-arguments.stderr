@@ -1,5 +1,5 @@
 error[E0061]: this function takes 4 parameters but 3 parameters were supplied
-  --> $DIR/not-enough-arguments.rs:20:3
+  --> $DIR/not-enough-arguments.rs:10:3
    |
 LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
    | --------------------------------------------- defined here

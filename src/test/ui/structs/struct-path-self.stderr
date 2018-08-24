@@ -1,35 +1,35 @@
 error[E0071]: expected struct, variant or union type, found Self
-  --> $DIR/struct-path-self.rs:15:17
+  --> $DIR/struct-path-self.rs:5:17
    |
 LL |         let s = Self {};
    |                 ^^^^ not a struct
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-self.rs:17:24
+  --> $DIR/struct-path-self.rs:7:24
    |
 LL |         let z = Self::<u8> {};
    |                        ^^ type parameter not allowed
 
 error[E0071]: expected struct, variant or union type, found Self
-  --> $DIR/struct-path-self.rs:17:17
+  --> $DIR/struct-path-self.rs:7:17
    |
 LL |         let z = Self::<u8> {};
    |                 ^^^^^^^^^^ not a struct
 
 error[E0071]: expected struct, variant or union type, found Self
-  --> $DIR/struct-path-self.rs:21:13
+  --> $DIR/struct-path-self.rs:11:13
    |
 LL |             Self { .. } => {}
    |             ^^^^ not a struct
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-self.rs:30:24
+  --> $DIR/struct-path-self.rs:20:24
    |
 LL |         let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
    |                        ^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-self.rs:40:24
+  --> $DIR/struct-path-self.rs:30:24
    |
 LL |         let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
    |                        ^^ type parameter not allowed

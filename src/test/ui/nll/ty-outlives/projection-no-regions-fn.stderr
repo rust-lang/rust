@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-fn.rs:23:5
+  --> $DIR/projection-no-regions-fn.rs:13:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-fn.rs:39:5
+  --> $DIR/projection-no-regions-fn.rs:29:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-fn.rs:23:5
+  --> $DIR/projection-no-regions-fn.rs:13:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     Box::new(x.next())
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-fn.rs:39:5
+  --> $DIR/projection-no-regions-fn.rs:29:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^

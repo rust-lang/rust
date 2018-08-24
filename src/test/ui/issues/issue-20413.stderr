@@ -1,5 +1,5 @@
 error[E0392]: parameter `T` is never used
-  --> $DIR/issue-20413.rs:15:15
+  --> $DIR/issue-20413.rs:5:15
    |
 LL | struct NoData<T>;
    |               ^ unused type parameter
@@ -7,7 +7,7 @@ LL | struct NoData<T>;
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: std::marker::Sized`
-  --> $DIR/issue-20413.rs:18:1
+  --> $DIR/issue-20413.rs:8:1
    |
 LL | / impl<T> Foo for T where NoData<T>: Foo {
 LL | | //~^ ERROR: overflow evaluating the requirement
@@ -83,7 +83,7 @@ LL | | }
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<T>>`
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
 note: required by `Foo`
-  --> $DIR/issue-20413.rs:11:1
+  --> $DIR/issue-20413.rs:1:1
    |
 LL | trait Foo {
    | ^^^^^^^^^

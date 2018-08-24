@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-16966.rs:12:5
+  --> $DIR/issue-16966.rs:2:5
    |
 LL |     panic!(std::default::Default::default());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for `M`

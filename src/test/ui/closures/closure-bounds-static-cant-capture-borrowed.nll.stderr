@@ -1,5 +1,5 @@
 warning: not reporting region error due to nll
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:9
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:9
    |
 LL |       bar(|| {
    |  _________^
@@ -9,7 +9,7 @@ LL | |     })
    | |_____^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:5
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
    |
 LL |   fn foo(x: &()) {
    |             --- help: add explicit lifetime `'static` to the type of `x`: `&'static ()`
@@ -20,7 +20,7 @@ LL | |     })
    | |______^ lifetime `'static` required
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:17:17
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:7:17
    |
 LL |     bar(|| {
    |         -- value captured here

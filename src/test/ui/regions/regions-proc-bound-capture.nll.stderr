@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-proc-bound-capture.rs:19:14
+  --> $DIR/regions-proc-bound-capture.rs:9:14
    |
 LL |     Box::new(move|| { *x }) //~ ERROR explicit lifetime required in the type of `x` [E0621]
    |              ^^^^^^^^^^^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/regions-proc-bound-capture.rs:17:62
+  --> $DIR/regions-proc-bound-capture.rs:7:62
    |
 LL |   fn static_proc(x: &isize) -> Box<FnMut()->(isize) + 'static> {
    |  ___________________------_____________________________________^

@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/nested-structs.rs:15:1
+  --> $DIR/nested-structs.rs:5:1
    |
 LL | / struct Foo<'a, T> { //~ ERROR 15:1: 17:2: rustc_outlives
 LL | |     field1: Bar<'a, T>

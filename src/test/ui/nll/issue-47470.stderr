@@ -1,13 +1,13 @@
 error[E0597]: `local` does not live long enough
-  --> $DIR/issue-47470.rs:27:9
+  --> $DIR/issue-47470.rs:17:9
    |
 LL |         &local //~ ERROR `local` does not live long enough
    |         ^^^^^^ borrowed value does not live long enough
 LL |     }
    |     - `local` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the impl at 23:6...
-  --> $DIR/issue-47470.rs:23:6
+note: borrowed value must be valid for the lifetime 'a as defined on the impl at 13:6...
+  --> $DIR/issue-47470.rs:13:6
    |
 LL | impl<'a> Bar for Foo<'a> {
    |      ^^

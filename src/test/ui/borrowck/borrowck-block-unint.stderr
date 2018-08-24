@@ -1,5 +1,5 @@
 error[E0381]: capture of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-block-unint.rs:14:11
+  --> $DIR/borrowck-block-unint.rs:4:11
    |
 LL |     force(|| {  //~ ERROR capture of possibly uninitialized variable: `x`
    |           ^^ use of possibly uninitialized `x`

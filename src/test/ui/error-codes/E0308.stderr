@@ -1,5 +1,5 @@
 error[E0308]: intrinsic has wrong type
-  --> $DIR/E0308.rs:14:5
+  --> $DIR/E0308.rs:4:5
    |
 LL |     fn size_of<T>(); //~ ERROR E0308
    |     ^^^^^^^^^^^^^^^^ expected (), found usize

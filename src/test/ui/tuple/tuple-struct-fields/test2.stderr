@@ -1,5 +1,5 @@
 error: expected one of `)` or `,`, found `(`
-  --> $DIR/test2.rs:15:26
+  --> $DIR/test2.rs:5:26
    |
 LL |         struct S3(pub $t ());
    |                          ^ expected one of `)` or `,` here

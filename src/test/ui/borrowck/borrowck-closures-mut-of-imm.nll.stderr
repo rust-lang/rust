@@ -1,11 +1,11 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-closures-mut-of-imm.rs:23:21
+  --> $DIR/borrowck-closures-mut-of-imm.rs:13:21
    |
 LL |     let c1 = || set(&mut *x);
    |                     ^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-closures-mut-of-imm.rs:25:21
+  --> $DIR/borrowck-closures-mut-of-imm.rs:15:21
    |
 LL |     let c2 = || set(&mut *x);
    |                     ^^^^^^^ cannot borrow as mutable

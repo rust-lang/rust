@@ -1,5 +1,5 @@
 error[E0202]: associated types are not allowed in inherent impls
-  --> $DIR/assoc-inherent.rs:16:5
+  --> $DIR/assoc-inherent.rs:6:5
    |
 LL |     type Bar = isize; //~ERROR associated types are not allowed in inherent impls
    |     ^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/use-after-move-based-on-type.rs:14:20
+  --> $DIR/use-after-move-based-on-type.rs:4:20
    |
 LL |     let _y = x;
    |              - value moved here

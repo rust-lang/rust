@@ -1,5 +1,5 @@
 error: expected one of `,` or `]`, found `9`
-  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:15:12
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:12
    |
 LL |         [..9, 99..100, _] => {}, //~ ERROR expected one of `,` or `]`, found `9`
    |            ^ expected one of `,` or `]` here

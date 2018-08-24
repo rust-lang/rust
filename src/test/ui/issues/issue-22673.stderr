@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when computing the supertraits of `Expr`
-  --> $DIR/issue-22673.rs:11:1
+  --> $DIR/issue-22673.rs:1:1
    |
 LL | trait Expr : PartialEq<Self::Item> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

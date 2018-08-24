@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/regions-nested-fns-2.rs:16:9
+  --> $DIR/regions-nested-fns-2.rs:6:9
    |
 LL |         |z| {
    |         ^^^ may outlive borrowed value `y`

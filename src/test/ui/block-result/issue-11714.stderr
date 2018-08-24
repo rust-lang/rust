@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-11714.rs:11:18
+  --> $DIR/issue-11714.rs:1:18
    |
 LL |   fn blah() -> i32 { //~ ERROR mismatched types
    |  __________________^

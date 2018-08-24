@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `s`
-  --> $DIR/regions-glb-free-free.rs:25:13
+  --> $DIR/regions-glb-free-free.rs:15:13
    |
 LL |           pub fn set_desc(self, s: &str) -> Flag<'a> {
    |                                    ---- help: add explicit lifetime `'a` to the type of `s`: `&'a str`

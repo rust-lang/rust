@@ -1,11 +1,11 @@
 error: function is never used: `foo`
-  --> $DIR/fail-no-dead-code.rs:14:1
+  --> $DIR/fail-no-dead-code.rs:4:1
    |
 LL | fn foo() { //~ ERROR function is never used
    | ^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/fail-no-dead-code.rs:11:9
+  --> $DIR/fail-no-dead-code.rs:1:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^

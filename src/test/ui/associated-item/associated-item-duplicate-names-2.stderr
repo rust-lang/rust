@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `bar`:
-  --> $DIR/associated-item-duplicate-names-2.rs:16:5
+  --> $DIR/associated-item-duplicate-names-2.rs:5:5
    |
 LL |     const bar: bool = true;
    |     ----------------------- previous definition of `bar` here

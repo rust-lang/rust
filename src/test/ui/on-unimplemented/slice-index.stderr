@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `i32: std::slice::SliceIndex<[i32]>` is not satisfied
-  --> $DIR/slice-index.rs:21:5
+  --> $DIR/slice-index.rs:11:5
    |
 LL |     x[1i32]; //~ ERROR E0277
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
@@ -8,7 +8,7 @@ LL |     x[1i32]; //~ ERROR E0277
    = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `[i32]`
 
 error[E0277]: the trait bound `std::ops::RangeTo<i32>: std::slice::SliceIndex<[i32]>` is not satisfied
-  --> $DIR/slice-index.rs:22:5
+  --> $DIR/slice-index.rs:12:5
    |
 LL |     x[..1i32]; //~ ERROR E0277
    |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`

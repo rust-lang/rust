@@ -1,11 +1,11 @@
 error: `async` is a keyword in the 2018 edition
-  --> $DIR/async-ident-allowed.rs:19:9
+  --> $DIR/async-ident-allowed.rs:9:9
    |
 LL |     let async = 3; //~ ERROR: is a keyword
    |         ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
    |
 note: lint level defined here
-  --> $DIR/async-ident-allowed.rs:13:9
+  --> $DIR/async-ident-allowed.rs:3:9
    |
 LL | #![deny(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^

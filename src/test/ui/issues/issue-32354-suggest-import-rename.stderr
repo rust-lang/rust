@@ -1,5 +1,5 @@
 error[E0252]: the name `ConstructorExtension` is defined multiple times
-  --> $DIR/issue-32354-suggest-import-rename.rs:24:5
+  --> $DIR/issue-32354-suggest-import-rename.rs:14:5
    |
 LL | use extension1::ConstructorExtension;
    |     -------------------------------- previous import of the trait `ConstructorExtension` here

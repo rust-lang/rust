@@ -1,5 +1,5 @@
 error[E0597]: `factorial` does not live long enough
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:25:17
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:15:17
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- value captured here
@@ -15,7 +15,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0506]: cannot assign to `factorial` because it is borrowed
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:30:5
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:20:5
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- borrow of `factorial` occurs here
@@ -29,7 +29,7 @@ LL |     factorial = Some(Box::new(f));
    |     borrow later used here
 
 error[E0597]: `factorial` does not live long enough
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:38:17
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:28:17
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- value captured here
@@ -43,7 +43,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0506]: cannot assign to `factorial` because it is borrowed
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:42:5
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:32:5
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- borrow of `factorial` occurs here

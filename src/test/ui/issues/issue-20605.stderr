@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `dyn std::iter::Iterator<Item=&mut u8>` cannot be known at compilation time
-  --> $DIR/issue-20605.rs:12:17
+  --> $DIR/issue-20605.rs:2:17
    |
 LL |     for item in *things { *item = 0 }
    |                 ^^^^^^^ doesn't have a size known at compile-time

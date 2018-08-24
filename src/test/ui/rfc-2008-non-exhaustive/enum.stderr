@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/enum.rs:19:11
+  --> $DIR/enum.rs:9:11
    |
 LL |     match enum_unit {
    |           ^^^^^^^^^ pattern `_` not covered

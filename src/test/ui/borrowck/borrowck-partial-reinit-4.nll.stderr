@@ -1,5 +1,5 @@
 error[E0381]: assign of possibly uninitialized variable: `x.0`
-  --> $DIR/borrowck-partial-reinit-4.rs:27:5
+  --> $DIR/borrowck-partial-reinit-4.rs:17:5
    |
 LL |     (x.0).0 = Some(Test);
    |     ^^^^^^^ use of possibly uninitialized `x.0`

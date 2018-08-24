@@ -1,13 +1,13 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-17545.rs:17:10
+  --> $DIR/issue-17545.rs:7:10
    |
 LL |         &id(()), //~ ERROR borrowed value does not live long enough
    |          ^^^^^^ temporary value does not live long enough
 LL |     ));
    |       - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:12...
-  --> $DIR/issue-17545.rs:15:12
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 5:12...
+  --> $DIR/issue-17545.rs:5:12
    |
 LL | pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
    |            ^^

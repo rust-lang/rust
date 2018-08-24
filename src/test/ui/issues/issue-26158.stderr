@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `&[]` not covered
-  --> $DIR/issue-26158.rs:15:9
+  --> $DIR/issue-26158.rs:5:9
    |
 LL |     let &[[ref _a, ref _b..]..] = x; //~ ERROR refutable pattern
    |         ^^^^^^^^^^^^^^^^^^^^^^^ pattern `&[]` not covered

@@ -1,5 +1,5 @@
 error[E0615]: attempted to take value of method `abs` on type `i32`
-  --> $DIR/implicit-method-bind.rs:12:20
+  --> $DIR/implicit-method-bind.rs:2:20
    |
 LL |     let _f = 10i32.abs; //~ ERROR attempted to take value of method
    |                    ^^^

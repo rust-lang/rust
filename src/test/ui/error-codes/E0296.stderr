@@ -1,5 +1,5 @@
 error[E0296]: malformed recursion limit attribute, expected #![recursion_limit="N"]
-  --> $DIR/E0296.rs:11:1
+  --> $DIR/E0296.rs:1:1
    |
 LL | #![recursion_limit] //~ ERROR E0296
    | ^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-5358-1.rs:16:9
+  --> $DIR/issue-5358-1.rs:6:9
    |
 LL |         Either::Right(_) => {}
    |         ^^^^^^^^^^^^^^^^ expected struct `S`, found enum `Either`

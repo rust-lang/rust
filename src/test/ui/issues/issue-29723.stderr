@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `s`
-  --> $DIR/issue-29723.rs:22:13
+  --> $DIR/issue-29723.rs:12:13
    |
 LL |         0 if { drop(s); false } => String::from("oops"),
    |                     - value moved here

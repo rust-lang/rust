@@ -1,5 +1,5 @@
-error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.rs:16:28: 16:33]>` in the current scope
-  --> $DIR/issue-18343.rs:17:7
+error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.rs:6:28: 6:33]>` in the current scope
+  --> $DIR/issue-18343.rs:7:7
    |
 LL | struct Obj<F> where F: FnMut() -> u32 {
    | ------------------------------------- method `closure` not found for this

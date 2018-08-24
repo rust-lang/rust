@@ -1,5 +1,5 @@
 error: expected identifier, found `a::b::c`
-  --> $DIR/import-prefix-macro-2.rs:21:26
+  --> $DIR/import-prefix-macro-2.rs:11:26
    |
 LL |     ($p: path) => (use ::$p {S, Z}); //~ERROR  expected identifier, found `a::b::c`
    |                          ^^ expected identifier

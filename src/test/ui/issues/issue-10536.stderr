@@ -1,11 +1,11 @@
 error: macros that expand to items must either be surrounded with braces or followed by a semicolon
-  --> $DIR/issue-10536.rs:26:22
+  --> $DIR/issue-10536.rs:16:22
    |
 LL |     assert!({one! two()});
    |                      ^^
 
 error: expected `(` or `{`, found `}`
-  --> $DIR/issue-10536.rs:31:22
+  --> $DIR/issue-10536.rs:21:22
    |
 LL |     assert!({one! two});
    |                      ^ expected `(` or `{`

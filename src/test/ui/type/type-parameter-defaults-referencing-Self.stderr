@@ -1,5 +1,5 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/type-parameter-defaults-referencing-Self.rs:20:12
+  --> $DIR/type-parameter-defaults-referencing-Self.rs:10:12
    |
 LL | fn foo(x: &Foo) { }
    |            ^^^ missing reference to `T`

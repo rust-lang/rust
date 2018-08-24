@@ -1,131 +1,131 @@
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:13:14
+  --> $DIR/prim-with-args.rs:3:14
    |
 LL | let x: isize<isize>; //~ ERROR type parameters are not allowed on this type
    |              ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:14:11
+  --> $DIR/prim-with-args.rs:4:11
    |
 LL | let x: i8<isize>; //~ ERROR type parameters are not allowed on this type
    |           ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:15:12
+  --> $DIR/prim-with-args.rs:5:12
    |
 LL | let x: i16<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:16:12
+  --> $DIR/prim-with-args.rs:6:12
    |
 LL | let x: i32<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:17:12
+  --> $DIR/prim-with-args.rs:7:12
    |
 LL | let x: i64<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:18:14
+  --> $DIR/prim-with-args.rs:8:14
    |
 LL | let x: usize<isize>; //~ ERROR type parameters are not allowed on this type
    |              ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:19:11
+  --> $DIR/prim-with-args.rs:9:11
    |
 LL | let x: u8<isize>; //~ ERROR type parameters are not allowed on this type
    |           ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:20:12
+  --> $DIR/prim-with-args.rs:10:12
    |
 LL | let x: u16<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:21:12
+  --> $DIR/prim-with-args.rs:11:12
    |
 LL | let x: u32<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:22:12
+  --> $DIR/prim-with-args.rs:12:12
    |
 LL | let x: u64<isize>; //~ ERROR type parameters are not allowed on this type
    |            ^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:23:13
+  --> $DIR/prim-with-args.rs:13:13
    |
 LL | let x: char<isize>; //~ ERROR type parameters are not allowed on this type
    |             ^^^^^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:25:14
+  --> $DIR/prim-with-args.rs:15:14
    |
 LL | let x: isize<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |              ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:26:11
+  --> $DIR/prim-with-args.rs:16:11
    |
 LL | let x: i8<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |           ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:27:12
+  --> $DIR/prim-with-args.rs:17:12
    |
 LL | let x: i16<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:28:12
+  --> $DIR/prim-with-args.rs:18:12
    |
 LL | let x: i32<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:29:12
+  --> $DIR/prim-with-args.rs:19:12
    |
 LL | let x: i64<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:30:14
+  --> $DIR/prim-with-args.rs:20:14
    |
 LL | let x: usize<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |              ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:31:11
+  --> $DIR/prim-with-args.rs:21:11
    |
 LL | let x: u8<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |           ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:32:12
+  --> $DIR/prim-with-args.rs:22:12
    |
 LL | let x: u16<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:33:12
+  --> $DIR/prim-with-args.rs:23:12
    |
 LL | let x: u32<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:34:12
+  --> $DIR/prim-with-args.rs:24:12
    |
 LL | let x: u64<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |            ^^^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/prim-with-args.rs:35:13
+  --> $DIR/prim-with-args.rs:25:13
    |
 LL | let x: char<'static>; //~ ERROR lifetime parameters are not allowed on this type
    |             ^^^^^^^ lifetime parameter not allowed

@@ -1,5 +1,5 @@
 error[E0409]: variable `y` is bound in inconsistent ways within the same match arm
-  --> $DIR/E0409.rs:15:23
+  --> $DIR/E0409.rs:5:23
    |
 LL |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
    |                 -     ^ bound in different ways
@@ -7,7 +7,7 @@ LL |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
    |                 first binding
 
 error[E0308]: mismatched types
-  --> $DIR/E0409.rs:15:23
+  --> $DIR/E0409.rs:5:23
    |
 LL |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
    |                       ^ expected &{integer}, found integral variable

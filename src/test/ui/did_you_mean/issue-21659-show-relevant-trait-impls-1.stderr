@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
-  --> $DIR/issue-21659-show-relevant-trait-impls-1.rs:34:8
+  --> $DIR/issue-21659-show-relevant-trait-impls-1.rs:24:8
    |
 LL |     f1.foo(1usize);
    |        ^^^ the trait `Foo<usize>` is not implemented for `Bar`

@@ -1,5 +1,5 @@
 error[E0597]: `local.inner` does not live long enough
-  --> $DIR/borrowck-fn-in-const-c.rs:27:17
+  --> $DIR/borrowck-fn-in-const-c.rs:17:17
    |
 LL |         return &local.inner; //~ ERROR does not live long enough
    |                 ^^^^^^^^^^^ borrowed value does not live long enough

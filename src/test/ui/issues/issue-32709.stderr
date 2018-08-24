@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): std::convert::From<{integer}>` is not satisfied
-  --> $DIR/issue-32709.rs:14:5
+  --> $DIR/issue-32709.rs:4:5
    |
 LL |     Err(5)?; //~ ERROR 14:5: 14:12
    |     ^^^^^^^ the trait `std::convert::From<{integer}>` is not implemented for `()`

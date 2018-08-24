@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/unboxed-closures-infer-fn-once-move-from-projection.rs:24:13
+  --> $DIR/unboxed-closures-infer-fn-once-move-from-projection.rs:14:13
    |
 LL |     let c = || drop(y.0); //~ ERROR expected a closure that implements the `Fn` trait
    |             ^^^^^^^^-^^^

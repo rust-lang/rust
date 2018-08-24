@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/wf-in-fn-type-static.rs:23:5
+  --> $DIR/wf-in-fn-type-static.rs:13:5
    |
 LL | struct Foo<T> {
    |            - help: consider adding an explicit lifetime bound `T: 'static`...
@@ -8,13 +8,13 @@ LL |     x: fn() -> &'static T //~ ERROR E0310
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'static T` does not outlive the data it points at
-  --> $DIR/wf-in-fn-type-static.rs:23:5
+  --> $DIR/wf-in-fn-type-static.rs:13:5
    |
 LL |     x: fn() -> &'static T //~ ERROR E0310
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/wf-in-fn-type-static.rs:28:5
+  --> $DIR/wf-in-fn-type-static.rs:18:5
    |
 LL | struct Bar<T> {
    |            - help: consider adding an explicit lifetime bound `T: 'static`...
@@ -23,7 +23,7 @@ LL |     x: fn(&'static T) //~ ERROR E0310
    |     ^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'static T` does not outlive the data it points at
-  --> $DIR/wf-in-fn-type-static.rs:28:5
+  --> $DIR/wf-in-fn-type-static.rs:18:5
    |
 LL |     x: fn(&'static T) //~ ERROR E0310
    |     ^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/union_promotion.rs:19:29
+  --> $DIR/union_promotion.rs:9:29
    |
 LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
    |  _____________________________^

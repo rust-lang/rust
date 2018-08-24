@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/glob-cycles.rs:29:1
+  --> $DIR/glob-cycles.rs:19:1
    |
 LL | pub fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^^^^^

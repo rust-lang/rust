@@ -1,5 +1,5 @@
 error[E0658]: arbitrary `self` types are unstable (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:14:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:4:18
    |
 LL |     fn foo(self: Rc<Box<Self>>); //~ ERROR arbitrary `self` types are unstable
    |                  ^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn foo(self: Rc<Box<Self>>); //~ ERROR arbitrary `self` types are unsta
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: arbitrary `self` types are unstable (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:20:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:10:18
    |
 LL |     fn foo(self: Rc<Box<Self>>) {} //~ ERROR arbitrary `self` types are unstable
    |                  ^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     fn foo(self: Rc<Box<Self>>) {} //~ ERROR arbitrary `self` types are uns
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: arbitrary `self` types are unstable (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:24:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:14:18
    |
 LL |     fn bar(self: Box<Rc<Self>>) {} //~ ERROR arbitrary `self` types are unstable
    |                  ^^^^^^^^^^^^^

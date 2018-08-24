@@ -1,11 +1,11 @@
 error[E0026]: variant `MyOption::MySome` does not have a field named `x`
-  --> $DIR/issue-17800.rs:18:28
+  --> $DIR/issue-17800.rs:8:28
    |
 LL |         MyOption::MySome { x: 42 } => (),
    |                            ^^^^^ variant `MyOption::MySome` does not have this field
 
 error[E0027]: pattern does not mention field `0`
-  --> $DIR/issue-17800.rs:18:9
+  --> $DIR/issue-17800.rs:8:9
    |
 LL |         MyOption::MySome { x: 42 } => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `0`

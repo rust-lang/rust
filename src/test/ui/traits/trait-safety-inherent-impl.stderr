@@ -1,5 +1,5 @@
 error[E0197]: inherent impls cannot be unsafe
-  --> $DIR/trait-safety-inherent-impl.rs:15:1
+  --> $DIR/trait-safety-inherent-impl.rs:5:1
    |
 LL | / unsafe impl SomeStruct { //~ ERROR inherent impls cannot be unsafe
 LL | |     fn foo(self) { }

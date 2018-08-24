@@ -1,5 +1,5 @@
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24805-dropck-trait-has-items.rs:47:26
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:37:26
    |
 LL |     _d = D_HasSelfMethod(&d1);
    |                          ^^^ borrowed value does not live long enough
@@ -12,7 +12,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24805-dropck-trait-has-items.rs:53:33
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:43:33
    |
 LL |     _d = D_HasMethodWithSelfArg(&d1);
    |                                 ^^^ borrowed value does not live long enough
@@ -25,7 +25,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24805-dropck-trait-has-items.rs:59:20
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:49:20
    |
 LL |     _d = D_HasType(&d1);
    |                    ^^^ borrowed value does not live long enough

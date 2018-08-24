@@ -1,11 +1,11 @@
 error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
-  --> $DIR/E0657.rs:19:31
+  --> $DIR/E0657.rs:10:31
    |
 LL |     -> Box<for<'a> Id<impl Lt<'a>>>
    |                               ^^
 
 error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
-  --> $DIR/E0657.rs:28:35
+  --> $DIR/E0657.rs:19:35
    |
 LL |         -> Box<for<'a> Id<impl Lt<'a>>>
    |                                   ^^

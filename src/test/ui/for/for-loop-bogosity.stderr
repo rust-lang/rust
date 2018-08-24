@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `MyStruct: std::iter::Iterator` is not satisfied
-  --> $DIR/for-loop-bogosity.rs:27:14
+  --> $DIR/for-loop-bogosity.rs:17:14
    |
 LL |     for x in bogus { //~ ERROR `MyStruct: std::iter::Iterator` is not satisfied
    |              ^^^^^ `MyStruct` is not an iterator; maybe try calling `.iter()` or a similar method

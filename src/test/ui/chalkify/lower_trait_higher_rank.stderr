@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_trait_higher_rank.rs:13:1
+  --> $DIR/lower_trait_higher_rank.rs:3:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

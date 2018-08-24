@@ -1,5 +1,5 @@
 error[E0053]: method `b` has an incompatible type for trait
-  --> $DIR/reordered-type-param.rs:26:30
+  --> $DIR/reordered-type-param.rs:16:30
    |
 LL |   fn b<C:Clone,D>(&self, x: C) -> C;
    |                             - type in trait

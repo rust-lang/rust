@@ -1,5 +1,5 @@
 warning: item is named 'lintme'
-  --> $DIR/lint-plugin-cmdline-load.rs:18:1
+  --> $DIR/lint-plugin-cmdline-load.rs:8:1
    |
 LL | fn lintme() { } //~ WARNING item is named 'lintme'
    | ^^^^^^^^^^^^^^^

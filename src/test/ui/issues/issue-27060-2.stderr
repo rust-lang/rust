@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/issue-27060-2.rs:13:5
+  --> $DIR/issue-27060-2.rs:3:5
    |
 LL |     data: T, //~ ERROR the size for values of type
    |     ^^^^^^^ doesn't have a size known at compile-time

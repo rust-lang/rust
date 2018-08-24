@@ -1,5 +1,5 @@
 error[E0704]: incorrect visibility restriction
-  --> $DIR/pub-restricted.rs:15:6
+  --> $DIR/pub-restricted.rs:5:6
    |
 LL | pub (a) fn afn() {} //~ incorrect visibility restriction
    |      ^ help: make this visible only to module `a` with `in`: `in a`
@@ -10,7 +10,7 @@ LL | pub (a) fn afn() {} //~ incorrect visibility restriction
            `pub(in path::to::module)`: visible only on the specified path
 
 error[E0704]: incorrect visibility restriction
-  --> $DIR/pub-restricted.rs:16:6
+  --> $DIR/pub-restricted.rs:6:6
    |
 LL | pub (b) fn bfn() {} //~ incorrect visibility restriction
    |      ^ help: make this visible only to module `b` with `in`: `in b`
@@ -21,7 +21,7 @@ LL | pub (b) fn bfn() {} //~ incorrect visibility restriction
            `pub(in path::to::module)`: visible only on the specified path
 
 error[E0704]: incorrect visibility restriction
-  --> $DIR/pub-restricted.rs:32:14
+  --> $DIR/pub-restricted.rs:22:14
    |
 LL |         pub (a) invalid: usize, //~ incorrect visibility restriction
    |              ^ help: make this visible only to module `a` with `in`: `in a`
@@ -32,7 +32,7 @@ LL |         pub (a) invalid: usize, //~ incorrect visibility restriction
            `pub(in path::to::module)`: visible only on the specified path
 
 error[E0704]: incorrect visibility restriction
-  --> $DIR/pub-restricted.rs:41:6
+  --> $DIR/pub-restricted.rs:31:6
    |
 LL | pub (xyz) fn xyz() {} //~ incorrect visibility restriction
    |      ^^^ help: make this visible only to module `xyz` with `in`: `in xyz`
@@ -43,7 +43,7 @@ LL | pub (xyz) fn xyz() {} //~ incorrect visibility restriction
            `pub(in path::to::module)`: visible only on the specified path
 
 error: visibilities can only be restricted to ancestor modules
-  --> $DIR/pub-restricted.rs:33:17
+  --> $DIR/pub-restricted.rs:23:17
    |
 LL |         pub (in x) non_parent_invalid: usize, //~ ERROR visibilities can only be restricted
    |                 ^

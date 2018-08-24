@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/E0034.rs:30:5
+  --> $DIR/E0034.rs:20:5
    |
 LL |     Test::foo() //~ ERROR multiple applicable items in scope
    |     ^^^^^^^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `Trait1` for the type `Test`
-  --> $DIR/E0034.rs:22:5
+  --> $DIR/E0034.rs:12:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `Trait2` for the type `Test`
-  --> $DIR/E0034.rs:26:5
+  --> $DIR/E0034.rs:16:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^

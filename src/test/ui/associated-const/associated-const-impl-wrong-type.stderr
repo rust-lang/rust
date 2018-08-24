@@ -1,5 +1,5 @@
 error[E0326]: implemented const `BAR` has an incompatible type for trait
-  --> $DIR/associated-const-impl-wrong-type.rs:19:16
+  --> $DIR/associated-const-impl-wrong-type.rs:8:16
    |
 LL |     const BAR: u32;
    |                --- type in trait

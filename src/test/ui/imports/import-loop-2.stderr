@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `a::x`
-  --> $DIR/import-loop-2.rs:18:13
+  --> $DIR/import-loop-2.rs:8:13
    |
 LL |     pub use a::x;
    |             ^^^^ no `x` in `a`
@@ -8,7 +8,7 @@ error[E0601]: `main` function not found in crate `import_loop_2`
    |
    = note: the main function must be defined at the crate level but you have one or more functions named 'main' that are not defined at the crate level. Either move the definition or attach the `#[main]` attribute to override this behavior.
 note: here is a function named 'main'
-  --> $DIR/import-loop-2.rs:20:5
+  --> $DIR/import-loop-2.rs:10:5
    |
 LL |     fn main() { let y = x; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

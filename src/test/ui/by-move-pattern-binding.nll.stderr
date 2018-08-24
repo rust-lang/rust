@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/by-move-pattern-binding.rs:24:11
+  --> $DIR/by-move-pattern-binding.rs:14:11
    |
 LL |     match &s.x {
    |           ^^^^ cannot move out of borrowed content
@@ -11,7 +11,7 @@ LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
    |         help: consider removing the `&`: `E::Bar(identifier)`
    |
 note: move occurs because `identifier` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/by-move-pattern-binding.rs:26:17
+  --> $DIR/by-move-pattern-binding.rs:16:17
    |
 LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
    |                 ^^^^^^^^^^

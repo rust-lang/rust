@@ -1,86 +1,86 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:23:9
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:9
    |
 LL | impl<T> Foo<T> {
    |         ^^^^^^ the trait `Trait` is not implemented for `T`
    |
    = help: consider adding a `where T: Trait` bound
 note: required by `Foo`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:3:1
    |
 LL | struct Foo<T:Trait> {
    | ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `isize: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:29:5
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:19:5
    |
 LL |     a: Foo<isize>, //~ ERROR E0277
    |     ^^^^^^^^^^^^^ the trait `Trait` is not implemented for `isize`
    |
 note: required by `Foo`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:3:1
    |
 LL | struct Foo<T:Trait> {
    | ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `usize: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:33:10
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:23:10
    |
 LL |     Quux(Bar<usize>), //~ ERROR E0277
    |          ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
    |
 note: required by `Bar`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:17:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:7:1
    |
 LL | enum Bar<T:Trait> {
    | ^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `U: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:37:5
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:27:5
    |
 LL |     b: Foo<U>, //~ ERROR E0277
    |     ^^^^^^^^^ the trait `Trait` is not implemented for `U`
    |
    = help: consider adding a `where U: Trait` bound
 note: required by `Foo`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:3:1
    |
 LL | struct Foo<T:Trait> {
    | ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `V: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:41:21
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:31:21
    |
 LL |     EvenMoreBadness(Bar<V>), //~ ERROR E0277
    |                     ^^^^^^ the trait `Trait` is not implemented for `V`
    |
    = help: consider adding a `where V: Trait` bound
 note: required by `Bar`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:17:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:7:1
    |
 LL | enum Bar<T:Trait> {
    | ^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:45:5
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:35:5
    |
 LL |     Foo<i32>, //~ ERROR E0277
    |     ^^^^^^^^ the trait `Trait` is not implemented for `i32`
    |
 note: required by `Foo`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:3:1
    |
 LL | struct Foo<T:Trait> {
    | ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `u8: Trait` is not satisfied
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:49:22
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:39:22
    |
 LL |     DictionaryLike { field: Bar<u8> }, //~ ERROR E0277
    |                      ^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u8`
    |
 note: required by `Bar`
-  --> $DIR/trait-bounds-on-structs-and-enums.rs:17:1
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:7:1
    |
 LL | enum Bar<T:Trait> {
    | ^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0161]: cannot move a value of type (dyn Bar + 'static): the size of (dyn Bar + 'static) cannot be statically determined
-  --> $DIR/object-safety-by-value-self-use.rs:25:5
+  --> $DIR/object-safety-by-value-self-use.rs:15:5
    |
 LL |     t.bar() //~ ERROR cannot move a value of type (dyn Bar + 'static)
    |     ^

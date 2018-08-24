@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/const-eval-span.rs:19:9
+  --> $DIR/const-eval-span.rs:9:9
    |
 LL |     V = CONSTANT,
    |         ^^^^^^^^ expected isize, found struct `S`

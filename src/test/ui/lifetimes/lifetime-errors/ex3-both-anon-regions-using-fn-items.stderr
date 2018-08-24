@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:10
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:10
    |
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                               ---      --- these two types are declared with different lifetimes...

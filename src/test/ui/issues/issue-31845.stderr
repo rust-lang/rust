@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `g` in this scope
-  --> $DIR/issue-31845.rs:17:12
+  --> $DIR/issue-31845.rs:7:12
    |
 LL |            g(); //~ ERROR cannot find function `g` in this scope
    |            ^ did you mean `h`?

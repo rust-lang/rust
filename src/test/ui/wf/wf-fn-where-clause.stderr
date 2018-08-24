@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-fn-where-clause.rs:19:1
+  --> $DIR/wf-fn-where-clause.rs:9:1
    |
 LL | / fn foo<T,U>() where T: ExtraCopy<U> //~ ERROR E0277
 LL | | {
@@ -8,7 +8,7 @@ LL | | }
    |
    = help: consider adding a `where U: std::marker::Copy` bound
 note: required by `ExtraCopy`
-  --> $DIR/wf-fn-where-clause.rs:17:1
+  --> $DIR/wf-fn-where-clause.rs:7:1
    |
 LL | trait ExtraCopy<T:Copy> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^

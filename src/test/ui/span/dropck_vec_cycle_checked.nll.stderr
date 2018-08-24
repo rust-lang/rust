@@ -1,5 +1,5 @@
 error[E0597]: `c2` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:113:24
+  --> $DIR/dropck_vec_cycle_checked.rs:103:24
    |
 LL |     c1.v[0].v.set(Some(&c2));
    |                        ^^^ borrowed value does not live long enough
@@ -11,7 +11,7 @@ LL | }
    | borrow later used here, when `c1` is dropped
 
 error[E0597]: `c3` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:115:24
+  --> $DIR/dropck_vec_cycle_checked.rs:105:24
    |
 LL |     c1.v[1].v.set(Some(&c3));
    |                        ^^^ borrowed value does not live long enough
@@ -23,7 +23,7 @@ LL | }
    | borrow later used here, when `c1` is dropped
 
 error[E0597]: `c1` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:121:24
+  --> $DIR/dropck_vec_cycle_checked.rs:111:24
    |
 LL |     c3.v[0].v.set(Some(&c1));
    |                        ^^^ borrowed value does not live long enough

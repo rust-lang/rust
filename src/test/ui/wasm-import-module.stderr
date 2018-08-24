@@ -1,17 +1,17 @@
 error: must be of the form #[link(wasm_import_module = "...")]
-  --> $DIR/wasm-import-module.rs:11:22
+  --> $DIR/wasm-import-module.rs:1:22
    |
 LL | #[link(name = "...", wasm_import_module)] //~ ERROR: must be of the form
    |                      ^^^^^^^^^^^^^^^^^^
 
 error: must be of the form #[link(wasm_import_module = "...")]
-  --> $DIR/wasm-import-module.rs:14:22
+  --> $DIR/wasm-import-module.rs:4:22
    |
 LL | #[link(name = "...", wasm_import_module(x))] //~ ERROR: must be of the form
    |                      ^^^^^^^^^^^^^^^^^^^^^
 
 error: must be of the form #[link(wasm_import_module = "...")]
-  --> $DIR/wasm-import-module.rs:17:22
+  --> $DIR/wasm-import-module.rs:7:22
    |
 LL | #[link(name = "...", wasm_import_module())] //~ ERROR: must be of the form
    |                      ^^^^^^^^^^^^^^^^^^^^

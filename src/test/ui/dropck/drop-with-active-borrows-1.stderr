@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `a` because it is borrowed
-  --> $DIR/drop-with-active-borrows-1.rs:14:10
+  --> $DIR/drop-with-active-borrows-1.rs:4:10
    |
 LL |     let b: Vec<&str> = a.lines().collect();
    |                        - borrow of `a` occurs here

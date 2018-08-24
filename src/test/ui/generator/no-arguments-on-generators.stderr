@@ -1,5 +1,5 @@
 error[E0628]: generators cannot have explicit arguments
-  --> $DIR/no-arguments-on-generators.rs:14:15
+  --> $DIR/no-arguments-on-generators.rs:4:15
    |
 LL |     let gen = |start| { //~ ERROR generators cannot have explicit arguments
    |               ^^^^^^^

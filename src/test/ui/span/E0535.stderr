@@ -1,5 +1,5 @@
 error[E0535]: invalid argument
-  --> $DIR/E0535.rs:11:10
+  --> $DIR/E0535.rs:1:10
    |
 LL | #[inline(unknown)] //~ ERROR E0535
    |          ^^^^^^^

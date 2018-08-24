@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-2151.rs:13:5
+  --> $DIR/issue-2151.rs:3:5
    |
 LL |     let x = panic!();
    |         - consider giving `x` a type

@@ -1,5 +1,5 @@
 error[E0254]: the name `std` is defined multiple times
-  --> $DIR/resolve-conflict-import-vs-extern-crate.rs:11:5
+  --> $DIR/resolve-conflict-import-vs-extern-crate.rs:1:5
    |
 LL | use std::slice as std; //~ ERROR the name `std` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^ `std` reimported here

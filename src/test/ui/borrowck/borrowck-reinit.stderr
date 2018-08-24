@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x` (Ast)
-  --> $DIR/borrowck-reinit.rs:18:16
+  --> $DIR/borrowck-reinit.rs:8:16
    |
 LL |     drop(x);
    |          - value moved here
@@ -9,7 +9,7 @@ LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x` (Mir)
-  --> $DIR/borrowck-reinit.rs:18:16
+  --> $DIR/borrowck-reinit.rs:8:16
    |
 LL |     drop(x);
    |          - value moved here

@@ -1,29 +1,29 @@
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:12:14
+  --> $DIR/issue-51714.rs:2:14
    |
 LL |     |_:  [_; return || {}] | {};
    |              ^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:15:10
+  --> $DIR/issue-51714.rs:5:10
    |
 LL |     [(); return || {}];
    |          ^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:18:10
+  --> $DIR/issue-51714.rs:8:10
    |
 LL |     [(); return |ice| {}];
    |          ^^^^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:21:10
+  --> $DIR/issue-51714.rs:11:10
    |
 LL |     [(); return while let Some(n) = Some(0) {}];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0165]: irrefutable while-let pattern
-  --> $DIR/issue-51714.rs:21:27
+  --> $DIR/issue-51714.rs:11:27
    |
 LL |     [(); return while let Some(n) = Some(0) {}];
    |                           ^^^^^^^ irrefutable pattern

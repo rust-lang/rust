@@ -1,11 +1,11 @@
 error[E0603]: extern crate `core` is private
-  --> $DIR/extern-crate-visibility.rs:16:5
+  --> $DIR/extern-crate-visibility.rs:6:5
    |
 LL | use foo::core::cell; //~ ERROR extern crate `core` is private
    |     ^^^^^^^^^^^^^^^
 
 error[E0603]: extern crate `core` is private
-  --> $DIR/extern-crate-visibility.rs:19:5
+  --> $DIR/extern-crate-visibility.rs:9:5
    |
 LL |     foo::core::cell::Cell::new(0); //~ ERROR extern crate `core` is private
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

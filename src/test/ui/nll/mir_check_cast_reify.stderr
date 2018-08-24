@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/mir_check_cast_reify.rs:46:25
+  --> $DIR/mir_check_cast_reify.rs:36:25
    |
 LL |     let f: fn(_) -> _ = foo;
    |                         ^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_reify.rs:48:5
+  --> $DIR/mir_check_cast_reify.rs:38:5
    |
 LL | fn bar<'a>(x: &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here

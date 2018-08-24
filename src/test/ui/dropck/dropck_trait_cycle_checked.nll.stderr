@@ -1,5 +1,5 @@
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:121:13
+  --> $DIR/dropck_trait_cycle_checked.rs:111:13
    |
 LL |     o1.set0(&o2); //~ ERROR `o2` does not live long enough
    |             ^^^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `o3` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:122:13
+  --> $DIR/dropck_trait_cycle_checked.rs:112:13
    |
 LL |     o1.set1(&o3); //~ ERROR `o3` does not live long enough
    |             ^^^ borrowed value does not live long enough
@@ -21,7 +21,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:123:13
+  --> $DIR/dropck_trait_cycle_checked.rs:113:13
    |
 LL |     o2.set0(&o2); //~ ERROR `o2` does not live long enough
    |             ^^^ borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `o3` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:124:13
+  --> $DIR/dropck_trait_cycle_checked.rs:114:13
    |
 LL |     o2.set1(&o3); //~ ERROR `o3` does not live long enough
    |             ^^^ borrowed value does not live long enough
@@ -43,7 +43,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `o1` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:125:13
+  --> $DIR/dropck_trait_cycle_checked.rs:115:13
    |
 LL |     o3.set0(&o1); //~ ERROR `o1` does not live long enough
    |             ^^^ borrowed value does not live long enough
@@ -54,7 +54,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:126:13
+  --> $DIR/dropck_trait_cycle_checked.rs:116:13
    |
 LL |     o3.set1(&o2); //~ ERROR `o2` does not live long enough
    |             ^^^ borrowed value does not live long enough

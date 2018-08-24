@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/project-fn-ret-contravariant.rs:60:1
+  --> $DIR/project-fn-ret-contravariant.rs:50:1
    |
 LL | fn main() { }
    | ^^^^^^^^^^^^^

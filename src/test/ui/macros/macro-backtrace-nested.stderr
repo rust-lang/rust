@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `fake` in this scope
-  --> $DIR/macro-backtrace-nested.rs:15:12
+  --> $DIR/macro-backtrace-nested.rs:5:12
    |
 LL |     () => (fake) //~ ERROR cannot find
    |            ^^^^ not found in this scope
@@ -8,7 +8,7 @@ LL |     1 + call_nested_expr!();
    |         ------------------- in this macro invocation
 
 error[E0425]: cannot find value `fake` in this scope
-  --> $DIR/macro-backtrace-nested.rs:15:12
+  --> $DIR/macro-backtrace-nested.rs:5:12
    |
 LL |     () => (fake) //~ ERROR cannot find
    |            ^^^^ not found in this scope

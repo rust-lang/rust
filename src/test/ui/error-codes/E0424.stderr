@@ -1,5 +1,5 @@
 error[E0424]: expected value, found module `self`
-  --> $DIR/E0424.rs:17:9
+  --> $DIR/E0424.rs:7:9
    |
 LL |         self.bar(); //~ ERROR E0424
    |         ^^^^ `self` value is only available in methods with `self` parameter

@@ -1,5 +1,5 @@
 error[E0658]: the `linkage` attribute is experimental and not portable across platforms (see issue #29603)
-  --> $DIR/linkage4.rs:11:1
+  --> $DIR/linkage4.rs:1:1
    |
 LL | #[linkage = "external"]
    | ^^^^^^^^^^^^^^^^^^^^^^^

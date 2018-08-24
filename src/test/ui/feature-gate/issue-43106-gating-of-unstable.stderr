@@ -1,41 +1,41 @@
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:17:1
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
    |
 LL | #![unstable                   = "1200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:20:1
+  --> $DIR/issue-43106-gating-of-unstable.rs:10:1
    |
 LL | #[unstable = "1200"]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:23:17
+  --> $DIR/issue-43106-gating-of-unstable.rs:13:17
    |
 LL |     mod inner { #![unstable="1200"] }
    |                 ^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:26:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:16:5
    |
 LL |     #[unstable = "1200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:29:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:19:5
    |
 LL |     #[unstable = "1200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:32:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:22:5
    |
 LL |     #[unstable = "1200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:35:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:25:5
    |
 LL |     #[unstable = "1200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^

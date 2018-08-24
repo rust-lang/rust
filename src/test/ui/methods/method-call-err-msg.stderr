@@ -1,5 +1,5 @@
 error[E0061]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/method-call-err-msg.rs:22:7
+  --> $DIR/method-call-err-msg.rs:12:7
    |
 LL |     fn zero(self) -> Foo { self }
    |     -------------------- defined here
@@ -8,7 +8,7 @@ LL |     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter 
    |       ^^^^ expected 0 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/method-call-err-msg.rs:23:7
+  --> $DIR/method-call-err-msg.rs:13:7
    |
 LL |     fn one(self, _: isize) -> Foo { self }
    |     ----------------------------- defined here
@@ -17,7 +17,7 @@ LL |      .one()     //~ ERROR this function takes 1 parameter but 0 parameters 
    |       ^^^ expected 1 parameter
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/method-call-err-msg.rs:24:7
+  --> $DIR/method-call-err-msg.rs:14:7
    |
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |     --------------------------------------- defined here
@@ -26,7 +26,7 @@ LL |      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter 
    |       ^^^ expected 2 parameters
 
 error[E0599]: no method named `take` found for type `Foo` in the current scope
-  --> $DIR/method-call-err-msg.rs:28:7
+  --> $DIR/method-call-err-msg.rs:18:7
    |
 LL | pub struct Foo;
    | --------------- method `take` not found for this

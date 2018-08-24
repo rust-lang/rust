@@ -1,32 +1,32 @@
-error[E0277]: the trait bound `No: Foo` is not satisfied in `[generator@$DIR/auto-trait-regions.rs:35:15: 39:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
-  --> $DIR/auto-trait-regions.rs:40:5
+error[E0277]: the trait bound `No: Foo` is not satisfied in `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
+  --> $DIR/auto-trait-regions.rs:30:5
    |
 LL |     assert_foo(gen); //~ ERROR the trait bound `No: Foo` is not satisfied
-   |     ^^^^^^^^^^ within `[generator@$DIR/auto-trait-regions.rs:35:15: 39:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`, the trait `Foo` is not implemented for `No`
+   |     ^^^^^^^^^^ within `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`, the trait `Foo` is not implemented for `No`
    |
    = help: the following implementations were found:
              <No as Foo>
    = note: required because it appears within the type `OnlyFooIfStaticRef`
    = note: required because it appears within the type `&OnlyFooIfStaticRef`
    = note: required because it appears within the type `for<'r> {&'r OnlyFooIfStaticRef, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:35:15: 39:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
+   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
 note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:30:1
+  --> $DIR/auto-trait-regions.rs:20:1
    |
 LL | fn assert_foo<T: Foo>(f: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0279]: the requirement `for<'r, 's> 'r : 's` is not satisfied (`expected bound lifetime parameter, found concrete lifetime`)
-  --> $DIR/auto-trait-regions.rs:57:5
+  --> $DIR/auto-trait-regions.rs:47:5
    |
 LL |     assert_foo(gen); //~ ERROR the requirement `for<'r, 's> 'r : 's` is not satisfied
    |     ^^^^^^^^^^
    |
    = note: required because of the requirements on the impl of `for<'r, 's> Foo` for `A<'_, '_>`
    = note: required because it appears within the type `for<'r, 's> {A<'r, 's>, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:52:15: 56:6 for<'r, 's> {A<'r, 's>, ()}]`
+   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:42:15: 46:6 for<'r, 's> {A<'r, 's>, ()}]`
 note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:30:1
+  --> $DIR/auto-trait-regions.rs:20:1
    |
 LL | fn assert_foo<T: Foo>(f: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^

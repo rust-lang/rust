@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `Bar` not covered
-  --> $DIR/issue-31561.rs:18:9
+  --> $DIR/issue-31561.rs:8:9
    |
 LL |     let Thing::Foo(y) = Thing::Foo(1);
    |         ^^^^^^^^^^^^^ pattern `Bar` not covered

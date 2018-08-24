@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:27
+  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:12:27
    |
 LL |         let ss: &isize = &id(1);
    |                           ^^^^^ temporary value does not live long enough

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&str: std::iter::Iterator` is not satisfied
-  --> $DIR/for-c-in-str.rs:14:14
+  --> $DIR/for-c-in-str.rs:4:14
    |
 LL |     for c in "asdf" {
    |              ^^^^^^ `&str` is not an iterator; try calling `.chars()` or `.bytes()`

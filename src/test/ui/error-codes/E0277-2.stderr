@@ -1,5 +1,5 @@
 error[E0277]: `*const u8` cannot be sent between threads safely
-  --> $DIR/E0277-2.rs:26:5
+  --> $DIR/E0277-2.rs:16:5
    |
 LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^ `*const u8` cannot be sent between threads safely
@@ -9,7 +9,7 @@ LL |     is_send::<Foo>();
    = note: required because it appears within the type `Bar`
    = note: required because it appears within the type `Foo`
 note: required by `is_send`
-  --> $DIR/E0277-2.rs:23:1
+  --> $DIR/E0277-2.rs:13:1
    |
 LL | fn is_send<T: Send>() { }
    | ^^^^^^^^^^^^^^^^^^^^^

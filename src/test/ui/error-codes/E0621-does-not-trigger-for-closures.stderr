@@ -1,26 +1,26 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:5
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |     ^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 25:16...
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:16
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 15:16...
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:16
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:45
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:45
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |                                             ^
-note: but, the lifetime must be valid for the call at 25:5...
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:5
+note: but, the lifetime must be valid for the call at 15:5...
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...so type `&i32` of expression is valid during the expression
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:5
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

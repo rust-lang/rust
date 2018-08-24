@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `xs` as mutable more than once at a time
-  --> $DIR/vec-mut-iter-borrow.rs:15:9
+  --> $DIR/vec-mut-iter-borrow.rs:5:9
    |
 LL |     for x in &mut xs {
    |                   --

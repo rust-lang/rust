@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:20:5
+  --> $DIR/closure-captures.rs:10:5
    |
 LL | fn one_closure(x: i32) {
    |                - help: consider changing this to be mutable: `mut x`
@@ -8,7 +8,7 @@ LL |     x = 1; //~ ERROR
    |     ^^^^^ cannot assign
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:22:5
+  --> $DIR/closure-captures.rs:12:5
    |
 LL | fn one_closure(x: i32) {
    |                - help: consider changing this to be mutable: `mut x`
@@ -17,7 +17,7 @@ LL |     x = 1; //~ ERROR
    |     ^^^^^ cannot assign
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:28:9
+  --> $DIR/closure-captures.rs:18:9
    |
 LL | fn two_closures(x: i32) {
    |                 - help: consider changing this to be mutable: `mut x`
@@ -26,7 +26,7 @@ LL |         x = 1; //~ ERROR
    |         ^^^^^ cannot assign
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:32:9
+  --> $DIR/closure-captures.rs:22:9
    |
 LL | fn two_closures(x: i32) {
    |                 - help: consider changing this to be mutable: `mut x`
@@ -35,7 +35,7 @@ LL |         x = 1; //~ ERROR
    |         ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:40:9
+  --> $DIR/closure-captures.rs:30:9
    |
 LL |         || //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -43,7 +43,7 @@ LL |          x = 1;}
    |          - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:39:12
+  --> $DIR/closure-captures.rs:29:12
    |
 LL |       fn_ref(|| {
    |  ____________^
@@ -52,7 +52,7 @@ LL | |          x = 1;}
    | |________________^
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:44:9
+  --> $DIR/closure-captures.rs:34:9
    |
 LL |         ||  //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -60,7 +60,7 @@ LL |     x = 1;});
    |     - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:43:12
+  --> $DIR/closure-captures.rs:33:12
    |
 LL |       fn_ref(move || {
    |  ____________^
@@ -69,7 +69,7 @@ LL | |     x = 1;});
    | |___________^
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:52:10
+  --> $DIR/closure-captures.rs:42:10
    |
 LL | fn two_closures_ref(x: i32) {
    |                     - help: consider changing this to be mutable: `mut x`
@@ -78,7 +78,7 @@ LL |          x = 1;} //~ ERROR
    |          ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:51:9
+  --> $DIR/closure-captures.rs:41:9
    |
 LL |         || //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -86,7 +86,7 @@ LL |          x = 1;} //~ ERROR
    |          - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:50:12
+  --> $DIR/closure-captures.rs:40:12
    |
 LL |       fn_ref(|| {
    |  ____________^
@@ -95,7 +95,7 @@ LL | |          x = 1;} //~ ERROR
    | |________________^
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/closure-captures.rs:56:5
+  --> $DIR/closure-captures.rs:46:5
    |
 LL | fn two_closures_ref(x: i32) {
    |                     - help: consider changing this to be mutable: `mut x`
@@ -104,7 +104,7 @@ LL |     x = 1;}); //~ ERROR
    |     ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:55:9
+  --> $DIR/closure-captures.rs:45:9
    |
 LL |         ||  //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -112,7 +112,7 @@ LL |     x = 1;}); //~ ERROR
    |     - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:54:12
+  --> $DIR/closure-captures.rs:44:12
    |
 LL |       fn_ref(move || {
    |  ____________^
@@ -121,7 +121,7 @@ LL | |     x = 1;}); //~ ERROR
    | |___________^
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:61:9
+  --> $DIR/closure-captures.rs:51:9
    |
 LL |         || //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -129,7 +129,7 @@ LL |         *x = 1;});
    |          - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:60:12
+  --> $DIR/closure-captures.rs:50:12
    |
 LL |       fn_ref(|| {
    |  ____________^
@@ -138,7 +138,7 @@ LL | |         *x = 1;});
    | |________________^
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/closure-captures.rs:64:9
+  --> $DIR/closure-captures.rs:54:9
    |
 LL |         || //~ ERROR
    |         ^^ cannot borrow as mutable
@@ -146,7 +146,7 @@ LL |         *x = 1;});
    |          - mutable borrow occurs due to use of `x` in closure
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/closure-captures.rs:63:12
+  --> $DIR/closure-captures.rs:53:12
    |
 LL |       fn_ref(move || {
    |  ____________^

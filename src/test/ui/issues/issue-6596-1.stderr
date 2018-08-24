@@ -1,5 +1,5 @@
 error: unknown macro variable `nonexistent`
-  --> $DIR/issue-6596-1.rs:14:9
+  --> $DIR/issue-6596-1.rs:3:9
    |
 LL |         $nonexistent
    |         ^^^^^^^^^^^^ unknown macro variable

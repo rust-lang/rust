@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/issue-3702-2.rs:26:14
+  --> $DIR/issue-3702-2.rs:16:14
    |
 LL |         self.to_int() + other.to_int() //~ ERROR multiple applicable items in scope
    |              ^^^^^^ multiple `to_int` found
    |
 note: candidate #1 is defined in an impl of the trait `ToPrimitive` for the type `isize`
-  --> $DIR/issue-3702-2.rs:12:5
+  --> $DIR/issue-3702-2.rs:2:5
    |
 LL |     fn to_int(&self) -> isize { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `Add` for the type `isize`
-  --> $DIR/issue-3702-2.rs:24:5
+  --> $DIR/issue-3702-2.rs:14:5
    |
 LL |     fn to_int(&self) -> isize { *self }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/union-copy.rs:24:6
+  --> $DIR/union-copy.rs:14:6
    |
 LL |     a: String
    |     --------- this field does not implement `Copy`

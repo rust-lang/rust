@@ -1,5 +1,5 @@
 error[E0572]: return statement outside of function body
-  --> $DIR/E0572.rs:11:18
+  --> $DIR/E0572.rs:1:18
    |
 LL | const FOO: u32 = return 0; //~ ERROR E0572
    |                  ^^^^^^^^

@@ -1,5 +1,5 @@
-error[E0605]: non-primitive cast: `[closure@$DIR/closure-no-fn-3.rs:16:27: 16:37 b:_]` as `fn() -> u8`
-  --> $DIR/closure-no-fn-3.rs:16:27
+error[E0605]: non-primitive cast: `[closure@$DIR/closure-no-fn-3.rs:6:27: 6:37 b:_]` as `fn() -> u8`
+  --> $DIR/closure-no-fn-3.rs:6:27
    |
 LL |     let baz: fn() -> u8 = (|| { b }) as fn() -> u8;
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^

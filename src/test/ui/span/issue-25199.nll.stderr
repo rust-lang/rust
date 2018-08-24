@@ -1,5 +1,5 @@
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:80:27
+  --> $DIR/issue-25199.rs:70:27
    |
 LL |     let test = Test{test: &container};
    |                           ^^^^^^^^^^ borrowed value does not live long enough

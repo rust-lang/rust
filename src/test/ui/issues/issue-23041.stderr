@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-23041.rs:16:22
+  --> $DIR/issue-23041.rs:6:22
    |
 LL |     b.downcast_ref::<fn(_)->_>(); //~ ERROR E0282
    |                      ^^^^^^^^ cannot infer type

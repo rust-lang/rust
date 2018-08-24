@@ -1,23 +1,23 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-static-bound.rs:19:5
+  --> $DIR/regions-static-bound.rs:9:5
    |
 LL |     t //[ll]~ ERROR E0312
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-static-bound.rs:25:5
+  --> $DIR/regions-static-bound.rs:15:5
    |
 LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of `u` [E0621]
    |     ^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/regions-static-bound.rs:28:5
+  --> $DIR/regions-static-bound.rs:18:5
    |
 LL |     static_id_indirect(&v); //[ll]~ ERROR explicit lifetime required in the type of `v` [E0621]
    |     ^^^^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-static-bound.rs:19:5
+  --> $DIR/regions-static-bound.rs:9:5
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
    |                        -- lifetime `'a` defined here
@@ -25,7 +25,7 @@ LL |     t //[ll]~ ERROR E0312
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error[E0621]: explicit lifetime required in the type of `u`
-  --> $DIR/regions-static-bound.rs:25:5
+  --> $DIR/regions-static-bound.rs:15:5
    |
 LL | fn error(u: &(), v: &()) {
    |             --- help: add explicit lifetime `'static` to the type of `u`: `&'static ()`
@@ -33,7 +33,7 @@ LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of 
    |     ^^^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/regions-static-bound.rs:28:5
+  --> $DIR/regions-static-bound.rs:18:5
    |
 LL | fn error(u: &(), v: &()) {
    |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`

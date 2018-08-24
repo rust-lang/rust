@@ -1,77 +1,77 @@
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:16:5
+  --> $DIR/variance-btree-invariant-types.rs:6:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:19:5
+  --> $DIR/variance-btree-invariant-types.rs:9:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:22:5
+  --> $DIR/variance-btree-invariant-types.rs:12:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:25:5
+  --> $DIR/variance-btree-invariant-types.rs:15:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:30:5
+  --> $DIR/variance-btree-invariant-types.rs:20:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:34:5
+  --> $DIR/variance-btree-invariant-types.rs:24:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:38:5
+  --> $DIR/variance-btree-invariant-types.rs:28:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:42:5
+  --> $DIR/variance-btree-invariant-types.rs:32:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:47:5
+  --> $DIR/variance-btree-invariant-types.rs:37:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:51:5
+  --> $DIR/variance-btree-invariant-types.rs:41:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:55:5
+  --> $DIR/variance-btree-invariant-types.rs:45:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 warning: not reporting region error due to nll
-  --> $DIR/variance-btree-invariant-types.rs:59:5
+  --> $DIR/variance-btree-invariant-types.rs:49:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:16:5
+  --> $DIR/variance-btree-invariant-types.rs:6:5
    |
 LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
    |                     ---- lifetime `'new` defined here
@@ -79,7 +79,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:19:5
+  --> $DIR/variance-btree-invariant-types.rs:9:5
    |
 LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (), &'new ()> {
    |                     ---- lifetime `'new` defined here
@@ -87,7 +87,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:22:5
+  --> $DIR/variance-btree-invariant-types.rs:12:5
    |
 LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'static (), ()> {
    |                        ---- lifetime `'new` defined here
@@ -95,7 +95,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:25:5
+  --> $DIR/variance-btree-invariant-types.rs:15:5
    |
 LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
    |                        ---- lifetime `'new` defined here
@@ -103,7 +103,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:30:5
+  --> $DIR/variance-btree-invariant-types.rs:20:5
    |
 LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
    |                    ---- lifetime `'new` defined here
@@ -112,7 +112,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:34:5
+  --> $DIR/variance-btree-invariant-types.rs:24:5
    |
 LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
    |                    ---- lifetime `'new` defined here
@@ -121,7 +121,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:38:5
+  --> $DIR/variance-btree-invariant-types.rs:28:5
    |
 LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
    |                       ---- lifetime `'new` defined here
@@ -130,7 +130,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:42:5
+  --> $DIR/variance-btree-invariant-types.rs:32:5
    |
 LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
    |                       ---- lifetime `'new` defined here
@@ -139,7 +139,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:47:5
+  --> $DIR/variance-btree-invariant-types.rs:37:5
    |
 LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
    |                    ---- lifetime `'new` defined here
@@ -148,7 +148,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:51:5
+  --> $DIR/variance-btree-invariant-types.rs:41:5
    |
 LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
    |                    ---- lifetime `'new` defined here
@@ -157,7 +157,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:55:5
+  --> $DIR/variance-btree-invariant-types.rs:45:5
    |
 LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
    |                       ---- lifetime `'new` defined here
@@ -166,7 +166,7 @@ LL |     v //~ ERROR mismatched types
    |     ^ returning this value requires that `'new` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/variance-btree-invariant-types.rs:59:5
+  --> $DIR/variance-btree-invariant-types.rs:49:5
    |
 LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
    |                       ---- lifetime `'new` defined here

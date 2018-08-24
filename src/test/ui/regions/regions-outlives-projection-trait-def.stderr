@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/regions-outlives-projection-trait-def.rs:31:1
+  --> $DIR/regions-outlives-projection-trait-def.rs:21:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

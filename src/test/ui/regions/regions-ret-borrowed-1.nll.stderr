@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/regions-ret-borrowed-1.rs:20:14
+  --> $DIR/regions-ret-borrowed-1.rs:10:14
    |
 LL |     with(|o| o)
    |              ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-ret-borrowed-1.rs:20:14
+  --> $DIR/regions-ret-borrowed-1.rs:10:14
    |
 LL |     with(|o| o)
    |           -- ^ returning this value requires that `'1` must outlive `'2`

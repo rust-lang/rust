@@ -1,5 +1,5 @@
 error: expected one of `>`, identifier, lifetime, or type, found `,`
-  --> $DIR/issue-20616-7.rs:40:22
+  --> $DIR/issue-20616-7.rs:30:22
    |
 LL | type Type_7 = Box<(),,>; //~ error: expected one of `>`, identifier, lifetime, or type, found `,`
    |                      ^ expected one of `>`, identifier, lifetime, or type here

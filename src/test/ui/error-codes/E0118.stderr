@@ -1,5 +1,5 @@
 error[E0118]: no base type found for inherent implementation
-  --> $DIR/E0118.rs:11:6
+  --> $DIR/E0118.rs:1:6
    |
 LL | impl (u8, u8) { //~ ERROR E0118
    |      ^^^^^^^^ impl requires a base type

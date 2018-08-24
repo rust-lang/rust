@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/const-array-oob-arith.rs:17:45
+  --> $DIR/const-array-oob-arith.rs:7:45
    |
 LL | const BLUB: [i32; (ARR[0] - 40) as usize] = [5]; //~ ERROR: mismatched types
    |                                             ^^^ expected an array with a fixed size of 2 elements, found one with 1 elements
@@ -8,7 +8,7 @@ LL | const BLUB: [i32; (ARR[0] - 40) as usize] = [5]; //~ ERROR: mismatched type
               found type `[i32; 1]`
 
 error[E0308]: mismatched types
-  --> $DIR/const-array-oob-arith.rs:18:44
+  --> $DIR/const-array-oob-arith.rs:8:44
    |
 LL | const BOO: [i32; (ARR[0] - 41) as usize] = [5, 99]; //~ ERROR: mismatched types
    |                                            ^^^^^^^ expected an array with a fixed size of 1 elements, found one with 2 elements

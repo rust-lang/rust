@@ -1,17 +1,17 @@
 error[E0165]: irrefutable while-let pattern
-  --> $DIR/while-let.rs:23:10
+  --> $DIR/while-let.rs:13:10
    |
 LL |     foo!(a, 1, { //~ ERROR irrefutable while-let
    |          ^ irrefutable pattern
 
 error[E0165]: irrefutable while-let pattern
-  --> $DIR/while-let.rs:26:10
+  --> $DIR/while-let.rs:16:10
    |
 LL |     bar!(a, 1, { //~ ERROR irrefutable while-let
    |          ^ irrefutable pattern
 
 error[E0165]: irrefutable while-let pattern
-  --> $DIR/while-let.rs:32:15
+  --> $DIR/while-let.rs:22:15
    |
 LL |     while let a = 1 { //~ ERROR irrefutable while-let
    |               ^ irrefutable pattern

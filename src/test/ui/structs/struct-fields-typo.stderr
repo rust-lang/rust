@@ -1,5 +1,5 @@
 error[E0609]: no field `baa` on type `BuildData`
-  --> $DIR/struct-fields-typo.rs:21:17
+  --> $DIR/struct-fields-typo.rs:11:17
    |
 LL |     let x = foo.baa;//~ no field `baa` on type `BuildData`
    |                 ^^^ did you mean `bar`?

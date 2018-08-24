@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-both-are-structs-4.rs:16:11
+  --> $DIR/ex3-both-anon-regions-both-are-structs-4.rs:7:11
    |
 LL |     x.a = x.b; //~ ERROR lifetime mismatch
    |           ^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex3-both-anon-regions-both-are-structs-4.rs:16:5
+  --> $DIR/ex3-both-anon-regions-both-are-structs-4.rs:7:5
    |
 LL | fn foo(mut x: Ref) {
    |        -----

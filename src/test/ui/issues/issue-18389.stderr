@@ -1,5 +1,5 @@
 error[E0445]: private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
-  --> $DIR/issue-18389.rs:17:1
+  --> $DIR/issue-18389.rs:7:1
    |
 LL | / pub trait Public: Private<
 LL | | //~^ ERROR private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface

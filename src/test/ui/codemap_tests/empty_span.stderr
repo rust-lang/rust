@@ -1,5 +1,5 @@
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `&'static main::Foo`
-  --> $DIR/empty_span.rs:17:5
+  --> $DIR/empty_span.rs:7:5
    |
 LL |     unsafe impl Send for &'static Foo { } //~ ERROR cross-crate traits with a default impl
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type

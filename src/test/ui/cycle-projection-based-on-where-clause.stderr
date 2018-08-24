@@ -1,18 +1,18 @@
 error[E0391]: cycle detected when computing the bounds for type parameter `T`
-  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+  --> $DIR/cycle-projection-based-on-where-clause.rs:17:19
    |
 LL |           T : Add<T::Item>
    |                   ^^^^^^^
    |
    = note: ...which again requires computing the bounds for type parameter `T`, completing the cycle
 note: cycle used when processing `A`
-  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+  --> $DIR/cycle-projection-based-on-where-clause.rs:17:19
    |
 LL |           T : Add<T::Item>
    |                   ^^^^^^^
 
 error[E0220]: associated type `Item` not found for `T`
-  --> $DIR/cycle-projection-based-on-where-clause.rs:27:19
+  --> $DIR/cycle-projection-based-on-where-clause.rs:17:19
    |
 LL |           T : Add<T::Item>
    |                   ^^^^^^^ associated type `Item` not found

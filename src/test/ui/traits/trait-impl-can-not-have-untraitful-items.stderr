@@ -1,17 +1,17 @@
 error[E0438]: const `BAR` is not a member of trait `A`
-  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:15:5
+  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:4:5
    |
 LL |     const BAR: () = (); //~ ERROR const `BAR` is not a member of trait `A`
    |     ^^^^^^^^^^^^^^^^^^^ not a member of trait `A`
 
 error[E0437]: type `Baz` is not a member of trait `A`
-  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:16:5
+  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:5:5
    |
 LL |     type Baz = (); //~ ERROR type `Baz` is not a member of trait `A`
    |     ^^^^^^^^^^^^^^ not a member of trait `A`
 
 error[E0407]: method `foo` is not a member of trait `A`
-  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:17:5
+  --> $DIR/trait-impl-can-not-have-untraitful-items.rs:6:5
    |
 LL |     fn foo(&self) { } //~ ERROR method `foo` is not a member of trait `A`
    |     ^^^^^^^^^^^^^^^^^ not a member of trait `A`

@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/const-fn-stability-calls-3.rs:23:1
+  --> $DIR/const-fn-stability-calls-3.rs:13:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     let x = foo(); // use outside a constant is ok

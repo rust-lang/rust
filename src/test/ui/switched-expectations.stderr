@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/switched-expectations.rs:13:30
+  --> $DIR/switched-expectations.rs:3:30
    |
 LL |     let ref string: String = var; //~ ERROR mismatched types [E0308]
    |                              ^^^ expected struct `std::string::String`, found i32

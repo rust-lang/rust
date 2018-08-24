@@ -1,5 +1,5 @@
 error: expected one of `!` or `::`, found `<eof>`
-  --> $DIR/trailing-plus-in-bounds.rs:19:1
+  --> $DIR/trailing-plus-in-bounds.rs:9:1
    |
 LL | FAIL
    | ^^^^ expected one of `!` or `::` here

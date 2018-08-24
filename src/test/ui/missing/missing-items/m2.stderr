@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
-  --> $DIR/m2.rs:19:1
+  --> $DIR/m2.rs:9:1
    |
 LL | impl m1::X for X { //~ ERROR not all trait items implemented
    | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method` in implementation

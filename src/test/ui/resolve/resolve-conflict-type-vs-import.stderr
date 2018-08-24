@@ -1,5 +1,5 @@
 error[E0255]: the name `Iter` is defined multiple times
-  --> $DIR/resolve-conflict-type-vs-import.rs:13:1
+  --> $DIR/resolve-conflict-type-vs-import.rs:3:1
    |
 LL | use std::slice::Iter;
    |     ---------------- previous import of the type `Iter` here

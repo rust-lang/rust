@@ -1,5 +1,5 @@
 error[E0609]: no field `zz` on type `Foo`
-  --> $DIR/issue-36798_unknown_field.rs:17:7
+  --> $DIR/issue-36798_unknown_field.rs:7:7
    |
 LL |     f.zz; //~ ERROR no field
    |       ^^ unknown field

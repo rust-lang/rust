@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/pat-tuple-bad-type.rs:15:9
+  --> $DIR/pat-tuple-bad-type.rs:5:9
    |
 LL |     let x;
    |         - consider giving `x` a type
@@ -10,7 +10,7 @@ LL |         (..) => {} //~ ERROR type annotations needed
    = note: type must be known at this point
 
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-bad-type.rs:20:9
+  --> $DIR/pat-tuple-bad-type.rs:10:9
    |
 LL |         (..) => {} //~ ERROR mismatched types
    |         ^^^^ expected u8, found ()

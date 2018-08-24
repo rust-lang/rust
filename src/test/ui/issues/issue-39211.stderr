@@ -1,5 +1,5 @@
 error[E0220]: associated type `Row` not found for `M`
-  --> $DIR/issue-39211.rs:21:17
+  --> $DIR/issue-39211.rs:11:17
    |
 LL |     let a = [3; M::Row::DIM]; //~ ERROR associated type `Row` not found for `M`
    |                 ^^^^^^^^^^^ associated type `Row` not found

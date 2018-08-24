@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-16994.rs:18:1
+  --> $DIR/issue-16994.rs:8:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     cb(Box::new(|(k, &(ref v, b))| (*k, v.clone(), b)));

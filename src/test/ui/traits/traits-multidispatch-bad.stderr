@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/traits-multidispatch-bad.rs:29:17
+  --> $DIR/traits-multidispatch-bad.rs:19:17
    |
 LL |     test(22i32, 44i32); //~ ERROR mismatched types
    |                 ^^^^^ expected u32, found i32

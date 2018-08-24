@@ -1,5 +1,5 @@
 error[E0255]: the name `foo` is defined multiple times
-  --> $DIR/E0255.rs:13:1
+  --> $DIR/E0255.rs:3:1
    |
 LL | use bar::foo;
    |     -------- previous import of the value `foo` here

@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `DecoderError` in this scope
-  --> $DIR/issue-30589.rs:13:23
+  --> $DIR/issue-30589.rs:3:23
    |
 LL | impl fmt::Display for DecoderError { //~ ERROR cannot find type `DecoderError` in this scope
    |                       ^^^^^^^^^^^^ not found in this scope

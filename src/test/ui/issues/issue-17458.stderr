@@ -1,5 +1,5 @@
 error[E0658]: casting pointers to integers in statics is unstable (see issue #51910)
-  --> $DIR/issue-17458.rs:11:19
+  --> $DIR/issue-17458.rs:1:19
    |
 LL | static X: usize = 0 as *const usize as usize;
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^

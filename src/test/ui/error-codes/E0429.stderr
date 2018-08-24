@@ -1,5 +1,5 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/E0429.rs:11:5
+  --> $DIR/E0429.rs:1:5
    |
 LL | use std::fmt::self; //~ ERROR E0429
    |     ^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-12187-2.rs:16:10
+  --> $DIR/issue-12187-2.rs:6:10
    |
 LL |     let &v = new();
    |         -^

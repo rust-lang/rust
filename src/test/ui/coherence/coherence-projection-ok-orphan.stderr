@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/coherence-projection-ok-orphan.rs:29:1
+  --> $DIR/coherence-projection-ok-orphan.rs:19:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

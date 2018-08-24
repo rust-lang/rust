@@ -1,5 +1,5 @@
 error[E0599]: no method named `dog_age` found for type `animal::Dog` in the current scope
-  --> $DIR/private-field.rs:26:23
+  --> $DIR/private-field.rs:16:23
    |
 LL |     pub struct Dog {
    |     -------------- method `dog_age` not found for this

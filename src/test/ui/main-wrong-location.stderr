@@ -2,7 +2,7 @@ error[E0601]: `main` function not found in crate `main_wrong_location`
    |
    = note: the main function must be defined at the crate level but you have one or more functions named 'main' that are not defined at the crate level. Either move the definition or attach the `#[main]` attribute to override this behavior.
 note: here is a function named 'main'
-  --> $DIR/main-wrong-location.rs:14:5
+  --> $DIR/main-wrong-location.rs:4:5
    |
 LL |     fn main() { }
    |     ^^^^^^^^^^^^^

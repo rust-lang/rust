@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex2b-push-no-existing-names.rs:16:12
+  --> $DIR/ex2b-push-no-existing-names.rs:6:12
    |
 LL |     x.push(y); //~ ERROR lifetime mismatch
    |            ^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/ex2b-push-no-existing-names.rs:16:5
+  --> $DIR/ex2b-push-no-existing-names.rs:6:5
    |
 LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
    |        -                      - has type `Ref<'1, i32>`

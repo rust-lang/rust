@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-51415.rs:16:46
+  --> $DIR/issue-51415.rs:6:46
    |
 LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
    |                                              ^-

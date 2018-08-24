@@ -1,5 +1,5 @@
 error[E0033]: type `std::boxed::Box<(dyn MyTrait + 'static)>` cannot be dereferenced
-  --> $DIR/issue-4972.rs:24:25
+  --> $DIR/issue-4972.rs:14:25
    |
 LL |         TraitWrapper::A(box ref map) => map, //~ ERROR cannot be dereferenced
    |                         ^^^^^^^^^^^ type `std::boxed::Box<(dyn MyTrait + 'static)>` cannot be dereferenced

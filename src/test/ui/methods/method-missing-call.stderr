@@ -1,13 +1,13 @@
 error[E0615]: attempted to take value of method `get_x` on type `Point`
-  --> $DIR/method-missing-call.rs:32:26
+  --> $DIR/method-missing-call.rs:22:26
    |
 LL |                         .get_x;//~ ERROR attempted to take value of method `get_x` on type `Point`
    |                          ^^^^^
    |
    = help: maybe a `()` to call it is missing?
 
-error[E0615]: attempted to take value of method `filter_map` on type `std::iter::Filter<std::iter::Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/method-missing-call.rs:37:20: 37:25]>, [closure@$DIR/method-missing-call.rs:38:23: 38:35]>`
-  --> $DIR/method-missing-call.rs:39:16
+error[E0615]: attempted to take value of method `filter_map` on type `std::iter::Filter<std::iter::Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/method-missing-call.rs:27:20: 27:25]>, [closure@$DIR/method-missing-call.rs:28:23: 28:35]>`
+  --> $DIR/method-missing-call.rs:29:16
    |
 LL |               .filter_map; //~ ERROR attempted to take value of method `filter_map` on type
    |                ^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0658]: the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
-  --> $DIR/feature-gate-rustc-attrs-1.rs:15:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:5:1
    |
 LL | #[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used 
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
-  --> $DIR/feature-gate-rustc-attrs-1.rs:16:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:6:1
    |
 LL | #[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
    | ^^^^^^^^^^^^^^

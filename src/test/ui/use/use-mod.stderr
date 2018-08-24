@@ -1,5 +1,5 @@
 error[E0430]: `self` import can only appear once in an import list
-  --> $DIR/use-mod.rs:12:5
+  --> $DIR/use-mod.rs:2:5
    |
 LL |     self,
    |     ^^^^ can only appear once in an import list
@@ -8,13 +8,13 @@ LL |     self
    |     ---- another `self` import appears here
 
 error[E0431]: `self` import can only appear in an import list with a non-empty prefix
-  --> $DIR/use-mod.rs:19:6
+  --> $DIR/use-mod.rs:9:6
    |
 LL | use {self};
    |      ^^^^ can only appear in an import list with a non-empty prefix
 
 error[E0252]: the name `bar` is defined multiple times
-  --> $DIR/use-mod.rs:15:5
+  --> $DIR/use-mod.rs:5:5
    |
 LL |     self,
    |     ---- previous import of the module `bar` here

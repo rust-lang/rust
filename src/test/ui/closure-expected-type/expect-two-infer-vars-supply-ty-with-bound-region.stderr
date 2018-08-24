@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:18:27
+  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:8:27
    |
 LL |     with_closure(|x: u32, y| {}); //~ ERROR E0282
    |                           ^ consider giving this closure parameter a type

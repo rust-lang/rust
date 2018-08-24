@@ -1,35 +1,35 @@
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/collections.rs:11:12
+  --> $DIR/collections.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/collections.rs:66:90
+  --> $DIR/collections.rs:56:90
    |
 LL | fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>
    |                                                                                          ^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/collections.rs:78:69
+  --> $DIR/collections.rs:68:69
    |
 LL | fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
    |                                                                     ^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/collections.rs:27:71
+  --> $DIR/collections.rs:17:71
    |
 LL |         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
    |                                                                       ^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/collections.rs:34:50
+  --> $DIR/collections.rs:24:50
    |
 LL |     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter>;
    |                                                  ^^^^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/collections.rs:60:50
+  --> $DIR/collections.rs:50:50
    |
 LL |     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter> {
    |                                                  ^^^^^ lifetime parameter not allowed

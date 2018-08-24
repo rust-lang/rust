@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-self-is-anon.rs:17:19
+  --> $DIR/ex3-both-anon-regions-self-is-anon.rs:7:19
    |
 LL |     fn foo<'a>(&self, x: &Foo) -> &Foo {
    |                          ----     ----

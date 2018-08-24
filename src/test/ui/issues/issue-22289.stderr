@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `i32` as `&(dyn std::any::Any + 'static)`
-  --> $DIR/issue-22289.rs:12:5
+  --> $DIR/issue-22289.rs:2:5
    |
 LL |     0 as &std::any::Any; //~ ERROR non-primitive cast
    |     ^^^^^^^^^^^^^^^^^^^

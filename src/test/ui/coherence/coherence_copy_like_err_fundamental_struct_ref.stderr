@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/coherence_copy_like_err_fundamental_struct_ref.rs:34:1
+  --> $DIR/coherence_copy_like_err_fundamental_struct_ref.rs:24:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

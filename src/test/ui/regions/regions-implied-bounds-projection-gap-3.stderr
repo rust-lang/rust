@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/regions-implied-bounds-projection-gap-3.rs:33:1
+  --> $DIR/regions-implied-bounds-projection-gap-3.rs:23:1
    |
 LL | fn main() { } //~ ERROR compilation successful
    | ^^^^^^^^^^^^^

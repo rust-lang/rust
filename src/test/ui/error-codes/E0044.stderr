@@ -1,5 +1,5 @@
 error[E0044]: foreign items may not have type parameters
-  --> $DIR/E0044.rs:12:5
+  --> $DIR/E0044.rs:2:5
    |
 LL |     fn sqrt<T>(f: T) -> T;
    |     ^^^^^^^^^^^^^^^^^^^^^^ can't have type parameters

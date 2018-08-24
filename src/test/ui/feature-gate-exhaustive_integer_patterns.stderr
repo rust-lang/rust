@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/feature-gate-exhaustive_integer_patterns.rs:13:11
+  --> $DIR/feature-gate-exhaustive_integer_patterns.rs:3:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns: `_` not covered
    |           ^ pattern `_` not covered

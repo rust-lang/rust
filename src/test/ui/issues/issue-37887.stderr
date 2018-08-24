@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `libc`
-  --> $DIR/issue-37887.rs:13:9
+  --> $DIR/issue-37887.rs:3:9
    |
 LL |     use libc::*; //~ ERROR unresolved import
    |         ^^^^ Maybe a missing `extern crate libc;`?
 
 error[E0658]: use of unstable library feature 'libc': use `libc` from crates.io (see issue #27783)
-  --> $DIR/issue-37887.rs:12:5
+  --> $DIR/issue-37887.rs:2:5
    |
 LL |     extern crate libc; //~ ERROR use of unstable
    |     ^^^^^^^^^^^^^^^^^^

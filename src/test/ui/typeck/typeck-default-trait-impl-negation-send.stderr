@@ -1,12 +1,12 @@
 error[E0277]: `MyNotSendable` cannot be sent between threads safely
-  --> $DIR/typeck-default-trait-impl-negation-send.rs:29:5
+  --> $DIR/typeck-default-trait-impl-negation-send.rs:19:5
    |
 LL |     is_send::<MyNotSendable>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `MyNotSendable` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `MyNotSendable`
 note: required by `is_send`
-  --> $DIR/typeck-default-trait-impl-negation-send.rs:25:1
+  --> $DIR/typeck-default-trait-impl-negation-send.rs:15:1
    |
 LL | fn is_send<T: Send>() {}
    | ^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `f` as mutable more than once at a time
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:22:16
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:12:16
    |
 LL |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
@@ -12,7 +12,7 @@ LL |     }));
    |       - first borrow ends here
 
 error[E0596]: cannot borrow immutable borrowed content `*f` as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5
    |
 LL | fn test2<F>(f: &F) where F: FnMut() {
    |                -- use `&mut F` here to make mutable
@@ -20,7 +20,7 @@ LL |     (*f)();
    |     ^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `Box` content `*f.f` of immutable binding as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:34:5
    |
 LL | fn test4(f: &Test) {
    |             ----- use `&mut Test` here to make mutable
@@ -28,7 +28,7 @@ LL |     f.f.call_mut(())
    |     ^^^ cannot borrow as mutable
 
 error[E0504]: cannot move `f` into closure because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:56:13
    |
 LL |     f(Box::new(|a| {
    |     - borrow of `f` occurs here
@@ -36,7 +36,7 @@ LL |         foo(f);
    |             ^ move into closure occurs here
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:56:13
    |
 LL |     let mut f = move |g: Box<FnMut(isize)>, b: isize| {
    |         ----- captured outer variable

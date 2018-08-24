@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/object-lifetime-default-mybox.rs:37:5
+  --> $DIR/object-lifetime-default-mybox.rs:27:5
    |
 LL | fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
    |                    -------------------- this parameter and the return type are declared with different lifetimes...
@@ -11,15 +11,15 @@ LL |     a //~ ERROR lifetime mismatch
    |     ^ ...but data from `a` is returned here
 
 error[E0308]: mismatched types
-  --> $DIR/object-lifetime-default-mybox.rs:41:11
+  --> $DIR/object-lifetime-default-mybox.rs:31:11
    |
 LL |     load0(ss) //~ ERROR mismatched types
    |           ^^ lifetime mismatch
    |
    = note: expected type `&MyBox<(dyn SomeTrait + 'static)>`
               found type `&MyBox<(dyn SomeTrait + 'a)>`
-note: the lifetime 'a as defined on the function body at 40:10...
-  --> $DIR/object-lifetime-default-mybox.rs:40:10
+note: the lifetime 'a as defined on the function body at 30:10...
+  --> $DIR/object-lifetime-default-mybox.rs:30:10
    |
 LL | fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
    |          ^^

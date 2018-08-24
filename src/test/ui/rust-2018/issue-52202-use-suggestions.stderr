@@ -1,5 +1,5 @@
 error[E0422]: cannot find struct, variant or union type `Drain` in this scope
-  --> $DIR/issue-52202-use-suggestions.rs:21:14
+  --> $DIR/issue-52202-use-suggestions.rs:11:14
    |
 LL |     let _d = Drain {};
    |              ^^^^^ not found in this scope

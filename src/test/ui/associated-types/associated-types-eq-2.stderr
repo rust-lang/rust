@@ -1,5 +1,5 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/associated-types-eq-2.rs:26:30
+  --> $DIR/associated-types-eq-2.rs:16:30
    |
 LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
    |                              ^^^^^ associated type not allowed here

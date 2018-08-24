@@ -1,5 +1,5 @@
 error: option_env! takes 1 argument
-  --> $DIR/extoption_env-too-many-args.rs:11:13
+  --> $DIR/extoption_env-too-many-args.rs:1:13
    |
 LL | fn main() { option_env!("one", "two"); } //~ ERROR: option_env! takes 1 argument
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^

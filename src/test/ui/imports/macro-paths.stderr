@@ -1,34 +1,34 @@
 error[E0659]: `bar` is ambiguous
-  --> $DIR/macro-paths.rs:23:5
+  --> $DIR/macro-paths.rs:13:5
    |
 LL |     bar::m! { //~ ERROR ambiguous
    |     ^^^^^^
    |
 note: `bar` could refer to the name defined here
-  --> $DIR/macro-paths.rs:24:9
+  --> $DIR/macro-paths.rs:14:9
    |
 LL |         mod bar { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `bar` could also refer to the name imported here
-  --> $DIR/macro-paths.rs:22:9
+  --> $DIR/macro-paths.rs:12:9
    |
 LL |     use foo::*;
    |         ^^^^^^
    = note: macro-expanded items do not shadow when used in a macro invocation path
 
 error[E0659]: `baz` is ambiguous
-  --> $DIR/macro-paths.rs:33:5
+  --> $DIR/macro-paths.rs:23:5
    |
 LL |     baz::m! { //~ ERROR ambiguous
    |     ^^^^^^
    |
 note: `baz` could refer to the name defined here
-  --> $DIR/macro-paths.rs:34:9
+  --> $DIR/macro-paths.rs:24:9
    |
 LL |         mod baz { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `baz` could also refer to the name defined here
-  --> $DIR/macro-paths.rs:28:1
+  --> $DIR/macro-paths.rs:18:1
    |
 LL | / pub mod baz {
 LL | |     pub use two_macros::m;

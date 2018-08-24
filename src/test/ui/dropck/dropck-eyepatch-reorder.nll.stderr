@@ -1,5 +1,5 @@
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:64:19
+  --> $DIR/dropck-eyepatch-reorder.rs:54:19
    |
 LL |     dt = Dt("dt", &c_shortest);
    |                   ^^^^^^^^^^^ borrowed value does not live long enough

@@ -1,17 +1,17 @@
 error: unused attribute
-  --> $DIR/invalid-plugin-attr.rs:14:1
+  --> $DIR/invalid-plugin-attr.rs:4:1
    |
 LL | #[plugin(bla)]  //~ ERROR unused attribute
    | ^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/invalid-plugin-attr.rs:11:9
+  --> $DIR/invalid-plugin-attr.rs:1:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/invalid-plugin-attr.rs:14:1
+  --> $DIR/invalid-plugin-attr.rs:4:1
    |
 LL | #[plugin(bla)]  //~ ERROR unused attribute
    | ^^^^^^^^^^^^^^

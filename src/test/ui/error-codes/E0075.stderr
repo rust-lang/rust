@@ -1,5 +1,5 @@
 error[E0075]: SIMD vector cannot be empty
-  --> $DIR/E0075.rs:14:1
+  --> $DIR/E0075.rs:4:1
    |
 LL | struct Bad; //~ ERROR E0075
    | ^^^^^^^^^^^

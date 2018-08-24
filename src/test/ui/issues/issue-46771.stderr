@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `main::Foo`
-  --> $DIR/issue-46771.rs:13:23
+  --> $DIR/issue-46771.rs:3:23
    |
 LL |     struct Foo;
    |     ----------- `main::Foo` defined here

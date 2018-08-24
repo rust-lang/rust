@@ -1,5 +1,5 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/issue-52442.rs:12:14
+  --> $DIR/issue-52442.rs:2:14
    |
 LL |     [();  { &loop { break } as *const _ as usize } ]; //~ ERROR unimplemented expression type
    |              ^^^^^^^^^^^^^^

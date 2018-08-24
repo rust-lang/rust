@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-17718-constants-not-static.rs:15:31
+  --> $DIR/issue-17718-constants-not-static.rs:5:31
    |
 LL | fn foo() -> &'static usize { &id(FOO) }
    |                               ^^^^^^^ - temporary value only lives until here

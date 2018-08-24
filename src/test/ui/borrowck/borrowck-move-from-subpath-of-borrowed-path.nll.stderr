@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `*a` because it is borrowed
-  --> $DIR/borrowck-move-from-subpath-of-borrowed-path.rs:22:13
+  --> $DIR/borrowck-move-from-subpath-of-borrowed-path.rs:12:13
    |
 LL |     let b = &a;
    |             -- borrow of `a` occurs here

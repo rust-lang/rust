@@ -1,5 +1,5 @@
 error[E0658]: language items are subject to change
-  --> $DIR/feature-gate-lang-items.rs:11:1
+  --> $DIR/feature-gate-lang-items.rs:1:1
    |
 LL | #[lang="foo"]   //~ ERROR language items are subject to change
    | ^^^^^^^^^^^^^

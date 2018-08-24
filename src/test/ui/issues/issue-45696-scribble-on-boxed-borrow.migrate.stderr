@@ -1,5 +1,5 @@
 warning[E0597]: `*s.0` does not live long enough
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:63:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:53:5
    |
 LL |     &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
    |     ^^^^^^^^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
 LL | }
    | - `*s.0` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 62:14...
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:14
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 52:14...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:52:14
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              ^^
@@ -17,7 +17,7 @@ LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
            This warning will become a hard error in the future.
 
 warning[E0597]: `*s.0` does not live long enough
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:63:5
    |
 LL |     &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
    |     ^^^^^^^^^^^^ borrowed value does not live long enough
@@ -25,8 +25,8 @@ LL |     &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
 LL | }
    | - `*s.0` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 72:20...
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:72:20
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 62:20...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:20
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    ^^
@@ -35,7 +35,7 @@ LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
            This warning will become a hard error in the future.
 
 warning[E0597]: `*s.0` does not live long enough
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:83:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
    |
 LL |     &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
    |     ^^^^^^^^^^^^^ borrowed value does not live long enough
@@ -43,8 +43,8 @@ LL |     &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
 LL | }
    | - `*s.0` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 82:26...
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:26
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 72:26...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:72:26
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          ^^
@@ -53,7 +53,7 @@ LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
            This warning will become a hard error in the future.
 
 error: compilation successful
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:89:1
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:79:1
    |
 LL | / fn main() { //[ast]~ ERROR compilation successful
 LL | |      //[migrate]~^ ERROR compilation successful

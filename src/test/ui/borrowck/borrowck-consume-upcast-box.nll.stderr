@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `b`
-  --> $DIR/borrowck-consume-upcast-box.rs:20:13
+  --> $DIR/borrowck-consume-upcast-box.rs:10:13
    |
 LL |     consume(b);
    |             - value moved here

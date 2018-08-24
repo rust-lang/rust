@@ -1,5 +1,5 @@
 error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
-  --> $DIR/issue-46332.rs:19:5
+  --> $DIR/issue-46332.rs:9:5
    |
 LL |     TyUInt {};
    |     ^^^^^^ did you mean `TyUint`?

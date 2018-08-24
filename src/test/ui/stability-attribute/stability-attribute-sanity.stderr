@@ -1,137 +1,137 @@
 error[E0541]: unknown meta item 'reason'
-  --> $DIR/stability-attribute-sanity.rs:18:42
+  --> $DIR/stability-attribute-sanity.rs:8:42
    |
 LL |     #[stable(feature = "a", since = "b", reason)] //~ ERROR unknown meta item 'reason' [E0541]
    |                                          ^^^^^^ expected one of `since`, `note`
 
 error[E0539]: incorrect meta item
-  --> $DIR/stability-attribute-sanity.rs:21:29
+  --> $DIR/stability-attribute-sanity.rs:11:29
    |
 LL |     #[stable(feature = "a", since)] //~ ERROR incorrect meta item [E0539]
    |                             ^^^^^
 
 error[E0539]: incorrect meta item
-  --> $DIR/stability-attribute-sanity.rs:24:14
+  --> $DIR/stability-attribute-sanity.rs:14:14
    |
 LL |     #[stable(feature, since = "a")] //~ ERROR incorrect meta item [E0539]
    |              ^^^^^^^
 
 error[E0539]: incorrect meta item
-  --> $DIR/stability-attribute-sanity.rs:27:29
+  --> $DIR/stability-attribute-sanity.rs:17:29
    |
 LL |     #[stable(feature = "a", since(b))] //~ ERROR incorrect meta item [E0539]
    |                             ^^^^^^^^
 
 error[E0539]: incorrect meta item
-  --> $DIR/stability-attribute-sanity.rs:30:14
+  --> $DIR/stability-attribute-sanity.rs:20:14
    |
 LL |     #[stable(feature(b), since = "a")] //~ ERROR incorrect meta item [E0539]
    |              ^^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:35:5
+  --> $DIR/stability-attribute-sanity.rs:25:5
    |
 LL |     #[unstable] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:38:5
+  --> $DIR/stability-attribute-sanity.rs:28:5
    |
 LL |     #[unstable = "b"] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:41:5
+  --> $DIR/stability-attribute-sanity.rs:31:5
    |
 LL |     #[stable] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:44:5
+  --> $DIR/stability-attribute-sanity.rs:34:5
    |
 LL |     #[stable = "a"] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:48:5
+  --> $DIR/stability-attribute-sanity.rs:38:5
    |
 LL |     #[rustc_deprecated] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0548]: incorrect stability attribute type
-  --> $DIR/stability-attribute-sanity.rs:52:5
+  --> $DIR/stability-attribute-sanity.rs:42:5
    |
 LL |     #[rustc_deprecated = "a"] //~ ERROR incorrect stability attribute type [E0548]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0546]: missing 'feature'
-  --> $DIR/stability-attribute-sanity.rs:57:5
+  --> $DIR/stability-attribute-sanity.rs:47:5
    |
 LL |     #[unstable(issue = "0")] //~ ERROR missing 'feature' [E0546]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0547]: missing 'issue'
-  --> $DIR/stability-attribute-sanity.rs:60:5
+  --> $DIR/stability-attribute-sanity.rs:50:5
    |
 LL |     #[unstable(feature = "b")] //~ ERROR missing 'issue' [E0547]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0546]: missing 'feature'
-  --> $DIR/stability-attribute-sanity.rs:63:5
+  --> $DIR/stability-attribute-sanity.rs:53:5
    |
 LL |     #[stable(since = "a")] //~ ERROR missing 'feature' [E0546]
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0542]: missing 'since'
-  --> $DIR/stability-attribute-sanity.rs:68:5
+  --> $DIR/stability-attribute-sanity.rs:58:5
    |
 LL |     #[stable(feature = "a")] //~ ERROR missing 'since' [E0542]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0542]: missing 'since'
-  --> $DIR/stability-attribute-sanity.rs:72:5
+  --> $DIR/stability-attribute-sanity.rs:62:5
    |
 LL |     #[rustc_deprecated(reason = "a")] //~ ERROR missing 'since' [E0542]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:77:1
+  --> $DIR/stability-attribute-sanity.rs:67:1
    |
 LL | #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:81:1
+  --> $DIR/stability-attribute-sanity.rs:71:1
    |
 LL | #[unstable(feature = "b", issue = "0")] //~ ERROR multiple stability levels [E0544]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:85:1
+  --> $DIR/stability-attribute-sanity.rs:75:1
    |
 LL | #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0540]: multiple rustc_deprecated attributes
-  --> $DIR/stability-attribute-sanity.rs:93:1
+  --> $DIR/stability-attribute-sanity.rs:83:1
    |
 LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0553]: multiple rustc_const_unstable attributes
-  --> $DIR/stability-attribute-sanity.rs:93:1
+  --> $DIR/stability-attribute-sanity.rs:83:1
    |
 LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Invalid stability or deprecation version found
-  --> $DIR/stability-attribute-sanity.rs:93:1
+  --> $DIR/stability-attribute-sanity.rs:83:1
    |
 LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:98:1
+  --> $DIR/stability-attribute-sanity.rs:88:1
    |
 LL | fn deprecated_without_unstable_or_stable() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

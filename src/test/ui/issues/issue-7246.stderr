@@ -1,11 +1,11 @@
 error: unreachable statement
-  --> $DIR/issue-7246.rs:17:5
+  --> $DIR/issue-7246.rs:7:5
    |
 LL |     if *ptr::null() {}; //~ ERROR unreachable
    |     ^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-7246.rs:11:9
+  --> $DIR/issue-7246.rs:1:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

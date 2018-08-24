@@ -1,5 +1,5 @@
 error[E0243]: wrong number of type arguments: expected 1, found 0
-  --> $DIR/E0243.rs:12:17
+  --> $DIR/E0243.rs:2:17
    |
 LL | struct Bar { x: Foo }
    |                 ^^^ expected 1 type argument

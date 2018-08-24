@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-27078.rs:15:12
+  --> $DIR/issue-27078.rs:5:12
    |
 LL |     fn foo(self) -> &'static i32 {
    |            ^^^^ doesn't have a size known at compile-time

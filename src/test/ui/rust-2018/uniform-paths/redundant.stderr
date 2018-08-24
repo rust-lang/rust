@@ -1,5 +1,5 @@
 error: `std` import is redundant
-  --> $DIR/redundant.rs:15:5
+  --> $DIR/redundant.rs:5:5
    |
 LL | use std;
    |     ^^^

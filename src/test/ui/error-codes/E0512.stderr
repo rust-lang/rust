@@ -1,5 +1,5 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/E0512.rs:14:23
+  --> $DIR/E0512.rs:4:23
    |
 LL |     unsafe { takes_u8(::std::mem::transmute(0u16)); } //~ ERROR E0512
    |                       ^^^^^^^^^^^^^^^^^^^^^

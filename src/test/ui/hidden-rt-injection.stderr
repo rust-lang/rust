@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `native`
-  --> $DIR/hidden-rt-injection.rs:15:9
+  --> $DIR/hidden-rt-injection.rs:5:9
    |
 LL |     use native; //~ ERROR unresolved import
    |         ^^^^^^ no `native` in the root

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyTrait`:
-  --> $DIR/coherence-blanket-conflicts-with-blanket-unimplemented.rs:30:1
+  --> $DIR/coherence-blanket-conflicts-with-blanket-unimplemented.rs:20:1
    |
 LL | impl<T:Even> MyTrait for T {
    | -------------------------- first implementation here

@@ -1,5 +1,5 @@
 error: missing `struct` for struct definition
-  --> $DIR/pub-ident-struct.rs:11:4
+  --> $DIR/pub-ident-struct.rs:1:4
    |
 LL | pub S {
    |    ^

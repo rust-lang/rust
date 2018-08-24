@@ -1,5 +1,5 @@
 error[E0597]: `ticking` does not live long enough
-  --> $DIR/issue-26656.rs:50:36
+  --> $DIR/issue-26656.rs:40:36
    |
 LL |     zook.button = B::BigRedButton(&ticking);
    |                                    ^^^^^^^ borrowed value does not live long enough

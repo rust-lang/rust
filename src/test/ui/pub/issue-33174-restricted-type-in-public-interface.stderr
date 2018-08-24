@@ -1,5 +1,5 @@
 error[E0446]: crate-visible type `Snail` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:28:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:18:1
    |
 LL | pub(crate) struct Snail;
    | ---------- `Snail` declared as crate-visible
@@ -8,7 +8,7 @@ LL | pub type Helix_pomatia = Shell<Snail>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak crate-visible type
 
 error[E0446]: restricted type `sea::Turtle` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:31:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:21:1
    |
 LL |     pub(super) struct Turtle;
    |     ---------- `sea::Turtle` declared as restricted
@@ -17,7 +17,7 @@ LL | pub type Dermochelys_coriacea = Shell<sea::Turtle>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak restricted type
 
 error[E0446]: private type `Tortoise` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:34:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:24:1
    |
 LL | struct Tortoise;
    | - `Tortoise` declared as private

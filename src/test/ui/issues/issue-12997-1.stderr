@@ -1,11 +1,11 @@
 error: functions used as benches must have signature `fn(&mut Bencher) -> impl Termination`
-  --> $DIR/issue-12997-1.rs:16:1
+  --> $DIR/issue-12997-1.rs:6:1
    |
 LL | fn foo() { } //~ ERROR functions used as benches
    | ^^^^^^^^^^^^
 
 error: functions used as benches must have signature `fn(&mut Bencher) -> impl Termination`
-  --> $DIR/issue-12997-1.rs:19:1
+  --> $DIR/issue-12997-1.rs:9:1
    |
 LL | fn bar(x: isize, y: isize) { } //~ ERROR functions used as benches
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

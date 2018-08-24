@@ -1,11 +1,11 @@
 error: unreachable expression
-  --> $DIR/expr_type.rs:19:13
+  --> $DIR/expr_type.rs:9:13
    |
 LL |     let x = {return}: !; //~ ERROR unreachable
    |             ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_type.rs:14:9
+  --> $DIR/expr_type.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0423]: expected function, found self type `Self`
-  --> $DIR/tuple-struct-alias.rs:16:17
+  --> $DIR/tuple-struct-alias.rs:6:17
    |
 LL |         let s = Self(0, 1); //~ ERROR expected function
    |                 ^^^^ not a function
@@ -7,7 +7,7 @@ LL |         let s = Self(0, 1); //~ ERROR expected function
    = note: can't use `Self` as a constructor, you must use the implemented struct
 
 error[E0532]: expected tuple struct/variant, found self type `Self`
-  --> $DIR/tuple-struct-alias.rs:18:13
+  --> $DIR/tuple-struct-alias.rs:8:13
    |
 LL |             Self(..) => {} //~ ERROR expected tuple struct/variant
    |             ^^^^ not a tuple struct/variant
@@ -15,7 +15,7 @@ LL |             Self(..) => {} //~ ERROR expected tuple struct/variant
    = note: can't use `Self` as a constructor, you must use the implemented struct
 
 error[E0423]: expected function, found type alias `A`
-  --> $DIR/tuple-struct-alias.rs:24:13
+  --> $DIR/tuple-struct-alias.rs:14:13
    |
 LL |     let s = A(0, 1); //~ ERROR expected function
    |             ^ did you mean `S`?
@@ -23,7 +23,7 @@ LL |     let s = A(0, 1); //~ ERROR expected function
    = note: can't use a type alias as a constructor
 
 error[E0532]: expected tuple struct/variant, found type alias `A`
-  --> $DIR/tuple-struct-alias.rs:26:9
+  --> $DIR/tuple-struct-alias.rs:16:9
    |
 LL |         A(..) => {} //~ ERROR expected tuple struct/variant
    |         ^ did you mean `S`?

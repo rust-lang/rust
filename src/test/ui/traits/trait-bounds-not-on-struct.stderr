@@ -1,11 +1,11 @@
 error[E0404]: expected trait, found struct `Foo`
-  --> $DIR/trait-bounds-not-on-struct.rs:15:16
+  --> $DIR/trait-bounds-not-on-struct.rs:5:16
    |
 LL | fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected trait, found struct `Foo`
    |                ^^^ not a trait
 
 error[E0404]: expected trait, found struct `Vec`
-  --> $DIR/trait-bounds-not-on-struct.rs:17:21
+  --> $DIR/trait-bounds-not-on-struct.rs:7:21
    |
 LL | type A<T> = Box<dyn Vec<T>>; //~ ERROR expected trait, found struct `Vec`
    |                     ^^^^^^ not a trait

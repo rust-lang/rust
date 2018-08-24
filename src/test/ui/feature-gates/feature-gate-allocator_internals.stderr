@@ -1,5 +1,5 @@
 error[E0658]: the `#[default_lib_allocator]` attribute is an experimental feature
-  --> $DIR/feature-gate-allocator_internals.rs:11:1
+  --> $DIR/feature-gate-allocator_internals.rs:1:1
    |
 LL | #![default_lib_allocator] //~ ERROR: attribute is an experimental feature
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

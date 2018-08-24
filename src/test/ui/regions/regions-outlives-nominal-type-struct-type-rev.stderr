@@ -1,16 +1,16 @@
 error[E0491]: in type `&'a rev_variant_struct_type::Foo<&'b i32>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:24:9
+  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:14:9
    |
 LL |         f: &'a Foo<&'b i32> //~ ERROR reference has a longer lifetime
    |         ^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the struct at 23:16
-  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:23:16
+note: the pointer is valid for the lifetime 'a as defined on the struct at 13:16
+  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:13:16
    |
 LL |     struct Bar<'a,'b> {
    |                ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the struct at 23:19
-  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:23:19
+note: but the referenced data is only valid for the lifetime 'b as defined on the struct at 13:19
+  --> $DIR/regions-outlives-nominal-type-struct-type-rev.rs:13:19
    |
 LL |     struct Bar<'a,'b> {
    |                   ^^

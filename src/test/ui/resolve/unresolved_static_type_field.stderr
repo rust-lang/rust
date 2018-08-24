@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `cx` in this scope
-  --> $DIR/unresolved_static_type_field.rs:19:11
+  --> $DIR/unresolved_static_type_field.rs:9:11
    |
 LL |         f(cx);
    |           ^^

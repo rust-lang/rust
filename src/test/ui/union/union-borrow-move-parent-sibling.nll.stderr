@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:29:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:19:13
    |
 LL |     let a = u.x.0;
    |             ----- value moved here
@@ -9,7 +9,7 @@ LL |     let a = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:41:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:31:13
    |
 LL |     let a = (u.x.0).0;
    |             --------- value moved here
@@ -19,7 +19,7 @@ LL |     let a = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u.x`
-  --> $DIR/union-borrow-move-parent-sibling.rs:53:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:43:13
    |
 LL |     let a = *u.y;
    |             ---- value moved here

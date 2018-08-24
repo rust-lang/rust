@@ -1,5 +1,5 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/mir_check_nonconst.rs:18:19
+  --> $DIR/mir_check_nonconst.rs:8:19
    |
 LL | static foo: Foo = bar();
    |                   ^^^^^

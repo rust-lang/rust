@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/associated-type-projection-from-supertrait.rs:43:23
+  --> $DIR/associated-type-projection-from-supertrait.rs:33:23
    |
 LL | fn b() { dent(ModelT, Blue); } //~ ERROR mismatched types
    |                       ^^^^ expected struct `Black`, found struct `Blue`
@@ -8,7 +8,7 @@ LL | fn b() { dent(ModelT, Blue); } //~ ERROR mismatched types
               found type `Blue`
 
 error[E0308]: mismatched types
-  --> $DIR/associated-type-projection-from-supertrait.rs:44:23
+  --> $DIR/associated-type-projection-from-supertrait.rs:34:23
    |
 LL | fn c() { dent(ModelU, Black); } //~ ERROR mismatched types
    |                       ^^^^^ expected struct `Blue`, found struct `Black`
@@ -17,7 +17,7 @@ LL | fn c() { dent(ModelU, Black); } //~ ERROR mismatched types
               found type `Black`
 
 error[E0308]: mismatched types
-  --> $DIR/associated-type-projection-from-supertrait.rs:50:28
+  --> $DIR/associated-type-projection-from-supertrait.rs:40:28
    |
 LL | fn f() { ModelT.chip_paint(Blue); } //~ ERROR mismatched types
    |                            ^^^^ expected struct `Black`, found struct `Blue`
@@ -26,7 +26,7 @@ LL | fn f() { ModelT.chip_paint(Blue); } //~ ERROR mismatched types
               found type `Blue`
 
 error[E0308]: mismatched types
-  --> $DIR/associated-type-projection-from-supertrait.rs:51:28
+  --> $DIR/associated-type-projection-from-supertrait.rs:41:28
    |
 LL | fn g() { ModelU.chip_paint(Black); } //~ ERROR mismatched types
    |                            ^^^^^ expected struct `Blue`, found struct `Black`

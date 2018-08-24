@@ -1,5 +1,5 @@
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/E0061.rs:16:5
+  --> $DIR/E0061.rs:6:5
    |
 LL | fn f(a: u16, b: &str) {}
    | --------------------- defined here
@@ -8,7 +8,7 @@ LL |     f(0);
    |     ^^^^ expected 2 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/E0061.rs:20:5
+  --> $DIR/E0061.rs:10:5
    |
 LL | fn f2(a: u16) {}
    | ------------- defined here

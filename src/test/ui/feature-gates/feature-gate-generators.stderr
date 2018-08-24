@@ -1,5 +1,5 @@
 error[E0658]: yield syntax is experimental (see issue #43122)
-  --> $DIR/feature-gate-generators.rs:12:5
+  --> $DIR/feature-gate-generators.rs:2:5
    |
 LL |     yield true; //~ ERROR yield syntax is experimental
    |     ^^^^^^^^^^

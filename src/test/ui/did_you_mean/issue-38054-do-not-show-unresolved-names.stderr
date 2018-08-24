@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `Foo`
-  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:11:5
+  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:1:5
    |
 LL | use Foo; //~ ERROR unresolved
    |     ^^^ no `Foo` in the root
 
 error[E0432]: unresolved import `Foo1`
-  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:13:5
+  --> $DIR/issue-38054-do-not-show-unresolved-names.rs:3:5
    |
 LL | use Foo1; //~ ERROR unresolved
    |     ^^^^ no `Foo1` in the root

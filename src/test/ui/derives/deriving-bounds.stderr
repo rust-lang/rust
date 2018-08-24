@@ -1,11 +1,11 @@
 error: this unsafe trait should be implemented explicitly
-  --> $DIR/deriving-bounds.rs:11:10
+  --> $DIR/deriving-bounds.rs:1:10
    |
 LL | #[derive(Send)]
    |          ^^^^
 
 error: this unsafe trait should be implemented explicitly
-  --> $DIR/deriving-bounds.rs:15:10
+  --> $DIR/deriving-bounds.rs:5:10
    |
 LL | #[derive(Sync)]
    |          ^^^^

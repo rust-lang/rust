@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
-  --> $DIR/issue-17651.rs:15:9
+  --> $DIR/issue-17651.rs:5:9
    |
 LL |     (|| Box::new(*(&[0][..])))();
    |         ^^^^^^^^ doesn't have a size known at compile-time

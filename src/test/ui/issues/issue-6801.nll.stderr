@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/issue-6801.rs:29:13
+  --> $DIR/issue-6801.rs:19:13
    |
 LL |       let sq =  || { *x * *x };
    |                 --    - borrow occurs due to use in closure

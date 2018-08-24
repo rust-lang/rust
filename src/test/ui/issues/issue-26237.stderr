@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `{integer}`
-  --> $DIR/issue-26237.rs:13:9
+  --> $DIR/issue-26237.rs:3:9
    |
 LL |         $not_a_function($some_argument)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a function

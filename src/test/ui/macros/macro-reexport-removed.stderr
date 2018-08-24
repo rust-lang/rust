@@ -1,17 +1,17 @@
 error[E0557]: feature has been removed
-  --> $DIR/macro-reexport-removed.rs:13:12
+  --> $DIR/macro-reexport-removed.rs:3:12
    |
 LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
    |            ^^^^^^^^^^^^^^
    |
 note: subsumed by `pub use`
-  --> $DIR/macro-reexport-removed.rs:13:12
+  --> $DIR/macro-reexport-removed.rs:3:12
    |
 LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
    |            ^^^^^^^^^^^^^^
 
 error[E0658]: The attribute `macro_reexport` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/macro-reexport-removed.rs:15:3
+  --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
    |   ^^^^^^^^^^^^^^

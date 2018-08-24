@@ -1,5 +1,5 @@
 error[E0320]: overflow while adding drop-check rules for std::option::Option<Wrapper<u32>>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:42:9
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:32:9
    |
 LL |     let w = //~ ERROR overflow while adding drop-check rules for std::option
    |         ^
@@ -7,7 +7,7 @@ LL |     let w = //~ ERROR overflow while adding drop-check rules for std::optio
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<u32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 error[E0320]: overflow while adding drop-check rules for std::option::Option<Wrapper<u32>>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:43:9
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:9
    |
 LL |         Some(Wrapper::Simple::<u32>);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         Some(Wrapper::Simple::<u32>);
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<u32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 error[E0320]: overflow while adding drop-check rules for Wrapper<u32>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:43:14
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:14
    |
 LL |         Some(Wrapper::Simple::<u32>);
    |              ^^^^^^^^^^^^^^^^^^^^^^

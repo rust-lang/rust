@@ -1,5 +1,5 @@
 error[E0703]: invalid ABI: found `路濫狼á́́`
-  --> $DIR/unicode.rs:11:8
+  --> $DIR/unicode.rs:1:8
    |
 LL | extern "路濫狼á́́" fn foo() {} //~ ERROR invalid ABI
    |        ^^^^^^^^^ invalid ABI

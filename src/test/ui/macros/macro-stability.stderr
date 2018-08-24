@@ -1,5 +1,5 @@
 error[E0658]: macro unstable_macro! is unstable
-  --> $DIR/macro-stability.rs:21:5
+  --> $DIR/macro-stability.rs:11:5
    |
 LL |     unstable_macro!(); //~ ERROR: macro unstable_macro! is unstable
    |     ^^^^^^^^^^^^^^^^^^

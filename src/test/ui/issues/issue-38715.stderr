@@ -1,5 +1,5 @@
 error: a macro named `foo` has already been exported
-  --> $DIR/issue-38715.rs:15:1
+  --> $DIR/issue-38715.rs:5:1
    |
 LL | macro_rules! foo { () => {} } //~ ERROR a macro named `foo` has already been exported
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` already exported
@@ -8,7 +8,7 @@ LL | macro_rules! foo { () => {} } //~ ERROR a macro named `foo` has already bee
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #35896 <https://github.com/rust-lang/rust/issues/35896>
 note: previous macro export is now shadowed
-  --> $DIR/issue-38715.rs:12:1
+  --> $DIR/issue-38715.rs:2:1
    |
 LL | macro_rules! foo { ($i:ident) => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

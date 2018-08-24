@@ -1,26 +1,26 @@
 error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
-  --> $DIR/region-object-lifetime-4.rs:22:7
+  --> $DIR/region-object-lifetime-4.rs:12:7
    |
 LL |     x.borrowed() //~ ERROR cannot infer
    |       ^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 21:41...
-  --> $DIR/region-object-lifetime-4.rs:21:41
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 11:41...
+  --> $DIR/region-object-lifetime-4.rs:11:41
    |
 LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
    |                                         ^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/region-object-lifetime-4.rs:22:5
+  --> $DIR/region-object-lifetime-4.rs:12:5
    |
 LL |     x.borrowed() //~ ERROR cannot infer
    |     ^
-note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 21:44...
-  --> $DIR/region-object-lifetime-4.rs:21:44
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 11:44...
+  --> $DIR/region-object-lifetime-4.rs:11:44
    |
 LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
    |                                            ^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/region-object-lifetime-4.rs:22:5
+  --> $DIR/region-object-lifetime-4.rs:12:5
    |
 LL |     x.borrowed() //~ ERROR cannot infer
    |     ^^^^^^^^^^^^

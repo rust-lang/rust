@@ -1,5 +1,5 @@
 warning: item is named 'lintme'
-  --> $DIR/lint_tool_test.rs:19:1
+  --> $DIR/lint_tool_test.rs:9:1
    |
 LL | fn lintme() { } //~ WARNING item is named 'lintme'
    | ^^^^^^^^^^^^^^^

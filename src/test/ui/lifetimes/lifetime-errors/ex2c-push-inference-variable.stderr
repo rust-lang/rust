@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex2c-push-inference-variable.rs:17:12
+  --> $DIR/ex2c-push-inference-variable.rs:7:12
    |
 LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
    |                                   ------------      ------------ these two types are declared with different lifetimes...

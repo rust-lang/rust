@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:24:20
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:14:20
    |
 LL |   let testValue = &id(Test);
    |                    ^^^^^^^^ temporary value does not live long enough
@@ -7,14 +7,14 @@ LL |   let testValue = &id(Test);
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:19...
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:23:19
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:19...
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:13:19
    |
 LL | fn structLifetime<'a>() -> &'a Test {
    |                   ^^
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:30:20
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:20:20
    |
 LL |   let testValue = &id(MyEnum::Variant1);
    |                    ^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
@@ -22,8 +22,8 @@ LL |   let testValue = &id(MyEnum::Variant1);
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 29:20...
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:29:20
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 19:20...
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:19:20
    |
 LL | fn variantLifetime<'a>() -> &'a MyEnum {
    |                    ^^

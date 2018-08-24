@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-17905.rs:15:5
+  --> $DIR/issue-17905.rs:5:5
    |
 LL |     &str, //~ ERROR missing lifetime specifier
    |     ^ expected lifetime parameter

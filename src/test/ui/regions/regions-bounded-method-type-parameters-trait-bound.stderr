@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:30:7
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:7
    |
 LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
    |                                -------     ------- these two types are declared with different lifetimes...

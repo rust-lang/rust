@@ -1,5 +1,5 @@
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/E0403.rs:11:11
+  --> $DIR/E0403.rs:1:11
    |
 LL | fn foo<T, T>(s: T, u: T) {} //~ ERROR E0403
    |        -  ^ already used

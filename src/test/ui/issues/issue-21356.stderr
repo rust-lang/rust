@@ -1,5 +1,5 @@
 error: invalid fragment specifier `t_ty`
-  --> $DIR/issue-21356.rs:13:22
+  --> $DIR/issue-21356.rs:3:22
    |
 LL | macro_rules! test { ($wrong:t_ty ..) => () }
    |                      ^^^^^^^^^^^

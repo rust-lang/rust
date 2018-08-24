@@ -1,5 +1,5 @@
 error: this constant cannot be used
-  --> $DIR/E0396-fixed.rs:15:1
+  --> $DIR/E0396-fixed.rs:5:1
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^

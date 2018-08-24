@@ -1,95 +1,95 @@
 error: unused attribute
-  --> $DIR/unused-attr.rs:17:1
+  --> $DIR/unused-attr.rs:7:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
    |
 note: lint level defined here
-  --> $DIR/unused-attr.rs:11:9
+  --> $DIR/unused-attr.rs:1:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:20:1
+  --> $DIR/unused-attr.rs:10:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:25:5
+  --> $DIR/unused-attr.rs:15:5
    |
 LL |     #[foo] //~ ERROR unused attribute
    |     ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:23:1
+  --> $DIR/unused-attr.rs:13:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:33:9
+  --> $DIR/unused-attr.rs:23:9
    |
 LL |         #[foo] //~ ERROR unused attribute
    |         ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:31:5
+  --> $DIR/unused-attr.rs:21:5
    |
 LL |     #[foo] //~ ERROR unused attribute
    |     ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:29:1
+  --> $DIR/unused-attr.rs:19:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:41:9
+  --> $DIR/unused-attr.rs:31:9
    |
 LL |         #[foo] //~ ERROR unused attribute
    |         ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:38:1
+  --> $DIR/unused-attr.rs:28:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:48:5
+  --> $DIR/unused-attr.rs:38:5
    |
 LL |     #[foo] //~ ERROR unused attribute
    |     ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:46:1
+  --> $DIR/unused-attr.rs:36:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:54:5
+  --> $DIR/unused-attr.rs:44:5
    |
 LL |     #[foo] //~ ERROR unused attribute
    |     ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:56:5
+  --> $DIR/unused-attr.rs:46:5
    |
 LL |     #[foo] //~ ERROR unused attribute
    |     ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:52:1
+  --> $DIR/unused-attr.rs:42:1
    |
 LL | #[foo] //~ ERROR unused attribute
    | ^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:15:1
+  --> $DIR/unused-attr.rs:5:1
    |
 LL | #![foo] //~ ERROR unused attribute
    | ^^^^^^^
