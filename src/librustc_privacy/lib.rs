@@ -82,6 +82,7 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
 }
 
 struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
+    access_level: Option<AccessLevel>,
     item_def_id: DefId,
     ev: &'b mut EmbargoVisitor<'a, 'tcx>,
 }
@@ -132,6 +133,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn reach<'b>(&'b mut self, item_id: ast::NodeId)
                  -> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
         ReachEverythingInTheInterfaceVisitor {
+            access_level: self.prev_level.map(|l| l.min(AccessLevel::Reachable)),
             item_def_id: self.tcx.hir.local_def_id(item_id),
             ev: self,
         }
@@ -214,7 +216,15 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Existential(..) |
+            // Impl trait return types mark their parent function.
+            // It (and its children) are revisited if the change applies.
+            hir::ItemKind::Existential(ref ty_data) => {
+                if let Some(impl_trait_fn) = ty_data.impl_trait_fn {
+                    if let Some(node_id) = self.tcx.hir.as_local_node_id(impl_trait_fn) {
+                        self.update(node_id, Some(AccessLevel::ReachableFromImplTrait));
+                    }
+                }
+            }
             hir::ItemKind::Use(..) |
             hir::ItemKind::Static(..) |
             hir::ItemKind::Const(..) |
@@ -225,6 +235,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Fn(..) |
             hir::ItemKind::ExternCrate(..) => {}
         }
+
+        // Store this node's access level here to propagate the correct
+        // reachability level through interfaces and children.
+        let orig_level = replace(&mut self.prev_level, item_level);
 
         // Mark all items in interfaces of reachable items as reachable
         match item.node {
@@ -323,9 +337,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
         }
-
-        let orig_level = self.prev_level;
-        self.prev_level = item_level;
 
         intravisit::walk_item(self, item);
 
@@ -462,7 +473,7 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn check_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>) {
         if let Some(node_id) = self.ev.tcx.hir.as_local_node_id(trait_ref.def_id) {
             let item = self.ev.tcx.hir.expect_item(node_id);
-            self.ev.update(item.id, Some(AccessLevel::Reachable));
+            self.ev.update(item.id, self.access_level);
         }
     }
 }
@@ -483,7 +494,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
 
         if let Some(def_id) = ty_def_id {
             if let Some(node_id) = self.ev.tcx.hir.as_local_node_id(def_id) {
-                self.ev.update(node_id, Some(AccessLevel::Reachable));
+                self.ev.update(node_id, self.access_level);
             }
         }
 

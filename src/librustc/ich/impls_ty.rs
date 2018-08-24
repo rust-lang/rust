@@ -1091,6 +1091,7 @@ impl_stable_hash_for!(enum traits::Reveal {
 });
 
 impl_stable_hash_for!(enum ::middle::privacy::AccessLevel {
+    ReachableFromImplTrait,
     Reachable,
     Exported,
     Public
