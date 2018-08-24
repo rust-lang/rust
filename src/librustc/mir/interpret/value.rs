@@ -187,27 +187,35 @@ impl<'tcx> Scalar {
         }
     }
 
-    fn to_u8(self) -> EvalResult<'static, u8> {
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        let val = self.to_u32()?;
+        match ::std::char::from_u32(val) {
+            Some(c) => Ok(c),
+            None => err!(InvalidChar(val as u128)),
+        }
+    }
+
+    pub fn to_u8(self) -> EvalResult<'static, u8> {
         let sz = Size::from_bits(8);
         let b = self.to_bits(sz)?;
         assert_eq!(b as u8 as u128, b);
         Ok(b as u8)
     }
 
-    fn to_u32(self) -> EvalResult<'static, u32> {
+    pub fn to_u32(self) -> EvalResult<'static, u32> {
         let sz = Size::from_bits(32);
         let b = self.to_bits(sz)?;
         assert_eq!(b as u32 as u128, b);
         Ok(b as u32)
     }
 
-    fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'static, u64> {
+    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         assert_eq!(b as u64 as u128, b);
         Ok(b as u64)
     }
 
-    fn to_i8(self) -> EvalResult<'static, i8> {
+    pub fn to_i8(self) -> EvalResult<'static, i8> {
         let sz = Size::from_bits(8);
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
@@ -215,7 +223,7 @@ impl<'tcx> Scalar {
         Ok(b as i8)
     }
 
-    fn to_i32(self) -> EvalResult<'static, i32> {
+    pub fn to_i32(self) -> EvalResult<'static, i32> {
         let sz = Size::from_bits(32);
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
@@ -223,7 +231,7 @@ impl<'tcx> Scalar {
         Ok(b as i32)
     }
 
-    fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'static, i64> {
+    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'static, i64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         let b = sign_extend(b, cx.data_layout().pointer_size) as i128;
         assert_eq!(b as i64 as i128, b);
@@ -293,6 +301,11 @@ impl<'tcx> ScalarMaybeUndef {
     #[inline(always)]
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {
         self.not_undef()?.to_bool()
+    }
+
+    #[inline(always)]
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        self.not_undef()?.to_char()
     }
 
     #[inline(always)]
