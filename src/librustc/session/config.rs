@@ -1051,7 +1051,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "perform LLVM link-time optimizations"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (rustc --print target-cpus for details)"),
-    target_feature: String = ("".to_string(), parse_string, [TRACKED],
+    target_feature: String = (String::new(), parse_string, [TRACKED],
         "target specific attributes (rustc --print target-features for details)"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
@@ -1085,7 +1085,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          "choose the code model to use (rustc --print code-models for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
          "metadata to mangle symbol names with"),
-    extra_filename: String = ("".to_string(), parse_string, [UNTRACKED],
+    extra_filename: String = (String::new(), parse_string, [UNTRACKED],
          "extra data to put in each output filename"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
@@ -1992,7 +1992,7 @@ pub fn build_session_options_and_crate_config(
     };
     if cg.target_feature == "help" {
         prints.push(PrintRequest::TargetFeatures);
-        cg.target_feature = "".to_string();
+        cg.target_feature = String::new();
     }
     if cg.relocation_model.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::RelocationModels);

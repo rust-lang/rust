@@ -29,13 +29,15 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
 
-/// Leaks a value: takes ownership and "forgets" about the value **without running
-/// its destructor**.
+/// Takes ownership and "forgets" about the value **without running its destructor**.
 ///
 /// Any resources the value manages, such as heap memory or a file handle, will linger
-/// forever in an unreachable state.
+/// forever in an unreachable state. However, it does not guarantee that pointers
+/// to this memory will remain valid.
 ///
-/// If you want to dispose of a value properly, running its destructor, see
+/// * If you want to leak memory, see [`Box::leak`][leak].
+/// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`][into_raw].
+/// * If you want to dispose of a value properly, running its destructor, see
 /// [`mem::drop`][drop].
 ///
 /// # Safety
@@ -58,15 +60,6 @@ pub use intrinsics::transmute;
 /// [exit]: ../../std/process/fn.exit.html
 ///
 /// # Examples
-///
-/// Leak some heap memory by never deallocating it:
-///
-/// ```
-/// use std::mem;
-///
-/// let heap_memory = Box::new(3);
-/// mem::forget(heap_memory);
-/// ```
 ///
 /// Leak an I/O object, never closing the file:
 ///
@@ -137,38 +130,13 @@ pub use intrinsics::transmute;
 /// }
 /// ```
 ///
-/// ## Use case 3
-///
-/// You are transferring ownership across a [FFI] boundary to code written in
-/// another language. You need to `forget` the value on the Rust side because Rust
-/// code is no longer responsible for it.
-///
-/// ```no_run
-/// use std::mem;
-///
-/// extern "C" {
-///     fn my_c_function(x: *const u32);
-/// }
-///
-/// let x: Box<u32> = Box::new(3);
-///
-/// // Transfer ownership into C code.
-/// unsafe {
-///     my_c_function(&*x);
-/// }
-/// mem::forget(x);
-/// ```
-///
-/// In this case, C code must call back into Rust to free the object. Calling C's `free`
-/// function on a [`Box`][box] is *not* safe! Also, `Box` provides an [`into_raw`][into_raw]
-/// method which is the preferred way to do this in practice.
-///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
 /// [clone]: ../clone/trait.Clone.html
 /// [swap]: fn.swap.html
 /// [FFI]: ../../book/first-edition/ffi.html
 /// [box]: ../../std/boxed/struct.Box.html
+/// [leak]: ../../std/boxed/struct.Box.html#method.leak
 /// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]

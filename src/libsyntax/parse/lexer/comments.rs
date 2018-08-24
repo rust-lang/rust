@@ -230,7 +230,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String>, s: String, col:
             if col < len {
                 (&s[col..len]).to_string()
             } else {
-                "".to_string()
+                String::new()
             }
         }
         None => s,

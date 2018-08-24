@@ -1434,7 +1434,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
 
-    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).skip(1).next()
+    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
         .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
@@ -3471,7 +3471,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             displayable_field_names.sort();
 
             let truncated_fields_error = if len <= 3 {
-                "".to_string()
+                String::new()
             } else {
                 format!(" and {} other field{}", (len - 3), if len - 3 == 1 {""} else {"s"})
             };
@@ -4783,7 +4783,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err.span_suggestion_with_applicability(
             span_semi,
             "consider removing this semicolon",
-            "".to_string(),
+            String::new(),
             Applicability::MachineApplicable);
     }
 

@@ -184,7 +184,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Ok(..) => {
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
-            cx.source_map().new_source_file(file.into(), "".to_string());
+            cx.source_map().new_source_file(file.into(), String::new());
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }

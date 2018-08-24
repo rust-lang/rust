@@ -30,8 +30,8 @@ pub fn target() -> TargetResult {
         data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
         target_os: "none".to_string(),
-        target_env: "".to_string(),
-        target_vendor: "".to_string(),
+        target_env: String::new(),
+        target_vendor: String::new(),
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {

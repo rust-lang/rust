@@ -1132,6 +1132,36 @@ impl<'a> Formatter<'a> {
     ///
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo { nb: i32 };
+    ///
+    /// impl Foo {
+    ///     fn new(nb: i32) -> Foo {
+    ///         Foo {
+    ///             nb,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         // We need to remove "-" from the number output.
+    ///         let tmp = self.nb.abs().to_string();
+    ///
+    ///         formatter.pad_integral(self.nb > 0, "Foo ", &tmp)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{}", Foo::new(2)), "2");
+    /// assert_eq!(&format!("{}", Foo::new(-1)), "-1");
+    /// assert_eq!(&format!("{:#}", Foo::new(-1)), "-Foo 1");
+    /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self,
                         is_nonnegative: bool,
@@ -1232,7 +1262,7 @@ impl<'a> Formatter<'a> {
             // If our string is longer that the precision, then we must have
             // truncation. However other flags like `fill`, `width` and `align`
             // must act as always.
-            if let Some((i, _)) = s.char_indices().skip(max).next() {
+            if let Some((i, _)) = s.char_indices().nth(max) {
                 // LLVM here can't prove that `..i` won't panic `&s[..i]`, but
                 // we know that it can't panic. Use `get` + `unwrap_or` to avoid
                 // `unsafe` and otherwise don't emit any panic-related code
@@ -1381,12 +1411,48 @@ impl<'a> Formatter<'a> {
 
     /// Writes some data to the underlying buffer contained within this
     /// formatter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo;
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         formatter.write_str("Foo")
+    ///         // This is equivalent to:
+    ///         // write!(formatter, "Foo")
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{}", Foo), "Foo");
+    /// assert_eq!(&format!("{:0>8}", Foo), "Foo");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
     }
 
     /// Writes some formatted information into this instance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         formatter.write_fmt(format_args!("Foo {}", self.0))
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{}", Foo(-1)), "Foo -1");
+    /// assert_eq!(&format!("{:0>8}", Foo(2)), "Foo 2");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments) -> Result {
         write(self.buf, fmt)

@@ -87,7 +87,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                 .span_suggestion_short_with_applicability(
                     mut_span,
                     "remove this `mut`",
-                    "".to_owned(),
+                    String::new(),
                     Applicability::MachineApplicable)
                 .emit();
         }

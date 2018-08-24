@@ -252,7 +252,7 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
     // add it to the set of known library features so we can still generate docs.
     lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
         level: Status::Unstable,
-        since: "".to_owned(),
+        since: String::new(),
         has_gate_test: false,
         tracking_issue: None,
     });

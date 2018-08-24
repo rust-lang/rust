@@ -140,21 +140,21 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
             let gens_str = if gens.iter().any(|&u| u != 0) {
                 format!(" gen: {}", bits_to_string(gens))
             } else {
-                "".to_string()
+                String::new()
             };
 
             let action_kills = &self.action_kills[start .. end];
             let action_kills_str = if action_kills.iter().any(|&u| u != 0) {
                 format!(" action_kill: {}", bits_to_string(action_kills))
             } else {
-                "".to_string()
+                String::new()
             };
 
             let scope_kills = &self.scope_kills[start .. end];
             let scope_kills_str = if scope_kills.iter().any(|&u| u != 0) {
                 format!(" scope_kill: {}", bits_to_string(scope_kills))
             } else {
-                "".to_string()
+                String::new()
             };
 
             ps.synth_comment(

@@ -434,6 +434,8 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     reachable_context.propagate();
 
+    debug!("Inline reachability shows: {:?}", reachable_context.reachable_symbols);
+
     // Return the set of reachable symbols.
     ReachableSet(Lrc::new(reachable_context.reachable_symbols))
 }

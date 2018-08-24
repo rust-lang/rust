@@ -1111,7 +1111,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = tcx.trait_def(trait_ref.def_id);
-                    trait_def.ancestors(tcx, def_id).skip(1).next().and_then(|node| {
+                    trait_def.ancestors(tcx, def_id).nth(1).and_then(|node| {
                         match node {
                             specialization_graph::Node::Impl(parent) => Some(parent),
                             _ => None,

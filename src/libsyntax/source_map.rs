@@ -1030,7 +1030,7 @@ mod tests {
         cm.new_source_file(PathBuf::from("blork.rs").into(),
                        "first line.\nsecond line".to_string());
         cm.new_source_file(PathBuf::from("empty.rs").into(),
-                       "".to_string());
+                       String::new());
         cm.new_source_file(PathBuf::from("blork2.rs").into(),
                        "first line.\nsecond line".to_string());
         cm

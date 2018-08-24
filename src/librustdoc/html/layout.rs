@@ -156,13 +156,13 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                 root_path = page.root_path,
                 suffix=page.resource_suffix)
     } else {
-        "".to_owned()
+        String::new()
     },
     content   = *t,
     root_path = page.root_path,
     css_class = page.css_class,
     logo      = if layout.logo.is_empty() {
-        "".to_string()
+        String::new()
     } else {
         format!("<a href='{}{}/index.html'>\
                  <img src='{}' alt='logo' width='100'></a>",
@@ -173,7 +173,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     description = page.description,
     keywords = page.keywords,
     favicon   = if layout.favicon.is_empty() {
-        "".to_string()
+        String::new()
     } else {
         format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
     },

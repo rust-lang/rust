@@ -1191,7 +1191,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                               member_descriptions);
                 vec![
                     MemberDescription {
-                        name: "".to_string(),
+                        name: String::new(),
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
                         size: self.layout.size,
@@ -1220,7 +1220,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                                   variant_type_metadata,
                                                   member_descriptions);
                     MemberDescription {
-                        name: "".to_string(),
+                        name: String::new(),
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
                         size: variant.size,

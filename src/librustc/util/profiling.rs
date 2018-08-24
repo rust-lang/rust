@@ -73,7 +73,7 @@ macro_rules! define_categories {
                         (format!("{:.2}",
                         (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
                     } else {
-                        ("".into(), "".into())
+                        (String::new(), String::new())
                     };
 
                     writeln!(

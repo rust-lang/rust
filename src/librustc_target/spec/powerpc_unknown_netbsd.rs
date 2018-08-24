@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),
         arch: "powerpc".to_string(),
         target_os: "netbsd".to_string(),
-        target_env: "".to_string(),
+        target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,

@@ -295,7 +295,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 declare_lint! {
     pub MISSING_DOCS,
     Allow,
-    "detects missing documentation for public members"
+    "detects missing documentation for public members",
+    report_in_external_macro: true
 }
 
 pub struct MissingDoc {
@@ -794,7 +795,7 @@ impl EarlyLintPass for DeprecatedAttr {
                     err.span_suggestion_short_with_applicability(
                         attr.span,
                         "remove this attribute",
-                        "".to_owned(),
+                        String::new(),
                         Applicability::MachineApplicable
                     );
                     err.emit();
@@ -1250,7 +1251,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                                 err.span_suggestion_short_with_applicability(
                                     no_mangle_attr.span,
                                     "remove this attribute",
-                                    "".to_owned(),
+                                    String::new(),
                                     // Use of `#[no_mangle]` suggests FFI intent; correct
                                     // fix may be to monomorphize source by hand
                                     Applicability::MaybeIncorrect

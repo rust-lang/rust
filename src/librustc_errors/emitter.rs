@@ -798,7 +798,7 @@ impl EmitterWriter {
                                                          // at by "in this macro invocation"
                                                          format!(" (#{})", i + 1)
                                                      } else {
-                                                         "".to_string()
+                                                         String::new()
                                                      })));
                         }
                         // Check to make sure we're not in any <*macros>
@@ -813,7 +813,7 @@ impl EmitterWriter {
                                                          // backtrace is multiple levels deep
                                                          format!(" (#{})", i + 1)
                                                      } else {
-                                                         "".to_string()
+                                                         String::new()
                                                      })));
                             if !always_backtrace {
                                 break;
@@ -1065,7 +1065,7 @@ impl EmitterWriter {
                     let col = if let Some(first_annotation) = first_line.annotations.first() {
                         format!(":{}", first_annotation.start_col + 1)
                     } else {
-                        "".to_string()
+                        String::new()
                     };
                     format!("{}:{}{}",
                             annotated_file.file.name,

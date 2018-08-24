@@ -24,7 +24,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn main() {
-    if let Some(arg) = env::args().skip(1).next() {
+    if let Some(arg) = env::args().nth(1) {
         match &arg[..] {
             "test1" => println!("hello2"),
             "test2" => assert_eq!(env::var("FOO").unwrap(), "BAR"),

@@ -25,7 +25,7 @@ pub fn target() -> TargetResult {
         data_layout: "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128".to_string(),
         arch: "x86".to_string(),
         target_os: "dragonfly".to_string(),
-        target_env: "".to_string(),
+        target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,

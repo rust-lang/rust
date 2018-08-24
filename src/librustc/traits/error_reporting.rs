@@ -472,7 +472,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                           if len > 5 {
                               format!("\nand {} others", len - 4)
                           } else {
-                              "".to_owned()
+                              String::new()
                           }
                           ));
     }
@@ -917,7 +917,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                  remove_refs);
 
                         err.span_suggestion_short_with_applicability(
-                            sp, &format_str, String::from(""), Applicability::MachineApplicable
+                            sp, &format_str, String::new(), Applicability::MachineApplicable
                         );
                         break;
                     }
@@ -1116,7 +1116,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         .collect::<Vec<String>>()
                                         .join(", "))
                         } else {
-                            "".to_owned()
+                            String::new()
                         },
                     );
                     err.span_suggestion_with_applicability(
