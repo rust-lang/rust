@@ -19,7 +19,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    MPlaceTy, Machine, EvalContext
+    OpTy, Machine, EvalContext
 };
 
 macro_rules! validation_failure{
@@ -187,19 +187,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    /// This function checks the memory where `dest` points to.  The place must be sized
-    /// (i.e., dest.extra == PlaceExtra::None).
+    /// This function checks the data at `op`.  The operand must be sized.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
     /// starts must not be changed!
-    pub fn validate_mplace(
+    pub fn validate_operand(
         &self,
-        dest: MPlaceTy<'tcx>,
+        dest: OpTy<'tcx>,
         path: &mut Vec<PathElem>,
-        seen: &mut FxHashSet<(MPlaceTy<'tcx>)>,
-        todo: &mut Vec<(MPlaceTy<'tcx>, Vec<PathElem>)>,
+        seen: &mut FxHashSet<(OpTy<'tcx>)>,
+        todo: &mut Vec<(OpTy<'tcx>, Vec<PathElem>)>,
     ) -> EvalResult<'tcx> {
-        self.memory.dump_alloc(dest.to_ptr()?.alloc_id);
         trace!("validate_mplace: {:?}, {:#?}", *dest, dest.layout);
 
         // Find the right variant.  We have to handle this as a prelude, not via
@@ -210,8 +208,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             layout::Variants::Tagged { ref tag, .. } => {
                 let size = tag.value.size(self);
                 // we first read the tag value as scalar, to be able to validate it
-                let tag_mplace = self.mplace_field(dest, 0)?;
-                let tag_value = self.read_scalar(tag_mplace.into())?;
+                let tag_mplace = self.operand_field(dest, 0)?;
+                let tag_value = self.read_scalar(tag_mplace)?;
                 path.push(PathElem::Tag);
                 self.validate_scalar(
                     tag_value, size, tag, &path, tag_mplace.layout.ty
@@ -219,7 +217,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 path.pop(); // remove the element again
                 // then we read it again to get the index, to continue
                 let variant = self.read_discriminant_as_variant_index(dest.into())?;
-                let inner_dest = self.mplace_downcast(dest, variant)?;
+                let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
                 path.push(PathElem::Field(dest.layout.ty
                                           .ty_adt_def()
@@ -251,7 +249,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // expectation.
                     layout::Abi::Scalar(ref scalar_layout) => {
                         let size = scalar_layout.value.size(self);
-                        let value = self.read_value(dest.into())?;
+                        let value = self.read_value(dest)?;
                         let scalar = value.to_scalar_or_undef();
                         self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
                         if scalar_layout.value == Primitive::Pointer {
@@ -267,11 +265,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 }
                                 if value.layout.ty.builtin_deref(false).is_some() {
                                     trace!("Recursing below ptr {:#?}", value);
-                                    let ptr_place = self.ref_to_mplace(value)?;
-                                    // we have not encountered this pointer+layout
-                                    // combination before
-                                    if seen.insert(ptr_place) {
-                                        todo.push((ptr_place, path_clone_and_deref(path)));
+                                    let ptr_op = self.ref_to_mplace(value)?.into();
+                                    // we have not encountered this pointer+layout combination
+                                    // before.
+                                    if seen.insert(ptr_op) {
+                                        todo.push((ptr_op, path_clone_and_deref(path)));
                                     }
                                 }
                             }
@@ -286,11 +284,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
             layout::FieldPlacement::Array { .. } => {
-                for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
-                    let field = field?;
-                    path.push(PathElem::ArrayElem(i));
-                    self.validate_mplace(field, path, seen, todo)?;
-                    path.truncate(path_len);
+                // Skips for ZSTs; we could have an empty array as an immediate
+                if !dest.layout.is_zst() {
+                    let dest = dest.to_mem_place(); // arrays cannot be immediate
+                    for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
+                        let field = field?;
+                        path.push(PathElem::ArrayElem(i));
+                        self.validate_operand(field.into(), path, seen, todo)?;
+                        path.truncate(path_len);
+                    }
                 }
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
@@ -311,7 +313,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             _ => return Err(err),
                         }
                     };
-                    let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                    let unpacked_ptr = self.unpack_unsized_mplace(ptr)?.into();
                     // for safe ptrs, recursively check it
                     if !dest.layout.ty.is_unsafe_ptr() {
                         trace!("Recursing below fat ptr {:?} (unpacked: {:?})", ptr, unpacked_ptr);
@@ -322,9 +324,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 } else {
                     // Not a pointer, perform regular aggregate handling below
                     for i in 0..offsets.len() {
-                        let field = self.mplace_field(dest, i as u64)?;
+                        let field = self.operand_field(dest, i as u64)?;
                         path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                        self.validate_mplace(field, path, seen, todo)?;
+                        self.validate_operand(field, path, seen, todo)?;
                         path.truncate(path_len);
                     }
                     // FIXME: For a TyStr, check that this is valid UTF-8.

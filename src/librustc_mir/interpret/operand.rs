@@ -11,9 +11,10 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use std::hash::{Hash, Hasher};
 use std::convert::TryInto;
 
-use rustc::mir;
+use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -150,7 +151,7 @@ impl Operand {
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpTy<'tcx> {
-    pub op: Operand,
+    crate op: Operand, // ideally we'd make this private, but we are not there yet
     pub layout: TyLayout<'tcx>,
 }
 
@@ -181,6 +182,20 @@ impl<'tcx> From<ValTy<'tcx>> for OpTy<'tcx> {
         }
     }
 }
+
+// Validation needs to hash OpTy, but we cannot hash Layout -- so we just hash the type
+impl<'tcx> Hash for OpTy<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.op.hash(state);
+        self.layout.ty.hash(state);
+    }
+}
+impl<'tcx> PartialEq for OpTy<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.op == other.op && self.layout.ty == other.layout.ty
+    }
+}
+impl<'tcx> Eq for OpTy<'tcx> {}
 
 impl<'tcx> OpTy<'tcx> {
     #[inline]
@@ -492,7 +507,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     // Also used e.g. when miri runs into a constant.
-    pub fn const_value_to_op(
+    pub(super) fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand> {
@@ -515,6 +530,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Value::Scalar(x.into()))),
         }
+    }
+    pub fn const_to_op(
+        &self,
+        cnst: &ty::Const<'tcx>,
+    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+        let op = self.const_value_to_op(cnst.val)?;
+        Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
     }
 
     pub(super) fn global_to_op(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {

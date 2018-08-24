@@ -12,7 +12,6 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
-use std::hash::{Hash, Hasher};
 use std::convert::TryFrom;
 
 use rustc::mir;
@@ -158,20 +157,6 @@ impl<'tcx> MPlaceTy<'tcx> {
         }
     }
 }
-
-// Validation needs to hash MPlaceTy, but we cannot hash Layout -- so we just hash the type
-impl<'tcx> Hash for MPlaceTy<'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.mplace.hash(state);
-        self.layout.ty.hash(state);
-    }
-}
-impl<'tcx> PartialEq for MPlaceTy<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        self.mplace == other.mplace && self.layout.ty == other.layout.ty
-    }
-}
-impl<'tcx> Eq for MPlaceTy<'tcx> {}
 
 impl<'tcx> OpTy<'tcx> {
     #[inline(always)]
@@ -681,20 +666,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         let mplace = match place.place {
             Place::Local { frame, local } => {
-                // FIXME: Consider not doing anything for a ZST, and just returning
-                // a fake pointer?
+                match *self.stack[frame].locals[local].access()? {
+                    Operand::Indirect(mplace) => mplace,
+                    Operand::Immediate(value) => {
+                        // We need to make an allocation.
+                        // FIXME: Consider not doing anything for a ZST, and just returning
+                        // a fake pointer?  Are we even called for ZST?
 
-                // We need the layout of the local.  We can NOT use the layout we got,
-                // that might e.g. be a downcast variant!
-                let local_layout = self.layout_of_local(frame, local)?;
-                // Make sure it has a place
-                let rval = *self.stack[frame].locals[local].access()?;
-                let mplace = self.allocate_op(OpTy { op: rval, layout: local_layout })?.mplace;
-                // This might have allocated the flag
-                *self.stack[frame].locals[local].access_mut()? =
-                    Operand::Indirect(mplace);
-                // done
-                mplace
+                        // We need the layout of the local.  We can NOT use the layout we got,
+                        // that might e.g. be a downcast variant!
+                        let local_layout = self.layout_of_local(frame, local)?;
+                        let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
+                        self.write_value_to_mplace(value, ptr)?;
+                        let mplace = ptr.mplace;
+                        // Update the local
+                        *self.stack[frame].locals[local].access_mut()? =
+                            Operand::Indirect(mplace);
+                        mplace
+                    }
+                }
             }
             Place::Ptr(mplace) => mplace
         };
@@ -710,23 +700,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
         let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
-    }
-
-    /// Make a place for an operand, allocating if needed
-    pub fn allocate_op(
-        &mut self,
-        OpTy { op, layout }: OpTy<'tcx>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
-        trace!("allocate_op: {:?}", op);
-        Ok(match op {
-            Operand::Indirect(mplace) => MPlaceTy { mplace, layout },
-            Operand::Immediate(value) => {
-                // FIXME: Is stack always right here?
-                let ptr = self.allocate(layout, MemoryKind::Stack)?;
-                self.write_value_to_mplace(value, ptr)?;
-                ptr
-            },
-        })
     }
 
     pub fn write_discriminant_value(

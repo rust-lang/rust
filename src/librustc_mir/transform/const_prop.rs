@@ -257,10 +257,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.const_value_to_op(c.literal.val) {
+        match self.ecx.const_to_op(c.literal) {
             Ok(op) => {
-                let layout = self.tcx.layout_of(self.param_env.and(c.literal.ty)).ok()?;
-                Some((OpTy { op, layout }, c.span))
+                Some((op, c.span))
             },
             Err(error) => {
                 let (stacktrace, span) = self.ecx.generate_stacktrace(None);
