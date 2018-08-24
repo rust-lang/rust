@@ -1,4 +1,4 @@
-#![feature(custom_attribute, attr_literals)]
+#![feature(custom_attribute)]
 #![miri(stack_limit=16)]
 
 //error-pattern: reached the configured maximum number of stack frames

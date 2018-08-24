@@ -1,7 +1,4 @@
-#![feature(
-    rustc_private,
-    catch_expr,
-)]
+#![feature(rustc_private)]
 
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
 
@@ -154,10 +151,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
 ) {
     let mut ecx = create_ecx(tcx, main_id, start_wrapper).expect("Couldn't create ecx");
 
-    let res: EvalResult = do catch {
+    let res: EvalResult = (|| {
         ecx.run()?;
-        ecx.run_tls_dtors()?;
-    };
+        ecx.run_tls_dtors()
+    })();
 
     match res {
         Ok(()) => {
