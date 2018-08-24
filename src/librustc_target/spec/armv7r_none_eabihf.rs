@@ -15,7 +15,7 @@ use spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, Target
 
 pub fn target() -> TargetResult {
     Ok(Target {
-        llvm_target: "armv7r-none-eabihf".to_string(),
+        llvm_target: "armv7r-unknown-none-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
