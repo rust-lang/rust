@@ -1,5 +1,8 @@
 use super::*;
 
+pub(super) const PATH_FIRST: TokenSet =
+    token_set![IDENT, SELF_KW, SUPER_KW, COLONCOLON, L_ANGLE];
+
 pub(super) fn is_path_start(p: &Parser) -> bool {
     match p.current() {
         IDENT | SELF_KW | SUPER_KW | COLONCOLON => true,

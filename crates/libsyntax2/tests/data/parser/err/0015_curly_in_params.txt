@@ -1,0 +1,24 @@
+FILE@[0; 14)
+  FN_DEF@[0; 7)
+    FN_KW@[0; 2)
+    WHITESPACE@[2; 3)
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 7)
+      L_PAREN@[6; 7)
+      err: `expected value parameter`
+      err: `expected R_PAREN`
+      err: `expected SEMI`
+      err: `expected an item`
+  ERROR@[7; 8)
+    R_CURLY@[7; 8)
+    err: `expected an item`
+  ERROR@[8; 9)
+    R_PAREN@[8; 9)
+  WHITESPACE@[9; 10)
+  err: `expected an item`
+  ERROR@[10; 13)
+    L_CURLY@[10; 11)
+    WHITESPACE@[11; 12)
+    R_CURLY@[12; 13)
+  WHITESPACE@[13; 14)

@@ -48,6 +48,10 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         opt_self_param(p);
     }
     while !p.at(EOF) && !p.at(ket) {
+        if !VALUE_PARAMETER_FIRST.contains(p.current()) {
+            p.error("expected value parameter");
+            break;
+        }
         value_parameter(p, flavor);
         if !p.at(ket) {
             p.expect(COMMA);
@@ -56,6 +60,13 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     p.expect(ket);
     m.complete(p, PARAM_LIST);
 }
+
+
+const VALUE_PARAMETER_FIRST: TokenSet =
+    token_set_union![
+        patterns::PATTERN_FIRST,
+        types::TYPE_FIRST,
+    ];
 
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();

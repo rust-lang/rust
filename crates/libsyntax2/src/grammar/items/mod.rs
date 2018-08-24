@@ -250,8 +250,10 @@ fn function(p: &mut Parser, flavor: ItemFlavor) {
 
     // test fn_decl
     // trait T { fn foo(); }
-    if !p.eat(SEMI) {
+    if p.at(L_CURLY) {
         expressions::block(p);
+    } else {
+        p.expect(SEMI);
     }
 }
 

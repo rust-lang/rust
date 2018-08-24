@@ -1,7 +1,7 @@
 mod atom;
 
 use super::*;
-pub(super) use self::atom::literal;
+pub(super) use self::atom::{literal, LITERAL_FIRST};
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 

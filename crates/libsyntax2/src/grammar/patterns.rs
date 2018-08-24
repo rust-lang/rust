@@ -1,5 +1,12 @@
 use super::*;
 
+pub(super) const PATTERN_FIRST: TokenSet =
+    token_set_union![
+        token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP],
+        expressions::LITERAL_FIRST,
+        paths::PATH_FIRST,
+    ];
+
 pub(super) fn pattern(p: &mut Parser) {
     if let Some(lhs) = atom_pat(p) {
         // test range_pat

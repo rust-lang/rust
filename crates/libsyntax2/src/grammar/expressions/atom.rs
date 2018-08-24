@@ -13,7 +13,7 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
-const LITERAL_FIRST: TokenSet =
+pub(crate) const LITERAL_FIRST: TokenSet =
     token_set![TRUE_KW, FALSE_KW, INT_NUMBER, FLOAT_NUMBER, BYTE, CHAR,
                STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
 

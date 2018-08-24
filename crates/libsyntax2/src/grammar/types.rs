@@ -1,5 +1,13 @@
 use super::*;
 
+pub(super) const TYPE_FIRST: TokenSet =
+    token_set_union![
+        token_set![
+            L_PAREN, EXCL, STAR, L_BRACK, AMP, UNDERSCORE, FN_KW, UNSAFE_KW, EXTERN_KW, FOR_KW, IMPL_KW, DYN_KW, L_ANGLE,
+        ],
+        paths::PATH_FIRST,
+    ];
+
 pub(super) fn type_(p: &mut Parser) {
     match p.current() {
         L_PAREN => paren_or_tuple_type(p),

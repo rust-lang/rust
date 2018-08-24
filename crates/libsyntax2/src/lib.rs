@@ -58,6 +58,10 @@ pub fn parse(text: &str) -> SyntaxNode {
     res
 }
 
+#[cfg(not(debug_assertions))]
+fn validate_block_structure(_: SyntaxNodeRef) {}
+
+#[cfg(debug_assertions)]
 fn validate_block_structure(root: SyntaxNodeRef) {
     let mut stack = Vec::new();
     for node in algo::walk::preorder(root) {
@@ -67,7 +71,12 @@ fn validate_block_structure(root: SyntaxNodeRef) {
             }
             SyntaxKind::R_CURLY => {
                 if let Some(pair) = stack.pop() {
-                    assert_eq!(node.parent(), pair.parent());
+                    assert_eq!(
+                        node.parent(),
+                        pair.parent(),
+                        "unpaired curleys:\n{}",
+                        utils::dump_tree(root),
+                    );
                     assert!(
                         node.next_sibling().is_none() && pair.prev_sibling().is_none(),
                         "floating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
