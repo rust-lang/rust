@@ -12,7 +12,7 @@
 // aux-build:edition-kw-macro-2015.rs
 // compile-pass
 
-#![allow(async_idents)]
+#![allow(keyword_idents)]
 
 #[macro_use]
 extern crate edition_kw_macro_2015;
