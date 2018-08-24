@@ -43,17 +43,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             _ => (instance, place),
         };
 
-        let fn_sig = instance.ty(*self.tcx).fn_sig(*self.tcx);
-        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
-
         let arg = OpTy {
             op: Operand::Immediate(place.to_ref(&self)),
             layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         };
 
-        // This should always be (), but getting it from the sig seems
-        // easier than creating a layout of ().
-        let dest = PlaceTy::null(&self, self.layout_of(fn_sig.output())?);
+        let ty = self.tcx.mk_tup((&[] as &[ty::Ty<'tcx>]).iter()); // return type is ()
+        let dest = PlaceTy::null(&self, self.layout_of(ty)?);
 
         self.eval_fn_call(
             instance,
@@ -61,7 +57,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Some(dest),
             Some(target),
             span,
-            fn_sig,
+            None,
         )
     }
 }

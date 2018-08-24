@@ -15,9 +15,9 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, Scalar};
-use super::{EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup};
-
-use rustc_data_structures::indexed_vec::Idx;
+use super::{
+    EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
+};
 
 mod drop;
 
@@ -96,44 +96,44 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
                             ty::FnDef(..) => {
-                                let real_sig = instance_ty.fn_sig(*self.tcx);
                                 let sig = self.tcx.normalize_erasing_late_bound_regions(
-                                    ty::ParamEnv::reveal_all(),
+                                    self.param_env,
                                     &sig,
                                 );
+                                let real_sig = instance_ty.fn_sig(*self.tcx);
                                 let real_sig = self.tcx.normalize_erasing_late_bound_regions(
-                                    ty::ParamEnv::reveal_all(),
+                                    self.param_env,
                                     &real_sig,
                                 );
                                 if !self.check_sig_compat(sig, real_sig)? {
                                     return err!(FunctionPointerTyMismatch(real_sig, sig));
                                 }
+                                (instance, sig)
                             }
                             ref other => bug!("instance def ty: {:?}", other),
                         }
-                        (instance, sig)
                     }
-                    ty::FnDef(def_id, substs) => (
-                        self.resolve(def_id, substs)?,
-                        func.layout.ty.fn_sig(*self.tcx),
-                    ),
+                    ty::FnDef(def_id, substs) => {
+                        let sig = func.layout.ty.fn_sig(*self.tcx);
+                        let sig = self.tcx.normalize_erasing_late_bound_regions(
+                            self.param_env,
+                            &sig,
+                        );
+                        (self.resolve(def_id, substs)?, sig)
+                    },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
                         return err!(Unimplemented(msg));
                     }
                 };
                 let args = self.eval_operands(args)?;
-                let sig = self.tcx.normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &sig,
-                );
                 self.eval_fn_call(
                     fn_def,
                     &args[..],
                     dest,
                     ret,
                     terminator.source_info.span,
-                    sig,
+                    Some(sig),
                 )?;
             }
 
@@ -275,6 +275,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         return Ok(false);
     }
 
+    /// Call this function -- pushing the stack frame and initializing the arguments.
+    /// `sig` is ptional in case of FnPtr/FnDef -- but mandatory for closures!
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -282,12 +284,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
         span: Span,
-        sig: ty::FnSig<'tcx>,
+        sig: Option<ty::FnSig<'tcx>>,
     ) -> EvalResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
-        if let Some(place) = dest {
-            assert_eq!(place.layout.ty, sig.output());
-        }
+
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 // The intrinsic itself cannot diverge, so if we got here without a return
@@ -303,58 +303,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.dump_place(*dest);
                 Ok(())
             }
-            // FIXME: figure out why we can't just go through the shim
-            ty::InstanceDef::ClosureOnceShim { .. } => {
-                let mir = match M::find_fn(self, instance, args, dest, ret)? {
-                    Some(mir) => mir,
-                    None => return Ok(()),
-                };
-
-                let return_place = match dest {
-                    Some(place) => *place,
-                    None => Place::null(&self),
-                };
-                self.push_stack_frame(
-                    instance,
-                    span,
-                    mir,
-                    return_place,
-                    StackPopCleanup::Goto(ret),
-                )?;
-
-                // Pass the arguments
-                let mut arg_locals = self.frame().mir.args_iter();
-                match sig.abi {
-                    // closure as closure once
-                    Abi::RustCall => {
-                        for (arg_local, &op) in arg_locals.zip(args) {
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            self.copy_op(op, dest)?;
-                        }
-                    }
-                    // non capture closure as fn ptr
-                    // need to inject zst ptr for closure object (aka do nothing)
-                    // and need to pack arguments
-                    Abi::Rust => {
-                        trace!(
-                            "args: {:#?}",
-                            self.frame().mir.args_iter().zip(args.iter())
-                                .map(|(local, arg)| (local, **arg, arg.layout.ty))
-                                .collect::<Vec<_>>()
-                        );
-                        let local = arg_locals.nth(1).unwrap();
-                        for (i, &op) in args.into_iter().enumerate() {
-                            let dest = self.eval_place(&mir::Place::Local(local).field(
-                                mir::Field::new(i),
-                                op.layout.ty,
-                            ))?;
-                            self.copy_op(op, dest)?;
-                        }
-                    }
-                    _ => bug!("bad ABI for ClosureOnceShim: {:?}", sig.abi),
-                }
-                Ok(())
-            }
+            ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
@@ -376,58 +325,94 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     StackPopCleanup::Goto(ret),
                 )?;
 
-                // Pass the arguments
-                let mut arg_locals = self.frame().mir.args_iter();
+                // If we didn't get a signture, ask `fn_sig`
+                let sig = sig.unwrap_or_else(|| {
+                    let fn_sig = instance.ty(*self.tcx).fn_sig(*self.tcx);
+                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig)
+                });
+                assert_eq!(sig.inputs().len(), args.len());
+                // We can't test the types, as it is fine if the types are ABI-compatible but
+                // not equal.
+
+                // Figure out how to pass which arguments.
+                // FIXME: Somehow this is horribly full of special cases here, and codegen has
+                // none of that.  What is going on?
                 trace!("ABI: {:?}", sig.abi);
                 trace!(
                     "args: {:#?}",
-                    self.frame().mir.args_iter().zip(args.iter())
-                        .map(|(local, arg)| (local, **arg, arg.layout.ty)).collect::<Vec<_>>()
+                    args.iter()
+                        .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
+                        .collect::<Vec<_>>()
                 );
-                match sig.abi {
-                    Abi::RustCall => {
-                        assert_eq!(args.len(), 2);
+                trace!(
+                    "locals: {:#?}",
+                    mir.args_iter()
+                        .map(|local|
+                            (local, self.layout_of_local(self.cur_frame(), local).unwrap().ty)
+                        )
+                        .collect::<Vec<_>>()
+                );
+                match instance.def {
+                    ty::InstanceDef::ClosureOnceShim { .. } if sig.abi == Abi::Rust => {
+                        // this has an entirely ridicolous calling convention where it uses the
+                        // "Rust" ABI, but arguments come in untupled and are supposed to be tupled
+                        // for the callee!  The function's first argument is a ZST, and then
+                        // there comes a tuple for the rest.
+                        let mut arg_locals = mir.args_iter();
 
-                        {
-                            // write first argument
-                            let first_local = arg_locals.next().unwrap();
-                            let dest = self.eval_place(&mir::Place::Local(first_local))?;
-                            self.copy_op(args[0], dest)?;
+                        {   // the ZST. nothing to write.
+                            let arg_local = arg_locals.next().unwrap();
+                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                            assert!(dest.layout.is_zst());
                         }
 
-                        // unpack and write all other args
-                        let layout = args[1].layout;
-                        if let ty::Tuple(_) = layout.ty.sty {
-                            if layout.is_zst() {
-                                // Nothing to do, no need to unpack zsts
-                                return Ok(());
+                        {   // the tuple argument.
+                            let arg_local = arg_locals.next().unwrap();
+                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                            assert_eq!(dest.layout.fields.count(), args.len());
+                            for (i, &op) in args.iter().enumerate() {
+                                let dest_field = self.place_field(dest, i as u64)?;
+                                self.copy_op(op, dest_field)?;
                             }
-                            if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
-                                for (i, arg_local) in arg_locals.enumerate() {
-                                    let arg = self.operand_field(args[1], i as u64)?;
-                                    let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                                    self.copy_op(arg, dest)?;
-                                }
-                            } else {
-                                trace!("manual impl of rust-call ABI");
-                                // called a manual impl of a rust-call function
-                                let dest = self.eval_place(
-                                    &mir::Place::Local(arg_locals.next().unwrap()),
-                                )?;
-                                self.copy_op(args[1], dest)?;
-                            }
-                        } else {
-                            bug!(
-                                "rust-call ABI tuple argument was {:#?}",
-                                layout
-                            );
                         }
+
+                        // that should be it
+                        assert!(arg_locals.next().is_none());
                     }
                     _ => {
-                        for (arg_local, &op) in arg_locals.zip(args) {
+                        // overloaded-calls-simple.rs in miri's test suite demomstrates that there is
+                        // no way to predict, from the ABI and instance.def, whether the function
+                        // wants arguments passed with untupling or not.  So we just make it
+                        // depend on the number of arguments...
+                        let untuple =
+                            sig.abi == Abi::RustCall && !args.is_empty() && args.len() != mir.arg_count;
+                        let (normal_args, untuple_arg) = if untuple {
+                            let (tup, args) = args.split_last().unwrap();
+                            trace!("eval_fn_call: Will pass last argument by untupling");
+                            (args, Some(tup))
+                        } else {
+                            (&args[..], None)
+                        };
+
+                        // Pass the arguments.
+                        let mut arg_locals = mir.args_iter();
+                        // First the normal ones.
+                        for &op in normal_args {
+                            let arg_local = arg_locals.next().unwrap();
                             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
                             self.copy_op(op, dest)?;
                         }
+                        // The the ones to untuple.
+                        if let Some(&untuple_arg) = untuple_arg {
+                            for i in 0..untuple_arg.layout.fields.count() {
+                                let arg_local = arg_locals.next().unwrap();
+                                let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                                let op = self.operand_field(untuple_arg, i as u64)?;
+                                self.copy_op(op, dest)?;
+                            }
+                        }
+                        // That should be it.
+                        assert!(arg_locals.next().is_none());
                     }
                 }
                 Ok(())
