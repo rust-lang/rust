@@ -37,9 +37,6 @@ use util as mir_util;
 /// Construct the MIR for a given def-id.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let unsupported = || {
-        span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id);
-    };
 
     // Figure out what primary body this item has.
     let body_id = match tcx.hir.get(id) {
@@ -50,7 +47,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
         _ => match tcx.hir.maybe_body_owned_by(id) {
             Some(body) => body,
-            None => unsupported(),
+            None => span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id),
         },
     };
 
