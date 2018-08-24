@@ -281,7 +281,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in a `Value`, not on which data is stored there currently.
-    pub(super) fn try_read_value(
+    pub(crate) fn try_read_value(
         &self,
         src: OpTy<'tcx>,
     ) -> EvalResult<'tcx, Result<Value, MemPlace>> {
@@ -391,7 +391,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok(OpTy { op: Operand::Immediate(value), layout: field_layout })
     }
 
-    pub(super) fn operand_downcast(
+    pub fn operand_downcast(
         &self,
         op: OpTy<'tcx>,
         variant: usize,
@@ -497,7 +497,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Evaluate a bunch of operands at once
-    pub(crate) fn eval_operands(
+    pub(super) fn eval_operands(
         &self,
         ops: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, Vec<OpTy<'tcx>>> {

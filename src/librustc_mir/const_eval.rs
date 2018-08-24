@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Not in interpret to make sure we do not use private implementation details
+
 use std::fmt;
 use std::error::Error;
 
@@ -26,7 +28,7 @@ use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
     Scalar, AllocId, Allocation, ConstValue, AllocType,
 };
-use super::{
+use interpret::{self,
     Place, PlaceExtra, PlaceTy, MemPlace, OpTy, Operand, Value,
     EvalContext, StackPopCleanup, MemoryKind, Memory,
 };
@@ -41,7 +43,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     let param_env = tcx.param_env(instance.def_id());
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeEvaluator, ());
     // insert a stack frame so any queries have the correct substs
-    ecx.stack.push(super::eval_context::Frame {
+    ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
         locals: IndexVec::new(),
         instance,
@@ -228,14 +230,14 @@ impl Error for ConstEvalError {
     }
 }
 
-impl super::IsStatic for ! {
+impl interpret::IsStatic for ! {
     fn is_static(self) -> bool {
         // unreachable
         self
     }
 }
 
-impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     type MemoryData = ();
     type MemoryKinds = !;
 

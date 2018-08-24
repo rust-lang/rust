@@ -56,15 +56,15 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub(crate) stack: Vec<Frame<'mir, 'tcx>>,
 
     /// The maximum number of stack frames allowed
-    pub(crate) stack_limit: usize,
+    pub(super) stack_limit: usize,
 
     /// When this value is negative, it indicates the number of interpreter
     /// steps *until* the loop detector is enabled. When it is positive, it is
     /// the number of steps after the detector has been enabled modulo the loop
     /// detector period.
-    pub(crate) steps_since_detector_enabled: isize,
+    pub(super) steps_since_detector_enabled: isize,
 
-    pub(crate) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
+    pub(super) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
 
 /// A stack frame.
@@ -201,7 +201,7 @@ impl<'tcx> LocalValue {
 type EvalSnapshot<'a, 'mir, 'tcx, M>
     = (M, Vec<Frame<'mir, 'tcx>>, Memory<'a, 'mir, 'tcx, M>);
 
-pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
     ///
     /// When a collision occurs in this table, we store the full snapshot in
@@ -652,7 +652,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    crate fn deallocate_local(&mut self, local: LocalValue) -> EvalResult<'tcx> {
+    pub(super) fn deallocate_local(&mut self, local: LocalValue) -> EvalResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");

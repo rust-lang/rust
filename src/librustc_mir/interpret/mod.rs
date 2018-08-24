@@ -20,7 +20,6 @@ mod operator;
 mod step;
 mod terminator;
 mod traits;
-mod const_eval;
 mod validity;
 mod intrinsics;
 
@@ -32,7 +31,12 @@ pub use self::place::{Place, PlaceExtra, PlaceTy, MemPlace, MPlaceTy};
 
 pub use self::memory::{Memory, MemoryKind};
 
-pub use self::const_eval::{
+pub use self::machine::{Machine, IsStatic};
+
+pub use self::operand::{Value, ValTy, Operand, OpTy};
+
+// reexports for compatibility
+pub use const_eval::{
     eval_promoted,
     mk_borrowck_eval_cx,
     mk_eval_cx,
@@ -43,7 +47,3 @@ pub use self::const_eval::{
     const_variant_index,
     op_to_const,
 };
-
-pub use self::machine::{Machine, IsStatic};
-
-pub use self::operand::{Value, ValTy, Operand, OpTy};

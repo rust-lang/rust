@@ -32,7 +32,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    crate fn cast(
+    pub fn cast(
         &mut self,
         src: OpTy<'tcx>,
         kind: CastKind,
