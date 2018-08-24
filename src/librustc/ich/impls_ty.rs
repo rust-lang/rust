@@ -114,7 +114,7 @@ for ty::RegionKind {
             ty::ReLateBound(db, ty::BrEnv) => {
                 db.hash_stable(hcx, hasher);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index }) => {
+            ty::ReEarlyBound(ty::GenericParam { def_id, index }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
             }
@@ -935,8 +935,8 @@ for ty::FloatVid
     }
 }
 
-impl_stable_hash_for!(struct ty::ParamTy {
-    idx,
+impl_stable_hash_for!(struct ty::GenericParam {
+    index,
     def_id
 });
 

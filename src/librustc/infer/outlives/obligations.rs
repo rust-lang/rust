@@ -330,7 +330,7 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        param_ty: ty::ParamTy,
+        param_ty: ty::GenericParam,
     ) {
         debug!(
             "param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
@@ -459,7 +459,7 @@ where
         }
     }
 
-    fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    fn param_bound(&self, param_ty: ty::GenericParam) -> VerifyBound<'tcx> {
         debug!("param_bound(param_ty={:?})", param_ty);
 
         let mut param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty));

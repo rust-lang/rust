@@ -15,12 +15,8 @@ use rustc::util::nodemap::FxHashSet;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Parameter(pub u32);
 
-impl From<ty::ParamTy> for Parameter {
-    fn from(param: ty::ParamTy) -> Self { Parameter(param.idx) }
-}
-
-impl From<ty::EarlyBoundRegion> for Parameter {
-    fn from(param: ty::EarlyBoundRegion) -> Self { Parameter(param.index) }
+impl From<ty::GenericParam> for Parameter {
+    fn from(param: ty::GenericParam) -> Self { Parameter(param.index) }
 }
 
 /// Return the set of parameters constrained by the impl header.

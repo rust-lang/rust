@@ -1740,7 +1740,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     // have to be careful to only iterate over early-bound regions.
     let mut index = parent_count + has_own_self as u32;
     for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
-        let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+        let region = tcx.mk_region(ty::ReEarlyBound(ty::GenericParam {
             def_id: tcx.hir.local_def_id(param.id),
             index,
         }));

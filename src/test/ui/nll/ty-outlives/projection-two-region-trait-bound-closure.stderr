@@ -106,7 +106,7 @@ error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: 'a/#0`...
 
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
@@ -150,7 +150,7 @@ error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: 'a/#0`...
 
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:91:29

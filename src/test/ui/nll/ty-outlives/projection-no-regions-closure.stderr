@@ -48,7 +48,7 @@ error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not liv
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: 'a/#0`...
 
 note: External requirements
   --> $DIR/projection-no-regions-closure.rs:45:23
@@ -121,7 +121,7 @@ error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not liv
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: 'a/#0`...
 
 note: External requirements
   --> $DIR/projection-no-regions-closure.rs:64:23

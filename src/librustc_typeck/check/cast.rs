@@ -81,7 +81,7 @@ enum PointerKind<'tcx> {
     /// The unsize info of this anon ty
     OfAnon(DefId, &'tcx Substs<'tcx>),
     /// The unsize info of this parameter
-    OfParam(&'tcx ty::ParamTy),
+    OfParam(&'tcx ty::GenericParam),
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {

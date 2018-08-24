@@ -2557,15 +2557,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_ty_param(self, def: &ty::GenericParamDef) -> Ty<'tcx> {
-        self.mk_ty(ty::Param(ty::ParamTy {
-            idx: def.index,
+        self.mk_ty(ty::Param(ty::GenericParam {
+            index: def.index,
             def_id: def.def_id,
         }))
     }
 
     pub fn mk_self_type(self, trait_def_id: DefId) -> Ty<'tcx> {
-        self.mk_ty(ty::Param(ty::ParamTy {
-            idx: 0,
+        self.mk_ty(ty::Param(ty::GenericParam {
+            index: 0,
             def_id: trait_def_id,
         }))
     }

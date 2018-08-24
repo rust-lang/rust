@@ -133,7 +133,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
-                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                tcx.mk_region(ty::ReEarlyBound(ty::GenericParam {
                     def_id: id,
                     index,
                 }))

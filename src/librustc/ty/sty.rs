@@ -165,7 +165,7 @@ pub enum TyKind<'tcx> {
     Anon(DefId, &'tcx Substs<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
-    Param(ParamTy),
+    Param(GenericParam),
 
     /// A type variable used during type-checking.
     Infer(InferTy),
@@ -959,12 +959,6 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct ParamTy {
-    pub idx: u32,
-    pub def_id: DefId,
-}
-
 /// A [De Bruijn index][dbi] is a standard means of representing
 /// regions (and perhaps later types) in a higher-ranked setting. In
 /// particular, imagine a type like this:
@@ -1074,7 +1068,7 @@ pub enum RegionKind {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
     // parameters are substituted.
-    ReEarlyBound(EarlyBoundRegion),
+    ReEarlyBound(GenericParam),
 
     // Region bound in a function scope, which will be substituted when the
     // function is called.
@@ -1124,8 +1118,8 @@ pub enum RegionKind {
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, PartialOrd, Ord)]
-pub struct EarlyBoundRegion {
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
+pub struct GenericParam {
     pub def_id: DefId,
     pub index: u32,
 }
@@ -1483,7 +1477,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
-            ty::Param(ref data) => data.idx == index,
+            ty::Param(ref data) => data.index == index,
             _ => false,
         }
     }

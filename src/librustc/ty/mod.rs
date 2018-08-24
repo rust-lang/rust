@@ -63,12 +63,12 @@ use hir;
 
 pub use self::sty::{Binder, CanonicalVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
-pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+pub use self::sty::{InferTy, GenericParam, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
-pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+pub use self::sty::{BoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
 pub use self::sty::BoundRegion::*;
@@ -819,7 +819,7 @@ pub enum IntVarValue {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct FloatVarValue(pub ast::FloatTy);
 
-impl ty::EarlyBoundRegion {
+impl ty::GenericParam {
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         ty::BoundRegion::BrNamed(self.def_id)
     }
@@ -856,10 +856,10 @@ pub struct GenericParamDef {
 }
 
 impl GenericParamDef {
-    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
+    pub fn to_early_bound_region_data(&self) -> ty::GenericParam {
         match self.kind {
             GenericParamDefKind::Lifetime => {
-                ty::EarlyBoundRegion {
+                ty::GenericParam {
                     def_id: self.def_id,
                     index: self.index,
                 }
@@ -2657,7 +2657,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
                         // Ignore bounds other than those on this parameter.
                         match trait_ref.self_ty().sty {
-                            ty::TyParam(p) if p.def_id == id => {}
+                            ty::Param(p) if p.def_id == id => {}
                             _ => continue,
                         }
 

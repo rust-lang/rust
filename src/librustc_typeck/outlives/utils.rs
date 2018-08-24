@@ -64,7 +64,7 @@ pub fn insert_outlives_predicate<'tcx>(
                     }
 
                     Component::Param(param_ty) => {
-                        // param_ty: ty::ParamTy
+                        // param_ty: ty::GenericParam
                         // This would arise from something like:
                         //
                         // ```

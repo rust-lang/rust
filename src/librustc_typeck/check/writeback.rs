@@ -463,7 +463,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                         if subst == region {
                                             // found it in the substitution list, replace with the
                                             // parameter from the existential type
-                                            let reg = ty::EarlyBoundRegion {
+                                            let reg = ty::GenericParam {
                                                 def_id: p.def_id,
                                                 index: p.index,
                                             };

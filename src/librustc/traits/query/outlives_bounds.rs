@@ -31,7 +31,7 @@ use std::mem;
 #[derive(Clone, Debug)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
-    RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
+    RegionSubParam(ty::Region<'tcx>, ty::GenericParam),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 

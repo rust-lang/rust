@@ -17,7 +17,7 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 #[derive(Debug)]
 pub enum Component<'tcx> {
     Region(ty::Region<'tcx>),
-    Param(ty::ParamTy),
+    Param(ty::GenericParam),
     UnresolvedInferenceVariable(ty::InferTy),
 
     // Projections like `T::Foo` are tricky because a constraint like

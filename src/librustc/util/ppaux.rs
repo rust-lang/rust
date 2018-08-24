@@ -805,7 +805,7 @@ define_print! {
             // `explain_region()` or `note_and_explain_region()`.
             match *self {
                 ty::ReEarlyBound(ref data) => {
-                    write!(f, "{}", ty::tls::with(|tcx| tcx.generic_param_name(data.def_id)))
+                    print!(f, cx, print_display(data))
                 }
                 ty::ReCanonical(_) => {
                     write!(f, "'_")
@@ -846,9 +846,7 @@ define_print! {
         debug {
             match *self {
                 ty::ReEarlyBound(ref data) => {
-                    write!(f, "ReEarlyBound({}, {})",
-                           data.index,
-                           ty::tls::with(|tcx| tcx.generic_param_name(data.def_id)))
+                    print!(f, cx, print_debug(data))
                 }
 
                 ty::ReClosureBound(ref vid) => {
@@ -1311,12 +1309,13 @@ define_print! {
 }
 
 define_print! {
-    () ty::ParamTy, (self, f, cx) {
+    () ty::GenericParam, (self, f, cx) {
         display {
             write!(f, "{}", ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)))
         }
         debug {
-            write!(f, "{}/#{}", ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)), self.idx)
+            write!(f, "{}/#{}",
+                ty::tls::with(|tcx| tcx.generic_param_name(self.def_id)), self.index)
         }
     }
 }

@@ -455,7 +455,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
                 match t.sty {
                     ty::Param(p) => {
-                        self.params.insert(p.idx);
+                        self.params.insert(p.index);
                         t.super_visit_with(self)
                     }
                     _ => t.super_visit_with(self)

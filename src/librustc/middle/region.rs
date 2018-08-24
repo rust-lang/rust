@@ -720,7 +720,7 @@ impl<'tcx> ScopeTree {
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
     pub fn early_free_scope<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       br: &ty::EarlyBoundRegion)
+                                       br: &ty::GenericParam)
                                        -> Scope {
         let param_owner = tcx.parent_def_id(br.def_id).unwrap();
 
