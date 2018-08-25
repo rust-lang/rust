@@ -1,4 +1,5 @@
 use rustc::mir;
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
@@ -101,28 +102,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        use rustc::mir::PlaceBase::*;
-        let mut result = match place.base {
-            Local(local) => {
-                if local == mir::RETURN_PLACE {
-                    // Might allow this in the future, right now there's no way to do this from Rust code anyway
-                    err!(ReadFromReturnPointer)
-                } else {
-                    // Directly reading a local will always succeed
-                    self.frame().locals[local].access().map(Some)
-                }
-            },
-            // No fast path for statics. Reading from statics is rare and would require another
-            // Machine function to handle differently in miri.
-            Promoted(_) | Static(_) => Ok(None),
-        };
-        if !place.elems.is_empty() {
+        let mut result = self.try_read_place_base(&place.base)?;
+        let mut base_ty = place.base.ty(self.mir());
+        let mut base_layout = self.layout_of(base_ty)?;
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
-                result = self.try_read_place_projection(place, elem);
+                result = self.try_read_place_projection(result, elem, base_layout)?;
+
+                base_ty = PlaceTy::from(base_ty)
+                    .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
+                base_layout = self.layout_of(base_ty)?;
             }
         }
 
-        result
+        Ok(result)
     }
 
     pub fn read_field(
@@ -165,27 +158,47 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok((value, field))
     }
 
+    fn try_read_place_base(
+        &self,
+        place_base: &mir::PlaceBase<'tcx>,
+    ) -> EvalResult<'tcx, Option<Value>> {
+        use rustc::mir::PlaceBase::*;
+        match place_base {
+            Local(local) => {
+                if *local == mir::RETURN_PLACE {
+                    // Might allow this in the future, right now there's no way to do this from Rust code anyway
+                    err!(ReadFromReturnPointer)
+                } else {
+                    // Directly reading a local will always succeed
+                    self.frame().locals[*local].access().map(Some)
+                }
+            },
+            // No fast path for statics. Reading from statics is rare and would require another
+            // Machine function to handle differently in miri.
+            Promoted(_) | Static(_) => Ok(None),
+        }
+    }
+
     fn try_read_place_projection(
         &self,
-        base_place: &mir::Place<'tcx>,
+        base: Option<Value>,
         proj: &mir::PlaceElem<'tcx>,
+        base_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::ProjectionElem::*;
-        let base = match self.try_read_place(base_place)? {
-            Some(base) => base,
-            None => return Ok(None),
-        };
-        let base_ty = self.place_ty(base_place);
-        let base_layout = self.layout_of(base_ty)?;
-        match proj {
-            Field(field, _) => Ok(Some(self.read_field(base, None, *field, base_layout)?.0)),
-            // The NullablePointer cases should work fine, need to take care for normal enums
-            Downcast(..) |
-            Subslice { .. } |
-            // reading index 0 or index 1 from a ByVal or ByVal pair could be optimized
-            ConstantIndex { .. } | Index(_) |
-            // No way to optimize this projection any better than the normal place path
-            Deref => Ok(None),
+        if let Some(base) = base {
+            match proj {
+                Field(field, _) => Ok(Some(self.read_field(base, None, *field, base_layout)?.0)),
+                // The NullablePointer cases should work fine, need to take care for normal enums
+                Downcast(..) |
+                Subslice { .. } |
+                // reading index 0 or index 1 from a ByVal or ByVal pair could be optimized
+                ConstantIndex { .. } | Index(_) |
+                // No way to optimize this projection any better than the normal place path
+                Deref => Ok(None),
+            }
+        } else {
+            return Ok(None)
         }
     }
 
@@ -257,11 +270,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         };
 
-        if !mir_place.elems.is_empty() {
-             let ty = self.place_ty(mir_place);
-             let place1 = self.eval_place(mir_place)?;
+        if !mir_place.has_no_projection() {
+             let mut ty = mir_place.base.ty(self.mir());
              for elem in mir_place.elems.iter() {
-                place = self.eval_place_projection(place1,  ty,  elem)?;
+                 ty = self.monomorphize(ty, self.substs());
+                 place = self.eval_place_projection(place, ty, elem)?;
+                 ty = PlaceTy::from(ty)
+                     .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
              }
         }
 
