@@ -11,7 +11,7 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use borrow_check::nll::constraints::{
-    ConstraintIndex, ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
+    ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
 };
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;

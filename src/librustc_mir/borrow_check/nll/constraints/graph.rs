@@ -103,10 +103,15 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     }
 
     /// Given a region `R`, iterate over all constraints `R: R1`.
-    crate fn outgoing_edges(&self, region_sup: RegionVid) -> Edges<'_, D> {
+    crate fn outgoing_edges<'a>(
+        &'a self,
+        region_sup: RegionVid,
+        constraints: &'a ConstraintSet,
+    ) -> Edges<'a, D> {
         let first = self.first_constraints[region_sup];
         Edges {
             graph: self,
+            constraints,
             pointer: first,
         }
     }
@@ -114,16 +119,17 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
 
 crate struct Edges<'s, D: ConstraintGraphDirecton> {
     graph: &'s ConstraintGraph<D>,
+    constraints: &'s ConstraintSet,
     pointer: Option<ConstraintIndex>,
 }
 
 impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
-    type Item = ConstraintIndex;
+    type Item = OutlivesConstraint;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(p) = self.pointer {
             self.pointer = self.graph.next_constraints[p];
-            Some(p)
+            Some(self.constraints[p])
         } else {
             None
         }
@@ -154,14 +160,12 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
     /// there exists a constraint `R: R1`.
     crate fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'_, D> {
         Successors {
-            set: self.set,
-            edges: self.constraint_graph.outgoing_edges(region_sup),
+            edges: self.constraint_graph.outgoing_edges(region_sup, self.set),
         }
     }
 }
 
 crate struct Successors<'s, D: ConstraintGraphDirecton> {
-    set: &'s ConstraintSet,
     edges: Edges<'s, D>,
 }
 
@@ -169,7 +173,7 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Successors<'s, D> {
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.edges.next().map(|c| D::end_region(&self.set[c]))
+        self.edges.next().map(|c| D::end_region(&c))
     }
 }
 
