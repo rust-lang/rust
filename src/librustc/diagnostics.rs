@@ -2116,6 +2116,34 @@ struct Foo;
 ```
 "##,
 
+E0713: r##"
+This error indicates that a `#[marker]` attribute was incorrectly placed
+on something other than a trait.
+
+Examples of erroneous code:
+
+```compile_fail,E0713
+# #![feature(marker_trait_attr)]
+
+#[marker]
+struct Foo { }
+```
+"##,
+
+E0714: r##"
+This error indicates that a `#[marker]` attribute had a value. The
+`#[marker]` should be empty.
+
+Examples of erroneous code:
+
+```compile_fail,E0714
+# #![feature(marker_trait_attr)]
+
+#[marker(anything)]
+trait Foo {}
+```
+"##,
+
 }
 
 

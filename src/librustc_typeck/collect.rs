@@ -735,8 +735,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::
         err.emit();
     }
 
-    let is_marker = false; // FIXME (scottmcm)
-
+    let is_marker = tcx.has_attr(def_id, "marker");
     let def_path_hash = tcx.def_path_hash(def_id);
     let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, def_path_hash);
     tcx.alloc_trait_def(def)
