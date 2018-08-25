@@ -180,3 +180,7 @@ fn make_array() -> [u8; 3] {
 fn some_promoted_tuple() -> &'static (&'static str, &'static str) {
     &("abc", "some")
 }
+
+fn index_slice(s: &[u8]) -> u8 {
+    s[2]
+}

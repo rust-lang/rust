@@ -433,21 +433,24 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
-        match self.layout().ty.sty {
-            ty::Array(elem_ty, _) => {
-                let elem_layout = fx.layout_of(elem_ty);
-
-                let offset = fx
-                    .bcx
-                    .ins()
-                    .imul_imm(index, elem_layout.size.bytes() as i64);
-
-                let addr = self.expect_addr();
-                CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
-            }
-            ty::Slice(_elem_ty) => unimpl!("place_index(TySlice)"),
+        let (elem_layout, addr) = match self.layout().ty.sty {
+            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.expect_addr()),
+            ty::Slice(elem_ty) => (
+                fx.layout_of(elem_ty),
+                match self {
+                    CPlace::Addr(addr, _, _) => addr,
+                    CPlace::Var(_, _) => bug!("Expected CPlace::Addr found CPlace::Var"),
+                },
+            ),
             _ => bug!("place_index({:?})", self.layout().ty),
-        }
+        };
+
+        let offset = fx
+            .bcx
+            .ins()
+            .imul_imm(index, elem_layout.size.bytes() as i64);
+
+        CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
     }
 
     pub fn place_deref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CPlace<'tcx> {
