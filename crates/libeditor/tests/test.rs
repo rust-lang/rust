@@ -3,7 +3,7 @@ extern crate libsyntax2;
 #[macro_use]
 extern crate test_utils;
 
-use test_utils::{assert_eq_dbg};
+use test_utils::{assert_eq_dbg, add_cursor, extract_offset, extract_range};
 use libsyntax2::{File, TextUnit, TextRange};
 use libeditor::{
     ActionResult,
@@ -15,7 +15,7 @@ use libeditor::{
 #[test]
 fn test_extend_selection() {
     fn do_check(before: &str, afters: &[&str]) {
-        let (cursor, before) = extract_cursor(before);
+        let (cursor, before) = extract_offset(before);
         let file = file(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
@@ -163,7 +163,7 @@ fn test_add_impl() {
 #[test]
 fn test_matching_brace() {
     fn do_check(before: &str, after: &str) {
-        let (pos, before) = extract_cursor(before);
+        let (pos, before) = extract_offset(before);
         let file = file(&before);
         let new_pos = match matching_brace(&file, pos) {
             None => pos,
@@ -215,9 +215,7 @@ pub fn reparse(&self, edit: &AtomEdit) -> File {
 #[test]
 fn test_join_lines_selection() {
     fn do_check(before: &str, after: &str) {
-        let (sel_start, before) = extract_cursor(before);
-        let (sel_end, before) = extract_cursor(&before);
-        let sel = TextRange::from_to(sel_start, sel_end);
+        let (sel, before) = extract_range(&before);
         let file = file(&before);
         let result = join_lines(&file, sel);
         let actual = result.edit.apply(&before);
@@ -255,7 +253,7 @@ fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
     after: &str,
     f: F,
 ) {
-    let (before_cursor_pos, before) = extract_cursor(before);
+    let (before_cursor_pos, before) = extract_offset(before);
     let file = file(&before);
     let result = f(&file, before_cursor_pos).expect("code action is not applicable");
     let actual = result.edit.apply(&before);
@@ -265,27 +263,4 @@ fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
     };
     let actual = add_cursor(&actual, actual_cursor_pos);
     assert_eq_text!(after, &actual);
-}
-
-fn extract_cursor(text: &str) -> (TextUnit, String) {
-    let cursor = "<|>";
-    let cursor_pos = match text.find(cursor) {
-        None => panic!("text should contain cursor marker"),
-        Some(pos) => pos,
-    };
-    let mut new_text = String::with_capacity(text.len() - cursor.len());
-    new_text.push_str(&text[..cursor_pos]);
-    new_text.push_str(&text[cursor_pos + cursor.len()..]);
-    let cursor_pos = TextUnit::from(cursor_pos as u32);
-    (cursor_pos, new_text)
-}
-
-fn add_cursor(text: &str, offset: TextUnit) -> String {
-    let offset: u32 = offset.into();
-    let offset: usize = offset as usize;
-    let mut res = String::new();
-    res.push_str(&text[..offset]);
-    res.push_str("<|>");
-    res.push_str(&text[offset..]);
-    res
 }

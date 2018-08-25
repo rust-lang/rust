@@ -6,3 +6,4 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 [dependencies]
 difference = "2.0.0"
 itertools = "0.7.8"
+text_unit = "0.1.2"
