@@ -1041,9 +1041,11 @@ enum NightsWatch {}
 "##,
 
 E0087: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Too many type arguments were supplied for a function. For example:
 
-```compile_fail,E0087
+```compile_fail,E0107
 fn foo<T>() {}
 
 fn main() {
@@ -1057,9 +1059,11 @@ parameters.
 "##,
 
 E0088: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You gave too many lifetime arguments. Erroneous code example:
 
-```compile_fail,E0088
+```compile_fail,E0107
 fn f() {}
 
 fn main() {
@@ -1103,9 +1107,11 @@ fn main() {
 "##,
 
 E0089: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Too few type arguments were supplied for a function. For example:
 
-```compile_fail,E0089
+```compile_fail,E0107
 fn foo<T, U>() {}
 
 fn main() {
@@ -1116,7 +1122,7 @@ fn main() {
 Note that if a function takes multiple type arguments but you want the compiler
 to infer some of them, you can use type placeholders:
 
-```compile_fail,E0089
+```compile_fail,E0107
 fn foo<T, U>(x: T) {}
 
 fn main() {
@@ -1129,9 +1135,11 @@ fn main() {
 "##,
 
 E0090: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You gave too few lifetime arguments. Example:
 
-```compile_fail,E0090
+```compile_fail,E0107
 fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
@@ -1258,18 +1266,34 @@ extern "rust-intrinsic" {
 "##,
 
 E0107: r##"
-This error means that an incorrect number of lifetime parameters were provided
-for a type (like a struct or enum) or trait:
+This error means that an incorrect number of generic arguments were provided:
 
 ```compile_fail,E0107
-struct Foo<'a, 'b>(&'a str, &'b str);
-enum Bar { A, B, C }
+struct Foo<T> { x: T }
 
-struct Baz<'a> {
-    foo: Foo<'a>, // error: expected 2, found 1
-    bar: Bar<'a>, // error: expected 0, found 1
+struct Bar { x: Foo }             // error: wrong number of type arguments:
+                                  //        expected 1, found 0
+struct Baz<S, T> { x: Foo<S, T> } // error: wrong number of type arguments:
+                                  //        expected 1, found 2
+
+fn foo<T, U>(x: T, y: U) {}
+
+fn main() {
+    let x: bool = true;
+    foo::<bool>(x);                 // error: wrong number of type arguments:
+                                    //        expected 2, found 1
+    foo::<bool, i32, i32>(x, 2, 4); // error: wrong number of type arguments:
+                                    //        expected 2, found 3
+}
+
+fn f() {}
+
+fn main() {
+    f::<'static>(); // error: wrong number of lifetime arguments:
+                    //        expected 0, found 1
 }
 ```
+
 "##,
 
 E0109: r##"
@@ -2397,13 +2421,15 @@ fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 "##,
 
 E0243: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that not enough type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below is defined to be generic in `T`, but the
 type parameter is missing in the definition of `Bar`:
 
-```compile_fail,E0243
+```compile_fail,E0107
 struct Foo<T> { x: T }
 
 struct Bar { x: Foo }
@@ -2411,13 +2437,15 @@ struct Bar { x: Foo }
 "##,
 
 E0244: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that too many type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below has no type parameters, but is supplied
 with two in the definition of `Bar`:
 
-```compile_fail,E0244
+```compile_fail,E0107
 struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }

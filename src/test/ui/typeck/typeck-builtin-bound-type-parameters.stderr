@@ -1,16 +1,16 @@
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:11:16
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
    |                ^ unexpected type argument
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:14:19
    |
 LL | trait Trait: Copy<Send> {}
    |                   ^^^^ unexpected type argument
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:17:26
    |
 LL | struct MyStruct1<T: Copy<T>>;
@@ -28,7 +28,7 @@ error[E0107]: wrong number of lifetime arguments: expected 0, found 1
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
    |                    ^^ unexpected lifetime argument
 
-error[E0244]: wrong number of type arguments: expected 0, found 1
+error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:24:24
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
@@ -36,5 +36,4 @@ LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0107, E0244.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.

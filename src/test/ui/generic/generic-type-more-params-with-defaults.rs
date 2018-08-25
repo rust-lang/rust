@@ -17,5 +17,5 @@ struct Vec<T, A = Heap>(
 
 fn main() {
     let _: Vec<isize, Heap, bool>;
-    //~^ ERROR wrong number of type arguments: expected at most 2, found 3 [E0244]
+    //~^ ERROR wrong number of type arguments: expected at most 2, found 3 [E0107]
 }

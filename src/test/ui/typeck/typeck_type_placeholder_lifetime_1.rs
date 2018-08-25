@@ -17,5 +17,5 @@ struct Foo<'a, T:'a> {
 
 pub fn main() {
     let c: Foo<_, _> = Foo { r: &5 };
-    //~^ ERROR wrong number of type arguments: expected 1, found 2 [E0244]
+    //~^ ERROR wrong number of type arguments: expected 1, found 2 [E0107]
 }

@@ -1,9 +1,0 @@
-error[E0244]: wrong number of type arguments: expected 0, found 2
-  --> $DIR/E0244.rs:12:23
-   |
-LL | struct Bar<S, T> { x: Foo<S, T> }
-   |                       ^^^^^^^^^ 2 unexpected type arguments
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0244`.
