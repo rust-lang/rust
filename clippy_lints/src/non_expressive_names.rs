@@ -114,9 +114,11 @@ impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             _ => walk_pat(self, pat),
         }
     }
+    /*
     fn visit_mac(&mut self, _mac: &Mac) {
         // do not check macs
     }
+    */
 }
 
 fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
