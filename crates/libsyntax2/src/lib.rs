@@ -74,9 +74,7 @@ impl File {
         File::new(root, errors)
     }
     pub fn reparse(&self, edit: &AtomEdit) -> File {
-        self.incremental_reparse(edit).unwrap_or_else(|| {
-            self.full_reparse(edit)
-        })
+        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
     fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;

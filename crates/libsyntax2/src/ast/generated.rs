@@ -4,6 +4,24 @@ use {
     SyntaxKind::*,
 };
 
+// ArrayExpr
+#[derive(Debug, Clone, Copy)]
+pub struct ArrayExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ArrayExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ARRAY_EXPR => Some(ArrayExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ArrayExpr<'a> {}
+
 // ArrayType
 #[derive(Debug, Clone, Copy)]
 pub struct ArrayType<'a> {
@@ -44,6 +62,114 @@ impl<'a> Attr<'a> {
     }
 }
 
+// BinExpr
+#[derive(Debug, Clone, Copy)]
+pub struct BinExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for BinExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BIN_EXPR => Some(BinExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> BinExpr<'a> {}
+
+// Block
+#[derive(Debug, Clone, Copy)]
+pub struct Block<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Block<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BLOCK => Some(Block { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Block<'a> {}
+
+// BlockExpr
+#[derive(Debug, Clone, Copy)]
+pub struct BlockExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for BlockExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BLOCK_EXPR => Some(BlockExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> BlockExpr<'a> {}
+
+// BreakExpr
+#[derive(Debug, Clone, Copy)]
+pub struct BreakExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for BreakExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BREAK_EXPR => Some(BreakExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> BreakExpr<'a> {}
+
+// CallExpr
+#[derive(Debug, Clone, Copy)]
+pub struct CallExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for CallExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            CALL_EXPR => Some(CallExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> CallExpr<'a> {}
+
+// CastExpr
+#[derive(Debug, Clone, Copy)]
+pub struct CastExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for CastExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            CAST_EXPR => Some(CastExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> CastExpr<'a> {}
+
 // ConstDef
 #[derive(Debug, Clone, Copy)]
 pub struct ConstDef<'a> {
@@ -64,6 +190,24 @@ impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
 impl<'a> ConstDef<'a> {}
+
+// ContinueExpr
+#[derive(Debug, Clone, Copy)]
+pub struct ContinueExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ContinueExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            CONTINUE_EXPR => Some(ContinueExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ContinueExpr<'a> {}
 
 // DynTraitType
 #[derive(Debug, Clone, Copy)]
@@ -104,6 +248,136 @@ impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
+// Expr
+#[derive(Debug, Clone, Copy)]
+pub enum Expr<'a> {
+    TupleExpr(TupleExpr<'a>),
+    ArrayExpr(ArrayExpr<'a>),
+    ParenExpr(ParenExpr<'a>),
+    PathExpr(PathExpr<'a>),
+    LambdaExpr(LambdaExpr<'a>),
+    IfExpr(IfExpr<'a>),
+    LoopExpr(LoopExpr<'a>),
+    ForExpr(ForExpr<'a>),
+    WhileExpr(WhileExpr<'a>),
+    ContinueExpr(ContinueExpr<'a>),
+    BreakExpr(BreakExpr<'a>),
+    Label(Label<'a>),
+    BlockExpr(BlockExpr<'a>),
+    ReturnExpr(ReturnExpr<'a>),
+    MatchExpr(MatchExpr<'a>),
+    MatchArmList(MatchArmList<'a>),
+    MatchArm(MatchArm<'a>),
+    MatchGuard(MatchGuard<'a>),
+    StructLit(StructLit<'a>),
+    NamedFieldList(NamedFieldList<'a>),
+    NamedField(NamedField<'a>),
+    CallExpr(CallExpr<'a>),
+    IndexExpr(IndexExpr<'a>),
+    MethodCallExpr(MethodCallExpr<'a>),
+    FieldExpr(FieldExpr<'a>),
+    TryExpr(TryExpr<'a>),
+    CastExpr(CastExpr<'a>),
+    RefExpr(RefExpr<'a>),
+    PrefixExpr(PrefixExpr<'a>),
+    RangeExpr(RangeExpr<'a>),
+    BinExpr(BinExpr<'a>),
+}
+
+impl<'a> AstNode<'a> for Expr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TUPLE_EXPR => Some(Expr::TupleExpr(TupleExpr { syntax })),
+            ARRAY_EXPR => Some(Expr::ArrayExpr(ArrayExpr { syntax })),
+            PAREN_EXPR => Some(Expr::ParenExpr(ParenExpr { syntax })),
+            PATH_EXPR => Some(Expr::PathExpr(PathExpr { syntax })),
+            LAMBDA_EXPR => Some(Expr::LambdaExpr(LambdaExpr { syntax })),
+            IF_EXPR => Some(Expr::IfExpr(IfExpr { syntax })),
+            LOOP_EXPR => Some(Expr::LoopExpr(LoopExpr { syntax })),
+            FOR_EXPR => Some(Expr::ForExpr(ForExpr { syntax })),
+            WHILE_EXPR => Some(Expr::WhileExpr(WhileExpr { syntax })),
+            CONTINUE_EXPR => Some(Expr::ContinueExpr(ContinueExpr { syntax })),
+            BREAK_EXPR => Some(Expr::BreakExpr(BreakExpr { syntax })),
+            LABEL => Some(Expr::Label(Label { syntax })),
+            BLOCK_EXPR => Some(Expr::BlockExpr(BlockExpr { syntax })),
+            RETURN_EXPR => Some(Expr::ReturnExpr(ReturnExpr { syntax })),
+            MATCH_EXPR => Some(Expr::MatchExpr(MatchExpr { syntax })),
+            MATCH_ARM_LIST => Some(Expr::MatchArmList(MatchArmList { syntax })),
+            MATCH_ARM => Some(Expr::MatchArm(MatchArm { syntax })),
+            MATCH_GUARD => Some(Expr::MatchGuard(MatchGuard { syntax })),
+            STRUCT_LIT => Some(Expr::StructLit(StructLit { syntax })),
+            NAMED_FIELD_LIST => Some(Expr::NamedFieldList(NamedFieldList { syntax })),
+            NAMED_FIELD => Some(Expr::NamedField(NamedField { syntax })),
+            CALL_EXPR => Some(Expr::CallExpr(CallExpr { syntax })),
+            INDEX_EXPR => Some(Expr::IndexExpr(IndexExpr { syntax })),
+            METHOD_CALL_EXPR => Some(Expr::MethodCallExpr(MethodCallExpr { syntax })),
+            FIELD_EXPR => Some(Expr::FieldExpr(FieldExpr { syntax })),
+            TRY_EXPR => Some(Expr::TryExpr(TryExpr { syntax })),
+            CAST_EXPR => Some(Expr::CastExpr(CastExpr { syntax })),
+            REF_EXPR => Some(Expr::RefExpr(RefExpr { syntax })),
+            PREFIX_EXPR => Some(Expr::PrefixExpr(PrefixExpr { syntax })),
+            RANGE_EXPR => Some(Expr::RangeExpr(RangeExpr { syntax })),
+            BIN_EXPR => Some(Expr::BinExpr(BinExpr { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            Expr::TupleExpr(inner) => inner.syntax(),
+            Expr::ArrayExpr(inner) => inner.syntax(),
+            Expr::ParenExpr(inner) => inner.syntax(),
+            Expr::PathExpr(inner) => inner.syntax(),
+            Expr::LambdaExpr(inner) => inner.syntax(),
+            Expr::IfExpr(inner) => inner.syntax(),
+            Expr::LoopExpr(inner) => inner.syntax(),
+            Expr::ForExpr(inner) => inner.syntax(),
+            Expr::WhileExpr(inner) => inner.syntax(),
+            Expr::ContinueExpr(inner) => inner.syntax(),
+            Expr::BreakExpr(inner) => inner.syntax(),
+            Expr::Label(inner) => inner.syntax(),
+            Expr::BlockExpr(inner) => inner.syntax(),
+            Expr::ReturnExpr(inner) => inner.syntax(),
+            Expr::MatchExpr(inner) => inner.syntax(),
+            Expr::MatchArmList(inner) => inner.syntax(),
+            Expr::MatchArm(inner) => inner.syntax(),
+            Expr::MatchGuard(inner) => inner.syntax(),
+            Expr::StructLit(inner) => inner.syntax(),
+            Expr::NamedFieldList(inner) => inner.syntax(),
+            Expr::NamedField(inner) => inner.syntax(),
+            Expr::CallExpr(inner) => inner.syntax(),
+            Expr::IndexExpr(inner) => inner.syntax(),
+            Expr::MethodCallExpr(inner) => inner.syntax(),
+            Expr::FieldExpr(inner) => inner.syntax(),
+            Expr::TryExpr(inner) => inner.syntax(),
+            Expr::CastExpr(inner) => inner.syntax(),
+            Expr::RefExpr(inner) => inner.syntax(),
+            Expr::PrefixExpr(inner) => inner.syntax(),
+            Expr::RangeExpr(inner) => inner.syntax(),
+            Expr::BinExpr(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> Expr<'a> {}
+
+// FieldExpr
+#[derive(Debug, Clone, Copy)]
+pub struct FieldExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for FieldExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            FIELD_EXPR => Some(FieldExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> FieldExpr<'a> {}
+
 // FnDef
 #[derive(Debug, Clone, Copy)]
 pub struct FnDef<'a> {
@@ -143,6 +417,24 @@ impl<'a> AstNode<'a> for FnPointerType<'a> {
 
 impl<'a> FnPointerType<'a> {}
 
+// ForExpr
+#[derive(Debug, Clone, Copy)]
+pub struct ForExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ForExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            FOR_EXPR => Some(ForExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ForExpr<'a> {}
+
 // ForType
 #[derive(Debug, Clone, Copy)]
 pub struct ForType<'a> {
@@ -160,6 +452,24 @@ impl<'a> AstNode<'a> for ForType<'a> {
 }
 
 impl<'a> ForType<'a> {}
+
+// IfExpr
+#[derive(Debug, Clone, Copy)]
+pub struct IfExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for IfExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            IF_EXPR => Some(IfExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> IfExpr<'a> {}
 
 // ImplItem
 #[derive(Debug, Clone, Copy)]
@@ -196,6 +506,168 @@ impl<'a> AstNode<'a> for ImplTraitType<'a> {
 }
 
 impl<'a> ImplTraitType<'a> {}
+
+// IndexExpr
+#[derive(Debug, Clone, Copy)]
+pub struct IndexExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for IndexExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            INDEX_EXPR => Some(IndexExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> IndexExpr<'a> {}
+
+// Label
+#[derive(Debug, Clone, Copy)]
+pub struct Label<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Label<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LABEL => Some(Label { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Label<'a> {}
+
+// LambdaExpr
+#[derive(Debug, Clone, Copy)]
+pub struct LambdaExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for LambdaExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LAMBDA_EXPR => Some(LambdaExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> LambdaExpr<'a> {}
+
+// LoopExpr
+#[derive(Debug, Clone, Copy)]
+pub struct LoopExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for LoopExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LOOP_EXPR => Some(LoopExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> LoopExpr<'a> {}
+
+// MatchArm
+#[derive(Debug, Clone, Copy)]
+pub struct MatchArm<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for MatchArm<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            MATCH_ARM => Some(MatchArm { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> MatchArm<'a> {}
+
+// MatchArmList
+#[derive(Debug, Clone, Copy)]
+pub struct MatchArmList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for MatchArmList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            MATCH_ARM_LIST => Some(MatchArmList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> MatchArmList<'a> {}
+
+// MatchExpr
+#[derive(Debug, Clone, Copy)]
+pub struct MatchExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for MatchExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            MATCH_EXPR => Some(MatchExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> MatchExpr<'a> {}
+
+// MatchGuard
+#[derive(Debug, Clone, Copy)]
+pub struct MatchGuard<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for MatchGuard<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            MATCH_GUARD => Some(MatchGuard { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> MatchGuard<'a> {}
+
+// MethodCallExpr
+#[derive(Debug, Clone, Copy)]
+pub struct MethodCallExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for MethodCallExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            METHOD_CALL_EXPR => Some(MethodCallExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> MethodCallExpr<'a> {}
 
 // Module
 #[derive(Debug, Clone, Copy)]
@@ -257,6 +729,24 @@ impl<'a> AstNode<'a> for NameRef<'a> {
 
 impl<'a> NameRef<'a> {}
 
+// NamedField
+#[derive(Debug, Clone, Copy)]
+pub struct NamedField<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for NamedField<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            NAMED_FIELD => Some(NamedField { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> NamedField<'a> {}
+
 // NamedFieldDef
 #[derive(Debug, Clone, Copy)]
 pub struct NamedFieldDef<'a> {
@@ -276,6 +766,24 @@ impl<'a> AstNode<'a> for NamedFieldDef<'a> {
 impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> NamedFieldDef<'a> {}
+
+// NamedFieldList
+#[derive(Debug, Clone, Copy)]
+pub struct NamedFieldList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for NamedFieldList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            NAMED_FIELD_LIST => Some(NamedFieldList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> NamedFieldList<'a> {}
 
 // NeverType
 #[derive(Debug, Clone, Copy)]
@@ -323,6 +831,24 @@ impl<'a> ast::TypeParamsOwner<'a> for NominalDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
+// ParenExpr
+#[derive(Debug, Clone, Copy)]
+pub struct ParenExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ParenExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PAREN_EXPR => Some(ParenExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ParenExpr<'a> {}
+
 // ParenType
 #[derive(Debug, Clone, Copy)]
 pub struct ParenType<'a> {
@@ -340,6 +866,24 @@ impl<'a> AstNode<'a> for ParenType<'a> {
 }
 
 impl<'a> ParenType<'a> {}
+
+// PathExpr
+#[derive(Debug, Clone, Copy)]
+pub struct PathExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for PathExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PATH_EXPR => Some(PathExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> PathExpr<'a> {}
 
 // PathType
 #[derive(Debug, Clone, Copy)]
@@ -395,6 +939,60 @@ impl<'a> AstNode<'a> for PointerType<'a> {
 
 impl<'a> PointerType<'a> {}
 
+// PrefixExpr
+#[derive(Debug, Clone, Copy)]
+pub struct PrefixExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for PrefixExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PREFIX_EXPR => Some(PrefixExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> PrefixExpr<'a> {}
+
+// RangeExpr
+#[derive(Debug, Clone, Copy)]
+pub struct RangeExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for RangeExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            RANGE_EXPR => Some(RangeExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> RangeExpr<'a> {}
+
+// RefExpr
+#[derive(Debug, Clone, Copy)]
+pub struct RefExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for RefExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            REF_EXPR => Some(RefExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> RefExpr<'a> {}
+
 // ReferenceType
 #[derive(Debug, Clone, Copy)]
 pub struct ReferenceType<'a> {
@@ -412,6 +1010,24 @@ impl<'a> AstNode<'a> for ReferenceType<'a> {
 }
 
 impl<'a> ReferenceType<'a> {}
+
+// ReturnExpr
+#[derive(Debug, Clone, Copy)]
+pub struct ReturnExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ReturnExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            RETURN_EXPR => Some(ReturnExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ReturnExpr<'a> {}
 
 // Root
 #[derive(Debug, Clone, Copy)]
@@ -503,6 +1119,24 @@ impl<'a> StructDef<'a> {
     }
 }
 
+// StructLit
+#[derive(Debug, Clone, Copy)]
+pub struct StructLit<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for StructLit<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            STRUCT_LIT => Some(StructLit { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> StructLit<'a> {}
+
 // TokenTree
 #[derive(Debug, Clone, Copy)]
 pub struct TokenTree<'a> {
@@ -540,6 +1174,42 @@ impl<'a> AstNode<'a> for TraitDef<'a> {
 impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
 impl<'a> TraitDef<'a> {}
+
+// TryExpr
+#[derive(Debug, Clone, Copy)]
+pub struct TryExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TryExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TRY_EXPR => Some(TryExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> TryExpr<'a> {}
+
+// TupleExpr
+#[derive(Debug, Clone, Copy)]
+pub struct TupleExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TupleExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TUPLE_EXPR => Some(TupleExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> TupleExpr<'a> {}
 
 // TupleType
 #[derive(Debug, Clone, Copy)]
@@ -696,4 +1366,22 @@ impl<'a> AstNode<'a> for WhereClause<'a> {
 }
 
 impl<'a> WhereClause<'a> {}
+
+// WhileExpr
+#[derive(Debug, Clone, Copy)]
+pub struct WhileExpr<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for WhileExpr<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            WHILE_EXPR => Some(WhileExpr { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> WhileExpr<'a> {}
 

@@ -199,6 +199,17 @@ fn foo() {
     <|>foo(1)
 }
 ");
+    do_check(r"
+pub fn reparse(&self, edit: &AtomEdit) -> File {
+    <|>self.incremental_reparse(edit).unwrap_or_else(|| {
+        self.full_reparse(edit)
+    })
+}
+", r"
+pub fn reparse(&self, edit: &AtomEdit) -> File {
+    <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+}
+");
 }
 
 #[test]
