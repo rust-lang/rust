@@ -315,7 +315,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> EvalResult<'tcx, &'m mut Allocation> {
         // Make a copy, use that.
         mem.deep_copy_static(id, MiriMemoryKind::MutStatic.into())?;
-        mem.get_mut(id) // this is recursive, but now we know that `id` is in `alloc_map`
+        mem.get_mut(id) // this is recursive, but now we know that `id` is in `alloc_map` now
     }
 
     fn box_alloc<'a>(
