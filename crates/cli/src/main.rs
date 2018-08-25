@@ -1,6 +1,7 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
+extern crate libsyntax2;
 extern crate libeditor;
 extern crate tools;
 
@@ -10,7 +11,8 @@ use std::{
 };
 use clap::{App, Arg, SubCommand};
 use tools::collect_tests;
-use libeditor::{File, syntax_tree, file_structure};
+use libsyntax2::File;
+use libeditor::{syntax_tree, file_structure};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 

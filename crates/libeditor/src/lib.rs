@@ -10,11 +10,11 @@ mod code_actions;
 mod typing;
 
 use libsyntax2::{
+    File, TextUnit, TextRange,
     ast::{AstNode, NameOwner},
     algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };
-pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,

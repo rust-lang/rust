@@ -4,8 +4,9 @@ extern crate libsyntax2;
 extern crate assert_eq_text;
 
 use assert_eq_text::{assert_eq_dbg};
+use libsyntax2::{File, TextUnit, TextRange};
 use libeditor::{
-    File, TextUnit, TextRange, ActionResult,
+    ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, add_impl, matching_brace,
     join_lines,
