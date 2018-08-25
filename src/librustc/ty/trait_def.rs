@@ -36,6 +36,11 @@ pub struct TraitDef {
 
     pub has_auto_impl: bool,
 
+    /// If `true`, then this trait has the `#[marker]` attribute, indicating
+    /// that all its associated items have defaults that cannot be overridden,
+    /// and thus `impl`s of it are allowed to overlap.
+    pub is_marker: bool,
+
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
     pub def_path_hash: DefPathHash,
@@ -53,13 +58,15 @@ impl<'a, 'gcx, 'tcx> TraitDef {
                unsafety: hir::Unsafety,
                paren_sugar: bool,
                has_auto_impl: bool,
+               is_marker: bool,
                def_path_hash: DefPathHash)
                -> TraitDef {
         TraitDef {
             def_id,
-            paren_sugar,
             unsafety,
+            paren_sugar,
             has_auto_impl,
+            is_marker,
             def_path_hash,
         }
     }

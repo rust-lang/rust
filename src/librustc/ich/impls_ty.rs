@@ -1033,6 +1033,7 @@ impl_stable_hash_for!(struct ty::TraitDef {
     unsafety,
     paren_sugar,
     has_auto_impl,
+    is_marker,
     def_path_hash,
 });
 

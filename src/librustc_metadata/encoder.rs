@@ -1152,6 +1152,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: tcx.trait_is_auto(def_id),
+                    is_marker: trait_def.is_marker,
                     super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 

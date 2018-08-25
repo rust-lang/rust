@@ -472,6 +472,7 @@ pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
+    pub is_marker: bool,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
@@ -479,6 +480,7 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
     unsafety,
     paren_sugar,
     has_auto_impl,
+    is_marker,
     super_predicates
 });
 
