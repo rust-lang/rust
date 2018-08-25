@@ -198,7 +198,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "discriminant_value" => {
                 let place = self.ref_to_mplace(self.read_value(args[0])?)?;
-                let discr_val = self.read_discriminant_value(place.into())?;
+                let discr_val = self.read_discriminant(place.into())?.0;
                 self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
             }
 

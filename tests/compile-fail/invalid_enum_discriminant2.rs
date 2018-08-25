@@ -1,6 +1,10 @@
 // Validation makes this fail in the wrong place
 // compile-flags: -Zmir-emit-validate=0
 
+// error-pattern: invalid enum discriminant
+
+use std::mem;
+
 #[repr(C)]
 pub enum Foo {
     A, B, C, D
@@ -8,10 +12,5 @@ pub enum Foo {
 
 fn main() {
     let f = unsafe { std::mem::transmute::<i32, Foo>(42) };
-    match f { //~ ERROR invalid enum discriminant
-        Foo::A => {},
-        Foo::B => {},
-        Foo::C => {},
-        Foo::D => {},
-    }
+    let _ = mem::discriminant(&f);
 }
