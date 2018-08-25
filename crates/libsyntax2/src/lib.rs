@@ -70,13 +70,15 @@ impl File {
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
-        let (green, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
+        let (green, errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
+            text, &tokens, grammar::root,
+        );
         File::new(green, errors)
     }
     pub fn reparse(&self, edit: &AtomEdit) -> File {
         self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
-    fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
+    pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
         let text = replace_range(
             node.text(),
@@ -87,7 +89,12 @@ impl File {
         if !is_balanced(&tokens) {
             return None;
         }
-        None
+        let (green, new_errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
+            &text, &tokens, reparser,
+        );
+        let green_root = node.replace_with(green);
+        let errors = merge_errors(self.errors(), new_errors, edit, node.range().start());
+        Some(File::new(green_root, errors))
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
         let text = replace_range(self.syntax().text(), edit.delete, &edit.insert);
@@ -173,7 +180,7 @@ fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(Syntax
     }
 }
 
-fn replace_range(mut text: String, range: TextRange, replace_with: &str) -> String {
+pub /*(meh)*/ fn replace_range(mut text: String, range: TextRange, replace_with: &str) -> String {
     let start = u32::from(range.start()) as usize;
     let end = u32::from(range.end()) as usize;
     text.replace_range(start..end, replace_with);
@@ -198,4 +205,30 @@ fn is_balanced(tokens: &[Token]) -> bool {
         }
     }
     balance == 0
+}
+
+fn merge_errors(
+    old_errors: Vec<SyntaxError>,
+    new_errors: Vec<SyntaxError>,
+    edit: &AtomEdit,
+    node_offset: TextUnit,
+) -> Vec<SyntaxError> {
+    let mut res = Vec::new();
+    for e in old_errors {
+        if e.offset < edit.delete.start() {
+            res.push(e)
+        } else if e.offset > edit.delete.end() {
+            res.push(SyntaxError {
+                msg: e.msg,
+                offset: e.offset + TextUnit::of_str(&edit.insert) - edit.delete.len(),
+            })
+        }
+    }
+    for e in new_errors {
+        res.push(SyntaxError {
+            msg: e.msg,
+            offset: e.offset + node_offset,
+        })
+    }
+    res
 }

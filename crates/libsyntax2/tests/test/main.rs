@@ -9,7 +9,11 @@ use std::{
     fmt::Write,
 };
 
-use libsyntax2::File;
+use test_utils::extract_range;
+use libsyntax2::{
+    File, AtomEdit,
+    utils::dump_tree,
+};
 
 #[test]
 fn lexer_tests() {
@@ -23,8 +27,38 @@ fn lexer_tests() {
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
         let file = File::parse(text);
-        libsyntax2::utils::dump_tree(file.syntax())
+        dump_tree(file.syntax())
     })
+}
+
+#[test]
+fn reparse_test() {
+    fn do_check(before: &str, replace_with: &str) {
+        let (range, before) = extract_range(before);
+        let after = libsyntax2::replace_range(before.clone(), range, replace_with);
+
+        let fully_reparsed = File::parse(&after);
+        let incrementally_reparsed = {
+            let f = File::parse(&before);
+            let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
+            f.incremental_reparse(&edit).unwrap()
+        };
+        assert_eq_text!(
+            &dump_tree(fully_reparsed.syntax()),
+            &dump_tree(incrementally_reparsed.syntax()),
+        )
+    }
+
+    do_check(r"
+fn foo() {
+    let x = foo + <|>bar<|>
+}
+", "baz");
+    do_check(r"
+struct Foo {
+    f: foo<|><|>
+}
+", ",\n    g: (),");
 }
 
 

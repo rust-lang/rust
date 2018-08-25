@@ -3,7 +3,7 @@ use std::{fmt, sync::Arc};
 use smol_str::SmolStr;
 
 use {
-    yellow::{RedNode, TreeRoot, SyntaxRoot, RedPtr, RefRoot, OwnedRoot},
+    yellow::{GreenNode, RedNode, TreeRoot, SyntaxRoot, RedPtr, RefRoot, OwnedRoot},
     SyntaxKind::{self, *},
     TextRange, TextUnit,
 };
@@ -139,6 +139,27 @@ impl<R: TreeRoot> SyntaxNode<R> {
 
     pub fn leaf_text(&self) -> Option<SmolStr> {
         self.red().green().leaf_text()
+    }
+
+    pub(crate) fn replace_with(&self, green: GreenNode) -> GreenNode {
+        assert_eq!(self.kind(), green.kind());
+        match self.parent() {
+            None => green,
+            Some(parent) => {
+                let children: Vec<_> = parent.children().map(|child| {
+                    if child == *self {
+                        green.clone()
+                    } else {
+                        child.red().green().clone()
+                    }
+                }).collect();
+                let new_parent = GreenNode::new_branch(
+                    parent.kind(),
+                    children.into_boxed_slice(),
+                );
+                parent.replace_with(new_parent)
+            },
+        }
     }
 
     fn red(&self) -> &RedNode {

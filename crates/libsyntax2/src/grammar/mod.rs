@@ -40,11 +40,11 @@ pub(crate) use self::{
     items::named_field_def_list,
 };
 
-pub(crate) fn file(p: &mut Parser) {
-    let file = p.start();
+pub(crate) fn root(p: &mut Parser) {
+    let m = p.start();
     p.eat(SHEBANG);
     items::mod_contents(p, false);
-    file.complete(p, ROOT);
+    m.complete(p, ROOT);
 }
 
 
