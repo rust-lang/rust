@@ -51,10 +51,6 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub fn parse(text: &str) -> File {
-    File::parse(text)
-}
-
 pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
         L_CURLY, R_CURLY,

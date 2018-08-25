@@ -72,7 +72,7 @@ fn main() -> Result<()> {
 
 fn file() -> Result<File> {
     let text = read_stdin()?;
-    Ok(libeditor::parse(&text))
+    Ok(File::parse(&text))
 }
 
 fn read_stdin() -> Result<String> {
@@ -91,7 +91,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = libeditor::parse(&test.text);
+    let file = File::parse(&test.text);
     let tree = syntax_tree(&file);
     Ok((test.text, tree))
 }
