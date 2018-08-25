@@ -433,9 +433,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                     if subst == ty {
                                         // found it in the substitution list, replace with the
                                         // parameter from the existential type
-                                        return self.tcx()
-                                            .global_tcx()
-                                            .mk_ty_param(param.index, param.name);
+                                        return self.tcx().global_tcx().mk_ty_param(param);
                                     }
                                 }
                             }

@@ -19,7 +19,6 @@ use require_same_types;
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -76,7 +75,9 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
+    let def_id = tcx.hir.local_def_id(it.id);
+    let generics = tcx.generics_of(def_id);
+    let param = |n| tcx.mk_ty_param(&generics.params[n]);
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
@@ -335,13 +336,11 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                it: &hir::ForeignItem) {
-    let param = |n| {
-        let name = Symbol::intern(&format!("P{}", n)).as_interned_str();
-        tcx.mk_ty_param(n, name)
-    };
-
     let def_id = tcx.hir.local_def_id(it.id);
-    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
+    let generics = tcx.generics_of(def_id);
+    let param = |n| tcx.mk_ty_param(&generics.params[n]);
+
+    let i_n_tps = generics.own_counts().types;
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {

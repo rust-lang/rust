@@ -1076,6 +1076,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 // A trait method, from any number of possible sources.
                 // Attempt to select a concrete impl before checking.
                 ty::TraitContainer(trait_def_id) => {
+                    let trait_self_ty = tcx.mk_self_type(trait_def_id);
                     let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, callee_substs);
                     let trait_ref = ty::Binder::bind(trait_ref);
                     let span = tcx.hir.span(expr_id);
@@ -1091,7 +1092,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                             // If `T` is `Self`, then this call is inside
                             // a default method definition.
                             Ok(Some(traits::VtableParam(_))) => {
-                                let on_self = trait_ref.self_ty().is_self();
+                                let on_self = trait_ref.self_ty() == trait_self_ty;
                                 // We can only be recurring in a default
                                 // method if we're being called literally
                                 // on the `Self` type.

@@ -187,7 +187,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // let _: () = substs.region_at(0);
                 check_explicit_predicates(
                     tcx,
-                    &def.did,
+                    def.did,
                     substs,
                     required_predicates,
                     explicit_map,
@@ -210,7 +210,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 if let Some(ex_trait_ref) = obj.principal() {
                     check_explicit_predicates(
                         tcx,
-                        &ex_trait_ref.skip_binder().def_id,
+                        ex_trait_ref.skip_binder().def_id,
                         ex_trait_ref.with_self_ty(tcx, ty).skip_binder().substs,
                         required_predicates,
                         explicit_map,
@@ -225,7 +225,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    &tcx.associated_item(obj.item_def_id).container.id(),
+                    tcx.associated_item(obj.item_def_id).container.id(),
                     obj.substs,
                     required_predicates,
                     explicit_map,
@@ -255,18 +255,23 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 /// applying the substitution as above.
 pub fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    def_id: &DefId,
+    def_id: DefId,
     substs: &[Kind<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignore_self_ty: bool,
 ) {
-    debug!("def_id = {:?}", &def_id);
-    debug!("substs = {:?}", &substs);
+    debug!("def_id = {:?}", def_id);
+    debug!("substs = {:?}", substs);
     debug!("explicit_map =  {:?}", explicit_map);
     debug!("required_predicates = {:?}", required_predicates);
-    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
+    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
+    let ignore_self_ty = if ignore_self_ty {
+        Some(tcx.mk_self_type(def_id))
+    } else {
+        None
+    };
     for outlives_predicate in explicit_predicates.iter() {
         debug!("outlives_predicate = {:?}", &outlives_predicate);
 
@@ -297,7 +302,7 @@ pub fn check_explicit_predicates<'tcx>(
         // to apply the substs, and not filter this predicate, we might then falsely
         // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
         if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
-            if ty.is_self() && ignore_self_ty {
+            if Some(ty) == ignore_self_ty {
                 debug!("skipping self ty = {:?}", &ty);
                 continue;
             }

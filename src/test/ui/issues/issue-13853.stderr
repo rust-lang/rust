@@ -5,7 +5,7 @@ LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
    |                                                     - expected `I` because of return type
 ...
 LL |         self.iter() //~ ERROR mismatched types
-   |         ^^^^^^^^^^^ expected type parameter, found struct `std::slice::Iter`
+   |         ^^^^^^^^^^^ expected `I` parameter, found struct `std::slice::Iter`
    |
    = note: expected type `I`
               found type `std::slice::Iter<'_, N>`

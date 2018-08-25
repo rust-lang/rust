@@ -249,7 +249,7 @@ fn type_param_predicates<'a, 'tcx>(
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.param_def_id_to_index[&def_id];
-    let ty = tcx.mk_ty_param(index, tcx.hir.ty_param_name(param_id).as_interned_str());
+    let ty = ty::ParamTy::new(index, def_id, tcx.hir.ty_param_name(param_id)).to_ty(tcx);
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner_def_id {
@@ -683,7 +683,7 @@ fn super_predicates_of<'a, 'tcx>(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
-    let self_param_ty = tcx.mk_self_type();
+    let self_param_ty = tcx.mk_self_type(trait_def_id);
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
@@ -979,13 +979,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     synthetic,
                     ..
                 } => {
-                    if param.name.ident().name == keywords::SelfType.name() {
-                        span_bug!(
-                            param.span,
-                            "`Self` should not be the name of a regular parameter"
-                        );
-                    }
-
                     if !allow_defaults && default.is_some() {
                         if !tcx.features().default_type_parameter_fallback {
                             tcx.lint_node(
@@ -1780,8 +1773,9 @@ fn explicit_predicates_of<'a, 'tcx>(
     for param in &ast_generics.params {
         match param.kind {
             GenericParamKind::Type { .. } => {
-                let name = param.name.ident().as_interned_str();
-                let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
+                let def_id = tcx.hir.local_def_id(param.id);
+                let name = param.name.ident().name;
+                let param_ty = ty::ParamTy::new(index, def_id, name).to_ty(tcx);
                 index += 1;
 
                 let sized = SizedByDefault::Yes;

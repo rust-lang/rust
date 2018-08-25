@@ -1971,10 +1971,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
 
                 if self.method_has_self_argument {
                     let self_ty = match self.container {
-                        ty::ImplContainer(def_id) => {
-                            cx.tcx.type_of(def_id)
-                        }
-                        ty::TraitContainer(_) => cx.tcx.mk_self_type()
+                        ty::ImplContainer(def_id) => cx.tcx.type_of(def_id),
+                        ty::TraitContainer(def_id) => cx.tcx.mk_self_type(def_id),
                     };
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
