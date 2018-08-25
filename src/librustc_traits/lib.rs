@@ -14,7 +14,6 @@
 #![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
 #![feature(extern_prelude)]
-#![feature(iterator_find_map)]
 #![feature(in_band_lifetimes)]
 #![cfg_attr(not(stage0), feature(nll))]
 

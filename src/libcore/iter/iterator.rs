@@ -1794,7 +1794,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iterator_find_map)]
     /// let a = ["lol", "NaN", "2", "5"];
     ///
     /// let mut first_number = a.iter().find_map(|s| s.parse().ok());
@@ -1802,9 +1801,7 @@ pub trait Iterator {
     /// assert_eq!(first_number, Some(2));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_find_map",
-               reason = "unstable new API",
-               issue = "49602")]
+    #[stable(feature = "iterator_find_map", since = "1.30.0")]
     fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
         Self: Sized,
         F: FnMut(Self::Item) -> Option<B>,
