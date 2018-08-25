@@ -1,10 +1,10 @@
 extern crate libanalysis;
-extern crate assert_eq_text;
+extern crate test_utils;
 
 use std::path::PathBuf;
 
 use libanalysis::{WorldState, FileId};
-use assert_eq_text::assert_eq_dbg;
+use test_utils::assert_eq_dbg;
 
 
 #[test]

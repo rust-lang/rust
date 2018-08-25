@@ -1,9 +1,9 @@
 extern crate libeditor;
 extern crate libsyntax2;
 #[macro_use]
-extern crate assert_eq_text;
+extern crate test_utils;
 
-use assert_eq_text::{assert_eq_dbg};
+use test_utils::{assert_eq_dbg};
 use libsyntax2::{File, TextUnit, TextRange};
 use libeditor::{
     ActionResult,

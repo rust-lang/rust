@@ -1,5 +1,5 @@
 [package]
-name = "assert_eq_text"
+name = "test_utils"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 

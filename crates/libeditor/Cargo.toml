@@ -11,4 +11,4 @@ superslice = "0.1.0"
 libsyntax2 = { path = "../libsyntax2" }
 
 [dev-dependencies]
-assert_eq_text = { path = "../assert_eq_text" }
+test_utils = { path = "../test_utils" }
