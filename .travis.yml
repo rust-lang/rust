@@ -15,6 +15,9 @@ matrix:
         - cargo fmt --all -- --check || true
         - cargo clippy
 
+  allow_failures:
+    - rust nightly
+
 branches:
   only:
     - staging
