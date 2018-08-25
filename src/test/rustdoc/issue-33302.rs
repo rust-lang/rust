@@ -17,10 +17,10 @@ macro_rules! make {
         pub struct S;
 
         // @has issue_33302/constant.CST.html \
-        //        '//pre[@class="rust const"]' 'pub const CST: i32 = 4 * 4'
+        //        '//pre[@class="rust const"]' 'pub const CST: i32'
         pub const CST: i32 = ($n * $n);
         // @has issue_33302/static.ST.html \
-        //        '//pre[@class="rust static"]' 'pub static ST: i32 = 4 * 4'
+        //        '//pre[@class="rust static"]' 'pub static ST: i32'
         pub static ST: i32 = ($n * $n);
 
         pub trait T<X> {

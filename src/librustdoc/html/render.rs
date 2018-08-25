@@ -2579,27 +2579,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
     stability
 }
 
-struct Initializer<'a>(&'a str);
-
-impl<'a> fmt::Display for Initializer<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Initializer(s) = *self;
-        if s.is_empty() { return Ok(()); }
-        write!(f, "<code> = </code>")?;
-        write!(f, "<code>{}</code>", Escape(s))
-    }
-}
-
 fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}const \
-               {name}: {typ}{init}</pre>",
+               {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
-           typ = c.type_,
-           init = Initializer(&c.expr))?;
+           typ = c.type_)?;
     document(w, cx, it)
 }
 
@@ -2608,12 +2596,11 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "<pre class='rust static'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}static {mutability}\
-               {name}: {typ}{init}</pre>",
+               {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
            name = it.name.as_ref().unwrap(),
-           typ = s.type_,
-           init = Initializer(&s.expr))?;
+           typ = s.type_)?;
     document(w, cx, it)
 }
 
