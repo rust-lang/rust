@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
 use syntax::ast::{FloatTy, IntTy, UintTy};
@@ -216,7 +226,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 Ok(Scalar::Bits { bits: v, size: 4 })
             },
 
-            // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
+            // No alignment check needed for raw pointers.
+            // But we have to truncate to target ptr size.
             RawPtr(_) => {
                 Ok(Scalar::Bits {
                     bits: self.memory.truncate_to_ptr(v).0 as u128,
@@ -229,7 +240,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    fn cast_from_float(&self, bits: u128, fty: FloatTy, dest_ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
+    fn cast_from_float(
+        &self,
+        bits: u128,
+        fty: FloatTy,
+        dest_ty: Ty<'tcx>
+    ) -> EvalResult<'tcx, Scalar> {
         use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
@@ -292,7 +308,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn cast_from_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
         use rustc::ty::TyKind::*;
         match ty.sty {
-            // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
+            // Casting to a reference or fn pointer is not permitted by rustc,
+            // no need to support it here.
             RawPtr(_) |
             Int(IntTy::Isize) |
             Uint(UintTy::Usize) => Ok(ptr.into()),

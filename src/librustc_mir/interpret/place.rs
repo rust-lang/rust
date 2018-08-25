@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! Computations on places -- field projections, going from mir::Place, and writing
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
@@ -109,8 +119,9 @@ impl MemPlace {
     /// Extract the ptr part of the mplace
     #[inline(always)]
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
-        // At this point, we forget about the alignment information -- the place has been turned into a reference,
-        // and no matter where it came from, it now must be aligned.
+        // At this point, we forget about the alignment information --
+        // the place has been turned into a reference, and no matter where it came from,
+        // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
 
@@ -276,11 +287,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 offsets[usize::try_from(field).unwrap()],
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len();
-                assert!(field < len, "Tried to access element {} of array/slice with length {}", field, len);
+                assert!(field < len,
+                        "Tried to access element {} of array/slice with length {}", field, len);
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
-                assert!(field < count as u64, "Tried to access field {} of union with {} fields", field, count);
+                assert!(field < count as u64,
+                        "Tried to access field {} of union with {} fields", field, count);
                 // Offset is always 0
                 Size::from_bytes(0)
             }
@@ -572,9 +585,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         let (ptr, ptr_align) = dest.to_scalar_ptr_align();
-        // Note that it is really important that the type here is the right one, and matches the type things are read at.
-        // In case `src_val` is a `ScalarPair`, we don't do any magic here to handle padding properly, which is only
-        // correct if we never look at this data with the wrong type.
+        // Note that it is really important that the type here is the right one, and matches the
+        // type things are read at. In case `src_val` is a `ScalarPair`, we don't do any magic here
+        // to handle padding properly, which is only correct if we never look at this data with the
+        // wrong type.
 
         // Nothing to do for ZSTs, other than checking alignment
         if dest.layout.size.bytes() == 0 {
@@ -592,7 +606,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Value::ScalarPair(a_val, b_val) => {
                 let (a, b) = match dest.layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}", dest.layout)
+                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}",
+                              dest.layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let (a_align, b_align) = (a.align(&self), b.align(&self));
@@ -758,7 +773,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Turn a place that is a dyn trait (i.e., PlaceExtra::Vtable and the appropriate layout)
     /// or a slice into the specific fixed-size place and layout that is given by the vtable/len.
     /// This "unpacks" the existential quantifier, so to speak.
-    pub fn unpack_unsized_mplace(&self, mplace: MPlaceTy<'tcx>) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+    pub fn unpack_unsized_mplace(
+        &self,
+        mplace: MPlaceTy<'tcx>
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         trace!("Unpacking {:?} ({:?})", *mplace, mplace.layout.ty);
         let layout = match mplace.extra {
             PlaceExtra::Vtable(vtable) => {

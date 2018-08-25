@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -82,7 +92,8 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub return_place: Place,
 
     /// The list of locals for this stack frame, stored in order as
-    /// `[return_ptr, arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
+    /// `[return_ptr, arguments..., variables..., temporaries...]`.
+    /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalValue>,
@@ -269,7 +280,9 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         *self.tcx
@@ -329,7 +342,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
         let stack = mem::replace(&mut self.stack, Vec::new());
-        let steps = mem::replace(&mut self.steps_since_detector_enabled, -STEPS_UNTIL_DETECTOR_ENABLED);
+        let steps = mem::replace(&mut self.steps_since_detector_enabled,
+                                 -STEPS_UNTIL_DETECTOR_ENABLED);
         let r = f(self);
         self.stack = stack;
         self.steps_since_detector_enabled = steps;
@@ -378,7 +392,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 
-    pub(super) fn resolve(&self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    pub(super) fn resolve(
+        &self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>
+    ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);
@@ -405,7 +423,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx, &'tcx mir::Mir<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
-        if did.is_local() && self.tcx.has_typeck_tables(did) && self.tcx.typeck_tables_of(did).tainted_by_errors {
+        if did.is_local()
+            && self.tcx.has_typeck_tables(did)
+            && self.tcx.typeck_tables_of(did).tainted_by_errors
+        {
             return err!(TypeckError);
         }
         trace!("load mir {:?}", instance);
@@ -614,7 +635,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
                 if let Place::Ptr(MemPlace { ptr, .. }) = frame.return_place {
-                    // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
+                    // FIXME: to_ptr()? might be too extreme here,
+                    // static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
                         ptr.to_ptr()?.alloc_id,
                         mutable,
@@ -651,7 +673,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
+        self.tcx.const_eval(param_env.and(gid))
+            .map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
     }
 
     #[inline(always)]
@@ -757,7 +780,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             } else {
                 last_span = Some(span);
             }
-            let location = if self.tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+            let location = if self.tcx.def_key(instance.def_id()).disambiguated_data.data
+                == DefPathData::ClosureExpr
+            {
                 "closure".to_owned()
             } else {
                 instance.to_string()

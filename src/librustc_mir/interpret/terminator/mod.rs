@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutOf;
@@ -45,7 +55,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op
-                    let const_int = Scalar::Bits { bits: const_int, size: discr.layout.size.bytes() as u8 };
+                    let const_int = Scalar::Bits {
+                        bits: const_int,
+                        size: discr.layout.size.bytes() as u8
+                    };
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
                         discr,
                         ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
@@ -144,7 +157,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_and_read_value(cond, None)?.to_scalar()?.to_bool()?;
+                let cond_val = self.eval_operand_and_read_value(cond, None)?
+                    .to_scalar()?
+                    .to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
@@ -175,15 +190,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
             Abort => unimplemented!(),
-            FalseEdges { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
+            FalseEdges { .. } => bug!("should have been eliminated by\
+                                      `simplify_branches` mir pass"),
+            FalseUnwind { .. } => bug!("should have been eliminated by\
+                                       `simplify_branches` mir pass"),
             Unreachable => return err!(Unreachable),
         }
 
         Ok(())
     }
 
-    /// Decides whether it is okay to call the method with signature `real_sig` using signature `sig`.
+    /// Decides whether it is okay to call the method with signature `real_sig`
+    /// using signature `sig`.
     /// FIXME: This should take into account the platform-dependent ABI description.
     fn check_sig_compat(
         &mut self,
@@ -197,7 +215,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             return match (&ty.sty, &real_ty.sty) {
                 // Permit changing the pointer type of raw pointers and references as well as
                 // mutability of raw pointers.
-                // TODO: Should not be allowed when fat pointers are involved.
+                // FIXME: Should not be allowed when fat pointers are involved.
                 (&ty::RawPtr(_), &ty::RawPtr(_)) => true,
                 (&ty::Ref(_, _, _), &ty::Ref(_, _, _)) => {
                     ty.is_mutable_pointer() == real_ty.is_mutable_pointer()
@@ -226,7 +244,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // We need to allow what comes up when a non-capturing closure is cast to a fn().
         match (sig.abi, real_sig.abi) {
             (Abi::Rust, Abi::RustCall) // check the ABIs.  This makes the test here non-symmetric.
-                if check_ty_compat(sig.output(), real_sig.output()) && real_sig.inputs_and_output.len() == 3 => {
+                if check_ty_compat(sig.output(), real_sig.output())
+                    && real_sig.inputs_and_output.len() == 3 => {
                 // First argument of real_sig must be a ZST
                 let fst_ty = real_sig.inputs_and_output[0];
                 if self.layout_of(fst_ty)?.is_zst() {
@@ -234,7 +253,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
                         ty::Tuple(tys) if sig.inputs().len() == tys.len() =>
-                            if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+                            if sig.inputs()
+                                .iter()
+                                .zip(tys)
+                                .all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
                                 return Ok(true)
                             },
                         _ => {}
@@ -291,7 +313,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         trace!(
                             "args: {:#?}",
                             self.frame().mir.args_iter().zip(args.iter())
-                                .map(|(local, arg)| (local, **arg, arg.layout.ty)).collect::<Vec<_>>()
+                                .map(|(local, arg)| (local, **arg, arg.layout.ty))
+                                .collect::<Vec<_>>()
                         );
                         let local = arg_locals.nth(1).unwrap();
                         for (i, &op) in args.into_iter().enumerate() {
@@ -312,7 +335,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::Item(_) => {
                 // Push the stack frame, and potentially be entirely done if the call got hooked
                 if M::eval_fn_call(self, instance, destination, args, span)? {
-                    // TODO: Can we make it return the frame to push, instead
+                    // FIXME: Can we make it return the frame to push, instead
                     // of the hook doing half of the work and us doing the argument
                     // initialization?
                     return Ok(());

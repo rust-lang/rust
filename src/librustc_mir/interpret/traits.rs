@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult};
@@ -82,7 +92,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.memory.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
-        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.to_bits(pointer_size)? as u64;
+        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?,pointer_align)?
+            .to_bits(pointer_size)? as u64;
         let align = self.memory.read_ptr_sized(
             vtable.offset(pointer_size * 2, self)?,
             pointer_align

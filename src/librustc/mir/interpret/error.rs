@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::{fmt, env};
 
 use mir;
@@ -315,7 +325,8 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             ReadForeignStatic =>
                 "tried to read from foreign (extern) static",
             InvalidPointerMath =>
-                "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. comparing pointers into different allocations",
+                "attempted to do invalid arithmetic on pointers that would leak base addresses, \
+                e.g. comparing pointers into different allocations",
             ReadUndefBytes =>
                 "attempted to read undefined bytes",
             DeadLocal =>
@@ -369,11 +380,13 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             Layout(_) =>
                 "rustc layout computation failed",
             UnterminatedCString(_) =>
-                "attempted to get length of a null terminated string, but no null found before end of allocation",
+                "attempted to get length of a null terminated string, but no null found before end \
+                of allocation",
             HeapAllocZeroBytes =>
                 "tried to re-, de- or allocate zero bytes on the heap",
             HeapAllocNonPowerOfTwoAlignment(_) =>
-                "tried to re-, de-, or allocate heap memory with alignment that is not a power of two",
+                "tried to re-, de-, or allocate heap memory with alignment that is not a power of \
+                two",
             Unreachable =>
                 "entered unreachable code",
             Panic { .. } =>
@@ -435,8 +448,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                        kind, ptr, len, lock)
             }
             InvalidMemoryLockRelease { ptr, len, frame, ref lock } => {
-                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but cannot release lock {:?}",
-                       frame, ptr, len, lock)
+                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but \
+                       cannot release lock {:?}", frame, ptr, len, lock)
             }
             DeallocatedLockedMemory { ptr, ref lock } => {
                 write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
@@ -447,7 +460,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
             }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>
-                write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
+                write!(f, "tried to call a function with sig {} through a \
+                       function pointer of type {}", sig, got),
             BoundsCheck { ref len, ref index } =>
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             ReallocatedWrongMemoryKind(ref old, ref new) =>
@@ -470,7 +484,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
             MachineError(ref inner) =>
                 write!(f, "{}", inner),
             IncorrectAllocationInformation(size, size2, align, align2) =>
-                write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size.bytes(), align.abi(), size2.bytes(), align2.abi()),
+                write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and \
+                       align {}", size.bytes(), align.abi(), size2.bytes(), align2.abi()),
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
             _ => write!(f, "{}", self.description()),

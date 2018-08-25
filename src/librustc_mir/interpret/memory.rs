@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! The memory subsystem.
 //!
 //! Generally, we use `Pointer` to denote memory addresses. However, some operations
@@ -231,13 +241,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         };
 
-        let alloc_kind = self.alloc_kind.remove(&ptr.alloc_id).expect("alloc_map out of sync with alloc_kind");
+        let alloc_kind = self.alloc_kind
+                        .remove(&ptr.alloc_id)
+                        .expect("alloc_map out of sync with alloc_kind");
 
-        // It is okay for us to still holds locks on deallocation -- for example, we could store data we own
-        // in a local, and the local could be deallocated (from StorageDead) before the function returns.
-        // However, we should check *something*.  For now, we make sure that there is no conflicting write
-        // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
-        // TODO: Figure out the exact rules here.
+        // It is okay for us to still holds locks on deallocation -- for example, we could store
+        // data we own in a local, and the local could be deallocated (from StorageDead) before the
+        // function returns. However, we should check *something*.  For now, we make sure that there
+        // is no conflicting write lock by another frame.  We *have* to permit deallocation if we
+        // hold a read lock.
+        // FIXME: Figure out the exact rules here.
         M::free_lock(self, ptr.alloc_id, alloc.bytes.len() as u64)?;
 
         if alloc_kind != kind {
@@ -248,7 +261,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         if let Some((size, align)) = size_and_align {
             if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
-                return err!(IncorrectAllocationInformation(size, Size::from_bytes(alloc.bytes.len() as u64), align, alloc.align));
+                let bytes = Size::from_bytes(alloc.bytes.len() as u64);
+                return err!(IncorrectAllocationInformation(size,
+                                                           bytes,
+                                                           align,
+                                                           alloc.align));
             }
         }
 
@@ -511,13 +528,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &[u8]> {
-        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
+        // Zero-sized accesses can use dangling pointers,
+        // but they still have to be aligned and non-NULL
         self.check_align(ptr.into(), align)?;
         if size.bytes() == 0 {
             return Ok(&[]);
         }
         M::check_locks(self, ptr, size, AccessKind::Read)?;
-        self.check_bounds(ptr.offset(size, self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, self)?, true)?;
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -532,13 +551,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
-        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
+        // Zero-sized accesses can use dangling pointers,
+        // but they still have to be aligned and non-NULL
         self.check_align(ptr.into(), align)?;
         if size.bytes() == 0 {
             return Ok(&mut []);
         }
         M::check_locks(self, ptr, size, AccessKind::Write)?;
-        self.check_bounds(ptr.offset(size, &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, &*self)?, true)?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -663,7 +684,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     relocations
                     .iter()
                     .map(|&(offset, alloc_id)| {
-                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64), alloc_id)
+                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64),
+                    alloc_id)
                     })
                 );
             }
@@ -692,11 +714,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 }
 
                 for i in 0..length {
-                    ptr::copy(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                    ptr::copy(src_bytes,
+                              dest_bytes.offset((size.bytes() * i) as isize),
+                              size.bytes() as usize);
                 }
             } else {
                 for i in 0..length {
-                    ptr::copy_nonoverlapping(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                    ptr::copy_nonoverlapping(src_bytes,
+                                             dest_bytes.offset((size.bytes() * i) as isize),
+                                             size.bytes() as usize);
                 }
             }
         }
@@ -763,15 +789,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// Read a *non-ZST* scalar
-    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
+    pub fn read_scalar(
+        &self,
+        ptr: Pointer,
+        ptr_align: Align,
+        size: Size
+    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
+        // Make sure we don't read part of a pointer as a pointer
+        self.check_relocation_edges(ptr, size)?;
         let endianness = self.endianness();
         // get_bytes_unchecked tests alignment
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
-            // this inflates undefined bytes to the entire scalar, even if only a few bytes are undefined
+            // this inflates undefined bytes to the entire scalar,
+            // even if only a few bytes are undefined
             return Ok(ScalarMaybeUndef::Undef);
         }
         // Now we do the actual reading
@@ -784,7 +817,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(ScalarMaybeUndef::Scalar(Pointer::new(alloc_id, Size::from_bytes(bits as u64)).into())),
+                Some(&alloc_id) => {
+                    let ptr = Pointer::new(alloc_id, Size::from_bytes(bits as u64));
+                    return Ok(ScalarMaybeUndef::Scalar(ptr.into()))
+                }
                 None => {},
             }
         }
@@ -795,7 +831,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }))
     }
 
-    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align)
+        -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
@@ -848,7 +885,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef)
+        -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
         self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
     }
@@ -992,7 +1030,9 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M>;
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         self
@@ -1004,7 +1044,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Me
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         &mut self.memory
@@ -1016,7 +1058,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Ev
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>
+{
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout

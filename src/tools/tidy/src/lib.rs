@@ -76,8 +76,6 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/miri",
         "src/tools/lld",
         "src/tools/lldb",
-        "src/librustc/mir/interpret",
-        "src/librustc_mir/interpret",
         "src/target",
         "src/stdsimd",
     ];

@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::fmt::Write;
 
 use syntax_pos::symbol::Symbol;
@@ -211,7 +221,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let variant = self.read_discriminant_as_variant_index(dest.into())?;
                 let inner_dest = self.mplace_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
-                path.push(PathElem::Field(dest.layout.ty.ty_adt_def().unwrap().variants[variant].name));
+                path.push(PathElem::Field(dest.layout.ty
+                                          .ty_adt_def()
+                                          .unwrap()
+                                          .variants[variant].name));
                 trace!("variant layout: {:#?}", dest.layout);
                 (variant, inner_dest)
             },
@@ -255,7 +268,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 if value.layout.ty.builtin_deref(false).is_some() {
                                     trace!("Recursing below ptr {:#?}", value);
                                     let ptr_place = self.ref_to_mplace(value)?;
-                                    // we have not encountered this pointer+layout combination before
+                                    // we have not encountered this pointer+layout
+                                    // combination before
                                     if seen.insert(ptr_place) {
                                         todo.push((ptr_place, path_clone_and_deref(path)));
                                     }
