@@ -744,8 +744,8 @@
                 return literalSearch === true ? false : lev_distance;
             }
 
-            function checkPath(startsWith, lastElem, ty) {
-                if (startsWith.length === 0) {
+            function checkPath(contains, lastElem, ty) {
+                if (contains.length === 0) {
                     return 0;
                 }
                 var ret_lev = MAX_LEV_DISTANCE + 1;
@@ -755,17 +755,17 @@
                     path.push(ty.parent.name.toLowerCase());
                 }
 
-                if (startsWith.length > path.length) {
+                if (contains.length > path.length) {
                     return MAX_LEV_DISTANCE + 1;
                 }
                 for (var i = 0; i < path.length; ++i) {
-                    if (i + startsWith.length > path.length) {
+                    if (i + contains.length > path.length) {
                         break;
                     }
                     var lev_total = 0;
                     var aborted = false;
-                    for (var x = 0; x < startsWith.length; ++x) {
-                        var lev = levenshtein(path[i + x], startsWith[x]);
+                    for (var x = 0; x < contains.length; ++x) {
+                        var lev = levenshtein(path[i + x], contains[x]);
                         if (lev > MAX_LEV_DISTANCE) {
                             aborted = true;
                             break;
@@ -773,7 +773,7 @@
                         lev_total += lev;
                     }
                     if (aborted === false) {
-                        ret_lev = Math.min(ret_lev, Math.round(lev_total / startsWith.length));
+                        ret_lev = Math.min(ret_lev, Math.round(lev_total / contains.length));
                     }
                 }
                 return ret_lev;
@@ -937,7 +937,7 @@
                     }
                 }
                 val = paths[paths.length - 1];
-                var startsWith = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
+                var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
                 for (j = 0; j < nSearchWords; ++j) {
                     var lev_distance;
@@ -947,7 +947,7 @@
                     }
                     var lev_add = 0;
                     if (paths.length > 1) {
-                        var lev = checkPath(startsWith, paths[paths.length - 1], ty);
+                        var lev = checkPath(contains, paths[paths.length - 1], ty);
                         if (lev > MAX_LEV_DISTANCE) {
                             continue;
                         } else if (lev > 0) {
@@ -990,7 +990,7 @@
                     }
 
                     lev += lev_add;
-                    if (lev > 0 && val.length > 3 && searchWords[j].startsWith(val)) {
+                    if (lev > 0 && val.length > 3 && searchWords[j].indexOf(val) > -1) {
                         if (val.length < 6) {
                             lev -= 1;
                         } else {
