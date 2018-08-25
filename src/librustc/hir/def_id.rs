@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ty;
-
+use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
 use std::fmt;
@@ -125,15 +125,25 @@ impl DefIndex {
     // index of the macro in the CrateMetadata::proc_macros array) to the
     // corresponding DefIndex.
     pub fn from_proc_macro_index(proc_macro_index: usize) -> DefIndex {
-        let def_index = DefIndex::from_array_index(proc_macro_index,
-                                                   DefIndexAddressSpace::High);
+        // DefIndex for proc macros start from FIRST_FREE_HIGH_DEF_INDEX,
+        // because the first FIRST_FREE_HIGH_DEF_INDEX indexes are reserved
+        // for internal use.
+        let def_index = DefIndex::from_array_index(
+            proc_macro_index.checked_add(FIRST_FREE_HIGH_DEF_INDEX)
+                .expect("integer overflow adding `proc_macro_index`"),
+            DefIndexAddressSpace::High);
         assert!(def_index != CRATE_DEF_INDEX);
         def_index
     }
 
     // This function is the reverse of from_proc_macro_index() above.
     pub fn to_proc_macro_index(self: DefIndex) -> usize {
-        self.as_array_index()
+        assert_eq!(self.address_space(), DefIndexAddressSpace::High);
+
+        self.as_array_index().checked_sub(FIRST_FREE_HIGH_DEF_INDEX)
+            .unwrap_or_else(|| {
+                bug!("using local index {:?} as proc-macro index", self)
+            })
     }
 
     // Don't use this if you don't know about the DefIndex encoding.
@@ -150,7 +160,7 @@ impl DefIndex {
 impl serialize::UseSpecializedEncodable for DefIndex {}
 impl serialize::UseSpecializedDecodable for DefIndex {}
 
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DefIndexAddressSpace {
     Low = 0,
     High = 1,

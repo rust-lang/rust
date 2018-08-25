@@ -380,6 +380,17 @@ impl Borrow<Fingerprint> for DefPathHash {
 
 impl Definitions {
     /// Create new empty definition map.
+    ///
+    /// The DefIndex returned from a new Definitions are as follows:
+    /// 1. At DefIndexAddressSpace::Low,
+    ///     CRATE_ROOT has index 0:0, and then new indexes are allocated in
+    ///     ascending order.
+    /// 2. At DefIndexAddressSpace::High,
+    ///     the first FIRST_FREE_HIGH_DEF_INDEX indexes are reserved for
+    ///     internal use, then 1:FIRST_FREE_HIGH_DEF_INDEX are allocated in
+    ///     ascending order.
+    ///
+    /// FIXME: there is probably a better place to put this comment.
     pub fn new() -> Definitions {
         Definitions {
             table: DefPathTable {
@@ -665,6 +676,11 @@ impl DefPathData {
     }
 }
 
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+}
+
 // We define the GlobalMetaDataKind enum with this macro because we want to
 // make sure that we exhaustively iterate over all variants when registering
 // the corresponding DefIndices in the DefTable.
@@ -678,6 +694,7 @@ macro_rules! define_global_metadata_kind {
         }
 
         const GLOBAL_MD_ADDRESS_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
+        pub const FIRST_FREE_HIGH_DEF_INDEX: usize = count!($($variant)*);
 
         impl GlobalMetaDataKind {
             fn allocate_def_indices(definitions: &mut Definitions) {

@@ -14,14 +14,14 @@ use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use schema::*;
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
-use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash,
-                      DisambiguatedDefPathData};
+use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
                          CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
+use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
@@ -41,7 +41,8 @@ use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::symbol::InternedString;
-use syntax::ext::base::MacroKind;
+use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
@@ -441,6 +442,40 @@ impl<'tcx> EntryKind<'tcx> {
     }
 }
 
+/// Create the "fake" DefPathTable for a given proc macro crate.
+///
+/// The DefPathTable is as follows:
+///
+/// CRATE_ROOT (DefIndex 0:0)
+///  |- GlobalMetaDataKind data (DefIndex 1:0 .. DefIndex 1:N)
+///  |- proc macro #0 (DefIndex 1:N)
+///  |- proc macro #1 (DefIndex 1:N+1)
+///  \- ...
+crate fn proc_macro_def_path_table(crate_root: &CrateRoot,
+                                   proc_macros: &[(ast::Name, Lrc<SyntaxExtension>)])
+                                   -> DefPathTable
+{
+    let mut definitions = Definitions::new();
+
+    let name = crate_root.name.as_str();
+    let disambiguator = crate_root.disambiguator;
+    debug!("creating proc macro def path table for {:?}/{:?}", name, disambiguator);
+    let crate_root = definitions.create_root_def(&name, disambiguator);
+    for (index, (name, _)) in proc_macros.iter().enumerate() {
+        let def_index = definitions.create_def_with_parent(
+            crate_root,
+            ast::DUMMY_NODE_ID,
+            DefPathData::MacroDef(name.as_interned_str()),
+            DefIndexAddressSpace::High,
+            Mark::root(),
+            DUMMY_SP);
+        debug!("definition for {:?} is {:?}", name, def_index);
+        assert_eq!(def_index, DefIndex::from_proc_macro_index(index));
+    }
+
+    definitions.def_path_table().clone()
+}
+
 impl<'a, 'tcx> CrateMetadata {
     fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.proc_macros.is_some() && id != CRATE_DEF_INDEX
@@ -669,6 +704,10 @@ impl<'a, 'tcx> CrateMetadata {
         where F: FnMut(def::Export)
     {
         if let Some(ref proc_macros) = self.proc_macros {
+            /* If we are loading as a proc macro, we want to return the view of this crate
+             * as a proc macro crate, not as a Rust crate. See `proc_macro_def_path_table`
+             * for the DefPathTable we are corresponding to.
+             */
             if id == CRATE_DEF_INDEX {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
                     let def = Def::Macro(
@@ -1066,28 +1105,12 @@ impl<'a, 'tcx> CrateMetadata {
 
     #[inline]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        if !self.is_proc_macro(index) {
-            self.def_path_table.def_key(index)
-        } else {
-            // FIXME(#49271) - It would be better if the DefIds were consistent
-            //                 with the DefPathTable, but for proc-macro crates
-            //                 they aren't.
-            let name = self.proc_macros
-                           .as_ref()
-                           .unwrap()[index.to_proc_macro_index()].0;
-            DefKey {
-                parent: Some(CRATE_DEF_INDEX),
-                disambiguated_data: DisambiguatedDefPathData {
-                    data: DefPathData::MacroDef(name.as_interned_str()),
-                    disambiguator: 0,
-                }
-            }
-        }
+        self.def_path_table.def_key(index)
     }
 
     // Returns the path leading to the thing with this `id`.
     pub fn def_path(&self, id: DefIndex) -> DefPath {
-        debug!("def_path(id={:?})", id);
+        debug!("def_path(cnum={:?}, id={:?})", self.cnum, id);
         DefPath::make(self.cnum, id, |parent| self.def_path_table.def_key(parent))
     }
 

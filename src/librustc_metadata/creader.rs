@@ -12,6 +12,7 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
+use decoder::proc_macro_def_path_table;
 use schema::CrateRoot;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
@@ -219,8 +220,16 @@ impl<'a> CrateLoader<'a> {
 
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
 
+        let proc_macros = crate_root.macro_derive_registrar.map(|_| {
+            self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
+        });
+
         let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
-            crate_root.def_path_table.decode((&metadata, self.sess))
+            if let Some(proc_macros) = &proc_macros {
+                proc_macro_def_path_table(&crate_root, proc_macros)
+            } else {
+                crate_root.def_path_table.decode((&metadata, self.sess))
+            }
         });
 
         let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
@@ -237,9 +246,7 @@ impl<'a> CrateLoader<'a> {
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,
-            proc_macros: crate_root.macro_derive_registrar.map(|_| {
-                self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
-            }),
+            proc_macros,
             root: crate_root,
             blob: metadata,
             cnum_map,
