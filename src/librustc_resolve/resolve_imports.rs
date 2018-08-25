@@ -203,6 +203,8 @@ impl<'a> Resolver<'a> {
             };
             match self.resolve_ident_in_module(module, ident, ns, false, path_span) {
                 Err(Determined) => continue,
+                Ok(binding)
+                    if !self.is_accessible_from(binding.vis, single_import.parent) => continue,
                 Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
         }
@@ -255,8 +257,11 @@ impl<'a> Resolver<'a> {
                 module, ident, ns, false, false, path_span,
             );
             self.current_module = orig_current_module;
+
             match result {
                 Err(Determined) => continue,
+                Ok(binding)
+                    if !self.is_accessible_from(binding.vis, glob_import.parent) => continue,
                 Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
         }

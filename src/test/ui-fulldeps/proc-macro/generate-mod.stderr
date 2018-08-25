@@ -41,6 +41,24 @@ LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
+warning: cannot find type `FromOutside` in this scope
+  --> $DIR/generate-mod.rs:35:14
+   |
+LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
+
+warning: cannot find type `OuterDerive` in this scope
+  --> $DIR/generate-mod.rs:35:14
+   |
+LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
+
 error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0412`.
