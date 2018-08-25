@@ -46,6 +46,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
         }
 
         enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
+        enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id);
     }
 }
 
@@ -96,6 +97,25 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
                      trait_name)
         .span_label(span, format!("manual implementations of `{}` are experimental", trait_name))
         .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
+        .emit();
+}
+
+/// We allow impls of marker traits to overlap, so they can't override impls
+/// as that could make it ambiguous which associated item to use.
+fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
+    if !tcx.trait_def(trait_def_id).is_marker {
+        return;
+    }
+
+    if tcx.associated_item_def_ids(trait_def_id).is_empty() {
+        return;
+    }
+
+    let span = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+    struct_span_err!(tcx.sess,
+                     span,
+                     E0715,
+                     "impls for marker traits cannot contain items")
         .emit();
 }
 
