@@ -561,7 +561,13 @@ impl<'hir> Map<'hir> {
     /// Retrieve the Node corresponding to `id`, returning None if
     /// cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
-        let result = self.find_entry(id).map(|x| x.node);
+        let result = self.find_entry(id).and_then(|entry| {
+            if let Node::Crate = entry.node {
+                None
+            } else {
+                Some(entry.node)
+            }
+        });
         if result.is_some() {
             self.read(id);
         }
@@ -632,6 +638,9 @@ impl<'hir> Map<'hir> {
             }
 
             if let Some(entry) = self.find_entry(parent_node) {
+                if let Node::Crate = entry.node {
+                    return Err(id);
+                }
                 if found(&entry.node) {
                     return Ok(parent_node);
                 } else if bail_early(&entry.node) {
