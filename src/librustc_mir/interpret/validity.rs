@@ -187,7 +187,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    /// This function checks the data at `op`.  The operand must be sized.
+    /// This function checks the data at `op`.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
     /// starts must not be changed!
@@ -208,14 +208,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             layout::Variants::Tagged { .. } => {
                 let variant = match self.read_discriminant(dest) {
                     Ok(res) => res.1,
-                    Err(err) => match err.kind {
-                        EvalErrorKind::InvalidDiscriminant |
-                        EvalErrorKind::ReadPointerAsBytes =>
-                            return validation_failure!(
-                                "invalid enum discriminant", path
-                            ),
-                        _ => return Err(err),
-                    }
+                    Err(_) =>
+                        return validation_failure!(
+                            "invalid enum discriminant", path
+                        ),
                 };
                 let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
@@ -227,6 +223,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 (variant, inner_dest)
             },
             layout::Variants::Single { index } => {
+                // Pre-processing for trait objects: Treat them at their real type.
+                // (We do not do this for slices and strings: For slices it is not needed,
+                // `mplace_array_fields` does the right thing, and for strings there is no
+                // real type that would show the actual length.)
+                let dest = match dest.layout.ty.sty {
+                    ty::Dynamic(..) => {
+                        let dest = dest.to_mem_place(); // immediate trait objects are not a thing
+                        match self.unpack_dyn_trait(dest) {
+                            Ok(res) => res.1.into(),
+                            Err(_) =>
+                                return validation_failure!(
+                                    "invalid vtable in fat pointer", path
+                                ),
+                        }
+                    }
+                    _ => dest
+                };
                 (index, dest)
             }
         };
@@ -249,7 +262,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // expectation.
                     layout::Abi::Scalar(ref scalar_layout) => {
                         let size = scalar_layout.value.size(self);
-                        let value = self.read_value(dest)?;
+                        let value = match self.read_value(dest) {
+                            Ok(val) => val,
+                            Err(err) => match err.kind {
+                                EvalErrorKind::PointerOutOfBounds { .. } |
+                                EvalErrorKind::ReadUndefBytes =>
+                                    return validation_failure!(
+                                        "uninitialized or out-of-bounds memory", path
+                                    ),
+                                _ =>
+                                    return validation_failure!(
+                                        "unrepresentable data", path
+                                    ),
+                            }
+                        };
                         let scalar = value.to_scalar_or_undef();
                         self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
                         if scalar_layout.value == Primitive::Pointer {
@@ -283,44 +309,88 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
-            layout::FieldPlacement::Array { .. } => {
-                // FIXME: For a TyStr, check that this is valid UTF-8.
-                // Skips for ZSTs; we could have an empty array as an immediate
-                if !dest.layout.is_zst() {
-                    let dest = dest.to_mem_place(); // arrays cannot be immediate
-                    for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
-                        let field = field?;
-                        path.push(PathElem::ArrayElem(i));
-                        self.validate_operand(field.into(), path, seen, todo)?;
-                        path.truncate(path_len);
+            layout::FieldPlacement::Array { .. } if !dest.layout.is_zst() => {
+                let dest = dest.to_mem_place(); // non-ZST array/slice/str cannot be immediate
+                // Special handling for strings to verify UTF-8
+                match dest.layout.ty.sty {
+                    ty::Str => {
+                        match self.read_str(dest) {
+                            Ok(_) => {},
+                            Err(err) => match err.kind {
+                                EvalErrorKind::PointerOutOfBounds { .. } |
+                                EvalErrorKind::ReadUndefBytes =>
+                                    // The error here looks slightly different than it does
+                                    // for slices, because we do not report the index into the
+                                    // str at which we are OOB.
+                                    return validation_failure!(
+                                        "uninitialized or out-of-bounds memory", path
+                                    ),
+                                _ =>
+                                    return validation_failure!(
+                                        "non-UTF-8 data in str", path
+                                    ),
+                            }
+                        }
                     }
+                    ty::Array(..) | ty::Slice(..) => {
+                        // This handles the unsized case correctly as well
+                        for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
+                            let field = field?;
+                            path.push(PathElem::ArrayElem(i));
+                            self.validate_operand(field.into(), path, seen, todo)?;
+                            path.truncate(path_len);
+                        }
+                    }
+                    _ => bug!("Array layout for non-array type {:?}", dest.layout.ty),
                 }
             },
+            layout::FieldPlacement::Array { .. } => {
+                // An empty array.  Nothing to do.
+            }
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                // Fat pointers need special treatment.
+                // Fat pointers are treated like pointers, not aggregates.
                 if dest.layout.ty.builtin_deref(true).is_some() {
                     // This is a fat pointer.
-                    let ptr = match self.ref_to_mplace(self.read_value(dest.into())?) {
+                    let ptr = match self.read_value(dest.into())
+                        .and_then(|val| self.ref_to_mplace(val))
+                    {
                         Ok(ptr) => ptr,
-                        Err(err) => match err.kind {
-                            EvalErrorKind::ReadPointerAsBytes =>
-                                return validation_failure!(
-                                    "fat pointer length is not a valid integer", path
-                                ),
-                            EvalErrorKind::ReadBytesAsPointer =>
-                                return validation_failure!(
-                                    "fat pointer vtable is not a valid pointer", path
-                                ),
-                            _ => return Err(err),
-                        }
+                        Err(_) =>
+                            return validation_failure!(
+                                "undefined metadata in fat pointer", path
+                            ),
                     };
-                    let unpacked_ptr = self.unpack_unsized_mplace(ptr)?.into();
+                    // check metadata
+                    match self.tcx.struct_tail(ptr.layout.ty).sty {
+                        ty::Dynamic(..) => {
+                            match ptr.extra.unwrap().to_ptr() {
+                                Ok(_) => {},
+                                Err(_) =>
+                                    return validation_failure!(
+                                        "non-pointer vtable in fat pointer", path
+                                    ),
+                            }
+                        }
+                        ty::Slice(..) | ty::Str => {
+                            match ptr.extra.unwrap().to_usize(self) {
+                                Ok(_) => {},
+                                Err(_) =>
+                                    return validation_failure!(
+                                        "non-integer slice length in fat pointer", path
+                                    ),
+                            }
+                        }
+                        _ =>
+                            bug!("Unexpected unsized type tail: {:?}",
+                                self.tcx.struct_tail(ptr.layout.ty)
+                            ),
+                    }
                     // for safe ptrs, recursively check it
                     if !dest.layout.ty.is_unsafe_ptr() {
-                        if seen.insert(unpacked_ptr) {
-                            trace!("Recursing below fat ptr {:?} (unpacked: {:?})",
-                                ptr, unpacked_ptr);
-                            todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                        let ptr = ptr.into();
+                        if seen.insert(ptr) {
+                            trace!("Recursing below fat ptr {:?}", ptr);
+                            todo.push((ptr, path_clone_and_deref(path)));
                         }
                     }
                 } else {

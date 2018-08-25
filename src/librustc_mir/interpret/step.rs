@@ -246,7 +246,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Repeat(ref operand, _) => {
                 let op = self.eval_operand(operand, None)?;
                 let dest = self.force_allocation(dest)?;
-                let length = dest.len();
+                let length = dest.len(&self)?;
 
                 if length > 0 {
                     // write the first
@@ -268,7 +268,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
-                let len = mplace.len();
+                let len = mplace.len(&self)?;
                 let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
                     Scalar::Bits {
@@ -281,7 +281,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?.to_ref(&self);
+                let val = self.force_allocation(src)?.to_ref();
                 self.write_value(val, dest)?;
             }
 

@@ -16,7 +16,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, Place, PlaceTy, PlaceExtra, ValTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -419,7 +419,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
-                let (ptr, vtable) = self.read_value(args[0])?.to_scalar_dyn_trait()?;
+                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
@@ -433,7 +434,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
                 let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
                 args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(&self, 0)?;
-                args[0].op = Operand::Immediate(Value::Scalar(ptr.into())); // strip vtable
+                args[0].op = Operand::Immediate(Value::Scalar(ptr.ptr.into())); // strip vtable
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(instance, &args, dest, ret, span, sig)
@@ -457,19 +458,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let (instance, place) = match place.layout.ty.sty {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
-                let vtable = match place.extra {
-                    PlaceExtra::Vtable(vtable) => vtable,
-                    _ => bug!("Expected vtable when dropping {:#?}", place),
-                };
-                let place = self.unpack_unsized_mplace(place)?;
-                let instance = self.read_drop_type_from_vtable(vtable)?;
-                (instance, place)
+                self.unpack_dyn_trait(place)?
             }
             _ => (instance, place),
         };
 
         let arg = OpTy {
-            op: Operand::Immediate(place.to_ref(&self)),
+            op: Operand::Immediate(place.to_ref()),
             layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         };
 

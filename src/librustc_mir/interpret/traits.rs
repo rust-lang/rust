@@ -76,14 +76,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok(vtable)
     }
 
+    /// Return the drop fn instance as well as the actual dynamic type
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Pointer,
-    ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    ) -> EvalResult<'tcx, (ty::Instance<'tcx>, ty::Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
         let pointer_align = self.tcx.data_layout.pointer_align;
         let drop_fn = self.memory.read_ptr_sized(vtable, pointer_align)?.to_ptr()?;
-        self.memory.get_fn(drop_fn)
+        let drop_instance = self.memory.get_fn(drop_fn)?;
+        trace!("Found drop fn: {:?}", drop_instance);
+        let fn_sig = drop_instance.ty(*self.tcx).fn_sig(*self.tcx);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
+        // the drop function takes *mut T where T is the type being dropped, so get that
+        let ty = fn_sig.inputs()[0].builtin_deref(true).unwrap().ty;
+        Ok((drop_instance, ty))
     }
 
     pub fn read_size_and_align_from_vtable(

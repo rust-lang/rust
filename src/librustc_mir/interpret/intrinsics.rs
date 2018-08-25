@@ -142,8 +142,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.mplace_field(place, 3)?,
             );
 
-            let msg = Symbol::intern(self.read_str(msg.into())?);
-            let file = Symbol::intern(self.read_str(file.into())?);
+            let msg_place = self.ref_to_mplace(self.read_value(msg.into())?)?;
+            let msg = Symbol::intern(self.read_str(msg_place)?);
+            let file_place = self.ref_to_mplace(self.read_value(file.into())?)?;
+            let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
             return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
@@ -159,8 +161,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.mplace_field(place, 2)?,
             );
 
-            let msg = Symbol::intern(self.read_str(msg)?);
-            let file = Symbol::intern(self.read_str(file.into())?);
+            let msg_place = self.ref_to_mplace(self.read_value(msg.into())?)?;
+            let msg = Symbol::intern(self.read_str(msg_place)?);
+            let file_place = self.ref_to_mplace(self.read_value(file.into())?)?;
+            let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
             return Err(EvalErrorKind::Panic { msg, file, line, col }.into());

@@ -29,7 +29,7 @@ use rustc::mir::interpret::{
     Scalar, AllocId, Allocation, ConstValue, AllocType,
 };
 use interpret::{self,
-    Place, PlaceExtra, PlaceTy, MemPlace, OpTy, Operand, Value,
+    Place, PlaceTy, MemPlace, OpTy, Operand, Value,
     EvalContext, StackPopCleanup, MemoryKind, Memory,
 };
 
@@ -103,7 +103,7 @@ pub fn op_to_const<'tcx>(
     let val = match normalized_op {
         Err(MemPlace { ptr, align, extra }) => {
             // extract alloc-offset pair
-            assert_eq!(extra, PlaceExtra::None);
+            assert!(extra.is_none());
             let ptr = ptr.to_ptr()?;
             let alloc = ecx.memory.get(ptr.alloc_id)?;
             assert!(alloc.align.abi() >= align.abi());

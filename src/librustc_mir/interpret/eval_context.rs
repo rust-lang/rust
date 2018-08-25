@@ -34,7 +34,7 @@ use rustc::mir::interpret::{
 use syntax::source_map::{self, Span};
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place, PlaceExtra,
+    Value, Operand, MemPlace, MPlaceTy, Place,
     Memory, Machine
 };
 
@@ -462,89 +462,93 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
-    /// Note that the value does not matter if the type is sized. For unsized types,
-    /// the value has to be a fat pointer, and we only care about the "extra" data in it.
+    /// Only the "extra" (metadata) part of the place matters.
+    pub(super) fn size_and_align_of(
+        &self,
+        metadata: Option<Scalar>,
+        layout: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Size, Align)> {
+        let metadata = match metadata {
+            None => {
+                assert!(!layout.is_unsized());
+                return Ok(layout.size_and_align())
+            }
+            Some(metadata) => {
+                assert!(layout.is_unsized());
+                metadata
+            }
+        };
+        match layout.ty.sty {
+            ty::Adt(..) | ty::Tuple(..) => {
+                // First get the size of all statically known fields.
+                // Don't use type_of::sizing_type_of because that expects t to be sized,
+                // and it also rounds up to alignment, which we want to avoid,
+                // as the unsized field's alignment could be smaller.
+                assert!(!layout.ty.is_simd());
+                debug!("DST layout: {:?}", layout);
+
+                let sized_size = layout.fields.offset(layout.fields.count() - 1);
+                let sized_align = layout.align;
+                debug!(
+                    "DST {} statically sized prefix size: {:?} align: {:?}",
+                    layout.ty,
+                    sized_size,
+                    sized_align
+                );
+
+                // Recurse to get the size of the dynamically sized field (must be
+                // the last field).
+                let field = layout.field(self, layout.fields.count() - 1)?;
+                let (unsized_size, unsized_align) = self.size_and_align_of(Some(metadata), field)?;
+
+                // FIXME (#26403, #27023): We should be adding padding
+                // to `sized_size` (to accommodate the `unsized_align`
+                // required of the unsized field that follows) before
+                // summing it with `sized_size`. (Note that since #26403
+                // is unfixed, we do not yet add the necessary padding
+                // here. But this is where the add would go.)
+
+                // Return the sum of sizes and max of aligns.
+                let size = sized_size + unsized_size;
+
+                // Choose max of two known alignments (combined value must
+                // be aligned according to more restrictive of the two).
+                let align = sized_align.max(unsized_align);
+
+                // Issue #27023: must add any necessary padding to `size`
+                // (to make it a multiple of `align`) before returning it.
+                //
+                // Namely, the returned size should be, in C notation:
+                //
+                //   `size + ((size & (align-1)) ? align : 0)`
+                //
+                // emulated via the semi-standard fast bit trick:
+                //
+                //   `(size + (align-1)) & -align`
+
+                Ok((size.abi_align(align), align))
+            }
+            ty::Dynamic(..) => {
+                let vtable = metadata.to_ptr()?;
+                // the second entry in the vtable is the dynamic size of the object.
+                self.read_size_and_align_from_vtable(vtable)
+            }
+
+            ty::Slice(_) | ty::Str => {
+                let len = metadata.to_usize(self)?;
+                let (elem_size, align) = layout.field(self, 0)?.size_and_align();
+                Ok((elem_size * len, align))
+            }
+
+            _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
+        }
+    }
+    #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: MPlaceTy<'tcx>,
+        mplace: MPlaceTy<'tcx>
     ) -> EvalResult<'tcx, (Size, Align)> {
-        if let PlaceExtra::None = mplace.extra {
-            assert!(!mplace.layout.is_unsized());
-            Ok(mplace.layout.size_and_align())
-        } else {
-            let layout = mplace.layout;
-            assert!(layout.is_unsized());
-            match layout.ty.sty {
-                ty::Adt(..) | ty::Tuple(..) => {
-                    // First get the size of all statically known fields.
-                    // Don't use type_of::sizing_type_of because that expects t to be sized,
-                    // and it also rounds up to alignment, which we want to avoid,
-                    // as the unsized field's alignment could be smaller.
-                    assert!(!layout.ty.is_simd());
-                    debug!("DST layout: {:?}", layout);
-
-                    let sized_size = layout.fields.offset(layout.fields.count() - 1);
-                    let sized_align = layout.align;
-                    debug!(
-                        "DST {} statically sized prefix size: {:?} align: {:?}",
-                        layout.ty,
-                        sized_size,
-                        sized_align
-                    );
-
-                    // Recurse to get the size of the dynamically sized field (must be
-                    // the last field).
-                    let field = self.mplace_field(mplace, layout.fields.count() as u64 - 1)?;
-                    let (unsized_size, unsized_align) = self.size_and_align_of_mplace(field)?;
-
-                    // FIXME (#26403, #27023): We should be adding padding
-                    // to `sized_size` (to accommodate the `unsized_align`
-                    // required of the unsized field that follows) before
-                    // summing it with `sized_size`. (Note that since #26403
-                    // is unfixed, we do not yet add the necessary padding
-                    // here. But this is where the add would go.)
-
-                    // Return the sum of sizes and max of aligns.
-                    let size = sized_size + unsized_size;
-
-                    // Choose max of two known alignments (combined value must
-                    // be aligned according to more restrictive of the two).
-                    let align = sized_align.max(unsized_align);
-
-                    // Issue #27023: must add any necessary padding to `size`
-                    // (to make it a multiple of `align`) before returning it.
-                    //
-                    // Namely, the returned size should be, in C notation:
-                    //
-                    //   `size + ((size & (align-1)) ? align : 0)`
-                    //
-                    // emulated via the semi-standard fast bit trick:
-                    //
-                    //   `(size + (align-1)) & -align`
-
-                    Ok((size.abi_align(align), align))
-                }
-                ty::Dynamic(..) => {
-                    let vtable = match mplace.extra {
-                        PlaceExtra::Vtable(vtable) => vtable,
-                        _ => bug!("Expected vtable"),
-                    };
-                    // the second entry in the vtable is the dynamic size of the object.
-                    self.read_size_and_align_from_vtable(vtable)
-                }
-
-                ty::Slice(_) | ty::Str => {
-                    let len = match mplace.extra {
-                        PlaceExtra::Length(len) => len,
-                        _ => bug!("Expected length"),
-                    };
-                    let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                    Ok((elem_size * len, align))
-                }
-
-                _ => bug!("size_of_val::<{:?}> not supported", layout.ty),
-            }
-        }
+        self.size_and_align_of(mplace.extra, mplace.layout)
     }
 
     pub fn push_stack_frame(

@@ -21,7 +21,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{
     GlobalId, ConstValue, Scalar, EvalResult, Pointer, ScalarMaybeUndef, EvalErrorKind
 };
-use super::{EvalContext, Machine, MemPlace, MPlaceTy, PlaceExtra, MemoryKind};
+use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 
 /// A `Value` represents a single immediate self-contained Rust value.
 ///
@@ -65,6 +65,14 @@ impl<'tcx> Value {
         self.to_scalar_or_undef().not_undef()
     }
 
+    #[inline]
+    pub fn to_scalar_pair(self) -> EvalResult<'tcx, (Scalar, Scalar)> {
+        match self {
+            Value::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
+            Value::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
+        }
+    }
+
     /// Convert the value into a pointer (or a pointer-sized integer).
     /// Throws away the second half of a ScalarPair!
     #[inline]
@@ -72,24 +80,6 @@ impl<'tcx> Value {
         match self {
             Value::Scalar(ptr) |
             Value::ScalarPair(ptr, _) => ptr.not_undef(),
-        }
-    }
-
-    pub fn to_scalar_dyn_trait(self) -> EvalResult<'tcx, (Scalar, Pointer)> {
-        match self {
-            Value::ScalarPair(ptr, vtable) =>
-                Ok((ptr.not_undef()?, vtable.to_ptr()?)),
-            _ => bug!("expected ptr and vtable, got {:?}", self),
-        }
-    }
-
-    pub fn to_scalar_slice(self, cx: impl HasDataLayout) -> EvalResult<'tcx, (Scalar, u64)> {
-        match self {
-            Value::ScalarPair(ptr, val) => {
-                let len = val.to_bits(cx.data_layout().pointer_size)?;
-                Ok((ptr.not_undef()?, len as u64))
-            }
-            _ => bug!("expected ptr and length, got {:?}", self),
         }
     }
 }
@@ -242,7 +232,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        if mplace.extra != PlaceExtra::None {
+        debug_assert_eq!(mplace.extra.is_some(), mplace.layout.is_unsized());
+        if mplace.extra.is_some() {
+            // Dont touch unsized
             return Ok(None);
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
@@ -315,20 +307,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    // operand must be a &str or compatible layout
+    // Turn the MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
-        op: OpTy<'tcx>,
+        mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, &str> {
-        let val = self.read_value(op)?;
-        if let Value::ScalarPair(ptr, len) = *val {
-            let len = len.not_undef()?.to_bits(self.memory.pointer_size())?;
-            let bytes = self.memory.read_bytes(ptr.not_undef()?, Size::from_bytes(len as u64))?;
-            let str = ::std::str::from_utf8(bytes).map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
-            Ok(str)
-        } else {
-            bug!("read_str: not a str")
-        }
+        let len = mplace.len(self)?;
+        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
+        let str = ::std::str::from_utf8(bytes)
+            .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+        Ok(str)
     }
 
     pub fn uninit_operand(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Operand> {
