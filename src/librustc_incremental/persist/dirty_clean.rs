@@ -30,7 +30,7 @@ use std::vec::Vec;
 use rustc::dep_graph::{DepNode, label_strs};
 use rustc::hir;
 use rustc::hir::{ItemKind as HirItem, ImplItemKind, TraitItemKind};
-use rustc::hir::map::NodeKind as HirNode;
+use rustc::hir::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
@@ -400,7 +400,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                         attr.span,
                         &format!(
                             "clean/dirty auto-assertions not yet defined \
-                             for NodeKind::Item.node={:?}",
+                             for Node::Item.node={:?}",
                             item.node
                         )
                     ),
@@ -408,14 +408,14 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             },
             HirNode::TraitItem(item) => {
                 match item.node {
-                    TraitItemKind::Method(..) => ("NodeKind::TraitItem", LABELS_FN_IN_TRAIT),
+                    TraitItemKind::Method(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                     TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                     TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
                 }
             },
             HirNode::ImplItem(item) => {
                 match item.node {
-                    ImplItemKind::Method(..) => ("NodeKind::ImplItem", LABELS_FN_IN_IMPL),
+                    ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Existential(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),

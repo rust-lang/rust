@@ -16,7 +16,7 @@
 // reachable as well.
 
 use hir::{CodegenFnAttrs, CodegenFnAttrFlags};
-use hir::map::NodeKind;
+use hir::Node;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
@@ -64,7 +64,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
-            Some(NodeKind::Item(item)) =>
+            Some(Node::Item(item)) =>
                 item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
@@ -156,14 +156,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         };
 
         match self.tcx.hir.find(node_id) {
-            Some(NodeKind::Item(item)) => {
+            Some(Node::Item(item)) => {
                 match item.node {
                     hir::ItemKind::Fn(..) =>
                         item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
                 }
             }
-            Some(NodeKind::TraitItem(trait_method)) => {
+            Some(Node::TraitItem(trait_method)) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                     hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => true,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::TraitItemKind::Type(..) => false,
                 }
             }
-            Some(NodeKind::ImplItem(impl_item)) => {
+            Some(Node::ImplItem(impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
@@ -219,12 +219,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         }
     }
 
-    fn propagate_node(&mut self, node: &NodeKind<'tcx>,
+    fn propagate_node(&mut self, node: &Node<'tcx>,
                       search_item: ast::NodeId) {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            if let NodeKind::Item(item) = *node {
+            if let Node::Item(item) = *node {
                 let reachable = if let hir::ItemKind::Fn(_, header, ..) = item.node {
                     header.abi != Abi::Rust
                 } else {
@@ -248,7 +248,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         }
 
         match *node {
-            NodeKind::Item(item) => {
+            Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Fn(.., body) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
@@ -285,7 +285,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemKind::GlobalAsm(..) => {}
                 }
             }
-            NodeKind::TraitItem(trait_method) => {
+            Node::TraitItem(trait_method) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, None) |
                     hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
@@ -298,7 +298,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::TraitItemKind::Type(..) => {}
                 }
             }
-            NodeKind::ImplItem(impl_item) => {
+            Node::ImplItem(impl_item) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(_, body) => {
                         self.visit_nested_body(body);
@@ -313,16 +313,16 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Type(_) => {}
                 }
             }
-            NodeKind::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {
+            Node::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
             }
             // Nothing to recurse on for these
-            NodeKind::ForeignItem(_) |
-            NodeKind::Variant(_) |
-            NodeKind::StructCtor(_) |
-            NodeKind::Field(_) |
-            NodeKind::Ty(_) |
-            NodeKind::MacroDef(_) => {}
+            Node::ForeignItem(_) |
+            Node::Variant(_) |
+            Node::StructCtor(_) |
+            Node::Field(_) |
+            Node::Ty(_) |
+            Node::MacroDef(_) => {}
             _ => {
                 bug!("found unexpected thingy in worklist: {}",
                      self.tcx.hir.node_to_string(search_item))

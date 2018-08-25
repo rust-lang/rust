@@ -15,7 +15,7 @@ use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::SubregionOrigin;
 use ty::RegionKind;
 use hir::{Expr, ExprKind::Closure};
-use hir::map::NodeKind;
+use hir::Node;
 use util::common::ErrorReported;
 use infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 
@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 let hir = &self.tcx.hir;
                 if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
                     match hir.get(node_id) {
-                        NodeKind::Expr(Expr {
+                        Node::Expr(Expr {
                             node: Closure(_, _, _, closure_span, None),
                             ..
                         }) => {

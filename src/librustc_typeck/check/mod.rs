@@ -132,7 +132,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc::hir::{self, PatKind, ItemKind};
 use rustc::middle::lang_items;
 
@@ -761,7 +761,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
 {
     match tcx.hir.get(id) {
-        NodeKind::Item(item) => {
+        Node::Item(item) => {
             match item.node {
                 hir::ItemKind::Const(_, body) |
                 hir::ItemKind::Static(_, _, body) =>
@@ -772,7 +772,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        NodeKind::TraitItem(item) => {
+        Node::TraitItem(item) => {
             match item.node {
                 hir::TraitItemKind::Const(_, Some(body)) =>
                     Some((body, None)),
@@ -782,7 +782,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        NodeKind::ImplItem(item) => {
+        Node::ImplItem(item) => {
             match item.node {
                 hir::ImplItemKind::Const(_, body) =>
                     Some((body, None)),
@@ -792,7 +792,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        NodeKind::AnonConst(constant) => Some((constant.body, None)),
+        Node::AnonConst(constant) => Some((constant.body, None)),
         _ => None,
     }
 }
@@ -1167,7 +1167,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         );
                     }
 
-                    if let NodeKind::Item(item) = fcx.tcx.hir.get(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir.get(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -1214,7 +1214,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         );
                     }
 
-                    if let NodeKind::Item(item) = fcx.tcx.hir.get(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir.get(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -4646,7 +4646,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(fn_id) = self.tcx.hir.get_return_block(blk_id) {
             let parent = self.tcx.hir.get(fn_id);
 
-            if let NodeKind::Item(&hir::Item {
+            if let Node::Item(&hir::Item {
                 name, node: hir::ItemKind::Fn(ref decl, ..), ..
             }) = parent {
                 decl.clone().and_then(|decl| {
@@ -4655,7 +4655,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // but it will still present it as the reason for the expected type.
                     Some((decl, name != Symbol::intern("main")))
                 })
-            } else if let NodeKind::TraitItem(&hir::TraitItem {
+            } else if let Node::TraitItem(&hir::TraitItem {
                 node: hir::TraitItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
@@ -4663,7 +4663,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 decl.clone().and_then(|decl| {
                     Some((decl, true))
                 })
-            } else if let NodeKind::ImplItem(&hir::ImplItem {
+            } else if let Node::ImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
@@ -5174,7 +5174,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If our calling expression is indeed the function itself, we're good!
         // If not, generate an error that this can only be called directly.
         match self.tcx.hir.get(self.tcx.hir.get_parent_node(node_id)) {
-            NodeKind::Expr(expr) => {
+            Node::Expr(expr) => {
                 match expr.node {
                     hir::ExprKind::Call(ref callee, ..) => {
                         if callee.id == node_id {

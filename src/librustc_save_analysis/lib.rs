@@ -43,7 +43,7 @@ mod sig;
 
 use rustc::hir;
 use rustc::hir::def::Def as HirDef;
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::CrateType;
@@ -420,7 +420,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let (qualname, parent_scope, decl_id, docs, attributes) =
             match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
                 Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
-                    Some(NodeKind::Item(item)) => match item.node {
+                    Some(Node::Item(item)) => match item.node {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
                             qualname.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
@@ -429,7 +429,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut decl_id = None;
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(NodeKind::ImplItem(item)) = self.tcx.hir.find(id) {
+                            if let Some(Node::ImplItem(item)) = self.tcx.hir.find(id) {
                                 docs = self.docs_for_attrs(&item.attrs);
                                 attrs = item.attrs.to_vec();
                             }
@@ -471,7 +471,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(NodeKind::TraitItem(item)) = self.tcx.hir.find(id) {
+                        if let Some(Node::TraitItem(item)) = self.tcx.hir.find(id) {
                             docs = self.docs_for_attrs(&item.attrs);
                             attrs = item.attrs.to_vec();
                         }
@@ -541,7 +541,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
                 let hir_node = match self.tcx.hir.find(sub_ex.id) {
-                    Some(NodeKind::Expr(expr)) => expr,
+                    Some(Node::Expr(expr)) => expr,
                     _ => {
                         debug!(
                             "Missing or weird node for sub-expression {} in {:?}",
@@ -628,32 +628,32 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_path_def(&self, id: NodeId) -> HirDef {
         match self.tcx.hir.get(id) {
-            NodeKind::TraitRef(tr) => tr.path.def,
+            Node::TraitRef(tr) => tr.path.def,
 
-            NodeKind::Item(&hir::Item {
+            Node::Item(&hir::Item {
                 node: hir::ItemKind::Use(ref path, _),
                 ..
             }) |
-            NodeKind::Visibility(&Spanned {
+            Node::Visibility(&Spanned {
                 node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.def,
 
-            NodeKind::Expr(&hir::Expr {
+            Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Struct(ref qpath, ..),
                 ..
             }) |
-            NodeKind::Expr(&hir::Expr {
+            Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Path(ref qpath),
                 ..
             }) |
-            NodeKind::Pat(&hir::Pat {
+            Node::Pat(&hir::Pat {
                 node: hir::PatKind::Path(ref qpath),
                 ..
             }) |
-            NodeKind::Pat(&hir::Pat {
+            Node::Pat(&hir::Pat {
                 node: hir::PatKind::Struct(ref qpath, ..),
                 ..
             }) |
-            NodeKind::Pat(&hir::Pat {
+            Node::Pat(&hir::Pat {
                 node: hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             }) => {
@@ -661,12 +661,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 self.tables.qpath_def(qpath, hir_id)
             }
 
-            NodeKind::Binding(&hir::Pat {
+            Node::Binding(&hir::Pat {
                 node: hir::PatKind::Binding(_, canonical_id, ..),
                 ..
             }) => HirDef::Local(canonical_id),
 
-            NodeKind::Ty(ty) => if let hir::Ty {
+            Node::Ty(ty) => if let hir::Ty {
                 node: hir::TyKind::Path(ref qpath),
                 ..
             } = *ty

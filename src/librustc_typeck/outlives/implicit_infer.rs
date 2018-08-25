@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::hir;
-use hir::map::NodeKind;
+use hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
@@ -71,7 +71,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
             .as_local_node_id(item_did)
             .expect("expected local def-id");
         let item = match self.tcx.hir.get(node_id) {
-            NodeKind::Item(item) => item,
+            Node::Item(item) => item,
             _ => bug!(),
         };
 

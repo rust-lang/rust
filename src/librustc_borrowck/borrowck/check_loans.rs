@@ -30,7 +30,7 @@ use rustc::ty::{self, TyCtxt, RegionKind};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 
 use std::rc::Rc;
@@ -203,7 +203,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
     let node_id = bccx.tcx.hir.as_local_node_id(def_id).unwrap();
     let movable_generator = !match bccx.tcx.hir.get(node_id) {
-        NodeKind::Expr(&hir::Expr {
+        Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => true,

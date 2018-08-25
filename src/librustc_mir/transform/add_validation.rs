@@ -85,7 +85,7 @@ fn place_context<'a, 'tcx, D>(
 fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
     use rustc::hir::intravisit::{self, Visitor, FnKind};
     use rustc::hir::map::blocks::FnLikeNode;
-    use rustc::hir::map::NodeKind;
+    use rustc::hir::Node;
 
     /// Decide if this is an unsafe block
     fn block_is_unsafe(block: &hir::Block) -> bool {
@@ -142,13 +142,13 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
             }
             // Check if this is an unsafe block, or an item
             match node {
-                NodeKind::Expr(&hir::Expr { node: hir::ExprKind::Block(ref block, _), ..}) => {
+                Node::Expr(&hir::Expr { node: hir::ExprKind::Block(ref block, _), ..}) => {
                     if block_is_unsafe(&*block) {
                         // Found an unsafe block, we can bail out here.
                         return true;
                     }
                 }
-                NodeKind::Item(..) => {
+                Node::Item(..) => {
                     // No walking up beyond items.  This makes sure the loop always terminates.
                     break;
                 }

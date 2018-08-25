@@ -17,7 +17,7 @@ use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc::hir::{Item, ItemKind, print};
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
@@ -199,13 +199,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
             if let hir::def::Def::Local(id) = path.def {
                 let parent = self.tcx.hir.get_parent_node(id);
-                if let Some(NodeKind::Expr(hir::Expr {
+                if let Some(Node::Expr(hir::Expr {
                     id,
                     node: hir::ExprKind::Closure(_, decl, ..),
                     ..
                 })) = self.tcx.hir.find(parent) {
                     let parent = self.tcx.hir.get_parent_node(*id);
-                    if let (Some(NodeKind::Expr(hir::Expr {
+                    if let (Some(Node::Expr(hir::Expr {
                         node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
                     })), 1) = (self.tcx.hir.find(parent), decl.inputs.len()) {
@@ -377,7 +377,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.tcx.hir.find(parent_id) {
             Some(parent) => {
                 // Shouldn't suggest `.into()` on `const`s.
-                if let NodeKind::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
+                if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
                     // FIXME(estebank): modify once we decide to suggest `as` casts
                     return false;
                 }

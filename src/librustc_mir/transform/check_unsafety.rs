@@ -15,7 +15,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
@@ -408,7 +408,7 @@ fn is_enclosed(tcx: TyCtxt,
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
-        } else if let Some(NodeKind::Item(&hir::Item {
+        } else if let Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Fn(_, header, _, _),
             ..
         })) = tcx.hir.find(parent_id) {

@@ -23,7 +23,7 @@ use rustc::ty::util::CopyImplementationError;
 use rustc::infer;
 
 use rustc::hir::def_id::DefId;
-use hir::map::NodeKind;
+use hir::Node;
 use rustc::hir::{self, ItemKind};
 
 pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
@@ -60,7 +60,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
             // Destructors only work on nominal types.
             if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
                 match tcx.hir.find(impl_node_id) {
-                    Some(NodeKind::Item(item)) => {
+                    Some(Node::Item(item)) => {
                         let span = match item.node {
                             ItemKind::Impl(.., ref ty, _) => ty.span,
                             _ => item.span,

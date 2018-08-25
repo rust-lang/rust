@@ -108,7 +108,7 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use hir::def::*;
-use hir::map::NodeKind;
+use hir::Node;
 use ty::{self, TyCtxt};
 use lint;
 use errors::Applicability;
@@ -364,7 +364,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir.get_parent(id);
-        if let Some(NodeKind::Item(i)) = ir.tcx.hir.find(parent) {
+        if let Some(Node::Item(i)) = ir.tcx.hir.find(parent) {
             if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
                 return;
             }

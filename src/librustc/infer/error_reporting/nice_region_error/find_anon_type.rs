@@ -10,7 +10,7 @@
 
 use hir;
 use ty::{self, Region, TyCtxt};
-use hir::map::NodeKind;
+use hir::Node;
 use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use infer::error_reporting::nice_region_error::NiceRegionError;
@@ -40,15 +40,15 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let fndecl = match self.tcx.hir.get(node_id) {
-                    NodeKind::Item(&hir::Item {
+                    Node::Item(&hir::Item {
                         node: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
                     }) => &fndecl,
-                    NodeKind::TraitItem(&hir::TraitItem {
+                    Node::TraitItem(&hir::TraitItem {
                         node: hir::TraitItemKind::Method(ref m, ..),
                         ..
                     })
-                    | NodeKind::ImplItem(&hir::ImplItem {
+                    | Node::ImplItem(&hir::ImplItem {
                         node: hir::ImplItemKind::Method(ref m, ..),
                         ..
                     }) => &m.decl,

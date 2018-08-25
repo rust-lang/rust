@@ -62,7 +62,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 
 use std::{cmp, fmt};
 use hir;
-use hir::map::NodeKind;
+use hir::Node;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
@@ -100,8 +100,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 };
                 let span = scope.span(self, region_scope_tree);
                 let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
-                    Some(NodeKind::Block(_)) => "block",
-                    Some(NodeKind::Expr(expr)) => match expr.node {
+                    Some(Node::Block(_)) => "block",
+                    Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
                         hir::ExprKind::MethodCall(..) => "method call",
                         hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
@@ -110,10 +110,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         hir::ExprKind::Match(..) => "match",
                         _ => "expression",
                     },
-                    Some(NodeKind::Stmt(_)) => "statement",
-                    Some(NodeKind::Item(it)) => Self::item_scope_tag(&it),
-                    Some(NodeKind::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-                    Some(NodeKind::ImplItem(it)) => Self::impl_item_scope_tag(&it),
+                    Some(Node::Stmt(_)) => "statement",
+                    Some(Node::Item(it)) => Self::item_scope_tag(&it),
+                    Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
+                    Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -194,10 +194,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
         let tag = match self.hir.find(node) {
-            Some(NodeKind::Block(_)) | Some(NodeKind::Expr(_)) => "body",
-            Some(NodeKind::Item(it)) => Self::item_scope_tag(&it),
-            Some(NodeKind::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-            Some(NodeKind::ImplItem(it)) => Self::impl_item_scope_tag(&it),
+            Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
+            Some(Node::Item(it)) => Self::item_scope_tag(&it),
+            Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
+            Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
             _ => unreachable!()
         };
         let (prefix, span) = match *region {
@@ -1127,7 +1127,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let mut has_bounds = false;
-                            if let NodeKind::GenericParam(ref param) = hir.get(id) {
+                            if let Node::GenericParam(ref param) = hir.get(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
                             let sp = hir.span(id);

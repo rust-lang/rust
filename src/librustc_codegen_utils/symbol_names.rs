@@ -98,7 +98,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::map::NodeKind;
+use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
@@ -261,7 +261,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(id) = node_id {
         match tcx.hir.get(id) {
-            NodeKind::ForeignItem(_) => true,
+            Node::ForeignItem(_) => true,
             _ => false,
         }
     } else {
