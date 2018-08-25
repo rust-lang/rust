@@ -1376,7 +1376,13 @@ impl<'a> Parser<'a> {
                 // This is somewhat dubious; We don't want to allow
                 // argument names to be left off if there is a
                 // definition...
-                p.parse_arg_general(false)
+
+                // We don't allow argument names to be left off in edition 2018.
+                if p.span.edition() >= Edition::Edition2018 {
+                    p.parse_arg_general(true)
+                } else {
+                    p.parse_arg_general(false)
+                }
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
