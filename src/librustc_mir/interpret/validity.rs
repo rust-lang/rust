@@ -198,25 +198,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         seen: &mut FxHashSet<(OpTy<'tcx>)>,
         todo: &mut Vec<(OpTy<'tcx>, Vec<PathElem>)>,
     ) -> EvalResult<'tcx> {
-        trace!("validate_mplace: {:?}, {:#?}", *dest, dest.layout);
+        trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
 
         // Find the right variant.  We have to handle this as a prelude, not via
         // proper recursion with the new inner layout, to be able to later nicely
         // print the field names of the enum field that is being accessed.
         let (variant, dest) = match dest.layout.variants {
-            layout::Variants::NicheFilling { niche: ref tag, .. } |
-            layout::Variants::Tagged { ref tag, .. } => {
-                let size = tag.value.size(self);
-                // we first read the tag value as scalar, to be able to validate it
-                let tag_mplace = self.operand_field(dest, 0)?;
-                let tag_value = self.read_scalar(tag_mplace)?;
-                path.push(PathElem::Tag);
-                self.validate_scalar(
-                    tag_value, size, tag, &path, tag_mplace.layout.ty
-                )?;
-                path.pop(); // remove the element again
-                // then we read it again to get the index, to continue
-                let variant = self.read_discriminant_as_variant_index(dest.into())?;
+            layout::Variants::NicheFilling { .. } |
+            layout::Variants::Tagged { .. } => {
+                let variant = match self.read_discriminant(dest) {
+                    Ok(res) => res.1,
+                    Err(err) => match err.kind {
+                        EvalErrorKind::InvalidDiscriminant |
+                        EvalErrorKind::ReadPointerAsBytes =>
+                            return validation_failure!(
+                                "invalid enum discriminant", path
+                            ),
+                        _ => return Err(err),
+                    }
+                };
                 let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
                 path.push(PathElem::Field(dest.layout.ty
@@ -258,17 +258,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                                 if let Some(AllocType::Static(did)) = alloc_kind {
                                     // statics from other crates are already checked.
-                                    // extern statics should not be validated as they have no body.
+                                    // extern statics cannot be validated as they have no body.
                                     if !did.is_local() || self.tcx.is_foreign_item(did) {
                                         return Ok(());
                                     }
                                 }
                                 if value.layout.ty.builtin_deref(false).is_some() {
-                                    trace!("Recursing below ptr {:#?}", value);
                                     let ptr_op = self.ref_to_mplace(value)?.into();
                                     // we have not encountered this pointer+layout combination
                                     // before.
                                     if seen.insert(ptr_op) {
+                                        trace!("Recursing below ptr {:#?}", *value);
                                         todo.push((ptr_op, path_clone_and_deref(path)));
                                     }
                                 }
@@ -284,6 +284,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
             layout::FieldPlacement::Array { .. } => {
+                // FIXME: For a TyStr, check that this is valid UTF-8.
                 // Skips for ZSTs; we could have an empty array as an immediate
                 if !dest.layout.is_zst() {
                     let dest = dest.to_mem_place(); // arrays cannot be immediate
@@ -316,8 +317,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     let unpacked_ptr = self.unpack_unsized_mplace(ptr)?.into();
                     // for safe ptrs, recursively check it
                     if !dest.layout.ty.is_unsafe_ptr() {
-                        trace!("Recursing below fat ptr {:?} (unpacked: {:?})", ptr, unpacked_ptr);
                         if seen.insert(unpacked_ptr) {
+                            trace!("Recursing below fat ptr {:?} (unpacked: {:?})",
+                                ptr, unpacked_ptr);
                             todo.push((unpacked_ptr, path_clone_and_deref(path)));
                         }
                     }
@@ -329,7 +331,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         self.validate_operand(field, path, seen, todo)?;
                         path.truncate(path_len);
                     }
-                    // FIXME: For a TyStr, check that this is valid UTF-8.
                 }
             }
         }

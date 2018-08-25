@@ -303,7 +303,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             InvalidBool =>
                 "invalid boolean value read",
             InvalidDiscriminant =>
-                "invalid enum discriminant value read",
+                "invalid enum discriminant value read or written",
             PointerOutOfBounds { .. } =>
                 "pointer offset outside bounds of allocation",
             InvalidNullPointerUsage =>

@@ -702,7 +702,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
     }
 
-    pub fn write_discriminant_value(
+    pub fn write_discriminant_index(
         &mut self,
         variant_index: usize,
         dest: PlaceTy<'tcx>,
@@ -710,14 +710,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest.layout.variants {
             layout::Variants::Single { index } => {
                 if index != variant_index {
-                    // If the layout of an enum is `Single`, all
-                    // other variants are necessarily uninhabited.
-                    assert_eq!(dest.layout.for_variant(&self, variant_index).abi,
-                               layout::Abi::Uninhabited);
+                    return err!(InvalidDiscriminant);
                 }
             }
             layout::Variants::Tagged { ref tag, .. } => {
-                let discr_val = dest.layout.ty.ty_adt_def().unwrap()
+                let adt_def = dest.layout.ty.ty_adt_def().unwrap();
+                if variant_index >= adt_def.variants.len() {
+                    return err!(InvalidDiscriminant);
+                }
+                let discr_val = adt_def
                     .discriminant_for_variant(*self.tcx, variant_index)
                     .val;
 
@@ -740,6 +741,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 niche_start,
                 ..
             } => {
+                if variant_index >= dest.layout.ty.ty_adt_def().unwrap().variants.len() {
+                    return err!(InvalidDiscriminant);
+                }
                 if variant_index != dataful_variant {
                     let niche_dest =
                         self.place_field(dest, 0)?;

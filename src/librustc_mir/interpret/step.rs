@@ -127,7 +127,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 variant_index,
             } => {
                 let dest = self.eval_place(place)?;
-                self.write_discriminant_value(variant_index, dest)?;
+                self.write_discriminant_index(variant_index, dest)?;
             }
 
             // Mark locals as alive
@@ -222,7 +222,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant_value(variant_index, dest)?;
+                        self.write_discriminant_index(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)
                         } else {
@@ -312,7 +312,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Discriminant(ref place) => {
                 let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant_value(self.place_to_op(place)?)?;
+                let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
                 let size = dest.layout.size.bytes() as u8;
                 self.write_scalar(Scalar::Bits {
                     bits: discr_val,

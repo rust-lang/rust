@@ -382,7 +382,7 @@ pub fn const_variant_index<'a, 'tcx>(
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let op = ecx.const_to_op(val)?;
-    ecx.read_discriminant_as_variant_index(op)
+    Ok(ecx.read_discriminant(op)?.1)
 }
 
 pub fn const_to_allocation_provider<'a, 'tcx>(
