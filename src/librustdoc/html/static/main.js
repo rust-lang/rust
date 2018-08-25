@@ -224,14 +224,9 @@
         }
     }
 
-    function expandSection() {
-        var hash = getPageId();
-        if (hash === null) {
-            return;
-        }
-
-        var elem = document.getElementById(hash);
-        if (elem && elem.offsetParent && isHidden(elem.offsetParent)) {
+    function expandSection(id) {
+        var elem = document.getElementById(id);
+        if (elem && isHidden(elem)) {
             var h3 = elem.parentNode.previousSibling;
             if (h3 && h3.tagName !== 'H3') {
                 h3 = h3.previousSibling; // skip div.docblock
@@ -247,13 +242,7 @@
         }
     }
 
-    function onHashChange(ev) {
-        highlightSourceLines(ev);
-        expandSection();
-    }
-
-    highlightSourceLines(null);
-    window.onhashchange = onHashChange;
+    window.onhashchange = highlightSourceLines;
 
     // Gets the human-readable string for the virtual-key code of the
     // given KeyboardEvent, ev.
@@ -346,6 +335,15 @@
         }
     }
 
+    function findParentElement(elem, tagName) {
+        do {
+            if (elem && elem.tagName === tagName) {
+                return elem;
+            }
+        } while (elem = elem.parentNode);
+        return null;
+    }
+
     document.onkeypress = handleShortcut;
     document.onkeydown = handleShortcut;
     document.onclick = function(ev) {
@@ -383,6 +381,13 @@
         } else if (!hasClass(document.getElementById("help"), "hidden")) {
             addClass(document.getElementById("help"), "hidden");
             removeClass(document.body, "blur");
+        } else {
+            // Making a collapsed element visible on onhashchange seems
+            // too late
+            var a = findParentElement(ev.target, 'A');
+            if (a && a.hash) {
+                expandSection(a.hash.replace(/^#/, ''));
+            }
         }
     };
 
@@ -2242,7 +2247,7 @@
     autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
 
     if (window.location.hash && window.location.hash.length > 0) {
-        expandSection();
+        expandSection(window.location.hash.replace(/^#/, ''));
     }
 }());
 
