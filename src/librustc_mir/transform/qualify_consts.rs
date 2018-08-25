@@ -127,6 +127,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
            mir: &'a Mir<'tcx>,
            mode: Mode)
            -> Qualifier<'a, 'tcx, 'tcx> {
+        assert!(def_id.is_local());
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
@@ -914,9 +915,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             .declared_lib_features
                             .iter()
                             .any(|&(ref sym, _)| sym == feature_name) &&
-
-                        // this doesn't come from a crate with the feature-gate enabled,
-                        self.def_id.is_local() &&
 
                         // this doesn't come from a macro that has #[allow_internal_unstable]
                         !self.span.allows_unstable()
