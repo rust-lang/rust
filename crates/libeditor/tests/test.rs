@@ -5,7 +5,7 @@ extern crate assert_eq_text;
 
 use assert_eq_text::{assert_eq_dbg};
 use libeditor::{
-    ParsedFile, TextUnit, TextRange, ActionResult,
+    File, TextUnit, TextRange, ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, add_impl, matching_brace,
     join_lines,
@@ -234,11 +234,11 @@ struct Foo { f: u32 }
 ");
 }
 
-fn file(text: &str) -> ParsedFile {
-    ParsedFile::parse(text)
+fn file(text: &str) -> File {
+    File::parse(text)
 }
 
-fn check_action<F: Fn(&ParsedFile, TextUnit) -> Option<ActionResult>>(
+fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>>(
     before: &str,
     after: &str,
     f: F,

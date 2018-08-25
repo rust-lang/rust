@@ -1,5 +1,5 @@
 use libsyntax2::{
-    SyntaxKind, SyntaxNodeRef, AstNode, ParsedFile, SmolStr,
+    SyntaxKind, SyntaxNodeRef, AstNode, File, SmolStr,
     ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},
@@ -24,7 +24,7 @@ pub struct FileSymbol {
     pub kind: SyntaxKind,
 }
 
-pub fn file_symbols(file: &ParsedFile) -> Vec<FileSymbol> {
+pub fn file_symbols(file: &File) -> Vec<FileSymbol> {
     preorder(file.syntax())
         .filter_map(to_symbol)
         .collect()
@@ -52,7 +52,7 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
 }
 
 
-pub fn file_structure(file: &ParsedFile) -> Vec<StructureNode> {
+pub fn file_structure(file: &File) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 

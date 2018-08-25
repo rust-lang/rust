@@ -1,10 +1,10 @@
 use libsyntax2::{
-    ParsedFile, TextRange, SyntaxNodeRef,
+    File, TextRange, SyntaxNodeRef,
     SyntaxKind::WHITESPACE,
     algo::{find_leaf_at_offset, find_covering_node, ancestors},
 };
 
-pub fn extend_selection(file: &ParsedFile, range: TextRange) -> Option<TextRange> {
+pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
     let syntax = file.syntax();
     extend(syntax.borrowed(), range)
 }

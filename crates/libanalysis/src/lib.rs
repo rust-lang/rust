@@ -27,7 +27,7 @@ use std::{
 };
 
 use libsyntax2::{
-    ParsedFile,
+    File,
     TextUnit, TextRange, SmolStr,
     ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
@@ -132,7 +132,7 @@ impl WorldState {
 
 
 impl World {
-    pub fn file_syntax(&self, file_id: FileId) -> Result<ParsedFile> {
+    pub fn file_syntax(&self, file_id: FileId) -> Result<File> {
         let data = self.file_data(file_id)?;
         Ok(data.syntax().clone())
     }
@@ -265,7 +265,7 @@ struct WorldData {
 struct FileData {
     text: String,
     symbols: OnceCell<FileSymbols>,
-    syntax: OnceCell<ParsedFile>,
+    syntax: OnceCell<File>,
     lines: OnceCell<LineIndex>,
 }
 
@@ -279,14 +279,14 @@ impl FileData {
         }
     }
 
-    fn syntax(&self) -> &ParsedFile {
+    fn syntax(&self) -> &File {
         self.syntax
-            .get_or_init(|| ParsedFile::parse(&self.text))
+            .get_or_init(|| File::parse(&self.text))
     }
 
-    fn syntax_transient(&self) -> ParsedFile {
+    fn syntax_transient(&self) -> File {
         self.syntax.get().map(|s| s.clone())
-            .unwrap_or_else(|| ParsedFile::parse(&self.text))
+            .unwrap_or_else(|| File::parse(&self.text))
     }
 
     fn symbols(&self) -> &FileSymbols {

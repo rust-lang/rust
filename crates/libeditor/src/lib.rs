@@ -14,7 +14,7 @@ use libsyntax2::{
     algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };
-pub use libsyntax2::{ParsedFile, TextRange, TextUnit};
+pub use libsyntax2::{File, TextRange, TextUnit};
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
@@ -51,11 +51,11 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub fn parse(text: &str) -> ParsedFile {
-    ParsedFile::parse(text)
+pub fn parse(text: &str) -> File {
+    File::parse(text)
 }
 
-pub fn matching_brace(file: &ParsedFile, offset: TextUnit) -> Option<TextUnit> {
+pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
         L_CURLY, R_CURLY,
         L_BRACK, R_BRACK,
@@ -75,7 +75,7 @@ pub fn matching_brace(file: &ParsedFile, offset: TextUnit) -> Option<TextUnit> {
     Some(matching_node.range().start())
 }
 
-pub fn highlight(file: &ParsedFile) -> Vec<HighlightedRange> {
+pub fn highlight(file: &File) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
     for node in walk::preorder(file.syntax()) {
         let tag = match node.kind() {
@@ -98,7 +98,7 @@ pub fn highlight(file: &ParsedFile) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn diagnostics(file: &ParsedFile) -> Vec<Diagnostic> {
+pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
     let mut res = Vec::new();
 
     for node in walk::preorder(file.syntax()) {
@@ -116,11 +116,11 @@ pub fn diagnostics(file: &ParsedFile) -> Vec<Diagnostic> {
     res
 }
 
-pub fn syntax_tree(file: &ParsedFile) -> String {
+pub fn syntax_tree(file: &File) -> String {
     ::libsyntax2::utils::dump_tree(file.syntax())
 }
 
-pub fn runnables(file: &ParsedFile) -> Vec<Runnable> {
+pub fn runnables(file: &File) -> Vec<Runnable> {
     file.ast()
         .functions()
         .filter_map(|f| {

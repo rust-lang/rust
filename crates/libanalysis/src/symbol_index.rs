@@ -1,6 +1,6 @@
 use libeditor::{FileSymbol, file_symbols};
 use libsyntax2::{
-    ParsedFile,
+    File,
     SyntaxKind::{self, *},
 };
 use fst::{self, IntoStreamer, Streamer};
@@ -12,7 +12,7 @@ pub(crate) struct FileSymbols {
 }
 
 impl FileSymbols {
-    pub(crate) fn new(file: &ParsedFile) -> FileSymbols {
+    pub(crate) fn new(file: &File) -> FileSymbols {
         let mut symbols = file_symbols(file)
             .into_iter()
             .map(|s| (s.name.as_str().to_lowercase(), s))

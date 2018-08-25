@@ -1,5 +1,5 @@
 use libsyntax2::{
-    TextUnit, TextRange, SyntaxNodeRef, ParsedFile,
+    TextUnit, TextRange, SyntaxNodeRef, File,
     algo::{
         walk::preorder,
         find_covering_node,
@@ -10,7 +10,7 @@ use libsyntax2::{
 
 use {ActionResult, EditBuilder};
 
-pub fn join_lines(file: &ParsedFile, range: TextRange) -> ActionResult {
+pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
     let range = if range.is_empty() {
         let text = file.syntax().text();
         let text = &text[TextRange::from_to(range.start(), TextUnit::of_str(&text))];

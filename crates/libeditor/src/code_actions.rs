@@ -3,7 +3,7 @@ use std::{
 };
 
 use libsyntax2::{
-    ParsedFile,
+    File,
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
     SyntaxKind::COMMA,
     SyntaxNodeRef,
@@ -21,7 +21,7 @@ pub struct ActionResult {
     pub cursor_position: Option<TextUnit>,
 }
 
-pub fn flip_comma<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let syntax = file.syntax();
 
     let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
@@ -38,7 +38,7 @@ pub fn flip_comma<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnO
     })
 }
 
-pub fn add_derive<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
     Some(move || {
         let derive_attr = nominal
@@ -65,7 +65,7 @@ pub fn add_derive<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnO
     })
 }
 
-pub fn add_impl<'a>(file: &'a ParsedFile, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
     let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
     let name = nominal.name()?;
 

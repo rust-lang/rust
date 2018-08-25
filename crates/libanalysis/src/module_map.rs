@@ -4,13 +4,13 @@ use std::{
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use libsyntax2::{
-    ParsedFile,
+    File,
     ast::{self, AstNode, NameOwner},
     SyntaxNode, SmolStr,
 };
 use {FileId, FileResolver};
 
-type SyntaxProvider<'a> = dyn Fn(FileId) -> ParsedFile + 'a;
+type SyntaxProvider<'a> = dyn Fn(FileId) -> File + 'a;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ModuleId(FileId);

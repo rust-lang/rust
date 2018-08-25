@@ -51,14 +51,14 @@ pub use {
 };
 
 #[derive(Clone, Debug)]
-pub struct ParsedFile {
+pub struct File {
     root: SyntaxNode
 }
 
-impl ParsedFile {
+impl File {
     pub fn parse(text: &str) -> Self {
         let root = ::parse(text);
-        ParsedFile { root }
+        File { root }
     }
     pub fn ast(&self) -> ast::Root {
         ast::Root::cast(self.syntax()).unwrap()
