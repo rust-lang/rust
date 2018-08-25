@@ -59,6 +59,13 @@ struct Foo {
     f: foo<|><|>
 }
 ", ",\n    g: (),");
+    do_check(r"
+fn foo {
+    let;
+    1 + 1;
+    <|>92<|>;
+}
+", "62");
 }
 
 

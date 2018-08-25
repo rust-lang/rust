@@ -93,7 +93,7 @@ impl File {
             &text, &tokens, reparser,
         );
         let green_root = node.replace_with(green);
-        let errors = merge_errors(self.errors(), new_errors, edit, node.range().start());
+        let errors = merge_errors(self.errors(), new_errors, node, edit);
         Some(File::new(green_root, errors))
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
@@ -210,14 +210,14 @@ fn is_balanced(tokens: &[Token]) -> bool {
 fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
+    old_node: SyntaxNodeRef,
     edit: &AtomEdit,
-    node_offset: TextUnit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {
-        if e.offset < edit.delete.start() {
+        if e.offset < old_node.range().start() {
             res.push(e)
-        } else if e.offset > edit.delete.end() {
+        } else if e.offset > old_node.range().end() {
             res.push(SyntaxError {
                 msg: e.msg,
                 offset: e.offset + TextUnit::of_str(&edit.insert) - edit.delete.len(),
@@ -227,7 +227,7 @@ fn merge_errors(
     for e in new_errors {
         res.push(SyntaxError {
             msg: e.msg,
-            offset: e.offset + node_offset,
+            offset: e.offset + old_node.range().start(),
         })
     }
     res
