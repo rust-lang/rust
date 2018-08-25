@@ -357,10 +357,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         Ok(ptr) => ptr,
                         Err(_) =>
                             return validation_failure!(
-                                "undefined metadata in fat pointer", path
+                                "undefined location or metadata in fat pointer", path
                             ),
                     };
-                    // check metadata
+                    // check metadata early, for better diagnostics
                     match self.tcx.struct_tail(ptr.layout.ty).sty {
                         ty::Dynamic(..) => {
                             match ptr.extra.unwrap().to_ptr() {

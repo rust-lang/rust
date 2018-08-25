@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
+
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutOf;
@@ -335,84 +337,76 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // Figure out how to pass which arguments.
                 // FIXME: Somehow this is horribly full of special cases here, and codegen has
                 // none of that.  What is going on?
-                trace!("ABI: {:?}", sig.abi);
                 trace!(
-                    "args: {:#?}",
+                    "ABI: {:?}, args: {:#?}",
+                    sig.abi,
                     args.iter()
                         .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
                         .collect::<Vec<_>>()
                 );
                 trace!(
-                    "locals: {:#?}",
+                    "spread_arg: {:?}, locals: {:#?}",
+                    mir.spread_arg,
                     mir.args_iter()
                         .map(|local|
                             (local, self.layout_of_local(self.cur_frame(), local).unwrap().ty)
                         )
                         .collect::<Vec<_>>()
                 );
+
+                // We have two iterators: Where the arguments come from,
+                // and where they go to.
+
+                // For where they come from: If the ABI is RustCall, we untuple the
+                // last incoming argument.  These do not have the same type,
+                // so to keep the code paths uniform we accept an allocation
+                // (for RustCall ABI only).
+                let args_effective : Cow<[OpTy<'tcx>]> =
+                    if sig.abi == Abi::RustCall && !args.is_empty() {
+                        // Untuple
+                        let (&untuple_arg, args) = args.split_last().unwrap();
+                        trace!("eval_fn_call: Will pass last argument by untupling");
+                        Cow::from(args.iter().map(|&a| Ok(a))
+                            .chain((0..untuple_arg.layout.fields.count()).into_iter()
+                                .map(|i| self.operand_field(untuple_arg, i as u64))
+                            )
+                            .collect::<EvalResult<Vec<OpTy<'tcx>>>>()?)
+                    } else {
+                        // Plain arg passing
+                        Cow::from(args)
+                    };
+
+                // Now we have to spread them out across the callee's locals,
+                // taking into account the `spread_arg`.
+                let mut args_iter = args_effective.iter();
+                let mut local_iter = mir.args_iter();
+                // HACK: ClosureOnceShim calls something that expects a ZST as
+                // first argument, but the callers do not actually pass that ZST.
+                // Codegen doesn't care because ZST arguments do not even exist there.
                 match instance.def {
                     ty::InstanceDef::ClosureOnceShim { .. } if sig.abi == Abi::Rust => {
-                        // this has an entirely ridicolous calling convention where it uses the
-                        // "Rust" ABI, but arguments come in untupled and are supposed to be tupled
-                        // for the callee!  The function's first argument is a ZST, and then
-                        // there comes a tuple for the rest.
-                        let mut arg_locals = mir.args_iter();
-
-                        {   // the ZST. nothing to write.
-                            let arg_local = arg_locals.next().unwrap();
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            assert!(dest.layout.is_zst());
-                        }
-
-                        {   // the tuple argument.
-                            let arg_local = arg_locals.next().unwrap();
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            assert_eq!(dest.layout.fields.count(), args.len());
-                            for (i, &op) in args.iter().enumerate() {
-                                let dest_field = self.place_field(dest, i as u64)?;
-                                self.copy_op(op, dest_field)?;
-                            }
-                        }
-
-                        // that should be it
-                        assert!(arg_locals.next().is_none());
+                        let local = local_iter.next().unwrap();
+                        let dest = self.eval_place(&mir::Place::Local(local))?;
+                        assert!(dest.layout.is_zst());
                     }
-                    _ => {
-                        // overloaded-calls-simple.rs in miri's test suite demomstrates that there is
-                        // no way to predict, from the ABI and instance.def, whether the function
-                        // wants arguments passed with untupling or not.  So we just make it
-                        // depend on the number of arguments...
-                        let untuple =
-                            sig.abi == Abi::RustCall && !args.is_empty() && args.len() != mir.arg_count;
-                        let (normal_args, untuple_arg) = if untuple {
-                            let (tup, args) = args.split_last().unwrap();
-                            trace!("eval_fn_call: Will pass last argument by untupling");
-                            (args, Some(tup))
-                        } else {
-                            (&args[..], None)
-                        };
-
-                        // Pass the arguments.
-                        let mut arg_locals = mir.args_iter();
-                        // First the normal ones.
-                        for &op in normal_args {
-                            let arg_local = arg_locals.next().unwrap();
-                            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                            self.copy_op(op, dest)?;
+                    _ => {}
+                }
+                // Now back to norml argument passing.
+                while let Some(local) = local_iter.next() {
+                    let dest = self.eval_place(&mir::Place::Local(local))?;
+                    if Some(local) == mir.spread_arg {
+                        // Must be a tuple
+                        for i in 0..dest.layout.fields.count() {
+                            let dest = self.place_field(dest, i as u64)?;
+                            self.copy_op(*args_iter.next().unwrap(), dest)?;
                         }
-                        // The the ones to untuple.
-                        if let Some(&untuple_arg) = untuple_arg {
-                            for i in 0..untuple_arg.layout.fields.count() {
-                                let arg_local = arg_locals.next().unwrap();
-                                let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-                                let op = self.operand_field(untuple_arg, i as u64)?;
-                                self.copy_op(op, dest)?;
-                            }
-                        }
-                        // That should be it.
-                        assert!(arg_locals.next().is_none());
+                    } else {
+                        // Normal argument
+                        self.copy_op(*args_iter.next().unwrap(), dest)?;
                     }
                 }
+                // Now we should be done
+                assert!(args_iter.next().is_none());
                 Ok(())
             }
             // cannot use the shim here, because that will only result in infinite recursion
