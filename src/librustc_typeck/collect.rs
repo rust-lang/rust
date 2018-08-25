@@ -1796,6 +1796,21 @@ fn explicit_predicates_of<'a, 'tcx>(
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
 
+                // Keep the type around in a WF predicate, in case of no bounds.
+                // That way, `where Ty:` is not a complete noop (see #53696).
+                if bound_pred.bounds.is_empty() {
+                    if let ty::Param(_) = ty.sty {
+                        // This is a `where T:`, which can be in the HIR from the
+                        // transformation that moves `?Sized` to `T`'s declaration.
+                        // We can skip the predicate because type parameters are
+                        // trivially WF, but also we *should*, to avoid exposing
+                        // users who never wrote `where Type:,` themselves, to
+                        // compiler/tooling bugs from not handling WF predicates.
+                    } else {
+                        predicates.push(ty::Predicate::WellFormed(ty));
+                    }
+                }
+
                 for bound in bound_pred.bounds.iter() {
                     match bound {
                         &hir::GenericBound::Trait(ref poly_trait_ref, _) => {

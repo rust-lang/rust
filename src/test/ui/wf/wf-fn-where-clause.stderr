@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-fn-where-clause.rs:19:1
+  --> $DIR/wf-fn-where-clause.rs:18:1
    |
 LL | / fn foo<T,U>() where T: ExtraCopy<U> //~ ERROR E0277
 LL | | {
@@ -8,11 +8,30 @@ LL | | }
    |
    = help: consider adding a `where U: std::marker::Copy` bound
 note: required by `ExtraCopy`
-  --> $DIR/wf-fn-where-clause.rs:17:1
+  --> $DIR/wf-fn-where-clause.rs:16:1
    |
 LL | trait ExtraCopy<T:Copy> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` cannot be known at compilation time
+  --> $DIR/wf-fn-where-clause.rs:22:1
+   |
+LL | fn bar() where Vec<dyn Copy>:, {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::marker::Copy + 'static)`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required by `std::vec::Vec`
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0038]: the trait `std::marker::Copy` cannot be made into an object
+  --> $DIR/wf-fn-where-clause.rs:22:1
+   |
+LL | fn bar() where Vec<dyn Copy>:, {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.
