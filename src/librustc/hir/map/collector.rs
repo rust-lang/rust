@@ -29,7 +29,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate,
     /// The node map
-    map: Vec<EntryKind<'hir>>,
+    map: Vec<Option<Entry<'hir>>>,
     /// The parent of this node
     parent_node: NodeId,
 
@@ -114,7 +114,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
         };
-        collector.insert_entry(CRATE_NODE_ID, EntryKind::RootCrate(root_mod_sig_dep_index));
+        collector.insert_entry(CRATE_NODE_ID, Entry {
+            parent: ast::DUMMY_NODE_ID,
+            dep_node: root_mod_sig_dep_index,
+            node: NodeKind::Crate,
+        });
 
         collector
     }
@@ -124,9 +128,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                                                   cstore: &dyn CrateStore,
                                                   source_map: &SourceMap,
                                                   commandline_args_hash: u64)
-                                                  -> (Vec<EntryKind<'hir>>, Svh) {
-        self
-            .hir_body_nodes
+                                                  -> (Vec<Option<Entry<'hir>>>, Svh) {
+        self.hir_body_nodes
             .sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
 
         let node_hashes = self
@@ -178,44 +181,24 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         (self.map, svh)
     }
 
-    fn insert_entry(&mut self, id: NodeId, entry: EntryKind<'hir>) {
+    fn insert_entry(&mut self, id: NodeId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
         if id.as_usize() >= len {
-            self.map.extend(repeat(EntryKind::NotPresent).take(id.as_usize() - len + 1));
+            self.map.extend(repeat(None).take(id.as_usize() - len + 1));
         }
-        self.map[id.as_usize()] = entry;
+        self.map[id.as_usize()] = Some(entry);
     }
 
     fn insert(&mut self, id: NodeId, node: NodeKind<'hir>) {
-        let parent = self.parent_node;
-        let dep_node_index = if self.currently_in_body {
-            self.current_full_dep_index
-        } else {
-            self.current_signature_dep_index
-        };
-
-        let entry = match node {
-            NodeKind::Item(n) => EntryKind::Item(parent, dep_node_index, n),
-            NodeKind::ForeignItem(n) => EntryKind::ForeignItem(parent, dep_node_index, n),
-            NodeKind::TraitItem(n) => EntryKind::TraitItem(parent, dep_node_index, n),
-            NodeKind::ImplItem(n) => EntryKind::ImplItem(parent, dep_node_index, n),
-            NodeKind::Variant(n) => EntryKind::Variant(parent, dep_node_index, n),
-            NodeKind::Field(n) => EntryKind::Field(parent, dep_node_index, n),
-            NodeKind::AnonConst(n) => EntryKind::AnonConst(parent, dep_node_index, n),
-            NodeKind::Expr(n) => EntryKind::Expr(parent, dep_node_index, n),
-            NodeKind::Stmt(n) => EntryKind::Stmt(parent, dep_node_index, n),
-            NodeKind::Ty(n) => EntryKind::Ty(parent, dep_node_index, n),
-            NodeKind::TraitRef(n) => EntryKind::TraitRef(parent, dep_node_index, n),
-            NodeKind::Binding(n) => EntryKind::Binding(parent, dep_node_index, n),
-            NodeKind::Pat(n) => EntryKind::Pat(parent, dep_node_index, n),
-            NodeKind::Block(n) => EntryKind::Block(parent, dep_node_index, n),
-            NodeKind::StructCtor(n) => EntryKind::StructCtor(parent, dep_node_index, n),
-            NodeKind::Lifetime(n) => EntryKind::Lifetime(parent, dep_node_index, n),
-            NodeKind::GenericParam(n) => EntryKind::GenericParam(parent, dep_node_index, n),
-            NodeKind::Visibility(n) => EntryKind::Visibility(parent, dep_node_index, n),
-            NodeKind::Local(n) => EntryKind::Local(parent, dep_node_index, n),
-            NodeKind::MacroDef(n) => EntryKind::MacroDef(dep_node_index, n),
+        let entry = Entry {
+            parent: self.parent_node,
+            dep_node: if self.currently_in_body {
+                self.current_full_dep_index
+            } else {
+                self.current_signature_dep_index
+            },
+            node,
         };
 
         // Make sure that the DepNode of some node coincides with the HirId

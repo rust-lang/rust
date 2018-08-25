@@ -69,142 +69,72 @@ pub enum NodeKind<'hir> {
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam),
     Visibility(&'hir Visibility),
+
+    /// Roots for node trees. Its DepNodeIndex when in `Entry`
+    /// is the dependency node of the crate's root module.
+    Crate,
 }
 
-/// Represents an entry and its parent NodeID.
-/// The odd layout is to bring down the total size.
-#[derive(Copy, Debug)]
-pub enum EntryKind<'hir> {
-    /// Placeholder for holes in the map.
-    NotPresent,
-
-    /// All the node types, with a parent ID.
-    Item(NodeId, DepNodeIndex, &'hir Item),
-    ForeignItem(NodeId, DepNodeIndex, &'hir ForeignItem),
-    TraitItem(NodeId, DepNodeIndex, &'hir TraitItem),
-    ImplItem(NodeId, DepNodeIndex, &'hir ImplItem),
-    Variant(NodeId, DepNodeIndex, &'hir Variant),
-    Field(NodeId, DepNodeIndex, &'hir StructField),
-    AnonConst(NodeId, DepNodeIndex, &'hir AnonConst),
-    Expr(NodeId, DepNodeIndex, &'hir Expr),
-    Stmt(NodeId, DepNodeIndex, &'hir Stmt),
-    Ty(NodeId, DepNodeIndex, &'hir Ty),
-    TraitRef(NodeId, DepNodeIndex, &'hir TraitRef),
-    Binding(NodeId, DepNodeIndex, &'hir Pat),
-    Pat(NodeId, DepNodeIndex, &'hir Pat),
-    Block(NodeId, DepNodeIndex, &'hir Block),
-    StructCtor(NodeId, DepNodeIndex, &'hir VariantData),
-    Lifetime(NodeId, DepNodeIndex, &'hir Lifetime),
-    GenericParam(NodeId, DepNodeIndex, &'hir GenericParam),
-    Visibility(NodeId, DepNodeIndex, &'hir Visibility),
-    Local(NodeId, DepNodeIndex, &'hir Local),
-    MacroDef(DepNodeIndex, &'hir MacroDef),
-
-    /// Roots for node trees. The DepNodeIndex is the dependency node of the
-    /// crate's root module.
-    RootCrate(DepNodeIndex),
+/// Represents an entry and its parent NodeId.
+#[derive(Copy, Clone, Debug)]
+pub struct Entry<'hir> {
+    parent: NodeId,
+    dep_node: DepNodeIndex,
+    node: NodeKind<'hir>,
 }
 
-impl<'hir> Clone for EntryKind<'hir> {
-    fn clone(&self) -> EntryKind<'hir> {
-        *self
-    }
-}
-
-impl<'hir> EntryKind<'hir> {
+impl<'hir> Entry<'hir> {
     fn parent_node(self) -> Option<NodeId> {
-        Some(match self {
-            EntryKind::Item(id, _, _) => id,
-            EntryKind::ForeignItem(id, _, _) => id,
-            EntryKind::TraitItem(id, _, _) => id,
-            EntryKind::ImplItem(id, _, _) => id,
-            EntryKind::Variant(id, _, _) => id,
-            EntryKind::Field(id, _, _) => id,
-            EntryKind::AnonConst(id, _, _) => id,
-            EntryKind::Expr(id, _, _) => id,
-            EntryKind::Stmt(id, _, _) => id,
-            EntryKind::Ty(id, _, _) => id,
-            EntryKind::TraitRef(id, _, _) => id,
-            EntryKind::Binding(id, _, _) => id,
-            EntryKind::Pat(id, _, _) => id,
-            EntryKind::Block(id, _, _) => id,
-            EntryKind::StructCtor(id, _, _) => id,
-            EntryKind::Lifetime(id, _, _) => id,
-            EntryKind::GenericParam(id, _, _) => id,
-            EntryKind::Visibility(id, _, _) => id,
-            EntryKind::Local(id, _, _) => id,
-
-            EntryKind::NotPresent |
-            EntryKind::MacroDef(..) |
-            EntryKind::RootCrate(_) => return None,
-        })
+        match self.node {
+            NodeKind::Crate | NodeKind::MacroDef(_) => None,
+            _ => Some(self.parent),
+        }
     }
 
     fn to_node(self) -> Option<NodeKind<'hir>> {
-        Some(match self {
-            EntryKind::Item(_, _, n) => NodeKind::Item(n),
-            EntryKind::ForeignItem(_, _, n) => NodeKind::ForeignItem(n),
-            EntryKind::TraitItem(_, _, n) => NodeKind::TraitItem(n),
-            EntryKind::ImplItem(_, _, n) => NodeKind::ImplItem(n),
-            EntryKind::Variant(_, _, n) => NodeKind::Variant(n),
-            EntryKind::Field(_, _, n) => NodeKind::Field(n),
-            EntryKind::AnonConst(_, _, n) => NodeKind::AnonConst(n),
-            EntryKind::Expr(_, _, n) => NodeKind::Expr(n),
-            EntryKind::Stmt(_, _, n) => NodeKind::Stmt(n),
-            EntryKind::Ty(_, _, n) => NodeKind::Ty(n),
-            EntryKind::TraitRef(_, _, n) => NodeKind::TraitRef(n),
-            EntryKind::Binding(_, _, n) => NodeKind::Binding(n),
-            EntryKind::Pat(_, _, n) => NodeKind::Pat(n),
-            EntryKind::Block(_, _, n) => NodeKind::Block(n),
-            EntryKind::StructCtor(_, _, n) => NodeKind::StructCtor(n),
-            EntryKind::Lifetime(_, _, n) => NodeKind::Lifetime(n),
-            EntryKind::GenericParam(_, _, n) => NodeKind::GenericParam(n),
-            EntryKind::Visibility(_, _, n) => NodeKind::Visibility(n),
-            EntryKind::Local(_, _, n) => NodeKind::Local(n),
-            EntryKind::MacroDef(_, n) => NodeKind::MacroDef(n),
-
-            EntryKind::NotPresent |
-            EntryKind::RootCrate(_) => return None
-        })
+        match self.node {
+            NodeKind::Crate => None,
+            _ => Some(self.node),
+        }
     }
 
     fn fn_decl(&self) -> Option<&FnDecl> {
-        match self {
-            EntryKind::Item(_, _, ref item) => {
+        match self.node {
+            NodeKind::Item(ref item) => {
                 match item.node {
                     ItemKind::Fn(ref fn_decl, _, _, _) => Some(&fn_decl),
                     _ => None,
                 }
             }
 
-            EntryKind::TraitItem(_, _, ref item) => {
+            NodeKind::TraitItem(ref item) => {
                 match item.node {
                     TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
                     _ => None
                 }
             }
 
-            EntryKind::ImplItem(_, _, ref item) => {
+            NodeKind::ImplItem(ref item) => {
                 match item.node {
                     ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
                     _ => None,
                 }
             }
 
-            EntryKind::Expr(_, _, ref expr) => {
+            NodeKind::Expr(ref expr) => {
                 match expr.node {
                     ExprKind::Closure(_, ref fn_decl, ..) => Some(&fn_decl),
                     _ => None,
                 }
             }
 
-            _ => None
+            _ => None,
         }
     }
 
     fn associated_body(self) -> Option<BodyId> {
-        match self {
-            EntryKind::Item(_, _, item) => {
+        match self.node {
+            NodeKind::Item(item) => {
                 match item.node {
                     ItemKind::Const(_, body) |
                     ItemKind::Static(.., body) |
@@ -213,7 +143,7 @@ impl<'hir> EntryKind<'hir> {
                 }
             }
 
-            EntryKind::TraitItem(_, _, item) => {
+            NodeKind::TraitItem(item) => {
                 match item.node {
                     TraitItemKind::Const(_, Some(body)) |
                     TraitItemKind::Method(_, TraitMethod::Provided(body)) => Some(body),
@@ -221,7 +151,7 @@ impl<'hir> EntryKind<'hir> {
                 }
             }
 
-            EntryKind::ImplItem(_, _, item) => {
+            NodeKind::ImplItem(item) => {
                 match item.node {
                     ImplItemKind::Const(_, body) |
                     ImplItemKind::Method(_, body) => Some(body),
@@ -229,9 +159,9 @@ impl<'hir> EntryKind<'hir> {
                 }
             }
 
-            EntryKind::AnonConst(_, _, constant) => Some(constant.body),
+            NodeKind::AnonConst(constant) => Some(constant.body),
 
-            EntryKind::Expr(_, _, expr) => {
+            NodeKind::Expr(expr) => {
                 match expr.node {
                     ExprKind::Closure(.., body, _, _) => Some(body),
                     _ => None,
@@ -284,16 +214,16 @@ pub struct Map<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    /// NodeIds are sequential integers from 0, so we can be
+    /// `NodeId`s are sequential integers from 0, so we can be
     /// super-compact by storing them in a vector. Not everything with
-    /// a NodeId is in the map, but empirically the occupancy is about
+    /// a `NodeId` is in the map, but empirically the occupancy is about
     /// 75-80%, so there's not too much overhead (certainly less than
     /// a hashmap, since they (at the time of writing) have a maximum
     /// of 75% occupancy).
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    map: Vec<EntryKind<'hir>>,
+    map: Vec<Option<Entry<'hir>>>,
 
     definitions: &'hir Definitions,
 
@@ -310,34 +240,10 @@ impl<'hir> Map<'hir> {
     /// read recorded). If the function just returns a DefId or
     /// NodeId, no actual content was returned, so no read is needed.
     pub fn read(&self, id: NodeId) {
-        let entry = self.map[id.as_usize()];
-        match entry {
-            EntryKind::Item(_, dep_node_index, _) |
-            EntryKind::TraitItem(_, dep_node_index, _) |
-            EntryKind::ImplItem(_, dep_node_index, _) |
-            EntryKind::Variant(_, dep_node_index, _) |
-            EntryKind::ForeignItem(_, dep_node_index, _) |
-            EntryKind::Field(_, dep_node_index, _) |
-            EntryKind::Stmt(_, dep_node_index, _) |
-            EntryKind::Ty(_, dep_node_index, _) |
-            EntryKind::TraitRef(_, dep_node_index, _) |
-            EntryKind::Binding(_, dep_node_index, _) |
-            EntryKind::Pat(_, dep_node_index, _) |
-            EntryKind::Block(_, dep_node_index, _) |
-            EntryKind::StructCtor(_, dep_node_index, _) |
-            EntryKind::Lifetime(_, dep_node_index, _) |
-            EntryKind::GenericParam(_, dep_node_index, _) |
-            EntryKind::Visibility(_, dep_node_index, _) |
-            EntryKind::AnonConst(_, dep_node_index, _) |
-            EntryKind::Expr(_, dep_node_index, _) |
-            EntryKind::Local(_, dep_node_index, _) |
-            EntryKind::MacroDef(dep_node_index, _) |
-            EntryKind::RootCrate(dep_node_index) => {
-                self.dep_graph.read_index(dep_node_index);
-            }
-            EntryKind::NotPresent => {
-                bug!("called HirMap::read() with invalid NodeId")
-            }
+        if let Some(entry) = self.map[id.as_usize()] {
+            self.dep_graph.read_index(entry.dep_node);
+        } else {
+            bug!("called `HirMap::read()` with invalid `NodeId`")
         }
     }
 
@@ -485,7 +391,8 @@ impl<'hir> Map<'hir> {
             NodeKind::StructCtor(_) |
             NodeKind::Lifetime(_) |
             NodeKind::Visibility(_) |
-            NodeKind::Block(_) => None,
+            NodeKind::Block(_) |
+            NodeKind::Crate => None,
             NodeKind::Local(local) => {
                 Some(Def::Local(local.id))
             }
@@ -506,8 +413,8 @@ impl<'hir> Map<'hir> {
         self.map.len()
     }
 
-    fn find_entry(&self, id: NodeId) -> Option<EntryKind<'hir>> {
-        self.map.get(id.as_usize()).cloned()
+    fn find_entry(&self, id: NodeId) -> Option<Entry<'hir>> {
+        self.map.get(id.as_usize()).cloned().unwrap_or(None)
     }
 
     pub fn krate(&self) -> &'hir Crate {
@@ -551,7 +458,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node(node_id);
-        assert!(self.map[parent.as_usize()].is_body_owner(node_id));
+        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(node_id)));
         parent
     }
 
@@ -763,24 +670,21 @@ impl<'hir> Map<'hir> {
                 return Err(id);
             }
 
-            let node = self.find_entry(parent_node);
-            if node.is_none() {
+            if let Some(node) = self.find_entry(parent_node) {
+                match node.to_node() {
+                    Some(ref node) => {
+                        if found(node) {
+                            return Ok(parent_node);
+                        } else if bail_early(node) {
+                            return Err(parent_node);
+                        }
+                    }
+                    None => return Err(parent_node),
+                }
+                id = parent_node;
+            } else {
                 return Err(id);
             }
-            let node = node.unwrap().to_node();
-            match node {
-                Some(ref node) => {
-                    if found(node) {
-                        return Ok(parent_node);
-                    } else if bail_early(node) {
-                        return Err(parent_node);
-                    }
-                }
-                None => {
-                    return Err(parent_node);
-                }
-            }
-            id = parent_node;
         }
     }
 
@@ -888,23 +792,17 @@ impl<'hir> Map<'hir> {
 
     pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
         let parent = self.get_parent(id);
-        let abi = match self.find_entry(parent) {
-            Some(EntryKind::Item(_, _, i)) => {
-                match i.node {
-                    ItemKind::ForeignMod(ref nm) => Some(nm.abi),
-                    _ => None
+        if let Some(entry) = self.find_entry(parent) {
+            match entry {
+                Entry { node: NodeKind::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. }
+                    => {
+                    self.read(id); // reveals some of the content of a node
+                    return nm.abi;
                 }
+                _ => {}
             }
-            _ => None
-        };
-        match abi {
-            Some(abi) => {
-                self.read(id); // reveals some of the content of a node
-                abi
-            }
-            None => bug!("expected foreign mod or inlined parent, found {}",
-                          self.node_to_string(parent))
         }
+        bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'hir Item {
@@ -1030,35 +928,33 @@ impl<'hir> Map<'hir> {
 
     pub fn span(&self, id: NodeId) -> Span {
         self.read(id); // reveals span from node
-        match self.find_entry(id) {
-            Some(EntryKind::Item(_, _, item)) => item.span,
-            Some(EntryKind::ForeignItem(_, _, foreign_item)) => foreign_item.span,
-            Some(EntryKind::TraitItem(_, _, trait_method)) => trait_method.span,
-            Some(EntryKind::ImplItem(_, _, impl_item)) => impl_item.span,
-            Some(EntryKind::Variant(_, _, variant)) => variant.span,
-            Some(EntryKind::Field(_, _, field)) => field.span,
-            Some(EntryKind::AnonConst(_, _, constant)) => self.body(constant.body).value.span,
-            Some(EntryKind::Expr(_, _, expr)) => expr.span,
-            Some(EntryKind::Stmt(_, _, stmt)) => stmt.span,
-            Some(EntryKind::Ty(_, _, ty)) => ty.span,
-            Some(EntryKind::TraitRef(_, _, tr)) => tr.path.span,
-            Some(EntryKind::Binding(_, _, pat)) => pat.span,
-            Some(EntryKind::Pat(_, _, pat)) => pat.span,
-            Some(EntryKind::Block(_, _, block)) => block.span,
-            Some(EntryKind::StructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
-            Some(EntryKind::Lifetime(_, _, lifetime)) => lifetime.span,
-            Some(EntryKind::GenericParam(_, _, param)) => param.span,
-            Some(EntryKind::Visibility(_, _, &Spanned {
+        match self.find_entry(id).map(|entry| entry.node) {
+            Some(NodeKind::Item(item)) => item.span,
+            Some(NodeKind::ForeignItem(foreign_item)) => foreign_item.span,
+            Some(NodeKind::TraitItem(trait_method)) => trait_method.span,
+            Some(NodeKind::ImplItem(impl_item)) => impl_item.span,
+            Some(NodeKind::Variant(variant)) => variant.span,
+            Some(NodeKind::Field(field)) => field.span,
+            Some(NodeKind::AnonConst(constant)) => self.body(constant.body).value.span,
+            Some(NodeKind::Expr(expr)) => expr.span,
+            Some(NodeKind::Stmt(stmt)) => stmt.span,
+            Some(NodeKind::Ty(ty)) => ty.span,
+            Some(NodeKind::TraitRef(tr)) => tr.path.span,
+            Some(NodeKind::Binding(pat)) => pat.span,
+            Some(NodeKind::Pat(pat)) => pat.span,
+            Some(NodeKind::Block(block)) => block.span,
+            Some(NodeKind::StructCtor(_)) => self.expect_item(self.get_parent(id)).span,
+            Some(NodeKind::Lifetime(lifetime)) => lifetime.span,
+            Some(NodeKind::GenericParam(param)) => param.span,
+            Some(NodeKind::Visibility(&Spanned {
                 node: VisibilityKind::Restricted { ref path, .. }, ..
             })) => path.span,
-            Some(EntryKind::Visibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
-            Some(EntryKind::Local(_, _, local)) => local.span,
-            Some(EntryKind::MacroDef(_, macro_def)) => macro_def.span,
+            Some(NodeKind::Visibility(v)) => bug!("unexpected Visibility {:?}", v),
+            Some(NodeKind::Local(local)) => local.span,
+            Some(NodeKind::MacroDef(macro_def)) => macro_def.span,
 
-            Some(EntryKind::RootCrate(_)) => self.forest.krate.span,
-            Some(EntryKind::NotPresent) | None => {
-                bug!("hir::map::Map::span: id not in map: {:?}", id)
-            }
+            Some(NodeKind::Crate) => self.forest.krate.span,
+            None => bug!("hir::map::Map::span: id not in map: {:?}", id),
         }
     }
 
@@ -1151,13 +1047,13 @@ impl<'a, 'hir> Iterator for NodesMatchingSuffix<'a, 'hir> {
                 return None;
             }
             self.idx = NodeId::from_u32(self.idx.as_u32() + 1);
-            let name = match self.map.find_entry(idx) {
-                Some(EntryKind::Item(_, _, n))       => n.name(),
-                Some(EntryKind::ForeignItem(_, _, n))=> n.name(),
-                Some(EntryKind::TraitItem(_, _, n))  => n.name(),
-                Some(EntryKind::ImplItem(_, _, n))   => n.name(),
-                Some(EntryKind::Variant(_, _, n))    => n.name(),
-                Some(EntryKind::Field(_, _, n))      => n.name(),
+            let name = match self.map.find_entry(idx).map(|entry| entry.node) {
+                Some(NodeKind::Item(n)) => n.name(),
+                Some(NodeKind::ForeignItem(n)) => n.name(),
+                Some(NodeKind::TraitItem(n)) => n.name(),
+                Some(NodeKind::ImplItem(n)) => n.name(),
+                Some(NodeKind::Variant(n)) => n.name(),
+                Some(NodeKind::Field(n)) => n.name(),
                 _ => continue,
             };
             if self.matches_names(self.map.get_parent(idx), name) {
@@ -1206,12 +1102,8 @@ pub fn map_crate<'hir>(sess: &::session::Session,
     if log_enabled!(::log::Level::Debug) {
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
-        let (entries_less_1, _) = map.iter().filter(|&x| {
-            match *x {
-                EntryKind::NotPresent => false,
-                _ => true
-            }
-        }).enumerate().last().expect("AST map was empty after folding?");
+        let (entries_less_1, _) = map.iter().filter_map(|x| *x).enumerate().last()
+            .expect("AST map was empty after folding?");
 
         let entries = entries_less_1 + 1;
         let vector_length = map.len();
@@ -1264,7 +1156,7 @@ impl<'a> print::State<'a> {
             NodeKind::Stmt(a)         => self.print_stmt(&a),
             NodeKind::Ty(a)           => self.print_type(&a),
             NodeKind::TraitRef(a)     => self.print_trait_ref(&a),
-            NodeKind::Binding(a)       |
+            NodeKind::Binding(a)      |
             NodeKind::Pat(a)          => self.print_pat(&a),
             NodeKind::Block(a)        => {
                 use syntax::print::pprust::PrintState;
@@ -1285,6 +1177,7 @@ impl<'a> print::State<'a> {
             NodeKind::StructCtor(_)   => bug!("cannot print isolated StructCtor"),
             NodeKind::Local(a)        => self.print_local_decl(&a),
             NodeKind::MacroDef(_)     => bug!("cannot print MacroDef"),
+            NodeKind::Crate     => bug!("cannot print Crate"),
         }
     }
 }
@@ -1411,9 +1304,8 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeKind::MacroDef(_)) => {
             format!("macro {}{}",  path_str(), id_str)
         }
-        None => {
-            format!("unknown node{}", id_str)
-        }
+        Some(NodeKind::Crate) => format!("root_crate"),
+        None => format!("unknown node{}", id_str),
     }
 }
 
