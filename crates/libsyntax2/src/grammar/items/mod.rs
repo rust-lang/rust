@@ -1,9 +1,11 @@
-use super::*;
 
 mod consts;
 mod structs;
 mod traits;
 mod use_item;
+
+use super::*;
+pub(crate) use self::structs::named_field_def_list;
 
 // test mod_contents
 // fn foo() {}

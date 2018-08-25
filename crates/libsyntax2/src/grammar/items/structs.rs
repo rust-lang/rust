@@ -82,7 +82,7 @@ fn enum_variant_list(p: &mut Parser) {
     m.complete(p, ENUM_VARIANT_LIST);
 }
 
-fn named_field_def_list(p: &mut Parser) {
+pub(crate) fn named_field_def_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();

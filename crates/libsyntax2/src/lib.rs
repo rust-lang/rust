@@ -50,7 +50,11 @@ pub use {
     yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError},
 };
 
-use yellow::{GreenNode, SyntaxRoot};
+use {
+    SyntaxKind::*,
+    yellow::{GreenNode, SyntaxRoot},
+    parser_api::Parser,
+};
 
 #[derive(Clone, Debug)]
 pub struct File {
@@ -68,6 +72,22 @@ impl File {
         let tokens = tokenize(&text);
         let (root, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
         File::new(root, errors)
+    }
+    pub fn reparse(&self, edit: &AtomEdit) -> File {
+        self.incremental_reparse(edit).unwrap_or_else(|| {
+            self.full_reparse(edit)
+        })
+    }
+    fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
+        let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
+        None
+    }
+    fn full_reparse(&self, edit: &AtomEdit) -> File {
+        let start = u32::from(edit.delete.start()) as usize;
+        let end = u32::from(edit.delete.end()) as usize;
+        let mut text = self.syntax().text();
+        text.replace_range(start..end, &edit.insert);
+        File::parse(&text)
     }
     pub fn ast(&self) -> ast::Root {
         ast::Root::cast(self.syntax()).unwrap()
@@ -130,5 +150,21 @@ impl AtomEdit {
 
     pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
         AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
+    }
+}
+
+fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(SyntaxNodeRef, fn(&mut Parser))> {
+    let node = algo::find_covering_node(node, range);
+    return algo::ancestors(node)
+        .filter_map(|node| reparser(node).map(|r| (node, r)))
+        .next();
+
+    fn reparser(node: SyntaxNodeRef) -> Option<fn(&mut Parser)> {
+        let res = match node.kind() {
+            BLOCK => grammar::block,
+            NAMED_FIELD_DEF_LIST => grammar::named_field_def_list,
+            _ => return None,
+        };
+        Some(res)
     }
 }

@@ -35,6 +35,10 @@ use {
     parser_api::{Marker, CompletedMarker, Parser, TokenSet},
     SyntaxKind::{self, *},
 };
+pub(crate) use self::{
+    expressions::block,
+    items::named_field_def_list,
+};
 
 pub(crate) fn file(p: &mut Parser) {
     let file = p.start();
