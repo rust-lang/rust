@@ -1,14 +1,9 @@
 use {TextRange, TextUnit};
+use libsyntax2::AtomEdit;
 
 #[derive(Debug, Clone)]
 pub struct Edit {
     atoms: Vec<AtomEdit>,
-}
-
-#[derive(Debug, Clone)]
-pub struct AtomEdit {
-    pub delete: TextRange,
-    pub insert: String,
 }
 
 #[derive(Debug)]
@@ -21,23 +16,23 @@ impl EditBuilder {
         EditBuilder { atoms: Vec::new() }
     }
 
-    pub fn replace(&mut self, range: TextRange, replacement: String) {
-        self.atoms.push(AtomEdit { delete: range, insert: replacement })
+    pub fn replace(&mut self, range: TextRange, replace_with: String) {
+        self.atoms.push(AtomEdit::replace(range, replace_with))
     }
 
     pub fn delete(&mut self, range: TextRange) {
-        self.replace(range, String::new());
+        self.atoms.push(AtomEdit::delete(range))
     }
 
     pub fn insert(&mut self, offset: TextUnit, text: String) {
-        self.replace(TextRange::offset_len(offset, 0.into()), text)
+        self.atoms.push(AtomEdit::insert(offset, text))
     }
 
     pub fn finish(self) -> Edit {
         let mut atoms = self.atoms;
         atoms.sort_by_key(|a| a.delete.start());
         for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
-            assert!(a1.end() <= a2.start())
+            assert!(a1.delete.end() <= a2.delete.start())
         }
         Edit { atoms }
     }
@@ -52,16 +47,18 @@ impl Edit {
         let mut total_len = text.len();
         for atom in self.atoms.iter() {
             total_len += atom.insert.len();
-            total_len -= atom.end() - atom.start();
+            total_len -= u32::from(atom.delete.end() - atom.delete.start()) as usize;
         }
         let mut buf = String::with_capacity(total_len);
         let mut prev = 0;
         for atom in self.atoms.iter() {
-            if atom.start() > prev {
-                buf.push_str(&text[prev..atom.start()]);
+            let start = u32::from(atom.delete.start()) as usize;
+            let end = u32::from(atom.delete.end()) as usize;
+            if start > prev {
+                buf.push_str(&text[prev..start]);
             }
             buf.push_str(&atom.insert);
-            prev = atom.end();
+            prev = end;
         }
         buf.push_str(&text[prev..text.len()]);
         assert_eq!(buf.len(), total_len);
@@ -81,15 +78,5 @@ impl Edit {
             res -= atom.delete.len();
         }
         Some(res)
-    }
-}
-
-impl AtomEdit {
-    fn start(&self) -> usize {
-        u32::from(self.delete.start()) as usize
-    }
-
-    fn end(&self) -> usize {
-        u32::from(self.delete.end()) as usize
     }
 }

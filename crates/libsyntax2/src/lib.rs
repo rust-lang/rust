@@ -64,7 +64,7 @@ impl File {
         validate_block_structure(root.borrowed());
         File { root }
     }
-    pub fn parse(text: &str) -> Self {
+    pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
         let (root, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
         File::new(root, errors)
@@ -110,5 +110,25 @@ fn validate_block_structure(root: SyntaxNodeRef) {
             }
             _ => (),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AtomEdit {
+    pub delete: TextRange,
+    pub insert: String,
+}
+
+impl AtomEdit {
+    pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
+        AtomEdit { delete: range, insert: replace_with }
+    }
+
+    pub fn delete(range: TextRange) -> AtomEdit {
+        AtomEdit::replace(range, String::new())
+    }
+
+    pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
+        AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
     }
 }

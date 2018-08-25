@@ -15,11 +15,12 @@ use libsyntax2::{
     algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };
+pub use libsyntax2::AtomEdit;
 pub use self::{
     line_index::{LineIndex, LineCol},
     extend_selection::extend_selection,
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
-    edit::{EditBuilder, Edit, AtomEdit},
+    edit::{EditBuilder, Edit},
     code_actions::{
         ActionResult, find_node,
         flip_comma, add_derive, add_impl,
