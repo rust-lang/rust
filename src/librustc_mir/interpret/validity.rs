@@ -332,8 +332,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             }
                         }
                     }
-                    ty::Array(..) | ty::Slice(..) => {
-                        // This handles the unsized case correctly as well
+                    _ => {
+                        // This handles the unsized case correctly as well, as well as
+                        // SIMD an all sorts of other array-like types.
                         for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
                             let field = field?;
                             path.push(PathElem::ArrayElem(i));
@@ -341,7 +342,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             path.truncate(path_len);
                         }
                     }
-                    _ => bug!("Array layout for non-array type {:?}", dest.layout.ty),
                 }
             },
             layout::FieldPlacement::Array { .. } => {

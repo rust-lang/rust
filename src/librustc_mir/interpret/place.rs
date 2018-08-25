@@ -137,19 +137,20 @@ impl<'tcx> MPlaceTy<'tcx> {
 
     #[inline]
     pub(super) fn len(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
-        match self.layout.ty.sty {
-            ty::Array(..) => {
-                // Sized, get length from layout.
-                debug_assert!(self.extra.is_none());
-                match self.layout.fields {
-                    layout::FieldPlacement::Array { count, .. } => Ok(count),
-                    _ => bug!("Length for non-array layout {:?} requested", self.layout),
-                }
+        if self.layout.is_unsized() {
+            // We need to consult `extra` metadata
+            match self.layout.ty.sty {
+                ty::Slice(..) | ty::Str =>
+                    return self.extra.unwrap().to_usize(cx),
+                _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
-            ty::Slice(..) | ty::Str => {
-                self.extra.unwrap().to_usize(cx)
+        } else {
+            // Go through the layout.  There are lots of types that support a length,
+            // e.g. SIMD types.
+            match self.layout.fields {
+                layout::FieldPlacement::Array { count, .. } => Ok(count),
+                _ => bug!("len not supported on sized type {:?}", self.layout.ty),
             }
-            _ => bug!("len not supported on type {:?}", self.layout.ty),
         }
     }
 
