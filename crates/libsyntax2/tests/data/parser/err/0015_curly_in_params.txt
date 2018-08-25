@@ -8,7 +8,7 @@ ROOT@[0; 14)
       L_PAREN@[6; 7)
       err: `expected value parameter`
       err: `expected R_PAREN`
-      err: `expected SEMI`
+      err: `expected a block`
       err: `expected an item`
   ERROR@[7; 8)
     R_CURLY@[7; 8)

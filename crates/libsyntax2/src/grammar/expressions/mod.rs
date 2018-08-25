@@ -26,7 +26,10 @@ fn expr_no_struct(p: &mut Parser) {
 // fn c() { 1; 2; }
 // fn d() { 1; 2 }
 pub(crate) fn block(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    if !p.at(L_CURLY) {
+        p.error("expected a block");
+        return;
+    }
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
