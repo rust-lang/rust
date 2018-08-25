@@ -51,10 +51,15 @@ pub(crate) fn block(p: &mut Parser) {
                     // fn foo() { pub 92; } //FIXME
                     items::MaybeItem::None => {
                         let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
-                        if p.eat(SEMI) || (is_blocklike && !p.at(R_CURLY)) {
-                            m.complete(p, EXPR_STMT);
-                        } else {
+                        if p.at(R_CURLY) {
                             m.abandon(p);
+                        } else {
+                            if is_blocklike {
+                                p.eat(SEMI);
+                            } else {
+                                p.expect(SEMI);
+                            }
+                            m.complete(p, EXPR_STMT);
                         }
                     }
                 }
