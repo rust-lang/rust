@@ -59,13 +59,6 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn to_node(self) -> Option<Node<'hir>> {
-        match self.node {
-            Node::Crate => None,
-            _ => Some(self.node),
-        }
-    }
-
     fn fn_decl(&self) -> Option<&FnDecl> {
         match self.node {
             Node::Item(ref item) => {
@@ -568,7 +561,7 @@ impl<'hir> Map<'hir> {
     /// Retrieve the Node corresponding to `id`, returning None if
     /// cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
-        let result = self.find_entry(id).and_then(|x| x.to_node());
+        let result = self.find_entry(id).map(|x| x.node);
         if result.is_some() {
             self.read(id);
         }
@@ -638,16 +631,11 @@ impl<'hir> Map<'hir> {
                 return Err(id);
             }
 
-            if let Some(node) = self.find_entry(parent_node) {
-                match node.to_node() {
-                    Some(ref node) => {
-                        if found(node) {
-                            return Ok(parent_node);
-                        } else if bail_early(node) {
-                            return Err(parent_node);
-                        }
-                    }
-                    None => return Err(parent_node),
+            if let Some(entry) = self.find_entry(parent_node) {
+                if found(&entry.node) {
+                    return Ok(parent_node);
+                } else if bail_early(&entry.node) {
+                    return Err(parent_node);
                 }
                 id = parent_node;
             } else {

@@ -115,7 +115,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hir_body_nodes,
         };
         collector.insert_entry(CRATE_NODE_ID, Entry {
-            parent: ast::DUMMY_NODE_ID,
+            parent: CRATE_NODE_ID,
             dep_node: root_mod_sig_dep_index,
             node: Node::Crate,
         });

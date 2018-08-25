@@ -2397,7 +2397,5 @@ pub enum Node<'hir> {
     GenericParam(&'hir GenericParam),
     Visibility(&'hir Visibility),
 
-    /// Roots for node trees. Its DepNodeIndex when in `Entry`
-    /// is the dependency node of the crate's root module.
     Crate,
 }
