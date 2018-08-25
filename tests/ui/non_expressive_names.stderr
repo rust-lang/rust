@@ -150,21 +150,21 @@ error: consider choosing a more descriptive name
     |         ^^^^^^^
 
 error: consider choosing a more descriptive name
-   --> $DIR/non_expressive_names.rs:154:13
+   --> $DIR/non_expressive_names.rs:161:13
     |
-154 |         let _1 = 1;
+161 |         let _1 = 1;
     |             ^^
 
 error: consider choosing a more descriptive name
-   --> $DIR/non_expressive_names.rs:155:13
+   --> $DIR/non_expressive_names.rs:162:13
     |
-155 |         let ____1 = 1;
+162 |         let ____1 = 1;
     |             ^^^^^
 
 error: consider choosing a more descriptive name
-   --> $DIR/non_expressive_names.rs:156:13
+   --> $DIR/non_expressive_names.rs:163:13
     |
-156 |         let __1___2 = 12;
+163 |         let __1___2 = 12;
     |             ^^^^^^^
 
 error: aborting due to 17 previous errors

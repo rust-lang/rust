@@ -147,6 +147,13 @@ fn issue2927() {
   format!("{:?}", 2);
 }
 
+fn issue3078() {
+    match "a" {
+        stringify!(a) => {},
+        _ => {}
+    }
+}
+
 struct Bar;
 
 impl Bar {
