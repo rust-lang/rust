@@ -9,6 +9,8 @@ use std::{
     fmt::Write,
 };
 
+use libsyntax2::File;
+
 #[test]
 fn lexer_tests() {
     dir_tests(&["lexer"], |text| {
@@ -20,8 +22,8 @@ fn lexer_tests() {
 #[test]
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
-        let file = libsyntax2::parse(text);
-        libsyntax2::utils::dump_tree(file.borrowed())
+        let file = File::parse(text);
+        libsyntax2::utils::dump_tree(file.syntax())
     })
 }
 

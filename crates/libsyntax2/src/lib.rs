@@ -50,15 +50,24 @@ pub use {
     yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError},
 };
 
+use yellow::{GreenNode, SyntaxRoot};
+
 #[derive(Clone, Debug)]
 pub struct File {
     root: SyntaxNode
 }
 
 impl File {
-    pub fn parse(text: &str) -> Self {
-        let root = ::parse(text);
+    fn new(root: GreenNode, errors: Vec<SyntaxError>) -> File {
+        let root = SyntaxRoot::new(root, errors);
+        let root = SyntaxNode::new_owned(root);
+        validate_block_structure(root.borrowed());
         File { root }
+    }
+    pub fn parse(text: &str) -> Self {
+        let tokens = tokenize(&text);
+        let (root, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
+        File::new(root, errors)
     }
     pub fn ast(&self) -> ast::Root {
         ast::Root::cast(self.syntax()).unwrap()
@@ -69,14 +78,6 @@ impl File {
     pub fn errors(&self) -> Vec<SyntaxError> {
         self.syntax().root.syntax_root().errors.clone()
     }
-
-}
-
-pub fn parse(text: &str) -> SyntaxNode {
-    let tokens = tokenize(&text);
-    let res = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
-    validate_block_structure(res.borrowed());
-    res
 }
 
 #[cfg(not(debug_assertions))]

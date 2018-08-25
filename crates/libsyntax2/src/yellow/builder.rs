@@ -1,6 +1,6 @@
 use {
     parser_impl::Sink,
-    yellow::{GreenNode, SyntaxError, SyntaxNode, SyntaxRoot},
+    yellow::{GreenNode, SyntaxError},
     SyntaxKind, TextRange, TextUnit,
 };
 
@@ -13,7 +13,7 @@ pub(crate) struct GreenBuilder<'a> {
 }
 
 impl<'a> Sink<'a> for GreenBuilder<'a> {
-    type Tree = SyntaxNode;
+    type Tree = (GreenNode, Vec<SyntaxError>);
 
     fn new(text: &'a str) -> Self {
         GreenBuilder {
@@ -56,10 +56,9 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
         })
     }
 
-    fn finish(mut self) -> SyntaxNode {
+    fn finish(mut self) -> (GreenNode, Vec<SyntaxError>) {
         assert_eq!(self.children.len(), 1);
         let root = self.children.pop().unwrap();
-        let root = SyntaxRoot::new(root, self.errors);
-        SyntaxNode::new_owned(root)
+        (root, self.errors)
     }
 }
