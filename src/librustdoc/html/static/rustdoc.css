@@ -545,10 +545,8 @@ a {
 	left: -5px;
 }
 .small-section-header > .anchor {
-	left: -20px;
-}
-.small-section-header > .anchor:not(.field) {
 	left: -28px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
@@ -745,6 +743,7 @@ a.test-arrow:hover{
 .section-header:hover a:before {
 	position: absolute;
 	left: -25px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 	content: '\2002\00a7\2002';
 }
 
