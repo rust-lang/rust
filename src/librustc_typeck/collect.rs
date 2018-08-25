@@ -1646,21 +1646,13 @@ fn explicit_predicates_of<'a, 'tcx>(
                 let opaque_ty = tcx.mk_opaque(def_id, substs);
 
                 // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
-<<<<<<< HEAD
                 let bounds = compute_bounds(
                     &icx,
-                    anon_ty,
+                    opaque_ty,
                     bounds,
                     SizedByDefault::Yes,
                     tcx.def_span(def_id),
                 );
-=======
-                let bounds = compute_bounds(&icx,
-                                            opaque_ty,
-                                            bounds,
-                                            SizedByDefault::Yes,
-                                            tcx.def_span(def_id));
->>>>>>> ca386bc20a... Changing TyAnon -> TyOpaque and relevant functions
 
                 predicates.extend(bounds.predicates(tcx, opaque_ty));
                 &item.generics
