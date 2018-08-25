@@ -12,16 +12,13 @@ LL | }
 error[E0597]: `z` does not live long enough (Mir)
   --> $DIR/issue-46471-1.rs:16:9
    |
-LL |       let y = {
-   |  _____________-
-LL | |         let mut z = 0;
-LL | |         &mut z
-   | |         ^^^^^^ borrowed value does not live long enough
-LL | |     };
-   | |     -
-   | |     |
-   | |_____`z` dropped here while still borrowed
-   |       borrow later used here
+LL |         &mut z
+   |         ^^^^^^
+   |         |
+   |         borrowed value does not live long enough
+   |         borrow later used here
+LL |     };
+   |     - `z` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 
