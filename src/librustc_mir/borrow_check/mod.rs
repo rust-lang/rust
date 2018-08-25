@@ -1144,7 +1144,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             &borrow_set,
-            flow_state.borrows_in_scope(location),
+            |i| flow_state.borrows_in_scope(location, i),
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same

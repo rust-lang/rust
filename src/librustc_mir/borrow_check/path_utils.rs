@@ -18,6 +18,8 @@ use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
+use super::place_ext::PlaceExt;
+
 /// Returns true if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
 /// Activation phases.
@@ -38,19 +40,16 @@ pub(super) enum Control {
 }
 
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
-pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
+pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, S> (
     s: &mut S,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     _context: Context,
     access_place: (ShallowOrDeep, &Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
-    candidates: I,
-    mut op: F,
-) where
-    F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
-    I: Iterator<Item=BorrowIndex>
-{
+    is_borrow_in_scope: impl Fn(BorrowIndex) -> bool,
+    mut op: impl FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
+) {
     let (access, place) = access_place;
 
     // FIXME: analogous code in check_loans first maps `place` to
@@ -58,17 +57,23 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
 
     // check for loan restricting path P being used. Accounts for
     // borrows of P, P.a.b, etc.
-    for i in candidates {
-        let borrowed = &borrow_set[i];
+    if let Some(ref local) = place.root_local() {
+        if let Some(borrow_indices) = borrow_set.local_map.get(local) {
+            for i in borrow_indices.iter() {
+                let borrowed = &borrow_set[*i];
 
-        if places_conflict::places_conflict(tcx, mir, &borrowed.borrowed_place, place, access) {
-            debug!(
-                "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
-                i, borrowed, place, access
-            );
-            let ctrl = op(s, i, borrowed);
-            if ctrl == Control::Break {
-                return;
+                if is_borrow_in_scope(*i) &&
+                    places_conflict::places_conflict(
+                        tcx, mir, &borrowed.borrowed_place, place, access) {
+                        debug!(
+                            "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
+                            i, borrowed, place, access
+                        );
+                        let ctrl = op(s, *i, borrowed);
+                        if ctrl == Control::Break {
+                            return;
+                        }
+                    }
             }
         }
     }
