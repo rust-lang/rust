@@ -62,29 +62,35 @@ pub struct File {
 }
 
 impl File {
-    fn new(root: GreenNode, errors: Vec<SyntaxError>) -> File {
-        let root = SyntaxRoot::new(root, errors);
+    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> File {
+        let root = SyntaxRoot::new(green, errors);
         let root = SyntaxNode::new_owned(root);
         validate_block_structure(root.borrowed());
         File { root }
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
-        let (root, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
-        File::new(root, errors)
+        let (green, errors) = parser_impl::parse::<yellow::GreenBuilder>(text, &tokens);
+        File::new(green, errors)
     }
     pub fn reparse(&self, edit: &AtomEdit) -> File {
         self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
     fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
+        let text = replace_range(
+            node.text(),
+            edit.delete - node.range().start(),
+            &edit.insert,
+        );
+        let tokens = tokenize(&text);
+        if !is_balanced(&tokens) {
+            return None;
+        }
         None
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
-        let start = u32::from(edit.delete.start()) as usize;
-        let end = u32::from(edit.delete.end()) as usize;
-        let mut text = self.syntax().text();
-        text.replace_range(start..end, &edit.insert);
+        let text = replace_range(self.syntax().text(), edit.delete, &edit.insert);
         File::parse(&text)
     }
     pub fn ast(&self) -> ast::Root {
@@ -165,4 +171,31 @@ fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(Syntax
         };
         Some(res)
     }
+}
+
+fn replace_range(mut text: String, range: TextRange, replace_with: &str) -> String {
+    let start = u32::from(range.start()) as usize;
+    let end = u32::from(range.end()) as usize;
+    text.replace_range(start..end, replace_with);
+    text
+}
+
+fn is_balanced(tokens: &[Token]) -> bool {
+    if tokens.len() == 0
+       || tokens.first().unwrap().kind != L_CURLY
+       || tokens.last().unwrap().kind != R_CURLY {
+        return false
+    }
+    let mut balance = 0usize;
+    for t in tokens.iter() {
+        match t.kind {
+            L_CURLY => balance += 1,
+            R_CURLY => balance = match balance.checked_sub(1) {
+                Some(b) => b,
+                None => return false,
+            },
+            _ => (),
+        }
+    }
+    balance == 0
 }
