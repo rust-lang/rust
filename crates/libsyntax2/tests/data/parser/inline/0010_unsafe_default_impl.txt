@@ -1,4 +1,4 @@
-FILE@[0; 27)
+ROOT@[0; 27)
   IMPL_ITEM@[0; 26)
     UNSAFE_KW@[0; 6)
     WHITESPACE@[6; 7)

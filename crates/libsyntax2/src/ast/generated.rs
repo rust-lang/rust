@@ -104,32 +104,6 @@ impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
-// File
-#[derive(Debug, Clone, Copy)]
-pub struct File<'a> {
-    syntax: SyntaxNodeRef<'a>,
-}
-
-impl<'a> AstNode<'a> for File<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
-        match syntax.kind() {
-            FILE => Some(File { syntax }),
-            _ => None,
-        }
-    }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<'a> File<'a> {
-    pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
-        super::children(self)
-    }
-
-    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
-        super::children(self)
-    }
-}
-
 // FnDef
 #[derive(Debug, Clone, Copy)]
 pub struct FnDef<'a> {
@@ -438,6 +412,32 @@ impl<'a> AstNode<'a> for ReferenceType<'a> {
 }
 
 impl<'a> ReferenceType<'a> {}
+
+// Root
+#[derive(Debug, Clone, Copy)]
+pub struct Root<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Root<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ROOT => Some(Root { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Root<'a> {
+    pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
+        super::children(self)
+    }
+
+    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // SliceType
 #[derive(Debug, Clone, Copy)]

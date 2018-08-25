@@ -1,4 +1,4 @@
-FILE@[0; 164)
+ROOT@[0; 164)
   TRAIT_DEF@[0; 66)
     VISIBILITY@[0; 3)
       PUB_KW@[0; 3)

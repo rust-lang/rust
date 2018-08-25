@@ -1,4 +1,4 @@
-FILE@[0; 42)
+ROOT@[0; 42)
   TRAIT_DEF@[0; 41)
     TRAIT_KW@[0; 5)
     WHITESPACE@[5; 6)

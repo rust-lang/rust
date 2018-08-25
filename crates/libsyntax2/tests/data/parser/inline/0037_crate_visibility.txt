@@ -1,4 +1,4 @@
-FILE@[0; 81)
+ROOT@[0; 81)
   STRUCT_DEF@[0; 20)
     VISIBILITY@[0; 10)
       PUB_KW@[0; 3)

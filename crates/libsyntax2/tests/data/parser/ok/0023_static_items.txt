@@ -1,4 +1,4 @@
-FILE@[0; 47)
+ROOT@[0; 47)
   STATIC_DEF@[0; 20)
     STATIC_KW@[0; 6)
     WHITESPACE@[6; 7)

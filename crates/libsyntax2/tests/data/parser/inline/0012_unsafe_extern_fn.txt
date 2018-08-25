@@ -1,4 +1,4 @@
-FILE@[0; 30)
+ROOT@[0; 30)
   FN_DEF@[0; 29)
     UNSAFE_KW@[0; 6)
     WHITESPACE@[6; 7)

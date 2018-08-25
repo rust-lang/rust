@@ -60,8 +60,8 @@ impl ParsedFile {
         let root = ::parse(text);
         ParsedFile { root }
     }
-    pub fn ast(&self) -> ast::File {
-        ast::File::cast(self.syntax()).unwrap()
+    pub fn ast(&self) -> ast::Root {
+        ast::Root::cast(self.syntax()).unwrap()
     }
     pub fn syntax(&self) -> SyntaxNodeRef {
         self.root.borrowed()

@@ -1,4 +1,4 @@
-FILE@[0; 42)
+ROOT@[0; 42)
   SHEBANG@[0; 20)
   WHITESPACE@[20; 21)
   err: `expected an item`

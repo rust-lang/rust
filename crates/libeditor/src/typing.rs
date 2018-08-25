@@ -1,6 +1,5 @@
 use libsyntax2::{
     TextUnit, TextRange, SyntaxNodeRef, ParsedFile,
-    ast,
     algo::{
         walk::preorder,
         find_covering_node,

@@ -1,4 +1,4 @@
-FILE@[0; 40)
+ROOT@[0; 40)
   USE_ITEM@[0; 20)
     USE_KW@[0; 3)
     WHITESPACE@[3; 4)

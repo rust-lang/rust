@@ -1,4 +1,4 @@
-FILE@[0; 20)
+ROOT@[0; 20)
   TYPE_DEF@[0; 15)
     TYPE_KW@[0; 4)
     WHITESPACE@[4; 5)

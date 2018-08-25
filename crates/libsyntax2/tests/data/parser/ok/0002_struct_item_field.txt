@@ -1,4 +1,4 @@
-FILE@[0; 25)
+ROOT@[0; 25)
   STRUCT_DEF@[0; 25)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)

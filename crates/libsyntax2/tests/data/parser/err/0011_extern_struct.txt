@@ -1,4 +1,4 @@
-FILE@[0; 19)
+ROOT@[0; 19)
   ERROR@[0; 6)
     ABI@[0; 6)
       EXTERN_KW@[0; 6)

@@ -1,4 +1,4 @@
-FILE@[0; 21)
+ROOT@[0; 21)
   ERROR@[0; 2)
     IF_KW@[0; 2)
     err: `expected an item`

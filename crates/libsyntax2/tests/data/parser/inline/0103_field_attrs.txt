@@ -1,4 +1,4 @@
-FILE@[0; 64)
+ROOT@[0; 64)
   STRUCT_DEF@[0; 63)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)

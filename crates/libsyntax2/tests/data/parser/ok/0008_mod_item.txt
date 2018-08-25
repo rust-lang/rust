@@ -1,4 +1,4 @@
-FILE@[0; 118)
+ROOT@[0; 118)
   MODULE@[0; 6)
     MOD_KW@[0; 3)
     WHITESPACE@[3; 4)

@@ -1,4 +1,4 @@
-FILE@[0; 23)
+ROOT@[0; 23)
   TRAIT_DEF@[0; 22)
     UNSAFE_KW@[0; 6)
     WHITESPACE@[6; 7)

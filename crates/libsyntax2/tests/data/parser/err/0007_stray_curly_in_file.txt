@@ -1,4 +1,4 @@
-FILE@[0; 31)
+ROOT@[0; 31)
   ERROR@[0; 1)
     R_CURLY@[0; 1)
     err: `expected an item`

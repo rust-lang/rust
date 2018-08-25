@@ -10,7 +10,7 @@ mod code_actions;
 mod typing;
 
 use libsyntax2::{
-    ast::{self, AstNode, NameOwner},
+    ast::{AstNode, NameOwner},
     algo::{walk, find_leaf_at_offset},
     SyntaxKind::{self, *},
 };

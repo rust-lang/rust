@@ -1,4 +1,4 @@
-FILE@[0; 54)
+ROOT@[0; 54)
   FN_DEF@[0; 31)
     ATTR@[0; 18)
       POUND@[0; 1)

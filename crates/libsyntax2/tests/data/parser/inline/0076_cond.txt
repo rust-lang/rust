@@ -1,4 +1,4 @@
-FILE@[0; 38)
+ROOT@[0; 38)
   FN_DEF@[0; 37)
     FN_KW@[0; 2)
     WHITESPACE@[2; 3)

@@ -1,4 +1,4 @@
-FILE@[0; 128)
+ROOT@[0; 128)
   IMPL_ITEM@[0; 127)
     IMPL_KW@[0; 4)
     WHITESPACE@[4; 5)
