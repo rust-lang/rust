@@ -44,12 +44,33 @@ pub mod text_utils;
 pub use {
     text_unit::{TextRange, TextUnit},
     smol_str::SmolStr,
-    ast::{AstNode, ParsedFile},
+    ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError},
 };
 
+#[derive(Clone, Debug)]
+pub struct ParsedFile {
+    root: SyntaxNode
+}
+
+impl ParsedFile {
+    pub fn parse(text: &str) -> Self {
+        let root = ::parse(text);
+        ParsedFile { root }
+    }
+    pub fn ast(&self) -> ast::File {
+        ast::File::cast(self.syntax()).unwrap()
+    }
+    pub fn syntax(&self) -> SyntaxNodeRef {
+        self.root.borrowed()
+    }
+    pub fn errors(&self) -> Vec<SyntaxError> {
+        self.syntax().root.syntax_root().errors.clone()
+    }
+
+}
 
 pub fn parse(text: &str) -> SyntaxNode {
     let tokens = tokenize(&text);

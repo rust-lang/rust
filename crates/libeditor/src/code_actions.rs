@@ -3,7 +3,8 @@ use std::{
 };
 
 use libsyntax2::{
-    ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner, ParsedFile},
+    ParsedFile,
+    ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
     SyntaxKind::COMMA,
     SyntaxNodeRef,
     algo::{

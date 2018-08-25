@@ -4,8 +4,7 @@ use itertools::Itertools;
 use smol_str::SmolStr;
 
 use {
-    SyntaxNode, SyntaxNodeRef, TreeRoot, SyntaxError,
-    SyntaxKind::*,
+    SyntaxNodeRef, SyntaxKind::*,
 };
 pub use self::generated::*;
 
@@ -35,28 +34,6 @@ pub trait AttrsOwner<'a>: AstNode<'a> {
     fn attrs(self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
         Box::new(children(self))
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ParsedFile {
-    root: SyntaxNode
-}
-
-impl ParsedFile {
-    pub fn parse(text: &str) -> Self {
-        let root = ::parse(text);
-        ParsedFile { root }
-    }
-    pub fn ast(&self) -> File {
-        File::cast(self.syntax()).unwrap()
-    }
-    pub fn syntax(&self) -> SyntaxNodeRef {
-        self.root.borrowed()
-    }
-    pub fn errors(&self) -> Vec<SyntaxError> {
-        self.syntax().root.syntax_root().errors.clone()
-    }
-
 }
 
 impl<'a> FnDef<'a> {

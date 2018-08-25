@@ -4,7 +4,8 @@ use std::{
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use libsyntax2::{
-    ast::{self, AstNode, NameOwner, ParsedFile},
+    ParsedFile,
+    ast::{self, AstNode, NameOwner},
     SyntaxNode, SmolStr,
 };
 use {FileId, FileResolver};

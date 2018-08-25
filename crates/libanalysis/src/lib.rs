@@ -27,8 +27,9 @@ use std::{
 };
 
 use libsyntax2::{
+    ParsedFile,
     TextUnit, TextRange, SmolStr,
-    ast::{self, AstNode, NameOwner, ParsedFile},
+    ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
 };
 use libeditor::{LineIndex, FileSymbol, find_node};
