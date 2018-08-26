@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type="rlib"]
-
 #[macro_use]
-extern crate macro_def;
+extern crate issue_49482_macro_def;
 
-pub use macro_def::*;
+pub use issue_49482_macro_def::*;
+
+pub fn foo() {}

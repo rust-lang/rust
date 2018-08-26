@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate reexport;
+// aux-build:issue_49482_macro_def.rs
+// aux-build:issue_49482_reexport.rs
+// ignore-stage1
+// revisions: rpass1
+
+extern crate issue_49482_reexport;
 
 pub trait KvStorage
 {
@@ -29,5 +34,8 @@ impl KvStorage for u32 {
 }
 
 fn main() {
+    /* force issue_49482_reexport to be loaded */
+    issue_49482_reexport::foo();
+
     Box::new(2).get();
 }
