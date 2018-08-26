@@ -1,7 +1,7 @@
 use libsyntax2::{
     File, TextRange, SyntaxNodeRef,
-    SyntaxKind::WHITESPACE,
-    algo::{find_leaf_at_offset, find_covering_node, ancestors},
+    SyntaxKind::*,
+    algo::{find_leaf_at_offset, find_covering_node, ancestors, Direction, siblings},
 };
 
 pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
@@ -28,9 +28,39 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         return Some(ws.range());
     };
     let node = find_covering_node(root, range);
+    if node.kind() == COMMENT && range == node.range() {
+        if let Some(range) = extend_comments(node) {
+            return Some(range);
+        }
+    }
 
     match ancestors(node).skip_while(|n| n.range() == range).next() {
         None => None,
         Some(parent) => Some(parent.range()),
     }
+}
+
+fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
+    let left = adj_comments(node, Direction::Backward);
+    let right = adj_comments(node, Direction::Forward);
+    if left != right {
+        Some(TextRange::from_to(
+            left.range().start(),
+            right.range().end(),
+        ))
+    } else {
+        None
+    }
+}
+
+fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
+    let mut res = node;
+    for node in siblings(node, dir) {
+        match node.kind() {
+            COMMENT => res = node,
+            WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),
+            _ => break
+        }
+    }
+    res
 }
