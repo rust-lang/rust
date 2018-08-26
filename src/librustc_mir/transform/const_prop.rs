@@ -14,7 +14,7 @@
 
 use rustc::hir::def::Def;
 use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
-use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
+use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::interpret::{
@@ -381,6 +381,20 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let (arg, _) = self.eval_operand(arg, source_info)?;
                 let val = self.use_ecx(source_info, |this| {
                     let prim = this.ecx.read_scalar(arg)?.not_undef()?;
+                    match op {
+                        UnOp::Neg => {
+                            // Need to do overflow check here: For actual CTFE, MIR
+                            // generation emits code that does this before calling the op.
+                            let size = arg.layout.size;
+                            if prim.to_bits(size)? == (1 << (size.bits() - 1)) {
+                                return err!(OverflowNeg);
+                            }
+                        }
+                        UnOp::Not => {
+                            // Cannot overflow
+                        }
+                    }
+                    // Now run the actual operation.
                     this.ecx.unary_op(op, prim, arg.layout)
                 })?;
                 Some((OpTy::from_scalar_value(val, place_layout), span))
