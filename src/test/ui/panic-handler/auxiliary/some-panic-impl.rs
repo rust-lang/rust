@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: duplicate lang item found: `panic_impl`.
+// no-prefer-dynamic
 
-#![feature(panic_implementation)]
+#![crate_type = "rlib"]
+#![feature(panic_handler)]
+#![no_std]
 
-use std::panic::PanicInfo;
+use core::panic::PanicInfo;
 
-#[panic_implementation]
-fn panic(info: PanicInfo) -> ! {
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
-
-fn main() {}

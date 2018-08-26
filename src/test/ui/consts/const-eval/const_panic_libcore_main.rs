@@ -10,7 +10,7 @@
 
 #![crate_type = "bin"]
 #![feature(lang_items)]
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![feature(const_panic)]
 #![no_main]
 #![no_std]
@@ -31,7 +31,7 @@ fn eh() {}
 #[lang = "eh_unwind_resume"]
 fn eh_unwind_resume() {}
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }

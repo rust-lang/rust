@@ -10,7 +10,7 @@
 
 // compile-flags:-C panic=abort
 
-#![feature(alloc_error_handler, panic_implementation)]
+#![feature(alloc_error_handler, panic_handler)]
 #![no_std]
 #![no_main]
 
@@ -21,5 +21,5 @@ fn oom() -> ! { //~ ERROR function should have one argument
     loop {}
 }
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }

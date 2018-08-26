@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=abort
+// error-pattern: duplicate lang item found: `panic_impl`.
 
-#![feature(panic_implementation)]
-#![no_std]
-#![no_main]
+#![feature(panic_handler)]
 
-use core::panic::PanicInfo;
+use std::panic::PanicInfo;
 
-#[panic_implementation]
-fn panic(
-    info: &'static PanicInfo, //~ ERROR argument should be `&PanicInfo`
-) -> !
-{
+#[panic_handler]
+fn panic(info: PanicInfo) -> ! {
     loop {}
 }
+
+fn main() {}

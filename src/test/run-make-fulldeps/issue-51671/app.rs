@@ -10,14 +10,14 @@
 
 #![crate_type = "bin"]
 #![feature(lang_items)]
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![no_main]
 #![no_std]
 
 use core::alloc::Layout;
 use core::panic::PanicInfo;
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(_: &PanicInfo) -> ! {
     loop {}
 }

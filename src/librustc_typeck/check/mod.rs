@@ -1172,8 +1172,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
-                                    "`#[panic_implementation]` function should have no type \
-                                     parameters",
+                                    "should have no type parameters",
                                 );
                             }
                         }

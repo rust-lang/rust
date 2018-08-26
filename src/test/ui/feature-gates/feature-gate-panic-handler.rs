@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "rlib"]
-#![feature(panic_handler)]
+// compile-flags:-C panic=abort
+
 #![no_std]
+#![no_main]
 
 use core::panic::PanicInfo;
 
-#[panic_handler]
+#[panic_handler] //~ ERROR #[panic_handler] is an unstable feature (see issue #44489)
 fn panic(info: &PanicInfo) -> ! {
     loop {}
 }

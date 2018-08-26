@@ -113,7 +113,7 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
             if lang_items::$item == lang_items::PanicImplLangItem {
-                tcx.sess.err(&format!("`#[panic_implementation]` function required, \
+                tcx.sess.err(&format!("`#[panic_handler]` function required, \
                                         but not found"));
             } else if lang_items::$item == lang_items::OomLangItem {
                 tcx.sess.err(&format!("`#[alloc_error_handler]` function required, \

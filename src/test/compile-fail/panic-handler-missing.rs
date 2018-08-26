@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// error-pattern: `#[panic_handler]` function required, but not found
 
-#![crate_type = "rlib"]
-#![feature(panic_implementation)]
+#![feature(lang_items)]
+#![no_main]
 #![no_std]
 
-use core::panic::PanicInfo;
-
-#[panic_implementation]
-fn panic(info: &PanicInfo) -> ! {
-    loop {}
-}
+#[lang = "eh_personality"]
+fn eh() {}
