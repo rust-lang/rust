@@ -1,5 +1,3 @@
-use rustc_mir::interpret::IsStatic;
-
 #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub enum MemoryKind {
     /// `__rust_alloc` memory
@@ -10,15 +8,6 @@ pub enum MemoryKind {
     Env,
     // mutable statics
     MutStatic,
-}
-
-impl IsStatic for MemoryKind {
-    fn is_static(self) -> bool {
-        match self {
-            MemoryKind::MutStatic => true,
-            _ => false,
-        }
-    }
 }
 
 impl Into<::rustc_mir::interpret::MemoryKind<MemoryKind>> for MemoryKind {

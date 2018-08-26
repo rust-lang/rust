@@ -274,9 +274,11 @@ impl<'tcx> Hash for MemoryData<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryData = MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
+
+    const MUT_STATIC_KIND: Option<memory::MemoryKind> = Some(memory::MemoryKind::MutStatic);
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn find_fn<'a>(
@@ -307,15 +309,6 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
         ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
-    }
-
-    fn access_static_mut<'a, 'm>(
-        mem: &'m mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-    ) -> EvalResult<'tcx, &'m mut Allocation> {
-        // Make a copy, use that.
-        mem.deep_copy_static(id, MiriMemoryKind::MutStatic.into())?;
-        mem.get_mut(id) // this is recursive, but now we know that `id` is in `alloc_map` now
     }
 
     fn box_alloc<'a>(
