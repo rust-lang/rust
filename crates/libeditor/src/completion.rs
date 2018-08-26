@@ -14,7 +14,7 @@ use {
 
 #[derive(Debug)]
 pub struct CompletionItem {
-    name: String,
+    pub name: String,
 }
 
 pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionItem>> {

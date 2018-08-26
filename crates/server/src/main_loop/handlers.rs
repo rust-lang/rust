@@ -4,6 +4,7 @@ use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
     SymbolInformation, Position, Location, TextEdit,
+    CompletionItem,
 };
 use serde_json::{to_value, from_value};
 use libanalysis::{Query};
@@ -257,6 +258,28 @@ pub fn handle_parent_module(
         res.push(location);
     }
     Ok(res)
+}
+
+pub fn handle_completion(
+    world: ServerWorld,
+    params: req::CompletionParams,
+) -> Result<Option<req::CompletionResponse>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_syntax(file_id)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let offset = params.position.conv_with(&line_index);
+    let items = match libeditor::scope_completion(&file, offset) {
+        None => return Ok(None),
+        Some(items) => items,
+    };
+    let items = items.into_iter()
+        .map(|item| CompletionItem {
+            label: item.name,
+            .. Default::default()
+        })
+        .collect();
+
+    Ok(Some(req::CompletionResponse::Array(items)))
 }
 
 pub fn handle_execute_command(

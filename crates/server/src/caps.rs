@@ -4,6 +4,7 @@ use languageserver_types::{
     TextDocumentSyncOptions,
     TextDocumentSyncKind,
     ExecuteCommandOptions,
+    CompletionOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -18,7 +19,10 @@ pub fn server_capabilities() -> ServerCapabilities {
             }
         )),
         hover_provider: None,
-        completion_provider: None,
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: None,
+            trigger_characters: None,
+        }),
         signature_help_provider: None,
         definition_provider: Some(true),
         type_definition_provider: None,

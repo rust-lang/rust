@@ -11,6 +11,7 @@ pub use languageserver_types::{
     WorkspaceSymbolParams,
     TextDocumentPositionParams,
     TextEdit,
+    CompletionParams, CompletionResponse,
 };
 
 
