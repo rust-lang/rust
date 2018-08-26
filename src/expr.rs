@@ -338,8 +338,10 @@ pub fn format_expr(
                 ))
             }
         }
-        // FIXME(#2743)
-        ast::ExprKind::ObsoleteInPlace(..) => unimplemented!(),
+        ast::ExprKind::ObsoleteInPlace(ref lhs, ref rhs) => lhs
+            .rewrite(context, shape)
+            .map(|s| s + " <-")
+            .and_then(|lhs| rewrite_assign_rhs(context, lhs, &**rhs, shape)),
         ast::ExprKind::Async(capture_by, _node_id, ref block) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
