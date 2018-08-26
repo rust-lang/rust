@@ -448,8 +448,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     CaptureClause::CaptureByValue => 0,
                     CaptureClause::CaptureByRef => 1,
                 }.hash(&mut self.s);
-                let value = &self.cx.tcx.hir.body(eid).value;
-                self.hash_expr(value);
+                self.hash_expr(&self.cx.tcx.hir.body(eid).value);
             },
             ExprKind::Field(ref e, ref f) => {
                 let c: fn(_, _) -> _ = ExprKind::Field;
@@ -516,8 +515,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 let full_table = self.tables;
                 self.tables = self.cx.tcx.body_tables(l_id.body);
-                let value = &self.cx.tcx.hir.body(l_id.body).value;
-                self.hash_expr(value);
+                self.hash_expr(&self.cx.tcx.hir.body(l_id.body).value);
                 self.tables = full_table;
             },
             ExprKind::Ret(ref e) => {
