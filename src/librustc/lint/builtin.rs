@@ -338,6 +338,12 @@ declare_lint! {
      cannot be referred to by absolute paths"
 }
 
+declare_lint! {
+    pub EXPLICIT_OUTLIVES_REQUIREMENTS,
+    Allow,
+    "outlives requirements can be inferred"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {

@@ -1,0 +1,118 @@
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:21:43
+   |
+LL | struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
+   |                                           ^^^^^     ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:12:9
+   |
+LL | #![deny(explicit_outlives_requirements)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
+   |                                          --   --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:26:57
+   |
+LL | struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: 'a + Debug + 'b {
+   |                                                         ^^^^^     ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
+   |                                                        --   --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:31:49
+   |
+LL | struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b> {
+   |                                                 ^^^^^     ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
+   |                                                --   --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:37:44
+   |
+LL | struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug> {
+   |                                            ^^^^     ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug> {
+   |                                           --   --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:43:44
+   |
+LL | struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b> {
+   |                                            ^^^^          ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug> {
+   |                                           --        --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:49:42
+   |
+LL | struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U> where U: 'b {
+   |                                          ^^^^    ^^^^^^^^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U> {
+   |                                         --  --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:55:63
+   |
+LL | struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b {
+   |                                                               ^^^^^     ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug {
+   |                                                              --   --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:61:49
+   |
+LL | struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U> where U: 'b + Debug {
+   |                                                 ^^^^              ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
+   |                                                --            --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:67:49
+   |
+LL | struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U> where U: Debug + 'b {
+   |                                                 ^^^^                   ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
+   |                                                --                 --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:73:65
+   |
+LL | struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where T: 'a, U: 'b + Debug {
+   |                                                                 ^^^^^^^   ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
+   |                                                                -- --
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:79:65
+   |
+LL | struct TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where T: 'a, U: Debug + 'b {
+   |                                                                 ^^^^^^^        ^^^^^
+help: remove these bounds
+   |
+LL | struct TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
+   |                                                                --      --
+
+error: aborting due to 11 previous errors
+
