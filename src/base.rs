@@ -10,11 +10,13 @@ impl Drop for PrintOnPanic {
 }
 
 pub fn trans_mono_item<'a, 'tcx: 'a>(
-    cx: &mut CodegenCx<'a, 'tcx, impl Backend>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<impl Backend>,
+    caches: &mut Caches,
+    ccx: &mut crate::constant::ConstantCx,
     mono_item: MonoItem<'tcx>,
 ) {
-    let tcx = cx.tcx;
-    let context = &mut cx.context;
+    let context = &mut caches.context;
 
     match mono_item {
         MonoItem::Fn(inst) => {
@@ -30,7 +32,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 | InstanceDef::ClosureOnceShim { .. }
                 | InstanceDef::CloneShim(_, _) => {
                     // FIXME fix write_mir_pretty for these instances
-                    format!("{:#?}", cx.tcx.instance_mir(inst.def)).into_bytes()
+                    format!("{:#?}", tcx.instance_mir(inst.def)).into_bytes()
                 }
                 InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
             };
@@ -38,13 +40,12 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 "target/out/mir/".to_string() + &format!("{:?}", inst.def_id()).replace('/', "@");
             ::std::fs::write(mir_file_name, mir).unwrap();
 
-            trans_fn(tcx, cx.module, &mut cx.ccx, context, inst);
+            trans_fn(tcx, module, ccx, context, inst);
         }
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.ccx, def_id);
+            crate::constant::codegen_static(ccx, def_id);
         }
-        MonoItem::GlobalAsm(node_id) => cx
-            .tcx
+        MonoItem::GlobalAsm(node_id) => tcx
             .sess
             .fatal(&format!("Unimplemented global asm mono item {:?}", node_id)),
     }

@@ -90,8 +90,7 @@ mod prelude {
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::*;
-
-    pub use crate::{CodegenCx, ModuleTup};
+    pub use crate::Caches;
 
     pub fn should_codegen(sess: &Session) -> bool {
         //return true;
@@ -103,20 +102,16 @@ mod prelude {
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'static> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub module: &'a mut Module<B>,
-    pub ccx: ConstantCx,
-
-    // Cache
+pub struct Caches {
     pub context: Context,
 }
 
-pub struct ModuleTup<T> {
-    #[allow(dead_code)]
-    jit: Option<T>,
-    #[allow(dead_code)]
-    faerie: Option<T>,
+impl Caches {
+    fn new() -> Self {
+        Caches {
+            context: Context::new(),
+        }
+    }
 }
 
 struct CraneliftCodegenBackend;
@@ -360,23 +355,18 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
 ) {
     use std::io::Write;
 
-    let mut cx = CodegenCx {
-        tcx,
-        module,
-        ccx: ConstantCx::default(),
-
-        context: Context::new(),
-    };
+    let mut caches = Caches::new();
+    let mut ccx = ConstantCx::default();
 
     let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
 
     let before = ::std::time::Instant::now();
 
     for mono_item in mono_items {
-        let cx = &mut cx;
-        let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || {
-            base::trans_mono_item(cx, *mono_item);
+        let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+            base::trans_mono_item(tcx, module, &mut caches, &mut ccx, *mono_item);
         }));
+
         if let Err(err) = res {
             match err.downcast::<NonFatal>() {
                 Ok(non_fatal) => {
@@ -388,9 +378,9 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         }
     }
 
-    maybe_create_entry_wrapper(&mut cx);
+    maybe_create_entry_wrapper(tcx, module);
 
-    cx.ccx.finalize(tcx, cx.module);
+    ccx.finalize(tcx, module);
 
     let after = ::std::time::Instant::now();
     println!("time: {:?}", after - before);
@@ -410,11 +400,12 @@ pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
+fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<impl Backend + 'static>,
+) {
     use rustc::middle::lang_items::StartFnLangItem;
     use rustc::session::config::EntryFnType;
-
-    let tcx = cx.tcx;
 
     let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
         Some((id, _, entry_ty)) => (
@@ -427,7 +418,7 @@ fn maybe_create_entry_wrapper(cx: &mut CodegenCx<impl Backend + 'static>) {
         None => return,
     };
 
-    create_entry_fn(tcx, cx.module, main_def_id, use_start_lang_item);;
+    create_entry_fn(tcx, module, main_def_id, use_start_lang_item);;
 
     fn create_entry_fn<'a, 'tcx: 'a>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
