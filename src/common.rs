@@ -427,6 +427,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
     pub constants: &'a mut crate::constant::ConstantCx,
+    pub caches: &'a mut Caches,
 
     /// add_global_comment inserts a comment here
     pub top_nop: Option<Inst>,

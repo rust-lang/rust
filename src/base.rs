@@ -16,8 +16,6 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
     ccx: &mut crate::constant::ConstantCx,
     mono_item: MonoItem<'tcx>,
 ) {
-    let context = &mut caches.context;
-
     match mono_item {
         MonoItem::Fn(inst) => {
             let _print_guard = PrintOnPanic(format!("{:?}", inst));
@@ -40,7 +38,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 "target/out/mir/".to_string() + &format!("{:?}", inst.def_id()).replace('/', "@");
             ::std::fs::write(mir_file_name, mir).unwrap();
 
-            trans_fn(tcx, module, ccx, context, inst);
+            trans_fn(tcx, module, ccx, caches, inst);
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(ccx, def_id);
@@ -55,7 +53,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend>,
     constants: &mut crate::constant::ConstantCx,
-    context: &mut Context,
+    caches: &mut Caches,
     instance: Instance<'tcx>,
 ) {
     // Step 1. Get mir
@@ -94,6 +92,7 @@ fn trans_fn<'a, 'tcx: 'a>(
         local_map: HashMap::new(),
         comments: HashMap::new(),
         constants,
+        caches,
 
         top_nop: None,
     };
@@ -117,9 +116,9 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 9. Define function
     // TODO: cranelift doesn't yet support some of the things needed
     if should_codegen(tcx.sess) {
-        context.func = func;
-        module.define_function(func_id, context).unwrap();
-        context.clear();
+        caches.context.func = func;
+        module.define_function(func_id, &mut caches.context).unwrap();
+        caches.context.clear();
     }
 }
 
