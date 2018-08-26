@@ -3,7 +3,7 @@ use std::{
 };
 
 use libsyntax2::{
-    File,
+    File, TextUnit,
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
     SyntaxKind::COMMA,
     SyntaxNodeRef,
@@ -13,7 +13,7 @@ use libsyntax2::{
     },
 };
 
-use {TextUnit, EditBuilder, Edit};
+use {EditBuilder, Edit, find_node_at_offset};
 
 #[derive(Debug)]
 pub struct ActionResult {
@@ -39,7 +39,7 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
 }
 
 pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
-    let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
+    let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     Some(move || {
         let derive_attr = nominal
             .attrs()
@@ -66,7 +66,7 @@ pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
 }
 
 pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
-    let nominal = find_node::<ast::NominalDef>(file.syntax(), offset)?;
+    let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     let name = nominal.name()?;
 
     Some(move || {
@@ -103,16 +103,6 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
     siblings(node, direction)
         .skip(1)
         .find(|node| !node.kind().is_trivia())
-}
-
-pub fn find_node<'a, N: AstNode<'a>>(syntax: SyntaxNodeRef<'a>, offset: TextUnit) -> Option<N> {
-    let leaves = find_leaf_at_offset(syntax, offset);
-    let leaf = leaves.clone()
-        .find(|leaf| !leaf.kind().is_trivia())
-        .or_else(|| leaves.right_biased())?;
-    ancestors(leaf)
-        .filter_map(N::cast)
-        .next()
 }
 
 fn comma_list(buf: &mut String, bra: &str, ket: &str, items: impl Iterator<Item=impl fmt::Display>) {

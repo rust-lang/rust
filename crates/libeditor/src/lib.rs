@@ -8,11 +8,12 @@ mod line_index;
 mod edit;
 mod code_actions;
 mod typing;
+mod completion;
 
 use libsyntax2::{
-    File, TextUnit, TextRange,
+    File, TextUnit, TextRange, SyntaxNodeRef,
     ast::{AstNode, NameOwner},
-    algo::{walk, find_leaf_at_offset},
+    algo::{walk, find_leaf_at_offset, ancestors},
     SyntaxKind::{self, *},
 };
 pub use libsyntax2::AtomEdit;
@@ -22,10 +23,11 @@ pub use self::{
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit},
     code_actions::{
-        ActionResult, find_node,
+        ActionResult,
         flip_comma, add_derive, add_impl,
     },
     typing::join_lines,
+    completion::scope_completion,
 };
 
 #[derive(Debug)]
@@ -137,4 +139,17 @@ pub fn runnables(file: &File) -> Vec<Runnable> {
             })
         })
         .collect()
+}
+
+pub fn find_node_at_offset<'a, N: AstNode<'a>>(
+    syntax: SyntaxNodeRef<'a>,
+    offset: TextUnit,
+) -> Option<N> {
+    let leaves = find_leaf_at_offset(syntax, offset);
+    let leaf = leaves.clone()
+        .find(|leaf| !leaf.kind().is_trivia())
+        .or_else(|| leaves.right_biased())?;
+    ancestors(leaf)
+        .filter_map(N::cast)
+        .next()
 }

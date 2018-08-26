@@ -141,7 +141,9 @@ impl<'t> Parser<'t> {
     pub(crate) fn err_and_bump(&mut self, message: &str) {
         let m = self.start();
         self.error(message);
-        self.bump();
+        if !self.at(SyntaxKind::L_CURLY) && !self.at(SyntaxKind::R_CURLY) {
+            self.bump();
+        }
         m.complete(self, ERROR);
     }
 }

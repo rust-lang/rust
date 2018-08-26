@@ -127,12 +127,12 @@ fn validate_block_structure(root: SyntaxNodeRef) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "unpaired curleys:\n{}",
+                        "\nunpaired curleys:\n{}",
                         utils::dump_tree(root),
                     );
                     assert!(
                         node.next_sibling().is_none() && pair.prev_sibling().is_none(),
-                        "floating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
+                        "\nfloating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
                         node,
                         root.text(),
                         node.text(),

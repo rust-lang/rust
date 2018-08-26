@@ -32,7 +32,7 @@ use libsyntax2::{
     ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
 };
-use libeditor::{LineIndex, FileSymbol, find_node};
+use libeditor::{LineIndex, FileSymbol, find_node_at_offset};
 
 use self::{
     symbol_index::FileSymbols,
@@ -183,10 +183,10 @@ impl World {
     ) -> Result<Vec<(FileId, FileSymbol)>> {
         let file = self.file_syntax(id)?;
         let syntax = file.syntax();
-        if let Some(name_ref) = find_node::<ast::NameRef>(syntax, offset) {
+        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             return Ok(self.index_resolve(name_ref));
         }
-        if let Some(name) = find_node::<ast::Name>(syntax, offset) {
+        if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     let file_ids = self.resolve_module(id, module);

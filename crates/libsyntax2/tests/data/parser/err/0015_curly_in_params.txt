@@ -9,7 +9,7 @@ ROOT@[0; 14)
       err: `expected value parameter`
       err: `expected R_PAREN`
       err: `expected a block`
-      err: `expected an item`
+      err: `unmatched `}``
   ERROR@[7; 8)
     R_CURLY@[7; 8)
     err: `expected an item`

@@ -1,7 +1,7 @@
 ROOT@[0; 31)
   ERROR@[0; 1)
     R_CURLY@[0; 1)
-    err: `expected an item`
+    err: `unmatched `}``
   WHITESPACE@[1; 3)
   STRUCT_DEF@[3; 12)
     STRUCT_KW@[3; 9)
@@ -10,7 +10,7 @@ ROOT@[0; 31)
       IDENT@[10; 11) "S"
     SEMI@[11; 12)
   WHITESPACE@[12; 14)
-  err: `expected an item`
+  err: `unmatched `}``
   ERROR@[14; 15)
     R_CURLY@[14; 15)
   WHITESPACE@[15; 17)
@@ -26,7 +26,7 @@ ROOT@[0; 31)
       L_CURLY@[25; 26)
       R_CURLY@[26; 27)
   WHITESPACE@[27; 29)
-  err: `expected an item`
+  err: `unmatched `}``
   ERROR@[29; 30)
     R_CURLY@[29; 30)
   WHITESPACE@[30; 31)

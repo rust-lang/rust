@@ -9,7 +9,7 @@ use libeditor::{
     ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, add_impl, matching_brace,
-    join_lines,
+    join_lines, scope_completion,
 };
 
 #[test]
@@ -243,6 +243,26 @@ struct Foo <|>{
 struct Foo { f: u32 }
 ");
 }
+
+// #[test]
+// fn test_completion() {
+//     fn do_check(code: &str, expected_completions: &str) {
+//         let (off, code) = extract_offset(&code);
+//         let file = file(&code);
+//         let completions = scope_completion(&file, off).unwrap();
+//         assert_eq_dbg(expected_completions, &completions);
+//     }
+
+//     do_check(r"
+// fn foo(foo: i32) {
+//     let bar = 92;
+//     1 + <|>
+// }
+// ", r#"
+// CompletionItem { name: "bar" },
+// CompletionItem { name: "foo" },
+// "#);
+// }
 
 fn file(text: &str) -> File {
     File::parse(text)

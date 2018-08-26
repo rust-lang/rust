@@ -43,7 +43,12 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
                 m.abandon(p);
                 if p.at(L_CURLY) {
                     error_block(p, "expected an item");
-                } else if !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
+                } else if p.at(R_CURLY) && !stop_on_r_curly {
+                    let e = p.start();
+                    p.error("unmatched `}`");
+                    p.bump();
+                    e.complete(p, ERROR);
+                } else if !p.at(EOF) && !p.at(R_CURLY) {
                     p.err_and_bump("expected an item");
                 } else {
                     p.error("expected an item");

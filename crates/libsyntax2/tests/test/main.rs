@@ -26,6 +26,7 @@ fn lexer_tests() {
 #[test]
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
+        eprintln!("\n{}\n", text);
         let file = File::parse(text);
         dump_tree(file.syntax())
     })
