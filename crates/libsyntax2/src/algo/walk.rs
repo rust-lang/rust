@@ -17,19 +17,19 @@ pub enum WalkEvent<'a> {
 }
 
 pub fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = WalkEvent<'a>> {
-    generate(Some(WalkEvent::Enter(root)), |pos| {
+    generate(Some(WalkEvent::Enter(root)), move |pos| {
         let next = match *pos {
             WalkEvent::Enter(node) => match node.first_child() {
                 Some(child) => WalkEvent::Enter(child),
                 None => WalkEvent::Exit(node),
             },
             WalkEvent::Exit(node) => {
+                if node == root {
+                    return None;
+                }
                 match node.next_sibling() {
                     Some(sibling) => WalkEvent::Enter(sibling),
-                    None => match node.parent() {
-                        Some(node) => WalkEvent::Exit(node),
-                        None => return None,
-                    },
+                    None => WalkEvent::Exit(node.parent().unwrap()),
                 }
             }
         };

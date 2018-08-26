@@ -80,6 +80,25 @@ impl<'a> AstNode<'a> for BinExpr<'a> {
 
 impl<'a> BinExpr<'a> {}
 
+// BindPat
+#[derive(Debug, Clone, Copy)]
+pub struct BindPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for BindPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BIND_PAT => Some(BindPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ast::NameOwner<'a> for BindPat<'a> {}
+impl<'a> BindPat<'a> {}
+
 // Block
 #[derive(Debug, Clone, Copy)]
 pub struct Block<'a> {
@@ -96,7 +115,11 @@ impl<'a> AstNode<'a> for Block<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Block<'a> {}
+impl<'a> Block<'a> {
+    pub fn let_stmts(self) -> impl Iterator<Item = LetStmt<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // BlockExpr
 #[derive(Debug, Clone, Copy)]
@@ -378,6 +401,24 @@ impl<'a> AstNode<'a> for FieldExpr<'a> {
 
 impl<'a> FieldExpr<'a> {}
 
+// FieldPatList
+#[derive(Debug, Clone, Copy)]
+pub struct FieldPatList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for FieldPatList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            FIELD_PAT_LIST => Some(FieldPatList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> FieldPatList<'a> {}
+
 // FnDef
 #[derive(Debug, Clone, Copy)]
 pub struct FnDef<'a> {
@@ -397,7 +438,11 @@ impl<'a> AstNode<'a> for FnDef<'a> {
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
-impl<'a> FnDef<'a> {}
+impl<'a> FnDef<'a> {
+    pub fn param_list(self) -> Option<ParamList<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // FnPointerType
 #[derive(Debug, Clone, Copy)]
@@ -560,6 +605,28 @@ impl<'a> AstNode<'a> for LambdaExpr<'a> {
 }
 
 impl<'a> LambdaExpr<'a> {}
+
+// LetStmt
+#[derive(Debug, Clone, Copy)]
+pub struct LetStmt<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for LetStmt<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LET_STMT => Some(LetStmt { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> LetStmt<'a> {
+    pub fn pat(self) -> Option<Pat<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // LoopExpr
 #[derive(Debug, Clone, Copy)]
@@ -831,6 +898,50 @@ impl<'a> ast::TypeParamsOwner<'a> for NominalDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
+// Param
+#[derive(Debug, Clone, Copy)]
+pub struct Param<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Param<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PARAM => Some(Param { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Param<'a> {
+    pub fn pat(self) -> Option<Pat<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// ParamList
+#[derive(Debug, Clone, Copy)]
+pub struct ParamList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ParamList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PARAM_LIST => Some(ParamList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ParamList<'a> {
+    pub fn params(self) -> impl Iterator<Item = Param<'a>> + 'a {
+        super::children(self)
+    }
+}
+
 // ParenExpr
 #[derive(Debug, Clone, Copy)]
 pub struct ParenExpr<'a> {
@@ -867,6 +978,55 @@ impl<'a> AstNode<'a> for ParenType<'a> {
 
 impl<'a> ParenType<'a> {}
 
+// Pat
+#[derive(Debug, Clone, Copy)]
+pub enum Pat<'a> {
+    RefPat(RefPat<'a>),
+    BindPat(BindPat<'a>),
+    PlaceholderPat(PlaceholderPat<'a>),
+    PathPat(PathPat<'a>),
+    StructPat(StructPat<'a>),
+    FieldPatList(FieldPatList<'a>),
+    TupleStructPat(TupleStructPat<'a>),
+    TuplePat(TuplePat<'a>),
+    SlicePat(SlicePat<'a>),
+    RangePat(RangePat<'a>),
+}
+
+impl<'a> AstNode<'a> for Pat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            REF_PAT => Some(Pat::RefPat(RefPat { syntax })),
+            BIND_PAT => Some(Pat::BindPat(BindPat { syntax })),
+            PLACEHOLDER_PAT => Some(Pat::PlaceholderPat(PlaceholderPat { syntax })),
+            PATH_PAT => Some(Pat::PathPat(PathPat { syntax })),
+            STRUCT_PAT => Some(Pat::StructPat(StructPat { syntax })),
+            FIELD_PAT_LIST => Some(Pat::FieldPatList(FieldPatList { syntax })),
+            TUPLE_STRUCT_PAT => Some(Pat::TupleStructPat(TupleStructPat { syntax })),
+            TUPLE_PAT => Some(Pat::TuplePat(TuplePat { syntax })),
+            SLICE_PAT => Some(Pat::SlicePat(SlicePat { syntax })),
+            RANGE_PAT => Some(Pat::RangePat(RangePat { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            Pat::RefPat(inner) => inner.syntax(),
+            Pat::BindPat(inner) => inner.syntax(),
+            Pat::PlaceholderPat(inner) => inner.syntax(),
+            Pat::PathPat(inner) => inner.syntax(),
+            Pat::StructPat(inner) => inner.syntax(),
+            Pat::FieldPatList(inner) => inner.syntax(),
+            Pat::TupleStructPat(inner) => inner.syntax(),
+            Pat::TuplePat(inner) => inner.syntax(),
+            Pat::SlicePat(inner) => inner.syntax(),
+            Pat::RangePat(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> Pat<'a> {}
+
 // PathExpr
 #[derive(Debug, Clone, Copy)]
 pub struct PathExpr<'a> {
@@ -885,6 +1045,24 @@ impl<'a> AstNode<'a> for PathExpr<'a> {
 
 impl<'a> PathExpr<'a> {}
 
+// PathPat
+#[derive(Debug, Clone, Copy)]
+pub struct PathPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for PathPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PATH_PAT => Some(PathPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> PathPat<'a> {}
+
 // PathType
 #[derive(Debug, Clone, Copy)]
 pub struct PathType<'a> {
@@ -902,6 +1080,24 @@ impl<'a> AstNode<'a> for PathType<'a> {
 }
 
 impl<'a> PathType<'a> {}
+
+// PlaceholderPat
+#[derive(Debug, Clone, Copy)]
+pub struct PlaceholderPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for PlaceholderPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PLACEHOLDER_PAT => Some(PlaceholderPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> PlaceholderPat<'a> {}
 
 // PlaceholderType
 #[derive(Debug, Clone, Copy)]
@@ -975,6 +1171,24 @@ impl<'a> AstNode<'a> for RangeExpr<'a> {
 
 impl<'a> RangeExpr<'a> {}
 
+// RangePat
+#[derive(Debug, Clone, Copy)]
+pub struct RangePat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for RangePat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            RANGE_PAT => Some(RangePat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> RangePat<'a> {}
+
 // RefExpr
 #[derive(Debug, Clone, Copy)]
 pub struct RefExpr<'a> {
@@ -992,6 +1206,24 @@ impl<'a> AstNode<'a> for RefExpr<'a> {
 }
 
 impl<'a> RefExpr<'a> {}
+
+// RefPat
+#[derive(Debug, Clone, Copy)]
+pub struct RefPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for RefPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            REF_PAT => Some(RefPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> RefPat<'a> {}
 
 // ReferenceType
 #[derive(Debug, Clone, Copy)]
@@ -1054,6 +1286,24 @@ impl<'a> Root<'a> {
         super::children(self)
     }
 }
+
+// SlicePat
+#[derive(Debug, Clone, Copy)]
+pub struct SlicePat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for SlicePat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            SLICE_PAT => Some(SlicePat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> SlicePat<'a> {}
 
 // SliceType
 #[derive(Debug, Clone, Copy)]
@@ -1137,6 +1387,24 @@ impl<'a> AstNode<'a> for StructLit<'a> {
 
 impl<'a> StructLit<'a> {}
 
+// StructPat
+#[derive(Debug, Clone, Copy)]
+pub struct StructPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for StructPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            STRUCT_PAT => Some(StructPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> StructPat<'a> {}
+
 // TokenTree
 #[derive(Debug, Clone, Copy)]
 pub struct TokenTree<'a> {
@@ -1210,6 +1478,42 @@ impl<'a> AstNode<'a> for TupleExpr<'a> {
 }
 
 impl<'a> TupleExpr<'a> {}
+
+// TuplePat
+#[derive(Debug, Clone, Copy)]
+pub struct TuplePat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TuplePat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TUPLE_PAT => Some(TuplePat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> TuplePat<'a> {}
+
+// TupleStructPat
+#[derive(Debug, Clone, Copy)]
+pub struct TupleStructPat<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for TupleStructPat<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            TUPLE_STRUCT_PAT => Some(TupleStructPat { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> TupleStructPat<'a> {}
 
 // TupleType
 #[derive(Debug, Clone, Copy)]

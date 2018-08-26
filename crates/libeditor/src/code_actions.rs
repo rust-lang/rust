@@ -9,7 +9,7 @@ use libsyntax2::{
     SyntaxNodeRef,
     algo::{
         Direction, siblings,
-        find_leaf_at_offset, ancestors,
+        find_leaf_at_offset,
     },
 };
 

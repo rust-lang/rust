@@ -241,11 +241,16 @@ Grammar(
                 ["modules", "Module"],
             ]
         ),
-        "FnDef": ( traits: [
-            "NameOwner",
-            "TypeParamsOwner",
-            "AttrsOwner",
-        ] ),
+        "FnDef": (
+            traits: [
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+            ],
+            options: [
+                ["param_list", "ParamList"]
+            ],
+        ),
         "StructDef": (
             traits: [
                 "NameOwner",
@@ -393,13 +398,52 @@ Grammar(
             ],
         ),
 
+        "RefPat": (),
+        "BindPat": ( traits: ["NameOwner"] ),
+        "PlaceholderPat": (),
+        "PathPat": (),
+        "StructPat": (),
+        "FieldPatList": (),
+        "TupleStructPat": (),
+        "TuplePat": (),
+        "SlicePat": (),
+        "RangePat": (),
+
+        "Pat": (
+            enum: [
+                "RefPat",
+                "BindPat",
+                "PlaceholderPat",
+                "PathPat",
+                "StructPat",
+                "FieldPatList",
+                "TupleStructPat",
+                "TuplePat",
+                "SlicePat",
+                "RangePat",
+            ],
+        ),
+
         "Name": (),
         "NameRef": (),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
         "TokenTree": (),
         "TypeParamList": ( collections: [ ["type_params", "TypeParam" ] ]),
-        "TypeParam": ( traits: ["NameOwner"]),
+        "TypeParam": ( traits: ["NameOwner"] ),
         "WhereClause": (),
-        "Block": (),
+        "LetStmt": ( options: [ ["pat", "Pat"] ]),
+        "Block": (
+            collections: [
+                ["let_stmts", "LetStmt"],
+            ]
+        ),
+        "ParamList": (
+            collections: [
+                ["params", "Param"]
+            ]
+        ),
+        "Param": (
+            options: [["pat", "Pat"]],
+        )
     },
 )

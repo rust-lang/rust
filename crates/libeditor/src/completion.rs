@@ -1,7 +1,11 @@
 use libsyntax2::{
-    File, TextUnit,
-    ast,
-    algo::find_leaf_at_offset,
+    File, TextUnit, AstNode, SyntaxNodeRef,
+    ast::{self, NameOwner},
+    algo::{
+        ancestors,
+        visit::{visitor_ctx, VisitorCtx},
+        walk::preorder,
+    },
 };
 
 use {
@@ -25,7 +29,33 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
 }
 
 fn complete(name_ref: ast::NameRef) -> Vec<CompletionItem> {
-    vec![CompletionItem {
-        name: "foo".to_string()
-    }]
+    let mut res = Vec::new();
+    for node in ancestors(name_ref.syntax()) {
+        process_scope(node, &mut res);
+    }
+    res
+}
+
+fn process_scope(node: SyntaxNodeRef, sink: &mut Vec<CompletionItem>) {
+    let _ = visitor_ctx(sink)
+        .visit::<ast::Block, _>(|block, sink| {
+            block.let_stmts()
+                .filter_map(|it| it.pat())
+                .for_each(move |it| process_pat(it, sink))
+        })
+        .visit::<ast::FnDef, _>(|fn_def, sink| {
+            fn_def.param_list().into_iter()
+                .flat_map(|it| it.params())
+                .filter_map(|it| it.pat())
+                .for_each(move |it| process_pat(it, sink))
+        })
+        .accept(node);
+
+    fn process_pat(pat: ast::Pat, sink: &mut Vec<CompletionItem>) {
+        let items = preorder(pat.syntax())
+            .filter_map(ast::BindPat::cast)
+            .filter_map(ast::BindPat::name)
+            .map(|name| CompletionItem { name: name.text().to_string() });
+        sink.extend(items);
+    }
 }

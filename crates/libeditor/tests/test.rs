@@ -256,25 +256,23 @@ struct Foo { f: u32 }
 ");
 }
 
-// #[test]
-// fn test_completion() {
-//     fn do_check(code: &str, expected_completions: &str) {
-//         let (off, code) = extract_offset(&code);
-//         let file = file(&code);
-//         let completions = scope_completion(&file, off).unwrap();
-//         assert_eq_dbg(expected_completions, &completions);
-//     }
+#[test]
+fn test_completion() {
+    fn do_check(code: &str, expected_completions: &str) {
+        let (off, code) = extract_offset(&code);
+        let file = file(&code);
+        let completions = scope_completion(&file, off).unwrap();
+        assert_eq_dbg(expected_completions, &completions);
+    }
 
-//     do_check(r"
-// fn foo(foo: i32) {
-//     let bar = 92;
-//     1 + <|>
-// }
-// ", r#"
-// CompletionItem { name: "bar" },
-// CompletionItem { name: "foo" },
-// "#);
-// }
+    do_check(r"
+fn quux(x: i32) {
+    let y = 92;
+    1 + <|>
+}
+", r#"[CompletionItem { name: "y" },
+       CompletionItem { name: "x" }]"#);
+}
 
 fn file(text: &str) -> File {
     File::parse(text)

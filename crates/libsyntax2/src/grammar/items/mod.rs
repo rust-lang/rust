@@ -115,7 +115,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // test unsafe_fn
         // unsafe fn foo() {}
         FN_KW => {
-            function(p, flavor);
+            fn_def(p, flavor);
             FN_DEF
         }
 
@@ -227,7 +227,7 @@ fn extern_item_list(p: &mut Parser) {
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
-fn function(p: &mut Parser, flavor: ItemFlavor) {
+fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
     assert!(p.at(FN_KW));
     p.bump();
 
