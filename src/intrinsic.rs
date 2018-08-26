@@ -2,12 +2,12 @@ use rustc::mir;
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef};
+use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef, PointerArithmetic};
 use rustc_mir::interpret::{
     PlaceTy, EvalContext, OpTy, Value
 };
 
-use super::{ScalarExt, FalibleScalarExt, OperatorEvalContextExt};
+use super::{FalibleScalarExt, OperatorEvalContextExt};
 
 pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
@@ -204,8 +204,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = self.read_scalar(args[0])?.to_bytes()?;
-                let f = f32::from_bits(f as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
                     "fabsf32" => f.abs(),
@@ -226,8 +225,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = self.read_scalar(args[0])?.to_bytes()?;
-                let f = f64::from_bits(f as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
                     "fabsf64" => f.abs(),
@@ -282,12 +280,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 if !dest.layout.is_zst() { // notzhing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
-                            let x = Scalar::null(s.value.size(&self));
+                            let x = Scalar::from_int(0, s.value.size(&self));
                             self.write_value(Value::Scalar(x.into()), dest)?;
                         }
                         layout::Abi::ScalarPair(ref s1, ref s2) => {
-                            let x = Scalar::null(s1.value.size(&self));
-                            let y = Scalar::null(s2.value.size(&self));
+                            let x = Scalar::from_int(0, s1.value.size(&self));
+                            let y = Scalar::from_int(0, s2.value.size(&self));
                             self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
                         }
                         _ => {
@@ -304,7 +302,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let layout = self.layout_of(ty)?;
                 let align = layout.align.pref();
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 let align_val = Scalar::from_uint(align as u128, ptr_size);
                 self.write_scalar(align_val, dest)?;
             }
@@ -365,10 +363,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powf32" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let f = f32::from_bits(f as u32);
-                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
-                let f2 = f32::from_bits(f2 as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
+                let f2 = self.read_scalar(args[1])?.to_f32()?;
                 self.write_scalar(
                     Scalar::from_f32(f.powf(f2)),
                     dest,
@@ -376,10 +372,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powf64" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let f = f64::from_bits(f as u64);
-                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
-                let f2 = f64::from_bits(f2 as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
+                let f2 = self.read_scalar(args[1])?.to_f64()?;
                 self.write_scalar(
                     Scalar::from_f64(f.powf(f2)),
                     dest,
@@ -387,12 +381,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "fmaf32" => {
-                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let a = f32::from_bits(a as u32);
-                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
-                let b = f32::from_bits(b as u32);
-                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(32))?;
-                let c = f32::from_bits(c as u32);
+                let a = self.read_scalar(args[0])?.to_f32()?;
+                let b = self.read_scalar(args[1])?.to_f32()?;
+                let c = self.read_scalar(args[2])?.to_f32()?;
                 self.write_scalar(
                     Scalar::from_f32(a * b + c),
                     dest,
@@ -400,12 +391,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "fmaf64" => {
-                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let a = f64::from_bits(a as u64);
-                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
-                let b = f64::from_bits(b as u64);
-                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(64))?;
-                let c = f64::from_bits(c as u64);
+                let a = self.read_scalar(args[0])?.to_f64()?;
+                let b = self.read_scalar(args[1])?.to_f64()?;
+                let c = self.read_scalar(args[2])?.to_f64()?;
                 self.write_scalar(
                     Scalar::from_f64(a * b + c),
                     dest,
@@ -413,8 +401,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powif32" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let f = f32::from_bits(f as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
                 let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
                     Scalar::from_f32(f.powi(i)),
@@ -423,8 +410,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powif64" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let f = f64::from_bits(f as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
                 let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
                     Scalar::from_f64(f.powi(i)),
@@ -435,7 +421,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "size_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let (size, _) = self.size_and_align_of_mplace(mplace)?;
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(size.bytes() as u128, ptr_size),
                     dest,
@@ -446,7 +432,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "align_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let (_, align) = self.size_and_align_of_mplace(mplace)?;
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(align.abi(), ptr_size),
                     dest,

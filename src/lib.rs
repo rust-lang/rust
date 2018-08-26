@@ -46,7 +46,7 @@ use tls::EvalContextExt as TlsEvalContextExt;
 use memory::MemoryKind as MiriMemoryKind;
 use locks::LockInfo;
 use range_map::RangeMap;
-use helpers::{ScalarExt, FalibleScalarExt};
+use helpers::FalibleScalarExt;
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
