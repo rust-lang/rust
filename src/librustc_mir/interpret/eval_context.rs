@@ -235,6 +235,8 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
             return Ok(())
         }
 
+        info!("snapshotting the state of the interpreter");
+
         if self.snapshots.insert(EvalSnapshot::new(machine, memory, stack)) {
             // Spurious collision or first cycle
             return Ok(())
