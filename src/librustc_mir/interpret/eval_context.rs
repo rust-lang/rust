@@ -112,7 +112,11 @@ pub struct Frame<'mir, 'tcx: 'mir> {
 }
 
 impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
+
         let Frame {
             mir,
             instance,
@@ -142,7 +146,10 @@ pub enum StackPopCleanup {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
-    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
         match self {
             StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
             StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),

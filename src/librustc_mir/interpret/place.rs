@@ -59,7 +59,10 @@ pub enum Place<Id=AllocId> {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Place {
-    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self, hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
+
         match self {
             Place::Ptr(mem_place) => mem_place.hash_stable(hcx, hasher),
 

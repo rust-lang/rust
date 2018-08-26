@@ -2,7 +2,10 @@ use std::hash::{Hash, Hasher};
 
 use rustc::ich::{StableHashingContext, StableHashingContextProvider};
 use rustc::mir;
-use rustc::mir::interpret::{AllocId, Pointer, Scalar, ScalarMaybeUndef, Relocations, Allocation, UndefMask};
+use rustc::mir::interpret::{
+    AllocId, Pointer, Scalar, ScalarMaybeUndef, Relocations, Allocation, UndefMask
+};
+
 use rustc::ty;
 use rustc::ty::layout::Align;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -29,7 +32,10 @@ macro_rules! __impl_snapshot_field {
 
 macro_rules! impl_snapshot_for {
     // FIXME(mark-i-m): Some of these should be `?` rather than `*`.
-    (enum $enum_name:ident { $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)*),* ) )* ),* $(,)* }) => {
+    (enum $enum_name:ident {
+        $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)*),* ) )* ),* $(,)*
+    }) => {
+
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
             where Ctx: self::SnapshotContext<'a>,
         {
@@ -40,7 +46,9 @@ macro_rules! impl_snapshot_for {
                 match *self {
                     $(
                         $enum_name::$variant $( ( $(ref $field),* ) )* =>
-                            $enum_name::$variant $( ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),* ), )*
+                            $enum_name::$variant $(
+                                ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),* ),
+                            )*
                     )*
                 }
             }
@@ -165,7 +173,9 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
     type Item = Relocations<AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        Relocations::from_presorted(self.iter().map(|(size, id)| (*size, id.snapshot(ctx))).collect())
+        Relocations::from_presorted(self.iter()
+            .map(|(size, id)| (*size, id.snapshot(ctx)))
+            .collect())
     }
 }
 
@@ -268,7 +278,11 @@ pub struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
-    pub fn new(machine: &M, memory: &Memory<'a, 'mir, 'tcx, M>, stack: &[Frame<'mir, 'tcx>]) -> Self {
+    pub fn new(
+        machine: &M,
+        memory: &Memory<'a, 'mir, 'tcx, M>,
+        stack: &[Frame<'mir, 'tcx>]) -> Self {
+
         EvalSnapshot {
             machine: machine.clone(),
             memory: memory.clone(),
@@ -276,7 +290,8 @@ impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
         }
     }
 
-    fn snapshot<'b: 'a>(&'b self) -> (&'b M, MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>) {
+    fn snapshot<'b: 'a>(&'b self)
+        -> (&'b M, MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>) {
         let EvalSnapshot{ machine, memory, stack } = self;
         (&machine, memory.snapshot(), stack.iter().map(|frame| frame.snapshot(memory)).collect())
     }
@@ -294,10 +309,15 @@ impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
     }
 }
 
-impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>> for EvalSnapshot<'a, 'mir, 'tcx, M>
+impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>>
+    for EvalSnapshot<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
-    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'b>,
+        hasher: &mut StableHasher<W>) {
+
         let EvalSnapshot{ machine, memory, stack } = self;
         (machine, &memory.data, stack).hash_stable(hcx, hasher);
     }
