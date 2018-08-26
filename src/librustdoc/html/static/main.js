@@ -223,7 +223,25 @@
             }
         }
     }
-    highlightSourceLines(null);
+
+    function expandSection(id) {
+        var elem = document.getElementById(id);
+        if (elem && isHidden(elem)) {
+            var h3 = elem.parentNode.previousSibling;
+            if (h3 && h3.tagName !== 'H3') {
+                h3 = h3.previousSibling; // skip div.docblock
+            }
+
+            if (h3) {
+                var collapses = h3.getElementsByClassName("collapse-toggle");
+                if (collapses.length > 0) {
+                    // The element is not visible, we need to make it appear!
+                    collapseDocs(collapses[0], "show");
+                }
+            }
+        }
+    }
+
     window.onhashchange = highlightSourceLines;
 
     // Gets the human-readable string for the virtual-key code of the
@@ -317,6 +335,15 @@
         }
     }
 
+    function findParentElement(elem, tagName) {
+        do {
+            if (elem && elem.tagName === tagName) {
+                return elem;
+            }
+        } while (elem = elem.parentNode);
+        return null;
+    }
+
     document.onkeypress = handleShortcut;
     document.onkeydown = handleShortcut;
     document.onclick = function(ev) {
@@ -354,6 +381,13 @@
         } else if (!hasClass(document.getElementById("help"), "hidden")) {
             addClass(document.getElementById("help"), "hidden");
             removeClass(document.body, "blur");
+        } else {
+            // Making a collapsed element visible on onhashchange seems
+            // too late
+            var a = findParentElement(ev.target, 'A');
+            if (a && a.hash) {
+                expandSection(a.hash.replace(/^#/, ''));
+            }
         }
     };
 
@@ -2213,21 +2247,7 @@
     autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
 
     if (window.location.hash && window.location.hash.length > 0) {
-        var hash = getPageId();
-        if (hash !== null) {
-            var elem = document.getElementById(hash);
-            if (elem && elem.offsetParent === null) {
-                if (elem.parentNode && elem.parentNode.previousSibling) {
-                    var collapses = elem.parentNode
-                                        .previousSibling
-                                        .getElementsByClassName("collapse-toggle");
-                    if (collapses.length > 0) {
-                        // The element is not visible, we need to make it appear!
-                        collapseDocs(collapses[0], "show");
-                    }
-                }
-            }
-        }
+        expandSection(window.location.hash.replace(/^#/, ''));
     }
 }());
 
