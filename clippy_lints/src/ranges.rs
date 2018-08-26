@@ -57,7 +57,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub RANGE_PLUS_ONE,
-    nursery,
+    complexity,
     "`x..(y+1)` reads better as `x..=y`"
 }
 
@@ -75,7 +75,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub RANGE_MINUS_ONE,
-    style,
+    complexity,
     "`x..=(y-1)` reads better as `x..y`"
 }
 
