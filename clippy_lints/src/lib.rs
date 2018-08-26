@@ -7,7 +7,6 @@
 #![feature(range_contains)]
 #![allow(unknown_lints, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
-#![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
 #![warn(rust_2018_idioms)]
 
