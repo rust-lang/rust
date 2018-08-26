@@ -56,3 +56,24 @@ mod fn_keyword { }
 ///
 /// [book]: https://doc.rust-lang.org/book/second-edition/ch03-01-variables-and-mutability.html
 mod let_keyword { }
+
+#[doc(keyword = "struct")]
+//
+/// The `struct` keyword.
+///
+/// The `struct` keyword is used to define a struct type.
+///
+/// Example:
+///
+/// ```
+/// struct Foo {
+///     field1: u32,
+///     field2: String,
+/// }
+/// ```
+///
+/// There are different kinds of structs. For more information, take a look at the
+/// [Rust Book][book].
+///
+/// [book]: https://doc.rust-lang.org/book/second-edition/ch05-01-defining-structs.html
+mod struct_keyword { }

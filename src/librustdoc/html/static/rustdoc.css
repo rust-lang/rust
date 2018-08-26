@@ -497,6 +497,19 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 90%;
 }
 
+.content .stability {
+	position: relative;
+	margin-left: 33px;
+	margin-top: -13px;
+}
+.content .stability::before {
+	content: '˪';
+	font-size: 30px;
+	position: absolute;
+	top: -9px;
+	left: -13px;
+}
+
 nav {
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
@@ -545,10 +558,8 @@ a {
 	left: -5px;
 }
 .small-section-header > .anchor {
-	left: -20px;
-}
-.small-section-header > .anchor:not(.field) {
 	left: -28px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
@@ -745,6 +756,7 @@ a.test-arrow:hover{
 .section-header:hover a:before {
 	position: absolute;
 	left: -25px;
+	padding-right: 10px; /* avoid gap that causes hover to disappear */
 	content: '\2002\00a7\2002';
 }
 
