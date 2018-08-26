@@ -532,7 +532,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "0.99.3"
+version = "0.99.4"
 dependencies = [
  "assert_cli 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
