@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
 #![feature(decl_macro)]
 #![allow(unused_attributes)]
 #![feature(type_ascription)]
