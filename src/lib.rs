@@ -1,4 +1,4 @@
-#![feature(rustc_private, macro_at_most_once_rep, iterator_find_map)]
+#![feature(rustc_private, macro_at_most_once_rep)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate syntax;
