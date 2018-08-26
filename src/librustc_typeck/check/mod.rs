@@ -3465,7 +3465,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match &adt_ty.sty{
+        let (substs, adt_kind, kind_name) = match &adt_ty.sty {
             &ty::Adt(adt, substs) => {
                 (substs, adt.adt_kind(), adt.variant_descr())
             }
@@ -3639,13 +3639,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, struct_ty) =
-        if let Some(variant_ty) = self.check_struct_path(qpath, expr.id) {
-            variant_ty
-        } else {
-            self.check_struct_fields_on_error(fields, base_expr);
-            return self.tcx.types.err;
-        };
+        let (variant, adt_ty) =
+            if let Some(variant_ty) = self.check_struct_path(qpath, expr.id) {
+                variant_ty
+            } else {
+                self.check_struct_fields_on_error(fields, base_expr);
+                return self.tcx.types.err;
+            };
 
         let path_span = match *qpath {
             hir::QPath::Resolved(_, ref path) => path.span,
@@ -3653,23 +3653,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Prohibit struct expressions when non exhaustive flag is set.
-        if let ty::Adt(adt, _) = struct_ty.sty {
-            if !adt.did.is_local() && adt.is_non_exhaustive() {
-                span_err!(self.tcx.sess, expr.span, E0639,
-                          "cannot create non-exhaustive {} using struct expression",
-                          adt.variant_descr());
-            }
+        let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
+        if !adt.did.is_local() && adt.is_variant_non_exhaustive(variant) {
+            span_err!(self.tcx.sess, expr.span, E0639,
+                      "cannot create non-exhaustive {} using struct expression",
+                      adt.variant_descr());
         }
 
-        let error_happened = self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span,
+        let error_happened = self.check_expr_struct_fields(adt_ty, expected, expr.id, path_span,
                                                            variant, fields, base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             // If check_expr_struct_fields hit an error, do not attempt to populate
             // the fields with the base_expr. This could cause us to hit errors later
             // when certain fields are assumed to exist that in fact do not.
             if !error_happened {
-                self.check_expr_has_type_or_error(base_expr, struct_ty);
-                match struct_ty.sty {
+                self.check_expr_has_type_or_error(base_expr, adt_ty);
+                match adt_ty.sty {
                     ty::Adt(adt, substs) if adt.is_struct() => {
                         let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
                             self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
@@ -3687,8 +3686,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
-        self.require_type_is_sized(struct_ty, expr.span, traits::StructInitializerSized);
-        struct_ty
+        self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
+        adt_ty
     }
 
 

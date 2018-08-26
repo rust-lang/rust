@@ -1981,8 +1981,28 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn is_non_exhaustive(&self) -> bool {
+    fn is_non_exhaustive(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
+    }
+
+    #[inline]
+    pub fn is_enum_non_exhaustive(&self) -> bool {
+        match self.adt_kind() {
+            AdtKind::Enum => self.is_non_exhaustive(),
+            AdtKind::Struct | AdtKind::Union => {
+                bug!("is_non_exhaustive_enum called on non-enum `{:?}`", self);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn is_univariant_non_exhaustive(&self) -> bool {
+        match self.adt_kind() {
+            AdtKind::Struct | AdtKind::Union => self.is_non_exhaustive(),
+            AdtKind::Enum => {
+                bug!("is_non_exhaustive_enum called on non-enum `{:?}`", self);
+            }
+        }
     }
 
     /// Returns the kind of the ADT - Struct or Enum.
@@ -1994,6 +2014,19 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Union
         } else {
             AdtKind::Struct
+        }
+    }
+
+    /// Return whether `variant` is non-exhaustive as a *struct* (i.e., whether
+    /// it can have additional fields).
+    pub fn is_variant_non_exhaustive(&self, _variant: &ty::VariantDef) -> bool {
+        match self.adt_kind() {
+            // A struct is non-exhaustive if it has a `#[non_exhaustive]` attribute.
+            AdtKind::Struct => self.is_non_exhaustive(),
+            // At this moment, all enum variants are exhaustive.
+            AdtKind::Enum => false,
+            // All unions are "exhaustive", as far as that makes sense.
+            AdtKind::Union => false,
         }
     }
 
