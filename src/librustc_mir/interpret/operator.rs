@@ -302,38 +302,33 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let right = right.to_scalar()?;
 
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-            bin_op, left, left_layout.ty.sty, right, right_layout.ty.sty);
+            bin_op, left, left_layout.ty, right, right_layout.ty);
 
         match left_layout.ty.sty {
             ty::Char => {
                 assert_eq!(left_layout.ty, right_layout.ty);
-                let l = left.to_char()?;
-                let r = right.to_char()?;
-                self.binary_char_op(bin_op, l, r)
+                let left = left.to_char()?;
+                let right = right.to_char()?;
+                self.binary_char_op(bin_op, left, right)
             }
             ty::Bool => {
                 assert_eq!(left_layout.ty, right_layout.ty);
-                let l = left.to_bool()?;
-                let r = right.to_bool()?;
-                self.binary_bool_op(bin_op, l, r)
+                let left = left.to_bool()?;
+                let right = right.to_bool()?;
+                self.binary_bool_op(bin_op, left, right)
             }
             ty::Float(fty) => {
                 assert_eq!(left_layout.ty, right_layout.ty);
-                let l = left.to_bits(left_layout.size)?;
-                let r = right.to_bits(right_layout.size)?;
-                self.binary_float_op(bin_op, fty, l, r)
+                let left = left.to_bits(left_layout.size)?;
+                let right = right.to_bits(right_layout.size)?;
+                self.binary_float_op(bin_op, fty, left, right)
             }
             _ => {
-                // Must be integer(-like) types
-                #[inline]
-                fn is_ptr<'tcx>(ty: ty::Ty<'tcx>) -> bool {
-                    match ty.sty {
-                        ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
-                        _ => false,
-                    }
-                }
-                assert!(left_layout.ty.is_integral() || is_ptr(left_layout.ty));
-                assert!(right_layout.ty.is_integral() || is_ptr(right_layout.ty));
+                // Must be integer(-like) types.  Don't forget about == on fn pointers.
+                assert!(left_layout.ty.is_integral() || left_layout.ty.is_unsafe_ptr() ||
+                    left_layout.ty.is_fn());
+                assert!(right_layout.ty.is_integral() || right_layout.ty.is_unsafe_ptr() ||
+                    right_layout.ty.is_fn());
 
                 // Handle operations that support pointer values
                 if let Some(handled) =
@@ -343,9 +338,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
 
                 // Everything else only works with "proper" bits
-                let l = left.to_bits(left_layout.size)?;
-                let r = right.to_bits(right_layout.size)?;
-                self.binary_int_op(bin_op, l, left_layout, r, right_layout)
+                let left = left.to_bits(left_layout.size)?;
+                let right = right.to_bits(right_layout.size)?;
+                self.binary_int_op(bin_op, left, left_layout, right, right_layout)
             }
         }
     }
@@ -360,25 +355,42 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;
 
-        let size = layout.size;
-        let bytes = val.to_bits(size)?;
+        trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty.sty);
 
-        let result_bytes = match (un_op, &layout.ty.sty) {
-
-            (Not, ty::Bool) => !val.to_bool()? as u128,
-
-            (Not, _) => !bytes,
-
-            (Neg, ty::Float(FloatTy::F32)) => Single::to_bits(-Single::from_bits(bytes)),
-            (Neg, ty::Float(FloatTy::F64)) => Double::to_bits(-Double::from_bits(bytes)),
-
-            (Neg, _) if bytes == (1 << (size.bits() - 1)) => return err!(OverflowNeg),
-            (Neg, _) => (-(bytes as i128)) as u128,
-        };
-
-        Ok(Scalar::Bits {
-            bits: self.truncate(result_bytes, layout),
-            size: size.bytes() as u8,
-        })
+        match layout.ty.sty {
+            ty::Bool => {
+                let val = val.to_bool()?;
+                let res = match un_op {
+                    Not => !val,
+                    _ => bug!("Invalid bool op {:?}", un_op)
+                };
+                Ok(Scalar::from_bool(res))
+            }
+            ty::Float(fty) => {
+                let val = val.to_bits(layout.size)?;
+                let res = match (un_op, fty) {
+                    (Neg, FloatTy::F32) => Single::to_bits(-Single::from_bits(val)),
+                    (Neg, FloatTy::F64) => Double::to_bits(-Double::from_bits(val)),
+                    _ => bug!("Invalid float op {:?}", un_op)
+                };
+                Ok(Scalar::Bits { bits: res, size: layout.size.bytes() as u8 })
+            }
+            _ => {
+                assert!(layout.ty.is_integral());
+                let val = val.to_bits(layout.size)?;
+                let res = match un_op {
+                    Not => !val,
+                    Neg => {
+                        assert!(layout.abi.is_signed());
+                        (-(val as i128)) as u128
+                    }
+                };
+                // res needs tuncating
+                Ok(Scalar::Bits {
+                    bits: self.truncate(res, layout),
+                    size: layout.size.bytes() as u8,
+                })
+            }
+        }
     }
 }
