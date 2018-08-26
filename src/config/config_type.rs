@@ -73,7 +73,7 @@ impl ConfigType for IgnoreList {
 macro_rules! is_nightly_channel {
     () => {
         option_env!("CFG_RELEASE_CHANNEL")
-            .map(|c| c == "nightly")
+            .map(|c| c == "nightly" || c == "dev")
             .unwrap_or(true)
     };
 }
