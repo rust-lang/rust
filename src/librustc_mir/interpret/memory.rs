@@ -23,7 +23,8 @@ use std::ptr;
 use rustc::ty::{self, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, ScalarMaybeUndef, GlobalId,
-                            EvalResult, Scalar, EvalErrorKind, AllocType, truncate};
+                            EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
+                            truncate};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
@@ -55,6 +56,14 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
+    for &'b &'c mut Memory<'a, 'mir, 'tcx, M>
+{
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
@@ -275,14 +284,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         debug!("deallocated : {}", ptr.alloc_id);
 
         Ok(())
-    }
-
-    pub fn pointer_size(&self) -> Size {
-        self.tcx.data_layout.pointer_size
-    }
-
-    pub fn endianness(&self) -> layout::Endian {
-        self.tcx.data_layout.endian
     }
 
     /// Check that the pointer is aligned AND non-NULL. This supports scalars
@@ -773,7 +774,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, ScalarMaybeUndef> {
         // Make sure we don't read part of a pointer as a pointer
         self.check_relocation_edges(ptr, size)?;
-        let endianness = self.endianness();
         // get_bytes_unchecked tests alignment
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
@@ -784,7 +784,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return Ok(ScalarMaybeUndef::Undef);
         }
         // Now we do the actual reading
-        let bits = read_target_uint(endianness, bytes).unwrap();
+        let bits = read_target_uint(self.tcx.data_layout.endian, bytes).unwrap();
         // See if we got a pointer
         if size != self.pointer_size() {
             if self.relocations(ptr, size)?.len() != 0 {
@@ -801,10 +801,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         }
         // We don't. Just return the bits.
-        Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
-            bits,
-            size: size.bytes() as u8,
-        }))
+        Ok(ScalarMaybeUndef::Scalar(Scalar::from_uint(bits, size)))
     }
 
     pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align)
@@ -820,8 +817,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         val: ScalarMaybeUndef,
         type_size: Size,
     ) -> EvalResult<'tcx> {
-        let endianness = self.endianness();
-
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
             ScalarMaybeUndef::Undef => return self.mark_definedness(ptr, type_size, false),
@@ -835,7 +830,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, type_size.bytes());
-                assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
                     "Unexpected value of size {} when writing to memory", size);
                 bits
             },
@@ -843,8 +838,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         {
             // get_bytes_mut checks alignment
+            let endian = self.tcx.data_layout.endian;
             let dst = self.get_bytes_mut(ptr, type_size, ptr_align)?;
-            write_target_uint(endianness, dst, bytes).unwrap();
+            write_target_uint(endian, dst, bytes).unwrap();
         }
 
         // See if we have to also write a relocation

@@ -42,10 +42,7 @@ impl<'tcx> Value {
         len: u64,
         cx: impl HasDataLayout
     ) -> Self {
-        Value::ScalarPair(val.into(), Scalar::Bits {
-            bits: len as u128,
-            size: cx.data_layout().pointer_size.bytes() as u8,
-        }.into())
+        Value::ScalarPair(val.into(), Scalar::from_uint(len, cx.data_layout().pointer_size).into())
     }
 
     pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {

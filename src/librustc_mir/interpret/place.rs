@@ -20,7 +20,7 @@ use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{
-    GlobalId, Scalar, EvalResult, Pointer, ScalarMaybeUndef
+    GlobalId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
 };
 use super::{EvalContext, Machine, Value, ValTy, Operand, OpTy, MemoryKind};
 
@@ -344,10 +344,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::Array(inner, _) =>
                 (None, self.tcx.mk_array(inner, inner_len)),
             ty::Slice(..) => {
-                let len = Scalar::Bits {
-                    bits: inner_len.into(),
-                    size: self.memory.pointer_size().bytes() as u8
-                };
+                let len = Scalar::from_uint(inner_len, self.pointer_size());
                 (Some(len), base.layout.ty)
             }
             _ =>
@@ -716,10 +713,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let discr_val = (discr_val << shift) >> shift;
 
                 let discr_dest = self.place_field(dest, 0)?;
-                self.write_scalar(Scalar::Bits {
-                    bits: discr_val,
-                    size: size.bytes() as u8,
-                }, discr_dest)?;
+                self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
@@ -733,10 +727,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         self.place_field(dest, 0)?;
                     let niche_value = ((variant_index - niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
-                    self.write_scalar(Scalar::Bits {
-                        bits: niche_value,
-                        size: niche_dest.layout.size.bytes() as u8,
-                    }, niche_dest)?;
+                    self.write_scalar(
+                        Scalar::from_uint(niche_value, niche_dest.layout.size),
+                        niche_dest
+                    )?;
                 }
             }
         }
@@ -766,11 +760,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let layout = self.layout_of(ty)?;
 
         // More sanity checks
-        let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
-        assert_eq!(size, layout.size);
-        assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
-        // FIXME: More checks for the vtable? We could make sure it is exactly
-        // the one one would expect for this type.
+        if cfg!(debug_assertions) {
+            let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
+            assert_eq!(size, layout.size);
+            assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+        }
 
         let mplace = MPlaceTy {
             mplace: MemPlace { extra: None, ..*mplace },

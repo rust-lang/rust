@@ -15,7 +15,7 @@ use rustc::ty::layout::{self, Size, Primitive};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, ScalarMaybeUndef, EvalErrorKind
+    Scalar, AllocType, EvalResult, ScalarMaybeUndef, EvalErrorKind, PointerArithmetic
 };
 
 use super::{
@@ -118,7 +118,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 bits
             },
             Scalar::Ptr(_) => {
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 let ptr_max = u128::max_value() >> (128 - ptr_size.bits());
                 return if lo > hi {
                     if lo - hi == 1 {
@@ -376,6 +376,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                         "non-pointer vtable in fat pointer", path
                                     ),
                             }
+                            // FIXME: More checks for the vtable.
                         }
                         ty::Slice(..) | ty::Str => {
                             match ptr.extra.unwrap().to_usize(self) {

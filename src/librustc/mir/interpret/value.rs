@@ -14,7 +14,7 @@ use ty::layout::{HasDataLayout, Size};
 use ty::subst::Substs;
 use hir::def_id::DefId;
 
-use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend};
+use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
@@ -58,6 +58,7 @@ impl<'tcx> ConstValue<'tcx> {
         self.try_to_scalar()?.to_ptr().ok()
     }
 
+    #[inline]
     pub fn new_slice(
         val: Scalar,
         len: u64,
@@ -69,12 +70,14 @@ impl<'tcx> ConstValue<'tcx> {
         }.into())
     }
 
+    #[inline]
     pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
         ConstValue::ScalarPair(val, Scalar::Ptr(vtable).into())
     }
 }
 
 impl<'tcx> Scalar {
+    #[inline]
     pub fn ptr_null(cx: impl HasDataLayout) -> Self {
         Scalar::Bits {
             bits: 0,
@@ -82,10 +85,12 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn zst() -> Self {
         Scalar::Bits { bits: 0, size: 0 }
     }
 
+    #[inline]
     pub fn ptr_signed_offset(self, i: i64, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
@@ -100,6 +105,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn ptr_offset(self, i: Size, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
@@ -114,6 +120,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn ptr_wrapping_signed_offset(self, i: i64, cx: impl HasDataLayout) -> Self {
         let layout = cx.data_layout();
         match self {
@@ -128,6 +135,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn is_null_ptr(self, cx: impl HasDataLayout) -> bool {
         match self {
             Scalar::Bits { bits, size } =>  {
@@ -138,14 +146,53 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
+    pub fn is_null(self) -> bool {
+        match self {
+            Scalar::Bits { bits, .. } => bits == 0,
+            Scalar::Ptr(_) => false
+        }
+    }
+
+    #[inline]
     pub fn from_bool(b: bool) -> Self {
         Scalar::Bits { bits: b as u128, size: 1 }
     }
 
+    #[inline]
     pub fn from_char(c: char) -> Self {
         Scalar::Bits { bits: c as u128, size: 4 }
     }
 
+    #[inline]
+    pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
+        let i = i.into();
+        debug_assert_eq!(truncate(i, size), i,
+                    "Unsigned value {} does not fit in {} bits", i, size.bits());
+        Scalar::Bits { bits: i, size: size.bytes() as u8 }
+    }
+
+    #[inline]
+    pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
+        let i = i.into();
+        // `into` performed sign extension, we have to truncate
+        let truncated = truncate(i as u128, size);
+        debug_assert_eq!(sign_extend(truncated, size) as i128, i,
+                    "Signed value {} does not fit in {} bits", i, size.bits());
+        Scalar::Bits { bits: truncated, size: size.bytes() as u8 }
+    }
+
+    #[inline]
+    pub fn from_f32(f: f32) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
+    }
+
+    #[inline]
+    pub fn from_f64(f: f64) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
+    }
+
+    #[inline]
     pub fn to_bits(self, target_size: Size) -> EvalResult<'tcx, u128> {
         match self {
             Scalar::Bits { bits, size } => {
@@ -157,6 +204,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         match self {
             Scalar::Bits { bits: 0, .. } => err!(InvalidNullPointerUsage),
@@ -165,6 +213,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn is_bits(self) -> bool {
         match self {
             Scalar::Bits { .. } => true,
@@ -172,6 +221,7 @@ impl<'tcx> Scalar {
         }
     }
 
+    #[inline]
     pub fn is_ptr(self) -> bool {
         match self {
             Scalar::Ptr(_) => true,
@@ -209,6 +259,13 @@ impl<'tcx> Scalar {
         Ok(b as u32)
     }
 
+    pub fn to_u64(self) -> EvalResult<'static, u64> {
+        let sz = Size::from_bits(64);
+        let b = self.to_bits(sz)?;
+        assert_eq!(b as u64 as u128, b);
+        Ok(b as u64)
+    }
+
     pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         assert_eq!(b as u64 as u128, b);
@@ -231,11 +288,29 @@ impl<'tcx> Scalar {
         Ok(b as i32)
     }
 
+    pub fn to_i64(self) -> EvalResult<'static, i64> {
+        let sz = Size::from_bits(64);
+        let b = self.to_bits(sz)?;
+        let b = sign_extend(b, sz) as i128;
+        assert_eq!(b as i64 as i128, b);
+        Ok(b as i64)
+    }
+
     pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'static, i64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         let b = sign_extend(b, cx.data_layout().pointer_size) as i128;
         assert_eq!(b as i64 as i128, b);
         Ok(b as i64)
+    }
+
+    #[inline]
+    pub fn to_f32(self) -> EvalResult<'static, f32> {
+        Ok(f32::from_bits(self.to_u32()?))
+    }
+
+    #[inline]
+    pub fn to_f64(self) -> EvalResult<'static, f64> {
+        Ok(f64::from_bits(self.to_u64()?))
     }
 }
 
@@ -309,6 +384,16 @@ impl<'tcx> ScalarMaybeUndef {
     }
 
     #[inline(always)]
+    pub fn to_f32(self) -> EvalResult<'tcx, f32> {
+        self.not_undef()?.to_f32()
+    }
+
+    #[inline(always)]
+    pub fn to_f64(self) -> EvalResult<'tcx, f64> {
+        self.not_undef()?.to_f64()
+    }
+
+    #[inline(always)]
     pub fn to_u8(self) -> EvalResult<'tcx, u8> {
         self.not_undef()?.to_u8()
     }
@@ -316,6 +401,11 @@ impl<'tcx> ScalarMaybeUndef {
     #[inline(always)]
     pub fn to_u32(self) -> EvalResult<'tcx, u32> {
         self.not_undef()?.to_u32()
+    }
+
+    #[inline(always)]
+    pub fn to_u64(self) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_u64()
     }
 
     #[inline(always)]
@@ -331,6 +421,11 @@ impl<'tcx> ScalarMaybeUndef {
     #[inline(always)]
     pub fn to_i32(self) -> EvalResult<'tcx, i32> {
         self.not_undef()?.to_i32()
+    }
+
+    #[inline(always)]
+    pub fn to_i64(self) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_i64()
     }
 
     #[inline(always)]

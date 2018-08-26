@@ -10,7 +10,7 @@
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
-use rustc::mir::interpret::{Scalar, Pointer, EvalResult};
+use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
 use syntax::ast::Mutability;
 
@@ -35,7 +35,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let size = layout.size.bytes();
         let align = layout.align.abi();
 
-        let ptr_size = self.memory.pointer_size();
+        let ptr_size = self.pointer_size();
         let ptr_align = self.tcx.data_layout.pointer_align;
         let methods = self.tcx.vtable_methods(trait_ref);
         let vtable = self.memory.allocate(
@@ -49,15 +49,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.memory.write_ptr_sized(vtable, ptr_align, Scalar::Ptr(drop).into())?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
-        self.memory.write_ptr_sized(size_ptr, ptr_align, Scalar::Bits {
-            bits: size as u128,
-            size: ptr_size.bytes() as u8,
-        }.into())?;
+        self.memory.write_ptr_sized(size_ptr, ptr_align, Scalar::from_uint(size, ptr_size).into())?;
         let align_ptr = vtable.offset(ptr_size * 2, &self)?;
-        self.memory.write_ptr_sized(align_ptr, ptr_align, Scalar::Bits {
-            bits: align as u128,
-            size: ptr_size.bytes() as u8,
-        }.into())?;
+        self.memory.write_ptr_sized(align_ptr, ptr_align,
+            Scalar::from_uint(align, ptr_size).into())?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
@@ -97,7 +92,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         vtable: Pointer,
     ) -> EvalResult<'tcx, (Size, Align)> {
-        let pointer_size = self.memory.pointer_size();
+        let pointer_size = self.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
         let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?,pointer_align)?
             .to_bits(pointer_size)? as u64;

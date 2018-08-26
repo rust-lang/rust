@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::mir;
-use rustc::ty::{self, layout::TyLayout};
+use rustc::ty::{self, layout::{Size, TyLayout}};
 use syntax::ast::FloatTy;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -105,10 +105,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ($ty:path, $size:expr) => {{
                 let l = <$ty>::from_bits(l);
                 let r = <$ty>::from_bits(r);
-                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
-                    bits: res.value.to_bits(),
-                    size: $size,
-                };
+                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>|
+                    Scalar::from_uint(res.value.to_bits(), Size::from_bytes($size));
                 let val = match bin_op {
                     Eq => Scalar::from_bool(l == r),
                     Ne => Scalar::from_bool(l != r),
@@ -169,10 +167,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
             };
             let truncated = self.truncate(result, left_layout);
-            return Ok((Scalar::Bits {
-                bits: truncated,
-                size: size.bytes() as u8,
-            }, oflo));
+            return Ok((Scalar::from_uint(truncated, size), oflo));
         }
 
         // For the remaining ops, the types must be the same on both sides
@@ -220,7 +215,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     Rem | Div => {
                         // int_min / -1
                         if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::Bits { bits: l, size: size.bytes() as u8 }, true));
+                            return Ok((Scalar::from_uint(l, size), true));
                         }
                     },
                     _ => {},
@@ -232,16 +227,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     let max = 1 << (size.bits() - 1);
                     oflo = result >= max || result < -max;
                 }
+                // this may be out-of-bounds for the result type, so we have to truncate ourselves
                 let result = result as u128;
                 let truncated = self.truncate(result, left_layout);
-                return Ok((Scalar::Bits {
-                    bits: truncated,
-                    size: size.bytes() as u8,
-                }, oflo));
+                return Ok((Scalar::from_uint(truncated, size), oflo));
             }
         }
 
-        let size = left_layout.size.bytes() as u8;
+        let size = left_layout.size;
 
         // only ints left
         let val = match bin_op {
@@ -253,11 +246,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Gt => Scalar::from_bool(l > r),
             Ge => Scalar::from_bool(l >= r),
 
-            BitOr => Scalar::Bits { bits: l | r, size },
-            BitAnd => Scalar::Bits { bits: l & r, size },
-            BitXor => Scalar::Bits { bits: l ^ r, size },
+            BitOr => Scalar::from_uint(l | r, size),
+            BitAnd => Scalar::from_uint(l & r, size),
+            BitXor => Scalar::from_uint(l ^ r, size),
 
             Add | Sub | Mul | Rem | Div => {
+                debug_assert!(!left_layout.abi.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
                     Add => u128::overflowing_add,
                     Sub => u128::overflowing_sub,
@@ -270,10 +264,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let (result, oflo) = op(l, r);
                 let truncated = self.truncate(result, left_layout);
-                return Ok((Scalar::Bits {
-                    bits: truncated,
-                    size,
-                }, oflo || truncated != result));
+                return Ok((Scalar::from_uint(truncated, size), oflo || truncated != result));
             }
 
             _ => {
@@ -373,7 +364,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     (Neg, FloatTy::F64) => Double::to_bits(-Double::from_bits(val)),
                     _ => bug!("Invalid float op {:?}", un_op)
                 };
-                Ok(Scalar::Bits { bits: res, size: layout.size.bytes() as u8 })
+                Ok(Scalar::from_uint(res, layout.size))
             }
             _ => {
                 assert!(layout.ty.is_integral());
@@ -386,10 +377,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                 };
                 // res needs tuncating
-                Ok(Scalar::Bits {
-                    bits: self.truncate(res, layout),
-                    size: layout.size.bytes() as u8,
-                })
+                Ok(Scalar::from_uint(self.truncate(res, layout), layout.size))
             }
         }
     }

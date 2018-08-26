@@ -16,7 +16,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 use super::{
     EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
 };
@@ -60,10 +60,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op
-                    let const_int = Scalar::Bits {
-                        bits: const_int,
-                        size: discr.layout.size.bytes() as u8
-                    };
+                    let const_int = Scalar::from_uint(const_int, discr.layout.size);
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
                         discr,
                         ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
@@ -411,7 +408,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
                 let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let vtable = ptr.vtable()?;
