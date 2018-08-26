@@ -102,10 +102,20 @@ impl Globals {
 pub fn with_globals<F, R>(f: F) -> R
     where F: FnOnce() -> R
 {
-    let globals = Globals::new();
-    GLOBALS.set(&globals, || {
-        syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
-    })
+    if GLOBALS.is_set() {
+        if syntax_pos::GLOBALS.is_set() {
+            f()
+        } else {
+            GLOBALS.with(|globals| {
+                syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
+            })
+        }
+    } else {
+        let globals = Globals::new();
+        GLOBALS.set(&globals, || {
+            syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
+        })
+    }
 }
 
 scoped_thread_local!(pub static GLOBALS: Globals);
