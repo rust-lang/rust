@@ -32,6 +32,8 @@ pub struct MemPlace {
     pub ptr: Scalar,
     pub align: Align,
     /// Metadata for unsized places.  Interpretation is up to the type.
+    /// Must not be present for sized types, but can be missing for unsized types
+    /// (e.g. `extern type`).
     pub extra: Option<Scalar>,
 }
 
@@ -236,11 +238,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
-        let mplace = if layout.is_unsized() {
-            let (ptr, extra) = val.to_scalar_pair()?;
-            MemPlace { ptr, align: layout.align, extra: Some(extra) }
-        } else {
-            MemPlace { ptr: val.to_scalar()?, align: layout.align, extra: None }
+        let align = layout.align;
+        let mplace = match *val {
+            Value::Scalar(ptr) =>
+                MemPlace { ptr: ptr.not_undef()?, align, extra: None },
+            Value::ScalarPair(ptr, extra) =>
+                MemPlace { ptr: ptr.not_undef()?, align, extra: Some(extra.not_undef()?) },
         };
         Ok(MPlaceTy { mplace, layout })
     }

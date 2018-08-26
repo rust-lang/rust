@@ -232,8 +232,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        debug_assert_eq!(mplace.extra.is_some(), mplace.layout.is_unsized());
-        if mplace.extra.is_some() {
+        if mplace.layout.is_unsized() {
             // Dont touch unsized
             return Ok(None);
         }
