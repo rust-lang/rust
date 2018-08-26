@@ -608,15 +608,38 @@ impl Step for DocUI {
 
     fn run(self, builder: &Builder) {
         if let Some(ref nodejs) = builder.config.nodejs {
-            let mut command = Command::new(nodejs);
-            command.args(&["src/tools/doc-ui/script.js",
-                           &*self.host,
-                           &builder.top_stage.to_string()]);
-            builder.ensure(::doc::Std {
-                target: self.target,
-                stage: builder.top_stage,
-            });
-            builder.run(&mut command);
+            let mut found_puppeteer = false;
+            // Check if puppeteer is installed locally.
+            if let Ok(output) = Command::new("npm")
+                                        .args(&["ls", "puppeteer", "puppeteer-core"])
+                                        .current_dir("src/tools/doc-ui")
+                                        .output() {
+                found_puppeteer = String::from_utf8_lossy(&output.stdout).contains("puppeteer");
+            }
+            if !found_puppeteer {
+                // Check if puppeteer is installed "globally".
+                if let Ok(output) = Command::new("npm")
+                                            .args(&["ls", "-g", "puppeteer", "puppeteer-core"])
+                                            .output() {
+                    found_puppeteer = String::from_utf8_lossy(&output.stdout).contains("puppeteer");
+                }
+            }
+            if !found_puppeteer {
+                let mut command = Command::new(nodejs);
+                command.args(&["src/tools/doc-ui/script.js",
+                               &*self.host,
+                               &builder.top_stage.to_string()]);
+                builder.ensure(::doc::Std {
+                    target: self.target,
+                    stage: builder.top_stage,
+                });
+                builder.run(&mut command);
+            } else {
+                builder.info(&format!(
+                    "No puppeteer found (maybe try installing it with `npm install puppeteer`?), \
+                     skipping \"src/test/doc-ui\" tests"
+                ));
+            }
         } else {
             builder.info(&format!(
                 "No nodejs found, skipping \"src/test/doc-ui\" tests"
