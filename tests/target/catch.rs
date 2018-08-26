@@ -1,21 +1,22 @@
-#![feature(catch_expr)]
+// rustfmt-edition: Edition2018
+#![feature(try_blocks)]
 
 fn main() {
-    let x = do catch { foo()? };
+    let x = try { foo()? };
 
-    let x = do catch /* Invisible comment */ { foo()? };
+    let x = try /* Invisible comment */ { foo()? };
 
-    let x = do catch { unsafe { foo()? } };
+    let x = try { unsafe { foo()? } };
 
-    let y = match (do catch { foo()? }) {
+    let y = match (try { foo()? }) {
         _ => (),
     };
 
-    do catch {
+    try {
         foo()?;
     };
 
-    do catch {
-        // Regular do catch block
+    try {
+        // Regular try block
     };
 }

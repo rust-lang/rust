@@ -173,7 +173,7 @@ fn rewrite_closure_expr(
         match expr.node {
             ast::ExprKind::Match(..)
             | ast::ExprKind::Block(..)
-            | ast::ExprKind::Catch(..)
+            | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::Struct(..) => true,
 

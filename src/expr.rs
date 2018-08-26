@@ -317,22 +317,17 @@ pub fn format_expr(
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
         ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
-        ast::ExprKind::Catch(ref block) => {
-            if let rw @ Some(_) = rewrite_single_line_block(
-                context,
-                "do catch ",
-                block,
-                Some(&expr.attrs),
-                None,
-                shape,
-            ) {
+        ast::ExprKind::TryBlock(ref block) => {
+            if let rw @ Some(_) =
+                rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)
+            {
                 rw
             } else {
-                // 9 = `do catch `
+                // 9 = `try `
                 let budget = shape.width.saturating_sub(9);
                 Some(format!(
                     "{}{}",
-                    "do catch ",
+                    "try ",
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
