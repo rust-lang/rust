@@ -41,6 +41,10 @@ matrix:
     - env: INTEGRATION=crater
     # Doesn't build
     - env: INTEGRATION=futures-rs
+    # Doesn't build - seems to be because of an option
+    - env: INTEGRATION=packed_simd
+    # Weird bug I can't reproduce: #2969
+    - env: INTEGRATION=rand
     # Test failure
     - env: INTEGRATION=rust-clippy
     # Build failure
