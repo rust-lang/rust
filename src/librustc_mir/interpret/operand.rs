@@ -585,7 +585,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     .expect("tagged layout for non adt")
                     .discriminants(self.tcx.tcx)
                     .position(|var| var.val == real_discr)
-                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant)?;
+                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(real_discr))?;
                 (real_discr, index)
             },
             layout::Variants::NicheFilling {

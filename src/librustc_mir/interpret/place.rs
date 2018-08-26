@@ -660,7 +660,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         // a fake pointer?  Are we even called for ZST?
 
                         // We need the layout of the local.  We can NOT use the layout we got,
-                        // that might e.g. be a downcast variant!
+                        // that might e.g. be an inner field of a struct with `Scalar` layout,
+                        // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(frame, local)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
                         self.write_value_to_mplace(value, ptr)?;
@@ -695,15 +696,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx> {
         match dest.layout.variants {
             layout::Variants::Single { index } => {
-                if index != variant_index {
-                    return err!(InvalidDiscriminant);
-                }
+                assert_eq!(index, variant_index);
             }
             layout::Variants::Tagged { ref tag, .. } => {
                 let adt_def = dest.layout.ty.ty_adt_def().unwrap();
-                if variant_index >= adt_def.variants.len() {
-                    return err!(InvalidDiscriminant);
-                }
+                assert!(variant_index < adt_def.variants.len());
                 let discr_val = adt_def
                     .discriminant_for_variant(*self.tcx, variant_index)
                     .val;
@@ -727,9 +724,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 niche_start,
                 ..
             } => {
-                if variant_index >= dest.layout.ty.ty_adt_def().unwrap().variants.len() {
-                    return err!(InvalidDiscriminant);
-                }
+                assert!(variant_index < dest.layout.ty.ty_adt_def().unwrap().variants.len());
                 if variant_index != dataful_variant {
                     let niche_dest =
                         self.place_field(dest, 0)?;

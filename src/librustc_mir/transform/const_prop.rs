@@ -170,7 +170,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     | DoubleFree
                     | InvalidFunctionPointer
                     | InvalidBool
-                    | InvalidDiscriminant
+                    | InvalidDiscriminant(..)
                     | PointerOutOfBounds { .. }
                     | InvalidNullPointerUsage
                     | MemoryLockViolation { .. }

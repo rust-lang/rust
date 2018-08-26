@@ -276,7 +276,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
-    /// `sig` is ptional in case of FnPtr/FnDef -- but mandatory for closures!
+    /// `sig` is optional in case of FnPtr/FnDef -- but mandatory for closures!
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -462,7 +462,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         };
 
-        let ty = self.tcx.mk_tup((&[] as &[ty::Ty<'tcx>]).iter()); // return type is ()
+        let ty = self.tcx.mk_nil(); // return type is ()
         let dest = PlaceTy::null(&self, self.layout_of(ty)?);
 
         self.eval_fn_call(

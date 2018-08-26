@@ -208,10 +208,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             layout::Variants::Tagged { .. } => {
                 let variant = match self.read_discriminant(dest) {
                     Ok(res) => res.1,
-                    Err(_) =>
-                        return validation_failure!(
-                            "invalid enum discriminant", path
-                        ),
+                    Err(err) => match err.kind {
+                        EvalErrorKind::InvalidDiscriminant(val) =>
+                            return validation_failure!(
+                                format!("invalid enum discriminant {}", val), path
+                            ),
+                        _ =>
+                            return validation_failure!(
+                                format!("non-integer enum discriminant"), path
+                            ),
+                    }
                 };
                 let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field

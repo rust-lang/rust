@@ -517,7 +517,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             InvalidMemoryAccess |
             InvalidFunctionPointer |
             InvalidBool |
-            InvalidDiscriminant |
             InvalidNullPointerUsage |
             ReadPointerAsBytes |
             ReadBytesAsPointer |
@@ -550,6 +549,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             GeneratorResumedAfterReturn |
             GeneratorResumedAfterPanic |
             InfiniteLoop => {}
+            InvalidDiscriminant(val) => val.hash_stable(hcx, hasher),
             Panic { ref msg, ref file, line, col } => {
                 msg.hash_stable(hcx, hasher);
                 file.hash_stable(hcx, hasher);

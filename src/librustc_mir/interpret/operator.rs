@@ -48,111 +48,100 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// Returns the result of the specified operation and whether it overflowed.
-    pub fn binary_op(
+    fn binary_char_op(
         &self,
         bin_op: mir::BinOp,
-        ValTy { value: left, layout: left_layout }: ValTy<'tcx>,
-        ValTy { value: right, layout: right_layout }: ValTy<'tcx>,
+        l: char,
+        r: char,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left = left.to_scalar()?;
-        let right = right.to_scalar()?;
+        let res = match bin_op {
+            Eq => l == r,
+            Ne => l != r,
+            Lt => l < r,
+            Le => l <= r,
+            Gt => l > r,
+            Ge => l >= r,
+            _ => bug!("Invalid operation on char: {:?}", bin_op),
+        };
+        return Ok((Scalar::from_bool(res), false));
+    }
 
-        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-            bin_op, left, left_layout.ty.sty, right, right_layout.ty.sty);
+    fn binary_bool_op(
+        &self,
+        bin_op: mir::BinOp,
+        l: bool,
+        r: bool,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        use rustc::mir::BinOp::*;
 
-        // Handle non-integer operations
-        if let ty::Char = left_layout.ty.sty {
-            assert_eq!(right_layout.ty.sty, ty::Char);
-            let l = left.to_char()?;
-            let r = right.to_char()?;
-            let res = match bin_op {
-                Eq => l == r,
-                Ne => l != r,
-                Lt => l < r,
-                Le => l <= r,
-                Gt => l > r,
-                Ge => l >= r,
-                _ => bug!("Invalid operation on char: {:?}", bin_op),
-            };
-            return Ok((Scalar::from_bool(res), false));
-        }
-        if let ty::Bool = left_layout.ty.sty {
-            assert_eq!(right_layout.ty.sty, ty::Bool);
-            let l = left.to_bool()?;
-            let r = right.to_bool()?;
-            let res = match bin_op {
-                Eq => l == r,
-                Ne => l != r,
-                Lt => l < r,
-                Le => l <= r,
-                Gt => l > r,
-                Ge => l >= r,
-                BitAnd => l & r,
-                BitOr => l | r,
-                BitXor => l ^ r,
-                _ => bug!("Invalid operation on bool: {:?}", bin_op),
-            };
-            return Ok((Scalar::from_bool(res), false));
-        }
-        if let ty::Float(fty) = left_layout.ty.sty {
-            let l = left.to_bits(left_layout.size)?;
-            let r = right.to_bits(right_layout.size)?;
-            assert_eq!(right_layout.ty.sty, ty::Float(fty));
-            macro_rules! float_math {
-                ($ty:path, $size:expr) => {{
-                    let l = <$ty>::from_bits(l);
-                    let r = <$ty>::from_bits(r);
-                    let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
-                        bits: res.value.to_bits(),
-                        size: $size,
-                    };
-                    let val = match bin_op {
-                        Eq => Scalar::from_bool(l == r),
-                        Ne => Scalar::from_bool(l != r),
-                        Lt => Scalar::from_bool(l < r),
-                        Le => Scalar::from_bool(l <= r),
-                        Gt => Scalar::from_bool(l > r),
-                        Ge => Scalar::from_bool(l >= r),
-                        Add => bitify(l + r),
-                        Sub => bitify(l - r),
-                        Mul => bitify(l * r),
-                        Div => bitify(l / r),
-                        Rem => bitify(l % r),
-                        _ => bug!("invalid float op: `{:?}`", bin_op),
-                    };
-                    return Ok((val, false));
-                }};
-            }
-            match fty {
-                FloatTy::F32 => float_math!(Single, 4),
-                FloatTy::F64 => float_math!(Double, 8),
-            }
-        }
-        // Only integers left
-        #[inline]
-        fn is_ptr<'tcx>(ty: ty::Ty<'tcx>) -> bool {
-            match ty.sty {
-                ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
-                _ => false,
-            }
-        }
-        assert!(left_layout.ty.is_integral() || is_ptr(left_layout.ty));
-        assert!(right_layout.ty.is_integral() || is_ptr(right_layout.ty));
+        let res = match bin_op {
+            Eq => l == r,
+            Ne => l != r,
+            Lt => l < r,
+            Le => l <= r,
+            Gt => l > r,
+            Ge => l >= r,
+            BitAnd => l & r,
+            BitOr => l | r,
+            BitXor => l ^ r,
+            _ => bug!("Invalid operation on bool: {:?}", bin_op),
+        };
+        return Ok((Scalar::from_bool(res), false));
+    }
 
-        // Handle operations that support pointers
-        if let Some(handled) =
-            M::try_ptr_op(self, bin_op, left, left_layout, right, right_layout)?
-        {
-            return Ok(handled);
-        }
+    fn binary_float_op(
+        &self,
+        bin_op: mir::BinOp,
+        fty: FloatTy,
+        // passing in raw bits
+        l: u128,
+        r: u128,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        use rustc::mir::BinOp::*;
 
-        // From now on, everything must be bytes, no pointer values
-        // (this is independent of the type)
-        let l = left.to_bits(left_layout.size)?;
-        let r = right.to_bits(right_layout.size)?;
+        macro_rules! float_math {
+            ($ty:path, $size:expr) => {{
+                let l = <$ty>::from_bits(l);
+                let r = <$ty>::from_bits(r);
+                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
+                    bits: res.value.to_bits(),
+                    size: $size,
+                };
+                let val = match bin_op {
+                    Eq => Scalar::from_bool(l == r),
+                    Ne => Scalar::from_bool(l != r),
+                    Lt => Scalar::from_bool(l < r),
+                    Le => Scalar::from_bool(l <= r),
+                    Gt => Scalar::from_bool(l > r),
+                    Ge => Scalar::from_bool(l >= r),
+                    Add => bitify(l + r),
+                    Sub => bitify(l - r),
+                    Mul => bitify(l * r),
+                    Div => bitify(l / r),
+                    Rem => bitify(l % r),
+                    _ => bug!("invalid float op: `{:?}`", bin_op),
+                };
+                return Ok((val, false));
+            }};
+        }
+        match fty {
+            FloatTy::F32 => float_math!(Single, 4),
+            FloatTy::F64 => float_math!(Double, 8),
+        }
+    }
+
+    fn binary_int_op(
+        &self,
+        bin_op: mir::BinOp,
+        // passing in raw bits
+        l: u128,
+        left_layout: TyLayout<'tcx>,
+        r: u128,
+        right_layout: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        use rustc::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
@@ -189,11 +178,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // For the remaining ops, the types must be the same on both sides
         if left_layout.ty != right_layout.ty {
             let msg = format!(
-                "unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+                "unimplemented asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
                 bin_op,
-                left,
+                l,
                 left_layout.ty,
-                right,
+                r,
                 right_layout.ty
             );
             return err!(Unimplemented(msg));
@@ -289,11 +278,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             _ => {
                 let msg = format!(
-                    "unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+                    "unimplemented binary op {:?}: {:?}, {:?} (both {:?})",
                     bin_op,
-                    left,
-                    left_layout.ty,
-                    right,
+                    l,
+                    r,
                     right_layout.ty,
                 );
                 return err!(Unimplemented(msg));
@@ -301,6 +289,65 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
 
         Ok((val, false))
+    }
+
+    /// Returns the result of the specified operation and whether it overflowed.
+    pub fn binary_op(
+        &self,
+        bin_op: mir::BinOp,
+        ValTy { value: left, layout: left_layout }: ValTy<'tcx>,
+        ValTy { value: right, layout: right_layout }: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        let left = left.to_scalar()?;
+        let right = right.to_scalar()?;
+
+        trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+            bin_op, left, left_layout.ty.sty, right, right_layout.ty.sty);
+
+        match left_layout.ty.sty {
+            ty::Char => {
+                assert_eq!(left_layout.ty, right_layout.ty);
+                let l = left.to_char()?;
+                let r = right.to_char()?;
+                self.binary_char_op(bin_op, l, r)
+            }
+            ty::Bool => {
+                assert_eq!(left_layout.ty, right_layout.ty);
+                let l = left.to_bool()?;
+                let r = right.to_bool()?;
+                self.binary_bool_op(bin_op, l, r)
+            }
+            ty::Float(fty) => {
+                assert_eq!(left_layout.ty, right_layout.ty);
+                let l = left.to_bits(left_layout.size)?;
+                let r = right.to_bits(right_layout.size)?;
+                self.binary_float_op(bin_op, fty, l, r)
+            }
+            _ => {
+                // Must be integer(-like) types
+                #[inline]
+                fn is_ptr<'tcx>(ty: ty::Ty<'tcx>) -> bool {
+                    match ty.sty {
+                        ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
+                        _ => false,
+                    }
+                }
+                assert!(left_layout.ty.is_integral() || is_ptr(left_layout.ty));
+                assert!(right_layout.ty.is_integral() || is_ptr(right_layout.ty));
+
+                // Handle operations that support pointer values
+                if let Some(handled) =
+                    M::try_ptr_op(self, bin_op, left, left_layout, right, right_layout)?
+                {
+                    return Ok(handled);
+                }
+
+                // Everything else only works with "proper" bits
+                let l = left.to_bits(left_layout.size)?;
+                let r = right.to_bits(right_layout.size)?;
+                self.binary_int_op(bin_op, l, left_layout, r, right_layout)
+            }
+        }
     }
 
     pub fn unary_op(

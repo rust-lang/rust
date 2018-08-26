@@ -498,7 +498,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             InvalidMemoryAccess => InvalidMemoryAccess,
             InvalidFunctionPointer => InvalidFunctionPointer,
             InvalidBool => InvalidBool,
-            InvalidDiscriminant => InvalidDiscriminant,
+            InvalidDiscriminant(val) => InvalidDiscriminant(val),
             PointerOutOfBounds {
                 ptr,
                 access,
