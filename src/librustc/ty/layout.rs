@@ -1621,18 +1621,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 match tcx.struct_tail(pointee).sty {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
-                    ty::Dynamic(data, _) => {
-                        let trait_def_id = data.principal().unwrap().def_id();
-                        let num_fns: u64 = crate::traits::supertrait_def_ids(tcx, trait_def_id)
-                            .map(|trait_def_id| {
-                                tcx.associated_items(trait_def_id)
-                                    .filter(|item| item.kind == ty::AssociatedKind::Method)
-                                    .count() as u64
-                            })
-                            .sum();
+                    ty::Dynamic(_, _) => {
                         tcx.mk_imm_ref(
                             tcx.types.re_static,
-                            tcx.mk_array(tcx.types.usize, 3 + num_fns),
+                            tcx.mk_array(tcx.types.usize, 3),
                         )
                         /* FIXME use actual fn pointers
                         tcx.mk_tup(&[
