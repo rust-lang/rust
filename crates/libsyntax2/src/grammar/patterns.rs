@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet =
     token_set_union![
-        token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP],
+        token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE],
         expressions::LITERAL_FIRST,
         paths::PATH_FIRST,
     ];
@@ -97,7 +97,13 @@ fn tuple_pat_fields(p: &mut Parser) {
     while !p.at(EOF) && !p.at(R_PAREN) {
         match p.current() {
             DOTDOT => p.bump(),
-            _ => pattern(p),
+            _ => {
+                if !PATTERN_FIRST.contains(p.current()) {
+                    p.error("expected a pattern");
+                    break;
+                }
+                pattern(p)
+            }
         }
         if !p.at(R_PAREN) {
             p.expect(COMMA);
@@ -125,6 +131,7 @@ fn field_pat_list(p: &mut Parser) {
                 p.bump();
                 pattern(p);
             }
+            L_CURLY => error_block(p, "expected ident"),
             _ => {
                 bind_pat(p, false);
             }

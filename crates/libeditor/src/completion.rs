@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use libsyntax2::{
-    File, TextUnit, AstNode, SyntaxNodeRef,
+    File, TextUnit, AstNode, SyntaxNodeRef, SyntaxNode, SmolStr,
     ast::{self, NameOwner},
     algo::{
         ancestors,
@@ -59,3 +61,52 @@ fn process_scope(node: SyntaxNodeRef, sink: &mut Vec<CompletionItem>) {
         sink.extend(items);
     }
 }
+
+// fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
+//     let mut scopes = FnScopes::new();
+// }
+
+// type ScopeId = usize;
+
+// struct FnScopes {
+//     scopes: Vec<ScopeData>,
+//     scope_for_expr: HashMap<SyntaxNode, ScopeId>,
+// }
+
+// impl FnScopes {
+//     fn new() -> FnScopes {
+//         FnScopes {
+//             scopes: vec![],
+//             scope_for_expr: HashMap::new(),
+//         }
+//     }
+
+//     fn new_scope(&mut Self) -> ScopeId {
+//         let res = self.scopes.len();
+//         self.scopes.push(ScopeData { parent: None, entries: vec![] })
+//     }
+
+//     fn set_parent
+// }
+
+// struct ScopeData {
+//     parent: Option<ScopeId>,
+//     entries: Vec<ScopeEntry>
+// }
+
+// struct ScopeEntry {
+//     syntax: SyntaxNode
+// }
+
+// impl ScopeEntry {
+//     fn name(&self) -> SmolStr {
+//         self.ast().name()
+//             .unwrap()
+//             .text()
+//     }
+
+//     fn ast(&self) -> ast::BindPat {
+//         ast::BindPat::cast(self.syntax.borrowed())
+//             .unwrap()
+//     }
+// }

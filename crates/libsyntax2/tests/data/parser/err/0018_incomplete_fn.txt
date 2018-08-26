@@ -1,0 +1,179 @@
+ROOT@[0; 183)
+  IMPL_ITEM@[0; 182)
+    IMPL_KW@[0; 4)
+    WHITESPACE@[4; 5)
+    PATH_TYPE@[5; 13)
+      PATH@[5; 13)
+        PATH_SEGMENT@[5; 13)
+          NAME_REF@[5; 13)
+            IDENT@[5; 13) "FnScopes"
+    WHITESPACE@[13; 14)
+    ITEM_LIST@[14; 182)
+      L_CURLY@[14; 15)
+      WHITESPACE@[15; 20)
+      FN_DEF@[20; 181)
+        FN_KW@[20; 22)
+        WHITESPACE@[22; 23)
+        NAME@[23; 32)
+          IDENT@[23; 32) "new_scope"
+        PARAM_LIST@[32; 181)
+          L_PAREN@[32; 33)
+          PARAM@[33; 38)
+            REF_PAT@[33; 35)
+              AMP@[33; 34)
+              err: `expected pattern`
+              ERROR@[34; 35)
+                R_PAREN@[34; 35)
+                err: `expected COLON`
+            WHITESPACE@[35; 36)
+            err: `expected type`
+            ERROR@[36; 38)
+              THIN_ARROW@[36; 38)
+              err: `expected COMMA`
+          WHITESPACE@[38; 39)
+          PARAM@[39; 169)
+            STRUCT_PAT@[39; 161)
+              PATH@[39; 46)
+                PATH_SEGMENT@[39; 46)
+                  NAME_REF@[39; 46)
+                    IDENT@[39; 46) "ScopeId"
+              WHITESPACE@[46; 47)
+              FIELD_PAT_LIST@[47; 161)
+                L_CURLY@[47; 48)
+                WHITESPACE@[48; 57)
+                err: `expected a name`
+                BIND_PAT@[57; 60)
+                  ERROR@[57; 60)
+                    LET_KW@[57; 60)
+                    err: `expected COMMA`
+                WHITESPACE@[60; 61)
+                BIND_PAT@[61; 64)
+                  NAME@[61; 64)
+                    IDENT@[61; 64) "res"
+                    err: `expected COMMA`
+                WHITESPACE@[64; 65)
+                err: `expected a name`
+                BIND_PAT@[65; 66)
+                  ERROR@[65; 66)
+                    EQ@[65; 66)
+                    err: `expected COMMA`
+                WHITESPACE@[66; 67)
+                err: `expected a name`
+                BIND_PAT@[67; 71)
+                  ERROR@[67; 71)
+                    SELF_KW@[67; 71)
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[71; 72)
+                  ERROR@[71; 72)
+                    DOT@[71; 72)
+                    err: `expected COMMA`
+                BIND_PAT@[72; 78)
+                  NAME@[72; 78)
+                    IDENT@[72; 78) "scopes"
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[78; 79)
+                  ERROR@[78; 79)
+                    DOT@[78; 79)
+                    err: `expected COMMA`
+                BIND_PAT@[79; 82)
+                  NAME@[79; 82)
+                    IDENT@[79; 82) "len"
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[82; 83)
+                  ERROR@[82; 83)
+                    L_PAREN@[82; 83)
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[83; 84)
+                  ERROR@[83; 84)
+                    R_PAREN@[83; 84)
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[84; 85)
+                  ERROR@[84; 85)
+                    SEMI@[84; 85)
+                    err: `expected COMMA`
+                WHITESPACE@[85; 94)
+                err: `expected a name`
+                BIND_PAT@[94; 98)
+                  ERROR@[94; 98)
+                    SELF_KW@[94; 98)
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[98; 99)
+                  ERROR@[98; 99)
+                    DOT@[98; 99)
+                    err: `expected COMMA`
+                BIND_PAT@[99; 105)
+                  NAME@[99; 105)
+                    IDENT@[99; 105) "scopes"
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[105; 106)
+                  ERROR@[105; 106)
+                    DOT@[105; 106)
+                    err: `expected COMMA`
+                BIND_PAT@[106; 110)
+                  NAME@[106; 110)
+                    IDENT@[106; 110) "push"
+                    err: `expected COMMA`
+                    err: `expected a name`
+                BIND_PAT@[110; 111)
+                  ERROR@[110; 111)
+                    L_PAREN@[110; 111)
+                    err: `expected COMMA`
+                BIND_PAT@[111; 120)
+                  NAME@[111; 120)
+                    IDENT@[111; 120) "ScopeData"
+                    err: `expected COMMA`
+                WHITESPACE@[120; 121)
+                err: `expected ident`
+                ERROR@[121; 154)
+                  L_CURLY@[121; 122)
+                  WHITESPACE@[122; 123)
+                  IDENT@[123; 129) "parent"
+                  COLON@[129; 130)
+                  WHITESPACE@[130; 131)
+                  IDENT@[131; 135) "None"
+                  COMMA@[135; 136)
+                  WHITESPACE@[136; 137)
+                  IDENT@[137; 144) "entries"
+                  COLON@[144; 145)
+                  WHITESPACE@[145; 146)
+                  IDENT@[146; 149) "vec"
+                  EXCL@[149; 150)
+                  L_BRACK@[150; 151)
+                  R_BRACK@[151; 152)
+                  WHITESPACE@[152; 153)
+                  R_CURLY@[153; 154)
+                  err: `expected COMMA`
+                  err: `expected a name`
+                BIND_PAT@[154; 155)
+                  ERROR@[154; 155)
+                    R_PAREN@[154; 155)
+                WHITESPACE@[155; 160)
+                R_CURLY@[160; 161)
+                err: `expected COLON`
+            WHITESPACE@[161; 167)
+            FN_POINTER_TYPE@[167; 169)
+              FN_KW@[167; 169)
+              err: `expected parameters`
+              err: `expected COMMA`
+          WHITESPACE@[169; 170)
+          PARAM@[170; 181)
+            BIND_PAT@[170; 180)
+              NAME@[170; 180)
+                IDENT@[170; 180) "set_parent"
+                err: `expected COLON`
+            WHITESPACE@[180; 181)
+            err: `expected type`
+            err: `expected COMMA`
+            err: `expected value parameter`
+            err: `expected R_PAREN`
+            err: `expected a block`
+            ERROR@[181; 181)
+      R_CURLY@[181; 182)
+  WHITESPACE@[182; 183)
