@@ -14,14 +14,58 @@ use super::eval_context::{LocalValue, StackPopCleanup};
 use super::{Frame, Memory, Machine, Operand, MemPlace, Place, Value};
 
 trait SnapshotContext<'a> {
-    type To;
-    type From;
-    fn resolve(&'a self, id: &Self::From) -> Option<&'a Self::To>;
+    fn resolve(&'a self, id: &AllocId) -> Option<&'a Allocation>;
 }
 
 trait Snapshot<'a, Ctx: SnapshotContext<'a>> {
     type Item;
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item;
+}
+
+macro_rules! __impl_snapshot_field {
+    ($field:ident, $ctx:expr) => ($field.snapshot($ctx));
+    ($field:ident, $ctx:expr, $delegate:expr) => ($delegate);
+}
+
+macro_rules! impl_snapshot_for {
+    // FIXME(mark-i-m): Some of these should be `?` rather than `*`.
+    (enum $enum_name:ident { $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)*),* ) )* ),* $(,)* }) => {
+        impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
+            where Ctx: self::SnapshotContext<'a>,
+        {
+            type Item = $enum_name<AllocIdSnapshot<'a>>;
+
+            #[inline]
+            fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
+                match *self {
+                    $(
+                        $enum_name::$variant $( ( $(ref $field),* ) )* =>
+                            $enum_name::$variant $( ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),* ), )*
+                    )*
+                }
+            }
+        }
+    };
+
+    // FIXME(mark-i-m): same here.
+    (struct $struct_name:ident { $($field:ident $(-> $delegate:expr)*),*  $(,)* }) => {
+        impl<'a, Ctx> self::Snapshot<'a, Ctx> for $struct_name
+            where Ctx: self::SnapshotContext<'a>,
+        {
+            type Item = $struct_name<AllocIdSnapshot<'a>>;
+
+            #[inline]
+            fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
+                let $struct_name {
+                    $(ref $field),*
+                } = *self;
+
+                $struct_name {
+                    $( $field: __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),*
+                }
+            }
+        }
+    };
 }
 
 impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
@@ -42,7 +86,7 @@ impl<'a, Ctx, T> Snapshot<'a, Ctx> for Option<T>
 struct AllocIdSnapshot<'a>(Option<AllocationSnapshot<'a>>);
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
     type Item = AllocIdSnapshot<'a>;
 
@@ -51,34 +95,20 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
     }
 }
 
-type PointerSnapshot<'a> = Pointer<AllocIdSnapshot<'a>>;
-
-impl<'a, Ctx> Snapshot<'a, Ctx> for Pointer
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = PointerSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Pointer{ alloc_id, offset } = self;
-
-        Pointer {
-            alloc_id: alloc_id.snapshot(ctx),
-            offset: *offset,
-        }
-    }
-}
-
-type ScalarSnapshot<'a> = Scalar<AllocIdSnapshot<'a>>;
+impl_snapshot_for!(struct Pointer {
+    alloc_id,
+    offset -> *offset,
+});
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
-    type Item = ScalarSnapshot<'a>;
+    type Item = Scalar<AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
             Scalar::Ptr(p) => Scalar::Ptr(p.snapshot(ctx)),
-            Scalar::Bits{ size, bits } => Scalar::Bits{
+            Scalar::Bits{ size, bits } => Scalar::Bits {
                 size: *size,
                 bits: *bits,
             },
@@ -86,45 +116,21 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     }
 }
 
-type ScalarMaybeUndefSnapshot<'a> = ScalarMaybeUndef<AllocIdSnapshot<'a>>;
+impl_snapshot_for!(enum ScalarMaybeUndef {
+    Scalar(s),
+    Undef,
+});
 
-impl<'a, Ctx> Snapshot<'a, Ctx> for ScalarMaybeUndef
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = ScalarMaybeUndefSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.snapshot(ctx)),
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
-        }
-    }
-}
-
-type MemPlaceSnapshot<'a> = MemPlace<AllocIdSnapshot<'a>>;
-
-impl<'a, Ctx> Snapshot<'a, Ctx> for MemPlace
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = MemPlaceSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let MemPlace{ ptr, extra, align } = self;
-
-        MemPlaceSnapshot{
-            ptr: ptr.snapshot(ctx),
-            extra: extra.snapshot(ctx),
-            align: *align,
-        }
-    }
-}
-
-type PlaceSnapshot<'a> = Place<AllocIdSnapshot<'a>>;
+impl_snapshot_for!(struct MemPlace {
+    ptr,
+    extra,
+    align -> *align,
+});
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
-    type Item = PlaceSnapshot<'a>;
+    type Item = Place<AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
@@ -138,57 +144,25 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
-type ValueSnapshot<'a> = Value<AllocIdSnapshot<'a>>;
+impl_snapshot_for!(enum Value {
+    Scalar(s),
+    ScalarPair(s, t),
+});
 
-impl<'a, Ctx> Snapshot<'a, Ctx> for Value
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = ValueSnapshot<'a>;
+impl_snapshot_for!(enum Operand {
+    Immediate(v),
+    Indirect(m),
+});
 
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            Value::Scalar(s) => Value::Scalar(s.snapshot(ctx)),
-            Value::ScalarPair(a, b) => Value::ScalarPair(a.snapshot(ctx), b.snapshot(ctx)),
-        }
-    }
-}
-
-type OperandSnapshot<'a> = Operand<AllocIdSnapshot<'a>>;
-
-impl<'a, Ctx> Snapshot<'a, Ctx> for Operand
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = OperandSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            Operand::Immediate(v) => Operand::Immediate(v.snapshot(ctx)),
-            Operand::Indirect(m) => Operand::Indirect(m.snapshot(ctx)),
-        }
-    }
-}
-
-type LocalValueSnapshot<'a> = LocalValue<AllocIdSnapshot<'a>>;
-
-impl<'a, Ctx> Snapshot<'a, Ctx> for LocalValue
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
-{
-    type Item = LocalValueSnapshot<'a>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            LocalValue::Live(v) => LocalValue::Live(v.snapshot(ctx)),
-            LocalValue::Dead => LocalValue::Dead,
-        }
-    }
-}
-
-type RelocationsSnapshot<'a> = Relocations<AllocIdSnapshot<'a>>;
+impl_snapshot_for!(enum LocalValue {
+    Live(v),
+    Dead,
+});
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
-    type Item = RelocationsSnapshot<'a>;
+    type Item = Relocations<AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         Relocations::from_presorted(self.iter().map(|(size, id)| (*size, id.snapshot(ctx))).collect())
@@ -198,14 +172,14 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
 #[derive(Eq, PartialEq)]
 struct AllocationSnapshot<'a> {
     bytes: &'a [u8],
-    relocations: RelocationsSnapshot<'a>,
+    relocations: Relocations<AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
     align: &'a Align,
     mutability: &'a Mutability,
 }
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
     type Item = AllocationSnapshot<'a>;
 
@@ -227,14 +201,14 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
-    return_place: PlaceSnapshot<'a>,
-    locals: IndexVec<mir::Local, LocalValueSnapshot<'a>>,
+    return_place: Place<AllocIdSnapshot<'a>>,
+    locals: IndexVec<mir::Local, LocalValue<AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
 }
 
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
-    where Ctx: SnapshotContext<'a, To=Allocation, From=AllocId>,
+    where Ctx: SnapshotContext<'a>,
 {
     type Item = FrameSnapshot<'a, 'tcx>;
 
@@ -279,9 +253,7 @@ impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
-    type To = Allocation;
-    type From = AllocId;
-    fn resolve(&'b self, id: &Self::From) -> Option<&'b Self::To> {
+    fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
         self.get(*id).ok()
     }
 }
