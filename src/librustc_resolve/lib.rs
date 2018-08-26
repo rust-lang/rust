@@ -69,7 +69,7 @@ use syntax::feature_gate::{feature_err, GateIssue};
 use syntax::ptr::P;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
-use errors::{DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -220,9 +220,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let sugg_msg = "try using a local type parameter instead";
             if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
-                err.span_suggestion(sugg_span,
-                                    sugg_msg,
-                                    new_snippet);
+                err.span_suggestion_with_applicability(
+                    sugg_span,
+                    sugg_msg,
+                    new_snippet,
+                    Applicability::MachineApplicable,
+                );
             } else if let Some(sp) = cm.generate_fn_name_span(span) {
                 err.span_label(sp, "try adding a local type parameter in this method instead");
             } else {
@@ -2998,8 +3001,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                         enum_path);
                         err.help(&msg);
                     } else {
-                        err.span_suggestion(span, "you can try using the variant's enum",
-                                            enum_path);
+                        err.span_suggestion_with_applicability(
+                            span,
+                            "you can try using the variant's enum",
+                            enum_path,
+                            Applicability::MachineApplicable,
+                        );
                     }
                 }
             }
@@ -3008,20 +3015,32 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let self_is_available = this.self_value_is_available(path[0].span, span);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_suggestion(span, "try",
-                                                format!("self.{}", path_str));
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "try",
+                                format!("self.{}", path_str),
+                                Applicability::MachineApplicable,
+                            );
                             if !self_is_available {
                                 err.span_label(span, format!("`self` value is only available in \
                                                                methods with `self` parameter"));
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_suggestion(span, "try",
-                                                format!("self.{}", path_str));
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "try",
+                                format!("self.{}", path_str),
+                                Applicability::MachineApplicable,
+                            );
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_suggestion(span, "try",
-                                                format!("Self::{}", path_str));
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "try",
+                                format!("Self::{}", path_str),
+                                Applicability::MachineApplicable,
+                            );
                         }
                     }
                     return (err, candidates);
@@ -4617,15 +4636,16 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     format!("other_{}", name)
                 };
 
-                err.span_suggestion(binding.span,
-                                    rename_msg,
-                                    if snippet.ends_with(';') {
-                                        format!("{} as {};",
-                                                &snippet[..snippet.len()-1],
-                                                suggested_name)
-                                    } else {
-                                        format!("{} as {}", snippet, suggested_name)
-                                    });
+                err.span_suggestion_with_applicability(
+                    binding.span,
+                    rename_msg,
+                    if snippet.ends_with(';') {
+                        format!("{} as {};", &snippet[..snippet.len() - 1], suggested_name)
+                    } else {
+                        format!("{} as {}", snippet, suggested_name)
+                    },
+                    Applicability::MachineApplicable,
+                );
             } else {
                 err.span_label(binding.span, rename_msg);
             }

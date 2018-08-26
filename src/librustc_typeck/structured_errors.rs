@@ -10,7 +10,7 @@
 
 use rustc::session::Session;
 use syntax_pos::Span;
-use errors::{DiagnosticId, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticId, DiagnosticBuilder};
 use rustc::ty::{Ty, TypeFoldable};
 
 pub trait StructuredDiagnostic<'tcx> {
@@ -73,9 +73,12 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
             )
         };
         if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
-            err.span_suggestion(self.span,
-                                &format!("cast the value to `{}`", self.cast_ty),
-                                format!("{} as {}", snippet, self.cast_ty));
+            err.span_suggestion_with_applicability(
+                self.span,
+                &format!("cast the value to `{}`", self.cast_ty),
+                format!("{} as {}", snippet, self.cast_ty),
+                Applicability::MachineApplicable,
+            );
         } else {
             err.help(&format!("cast the value to `{}`", self.cast_ty));
         }

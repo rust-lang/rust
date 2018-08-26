@@ -786,7 +786,12 @@ impl<'a> Parser<'a> {
         } else {
             err.span_label(self.span, "expected identifier");
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                err.span_suggestion(self.span, "remove this comma", String::new());
+                err.span_suggestion_with_applicability(
+                    self.span,
+                    "remove this comma",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
             }
         }
         err
@@ -6077,7 +6082,12 @@ impl<'a> Parser<'a> {
                                                                 self.this_token_to_string()));
                 if self.token.is_ident() {
                     // This is likely another field; emit the diagnostic and keep going
-                    err.span_suggestion(sp, "try adding a comma", ",".into());
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "try adding a comma",
+                        ",".into(),
+                        Applicability::MachineApplicable,
+                    );
                     err.emit();
                 } else {
                     return Err(err)
