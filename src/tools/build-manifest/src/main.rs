@@ -324,15 +324,7 @@ impl Builder {
         self.package("llvm-tools-preview", &mut manifest.pkg, TARGETS);
         self.package("lldb-preview", &mut manifest.pkg, TARGETS);
 
-        let clippy_present = manifest.pkg.contains_key("clippy-preview");
-        let rls_present = manifest.pkg.contains_key("rls-preview");
-        let rustfmt_present = manifest.pkg.contains_key("rustfmt-preview");
-        let llvm_tools_present = manifest.pkg.contains_key("llvm-tools-preview");
-        let lldb_present = manifest.pkg.contains_key("lldb-preview");
-
-        if rls_present {
-            manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
-        }
+        manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
 
         let mut pkg = Package {
             version: self.cached_version("rust")
@@ -371,40 +363,17 @@ impl Builder {
                 });
             }
 
-            if clippy_present {
-                extensions.push(Component {
-                    pkg: "clippy-preview".to_string(),
-                    target: host.to_string(),
-                });
-            }
-            if rls_present {
-                extensions.push(Component {
-                    pkg: "rls-preview".to_string(),
-                    target: host.to_string(),
-                });
-            }
-            if rustfmt_present {
-                extensions.push(Component {
-                    pkg: "rustfmt-preview".to_string(),
-                    target: host.to_string(),
-                });
-            }
-            if llvm_tools_present {
-                extensions.push(Component {
-                    pkg: "llvm-tools-preview".to_string(),
-                    target: host.to_string(),
-                });
-            }
-            if lldb_present {
-                extensions.push(Component {
-                    pkg: "lldb-preview".to_string(),
-                    target: host.to_string(),
-                });
-            }
-            extensions.push(Component {
-                pkg: "rust-analysis".to_string(),
-                target: host.to_string(),
-            });
+            // Tools are always present in the manifest, but might be marked as unavailable if they
+            // weren't built
+            extensions.extend(vec![
+                Component { pkg: "clippy-preview".to_string(), target: host.to_string() },
+                Component { pkg: "rls-preview".to_string(), target: host.to_string() },
+                Component { pkg: "rustfmt-preview".to_string(), target: host.to_string() },
+                Component { pkg: "llvm-tools-preview".to_string(), target: host.to_string() },
+                Component { pkg: "lldb-preview".to_string(), target: host.to_string() },
+                Component { pkg: "rust-analysis".to_string(), target: host.to_string() },
+            ]);
+
             for target in TARGETS {
                 if target != host {
                     extensions.push(Component {
@@ -459,32 +428,43 @@ impl Builder {
                pkgname: &str,
                dst: &mut BTreeMap<String, Package>,
                targets: &[&str]) {
-        let version = match *self.cached_version(pkgname) {
-            Some(ref version) => version.clone(),
-            None => {
-                println!("Skipping package {}", pkgname);
-                return;
-            }
+        let (version, is_present) = match *self.cached_version(pkgname) {
+            Some(ref version) => (version.clone(), true),
+            None => (String::new(), false),
         };
 
         let targets = targets.iter().map(|name| {
-            let filename = self.filename(pkgname, name);
-            let digest = match self.digests.remove(&filename) {
-                Some(digest) => digest,
-                None => return (name.to_string(), Target::unavailable()),
-            };
-            let xz_filename = filename.replace(".tar.gz", ".tar.xz");
-            let xz_digest = self.digests.remove(&xz_filename);
+            if is_present {
+                let filename = self.filename(pkgname, name);
+                let digest = match self.digests.remove(&filename) {
+                    Some(digest) => digest,
+                    None => return (name.to_string(), Target::unavailable()),
+                };
+                let xz_filename = filename.replace(".tar.gz", ".tar.xz");
+                let xz_digest = self.digests.remove(&xz_filename);
 
-            (name.to_string(), Target {
-                available: true,
-                url: Some(self.url(&filename)),
-                hash: Some(digest),
-                xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
-                xz_hash: xz_digest,
-                components: None,
-                extensions: None,
-            })
+                (name.to_string(), Target {
+                    available: true,
+                    url: Some(self.url(&filename)),
+                    hash: Some(digest),
+                    xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
+                    xz_hash: xz_digest,
+                    components: None,
+                    extensions: None,
+                })
+            } else {
+                // If the component is not present for this build add it anyway but mark it as
+                // unavailable -- this way rustup won't allow upgrades without --force
+                (name.to_string(), Target {
+                    available: false,
+                    url: None,
+                    hash: None,
+                    xz_url: None,
+                    xz_hash: None,
+                    components: None,
+                    extensions: None,
+                })
+            }
         }).collect();
 
         dst.insert(pkgname.to_string(), Package {
