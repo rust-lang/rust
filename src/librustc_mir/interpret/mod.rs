@@ -31,7 +31,7 @@ pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
 
 pub use self::memory::{Memory, MemoryKind};
 
-pub use self::machine::{Machine, IsStatic};
+pub use self::machine::Machine;
 
 pub use self::operand::{Value, ValTy, Operand, OpTy};
 

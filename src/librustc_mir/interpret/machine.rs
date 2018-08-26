@@ -15,16 +15,11 @@
 use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{AllocId, Allocation, EvalResult, Scalar};
+use rustc::mir::interpret::{Allocation, EvalResult, Scalar};
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
-use super::{EvalContext, PlaceTy, OpTy, Memory};
-
-/// Used by the machine to tell if a certain allocation is for static memory
-pub trait IsStatic {
-    fn is_static(self) -> bool;
-}
+use super::{EvalContext, PlaceTy, OpTy};
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
@@ -33,7 +28,10 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     type MemoryData: Clone + Eq + Hash;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq + Hash + IsStatic;
+    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq + Hash;
+
+    /// The memory kind to use for mutated statics -- or None if those are not supported.
+    const MUT_STATIC_KIND: Option<Self::MemoryKinds>;
 
     /// Entry point to all function calls.
     ///
@@ -63,6 +61,9 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     ) -> EvalResult<'tcx>;
 
     /// Called for read access to a foreign static item.
+    /// This can be called multiple times for the same static item and should return consistent
+    /// results.  Once the item is *written* the first time, as usual for statics a copy is
+    /// made and this function is not called again.
     fn find_foreign_static<'a>(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -82,12 +83,6 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         right: Scalar,
         right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
-
-    /// Called when requiring mutable access to data in a static.
-    fn access_static_mut<'a, 'm>(
-        mem: &'m mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-    ) -> EvalResult<'tcx, &'m mut Allocation>;
 
     /// Heap allocations via the `box` keyword
     ///

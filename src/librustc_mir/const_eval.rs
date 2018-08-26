@@ -26,11 +26,11 @@ use syntax::source_map::Span;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Scalar, AllocId, Allocation, ConstValue, AllocType,
+    Scalar, Allocation, ConstValue,
 };
 use interpret::{self,
     Place, PlaceTy, MemPlace, OpTy, Operand, Value,
-    EvalContext, StackPopCleanup, MemoryKind, Memory,
+    EvalContext, StackPopCleanup, MemoryKind,
 };
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
@@ -232,16 +232,11 @@ impl Error for ConstEvalError {
     }
 }
 
-impl interpret::IsStatic for ! {
-    fn is_static(self) -> bool {
-        // unreachable
-        self
-    }
-}
-
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     type MemoryData = ();
     type MemoryKinds = !;
+
+    const MUT_STATIC_KIND: Option<!> = None; // no mutating of statics allowed
 
     fn find_fn<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -305,19 +300,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             Err(
                 ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
             )
-        }
-    }
-
-    fn access_static_mut<'a, 'm>(
-        mem: &'m mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-    ) -> EvalResult<'tcx, &'m mut Allocation> {
-        // This is always an error, we do not allow mutating statics
-        match mem.tcx.alloc_map.lock().get(id) {
-            Some(AllocType::Memory(..)) |
-            Some(AllocType::Static(..)) => err!(ModifiedConstantMemory),
-            Some(AllocType::Function(..)) => err!(DerefFunctionPointer),
-            None => err!(DanglingPointerDeref),
         }
     }
 

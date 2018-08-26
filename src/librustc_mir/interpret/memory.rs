@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
 use syntax::ast::Mutability;
 
-use super::{Machine, IsStatic};
+use super::Machine;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -39,15 +39,6 @@ pub enum MemoryKind<T> {
     Machine(T),
 }
 
-impl<T: IsStatic> IsStatic for MemoryKind<T> {
-    fn is_static(self) -> bool {
-        match self {
-            MemoryKind::Stack => false,
-            MemoryKind::Machine(kind) => kind.is_static(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Additional data required by the Machine
@@ -55,7 +46,9 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
-    /// deallocation.
+    /// deallocation.  When an allocation is not found here, it is a
+    /// static and looked up in the `tcx` for read access.  Writing to
+    /// a static creates a copy here, in the machine.
     alloc_map: FxHashMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
@@ -223,10 +216,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(new_ptr)
     }
 
-    pub fn is_static(&self, alloc_id: AllocId) -> bool {
-        self.alloc_map.get(&alloc_id).map_or(true, |&(kind, _)| kind.is_static())
-    }
-
     /// Deallocate a local, or do nothing if that local has been made into a static
     pub fn deallocate_local(&mut self, ptr: Pointer) -> EvalResult<'tcx> {
         // The allocation might be already removed by static interning.
@@ -354,10 +343,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Allocation accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
-        // normal alloc?
         match self.alloc_map.get(&id) {
+            // Normal alloc?
             Some(alloc) => Ok(&alloc.1),
-            // No need to make any copies, just provide read access to the global static
+            // Static. No need to make any copies, just provide read access to the global static
             // memory in tcx.
             None => const_eval_static::<M>(self.tcx, id),
         }
@@ -368,14 +357,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         id: AllocId,
     ) -> EvalResult<'tcx, &mut Allocation> {
         // Static?
-        let alloc = if self.alloc_map.contains_key(&id) {
-            &mut self.alloc_map.get_mut(&id).unwrap().1
-        } else {
-            // The machine controls to what extend we are allowed to mutate global
-            // statics.  (We do not want to allow that during CTFE, but miri needs it.)
-            M::access_static_mut(self, id)?
-        };
-        // See if we can use this
+        if !self.alloc_map.contains_key(&id) {
+            // Ask the machine for what to do
+            if let Some(kind) = M::MUT_STATIC_KIND {
+                // The machine supports mutating statics.  Make a copy, use that.
+                self.deep_copy_static(id, MemoryKind::Machine(kind))?;
+            } else {
+                return err!(ModifiedConstantMemory)
+            }
+        }
+        // If we come here, we know the allocation is in our map
+        let alloc = &mut self.alloc_map.get_mut(&id).unwrap().1;
+        // See if we are allowed to mutate this
         if alloc.mutability == Mutability::Immutable {
             err!(ModifiedConstantMemory)
         } else {
@@ -489,10 +482,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn leak_report(&self) -> usize {
         trace!("### LEAK REPORT ###");
+        let mut_static_kind = M::MUT_STATIC_KIND.map(|k| MemoryKind::Machine(k));
         let leaks: Vec<_> = self.alloc_map
             .iter()
-            .filter_map(|(&id, (kind, _))|
-                if kind.is_static() { None } else { Some(id) } )
+            .filter_map(|(&id, &(kind, _))|
+                // exclude mutable statics
+                if Some(kind) == mut_static_kind { None } else { Some(id) } )
             .collect();
         let n = leaks.len();
         self.dump_allocs(leaks);
@@ -609,7 +604,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// The alloc_id must refer to a (mutable) static; a deep copy of that
     /// static is made into this memory.
-    pub fn deep_copy_static(
+    fn deep_copy_static(
         &mut self,
         id: AllocId,
         kind: MemoryKind<M::MemoryKinds>,
@@ -619,7 +614,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return err!(ModifiedConstantMemory);
         }
         let old = self.alloc_map.insert(id, (kind, alloc.clone()));
-        assert!(old.is_none(), "deep_copy_static: must not overwrite memory with");
+        assert!(old.is_none(), "deep_copy_static: must not overwrite existing memory");
         Ok(())
     }
 

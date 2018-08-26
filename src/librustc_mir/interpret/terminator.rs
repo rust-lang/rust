@@ -110,7 +110,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 }
                                 (instance, sig)
                             }
-                            ref other => bug!("instance def ty: {:?}", other),
+                            _ => bug!("unexpected fn ptr to ty: {:?}", instance_ty),
                         }
                     }
                     ty::FnDef(def_id, substs) => {
