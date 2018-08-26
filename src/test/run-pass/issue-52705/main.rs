@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:png.rs
+// aux-build:png2.rs
 // edition:2018
 
 mod png {
-    use png as png_ext;
+    use png2 as png_ext;
 
     fn foo() -> png_ext::DecodingError { unimplemented!() }
 }
