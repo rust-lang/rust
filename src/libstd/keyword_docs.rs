@@ -77,3 +77,54 @@ mod let_keyword { }
 ///
 /// [book]: https://doc.rust-lang.org/book/second-edition/ch05-01-defining-structs.html
 mod struct_keyword { }
+
+#[doc(keyword = "enum")]
+//
+/// The `enum` keyword.
+///
+/// The `enum` keyword is used to define an enum type.
+///
+/// Example:
+///
+/// ```
+/// enum Foo {
+///     Value1,
+///     Value2,
+///     Value3(u32),
+///     Value4 { x: u32, y: u64 },
+/// }
+/// ```
+///
+/// This is very convenient to handle different kind of data. To see which variant a value of an
+/// enum type is of, you can use pattern matching on the value:
+///
+/// ```
+/// enum Foo {
+///     Value1,
+///     Value2,
+///     Value3(u32),
+///     Value4 { x: u32, y: u64 },
+/// }
+///
+/// let x = Foo::Value1;
+///
+/// match x {
+///     Foo::Value1        => println!("This is Value1"),
+///     Foo::Value2        => println!("This is Value2"),
+///     Foo::Value3(_)     => println!("This is Value3"),
+///     Foo::Value4 { .. } => println!("This is Value4"),
+/// }
+///
+/// // Or:
+///
+/// if let Foo::Value1 = x {
+///     println!("This is Value1");
+/// } else {
+///     println!("This not Value1");
+/// }
+/// ```
+///
+/// For more information, take a look at the [Rust Book][book].
+///
+/// [book]: https://doc.rust-lang.org/book/second-edition/ch06-01-defining-an-enum.html
+mod enum_keyword { }
