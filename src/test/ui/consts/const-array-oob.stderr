@@ -1,19 +1,9 @@
-error: index out of bounds: the len is 3 but the index is 4
+error[E0080]: evaluation of constant value failed
   --> $DIR/const-array-oob.rs:18:19
    |
 LL | const BLUB: [u32; FOO[4]] = [5, 6];
-   |                   ^^^^^^
-   |
-   = note: #[deny(const_err)] on by default
+   |                   ^^^^^^ index out of bounds: the len is 3 but the index is 4
 
-error[E0080]: could not evaluate constant expression
-  --> $DIR/const-array-oob.rs:18:13
-   |
-LL | const BLUB: [u32; FOO[4]] = [5, 6];
-   |             ^^^^^^------^
-   |                   |
-   |                   index out of bounds: the len is 3 but the index is 4
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

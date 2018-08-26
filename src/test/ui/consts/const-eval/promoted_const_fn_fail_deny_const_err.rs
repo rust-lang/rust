@@ -10,7 +10,7 @@
 
 #![feature(const_fn, const_fn_union)]
 
-#![allow(const_err)]
+#![deny(const_err)]
 
 union Bar {
     a: &'static u8,
@@ -27,7 +27,10 @@ const fn bar() -> u8 {
 }
 
 fn main() {
-    let x: &'static u8 = &(bar() + 1); //~ ERROR does not live long enough
+    // FIXME(oli-obk): this should panic at runtime
+    // this will actually compile, but then
+    // abort at runtime (not panic, hard abort).
+    let x: &'static u8 = &(bar() + 1);
     let y = *x;
     unreachable!();
 }

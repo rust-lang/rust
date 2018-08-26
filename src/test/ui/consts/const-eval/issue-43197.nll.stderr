@@ -21,6 +21,12 @@ LL |     const Y: u32 = foo(0-1);
    |                        attempt to subtract with overflow
 
 error[E0080]: evaluation of constant expression failed
+  --> $DIR/issue-43197.rs:24:14
+   |
+LL |     println!("{} {}", X, Y);
+   |              ^^^^^^^  - referenced constant has errors
+
+error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-43197.rs:24:26
    |
 LL |     println!("{} {}", X, Y);
@@ -32,6 +38,6 @@ error[E0080]: evaluation of constant expression failed
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

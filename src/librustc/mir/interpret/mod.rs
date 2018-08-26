@@ -20,7 +20,7 @@ mod value;
 
 pub use self::error::{
     EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalResult,
+    FrameInfo, ConstEvalResult, ErrorHandled,
 };
 
 pub use self::value::{Scalar, ConstValue};

@@ -1,4 +1,4 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub.rs:36:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};

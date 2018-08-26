@@ -85,55 +85,56 @@ type MySliceBool = MySlice<[bool]>;
 const A: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.str};
 // bad str
 const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad str
 const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad str in user-defined unsized type
 const C2: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 // OK
 const A2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.slice};
 // bad slice
 const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad slice
 const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 // bad trait object
 const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad trait object
 const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad trait object
 const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object
 const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
+
 // bad data *inside* the slice
 const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 // good MySliceBool
 const I1: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
 const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // bad: unsized part is not okay
 const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 // invalid UTF-8
 const J1: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 // invalid UTF-8 in user-defined str-like
 const J2: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 fn main() {
 }

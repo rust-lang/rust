@@ -1590,7 +1590,7 @@ fn validate_const<'a, 'tcx>(
     }
 }
 
-fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
+fn check_const(cx: &LateContext, body_id: hir::BodyId) {
     let def_id = cx.tcx.hir.body_owner_def_id(body_id);
     let is_static = cx.tcx.is_static(def_id).is_some();
     let param_env = if is_static {
@@ -1603,27 +1603,15 @@ fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
         instance: ty::Instance::mono(cx.tcx, def_id),
         promoted: None
     };
-    match cx.tcx.const_eval(param_env.and(cid)) {
-        Ok(val) => validate_const(cx.tcx, val, param_env, cid, what),
-        Err(err) => {
-            // errors for statics are already reported directly in the query, avoid duplicates
-            if !is_static {
-                let span = cx.tcx.def_span(def_id);
-                err.report_as_lint(
-                    cx.tcx.at(span),
-                    &format!("this {} cannot be used", what),
-                    cx.current_lint_root(),
-                );
-            }
-        },
-    }
+    // trigger the query once for all constants since that will already report the errors
+    let _ = cx.tcx.const_eval(param_env.and(cid));
 }
 
 struct UnusedBrokenConstVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
 
 impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UnusedBrokenConstVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, id: hir::BodyId) {
-        check_const(self.0, id, "array length");
+        check_const(self.0, id);
     }
     fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
         hir::intravisit::NestedVisitorMap::None
@@ -1634,10 +1622,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemKind::Const(_, body_id) => {
-                check_const(cx, body_id, "constant");
+                check_const(cx, body_id);
             },
             hir::ItemKind::Static(_, _, body_id) => {
-                check_const(cx, body_id, "static");
+                check_const(cx, body_id);
             },
             hir::ItemKind::Ty(ref ty, _) => hir::intravisit::walk_ty(
                 &mut UnusedBrokenConstVisitor(cx),

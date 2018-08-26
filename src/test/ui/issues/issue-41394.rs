@@ -15,6 +15,7 @@ enum Foo {
 
 enum Bar {
     A = Foo::A as isize
+    //~^ ERROR evaluation of constant value failed
 }
 
 fn main() {}

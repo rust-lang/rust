@@ -368,10 +368,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             instance,
             promoted: None,
         };
-        tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
+        // use the raw query here to break validation cycles. Later uses of the static will call the
+        // full query anyway
+        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|_| {
             // no need to report anything, the const_eval call takes care of that for statics
             assert!(tcx.is_static(def_id).is_some());
-            EvalErrorKind::ReferencedConstant(err).into()
+            EvalErrorKind::ReferencedConstant.into()
         }).map(|const_val| {
             if let ConstValue::ByRef(_, allocation, _) = const_val.val {
                 // We got tcx memory. Let the machine figure out whether and how to

@@ -1,31 +1,31 @@
-error: this constant cannot be used
-  --> $DIR/const_panic.rs:15:1
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:14:1
    |
-LL | const Z: () = panic!("cheese");
-   | ^^^^^^^^^^^^^^----------------^
-   |               |
-   |               the evaluated program panicked at 'cheese', $DIR/const_panic.rs:15:15
+LL | pub const Z: () = panic!("cheese");
+   | ^^^^^^^^^^^^^^^^^^----------------^
+   |                   |
+   |                   the evaluated program panicked at 'cheese', $DIR/const_panic.rs:14:19
    |
    = note: #[deny(const_err)] on by default
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: this constant cannot be used
-  --> $DIR/const_panic.rs:18:1
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:17:1
    |
-LL | const Y: () = unreachable!();
-   | ^^^^^^^^^^^^^^--------------^
-   |               |
-   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:18:15
+LL | pub const Y: () = unreachable!();
+   | ^^^^^^^^^^^^^^^^^^--------------^
+   |                   |
+   |                   the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:17:19
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: this constant cannot be used
-  --> $DIR/const_panic.rs:21:1
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:20:1
    |
-LL | const X: () = unimplemented!();
-   | ^^^^^^^^^^^^^^----------------^
-   |               |
-   |               the evaluated program panicked at 'not yet implemented', $DIR/const_panic.rs:21:15
+LL | pub const X: () = unimplemented!();
+   | ^^^^^^^^^^^^^^^^^^----------------^
+   |                   |
+   |                   the evaluated program panicked at 'not yet implemented', $DIR/const_panic.rs:20:19
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

@@ -34,12 +34,15 @@ const fn read_field2() -> Field2 {
 }
 
 const fn read_field3() -> Field3 {
-    const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR cannot be used
+    const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR any use of this value
+    //~^ ERROR any use of this value
     FIELD3
+    //~^ erroneous constant used
 }
 
 fn main() {
     assert_eq!(read_field1(), FLOAT1_AS_I32);
     assert_eq!(read_field2(), 1.0);
     assert_eq!(read_field3(), unsafe { UNION.field3 });
+    //~^ ERROR evaluation of constant expression failed
 }

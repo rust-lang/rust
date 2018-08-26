@@ -13,11 +13,17 @@ LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 error[E0080]: evaluation of constant expression failed
+  --> $DIR/conditional_array_execution.rs:19:14
+   |
+LL |     println!("{}", FOO);
+   |              ^^^^  --- referenced constant has errors
+
+error[E0080]: evaluation of constant expression failed
   --> $DIR/conditional_array_execution.rs:19:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

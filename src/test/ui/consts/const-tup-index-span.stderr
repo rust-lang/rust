@@ -7,6 +7,13 @@ LL | const TUP: (usize,) = 5usize << 64;
    = note: expected type `(usize,)`
               found type `usize`
 
-error: aborting due to previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-tup-index-span.rs:16:18
+   |
+LL | const ARR: [i32; TUP.0] = [];
+   |                  ^^^ referenced constant has errors
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0080, E0308.
+For more information about an error, try `rustc --explain E0080`.

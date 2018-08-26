@@ -1,4 +1,4 @@
-error[E0080]: could not evaluate enum discriminant
+error[E0080]: evaluation of constant value failed
   --> $DIR/shift_overflow.rs:13:9
    |
 LL |     X = 1 << ((u32::max_value() as u64) + 1), //~ ERROR E0080

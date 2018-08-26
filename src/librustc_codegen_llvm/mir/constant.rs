@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use llvm;
-use rustc::mir::interpret::{ConstEvalErr, read_target_uint};
+use rustc::mir::interpret::{ErrorHandled, read_target_uint};
 use rustc_mir::const_eval::const_field;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::sync::Lrc;
 use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
@@ -124,7 +123,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
 pub fn codegen_static_initializer(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(&'ll Value, &'tcx Allocation), Lrc<ConstEvalErr<'tcx>>> {
+) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
     let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
         instance,
@@ -145,7 +144,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         &mut self,
         bx: &Builder<'a, 'll, 'tcx>,
         constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         match constant.val {
             ConstValue::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
@@ -165,7 +164,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         &mut self,
         bx: &Builder<'a, 'll, 'tcx>,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         let c = self.monomorphize(&constant.literal);
         self.fully_evaluate(bx, c)
     }
@@ -176,7 +175,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         bx: &Builder<'a, 'll, 'tcx>,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>,
+        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
     ) -> (&'ll Value, Ty<'tcx>) {
         constant
             .and_then(|c| {
@@ -185,7 +184,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
-                let values: Result<Vec<_>, Lrc<_>> = (0..fields).map(|field| {
+                let values: Result<Vec<_>, ErrorHandled> = (0..fields).map(|field| {
                     let field = const_field(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),
@@ -211,9 +210,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let llval = C_struct(bx.cx, &values?, false);
                 Ok((llval, c.ty))
             })
-            .unwrap_or_else(|e| {
-                e.report_as_error(
-                    bx.tcx().at(span),
+            .unwrap_or_else(|_| {
+                bx.tcx().sess.span_err(
+                    span,
                     "could not evaluate shuffle_indices at compile time",
                 );
                 // We've errored, so we don't have to produce working code.

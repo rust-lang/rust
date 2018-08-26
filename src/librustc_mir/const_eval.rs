@@ -17,13 +17,16 @@ use std::hash::Hash;
 use std::collections::hash_map::Entry;
 
 use rustc::hir::{self, def_id::DefId};
-use rustc::mir::interpret::ConstEvalErr;
+use rustc::hir::def::Def;
+use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
+use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
+use rustc::util::common::ErrorReported;
 
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
@@ -509,13 +512,11 @@ pub fn const_field<'a, 'tcx>(
         // this is not called for statics.
         op_to_const(&ecx, field, true)
     })();
-    result.map_err(|err| {
-        let (trace, span) = ecx.generate_stacktrace(None);
-        ConstEvalErr {
-            error: err,
-            stacktrace: trace,
-            span,
-        }.into()
+    result.map_err(|error| {
+        let stacktrace = ecx.generate_stacktrace(None);
+        let err = ::rustc::mir::interpret::ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
+        err.report_as_error(ecx.tcx, "could not access field of constant");
+        ErrorHandled::Reported
     })
 }
 
@@ -531,23 +532,56 @@ pub fn const_variant_index<'a, 'tcx>(
     Ok(ecx.read_discriminant(op)?.1)
 }
 
-pub fn const_to_allocation_provider<'a, 'tcx>(
-    _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    val: &'tcx ty::Const<'tcx>,
-) -> &'tcx Allocation {
-    // FIXME: This really does not need to be a query.  Instead, we should have a query for statics
-    // that returns an allocation directly (or an `AllocId`?), after doing a sanity check of the
-    // value and centralizing error reporting.
-    match val.val {
-        ConstValue::ByRef(_, alloc, offset) => {
-            assert_eq!(offset.bytes(), 0);
-            return alloc;
-        },
-        _ => bug!("const_to_allocation called on non-static"),
-    }
+fn validate_const<'a, 'tcx>(
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    constant: &'tcx ty::Const<'tcx>,
+    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    let cid = key.value;
+    let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
+    let val = (|| {
+        let op = ecx.const_to_op(constant)?;
+        let mut todo = vec![(op, Vec::new())];
+        let mut seen = FxHashSet();
+        seen.insert(op);
+        while let Some((op, mut path)) = todo.pop() {
+            ecx.validate_operand(
+                op,
+                &mut path,
+                &mut seen,
+                &mut todo,
+            )?;
+        }
+        Ok(constant)
+    })();
+
+    val.map_err(|error| {
+        let stacktrace = ecx.generate_stacktrace(None);
+        let err = ::rustc::mir::interpret::ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
+        match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
+            Ok(mut diag) => {
+                diag.note("The rules on what exactly is undefined behavior aren't clear, \
+                    so this check might be overzealous. Please open an issue on the rust compiler \
+                    repository if you believe it should not be considered undefined behavior",
+                );
+                diag.emit();
+                ErrorHandled::Reported
+            }
+            Err(err) => err,
+        }
+    })
 }
 
 pub fn const_eval_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    tcx.const_eval_raw(key).and_then(|val| {
+        validate_const(tcx, val, key)
+    })
+}
+
+pub fn const_eval_raw_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -557,15 +591,10 @@ pub fn const_eval_provider<'a, 'tcx>(
 
     if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         let tables = tcx.typeck_tables_of(def_id);
-        let span = tcx.def_span(def_id);
 
         // Do match-check before building MIR
-        if tcx.check_match(def_id).is_err() {
-            return Err(ConstEvalErr {
-                error: EvalErrorKind::CheckMatchError.into(),
-                stacktrace: vec![],
-                span,
-            }.into());
+        if let Err(ErrorReported) = tcx.check_match(def_id) {
+            return Err(ErrorHandled::Reported)
         }
 
         if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(id) {
@@ -574,11 +603,7 @@ pub fn const_eval_provider<'a, 'tcx>(
 
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
-            return Err(ConstEvalErr {
-                error: EvalErrorKind::CheckMatchError.into(),
-                stacktrace: vec![],
-                span,
-            }.into());
+            return Err(ErrorHandled::Reported)
         }
     };
 
@@ -593,19 +618,50 @@ pub fn const_eval_provider<'a, 'tcx>(
             }
         }
         op_to_const(&ecx, op, normalize)
-    }).map_err(|err| {
-        let (trace, span) = ecx.generate_stacktrace(None);
-        let err = ConstEvalErr {
-            error: err,
-            stacktrace: trace,
-            span,
-        };
+    }).map_err(|error| {
+        let stacktrace = ecx.generate_stacktrace(None);
+        let err = ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
         if tcx.is_static(def_id).is_some() {
-            err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+            let err = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
             if tcx.sess.err_count() == 0 {
-                span_bug!(span, "static eval failure didn't emit an error: {:#?}", err);
+                span_bug!(ecx.tcx.span, "static eval failure didn't emit an error: {:#?}", err);
             }
+            err
+        } else if def_id.is_local() {
+            // constant defined in this crate, we can figure out a lint level!
+            match tcx.describe_def(def_id) {
+                Some(Def::Const(_)) | Some(Def::AssociatedConst(_)) => {
+                    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+                    err.report_as_lint(
+                        tcx.at(tcx.def_span(def_id)),
+                        "any use of this value will cause an error",
+                        node_id,
+                    )
+                },
+                _ => if let Some(p) = cid.promoted {
+                    let span = tcx.optimized_mir(def_id).promoted[p].span;
+                    if let EvalErrorKind::ReferencedConstant = err.error.kind {
+                        err.report_as_error(
+                            tcx.at(span),
+                            "evaluation of constant expression failed",
+                        )
+                    } else {
+                        err.report_as_lint(
+                            tcx.at(span),
+                            "reaching this expression at runtime will panic or abort",
+                            tcx.hir.as_local_node_id(def_id).unwrap(),
+                        )
+                    }
+                } else {
+                    err.report_as_error(
+                        ecx.tcx,
+                        "evaluation of constant value failed",
+                    )
+                },
+            }
+        } else {
+            // use of constant from other crate
+            err.report_as_error(ecx.tcx, "could not evaluate constant")
         }
-        err.into()
     })
 }

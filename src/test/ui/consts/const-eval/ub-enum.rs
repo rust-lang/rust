@@ -20,7 +20,7 @@ union TransmuteEnum {
 
 // A pointer is guaranteed non-null
 const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.b };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR is undefined behavior
 
 // Invalid enum discriminant
 #[repr(usize)]
@@ -33,7 +33,7 @@ union TransmuteEnum2 {
     b: Enum2,
 }
 const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR is undefined behavior
 
 // Invalid enum field content (mostly to test printing of apths for enum tuple
 // variants and tuples).
@@ -43,7 +43,7 @@ union TransmuteChar {
 }
 // Need to create something which does not clash with enum layout optimizations.
 const BAD_ENUM_CHAR : Option<(char, char)> = Some(('x', unsafe { TransmuteChar { a: !0 }.b }));
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR is undefined behavior
 
 fn main() {
 }

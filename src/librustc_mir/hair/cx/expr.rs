@@ -15,7 +15,7 @@ use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use hair::util::UserAnnotatedTyHelpers;
 use rustc::hir::def::{Def, CtorKind};
-use rustc::mir::interpret::GlobalId;
+use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
@@ -571,8 +571,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let span = cx.tcx.def_span(def_id);
             let count = match cx.tcx.at(span).const_eval(cx.param_env.and(global_id)) {
                 Ok(cv) => cv.unwrap_usize(cx.tcx),
-                Err(e) => {
-                    e.report_as_error(cx.tcx.at(span), "could not evaluate array length");
+                Err(ErrorHandled::Reported) => 0,
+                Err(ErrorHandled::TooGeneric) => {
+                    cx.tcx.sess.span_err(span, "array lengths can't depend on generic parameters");
                     0
                 },
             };

@@ -1,19 +1,9 @@
-error: attempt to add with overflow
+error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow-3.rs:30:11
    |
 LL |     = [0; (i8::MAX + 1) as usize];
-   |           ^^^^^^^^^^^^^
-   |
-   = note: #[deny(const_err)] on by default
+   |           ^^^^^^^^^^^^^ attempt to add with overflow
 
-error[E0080]: could not evaluate repeat length
-  --> $DIR/const-eval-overflow-3.rs:30:11
-   |
-LL |     = [0; (i8::MAX + 1) as usize];
-   |           -------------^^^^^^^^^
-   |           |
-   |           attempt to add with overflow
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

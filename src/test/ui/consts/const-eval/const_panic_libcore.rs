@@ -13,10 +13,10 @@
 #![feature(const_panic)]
 
 const Z: () = panic!("cheese");
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error
 
 const Y: () = unreachable!();
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error
 
 const X: () = unimplemented!();
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error

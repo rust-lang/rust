@@ -9,14 +9,13 @@
 // except according to those terms.
 
 #![feature(const_panic)]
+#![crate_type = "lib"]
 
-fn main() {}
+pub const Z: () = panic!("cheese");
+//~^ ERROR any use of this value will cause an error
 
-const Z: () = panic!("cheese");
-//~^ ERROR this constant cannot be used
+pub const Y: () = unreachable!();
+//~^ ERROR any use of this value will cause an error
 
-const Y: () = unreachable!();
-//~^ ERROR this constant cannot be used
-
-const X: () = unimplemented!();
-//~^ ERROR this constant cannot be used
+pub const X: () = unimplemented!();
+//~^ ERROR any use of this value will cause an error

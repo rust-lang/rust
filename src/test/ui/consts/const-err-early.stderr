@@ -1,4 +1,4 @@
-error: this constant cannot be used
+error: any use of this value will cause an error
   --> $DIR/const-err-early.rs:13:1
    |
 LL | pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
@@ -12,37 +12,82 @@ note: lint level defined here
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
-error: this constant cannot be used
-  --> $DIR/const-err-early.rs:14:1
+error: any use of this value will cause an error
+  --> $DIR/const-err-early.rs:15:1
    |
 LL | pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^-------------^
    |                   |
    |                   attempt to add with overflow
 
-error: this constant cannot be used
-  --> $DIR/const-err-early.rs:15:1
+error: any use of this value will cause an error
+  --> $DIR/const-err-early.rs:16:1
    |
 LL | pub const C: u8 = 200u8 * 4; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^---------^
    |                   |
    |                   attempt to multiply with overflow
 
-error: this constant cannot be used
-  --> $DIR/const-err-early.rs:16:1
+error: any use of this value will cause an error
+  --> $DIR/const-err-early.rs:17:1
    |
 LL | pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^-----------------^
    |                   |
    |                   attempt to subtract with overflow
 
-error: this constant cannot be used
-  --> $DIR/const-err-early.rs:17:1
+error: any use of this value will cause an error
+  --> $DIR/const-err-early.rs:18:1
    |
 LL | pub const E: u8 = [5u8][1]; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^--------^
    |                   |
    |                   index out of bounds: the len is 1 but the index is 1
 
-error: aborting due to 5 previous errors
+error: any use of this value will cause an error
+  --> $DIR/const-err-early.rs:13:1
+   |
+LL | pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
+   | ^^^^^^^^^^^^^^^^^^-------------^
+   |                   |
+   |                   attempt to negate with overflow
 
+error[E0080]: erroneous constant used
+  --> $DIR/const-err-early.rs:21:14
+   |
+LL |     let _a = A; //~ ERROR erroneous constant used
+   |              ^ referenced constant has errors
+
+error[E0080]: erroneous constant used
+  --> $DIR/const-err-early.rs:22:14
+   |
+LL |     let _b = B; //~ ERROR erroneous constant used
+   |              ^ referenced constant has errors
+
+error[E0080]: erroneous constant used
+  --> $DIR/const-err-early.rs:23:14
+   |
+LL |     let _c = C; //~ ERROR erroneous constant used
+   |              ^ referenced constant has errors
+
+error[E0080]: erroneous constant used
+  --> $DIR/const-err-early.rs:24:14
+   |
+LL |     let _d = D; //~ ERROR erroneous constant used
+   |              ^ referenced constant has errors
+
+error[E0080]: erroneous constant used
+  --> $DIR/const-err-early.rs:25:14
+   |
+LL |     let _e = E; //~ ERROR erroneous constant used
+   |              ^ referenced constant has errors
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/const-err-early.rs:26:14
+   |
+LL |     let _e = [6u8][1]; //~ ERROR index out of bounds
+   |              ^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
