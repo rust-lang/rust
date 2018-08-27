@@ -29,11 +29,10 @@ use rustc::util::common;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagnosticBuilder, Diagnostic};
 
 use std::rc::Rc;
 
-mod annotation;
 mod dump_mir;
 mod error_reporting;
 mod graphviz;
@@ -357,6 +356,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// (Panics if `r` is not a registered universal region.)
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions.to_region_vid(r)
+    }
+
+    /// Add annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
+    crate fn annotate(&self, tcx: TyCtxt<'_, '_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
+        self.universal_regions.annotate(tcx, err)
     }
 
     /// Returns true if the region `r` contains the point `p`.

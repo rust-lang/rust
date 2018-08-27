@@ -13,6 +13,8 @@ LL | |     });
                i16,
                for<'r, 's, 't0, 't1, 't2> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) &'_#1r u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't0)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't1)) u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't2)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) u32>))
            ]
+   = note: late-bound region ReFree(DefId(0/0:6 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]), BrNamed(crate0:DefIndex(1:16), 'a)) is '_#2r
+   = note: late-bound region ReFree(DefId(0/0:6 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]), BrNamed(crate0:DefIndex(1:17), 'b)) is '_#3r
 
 error: unsatisfied lifetime constraints
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9

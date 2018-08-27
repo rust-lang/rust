@@ -31,6 +31,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_errors::DiagnosticBuilder;
 use std::iter;
 use syntax::ast;
 
@@ -309,6 +310,63 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// See `UniversalRegionIndices::to_region_vid`.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.indices.to_region_vid(r)
+    }
+
+    /// As part of the NLL unit tests, you can annotate a function with
+    /// `#[rustc_regions]`, and we will emit information about the region
+    /// inference context and -- in particular -- the external constraints
+    /// that this region imposes on others. The methods in this file
+    /// handle the part about dumping the inference context internal
+    /// state.
+    crate fn annotate(&self, tcx: TyCtxt<'_, '_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
+        match self.defining_ty {
+            DefiningTy::Closure(def_id, substs) => {
+                err.note(&format!(
+                    "defining type: {:?} with closure substs {:#?}",
+                    def_id,
+                    &substs.substs[..]
+                ));
+
+                let closure_base_def_id = tcx.closure_base_def_id(def_id);
+                for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
+                    err.note(&format!(
+                        "late-bound region {:?} is {:?}",
+                        r,
+                        self.to_region_vid(r),
+                    ));
+                });
+            }
+            DefiningTy::Generator(def_id, substs, _) => {
+                err.note(&format!(
+                    "defining type: {:?} with generator substs {:#?}",
+                    def_id,
+                    &substs.substs[..]
+                ));
+
+                let closure_base_def_id = tcx.closure_base_def_id(def_id);
+                for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
+                    err.note(&format!(
+                        "late-bound region {:?} is {:?}",
+                        r,
+                        self.to_region_vid(r),
+                    ));
+                });
+            }
+            DefiningTy::FnDef(def_id, substs) => {
+                err.note(&format!(
+                    "defining type: {:?} with substs {:#?}",
+                    def_id,
+                    &substs[..]
+                ));
+            }
+            DefiningTy::Const(def_id, substs) => {
+                err.note(&format!(
+                    "defining constant type: {:?} with substs {:#?}",
+                    def_id,
+                    &substs[..]
+                ));
+            }
+        }
     }
 }
 
