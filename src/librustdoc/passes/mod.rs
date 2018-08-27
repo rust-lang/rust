@@ -320,7 +320,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                     if let Some(did) = typaram.def_id() {
                         if did.is_local() && !self.retained.contains(&did) {
                             debug!("ImplStripper: stripped item in trait's generics; \
-                                   removing impl");
+                                    removing impl");
                             return None;
                         }
                     }

@@ -8,21 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait ThisTrait {}
+#![crate_name = "inner"]
 
-mod asdf {
-    use ThisTrait;
+pub struct SomeStruct;
 
-    pub struct SomeStruct;
-
-    impl ThisTrait for SomeStruct {}
-
-    trait PrivateTrait {}
-
-    impl PrivateTrait for SomeStruct {}
+fn asdf() {
+    const _FOO: () = {
+        impl Clone for SomeStruct {
+            fn clone(&self) -> Self {
+                SomeStruct
+            }
+        }
+    };
 }
-
-// @has trait_vis/struct.SomeStruct.html
-// @has - '//code' 'impl ThisTrait for SomeStruct'
-// !@has - '//code' 'impl PrivateTrait for SomeStruct'
-pub use asdf::SomeStruct;

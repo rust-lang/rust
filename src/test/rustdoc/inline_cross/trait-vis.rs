@@ -8,21 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait ThisTrait {}
+// aux-build:trait-vis.rs
 
-mod asdf {
-    use ThisTrait;
-
-    pub struct SomeStruct;
-
-    impl ThisTrait for SomeStruct {}
-
-    trait PrivateTrait {}
-
-    impl PrivateTrait for SomeStruct {}
-}
+extern crate inner;
 
 // @has trait_vis/struct.SomeStruct.html
-// @has - '//code' 'impl ThisTrait for SomeStruct'
-// !@has - '//code' 'impl PrivateTrait for SomeStruct'
-pub use asdf::SomeStruct;
+// @has - '//code' 'impl Clone for SomeStruct'
+pub use inner::SomeStruct;
