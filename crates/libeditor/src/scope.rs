@@ -9,20 +9,6 @@ use libsyntax2::{
     algo::{ancestors, generate, walk::preorder}
 };
 
-pub fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
-    let mut scopes = FnScopes::new();
-    let root = scopes.root_scope();
-    fn_def.param_list().into_iter()
-        .flat_map(|it| it.params())
-        .filter_map(|it| it.pat())
-        .for_each(|it| scopes.add_bindings(root, it));
-
-    if let Some(body) = fn_def.body() {
-        compute_block_scopes(body, &mut scopes, root)
-    }
-    scopes
-}
-
 fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: ScopeId) {
     for stmt in block.statements() {
         match stmt {
@@ -106,11 +92,21 @@ pub struct FnScopes {
 }
 
 impl FnScopes {
-    fn new() -> FnScopes {
-        FnScopes {
-            scopes: vec![],
-            scope_for: HashMap::new(),
+    pub fn new(fn_def: ast::FnDef) -> FnScopes {
+        let mut scopes = FnScopes {
+            scopes: Vec::new(),
+            scope_for: HashMap::new()
+        };
+        let root = scopes.root_scope();
+        fn_def.param_list().into_iter()
+            .flat_map(|it| it.params())
+            .filter_map(|it| it.pat())
+            .for_each(|it| scopes.add_bindings(root, it));
+
+        if let Some(body) = fn_def.body() {
+            compute_block_scopes(body, &mut scopes, root)
         }
+        scopes
     }
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries

@@ -8,7 +8,7 @@ use libsyntax2::{
 
 use {
     AtomEdit, find_node_at_offset,
-    scope::{FnScopes, compute_scopes},
+    scope::FnScopes,
 };
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
     };
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), offset)?;
     let fn_def = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next()?;
-    let scopes = compute_scopes(fn_def);
+    let scopes = FnScopes::new(fn_def);
     Some(complete(name_ref, &scopes))
 }
 
