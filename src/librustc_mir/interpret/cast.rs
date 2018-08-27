@@ -48,13 +48,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Misc => {
                 let src = self.read_value(src)?;
                 if self.type_is_fat_ptr(src_layout.ty) {
-                    match (src.value, self.type_is_fat_ptr(dest.layout.ty)) {
+                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Value::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Value::ScalarPair(..), true) => {
                             // No change to value
-                            self.write_value(src.value, dest)?;
+                            self.write_value(*src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Value::ScalarPair(data, _), false) => {

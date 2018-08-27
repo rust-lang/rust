@@ -22,7 +22,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{TyCtxt, self, Instance};
 use interpret::{EvalContext, CompileTimeEvaluator, eval_promoted, mk_borrowck_eval_cx};
-use interpret::{Value, OpTy, MemoryKind};
+use interpret::{self, Value, OpTy, MemoryKind};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
@@ -358,13 +358,15 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
-                    OpTy::from_scalar_value(
-                        Scalar::Bits {
-                            bits: n as u128,
-                            size: self.tcx.data_layout.pointer_size.bytes() as u8,
-                        },
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    ),
+                    OpTy {
+                        op: interpret::Operand::Immediate(Value::Scalar(
+                            Scalar::Bits {
+                                bits: n as u128,
+                                size: self.tcx.data_layout.pointer_size.bytes() as u8,
+                            }.into()
+                        )),
+                        layout: self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    },
                     span,
                 )))
             }
@@ -399,7 +401,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     // Now run the actual operation.
                     this.ecx.unary_op(op, prim, arg.layout)
                 })?;
-                Some((OpTy::from_scalar_value(val, place_layout), span))
+                let res = OpTy {
+                    op: interpret::Operand::Immediate(Value::Scalar(val.into())),
+                    layout: place_layout,
+                };
+                Some((res, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -454,7 +460,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op(op, l, r)
+                    this.ecx.binary_op_val(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Value::ScalarPair(
@@ -470,7 +476,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     Value::Scalar(val.into())
                 };
                 let res = OpTy {
-                    op: ::interpret::Operand::Immediate(val),
+                    op: interpret::Operand::Immediate(val),
                     layout: place_layout,
                 };
                 Some((res, span))

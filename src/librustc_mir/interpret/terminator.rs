@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, Place, PlaceTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -61,8 +61,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // Compare using binary_op, to also support pointer values
                     let const_int = Scalar::from_uint(const_int, discr.layout.size);
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
-                        discr,
-                        ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
+                        discr.to_scalar()?, discr.layout,
+                        const_int, discr.layout,
                     )?;
                     if res.to_bool()? {
                         target_block = targets[index];

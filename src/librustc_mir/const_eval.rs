@@ -288,21 +288,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         )
     }
 
-    fn try_ptr_op<'a>(
+    fn ptr_op<'a>(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        left: Scalar,
+        _left: Scalar,
         _left_layout: TyLayout<'tcx>,
-        right: Scalar,
+        _right: Scalar,
         _right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
-        if left.is_bits() && right.is_bits() {
-            Ok(None)
-        } else {
-            Err(
-                ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
-            )
-        }
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        Err(
+            ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
+        )
     }
 
     fn find_foreign_static<'a>(

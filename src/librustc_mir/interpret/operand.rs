@@ -15,7 +15,7 @@ use std::hash::{Hash, Hasher};
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{
@@ -85,7 +85,7 @@ impl<'tcx> Value {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ValTy<'tcx> {
-    pub value: Value,
+    value: Value,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -108,16 +108,6 @@ pub enum Operand {
 
 impl Operand {
     #[inline]
-    pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
-        Operand::Indirect(MemPlace::from_ptr(ptr, align))
-    }
-
-    #[inline]
-    pub fn from_scalar_value(val: Scalar) -> Self {
-        Operand::Immediate(Value::Scalar(val.into()))
-    }
-
-    #[inline]
     pub fn to_mem_place(self) -> MemPlace {
         match self {
             Operand::Indirect(mplace) => mplace,
@@ -138,7 +128,7 @@ impl Operand {
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpTy<'tcx> {
-    crate op: Operand, // ideally we'd make this private, but we are not there yet
+    crate op: Operand, // ideally we'd make this private, but const_prop needs this
     pub layout: TyLayout<'tcx>,
 }
 
@@ -183,23 +173,6 @@ impl<'tcx> PartialEq for OpTy<'tcx> {
     }
 }
 impl<'tcx> Eq for OpTy<'tcx> {}
-
-impl<'tcx> OpTy<'tcx> {
-    #[inline]
-    pub fn from_ptr(ptr: Pointer, align: Align, layout: TyLayout<'tcx>) -> Self {
-        OpTy { op: Operand::from_ptr(ptr, align), layout }
-    }
-
-    #[inline]
-    pub fn from_aligned_ptr(ptr: Pointer, layout: TyLayout<'tcx>) -> Self {
-        OpTy { op: Operand::from_ptr(ptr, layout.align), layout }
-    }
-
-    #[inline]
-    pub fn from_scalar_value(val: Scalar, layout: TyLayout<'tcx>) -> Self {
-        OpTy { op: Operand::Immediate(Value::Scalar(val.into())), layout }
-    }
-}
 
 // Use the existing layout if given (but sanity check in debug mode),
 // or compute the layout.
@@ -507,7 +480,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
-                Ok(Operand::from_ptr(Pointer::new(id, offset), alloc.align))
+                Ok(Operand::Indirect(MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)))
             },
             ConstValue::ScalarPair(a, b) =>
                 Ok(Operand::Immediate(Value::ScalarPair(a.into(), b))),

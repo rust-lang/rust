@@ -28,7 +28,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         right: ValTy<'tcx>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let (val, overflowed) = self.binary_op(op, left, right)?;
+        let (val, overflowed) = self.binary_op_val(op, left, right)?;
         let val = Value::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         self.write_value(val, dest)
     }
@@ -42,7 +42,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         right: ValTy<'tcx>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let (val, _overflowed) = self.binary_op(op, left, right)?;
+        let (val, _overflowed) = self.binary_op_val(op, left, right)?;
         self.write_scalar(val, dest)
     }
 }
@@ -282,16 +282,31 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok((val, false))
     }
 
+    /// Convenience wrapper that's useful when keeping the layout together with the
+    /// value.
+    #[inline]
+    pub fn binary_op_val(
+        &self,
+        bin_op: mir::BinOp,
+        left: ValTy<'tcx>,
+        right: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        self.binary_op(
+            bin_op,
+            left.to_scalar()?, left.layout,
+            right.to_scalar()?, right.layout,
+        )
+    }
+
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        ValTy { value: left, layout: left_layout }: ValTy<'tcx>,
-        ValTy { value: right, layout: right_layout }: ValTy<'tcx>,
+        left: Scalar,
+        left_layout: TyLayout<'tcx>,
+        right: Scalar,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
-        let left = left.to_scalar()?;
-        let right = right.to_scalar()?;
-
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
             bin_op, left, left_layout.ty, right, right_layout.ty);
 
@@ -322,15 +337,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     right_layout.ty.is_fn());
 
                 // Handle operations that support pointer values
-                if let Some(handled) =
-                    M::try_ptr_op(self, bin_op, left, left_layout, right, right_layout)?
-                {
-                    return Ok(handled);
+                if left.is_ptr() || right.is_ptr() || bin_op == mir::BinOp::Offset {
+                    return M::ptr_op(self, bin_op, left, left_layout, right, right_layout);
                 }
 
                 // Everything else only works with "proper" bits
-                let left = left.to_bits(left_layout.size)?;
-                let right = right.to_bits(right_layout.size)?;
+                let left = left.to_bits(left_layout.size).expect("we checked is_ptr");
+                let right = right.to_bits(right_layout.size).expect("we checked is_ptr");
                 self.binary_int_op(bin_op, left, left_layout, right, right_layout)
             }
         }
