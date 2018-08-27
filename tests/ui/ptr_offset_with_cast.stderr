@@ -1,0 +1,10 @@
+error: use of `offset` with a `usize` casted to an `isize`
+  --> $DIR/ptr_offset_with_cast.rs:10:9
+   |
+10 |         ptr.offset(offset_usize as isize);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.add(offset_usize)`
+   |
+   = note: `-D ptr-offset-with-cast` implied by `-D warnings`
+
+error: aborting due to previous error
+
