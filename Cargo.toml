@@ -59,9 +59,5 @@ derive-new = "0.5"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
-[build-dependencies]
-rustc_version = "0.2.2"
-ansi_term = "0.11"
-
 [features]
 debugging = []
