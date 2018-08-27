@@ -100,11 +100,14 @@ export function activate(context: vscode.ExtensionContext) {
             items.push(prevRunnable)
         }
         for (let r of runnables) {
+            if (prevRunnable && JSON.stringify(prevRunnable.runnable) == JSON.stringify(r)) {
+                continue
+            }
             items.push(new RunnableQuickPick(r))
         }
         let item = await vscode.window.showQuickPick(items)
         if (item) {
-            item.detail = "last"
+            item.detail = "rerun"
             prevRunnable = item
             let task = createTask(item.runnable)
             return await vscode.tasks.executeTask(task)
@@ -351,7 +354,7 @@ function createTask(spec: Runnable): vscode.Task {
         cwd: '.',
         env: definition.env,
     };
-    let exec = new vscode.ShellExecution(execCmd, execOption);
+    let exec = new vscode.ShellExecution(`clear; ${execCmd}`, execOption);
 
     let f = vscode.workspace.workspaceFolders![0]
     let t = new vscode.Task(definition, f, definition.label, TASK_SOURCE, exec, ['$rustc']);
