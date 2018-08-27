@@ -39,3 +39,24 @@ const _FOO: () = {
     impl Copy for Point {}
     ()
 };
+
+// @has traits_in_bodies/struct.Inception.html
+// @has - '//code' 'impl Clone for Inception'
+pub struct Inception;
+
+static _BAR: usize = {
+    trait HiddenTrait {
+        fn hidden_fn(&self) {
+            for _ in 0..5 {
+                impl Clone for Inception {
+                    fn clone(&self) -> Self {
+                        // we need to go deeper
+                        Inception
+                    }
+                }
+            }
+        }
+    }
+
+    5
+};
