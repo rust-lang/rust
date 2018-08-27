@@ -116,8 +116,12 @@ impl<'a> AstNode<'a> for Block<'a> {
 }
 
 impl<'a> Block<'a> {
-    pub fn let_stmts(self) -> impl Iterator<Item = LetStmt<'a>> + 'a {
+    pub fn statements(self) -> impl Iterator<Item = Stmt<'a>> + 'a {
         super::children(self)
+    }
+
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
     }
 }
 
@@ -1369,6 +1373,31 @@ impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
 impl<'a> StaticDef<'a> {}
+
+// Stmt
+#[derive(Debug, Clone, Copy)]
+pub enum Stmt<'a> {
+    ExprStmt(ExprStmt<'a>),
+    LetStmt(LetStmt<'a>),
+}
+
+impl<'a> AstNode<'a> for Stmt<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            EXPR_STMT => Some(Stmt::ExprStmt(ExprStmt { syntax })),
+            LET_STMT => Some(Stmt::LetStmt(LetStmt { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            Stmt::ExprStmt(inner) => inner.syntax(),
+            Stmt::LetStmt(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> Stmt<'a> {}
 
 // StructDef
 #[derive(Debug, Clone, Copy)]

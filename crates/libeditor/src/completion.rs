@@ -5,7 +5,6 @@ use libsyntax2::{
     ast::{self, NameOwner},
     algo::{
         ancestors,
-        visit::{visitor_ctx, VisitorCtx},
         walk::preorder,
         generate,
     },
@@ -52,24 +51,24 @@ fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
 
     let mut scope = root;
     if let Some(body) = fn_def.body() {
-        for child in body.syntax().children() {
-            let _ = visitor_ctx((&mut scopes, &mut scope))
-                .visit::<ast::LetStmt, _>(|stmt, (scopes, scope)| {
-                    *scope = scopes.new_scope(*scope);
+        for stmt in body.statements() {
+            match stmt {
+                ast::Stmt::LetStmt(stmt) => {
+                    scope = scopes.new_scope(scope);
                     if let Some(pat) = stmt.pat() {
-                        scopes.add_bindings(*scope, pat);
+                        scopes.add_bindings(scope, pat);
                     }
                     if let Some(expr) = stmt.initializer() {
-                        scopes.set_scope(expr.syntax(), *scope)
+                        scopes.set_scope(expr.syntax(), scope)
                     }
-                })
-                .visit::<ast::ExprStmt, _>(|expr, (scopes, scope)| {
-                    scopes.set_scope(expr.syntax(), *scope)
-                })
-                .visit::<ast::Expr, _>(|expr, (scopes, scope)| {
-                    scopes.set_scope(expr.syntax(), *scope)
-                })
-                .accept(child);
+                }
+                ast::Stmt::ExprStmt(expr) => {
+                    scopes.set_scope(expr.syntax(), scope)
+                }
+            }
+        }
+        if let Some(expr) = body.expr() {
+            scopes.set_scope(expr.syntax(), scope)
         }
     }
     scopes

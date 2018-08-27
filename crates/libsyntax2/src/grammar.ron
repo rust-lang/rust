@@ -437,9 +437,13 @@ Grammar(
             ["pat", "Pat"],
             ["initializer", "Expr"],
         ]),
+        "Stmt": (
+            enum: ["ExprStmt", "LetStmt"],
+        ),
         "Block": (
+            options: [["expr", "Expr"]],
             collections: [
-                ["let_stmts", "LetStmt"],
+                ["statements", "Stmt"],
             ]
         ),
         "ParamList": (
