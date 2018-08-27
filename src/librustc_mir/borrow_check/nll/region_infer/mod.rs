@@ -686,7 +686,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             test: _,
         } = type_test;
 
-
         let generic_ty = generic_kind.to_ty(tcx);
         let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
             Some(s) => s,
@@ -704,11 +703,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
             assert!(self.universal_regions.is_universal_region(non_local_ub));
-            assert!(
-                !self
-                .universal_regions
-                .is_local_free_region(non_local_ub)
-            );
+            assert!(!self.universal_regions.is_local_free_region(non_local_ub));
 
             let requirement = ClosureOutlivesRequirement {
                 subject,
@@ -922,8 +917,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // now). Therefore, the sup-region outlives the sub-region if,
         // for each universal region R1 in the sub-region, there
         // exists some region R2 in the sup-region that outlives R1.
-        let universal_outlives = self
-            .scc_values
+        let universal_outlives = self.scc_values
             .universal_regions_outlived_by(sub_region_scc)
             .all(|r1| {
                 self.scc_values
@@ -1034,8 +1028,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
             // If it is known that `fr: o`, carry on.
-            if self
-                .universal_region_relations
+            if self.universal_region_relations
                 .outlives(longer_fr, shorter_fr)
             {
                 continue;
@@ -1051,8 +1044,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
                 // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self
-                    .universal_region_relations
+                if let Some(fr_minus) = self.universal_region_relations
                     .non_local_lower_bound(longer_fr)
                 {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
@@ -1061,8 +1053,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
-                    let shorter_fr_plus = self
-                        .universal_region_relations
+                    let shorter_fr_plus = self.universal_region_relations
                         .non_local_upper_bound(shorter_fr);
                     debug!(
                         "check_universal_region: shorter_fr_plus={:?}",
@@ -1122,8 +1113,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let error_region = match error_element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::SubUniversalRegion(error_ui) => self
-                .definitions
+            RegionElement::SubUniversalRegion(error_ui) => self.definitions
                 .iter_enumerated()
                 .filter_map(|(r, definition)| match definition.origin {
                     NLLRegionVariableOrigin::BoundRegion(ui) if error_ui == ui => Some(r),
@@ -1220,7 +1210,11 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         // into a vector.  These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
-            tcx, user_closure_ty, self.num_external_vids, tcx.closure_base_def_id(closure_def_id));
+            tcx,
+            user_closure_ty,
+            self.num_external_vids,
+            tcx.closure_base_def_id(closure_def_id),
+        );
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 
         // Create the predicates.
