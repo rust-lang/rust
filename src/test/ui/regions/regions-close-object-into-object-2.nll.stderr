@@ -5,15 +5,12 @@ LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |           ^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-close-object-into-object-2.rs:19:57
+  --> $DIR/regions-close-object-into-object-2.rs:20:5
    |
-LL |   fn g<'a, T: 'static>(v: Box<A<T>+'a>) -> Box<X+'static> {
-   |  ______--_________________________________________________^
-   | |      |
-   | |      lifetime `'a` defined here
-LL | |     box B(&*v) as Box<X> //~ ERROR cannot infer
-LL | | }
-   | |_^ returning this value requires that `'a` must outlive `'static`
+LL | fn g<'a, T: 'static>(v: Box<A<T>+'a>) -> Box<X+'static> {
+   |      -- lifetime `'a` defined here
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error[E0597]: `*v` does not live long enough
   --> $DIR/regions-close-object-into-object-2.rs:20:11

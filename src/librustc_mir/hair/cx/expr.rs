@@ -199,6 +199,13 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Use { source: cast_expr.to_ref() }
         }
         Adjust::Unsize => {
+            // See the above comment for Adjust::Deref
+            if let ExprKind::Block { body } = expr.kind {
+                if let Some(ref last_expr) = body.expr {
+                    span = last_expr.span;
+                    expr.span = span;
+                }
+            }
             ExprKind::Unsize { source: expr.to_ref() }
         }
     };
