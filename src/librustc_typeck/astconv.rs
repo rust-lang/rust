@@ -30,7 +30,7 @@ use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
-use errors::{FatalError, DiagnosticId};
+use errors::DiagnosticId;
 use lint;
 
 use std::iter;
@@ -693,9 +693,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         match path.def {
             Def::Trait(trait_def_id) => trait_def_id,
             Def::TraitAlias(alias_def_id) => alias_def_id,
-            Def::Err => {
-                FatalError.raise();
-            }
             _ => unreachable!(),
         }
     }
