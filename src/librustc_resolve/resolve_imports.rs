@@ -251,7 +251,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                         self.ambiguity_errors.push(AmbiguityError {
                             span: path_span,
                             name,
-                            lexical: false,
                             b1: binding,
                             b2: shadowed_glob,
                         });

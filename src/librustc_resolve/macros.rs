@@ -78,17 +78,12 @@ pub enum LegacyScope<'a> {
     Binding(&'a LegacyBinding<'a>),
 }
 
+// Binding produced by a `macro_rules` item.
+// Not modularized, can shadow previous legacy bindings, etc.
 pub struct LegacyBinding<'a> {
+    pub binding: &'a NameBinding<'a>,
     pub parent: Cell<LegacyScope<'a>>,
     pub ident: Ident,
-    def_id: DefId,
-    pub span: Span,
-}
-
-impl<'a> LegacyBinding<'a> {
-    fn def(&self) -> Def {
-        Def::Macro(self.def_id, MacroKind::Bang)
-    }
 }
 
 pub struct ProcMacError {
@@ -745,7 +740,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 name: ident.name,
                                 b1: previous_result.0,
                                 b2: result.0,
-                                lexical: true,
                             });
                             return Ok(previous_result);
                         }
@@ -794,7 +788,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                   mut scope: &'a Cell<LegacyScope<'a>>,
                                   ident: Ident,
                                   record_used: bool)
-                                  -> Option<(&'a LegacyBinding<'a>, FromExpansion)> {
+                                  -> Option<(&'a NameBinding<'a>, FromExpansion)> {
         let ident = ident.modern();
         let mut relative_depth: u32 = 0;
         loop {
@@ -821,7 +815,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         if record_used && relative_depth > 0 {
                             self.disallowed_shadowing.push(potential_binding);
                         }
-                        return Some((potential_binding, FromExpansion(relative_depth > 0)));
+                        return Some((potential_binding.binding, FromExpansion(relative_depth > 0)));
                     }
                     scope = &potential_binding.parent;
                 }
@@ -881,18 +875,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
-                (Some((legacy_binding, FromExpansion(from_expansion))),
-                 Ok((binding, FromPrelude(false)))) |
-                (Some((legacy_binding, FromExpansion(from_expansion @ true))),
-                 Ok((binding, FromPrelude(true)))) => {
-                    if legacy_binding.def() != binding.def_ignoring_ambiguity() {
-                        self.report_ambiguity_error(
-                            ident.name, span, true,
-                            legacy_binding.def(), false, false,
-                            from_expansion, legacy_binding.span,
-                            binding.def(), binding.is_import(), binding.is_glob_import(),
-                            binding.expansion != Mark::root(), binding.span,
-                        );
+                (Some((legacy_binding, FromExpansion(_))), Ok((binding, FromPrelude(false)))) |
+                (Some((legacy_binding, FromExpansion(true))), Ok((binding, FromPrelude(true)))) => {
+                    if legacy_binding.def_ignoring_ambiguity() != binding.def_ignoring_ambiguity() {
+                        self.report_ambiguity_error(ident.name, span, legacy_binding, binding);
                     }
                 },
                 // OK, non-macro-expanded legacy wins over macro prelude even if defs are different
@@ -1013,10 +999,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         if def.legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);
-            *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
-                parent: Cell::new(*legacy_scope), ident: ident, def_id: def_id, span: item.span,
-            }));
             let def = Def::Macro(def_id, MacroKind::Bang);
+            let vis = ty::Visibility::Invisible; // Doesn't matter for legacy bindings
+            let binding = (def, vis, item.span, expansion).to_name_binding(self.arenas);
+            *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(
+                LegacyBinding { parent: Cell::new(*legacy_scope), binding, ident }
+            ));
             self.all_macros.insert(ident.name, def);
             if attr::contains_name(&item.attrs, "macro_export") {
                 let module = self.graph_root;
