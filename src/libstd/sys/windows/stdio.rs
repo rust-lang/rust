@@ -228,6 +228,6 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 // been seen to be acceptable.
 pub const STDIN_BUF_SIZE: usize = 8 * 1024;
 
-pub fn stderr_prints_nothing() -> bool {
-    false
+pub fn panic_output() -> Option<impl io::Write> {
+    Stderr::new().ok()
 }

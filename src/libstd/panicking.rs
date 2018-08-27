@@ -29,7 +29,7 @@ use intrinsics;
 use mem;
 use ptr;
 use raw;
-use sys::stdio::{Stderr, stderr_prints_nothing};
+use sys::stdio::panic_output;
 use sys_common::rwlock::RWLock;
 use sys_common::thread_info;
 use sys_common::util;
@@ -193,7 +193,6 @@ fn default_hook(info: &PanicInfo) {
             None => "Box<Any>",
         }
     };
-    let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
@@ -215,17 +214,14 @@ fn default_hook(info: &PanicInfo) {
         }
     };
 
-    let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
-    match (prev, err.as_mut()) {
-       (Some(mut stderr), _) => {
-           write(&mut *stderr);
-           let mut s = Some(stderr);
-           LOCAL_STDERR.with(|slot| {
-               *slot.borrow_mut() = s.take();
-           });
-       }
-       (None, Some(ref mut err)) => { write(err) }
-       _ => {}
+    if let Some(mut local) = LOCAL_STDERR.with(|s| s.borrow_mut().take()) {
+       write(&mut *local);
+       let mut s = Some(local);
+       LOCAL_STDERR.with(|slot| {
+           *slot.borrow_mut() = s.take();
+       });
+    } else if let Some(mut out) = panic_output() {
+        write(&mut out);
     }
 }
 
@@ -485,7 +481,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
             // Some platforms know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
             // hook.
-            Hook::Default if stderr_prints_nothing() => {}
+            Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
                 default_hook(&info);
@@ -494,7 +490,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
                 info.set_payload(payload.get());
                 (*ptr)(&info);
             }
-        }
+        };
         HOOK_LOCK.read_unlock();
     }
 
