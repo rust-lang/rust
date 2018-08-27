@@ -58,8 +58,9 @@ impl ConstraintSet {
     crate fn compute_sccs(
         &self,
         constraint_graph: &graph::NormalConstraintGraph,
+        static_region: RegionVid,
     ) -> Sccs<RegionVid, ConstraintSccIndex> {
-        let region_graph = &constraint_graph.region_graph(self);
+        let region_graph = &constraint_graph.region_graph(self, static_region);
         Sccs::new(region_graph)
     }
 }

@@ -234,7 +234,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let constraints = Rc::new(outlives_constraints); // freeze constraints
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
-        let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph));
+        let fr_static = universal_regions.fr_static;
+        let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
         let mut scc_values = RegionValues::new(elements, universal_regions.len(), max_universe);
 

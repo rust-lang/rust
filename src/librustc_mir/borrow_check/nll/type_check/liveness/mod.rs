@@ -69,7 +69,8 @@ fn regions_that_outlive_free_regions(
     // reachable from each free region, we will have all the
     // regions that are forced to outlive some free region.
     let rev_constraint_graph = constraint_set.reverse_graph(num_region_vars);
-    let rev_region_graph = rev_constraint_graph.region_graph(constraint_set);
+    let fr_static = universal_regions.fr_static;
+    let rev_region_graph = rev_constraint_graph.region_graph(constraint_set, fr_static);
 
     // Stack for the depth-first search. Start out with all the free regions.
     let mut stack: Vec<_> = universal_regions.universal_regions().collect();

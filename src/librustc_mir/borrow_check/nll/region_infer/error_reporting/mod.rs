@@ -201,7 +201,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Otherwise, walk over the outgoing constraints and
             // enqueue any regions we find, keeping track of how we
             // reached them.
-            for constraint in self.constraint_graph.outgoing_edges(r, &self.constraints) {
+            let fr_static = self.universal_regions.fr_static;
+            for constraint in self.constraint_graph.outgoing_edges(r,
+                                                                   &self.constraints,
+                                                                   fr_static) {
                 assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
