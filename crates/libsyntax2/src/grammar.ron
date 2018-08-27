@@ -344,7 +344,11 @@ Grammar(
             options: [ ["body", "Block"] ]
         ),
         "ForExpr": (
-            options: [ ["body", "Block"] ]
+            options: [
+                ["pat", "Pat"],
+                ["iterable", "Expr"],
+                ["body", "Block"] ,
+            ]
         ),
         "WhileExpr": (
             options: [

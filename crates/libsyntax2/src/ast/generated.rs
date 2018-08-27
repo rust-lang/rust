@@ -539,6 +539,14 @@ impl<'a> AstNode<'a> for ForExpr<'a> {
 }
 
 impl<'a> ForExpr<'a> {
+    pub fn pat(self) -> Option<Pat<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn iterable(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+
     pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }

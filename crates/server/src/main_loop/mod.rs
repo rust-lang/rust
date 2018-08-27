@@ -29,6 +29,7 @@ use {
         handle_parent_module,
         handle_join_lines,
         handle_completion,
+        handle_runnables,
     },
 };
 
@@ -137,6 +138,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::CodeActionRequest>(
         &mut req, pool, world, sender, handle_code_action,
+    )?;
+    handle_request_on_threadpool::<req::Runnables>(
+        &mut req, pool, world, sender, handle_runnables,
     )?;
     handle_request_on_threadpool::<req::WorkspaceSymbol>(
         &mut req, pool, world, sender, handle_workspace_symbol,

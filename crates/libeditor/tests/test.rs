@@ -286,6 +286,14 @@ fn quux() {
 }
 ", r#"[CompletionItem { name: "b" },
        CompletionItem { name: "a" }]"#);
+
+    do_check(r"
+fn quux() {
+    for x in &[1, 2, 3] {
+        <|>
+    }
+}
+", r#"[CompletionItem { name: "x" }]"#);
 }
 
 fn file(text: &str) -> File {

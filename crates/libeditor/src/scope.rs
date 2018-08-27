@@ -61,7 +61,19 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 compute_block_scopes(block, scopes, scope);
             }
         }
-        // ForExpr(e) => TODO,
+        ast::Expr::ForExpr(e) => {
+            if let Some(expr) = e.iterable() {
+                compute_expr_scopes(expr, scopes, scope);
+            }
+            let mut scope = scope;
+            if let Some(pat) = e.pat() {
+                scope = scopes.new_scope(scope);
+                scopes.add_bindings(scope, pat);
+            }
+            if let Some(block) = e.body() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        },
         _ => {
             expr.syntax().children()
                 .filter_map(ast::Expr::cast)

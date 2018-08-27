@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{ser::Serialize, de::DeserializeOwned};
 use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
@@ -133,4 +135,29 @@ impl Request for JoinLines {
 pub struct JoinLinesParams {
     pub text_document: TextDocumentIdentifier,
     pub range: Range,
+}
+
+pub enum Runnables {}
+
+impl Request for Runnables {
+    type Params = RunnablesParams;
+    type Result = Vec<Runnable>;
+    const METHOD: &'static str = "m/joinLines";
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnablesParams {
+    pub text_document: TextDocumentIdentifier,
+    pub position: Option<Position>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Runnable {
+    pub range: Range,
+    pub label: String,
+    pub bin: String,
+    pub args: Vec<String>,
+    pub env: HashMap<String, String>,
 }

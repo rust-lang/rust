@@ -204,6 +204,56 @@ pub fn handle_code_action(
     return Ok(Some(res));
 }
 
+pub fn handle_runnables(
+    world: ServerWorld,
+    params: req::RunnablesParams,
+) -> Result<Vec<req::Runnable>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_syntax(file_id)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let offset = params.position.map(|it| it.conv_with(&line_index));
+    let mut res = Vec::new();
+    for runnable in libeditor::runnables(&file) {
+        if let Some(offset) = offset {
+            if !contains_offset_nonstrict(runnable.range, offset) {
+                continue;
+            }
+        }
+
+        let r = req::Runnable {
+            range: runnable.range.conv_with(&line_index),
+            label: match &runnable.kind {
+                libeditor::RunnableKind::Test { name } =>
+                    format!("test {}", name),
+                libeditor::RunnableKind::Bin =>
+                    "run binary".to_string(),
+            },
+            bin: "cargo".to_string(),
+            args: match runnable.kind {
+                libeditor::RunnableKind::Test { name } => {
+                    vec![
+                        "test".to_string(),
+                        "--".to_string(),
+                        name,
+                        "--nocapture".to_string(),
+                    ]
+                }
+                libeditor::RunnableKind::Bin => vec!["run".to_string()]
+            },
+            env: {
+                let mut m = HashMap::new();
+                m.insert(
+                    "RUST_BACKTRACE".to_string(),
+                    "short".to_string(),
+                );
+                m
+            }
+        };
+        res.push(r);
+    }
+    return Ok(res);
+}
+
 pub fn handle_workspace_symbol(
     world: ServerWorld,
     params: req::WorkspaceSymbolParams,
