@@ -10,7 +10,7 @@
 
 #![allow(nonstandard_style)]
 
-macro_rules! cfg_if {
+macro_rules! cfg_if2 {
     ( $( if #[cfg( $meta:meta )] { $($it1:item)* } else { $($it2:item)* } )* ) =>
         ( $( $( #[cfg($meta)] $it1)* $( #[cfg(not($meta))] $it2)* )* )
 }
@@ -92,7 +92,7 @@ extern "C" {
     pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
 }
 
-cfg_if! {
+cfg_if2! {
 if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm"))))] {
     // Not ARM EHABI
     #[repr(C)]
@@ -238,4 +238,4 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
         _Unwind_SjLj_RaiseException(exc)
     }
 }
-} // cfg_if!
+} // cfg_if2!

@@ -46,7 +46,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::small_vec::ExpectOne;
 
 crate struct FromPrelude(bool);
-crate struct FromExpansion(bool);
 
 #[derive(Clone)]
 pub struct InvocationData<'a> {
@@ -481,7 +480,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
-        let result = if let Some((legacy_binding, _)) = legacy_resolution {
+        let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
         } else {
             match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, force,
@@ -788,7 +787,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             scope: &'a Cell<LegacyScope<'a>>,
                             ident: Ident,
                             record_used: bool)
-                            -> Option<(&'a NameBinding<'a>, FromExpansion)> {
+                            -> Option<&'a NameBinding<'a>> {
         let ident = ident.modern();
 
         // Names from inner scope that can't shadow names from outer scopes, e.g.
@@ -798,15 +797,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         //                    // the outer `mac` and we have and ambiguity error
         //     mac!();
         // }
-        let mut potentially_ambiguous_result: Option<(&NameBinding, FromExpansion)> = None;
+        let mut potentially_ambiguous_result: Option<&NameBinding> = None;
 
         // Go through all the scopes and try to resolve the name.
         let mut where_to_resolve = scope;
-        let mut relative_depth = 0u32;
         loop {
             let result = match where_to_resolve.get() {
                 LegacyScope::Binding(legacy_binding) => if ident == legacy_binding.ident {
-                    Some((legacy_binding.binding, FromExpansion(relative_depth > 0)))
+                    Some(legacy_binding.binding)
                 } else {
                     None
                 }
@@ -816,16 +814,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             macro_rules! continue_search { () => {
                 where_to_resolve = match where_to_resolve.get() {
                     LegacyScope::Binding(binding) => &binding.parent,
-                    LegacyScope::Invocation(invocation) => {
-                        relative_depth = relative_depth.saturating_sub(1);
-                        &invocation.legacy_scope
-                    }
+                    LegacyScope::Invocation(invocation) => &invocation.legacy_scope,
                     LegacyScope::Expansion(invocation) => match invocation.expansion.get() {
                         LegacyScope::Empty => &invocation.legacy_scope,
-                        LegacyScope::Binding(..) | LegacyScope::Expansion(..) => {
-                            relative_depth += 1;
-                            &invocation.expansion
-                        }
+                        LegacyScope::Binding(..) |
+                        LegacyScope::Expansion(..) => &invocation.expansion,
                         LegacyScope::Invocation(..) => {
                             where_to_resolve.set(invocation.legacy_scope.get());
                             where_to_resolve
@@ -847,12 +840,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     // Push an ambiguity error for later reporting and
                     // return something for better recovery.
                     if let Some(previous_result) = potentially_ambiguous_result {
-                        if result.0.def() != previous_result.0.def() {
+                        if result.def() != previous_result.def() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: ident.span,
                                 name: ident.name,
-                                b1: previous_result.0,
-                                b2: result.0,
+                                b1: previous_result,
+                                b2: result,
                             });
                             return Some(previous_result);
                         }
@@ -861,7 +854,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     // Found a solution that's not an ambiguity yet, but is "suspicious" and
                     // can participate in ambiguities later on.
                     // Remember it and go search for other solutions in outer scopes.
-                    if (result.1).0 {
+                    if result.expansion != Mark::root() {
                         potentially_ambiguous_result = Some(result);
 
                         continue_search!();
@@ -933,16 +926,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
-                (Some((legacy_binding, FromExpansion(_))), Ok((binding, FromPrelude(false)))) |
-                (Some((legacy_binding, FromExpansion(true))), Ok((binding, FromPrelude(true)))) => {
+                (Some(legacy_binding), Ok((binding, FromPrelude(from_prelude))))
+                        if !from_prelude || legacy_binding.expansion != Mark::root() => {
                     if legacy_binding.def_ignoring_ambiguity() != binding.def_ignoring_ambiguity() {
                         self.report_ambiguity_error(ident.name, span, legacy_binding, binding);
                     }
                 },
-                // OK, non-macro-expanded legacy wins over macro prelude even if defs are different
-                (Some((legacy_binding, FromExpansion(false))), Ok((_, FromPrelude(true)))) |
+                // OK, non-macro-expanded legacy wins over prelude even if defs are different
+                (Some(legacy_binding), Ok(_)) |
                 // OK, unambiguous resolution
-                (Some((legacy_binding, _)), Err(_)) => {
+                (Some(legacy_binding), Err(_)) => {
                     check_consistency(self, legacy_binding.def());
                 }
                 // OK, unambiguous resolution
