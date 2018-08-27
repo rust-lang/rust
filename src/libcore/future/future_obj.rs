@@ -15,7 +15,7 @@
 use fmt;
 use future::Future;
 use marker::{PhantomData, Unpin};
-use mem::PinMut;
+use pin::PinMut;
 use task::{Context, Poll};
 
 /// A custom trait object for polling futures, roughly akin to

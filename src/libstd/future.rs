@@ -12,7 +12,7 @@
 
 use core::cell::Cell;
 use core::marker::Unpin;
-use core::mem::PinMut;
+use core::pin::PinMut;
 use core::option::Option;
 use core::ptr::NonNull;
 use core::task::{self, Poll};

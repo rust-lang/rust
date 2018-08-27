@@ -12,8 +12,8 @@
 
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
 
-use std::boxed::PinBox;
-use std::mem::PinMut;
+use std::pin::PinBox;
+use std::pin::PinMut;
 use std::future::Future;
 use std::sync::{
     Arc,

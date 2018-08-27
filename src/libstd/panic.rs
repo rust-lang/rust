@@ -16,7 +16,7 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use future::Future;
-use mem::PinMut;
+use pin::PinMut;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, NonNull};

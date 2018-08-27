@@ -14,6 +14,6 @@ const EXPECTED = {
     'others': [
         { 'path': 'std::vec::Vec', 'name': 'new' },
         { 'path': 'std::vec::Vec', 'name': 'ne' },
-        { 'path': 'std::boxed::PinBox', 'name': 'new' },
+        { 'path': 'std::pin::PinBox', 'name': 'new' },
     ],
 };

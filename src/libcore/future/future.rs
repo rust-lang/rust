@@ -12,7 +12,7 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use mem::PinMut;
+use pin::PinMut;
 use marker::Unpin;
 use task::{self, Poll};
 

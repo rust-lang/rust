@@ -14,7 +14,7 @@ const QUERY = 'pinbox::new';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::boxed::PinBox', 'name': 'new' },
-        { 'path': 'alloc::boxed::PinBox', 'name': 'new' },
+        { 'path': 'std::pin::PinBox', 'name': 'new' },
+        { 'path': 'alloc::pin::PinBox', 'name': 'new' },
     ],
 };
