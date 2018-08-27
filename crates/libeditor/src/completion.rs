@@ -7,6 +7,7 @@ use libsyntax2::{
         ancestors,
         visit::{visitor_ctx, VisitorCtx},
         walk::preorder,
+        generate,
     },
 };
 
@@ -27,86 +28,125 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         file.incremental_reparse(&edit)?
     };
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), offset)?;
-    Some(complete(name_ref))
+    let fn_def = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next()?;
+    let scopes = compute_scopes(fn_def);
+    Some(complete(name_ref, &scopes))
 }
 
-fn complete(name_ref: ast::NameRef) -> Vec<CompletionItem> {
-    let mut res = Vec::new();
-    for node in ancestors(name_ref.syntax()) {
-        process_scope(node, &mut res);
+fn complete(name_ref: ast::NameRef, scopes: &FnScopes) -> Vec<CompletionItem> {
+    scopes.scope_chain(name_ref.syntax())
+        .flat_map(|scope| scopes.entries(scope).iter())
+        .map(|entry| CompletionItem {
+            name: entry.name().to_string()
+        })
+        .collect()
+}
+
+fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
+    let mut scopes = FnScopes::new();
+    let root = scopes.root_scope();
+    fn_def.param_list().into_iter()
+        .flat_map(|it| it.params())
+        .filter_map(|it| it.pat())
+        .for_each(|it| scopes.add_bindings(root, it));
+
+    let mut scope = root;
+    if let Some(body) = fn_def.body() {
+        for child in body.syntax().children() {
+            let _ = visitor_ctx((&mut scopes, &mut scope))
+                .visit::<ast::LetStmt, _>(|stmt, (scopes, scope)| {
+                    *scope = scopes.new_scope(*scope);
+                    if let Some(pat) = stmt.pat() {
+                        scopes.add_bindings(*scope, pat);
+                    }
+                    if let Some(expr) = stmt.initializer() {
+                        scopes.set_scope(expr.syntax(), *scope)
+                    }
+                })
+                .visit::<ast::ExprStmt, _>(|expr, (scopes, scope)| {
+                    scopes.set_scope(expr.syntax(), *scope)
+                })
+                .visit::<ast::Expr, _>(|expr, (scopes, scope)| {
+                    scopes.set_scope(expr.syntax(), *scope)
+                })
+                .accept(child);
+        }
     }
-    res
+    scopes
 }
 
-fn process_scope(node: SyntaxNodeRef, sink: &mut Vec<CompletionItem>) {
-    let _ = visitor_ctx(sink)
-        .visit::<ast::Block, _>(|block, sink| {
-            block.let_stmts()
-                .filter_map(|it| it.pat())
-                .for_each(move |it| process_pat(it, sink))
-        })
-        .visit::<ast::FnDef, _>(|fn_def, sink| {
-            fn_def.param_list().into_iter()
-                .flat_map(|it| it.params())
-                .filter_map(|it| it.pat())
-                .for_each(move |it| process_pat(it, sink))
-        })
-        .accept(node);
+type ScopeId = usize;
 
-    fn process_pat(pat: ast::Pat, sink: &mut Vec<CompletionItem>) {
-        let items = preorder(pat.syntax())
+struct FnScopes {
+    scopes: Vec<ScopeData>,
+    scope_for: HashMap<SyntaxNode, ScopeId>,
+}
+
+impl FnScopes {
+    fn new() -> FnScopes {
+        FnScopes {
+            scopes: vec![],
+            scope_for: HashMap::new(),
+        }
+    }
+    fn root_scope(&mut self) -> ScopeId {
+        let res = self.scopes.len();
+        self.scopes.push(ScopeData { parent: None, entries: vec![] });
+        res
+    }
+    fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
+        let res = self.scopes.len();
+        self.scopes.push(ScopeData { parent: Some(parent), entries: vec![] });
+        res
+    }
+    fn add_bindings(&mut self, scope: ScopeId, pat: ast::Pat) {
+        let entries = preorder(pat.syntax())
             .filter_map(ast::BindPat::cast)
-            .filter_map(ast::BindPat::name)
-            .map(|name| CompletionItem { name: name.text().to_string() });
-        sink.extend(items);
+            .filter_map(ScopeEntry::new);
+        self.scopes[scope].entries.extend(entries);
+    }
+    fn set_scope(&mut self, node: SyntaxNodeRef, scope: ScopeId) {
+        self.scope_for.insert(node.owned(), scope);
+    }
+    fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
+        &self.scopes[scope].entries
+    }
+    fn scope_for(&self, node: SyntaxNodeRef) -> Option<ScopeId> {
+        ancestors(node)
+            .filter_map(|it| self.scope_for.get(&it.owned()).map(|&scope| scope))
+            .next()
+    }
+    fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item=ScopeId> + 'a {
+        generate(self.scope_for(node), move |&scope| self.scopes[scope].parent)
     }
 }
 
-// fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
-//     let mut scopes = FnScopes::new();
-// }
+struct ScopeData {
+    parent: Option<ScopeId>,
+    entries: Vec<ScopeEntry>
+}
 
-// type ScopeId = usize;
+struct ScopeEntry {
+    syntax: SyntaxNode
+}
 
-// struct FnScopes {
-//     scopes: Vec<ScopeData>,
-//     scope_for_expr: HashMap<SyntaxNode, ScopeId>,
-// }
+impl ScopeEntry {
+    fn new(pat: ast::BindPat) -> Option<ScopeEntry> {
+        if pat.name().is_some() {
+            Some(ScopeEntry { syntax: pat.syntax().owned() })
+        } else {
+            None
+        }
+    }
 
-// impl FnScopes {
-//     fn new() -> FnScopes {
-//         FnScopes {
-//             scopes: vec![],
-//             scope_for_expr: HashMap::new(),
-//         }
-//     }
+    fn name(&self) -> SmolStr {
+        self.ast().name()
+            .unwrap()
+            .text()
+    }
 
-//     fn new_scope(&mut Self) -> ScopeId {
-//         let res = self.scopes.len();
-//         self.scopes.push(ScopeData { parent: None, entries: vec![] })
-//     }
-
-//     fn set_parent
-// }
-
-// struct ScopeData {
-//     parent: Option<ScopeId>,
-//     entries: Vec<ScopeEntry>
-// }
-
-// struct ScopeEntry {
-//     syntax: SyntaxNode
-// }
-
-// impl ScopeEntry {
-//     fn name(&self) -> SmolStr {
-//         self.ast().name()
-//             .unwrap()
-//             .text()
-//     }
-
-//     fn ast(&self) -> ast::BindPat {
-//         ast::BindPat::cast(self.syntax.borrowed())
-//             .unwrap()
-//     }
-// }
+    fn ast(&self) -> ast::BindPat {
+        ast::BindPat::cast(self.syntax.borrowed())
+            .unwrap()
+    }
+}

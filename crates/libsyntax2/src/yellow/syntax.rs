@@ -1,4 +1,7 @@
-use std::{fmt, sync::Arc};
+use std::{
+    fmt, sync::Arc,
+    hash::{Hasher, Hash},
+};
 
 use smol_str::SmolStr;
 
@@ -27,6 +30,11 @@ impl<R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
 }
 
 impl<R: TreeRoot> Eq for SyntaxNode<R> {}
+impl<R: TreeRoot> Hash for SyntaxNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.red.hash(state)
+    }
+}
 
 pub type SyntaxNodeRef<'a> = SyntaxNode<RefRoot<'a>>;
 

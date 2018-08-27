@@ -383,6 +383,24 @@ impl<'a> AstNode<'a> for Expr<'a> {
 
 impl<'a> Expr<'a> {}
 
+// ExprStmt
+#[derive(Debug, Clone, Copy)]
+pub struct ExprStmt<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ExprStmt<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            EXPR_STMT => Some(ExprStmt { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ExprStmt<'a> {}
+
 // FieldExpr
 #[derive(Debug, Clone, Copy)]
 pub struct FieldExpr<'a> {
@@ -440,6 +458,10 @@ impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
 impl<'a> FnDef<'a> {
     pub fn param_list(self) -> Option<ParamList<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
 }
@@ -624,6 +646,10 @@ impl<'a> AstNode<'a> for LetStmt<'a> {
 
 impl<'a> LetStmt<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn initializer(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }

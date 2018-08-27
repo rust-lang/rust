@@ -268,7 +268,8 @@ fn test_completion() {
     do_check(r"
 fn quux(x: i32) {
     let y = 92;
-    1 + <|>
+    1 + <|>;
+    let z = ();
 }
 ", r#"[CompletionItem { name: "y" },
        CompletionItem { name: "x" }]"#);

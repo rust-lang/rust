@@ -248,7 +248,8 @@ Grammar(
                 "AttrsOwner",
             ],
             options: [
-                ["param_list", "ParamList"]
+                ["param_list", "ParamList"],
+                ["body", "Block"],
             ],
         ),
         "StructDef": (
@@ -431,7 +432,11 @@ Grammar(
         "TypeParamList": ( collections: [ ["type_params", "TypeParam" ] ]),
         "TypeParam": ( traits: ["NameOwner"] ),
         "WhereClause": (),
-        "LetStmt": ( options: [ ["pat", "Pat"] ]),
+        "ExprStmt": (),
+        "LetStmt": ( options: [
+            ["pat", "Pat"],
+            ["initializer", "Expr"],
+        ]),
         "Block": (
             collections: [
                 ["let_stmts", "LetStmt"],

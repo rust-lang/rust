@@ -119,7 +119,7 @@ fn common_ancestor<'a>(n1: SyntaxNodeRef<'a>, n2: SyntaxNodeRef<'a>) -> SyntaxNo
     panic!("Can't find common ancestor of {:?} and {:?}", n1, n2)
 }
 
-fn generate<T>(seed: Option<T>, step: impl Fn(&T) -> Option<T>) -> impl Iterator<Item=T> {
+pub fn generate<T>(seed: Option<T>, step: impl Fn(&T) -> Option<T>) -> impl Iterator<Item=T> {
     ::itertools::unfold(seed, move |slot| {
         slot.take().map(|curr| {
             *slot = step(&curr);
