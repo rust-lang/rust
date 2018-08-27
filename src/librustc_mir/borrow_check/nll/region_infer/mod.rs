@@ -698,7 +698,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // `ClosureOutlivesRequirement`.
         let r_scc = self.constraint_sccs.scc(*lower_bound);
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            debug!("try_promote_type_test: ur={:?}", ur);
+
             let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
+            debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
             assert!(self.universal_regions.is_universal_region(non_local_ub));
             assert!(
@@ -707,11 +710,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .is_local_free_region(non_local_ub)
             );
 
-            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+            let requirement = ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: non_local_ub,
                 blame_span: locations.span(mir),
-            });
+            };
+            debug!("try_promote_type_test: pushing {:#?}", requirement);
+            propagated_outlives_requirements.push(requirement);
         }
         true
     }
