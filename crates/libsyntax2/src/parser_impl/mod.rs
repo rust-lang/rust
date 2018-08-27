@@ -1,6 +1,8 @@
 mod event;
 mod input;
 
+use std::cell::Cell;
+
 use {
     lexer::Token,
     parser_api::Parser,
@@ -51,6 +53,7 @@ pub(crate) struct ParserImpl<'t> {
 
     pos: InputPosition,
     events: Vec<Event>,
+    steps: Cell<u32>,
 }
 
 impl<'t> ParserImpl<'t> {
@@ -60,6 +63,7 @@ impl<'t> ParserImpl<'t> {
 
             pos: InputPosition::new(),
             events: Vec::new(),
+            steps: Cell::new(0),
         }
     }
 
@@ -91,6 +95,12 @@ impl<'t> ParserImpl<'t> {
     }
 
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
+        let steps = self.steps.get();
+        if steps > 10_000_000 {
+            panic!("the parser seems stuck");
+        }
+        self.steps.set(steps + 1);
+
         self.inp.kind(self.pos + n)
     }
 

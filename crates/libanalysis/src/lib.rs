@@ -15,6 +15,7 @@ mod module_map;
 use std::{
     fmt,
     path::{Path, PathBuf},
+    panic,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -307,8 +308,15 @@ impl FileData {
     }
 
     fn syntax(&self) -> &File {
-        self.syntax
-            .get_or_init(|| File::parse(&self.text))
+        let text = &self.text;
+        let syntax = &self.syntax;
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| syntax.get_or_init(|| File::parse(text)))) {
+            Ok(file) => file,
+            Err(err) => {
+                error!("Parser paniced on:\n------\n{}\n------\n", &self.text);
+                panic::resume_unwind(err)
+            }
+        }
     }
 
     fn syntax_transient(&self) -> File {

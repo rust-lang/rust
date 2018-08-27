@@ -40,7 +40,7 @@ use ::{
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 fn main() -> Result<()> {
-    Logger::with_env()
+    Logger::with_env_or_str("m=error")
         .duplicate_to_stderr(Duplicate::All)
         .log_to_file()
         .directory("log")
