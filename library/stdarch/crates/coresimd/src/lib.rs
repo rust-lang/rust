@@ -23,7 +23,6 @@
     core_intrinsics,
     crate_in_paths,
     no_core,
-    attr_literals,
     rustc_attrs,
     stdsimd,
     staged_api,
@@ -40,7 +39,6 @@
 #![cfg_attr(
     test,
     feature(
-        use_extern_macros,
         test,
         abi_vectorcall,
         untagged_unions
