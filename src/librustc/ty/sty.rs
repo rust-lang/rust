@@ -753,7 +753,8 @@ impl<T> Binder<T> {
     pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
-        debug_assert!(!value.has_escaping_regions());
+        debug_assert!(!value.has_escaping_regions(),
+            "Value has unexpected escaping regions: {:?}", value);
         Binder(value)
     }
 

@@ -487,7 +487,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
         // am looking forward to the future here.
 
-        if !data.has_escaping_regions() {
+        if !data.has_escaping_regions() && !region.has_escaping_regions() {
             let implicit_bounds =
                 object_region_bounds(self.infcx.tcx, data);
 
@@ -495,6 +495,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
+                debug!("Testing implicit bound {:?} with explicit bound {:?}, cause {:?}",
+                    implicit_bound, explicit_bound, cause);
                 let outlives = ty::Binder::dummy(
                     ty::OutlivesPredicate(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::new(cause,
