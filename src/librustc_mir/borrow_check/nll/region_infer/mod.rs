@@ -701,6 +701,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // `ClosureOutlivesRequirement`.
         let r_scc = self.constraint_sccs.scc(*lower_bound);
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            // Check whether we can already prove that the "subject" outlives `ur`.
+            // If so, we don't have to propagate this requirement to our caller.
+            //
+            // To continue the example from the function, if we are trying to promote
+            // a requirement that `T: 'X`, and we know that `'X = '1 + '2` (i.e., the union
+            // `'1` and `'2`), then in this loop `ur` will be `'1` (and `'2`). So here
+            // we check whether `T: '1` is something we *can* prove. If so, no need
+            // to propagate that requirement.
+            //
+            // This is needed because -- particularly in the case
+            // where `ur` is a local bound -- we are sometimes in a
+            // position to prove things that our caller cannot.  See
+            // #53570 for an example.
+            if self.eval_region_test(mir, ur, &type_test.test) {
+                continue;
+            }
+
             debug!("try_promote_type_test: ur={:?}", ur);
 
             let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
