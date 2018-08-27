@@ -4273,12 +4273,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         if self.session.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            let first_segment_ident = segms[0].ident;
-                            if first_segment_ident.name != "std" {
-                                segms.insert(
-                                    0, ast::PathSegment::from_ident(crate_name)
-                                );
-                            }
+                            segms.insert(
+                                0, ast::PathSegment::from_ident(crate_name)
+                            );
                         }
 
                         segms.push(ast::PathSegment::from_ident(ident));
@@ -4307,8 +4304,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() &&
-                        self.session.rust_2018() &&
-                        self.extern_prelude.contains(&ident.name);
+                        self.session.rust_2018();
 
                     let is_visible_to_user =
                         !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
