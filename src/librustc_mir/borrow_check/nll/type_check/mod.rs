@@ -135,7 +135,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         normalized_inputs_and_output,
     } = free_region_relations::create(
         infcx,
-        mir_def_id,
         param_env,
         location_table,
         Some(implicit_region_bound),

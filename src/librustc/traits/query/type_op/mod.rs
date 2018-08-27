@@ -21,6 +21,7 @@ use ty::{Lift, ParamEnvAnd, TyCtxt};
 
 pub mod custom;
 pub mod eq;
+pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;

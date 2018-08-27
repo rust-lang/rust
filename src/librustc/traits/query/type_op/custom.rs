@@ -102,8 +102,14 @@ fn scrape_region_constraints<'gcx, 'tcx, R>(
 
     let region_constraint_data = infcx.take_and_reset_region_constraints();
 
-    let outlives =
-        query_result::make_query_outlives(infcx.tcx, region_obligations, &region_constraint_data);
+    let outlives = query_result::make_query_outlives(
+        infcx.tcx,
+        region_obligations
+            .iter()
+            .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region))
+            .map(|(ty, r)| (infcx.resolve_type_vars_if_possible(&ty), r)),
+        &region_constraint_data,
+    );
 
     if outlives.is_empty() {
         Ok((value, None))
