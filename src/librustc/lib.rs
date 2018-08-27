@@ -51,6 +51,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(non_exhaustive)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]

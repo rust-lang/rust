@@ -28,6 +28,7 @@
 #![feature(box_syntax)]
 #![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(macro_at_most_once_rep)]

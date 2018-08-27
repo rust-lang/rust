@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// See Cargo.toml for a comment explaining this crate.
-#![allow(unused_extern_crates)]
+//compile-pass
 
-#![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
+#![feature(infer_outlives_requirements)]
 
-extern crate bitflags;
-extern crate log;
+struct Foo {
+    bar: for<'r> Fn(usize, &'r FnMut())
+}
+
+fn main() {
+}
+
