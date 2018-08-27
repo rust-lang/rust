@@ -8,6 +8,12 @@ LL | | }
    |
    = note: first defined in crate `std`.
 
-error: aborting due to previous error
+error: argument should be `&PanicInfo`
+  --> $DIR/panic-handler-std.rs:18:16
+   |
+LL | fn panic(info: PanicInfo) -> ! {
+   |                ^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0152`.

@@ -29,6 +29,7 @@ use constrained_type_params as ctp;
 use lint;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
+use middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
@@ -2281,6 +2282,8 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     codegen_fn_attrs.link_section = Some(val);
                 }
             }
+        } else if attr.check_name("link_name") {
+            codegen_fn_attrs.link_name = attr.value_str();
         }
     }
 
@@ -2298,6 +2301,26 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 );
             }
         }
+    }
+
+    // Weak lang items have the same semantics as "std internal" symbols in the
+    // sense that they're preserved through all our LTO passes and only
+    // strippable by the linker.
+    //
+    // Additionally weak lang items have predetermined symbol names.
+    if tcx.is_weak_lang_item(id) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+    }
+    if let Some(name) = weak_lang_items::link_name(&attrs) {
+        codegen_fn_attrs.export_name = Some(name);
+        codegen_fn_attrs.link_name = Some(name);
+    }
+
+    // Internal symbols to the standard library all have no_mangle semantics in
+    // that they have defined symbol names present in the function name. This
+    // also applies to weak symbols where they all have known symbol names.
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
     }
 
     codegen_fn_attrs

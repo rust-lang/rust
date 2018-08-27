@@ -1136,6 +1136,7 @@ impl_stable_hash_for!(struct hir::CodegenFnAttrs {
     flags,
     inline,
     export_name,
+    link_name,
     target_features,
     linkage,
     link_section,

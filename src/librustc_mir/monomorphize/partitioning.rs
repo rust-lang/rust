@@ -516,10 +516,8 @@ fn mono_item_visibility(
         //   visibility below. Like the weak lang items, though, we can't let
         //   LLVM internalize them as this decision is left up to the linker to
         //   omit them, so prevent them from being internalized.
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
-        let std_internal_symbol = codegen_fn_attrs.flags
-            .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-        if tcx.is_weak_lang_item(def_id) || std_internal_symbol {
+        let attrs = tcx.codegen_fn_attrs(def_id);
+        if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             *can_be_internalized = false;
         }
 

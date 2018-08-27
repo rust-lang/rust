@@ -231,8 +231,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     false
                 };
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                let is_extern = self.tcx.codegen_fn_attrs(def_id).contains_extern_indicator();
-                if reachable || is_extern {
+                let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
+                let is_extern = codegen_attrs.contains_extern_indicator();
+                let std_internal = codegen_attrs.flags.contains(
+                    CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+                if reachable || is_extern || std_internal {
                     self.reachable_symbols.insert(search_item);
                 }
             }
