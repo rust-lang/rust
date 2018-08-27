@@ -81,9 +81,9 @@ pub enum LegacyScope<'a> {
 // Binding produced by a `macro_rules` item.
 // Not modularized, can shadow previous legacy bindings, etc.
 pub struct LegacyBinding<'a> {
-    pub binding: &'a NameBinding<'a>,
-    pub parent: Cell<LegacyScope<'a>>,
-    pub ident: Ident,
+    binding: &'a NameBinding<'a>,
+    parent: Cell<LegacyScope<'a>>,
+    ident: Ident,
 }
 
 pub struct ProcMacError {
@@ -784,42 +784,101 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
     }
 
-    crate fn resolve_legacy_scope(&mut self,
-                                  mut scope: &'a Cell<LegacyScope<'a>>,
-                                  ident: Ident,
-                                  record_used: bool)
-                                  -> Option<(&'a NameBinding<'a>, FromExpansion)> {
+    fn resolve_legacy_scope(&mut self,
+                            scope: &'a Cell<LegacyScope<'a>>,
+                            ident: Ident,
+                            record_used: bool)
+                            -> Option<(&'a NameBinding<'a>, FromExpansion)> {
         let ident = ident.modern();
-        let mut relative_depth: u32 = 0;
+
+        // Names from inner scope that can't shadow names from outer scopes, e.g.
+        // macro_rules! mac { ... }
+        // {
+        //     define_mac!(); // if this generates another `macro_rules! mac`, then it can't shadow
+        //                    // the outer `mac` and we have and ambiguity error
+        //     mac!();
+        // }
+        let mut potentially_ambiguous_result: Option<(&NameBinding, FromExpansion)> = None;
+
+        // Go through all the scopes and try to resolve the name.
+        let mut where_to_resolve = scope;
+        let mut relative_depth = 0u32;
         loop {
-            match scope.get() {
-                LegacyScope::Empty => break,
-                LegacyScope::Expansion(invocation) => {
-                    match invocation.expansion.get() {
-                        LegacyScope::Invocation(_) => scope.set(invocation.legacy_scope.get()),
-                        LegacyScope::Empty => {
-                            scope = &invocation.legacy_scope;
-                        }
-                        _ => {
-                            relative_depth += 1;
-                            scope = &invocation.expansion;
-                        }
-                    }
+            let result = match where_to_resolve.get() {
+                LegacyScope::Binding(legacy_binding) => if ident == legacy_binding.ident {
+                    Some((legacy_binding.binding, FromExpansion(relative_depth > 0)))
+                } else {
+                    None
                 }
-                LegacyScope::Invocation(invocation) => {
-                    relative_depth = relative_depth.saturating_sub(1);
-                    scope = &invocation.legacy_scope;
-                }
-                LegacyScope::Binding(potential_binding) => {
-                    if potential_binding.ident == ident {
-                        if record_used && relative_depth > 0 {
-                            self.disallowed_shadowing.push(potential_binding);
-                        }
-                        return Some((potential_binding.binding, FromExpansion(relative_depth > 0)));
-                    }
-                    scope = &potential_binding.parent;
-                }
+                _ => None,
             };
+
+            macro_rules! continue_search { () => {
+                where_to_resolve = match where_to_resolve.get() {
+                    LegacyScope::Binding(binding) => &binding.parent,
+                    LegacyScope::Invocation(invocation) => {
+                        relative_depth = relative_depth.saturating_sub(1);
+                        &invocation.legacy_scope
+                    }
+                    LegacyScope::Expansion(invocation) => match invocation.expansion.get() {
+                        LegacyScope::Empty => &invocation.legacy_scope,
+                        LegacyScope::Binding(..) | LegacyScope::Expansion(..) => {
+                            relative_depth += 1;
+                            &invocation.expansion
+                        }
+                        LegacyScope::Invocation(..) => {
+                            where_to_resolve.set(invocation.legacy_scope.get());
+                            where_to_resolve
+                        }
+                    }
+                    LegacyScope::Empty => break, // nowhere else to search
+                };
+
+                continue;
+            }}
+
+            match result {
+                Some(result) => {
+                    if !record_used {
+                        return Some(result);
+                    }
+
+                    // Found a solution that is ambiguous with a previously found solution.
+                    // Push an ambiguity error for later reporting and
+                    // return something for better recovery.
+                    if let Some(previous_result) = potentially_ambiguous_result {
+                        if result.0.def() != previous_result.0.def() {
+                            self.ambiguity_errors.push(AmbiguityError {
+                                span: ident.span,
+                                name: ident.name,
+                                b1: previous_result.0,
+                                b2: result.0,
+                            });
+                            return Some(previous_result);
+                        }
+                    }
+
+                    // Found a solution that's not an ambiguity yet, but is "suspicious" and
+                    // can participate in ambiguities later on.
+                    // Remember it and go search for other solutions in outer scopes.
+                    if (result.1).0 {
+                        potentially_ambiguous_result = Some(result);
+
+                        continue_search!();
+                    }
+
+                    // Found a solution that can't be ambiguous.
+                    return Some(result);
+                }
+                None => {
+                    continue_search!();
+                }
+            }
+        }
+
+        // Previously found potentially ambiguous result turned out to not be ambiguous after all.
+        if let Some(previous_result) = potentially_ambiguous_result {
+            return Some(previous_result);
         }
 
         None
@@ -846,8 +905,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             let check_consistency = |this: &Self, new_def: Def| {
                 if let Some(def) = def {
-                    if this.ambiguity_errors.is_empty() && this.disallowed_shadowing.is_empty() &&
-                       new_def != def && new_def != Def::Err {
+                    if this.ambiguity_errors.is_empty() && new_def != def && new_def != Def::Err {
                         // Make sure compilation does not succeed if preferred macro resolution
                         // has changed after the macro had been expanded. In theory all such
                         // situations should be reported as ambiguity errors, so this is span-bug.

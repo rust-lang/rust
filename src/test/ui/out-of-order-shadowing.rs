@@ -9,11 +9,10 @@
 // except according to those terms.
 
 // aux-build:define_macro.rs
-// error-pattern: `bar` is already in scope
 
 macro_rules! bar { () => {} }
 define_macro!(bar);
-bar!();
+bar!(); //~ ERROR `bar` is ambiguous
 
 macro_rules! m { () => { #[macro_use] extern crate define_macro; } }
 m!();

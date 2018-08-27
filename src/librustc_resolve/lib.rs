@@ -1402,8 +1402,6 @@ pub struct Resolver<'a, 'b: 'a> {
     proc_mac_errors: Vec<macros::ProcMacError>,
     /// crate-local macro expanded `macro_export` referred to by a module-relative path
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
-    /// macro-expanded `macro_rules` shadowing existing macros
-    disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1715,7 +1713,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ambiguity_errors: Vec::new(),
             use_injections: Vec::new(),
             proc_mac_errors: Vec::new(),
-            disallowed_shadowing: Vec::new(),
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
@@ -4534,7 +4531,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn report_errors(&mut self, krate: &Crate) {
-        self.report_shadowing_errors();
         self.report_with_use_injections(krate);
         self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
@@ -4569,20 +4565,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
-        }
-    }
-
-    fn report_shadowing_errors(&mut self) {
-        let mut reported_errors = FxHashSet();
-        for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_legacy_scope(&binding.parent, binding.ident, false).is_some() &&
-               reported_errors.insert((binding.ident, binding.binding.span)) {
-                let msg = format!("`{}` is already in scope", binding.ident);
-                self.session.struct_span_err(binding.binding.span, &msg)
-                    .note("macro-expanded `macro_rules!`s may not shadow \
-                           existing macros (see RFC 1560)")
-                    .emit();
-            }
         }
     }
 
