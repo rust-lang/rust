@@ -246,11 +246,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
-        if ecx.hook_fn(instance, args, dest)? {
-            ecx.goto_block(ret)?; // fully evaluated and done
-            return Ok(None);
-        }
         if !ecx.tcx.is_const_fn(instance.def_id()) {
+            // Some functions we support even if they are non-const -- but avoid testing
+            // that for const fn!
+            if ecx.hook_fn(instance, args, dest)? {
+                ecx.goto_block(ret)?; // fully evaluated and done
+                return Ok(None);
+            }
             return Err(
                 ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
             );
