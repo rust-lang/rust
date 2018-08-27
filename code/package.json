@@ -7,7 +7,7 @@
   "version": "0.0.1",
   "publisher": "matklad",
   "engines": {
-    "vscode": "^1.25.0"
+    "vscode": "^1.26.0"
   },
   "scripts": {
     "vscode:prepublish": "tsc -p ./",
