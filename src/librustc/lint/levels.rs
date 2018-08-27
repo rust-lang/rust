@@ -231,12 +231,13 @@ impl<'a> LintLevelsBuilder<'a> {
                     let gate_feature = !self.sess.features_untracked().tool_lints;
                     let known_tool = attr::is_known_lint_tool(lint_tool);
                     if gate_feature {
-                        feature_gate::emit_feature_err(&sess.parse_sess,
-                                                       "tool_lints",
-                                                       word.span,
-                                                       feature_gate::GateIssue::Language,
-                                                       &format!("scoped lint `{}` is experimental",
-                                                                word.ident));
+                        feature_gate::emit_feature_err(
+                            &sess.parse_sess,
+                            "tool_lints",
+                            word.span,
+                            feature_gate::GateIssue::Language,
+                            &format!("scoped lint `{}` is experimental", word.ident),
+                        );
                     }
                     if !known_tool {
                         span_err!(
@@ -249,7 +250,7 @@ impl<'a> LintLevelsBuilder<'a> {
                     }
 
                     if gate_feature || !known_tool {
-                        continue
+                        continue;
                     }
 
                     Some(lint_tool.as_str())
@@ -266,17 +267,50 @@ impl<'a> LintLevelsBuilder<'a> {
                     }
 
                     CheckLintNameResult::Tool(result) => {
-                        if let Some(ids) = result {
-                            let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
-                            let src = LintSource::Node(Symbol::intern(complete_name), li.span);
-                            for id in ids {
-                                specs.insert(*id, (level, src));
+                        match result {
+                            Ok(ids) => {
+                                let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
+                                let src = LintSource::Node(Symbol::intern(complete_name), li.span);
+                                for id in ids {
+                                    specs.insert(*id, (level, src));
+                                }
+                            }
+                            Err((Some(ids), new_lint_name)) => {
+                                let lint = builtin::RENAMED_AND_REMOVED_LINTS;
+                                let (lvl, src) =
+                                    self.sets
+                                        .get_lint_level(lint, self.cur, Some(&specs), &sess);
+                                let mut err = lint::struct_lint_level(
+                                    self.sess,
+                                    lint,
+                                    lvl,
+                                    src,
+                                    Some(li.span.into()),
+                                    &format!(
+                                        "lint name `{}` is deprecated \
+                                         and may not have an effect in the future",
+                                        name
+                                    ),
+                                );
+                                err.span_suggestion_with_applicability(
+                                    li.span,
+                                    "change it to",
+                                    new_lint_name.to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                                err.emit();
+                                let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
+                                for id in ids {
+                                    specs.insert(*id, (level, src));
+                                }
+                            }
+                            Err((None, _)) => {
+                                // If Tool(Err(None, _)) is returned, then either the lint does not
+                                // exist in the tool or the code was not compiled with the tool and
+                                // therefore the lint was never added to the `LintStore`. To detect
+                                // this is the responsibility of the lint tool.
                             }
                         }
-                        // If Tool(None) is returned, then either the lint does not exist in the
-                        // tool or the code was not compiled with the tool and therefore the lint
-                        // was never added to the `LintStore`. To detect this is the responsibility
-                        // of the lint tool.
                     }
 
                     _ if !self.warn_about_weird_lints => {}

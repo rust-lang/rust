@@ -139,7 +139,7 @@ pub enum CheckLintNameResult<'a> {
     /// compiled with the tool and therefore the lint was never
     /// added to the `LintStore`. Otherwise the `LintId` will be
     /// returned as if it where a rustc lint.
-    Tool(Option<&'a [LintId]>),
+    Tool(Result<&'a [LintId], (Option<&'a [LintId]>, String)>),
 }
 
 impl LintStore {
@@ -353,13 +353,14 @@ impl LintStore {
         } else {
             lint_name.to_string()
         };
+        // If the lint was scoped with `tool::` check if the tool lint exists
         if let Some(_) = tool_name {
             match self.by_name.get(&complete_name) {
                 None => match self.lint_groups.get(&*complete_name) {
-                    None => return CheckLintNameResult::Tool(None),
-                    Some(ids) => return CheckLintNameResult::Tool(Some(&ids.0)),
+                    None => return CheckLintNameResult::Tool(Err((None, String::new()))),
+                    Some(ids) => return CheckLintNameResult::Tool(Ok(&ids.0)),
                 },
-                Some(&Id(ref id)) => return CheckLintNameResult::Tool(Some(slice::from_ref(id))),
+                Some(&Id(ref id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
                 // If the lint was registered as removed or renamed by the lint tool, we don't need
                 // to treat tool_lints and rustc lints different and can use the code below.
                 _ => {}
@@ -367,18 +368,62 @@ impl LintStore {
         }
         match self.by_name.get(&complete_name) {
             Some(&Renamed(ref new_name, _)) => CheckLintNameResult::Warning(
-                format!("lint `{}` has been renamed to `{}`", lint_name, new_name),
+                format!(
+                    "lint `{}` has been renamed to `{}`",
+                    complete_name, new_name
+                ),
                 Some(new_name.to_owned()),
             ),
             Some(&Removed(ref reason)) => CheckLintNameResult::Warning(
-                format!("lint `{}` has been removed: `{}`", lint_name, reason),
+                format!("lint `{}` has been removed: `{}`", complete_name, reason),
                 None,
             ),
             None => match self.lint_groups.get(&*complete_name) {
-                None => CheckLintNameResult::NoLint,
-                Some(ids) => CheckLintNameResult::Ok(&ids.0),
+                // If neither the lint, nor the lint group exists check if there is a `clippy::`
+                // variant of this lint
+                None => self.check_tool_name_for_backwards_compat(&complete_name, "clippy"),
+                Some(ids) => {
+                    // Check if the lint group name is deprecated
+                    if let Some(new_name) = ids.2 {
+                        let lint_ids = self.lint_groups.get(new_name).unwrap();
+                        return CheckLintNameResult::Tool(Err((
+                            Some(&lint_ids.0),
+                            new_name.to_string(),
+                        )));
+                    }
+                    CheckLintNameResult::Ok(&ids.0)
+                }
             },
             Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
+        }
+    }
+
+    fn check_tool_name_for_backwards_compat(
+        &self,
+        lint_name: &str,
+        tool_name: &str,
+    ) -> CheckLintNameResult {
+        let complete_name = format!("{}::{}", tool_name, lint_name);
+        match self.by_name.get(&complete_name) {
+            None => match self.lint_groups.get(&*complete_name) {
+                // Now we are sure, that this lint exists nowhere
+                None => CheckLintNameResult::NoLint,
+                Some(ids) => {
+                    // Reaching this would be weird, but lets cover this case anyway
+                    if let Some(new_name) = ids.2 {
+                        let lint_ids = self.lint_groups.get(new_name).unwrap();
+                        return CheckLintNameResult::Tool(Err((
+                            Some(&lint_ids.0),
+                            new_name.to_string(),
+                        )));
+                    }
+                    CheckLintNameResult::Tool(Ok(&ids.0))
+                }
+            },
+            Some(&Id(ref id)) => {
+                CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
+            }
+            _ => CheckLintNameResult::NoLint,
         }
     }
 }
