@@ -627,7 +627,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 
 declare_lint! {
     pub ANONYMOUS_PARAMETERS,
-    Warn,
+    Allow,
     "detects anonymous parameters"
 }
 

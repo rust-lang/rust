@@ -152,7 +152,14 @@ type StackWalk64Fn = unsafe extern "system" fn(
 trait StackWalker {
     type Item: StackFrame;
 
-    fn walk(&self, c::DWORD, c::HANDLE, c::HANDLE, &mut Self::Item, &mut c::CONTEXT) -> c::BOOL;
+    fn walk(
+        &self,
+        _: c::DWORD,
+        _: c::HANDLE,
+        _: c::HANDLE,
+        _: &mut Self::Item,
+        _: &mut c::CONTEXT
+    ) -> c::BOOL;
 }
 
 impl StackWalker for StackWalkExFn {
