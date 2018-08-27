@@ -30,6 +30,7 @@ use {
         handle_join_lines,
         handle_completion,
         handle_runnables,
+        handle_decorations,
     },
 };
 
@@ -156,6 +157,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::JoinLines>(
         &mut req, pool, world, sender, handle_join_lines,
+    )?;
+    handle_request_on_threadpool::<req::DecorationsRequest>(
+        &mut req, pool, world, sender, handle_decorations,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));

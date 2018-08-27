@@ -84,6 +84,14 @@ pub struct FindMatchingBraceParams {
     pub offsets: Vec<Position>,
 }
 
+pub enum DecorationsRequest {}
+
+impl Request for DecorationsRequest {
+    type Params = TextDocumentIdentifier;
+    type Result = Vec<Decoration>;
+    const METHOD: &'static str = "m/decorationsRequest";
+}
+
 pub enum PublishDecorations {}
 
 impl Notification for PublishDecorations {

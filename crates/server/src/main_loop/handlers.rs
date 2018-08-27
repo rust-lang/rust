@@ -7,7 +7,7 @@ use languageserver_types::{
     CompletionItem,
 };
 use serde_json::{to_value, from_value};
-use libanalysis::{Query, QuickFix};
+use libanalysis::{Query, QuickFix, FileId};
 use libeditor;
 use libsyntax2::{
     TextUnit,
@@ -401,18 +401,33 @@ pub fn publish_diagnostics(
     Ok(req::PublishDiagnosticsParams { uri, diagnostics })
 }
 
+pub fn handle_decorations(
+    world: ServerWorld,
+    params: TextDocumentIdentifier,
+) -> Result<Vec<Decoration>> {
+    let file_id = params.try_conv_with(&world)?;
+    highlight(&world, file_id)
+}
+
 pub fn publish_decorations(
     world: ServerWorld,
     uri: Url
 ) -> Result<req::PublishDecorationsParams> {
     let file_id = world.uri_to_file_id(&uri)?;
+    Ok(req::PublishDecorationsParams {
+        uri,
+        decorations: highlight(&world, file_id)?
+    })
+}
+
+fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
     let file = world.analysis().file_syntax(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let decorations = libeditor::highlight(&file)
+    let res = libeditor::highlight(&file)
         .into_iter()
         .map(|h| Decoration {
             range: h.range.conv_with(&line_index),
             tag: h.tag,
         }).collect();
-    Ok(req::PublishDecorationsParams { uri, decorations })
+    Ok(res)
 }

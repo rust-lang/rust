@@ -134,6 +134,14 @@ export function activate(context: vscode.ExtensionContext) {
             textDocumentContentProvider.eventEmitter.fire(uris.syntaxTree)
         })
     }, null, context.subscriptions)
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        if (!editor || editor.document.languageId != 'rust') return
+        let params: lc.TextDocumentIdentifier = {
+            uri: editor.document.uri.toString()
+        }
+        let decorations = await client.sendRequest<Decoration[]>("m/decorationsRequest", params)
+        setHighlights(editor, decorations)
+    })
 }
 
 // We need to order this after LS updates, but there's no API for that.
