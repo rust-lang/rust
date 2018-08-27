@@ -11,9 +11,10 @@
 use std::{fmt, env};
 
 use mir;
-use ty::{FnSig, Ty, layout};
+use ty::{Ty, layout};
 use ty::layout::{Size, Align};
 use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::abi::Abi;
 
 use super::{
     Pointer, Lock, AccessKind
@@ -182,7 +183,10 @@ pub enum EvalErrorKind<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
     MachineError(String),
-    FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
+
+    FunctionAbiMismatch(Abi, Abi),
+    FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
+    FunctionArgCountMismatch,
     NoMirFor(String),
     UnterminatedCString(Pointer),
     DanglingPointerDeref,
@@ -290,8 +294,8 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
         use self::EvalErrorKind::*;
         match *self {
             MachineError(ref inner) => inner,
-            FunctionPointerTyMismatch(..) =>
-                "tried to call a function through a function pointer of a different type",
+            FunctionAbiMismatch(..) | FunctionArgMismatch(..) | FunctionArgCountMismatch =>
+                "tried to call a function through a function pointer of incompatible type",
             InvalidMemoryAccess =>
                 "tried to access memory through an invalid pointer",
             DanglingPointerDeref =>
@@ -459,9 +463,15 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                 write!(f, "type validation failed: {}", err)
             }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
-            FunctionPointerTyMismatch(sig, got) =>
-                write!(f, "tried to call a function with sig {} through a \
-                       function pointer of type {}", sig, got),
+            FunctionAbiMismatch(caller_abi, callee_abi) =>
+                write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
+                    callee_abi, caller_abi),
+            FunctionArgMismatch(caller_ty, callee_ty) =>
+                write!(f, "tried to call a function with argument of type {:?} \
+                           passing data of type {:?}",
+                    callee_ty, caller_ty),
+            FunctionArgCountMismatch =>
+                write!(f, "tried to call a function with incorrect number of arguments"),
             BoundsCheck { ref len, ref index } =>
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             ReallocatedWrongMemoryKind(ref old, ref new) =>

@@ -487,10 +487,12 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
         use ::mir::interpret::EvalErrorKind::*;
         Some(match *self {
             MachineError(ref err) => MachineError(err.clone()),
-            FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
+            FunctionAbiMismatch(a, b) => FunctionAbiMismatch(a, b),
+            FunctionArgMismatch(a, b) => FunctionArgMismatch(
                 tcx.lift(&a)?,
                 tcx.lift(&b)?,
             ),
+            FunctionArgCountMismatch => FunctionArgCountMismatch,
             NoMirFor(ref s) => NoMirFor(s.clone()),
             UnterminatedCString(ptr) => UnterminatedCString(ptr),
             DanglingPointerDeref => DanglingPointerDeref,

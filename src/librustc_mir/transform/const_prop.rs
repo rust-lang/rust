@@ -153,7 +153,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     | MachineError(_)
                     // at runtime these transformations might make sense
                     // FIXME: figure out the rules and start linting
-                    | FunctionPointerTyMismatch(..)
+                    | FunctionAbiMismatch(..)
+                    | FunctionArgMismatch(..)
+                    | FunctionArgCountMismatch
                     // fine at runtime, might be a register address or sth
                     | ReadBytesAsPointer
                     // fine at runtime
