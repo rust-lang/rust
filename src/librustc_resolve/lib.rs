@@ -1952,9 +1952,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                 "access to extern crates through prelude is experimental").emit();
                 }
 
-                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
-                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(crate_root);
+                let crate_root = self.load_extern_prelude_crate_if_needed(ident);
 
                 let binding = (crate_root, ty::Visibility::Public,
                                ident.span, Mark::root()).to_name_binding(self.arenas);
@@ -1980,6 +1978,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         None
+    }
+
+    fn load_extern_prelude_crate_if_needed(&mut self, ident: Ident) -> Module<'a> {
+        let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+        let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+        self.populate_module_if_necessary(&crate_root);
+        crate_root
     }
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
@@ -4228,16 +4233,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
     }
 
-    /// When name resolution fails, this method can be used to look up candidate
-    /// entities with the expected name. It allows filtering them using the
-    /// supplied predicate (which should be used to only accept the types of
-    /// definitions expected e.g. traits). The lookup spans across all crates.
-    ///
-    /// NOTE: The method does not look into imports, but this is not a problem,
-    /// since we report the definitions (thus, the de-aliased imports).
-    fn lookup_import_candidates<FilterFn>(&mut self,
+    fn lookup_import_candidates_from_module<FilterFn>(&mut self,
                                           lookup_name: Name,
                                           namespace: Namespace,
+                                          start_module: &'a ModuleData<'a>,
+                                          crate_name: Ident,
                                           filter_fn: FilterFn)
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
@@ -4245,7 +4245,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut candidates = Vec::new();
         let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
-        worklist.push((self.graph_root, Vec::new(), false));
+        let not_local_module = crate_name != keywords::Crate.ident();
+        worklist.push((start_module, Vec::<ast::PathSegment>::new(), not_local_module));
 
         while let Some((in_module,
                         path_segments,
@@ -4264,17 +4265,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let mut segms = if self.session.rust_2018() && !in_module_is_extern {
+                        let mut segms = path_segments.clone();
+                        if self.session.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            let mut full_segms = vec![
-                                ast::PathSegment::from_ident(keywords::Crate.ident())
-                            ];
-                            full_segms.extend(path_segments.clone());
-                            full_segms
-                        } else {
-                            path_segments.clone()
-                        };
+                            segms.insert(
+                                0, ast::PathSegment::from_ident(crate_name)
+                            );
+                        }
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path {
@@ -4300,7 +4298,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
 
-                    if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
+                    let is_extern_crate_that_also_appears_in_prelude =
+                        name_binding.is_extern_crate() &&
+                        self.session.rust_2018();
+
+                    let is_visible_to_user =
+                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
+
+                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         if seen_modules.insert(module.def_id().unwrap()) {
@@ -4312,6 +4317,45 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         candidates
+    }
+
+    /// When name resolution fails, this method can be used to look up candidate
+    /// entities with the expected name. It allows filtering them using the
+    /// supplied predicate (which should be used to only accept the types of
+    /// definitions expected e.g. traits). The lookup spans across all crates.
+    ///
+    /// NOTE: The method does not look into imports, but this is not a problem,
+    /// since we report the definitions (thus, the de-aliased imports).
+    fn lookup_import_candidates<FilterFn>(&mut self,
+                                          lookup_name: Name,
+                                          namespace: Namespace,
+                                          filter_fn: FilterFn)
+                                          -> Vec<ImportSuggestion>
+        where FilterFn: Fn(Def) -> bool
+    {
+        let mut suggestions = vec![];
+
+        suggestions.extend(
+            self.lookup_import_candidates_from_module(
+                lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn
+            )
+        );
+
+        if self.session.features_untracked().extern_prelude {
+            let extern_prelude_names = self.extern_prelude.clone();
+            for &krate_name in extern_prelude_names.iter() {
+                let krate_ident = Ident::with_empty_ctxt(krate_name);
+                let external_prelude_module = self.load_extern_prelude_crate_if_needed(krate_ident);
+
+                suggestions.extend(
+                    self.lookup_import_candidates_from_module(
+                        lookup_name, namespace, external_prelude_module, krate_ident, &filter_fn
+                    )
+                );
+            }
+        }
+
+        suggestions
     }
 
     fn find_module(&mut self,
