@@ -81,10 +81,20 @@ export function activate(context: vscode.ExtensionContext) {
         let e = await vscode.window.showTextDocument(doc)
         e.revealRange(range, vscode.TextEditorRevealType.InCenter)
     })
-    console.log("ping")
+
     registerCommand('libsyntax-rust.run', async (cmd: ProcessSpec) => {
         let task = createTask(cmd)
         await vscode.tasks.executeTask(task)
+    })
+    registerCommand('libsyntax-rust.createFile', async (uri_: string) => {
+        console.log(`uri: ${uri_}`)
+        let uri = vscode.Uri.parse(uri_)
+        let edit = new vscode.WorkspaceEdit()
+        edit.createFile(uri)
+        await vscode.workspace.applyEdit(edit)
+        let doc = await vscode.workspace.openTextDocument(uri)
+        await vscode.window.showTextDocument(doc)
+        console.log("Done")
     })
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(

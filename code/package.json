@@ -52,6 +52,10 @@
     ],
     "commands": [
       {
+        "command": "libsyntax-rust.createFile",
+        "title": "Show Rust syntax tree"
+      },
+      {
         "command": "libsyntax-rust.syntaxTree",
         "title": "Show Rust syntax tree"
       },

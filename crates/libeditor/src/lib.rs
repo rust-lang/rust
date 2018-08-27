@@ -9,6 +9,7 @@ mod edit;
 mod code_actions;
 mod typing;
 mod completion;
+mod scope;
 
 use libsyntax2::{
     File, TextUnit, TextRange, SyntaxNodeRef,

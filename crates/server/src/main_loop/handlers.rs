@@ -7,7 +7,7 @@ use languageserver_types::{
     CompletionItem,
 };
 use serde_json::{to_value, from_value};
-use libanalysis::{Query};
+use libanalysis::{Query, QuickFix};
 use libeditor;
 use libsyntax2::{
     TextUnit,
@@ -176,6 +176,30 @@ pub fn handle_code_action(
             arguments: Some(vec![to_value(spec).unwrap()]),
         };
         res.push(cmd);
+    }
+
+    for (diag, quick_fix) in world.analysis().diagnostics(file_id)? {
+        let quick_fix = match quick_fix {
+            Some(quick_fix) => quick_fix,
+            None => continue,
+        };
+        if !contains_offset_nonstrict(diag.range, offset) {
+            continue;
+        }
+        let cmd = match quick_fix {
+            QuickFix::CreateFile(path) => {
+                let path = &path.to_str().unwrap()[3..]; // strip `../` b/c url is weird
+                let uri = params.text_document.uri.join(path)
+                    .unwrap();
+                let uri = ::url_serde::Ser::new(&uri);
+                Command {
+                    title: "Create file".to_string(),
+                    command: "libsyntax-rust.createFile".to_string(),
+                    arguments: Some(vec![to_value(uri).unwrap()]),
+                }
+            }
+        };
+        res.push(cmd)
     }
     return Ok(Some(res));
 }
@@ -355,11 +379,10 @@ pub fn publish_diagnostics(
     uri: Url
 ) -> Result<req::PublishDiagnosticsParams> {
     let file_id = world.uri_to_file_id(&uri)?;
-    let file = world.analysis().file_syntax(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let diagnostics = libeditor::diagnostics(&file)
+    let diagnostics = world.analysis().diagnostics(file_id)?
         .into_iter()
-        .map(|d| Diagnostic {
+        .map(|(d, _quick_fix)| Diagnostic {
             range: d.range.conv_with(&line_index),
             severity: Some(DiagnosticSeverity::Error),
             code: None,

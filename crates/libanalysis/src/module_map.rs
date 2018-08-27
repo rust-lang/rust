@@ -93,6 +93,11 @@ impl ModuleMap {
         res
     }
 
+    pub fn suggested_child_mod_path(&self, m: ast::Module) -> Option<PathBuf> {
+        let name = m.name()?;
+        Some(PathBuf::from(format!("../{}.rs", name.text())))
+    }
+
     fn links(
         &self,
         file_resolver: &FileResolver,

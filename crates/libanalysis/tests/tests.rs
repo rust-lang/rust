@@ -45,6 +45,19 @@ fn test_resolve_module() {
 }
 
 #[test]
+fn test_unresolved_module_diagnostic() {
+    let mut world = WorldState::new();
+    world.change_file(FileId(1), Some("mod foo;".to_string()));
+
+    let snap = world.snapshot(|_id, _path| None);
+    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    assert_eq_dbg(
+        r#"[Diagnostic { range: [4; 7), msg: "unresolved module" }]"#,
+        &diagnostics,
+    );
+}
+
+#[test]
 fn test_resolve_parent_module() {
     let mut world = WorldState::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));

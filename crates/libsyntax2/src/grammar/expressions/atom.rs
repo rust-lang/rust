@@ -29,8 +29,8 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 pub(super) const ATOM_EXPR_FIRST: TokenSet =
     token_set_union![
         LITERAL_FIRST,
-        token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW, L_CURLY, RETURN_KW,
-                   IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
+        token_set![L_CURLY, L_PAREN, L_BRACK, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW,
+                   RETURN_KW, IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
     ];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {

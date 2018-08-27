@@ -12,12 +12,9 @@ extern crate rayon;
 mod symbol_index;
 mod module_map;
 
-use once_cell::sync::OnceCell;
-use rayon::prelude::*;
-
 use std::{
     fmt,
-    path::{Path},
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -26,13 +23,16 @@ use std::{
     time::Instant,
 };
 
+use once_cell::sync::OnceCell;
+use rayon::prelude::*;
+
 use libsyntax2::{
     File,
     TextUnit, TextRange, SmolStr,
     ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
 };
-use libeditor::{LineIndex, FileSymbol, find_node_at_offset};
+use libeditor::{Diagnostic, LineIndex, FileSymbol, find_node_at_offset};
 
 use self::{
     symbol_index::FileSymbols,
@@ -130,6 +130,9 @@ impl WorldState {
     }
 }
 
+pub enum QuickFix {
+    CreateFile(PathBuf),
+}
 
 impl World {
     pub fn file_syntax(&self, file_id: FileId) -> Result<File> {
@@ -208,6 +211,29 @@ impl World {
             }
         }
         Ok(vec![])
+    }
+
+    pub fn diagnostics(&self, file_id: FileId) -> Result<Vec<(Diagnostic, Option<QuickFix>)>> {
+        let syntax = self.file_syntax(file_id)?;
+        let mut res = libeditor::diagnostics(&syntax)
+            .into_iter()
+            .map(|d| (d, None))
+            .collect::<Vec<_>>();
+        for module in syntax.ast().modules() {
+            if module.has_semi() && self.resolve_module(file_id, module).is_empty() {
+                if let Some(name) = module.name() {
+                    let d = Diagnostic {
+                        range: name.syntax().range(),
+                        msg: "unresolved module".to_string(),
+                    };
+                    let quick_fix = self.data.module_map.suggested_child_mod_path(module)
+                        .map(QuickFix::CreateFile);
+
+                    res.push((d, quick_fix))
+                }
+            }
+        }
+        Ok(res)
     }
 
     fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {
