@@ -204,7 +204,7 @@ cd code
     execute!(
         r"
 cd code
-code --install-extension ./libsyntax-rust-0.0.1.vsix
+code --install-extension ./rcf-lsp-0.0.1.vsix
     "
     )?;
     Ok(())

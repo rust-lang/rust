@@ -1,7 +1,4 @@
-target
-index.node
-artifacts.json
+out
+node_modules
+.vscode-test/
 *.vsix
-out/*
-node_modules/*
-log/*

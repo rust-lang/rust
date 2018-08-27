@@ -1,6 +1,7 @@
 'use strict';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient'
+import { DH_UNABLE_TO_CHECK_GENERATOR } from 'constants';
 
 
 let client: lc.LanguageClient;
@@ -12,10 +13,10 @@ let uris = {
 
 export function activate(context: vscode.ExtensionContext) {
     let textDocumentContentProvider = new TextDocumentContentProvider()
-    let dispose = (disposable) => {
+    let dispose = (disposable: vscode.Disposable) => {
         context.subscriptions.push(disposable);
     }
-    let registerCommand = (name, f) => {
+    let registerCommand = (name: string, f: any) => {
         dispose(vscode.commands.registerCommand(name, f))
     }
 
@@ -42,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
             textDocument: { uri: editor.document.uri.toString() },
             offsets: editor.selections.map((s) => {
                 return client.code2ProtocolConverter.asPosition(s.active)
-             })
+            })
         }
         let response = await client.sendRequest<lc.Position[]>("m/findMatchingBrace", request)
         editor.selections = editor.selections.map((sel, idx) => {
@@ -71,8 +72,8 @@ export function activate(context: vscode.ExtensionContext) {
         let request: lc.TextDocumentIdentifier = {
             uri: editor.document.uri.toString()
         }
-        let response = await client.sendRequest<lc.TextDocumentIdentifier>("m/parentModule", request)
-        let loc: lc.Location = response[0]
+        let response = await client.sendRequest<lc.Location[]>("m/parentModule", request)
+        let loc = response[0]
         if (loc == null) return
         let uri = client.protocol2CodeConverter.asUri(loc.uri)
         let range = client.protocol2CodeConverter.asRange(loc.range)
@@ -82,19 +83,40 @@ export function activate(context: vscode.ExtensionContext) {
         e.revealRange(range, vscode.TextEditorRevealType.InCenter)
     })
 
-    registerCommand('libsyntax-rust.run', async (cmd: ProcessSpec) => {
-        let task = createTask(cmd)
-        await vscode.tasks.executeTask(task)
+    let prevRunnable: RunnableQuickPick | undefined = undefined
+    registerCommand('libsyntax-rust.run', async () => {
+        let editor = vscode.window.activeTextEditor
+        if (editor == null || editor.document.languageId != "rust") return
+        let textDocument: lc.TextDocumentIdentifier = {
+            uri: editor.document.uri.toString()
+        }
+        let params: RunnablesParams = {
+            textDocument,
+            position: client.code2ProtocolConverter.asPosition(editor.selection.active)
+        }
+        let runnables = await client.sendRequest<Runnable[]>('m/runnables', params)
+        let items: RunnableQuickPick[] = []
+        if (prevRunnable) {
+            items.push(prevRunnable)
+        }
+        for (let r of runnables) {
+            items.push(new RunnableQuickPick(r))
+        }
+        let item = await vscode.window.showQuickPick(items)
+        if (item) {
+            item.detail = "last"
+            prevRunnable = item
+            let task = createTask(item.runnable)
+            return await vscode.tasks.executeTask(task)
+        }
     })
     registerCommand('libsyntax-rust.createFile', async (uri_: string) => {
-        console.log(`uri: ${uri_}`)
         let uri = vscode.Uri.parse(uri_)
         let edit = new vscode.WorkspaceEdit()
         edit.createFile(uri)
         await vscode.workspace.applyEdit(edit)
         let doc = await vscode.workspace.openTextDocument(uri)
         await vscode.window.showTextDocument(doc)
-        console.log("Done")
     })
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(
@@ -113,13 +135,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 // We need to order this after LS updates, but there's no API for that.
 // Hence, good old setTimeout.
-function afterLs(f) {
+function afterLs(f: () => any) {
     setTimeout(f, 10)
 }
 
 export function deactivate(): Thenable<void> {
     if (!client) {
-        return undefined;
+        return Promise.resolve();
     }
     return client.stop();
 }
@@ -148,7 +170,7 @@ function startServer() {
     );
     client.onReady().then(() => {
         client.onNotification(
-            new lc.NotificationType("m/publishDecorations"),
+            "m/publishDecorations",
             (params: PublishDecorationsParams) => {
                 let editor = vscode.window.visibleTextEditors.find(
                     (editor) => editor.document.uri.toString() == params.uri
@@ -164,11 +186,11 @@ function startServer() {
             new lc.RequestType<lc.Position, void, any, any>("m/moveCursor"),
             (params: lc.Position, token: lc.CancellationToken) => {
                 let editor = vscode.window.activeTextEditor;
-                if (editor == null) return
+                if (!editor) return
                 if (!editor.selection.isEmpty) return
                 let position = client.protocol2CodeConverter.asPosition(params)
                 afterLs(() => {
-                    editor.selection = new vscode.Selection(position, position)
+                    editor!.selection = new vscode.Selection(position, position)
                 })
             }
         )
@@ -200,8 +222,8 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
 }
 
 
-const decorations = (() => {
-    const decor = (obj) => vscode.window.createTextEditorDecorationType({ color: obj })
+const decorations: { [index: string]: vscode.TextEditorDecorationType } = (() => {
+    const decor = (obj: any) => vscode.window.createTextEditorDecorationType({ color: obj })
     return {
         background: decor("#3F3F3F"),
         error: vscode.window.createTextEditorDecorationType({
@@ -224,24 +246,24 @@ function setHighlights(
     editor: vscode.TextEditor,
     highlihgs: Array<Decoration>
 ) {
-    let byTag = {}
+    let byTag: Map<string, vscode.Range[]> = new Map()
     for (let tag in decorations) {
-        byTag[tag] = []
+        byTag.set(tag, [])
     }
 
     for (let d of highlihgs) {
-        if (!byTag[d.tag]) {
+        if (!byTag.get(d.tag)) {
             console.log(`unknown tag ${d.tag}`)
             continue
         }
-        byTag[d.tag].push(
+        byTag.get(d.tag)!.push(
             client.protocol2CodeConverter.asRange(d.range)
         )
     }
 
-    for (let tag in byTag) {
-        let dec = decorations[tag]
-        let ranges = byTag[tag]
+    for (let tag of byTag.keys()) {
+        let dec: vscode.TextEditorDecorationType = decorations[tag]
+        let ranges = byTag.get(tag)!
         editor.setDecorations(dec, ranges)
     }
 }
@@ -276,16 +298,35 @@ interface PublishDecorationsParams {
     decorations: Decoration[],
 }
 
+interface RunnablesParams {
+    textDocument: lc.TextDocumentIdentifier,
+    position?: lc.Position,
+}
+
+interface Runnable {
+    range: lc.Range;
+    label: string;
+    bin: string;
+    args: string[];
+    env: { [index: string]: string },
+}
+
+class RunnableQuickPick implements vscode.QuickPickItem {
+    label: string;
+    description?: string | undefined;
+    detail?: string | undefined;
+    picked?: boolean | undefined;
+
+    constructor(public runnable: Runnable) {
+        this.label = runnable.label
+    }
+}
+
 interface Decoration {
     range: lc.Range,
     tag: string,
 }
 
-interface ProcessSpec {
-    bin: string;
-    args: string[];
-    env: { [key: string]: string };
-}
 
 interface CargoTaskDefinition extends vscode.TaskDefinition {
     type: 'cargo';
@@ -295,8 +336,7 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-
-function createTask(spec: ProcessSpec): vscode.Task {
+function createTask(spec: Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     let definition: CargoTaskDefinition = {
         type: 'cargo',
@@ -313,7 +353,7 @@ function createTask(spec: ProcessSpec): vscode.Task {
     };
     let exec = new vscode.ShellExecution(execCmd, execOption);
 
-    let f = vscode.workspace.workspaceFolders[0]
+    let f = vscode.workspace.workspaceFolders![0]
     let t = new vscode.Task(definition, f, definition.label, TASK_SOURCE, exec, ['$rustc']);
     return t;
 }

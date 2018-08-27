@@ -142,7 +142,7 @@ pub enum Runnables {}
 impl Request for Runnables {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "m/joinLines";
+    const METHOD: &'static str = "m/runnables";
 }
 
 #[derive(Deserialize, Debug)]

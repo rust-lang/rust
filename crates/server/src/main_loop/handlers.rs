@@ -135,48 +135,6 @@ pub fn handle_code_action(
             res.push(cmd);
         }
     }
-    for runnable in libeditor::runnables(&file) {
-        if !contains_offset_nonstrict(runnable.range, offset) {
-            continue;
-        }
-
-        #[derive(Serialize)]
-        struct ProcessSpec {
-            bin: String,
-            args: Vec<String>,
-            env: HashMap<String, String>,
-        }
-
-        let spec = ProcessSpec {
-            bin: "cargo".to_string(),
-            args: match runnable.kind {
-                libeditor::RunnableKind::Test { name } => {
-                    vec![
-                        "test".to_string(),
-                        "--".to_string(),
-                        name,
-                        "--nocapture".to_string(),
-                    ]
-                }
-                libeditor::RunnableKind::Bin => vec!["run".to_string()]
-            },
-            env: {
-                let mut m = HashMap::new();
-                m.insert(
-                    "RUST_BACKTRACE".to_string(),
-                    "short".to_string(),
-                );
-                m
-            }
-        };
-
-        let cmd = Command {
-            title: "Run ...".to_string(),
-            command: "libsyntax-rust.run".to_string(),
-            arguments: Some(vec![to_value(spec).unwrap()]),
-        };
-        res.push(cmd);
-    }
 
     for (diag, quick_fix) in world.analysis().diagnostics(file_id)? {
         let quick_fix = match quick_fix {
