@@ -2355,6 +2355,35 @@ pub struct Take<I> {
     n: usize
 }
 
+#[unstable(feature = "take_into_inner", issue = "53632")]
+impl<I: Iterator> Take<I> {
+    /// Consume this iterator adapter and return the wrapped iterator
+    ///
+    /// This is useful to resume the original iteration after we are
+    /// done.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(take_into_inner)]
+    ///# #![allow(unused_variables, path_statements)]
+    ///
+    /// let mut iter = 0..12; // some iterator
+    /// let mut take = iter.take(6);
+    /// while let Some(x) = take.next() {
+    ///     .. // the first 6 values
+    /// # ;
+    /// }
+    /// for x in take.into_inner() {
+    ///     .. // the rest
+    /// # ;
+    /// }
+    /// ```
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Take<I> where I: Iterator{
     type Item = <I as Iterator>::Item;
