@@ -43,7 +43,7 @@ use marker::Unsize;
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T> {
+pub trait CoerceUnsized<T: ?Sized> {
     // Empty.
 }
 

@@ -252,6 +252,7 @@ language_item_table! {
     DropTraitLangItem,               "drop",                    drop_trait;
 
     CoerceUnsizedTraitLangItem,      "coerce_unsized",          coerce_unsized_trait;
+    CoerceSizedTraitLangItem,        "coerce_sized",            coerce_sized_trait;
 
     AddTraitLangItem,                "add",                     add_trait;
     SubTraitLangItem,                "sub",                     sub_trait;
