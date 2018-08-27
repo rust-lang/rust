@@ -29,6 +29,14 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
         borrow_place, access_place, access
     );
 
+    // This Local/Local case is handled by the more general code below, but
+    // it's so common that it's a speed win to check for it first.
+    if let Place::Local(l1) = borrow_place {
+        if let Place::Local(l2) = access_place {
+            return l1 == l2;
+        }
+    }
+
     unroll_place(borrow_place, None, |borrow_components| {
         unroll_place(access_place, None, |access_components| {
             place_components_conflict(tcx, mir, borrow_components, access_components, access)
