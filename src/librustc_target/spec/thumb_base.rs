@@ -42,9 +42,8 @@ pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
         executables: true,
-        // In 99%+ of cases, we want to use the `arm-none-eabi-gcc` compiler (there aren't many
-        // options around)
-        linker: Some("arm-none-eabi-gcc".to_string()),
+        // In most cases, LLD is good enough
+        linker: Some("rust-lld".to_string()),
         // Because these devices have very little resources having an unwinder is too onerous so we
         // default to "abort" because the "unwind" strategy is very rare.
         panic_strategy: PanicStrategy::Abort,

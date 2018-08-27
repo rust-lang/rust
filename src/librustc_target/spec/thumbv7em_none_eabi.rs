@@ -19,7 +19,7 @@
 // To opt-in to hardware accelerated floating point operations, you can use, for example,
 // `-C target-feature=+vfp4` or `-C target-cpu=cortex-m4`.
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -32,7 +32,7 @@ pub fn target() -> TargetResult {
         target_os: "none".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
             max_atomic_width: Some(32),
