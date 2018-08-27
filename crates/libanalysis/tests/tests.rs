@@ -52,7 +52,8 @@ fn test_unresolved_module_diagnostic() {
     let snap = world.snapshot(|_id, _path| None);
     let diagnostics = snap.diagnostics(FileId(1)).unwrap();
     assert_eq_dbg(
-        r#"[Diagnostic { range: [4; 7), msg: "unresolved module" }]"#,
+        r#"[(Diagnostic { range: [4; 7), msg: "unresolved module" },
+             Some(CreateFile("../foo.rs")))]"#,
         &diagnostics,
     );
 }

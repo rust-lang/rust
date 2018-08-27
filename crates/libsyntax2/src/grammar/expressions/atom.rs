@@ -269,6 +269,10 @@ fn match_arm_list(p: &mut Parser) {
     let m = p.start();
     p.eat(L_CURLY);
     while !p.at(EOF) && !p.at(R_CURLY) {
+        if p.at(L_CURLY) {
+            error_block(p, "expected match arm");
+            continue;
+        }
         // test match_arms_commas
         // fn foo() {
         //     match () {

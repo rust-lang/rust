@@ -130,6 +130,7 @@ impl WorldState {
     }
 }
 
+#[derive(Debug)]
 pub enum QuickFix {
     CreateFile(PathBuf),
 }

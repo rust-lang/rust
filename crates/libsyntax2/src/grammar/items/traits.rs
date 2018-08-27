@@ -30,6 +30,10 @@ fn trait_item_list(p: &mut Parser) {
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
+        if p.at(L_CURLY) {
+            error_block(p, "expected an item");
+            continue;
+        }
         item_or_macro(p, true, ItemFlavor::Trait);
     }
     p.expect(R_CURLY);
@@ -76,6 +80,10 @@ fn impl_item_list(p: &mut Parser) {
     p.bump();
 
     while !p.at(EOF) && !p.at(R_CURLY) {
+        if p.at(L_CURLY) {
+            error_block(p, "expected an item");
+            continue;
+        }
         item_or_macro(p, true, ItemFlavor::Mod);
     }
     p.expect(R_CURLY);

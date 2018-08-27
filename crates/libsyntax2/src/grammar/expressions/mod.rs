@@ -433,6 +433,7 @@ fn named_field_list(p: &mut Parser) {
                 p.bump();
                 expr(p);
             }
+            L_CURLY => error_block(p, "expected a field"),
             _ => p.err_and_bump("expected identifier"),
         }
         if !p.at(R_CURLY) {

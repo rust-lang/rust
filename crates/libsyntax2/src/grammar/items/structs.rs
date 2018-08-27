@@ -56,6 +56,10 @@ fn enum_variant_list(p: &mut Parser) {
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
+        if p.at(L_CURLY) {
+            error_block(p, "expected enum variant");
+            continue;
+        }
         let var = p.start();
         attributes::outer_attributes(p);
         if p.at(IDENT) {
