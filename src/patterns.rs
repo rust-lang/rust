@@ -340,10 +340,11 @@ fn rewrite_tuple_pat(
     if pat_vec.is_empty() {
         return Some(format!("{}()", path_str.unwrap_or_default()));
     }
-
+    let mut condensed_wildcards = false;
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
     let (pat_vec, span) = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2
     {
+        condensed_wildcards = true;
         let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
         let sp = pat_vec[new_item_count - 1].span();
         let snippet = context.snippet(sp);
@@ -358,7 +359,8 @@ fn rewrite_tuple_pat(
     };
 
     // add comma if `(x,)`
-    let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
+    let add_comma =
+        path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none() && !condensed_wildcards;
     let path_str = path_str.unwrap_or_default();
     let pat_ref_vec = pat_vec.iter().collect::<Vec<_>>();
 
