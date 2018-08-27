@@ -162,9 +162,10 @@ Grammar(
         "PATH_EXPR",
         "LAMBDA_EXPR",
         "IF_EXPR",
+        "WHILE_EXPR",
+        "CONDITION",
         "LOOP_EXPR",
         "FOR_EXPR",
-        "WHILE_EXPR",
         "CONTINUE_EXPR",
         "BREAK_EXPR",
         "LABEL",
@@ -336,14 +337,27 @@ Grammar(
         "ParenExpr": (),
         "PathExpr": (),
         "LambdaExpr": (),
-        "IfExpr": (),
-        "LoopExpr": (),
-        "ForExpr": (),
-        "WhileExpr": (),
+        "IfExpr": (
+            options: [ ["condition", "Condition"] ]
+        ),
+        "LoopExpr": (
+            options: [ ["body", "Block"] ]
+        ),
+        "ForExpr": (
+            options: [ ["body", "Block"] ]
+        ),
+        "WhileExpr": (
+            options: [
+                ["condition", "Condition"],
+                ["body", "Block"],
+            ]
+        ),
         "ContinueExpr": (),
         "BreakExpr": (),
         "Label": (),
-        "BlockExpr": (),
+        "BlockExpr": (
+            options: [ ["block", "Block"] ]
+        ),
         "ReturnExpr": (),
         "MatchExpr": (),
         "MatchArmList": (),
@@ -432,11 +446,19 @@ Grammar(
         "TypeParamList": ( collections: [ ["type_params", "TypeParam" ] ]),
         "TypeParam": ( traits: ["NameOwner"] ),
         "WhereClause": (),
-        "ExprStmt": (),
+        "ExprStmt": (
+            options: [ ["expr", "Expr"] ]
+        ),
         "LetStmt": ( options: [
             ["pat", "Pat"],
             ["initializer", "Expr"],
         ]),
+        "Condition": (
+            options: [
+                [ "pat", "Pat" ],
+                [ "expr", "Expr" ],
+            ]
+        ),
         "Stmt": (
             enum: ["ExprStmt", "LetStmt"],
         ),

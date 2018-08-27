@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    fmt,
+    collections::HashMap,
+};
 
 use libsyntax2::{
     File, TextUnit, AstNode, SyntaxNodeRef, SyntaxNode, SmolStr,
@@ -49,33 +52,89 @@ fn compute_scopes(fn_def: ast::FnDef) -> FnScopes {
         .filter_map(|it| it.pat())
         .for_each(|it| scopes.add_bindings(root, it));
 
-    let mut scope = root;
     if let Some(body) = fn_def.body() {
-        for stmt in body.statements() {
-            match stmt {
-                ast::Stmt::LetStmt(stmt) => {
-                    scope = scopes.new_scope(scope);
-                    if let Some(pat) = stmt.pat() {
-                        scopes.add_bindings(scope, pat);
-                    }
-                    if let Some(expr) = stmt.initializer() {
-                        scopes.set_scope(expr.syntax(), scope)
-                    }
-                }
-                ast::Stmt::ExprStmt(expr) => {
-                    scopes.set_scope(expr.syntax(), scope)
-                }
-            }
-        }
-        if let Some(expr) = body.expr() {
-            scopes.set_scope(expr.syntax(), scope)
-        }
+        compute_block_scopes(body, &mut scopes, root)
     }
     scopes
 }
 
+fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: ScopeId) {
+    for stmt in block.statements() {
+        match stmt {
+            ast::Stmt::LetStmt(stmt) => {
+                scope = scopes.new_scope(scope);
+                if let Some(pat) = stmt.pat() {
+                    scopes.add_bindings(scope, pat);
+                }
+                if let Some(expr) = stmt.initializer() {
+                    scopes.set_scope(expr.syntax(), scope)
+                }
+            }
+            ast::Stmt::ExprStmt(expr_stmt) => {
+                if let Some(expr) = expr_stmt.expr() {
+                    scopes.set_scope(expr.syntax(), scope);
+                    compute_expr_scopes(expr, scopes, scope);
+                }
+            }
+        }
+    }
+    if let Some(expr) = block.expr() {
+        scopes.set_scope(expr.syntax(), scope);
+        compute_expr_scopes(expr, scopes, scope);
+    }
+}
+
+fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
+    match expr {
+        ast::Expr::IfExpr(e) => {
+            let cond_scope = e.condition().and_then(|cond| {
+                compute_cond_scopes(cond, scopes, scope)
+            });
+            if let Some(block) = e.then_branch() {
+                compute_block_scopes(block, scopes, cond_scope.unwrap_or(scope));
+            }
+            if let Some(block) = e.else_branch() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        },
+        ast::Expr::WhileExpr(e) => {
+            let cond_scope = e.condition().and_then(|cond| {
+                compute_cond_scopes(cond, scopes, scope)
+            });
+            if let Some(block) = e.body() {
+                compute_block_scopes(block, scopes, cond_scope.unwrap_or(scope));
+            }
+        },
+        ast::Expr::BlockExpr(e) => {
+            if let Some(block) = e.block() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        }
+        // ForExpr(e) => TODO,
+        _ => {
+            expr.syntax().children()
+                .filter_map(ast::Expr::cast)
+                .for_each(|expr| compute_expr_scopes(expr, scopes, scope))
+        }
+    };
+
+    fn compute_cond_scopes(cond: ast::Condition, scopes: &mut FnScopes, scope: ScopeId) -> Option<ScopeId> {
+        if let Some(expr) = cond.expr() {
+            compute_expr_scopes(expr, scopes, scope);
+        }
+        if let Some(pat) = cond.pat() {
+            let s = scopes.new_scope(scope);
+            scopes.add_bindings(s, pat);
+            Some(s)
+        } else {
+            None
+        }
+    }
+}
+
 type ScopeId = usize;
 
+#[derive(Debug)]
 struct FnScopes {
     scopes: Vec<ScopeData>,
     scope_for: HashMap<SyntaxNode, ScopeId>,
@@ -120,6 +179,7 @@ impl FnScopes {
     }
 }
 
+#[derive(Debug)]
 struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>
@@ -147,5 +207,14 @@ impl ScopeEntry {
     fn ast(&self) -> ast::BindPat {
         ast::BindPat::cast(self.syntax.borrowed())
             .unwrap()
+    }
+}
+
+impl fmt::Debug for ScopeEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ScopeEntry")
+         .field("name", &self.name())
+         .field("syntax", &self.syntax)
+         .finish()
     }
 }

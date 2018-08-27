@@ -115,6 +115,18 @@ impl<'a> Module<'a> {
     }
 }
 
+impl<'a> IfExpr<'a> {
+    pub fn then_branch(self) -> Option<Block<'a>> {
+        self.blocks().nth(0)
+    }
+    pub fn else_branch(self) -> Option<Block<'a>> {
+        self.blocks().nth(1)
+    }
+    fn blocks(self) -> impl Iterator<Item=Block<'a>> {
+        children(self)
+    }
+}
+
 fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
     children(parent).next()
 }

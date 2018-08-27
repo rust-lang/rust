@@ -141,7 +141,11 @@ impl<'a> AstNode<'a> for BlockExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> BlockExpr<'a> {}
+impl<'a> BlockExpr<'a> {
+    pub fn block(self) -> Option<Block<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // BreakExpr
 #[derive(Debug, Clone, Copy)]
@@ -196,6 +200,32 @@ impl<'a> AstNode<'a> for CastExpr<'a> {
 }
 
 impl<'a> CastExpr<'a> {}
+
+// Condition
+#[derive(Debug, Clone, Copy)]
+pub struct Condition<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Condition<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            CONDITION => Some(Condition { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Condition<'a> {
+    pub fn pat(self) -> Option<Pat<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ConstDef
 #[derive(Debug, Clone, Copy)]
@@ -403,7 +433,11 @@ impl<'a> AstNode<'a> for ExprStmt<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> ExprStmt<'a> {}
+impl<'a> ExprStmt<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // FieldExpr
 #[derive(Debug, Clone, Copy)]
@@ -504,7 +538,11 @@ impl<'a> AstNode<'a> for ForExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> ForExpr<'a> {}
+impl<'a> ForExpr<'a> {
+    pub fn body(self) -> Option<Block<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ForType
 #[derive(Debug, Clone, Copy)]
@@ -540,7 +578,11 @@ impl<'a> AstNode<'a> for IfExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> IfExpr<'a> {}
+impl<'a> IfExpr<'a> {
+    pub fn condition(self) -> Option<Condition<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ImplItem
 #[derive(Debug, Clone, Copy)]
@@ -674,7 +716,11 @@ impl<'a> AstNode<'a> for LoopExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LoopExpr<'a> {}
+impl<'a> LoopExpr<'a> {
+    pub fn body(self) -> Option<Block<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // MatchArm
 #[derive(Debug, Clone, Copy)]
@@ -1742,5 +1788,13 @@ impl<'a> AstNode<'a> for WhileExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> WhileExpr<'a> {}
+impl<'a> WhileExpr<'a> {
+    pub fn condition(self) -> Option<Condition<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn body(self) -> Option<Block<'a>> {
+        super::child_opt(self)
+    }
+}
 

@@ -273,6 +273,19 @@ fn quux(x: i32) {
 }
 ", r#"[CompletionItem { name: "y" },
        CompletionItem { name: "x" }]"#);
+
+    do_check(r"
+fn quux() {
+    if let Some(x) = foo() {
+        let y = 92;
+    };
+    if let Some(a) = bar() {
+        let b = 62;
+        1 + <|>
+    }
+}
+", r#"[CompletionItem { name: "b" },
+       CompletionItem { name: "a" }]"#);
 }
 
 fn file(text: &str) -> File {
