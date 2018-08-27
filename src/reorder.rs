@@ -17,16 +17,16 @@
 // FIXME(#2455): Reorder trait items.
 
 use config::Config;
-use syntax::{ast, attr, codemap::Span};
+use syntax::{ast, attr, source_map::Span};
 
 use attr::filter_inline_attrs;
-use codemap::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
 use imports::{merge_use_trees, UseTree};
 use items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use lists::{itemize_list, write_list, ListFormatting, ListItem};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::LineRangeUtils;
 use spanned::Spanned;
 use utils::mk_sp;
 use visitor::FmtVisitor;
@@ -226,13 +226,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         item_kind: ReorderableItemKind,
         in_group: bool,
     ) -> usize {
-        let mut last = self.codemap.lookup_line_range(items[0].span());
+        let mut last = self.source_map.lookup_line_range(items[0].span());
         let item_length = items
             .iter()
             .take_while(|ppi| {
                 item_kind.is_same_item_kind(&***ppi)
                     && (!in_group || {
-                        let current = self.codemap.lookup_line_range(ppi.span());
+                        let current = self.source_map.lookup_line_range(ppi.span());
                         let in_same_group = current.lo < last.hi + 2;
                         last = current;
                         in_same_group

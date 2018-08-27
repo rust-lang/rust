@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module contains utilities that work with the `CodeMap` from `libsyntax` / `syntex_syntax`.
+//! This module contains utilities that work with the `SourceMap` from `libsyntax`/`syntex_syntax`.
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
 use config::file_lines::LineRange;
-use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::source_map::{BytePos, SourceMap, Span};
 use visitor::SnippetProvider;
 
 use comment::FindUncommented;
@@ -71,7 +71,7 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
     }
 }
 
-impl LineRangeUtils for CodeMap {
+impl LineRangeUtils for SourceMap {
     fn lookup_line_range(&self, span: Span) -> LineRange {
         let lo = self.lookup_line(span.lo()).unwrap();
         let hi = self.lookup_line(span.hi()).unwrap();

@@ -10,10 +10,9 @@
 
 use config::lists::*;
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
-use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
+use syntax::source_map::{self, BytePos, Span};
 
-use codemap::SpanUtils;
 use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use lists::{
@@ -25,6 +24,7 @@ use overflow;
 use pairs::{rewrite_pair, PairParts};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use types::{rewrite_path, PathContext};
 use utils::{format_mutability, mk_sp, rewrite_ident};
@@ -171,7 +171,7 @@ impl Rewrite for Pat {
 
 fn rewrite_struct_pat(
     path: &ast::Path,
-    fields: &[codemap::Spanned<ast::FieldPat>],
+    fields: &[source_map::Spanned<ast::FieldPat>],
     ellipsis: bool,
     span: Span,
     context: &RewriteContext,
@@ -332,7 +332,7 @@ fn rewrite_tuple_pat(
             lo,
             // 2 == "..".len()
             lo + BytePos(2),
-            codemap::NO_EXPANSION,
+            source_map::NO_EXPANSION,
         ));
         pat_vec.insert(pos, dotdot);
     }
@@ -371,7 +371,9 @@ fn rewrite_tuple_pat(
         shape,
         span,
         context.config.max_width(),
-        if add_comma {
+        if dotdot_pos.is_some() {
+            Some(SeparatorTactic::Never)
+        } else if add_comma {
             Some(SeparatorTactic::Always)
         } else {
             None

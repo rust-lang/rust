@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use config::lists::*;
-use syntax::codemap::Span;
 use syntax::parse::classify;
+use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
-use codemap::SpanUtils;
 use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond, ToExpr};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 
 // This module is pretty messy because of the rules around closures and blocks:
@@ -51,7 +51,7 @@ pub fn rewrite_closure(
 
     if let ast::ExprKind::Block(ref block, _) = body.node {
         // The body of the closure is an empty block.
-        if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
+        if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) {
             return body
                 .rewrite(context, shape)
                 .map(|s| format!("{} {}", prefix, s));
@@ -114,7 +114,7 @@ fn get_inner_expr<'a>(
 fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bool {
     is_unsafe_block(block)
         || block.stmts.len() > 1
-        || block_contains_comment(block, context.codemap)
+        || block_contains_comment(block, context.source_map)
         || prefix.contains('\n')
 }
 
@@ -173,7 +173,7 @@ fn rewrite_closure_expr(
         match expr.node {
             ast::ExprKind::Match(..)
             | ast::ExprKind::Block(..)
-            | ast::ExprKind::Catch(..)
+            | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::Struct(..) => true,
 
@@ -304,7 +304,7 @@ pub fn rewrite_last_closure(
         let body = match body.node {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
-                    && is_simple_block(block, Some(&body.attrs), context.codemap) =>
+                    && is_simple_block(block, Some(&body.attrs), context.source_map) =>
             {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }

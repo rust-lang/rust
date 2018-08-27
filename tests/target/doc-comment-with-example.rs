@@ -8,5 +8,4 @@
 /// # #![cfg_attr(not(dox), no_std)]
 /// fn foo() {}
 /// ```
-///
 fn foo() {}

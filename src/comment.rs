@@ -13,7 +13,7 @@
 use std::{self, borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
-use syntax::codemap::Span;
+use syntax::source_map::Span;
 
 use config::Config;
 use rewrite::RewriteContext;
@@ -95,21 +95,6 @@ impl<'a> CommentStyle<'a> {
 
     pub fn to_str_tuplet(&self) -> (&'a str, &'a str, &'a str) {
         (self.opener(), self.closer(), self.line_start())
-    }
-
-    pub fn line_with_same_comment_style(&self, line: &str, normalize_comments: bool) -> bool {
-        match *self {
-            CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
-                line.trim_left().starts_with(self.line_start().trim_left())
-                    || comment_style(line, normalize_comments) == *self
-            }
-            CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
-                line.trim_left().starts_with(self.closer().trim_left())
-                    || line.trim_left().starts_with(self.line_start().trim_left())
-                    || comment_style(line, normalize_comments) == *self
-            }
-            CommentStyle::Custom(opener) => line.trim_left().starts_with(opener.trim_right()),
-        }
     }
 }
 
@@ -273,19 +258,56 @@ fn identify_comment(
     is_doc_comment: bool,
 ) -> Option<String> {
     let style = comment_style(orig, false);
-    let first_group = orig
-        .lines()
-        .take_while(|l| style.line_with_same_comment_style(l, false))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let rest = orig
-        .lines()
-        .skip(first_group.lines().count())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let mut first_group_ending = 0;
 
+    fn compute_len(orig: &str, line: &str) -> usize {
+        if orig.len() > line.len() {
+            if orig.as_bytes()[line.len()] == b'\r' {
+                line.len() + 2
+            } else {
+                line.len() + 1
+            }
+        } else {
+            line.len()
+        }
+    }
+
+    match style {
+        CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
+            let line_start = style.line_start().trim_left();
+            for line in orig.lines() {
+                if line.trim_left().starts_with(line_start) || comment_style(line, false) == style {
+                    first_group_ending += compute_len(&orig[first_group_ending..], line);
+                } else {
+                    break;
+                }
+            }
+        }
+        CommentStyle::Custom(opener) => {
+            let trimmed_opener = opener.trim_right();
+            for line in orig.lines() {
+                if line.trim_left().starts_with(trimmed_opener) {
+                    first_group_ending += compute_len(&orig[first_group_ending..], line);
+                } else {
+                    break;
+                }
+            }
+        }
+        // for a block comment, search for the closing symbol
+        CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
+            let closer = style.closer().trim_left();
+            for line in orig.lines() {
+                first_group_ending += compute_len(&orig[first_group_ending..], line);
+                if line.trim_left().ends_with(closer) {
+                    break;
+                }
+            }
+        }
+    }
+
+    let (first_group, rest) = orig.split_at(first_group_ending);
     let first_group_str = rewrite_comment_inner(
-        &first_group,
+        first_group,
         block_style,
         style,
         shape,
@@ -295,7 +317,7 @@ fn identify_comment(
     if rest.is_empty() {
         Some(first_group_str)
     } else {
-        identify_comment(&rest, block_style, shape, config, is_doc_comment).map(|rest_str| {
+        identify_comment(rest, block_style, shape, config, is_doc_comment).map(|rest_str| {
             format!(
                 "{}\n{}{}",
                 first_group_str,
@@ -427,8 +449,12 @@ fn rewrite_comment_inner(
                 }
             } else if is_prev_line_multi_line && !line.is_empty() {
                 result.push(' ')
-            } else if is_last && !closer.is_empty() && line.is_empty() {
-                result.push_str(&indent_str);
+            } else if is_last && line.is_empty() {
+                // trailing blank lines are unwanted
+                if !closer.is_empty() {
+                    result.push_str(&indent_str);
+                }
+                break;
             } else {
                 result.push_str(&comment_line_separator);
                 if !has_leading_whitespace && result.ends_with(' ') {
@@ -1125,10 +1151,10 @@ pub fn recover_comment_removed(
         // We missed some comments. Warn and keep the original text.
         if context.config.error_on_unformatted() {
             context.report.append(
-                context.codemap.span_to_filename(span).into(),
+                context.source_map.span_to_filename(span).into(),
                 vec![FormattingError::from_span(
                     &span,
-                    &context.codemap,
+                    &context.source_map,
                     ErrorKind::LostComment,
                 )],
             );

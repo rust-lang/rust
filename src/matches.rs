@@ -13,10 +13,9 @@
 use std::iter::repeat;
 
 use config::lists::*;
-use syntax::codemap::{BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
-use codemap::SpanUtils;
 use comment::{combine_strs_with_missing_comments, rewrite_comment};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use expr::{
@@ -26,6 +25,7 @@ use expr::{
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
@@ -302,7 +302,7 @@ fn block_can_be_flattened<'a>(
     match expr.node {
         ast::ExprKind::Block(ref block, _)
             if !is_unsafe_block(block)
-                && is_simple_block(block, Some(&expr.attrs), context.codemap) =>
+                && is_simple_block(block, Some(&expr.attrs), context.source_map) =>
         {
             Some(&*block)
         }
@@ -347,7 +347,7 @@ fn rewrite_match_body(
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.node {
         (
             true,
-            is_empty_block(block, Some(&body.attrs), context.codemap),
+            is_empty_block(block, Some(&body.attrs), context.source_map),
         )
     } else {
         (false, false)

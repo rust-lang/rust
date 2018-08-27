@@ -13,10 +13,9 @@ use std::ops::Deref;
 
 use config::lists::*;
 use syntax::ast::{self, FunctionRetTy, Mutability};
-use syntax::codemap::{self, BytePos, Span};
+use syntax::source_map::{self, BytePos, Span};
 use syntax::symbol::keywords;
 
-use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
 use expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
@@ -25,6 +24,7 @@ use overflow;
 use pairs::{rewrite_pair, PairParts};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
@@ -267,7 +267,7 @@ fn rewrite_segment(
             ast::GenericArgs::Parenthesized(ref data) => {
                 let output = match data.output {
                     Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
-                    None => FunctionRetTy::Default(codemap::DUMMY_SP),
+                    None => FunctionRetTy::Default(source_map::DUMMY_SP),
                 };
                 result.push_str(&format_function_type(
                     data.inputs.iter().map(|x| &**x),

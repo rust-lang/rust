@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
 #![feature(decl_macro)]
 #![allow(unused_attributes)]
 #![feature(type_ascription)]
@@ -49,7 +48,7 @@ use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{FileMap, FormatErrorMap, FormattingError, ReportedErrors};
+use formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use issues::Issue;
 use shape::Indent;
 
@@ -65,11 +64,9 @@ mod attr;
 mod chains;
 pub(crate) mod checkstyle;
 mod closures;
-pub(crate) mod codemap;
 mod comment;
 pub(crate) mod config;
 mod expr;
-pub(crate) mod filemap;
 pub(crate) mod formatting;
 mod imports;
 mod issues;
@@ -86,6 +83,8 @@ mod reorder;
 mod rewrite;
 pub(crate) mod rustfmt_diff;
 mod shape;
+pub(crate) mod source_file;
+pub(crate) mod source_map;
 mod spanned;
 mod string;
 #[cfg(test)]
@@ -459,7 +458,7 @@ pub struct Session<'b, T: Write + 'b> {
     pub config: Config,
     pub out: Option<&'b mut T>,
     pub(crate) errors: ReportedErrors,
-    filemap: FileMap,
+    source_file: SourceFile,
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
@@ -472,7 +471,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             config,
             out,
             errors: ReportedErrors::default(),
-            filemap: FileMap::new(),
+            source_file: SourceFile::new(),
         }
     }
 

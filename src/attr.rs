@@ -22,7 +22,7 @@ use utils::{count_newlines, mk_sp};
 
 use std::borrow::Cow;
 use syntax::ast;
-use syntax::codemap::{BytePos, Span, DUMMY_SP};
+use syntax::source_map::{BytePos, Span, DUMMY_SP};
 
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -217,11 +217,8 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::List(ref list) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
 
-                let snippet = context.snippet(self.span);
-                // 2 = )] (this might go wrong if there is whitespace between the brackets, but
-                // it's close enough).
-                let snippet = snippet[..snippet.len() - 2].trim();
-                let trailing_comma = if snippet.ends_with(',') { "," } else { "" };
+                let has_comma = ::expr::span_ends_with_comma(context, self.span);
+                let trailing_comma = if has_comma { "," } else { "" };
                 let combine = list.len() == 1 && match list[0].node {
                     ast::NestedMetaItemKind::Literal(..) => false,
                     ast::NestedMetaItemKind::MetaItem(ref inner_meta_item) => {

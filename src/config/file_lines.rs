@@ -19,11 +19,11 @@ use serde::de::{Deserialize, Deserializer};
 use serde::ser::{self, Serialize, Serializer};
 use serde_json as json;
 
-use syntax::codemap::{self, FileMap};
+use syntax::source_map::{self, SourceFile};
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
-    pub file: Rc<FileMap>,
+    pub file: Rc<SourceFile>,
     pub lo: usize,
     pub hi: usize,
 }
@@ -35,11 +35,11 @@ pub enum FileName {
     Stdin,
 }
 
-impl From<codemap::FileName> for FileName {
-    fn from(name: codemap::FileName) -> FileName {
+impl From<source_map::FileName> for FileName {
+    fn from(name: source_map::FileName) -> FileName {
         match name {
-            codemap::FileName::Real(p) => FileName::Real(p),
-            codemap::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
+            source_map::FileName::Real(p) => FileName::Real(p),
+            source_map::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
             _ => unreachable!(),
         }
     }
@@ -386,7 +386,7 @@ mod test {
         );
     }
 
-    use super::json::{self, json, json_internal};
+    use super::json::{self, json};
     use super::{FileLines, FileName};
     use std::{collections::HashMap, path::PathBuf};
 

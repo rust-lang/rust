@@ -160,7 +160,7 @@ fn make_opts() -> Options {
 
 fn is_nightly() -> bool {
     option_env!("CFG_RELEASE_CHANNEL")
-        .map(|c| c == "nightly")
+        .map(|c| c == "nightly" || c == "dev")
         .unwrap_or(false)
 }
 
