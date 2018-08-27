@@ -10,7 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-struct Obj { //~ NOTE: unclosed delimiter
+struct Obj {
+    //~^ NOTE: un-closed delimiter
     member: usize
 )
 //~^ ERROR incorrect close delimiter

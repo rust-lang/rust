@@ -1,31 +1,28 @@
 error: this file contains an un-closed delimiter
-  --> $DIR/parser-recovery-1.rs:24:55
-   |
-LL | } //~ ERROR this file contains an un-closed delimiter
-   |                                                       ^
-   |
-help: did you mean to close this delimiter?
-  --> $DIR/parser-recovery-1.rs:15:11
+  --> $DIR/parser-recovery-1.rs:25:55
    |
 LL | trait Foo {
-   |           ^
+   |           - un-closed delimiter
+...
+LL | } //~ ERROR this file contains an un-closed delimiter
+   |                                                       ^
 
 error: unexpected token: `;`
   --> $DIR/parser-recovery-1.rs:22:15
    |
-LL |     let x = y.;  //~ ERROR unexpected token
+LL |     let x = y.;
    |               ^
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/parser-recovery-1.rs:17:17
    |
-LL |         let x = foo(); //~ ERROR cannot find function `foo` in this scope
+LL |         let x = foo();
    |                 ^^^ not found in this scope
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/parser-recovery-1.rs:22:13
    |
-LL |     let x = y.;  //~ ERROR unexpected token
+LL |     let x = y.;
    |             ^ not found in this scope
 
 error[E0601]: `main` function not found in crate `parser_recovery_1`

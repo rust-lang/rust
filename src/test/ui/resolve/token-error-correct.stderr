@@ -2,7 +2,7 @@ error: incorrect close delimiter: `}`
   --> $DIR/token-error-correct.rs:16:1
    |
 LL |     foo(bar(;
-   |            - unclosed delimiter
+   |            - un-closed delimiter
 LL |     //~^ ERROR: expected expression, found `;`
 LL | }
    | ^ incorrect close delimiter

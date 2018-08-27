@@ -49,7 +49,7 @@ impl<'a> StringReader<'a> {
                 let msg = "this file contains an un-closed delimiter";
                 let mut err = self.sess.span_diagnostic.struct_span_err(self.span, msg);
                 for &(_, sp) in &self.open_braces {
-                    err.span_help(sp, "did you mean to close this delimiter?");
+                    err.span_label(sp, "un-closed delimiter");
                 }
 
                 Err(err)
@@ -94,7 +94,7 @@ impl<'a> StringReader<'a> {
                             // delimiter. The previous unclosed delimiters could actually be
                             // closed! The parser just hasn't gotten to them yet.
                             if let Some(&(_, sp)) = self.open_braces.last() {
-                                err.span_label(sp, "unclosed delimiter");
+                                err.span_label(sp, "un-closed delimiter");
                             };
                             err.emit();
                         }
