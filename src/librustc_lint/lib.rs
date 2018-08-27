@@ -105,7 +105,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     macro_rules! add_lint_group {
         ($sess:ident, $name:expr, $($lint:ident),*) => (
-            store.register_group($sess, false, $name, vec![$(LintId::of($lint)),*]);
+            store.register_group($sess, false, $name, None, vec![$(LintId::of($lint)),*]);
             )
     }
 

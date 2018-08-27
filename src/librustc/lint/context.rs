@@ -67,9 +67,10 @@ pub struct LintStore {
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
 
-    /// Map of registered lint groups to what lints they expand to. The bool
-    /// is true if the lint group was added by a plugin.
-    lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool)>,
+    /// Map of registered lint groups to what lints they expand to. The first
+    /// bool is true if the lint group was added by a plugin. The optional string
+    /// is used to store the new names of deprecated lint group names.
+    lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool, Option<&'static str>)>,
 
     /// Extra info for future incompatibility lints, describing the
     /// issue or RFC that caused the incompatibility.
@@ -221,7 +222,7 @@ impl LintStore {
             let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
                              .collect::<Vec<_>>();
             if !lints.is_empty() {
-                self.register_group(sess, false, edition.lint_name(), lints)
+                self.register_group(sess, false, edition.lint_name(), None, lints)
             }
         }
 
@@ -231,19 +232,35 @@ impl LintStore {
             self.future_incompatible.insert(lint.id, lint);
         }
 
-        self.register_group(sess, false, "future_incompatible", future_incompatible);
-
-
+        self.register_group(
+            sess,
+            false,
+            "future_incompatible",
+            None,
+            future_incompatible,
+        );
     }
 
     pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
         self.future_incompatible.get(&id)
     }
 
-    pub fn register_group(&mut self, sess: Option<&Session>,
-                          from_plugin: bool, name: &'static str,
-                          to: Vec<LintId>) {
-        let new = self.lint_groups.insert(name, (to, from_plugin)).is_none();
+    pub fn register_group(
+        &mut self,
+        sess: Option<&Session>,
+        from_plugin: bool,
+        name: &'static str,
+        deprecated_name: Option<&'static str>,
+        to: Vec<LintId>,
+    ) {
+        let new = self
+            .lint_groups
+            .insert(name, (to, from_plugin, None))
+            .is_none();
+        if let Some(deprecated) = deprecated_name {
+            self.lint_groups
+                .insert(deprecated, (vec![], from_plugin, Some(name)));
+        }
 
         if !new {
             let msg = format!("duplicate specification of lint group {}", name);

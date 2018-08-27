@@ -53,7 +53,7 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
-    pub lint_groups: FxHashMap<&'static str, Vec<LintId>>,
+    pub lint_groups: FxHashMap<&'static str, (Vec<LintId>, Option<&'static str>)>,
 
     #[doc(hidden)]
     pub llvm_passes: Vec<String>,
@@ -170,8 +170,15 @@ impl<'a> Registry<'a> {
         self.late_lint_passes.push(lint_pass);
     }
     /// Register a lint group.
-    pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
-        self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());
+    pub fn register_lint_group(
+        &mut self,
+        name: &'static str,
+        deprecated_name: Option<&'static str>,
+        to: Vec<&'static Lint>
+    ) {
+        self.lint_groups.insert(name,
+                                (to.into_iter().map(|x| LintId::of(x)).collect(),
+                                 deprecated_name));
     }
 
     /// Register an LLVM pass.
