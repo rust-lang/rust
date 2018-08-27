@@ -185,27 +185,29 @@ pub fn run<F>(run_compiler: F) -> isize
     where F: FnOnce() -> (CompileResult, Option<Session>) + Send + 'static
 {
     let result = monitor(move || {
-        let (result, session) = run_compiler();
-        if let Err(CompileIncomplete::Errored(_)) = result {
-            match session {
-                Some(sess) => {
-                    sess.abort_if_errors();
-                    panic!("error reported but abort_if_errors didn't abort???");
-                }
-                None => {
-                    let emitter =
-                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                               None,
-                                                               true,
-                                                               false);
-                    let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
-                    handler.emit(&MultiSpan::new(),
-                                 "aborting due to previous error(s)",
-                                 errors::Level::Fatal);
-                    panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+        syntax::with_globals(|| {
+            let (result, session) = run_compiler();
+            if let Err(CompileIncomplete::Errored(_)) = result {
+                match session {
+                    Some(sess) => {
+                        sess.abort_if_errors();
+                        panic!("error reported but abort_if_errors didn't abort???");
+                    }
+                    None => {
+                        let emitter =
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                None,
+                                                                true,
+                                                                false);
+                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                        handler.emit(&MultiSpan::new(),
+                                    "aborting due to previous error(s)",
+                                    errors::Level::Fatal);
+                        panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+                    }
                 }
             }
-        }
+        });
     });
 
     match result {
@@ -471,17 +473,15 @@ pub fn run_compiler<'a>(args: &[String],
                         emitter_dest: Option<Box<dyn Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
-    syntax::with_globals(|| {
-        let matches = match handle_options(args) {
-            Some(matches) => matches,
-            None => return (Ok(()), None),
-        };
+    let matches = match handle_options(args) {
+        Some(matches) => matches,
+        None => return (Ok(()), None),
+    };
 
-        let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
-        driver::spawn_thread_pool(sopts, |sopts| {
-            run_compiler_with_pool(matches, sopts, cfg, callbacks, file_loader, emitter_dest)
-        })
+    driver::spawn_thread_pool(sopts, |sopts| {
+        run_compiler_with_pool(matches, sopts, cfg, callbacks, file_loader, emitter_dest)
     })
 }
 
