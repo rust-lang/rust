@@ -122,45 +122,6 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
     }
 }
 
-/// Helper function to obtain the global (tcx) allocation for a static
-fn const_eval_static<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>>(
-    tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-    id: AllocId
-) -> EvalResult<'tcx, &'tcx Allocation> {
-    let alloc = tcx.alloc_map.lock().get(id);
-    let def_id = match alloc {
-        Some(AllocType::Memory(mem)) => {
-            return Ok(mem)
-        }
-        Some(AllocType::Function(..)) => {
-            return err!(DerefFunctionPointer)
-        }
-        Some(AllocType::Static(did)) => {
-            did
-        }
-        None =>
-            return err!(DanglingPointerDeref),
-    };
-    // We got a "lazy" static that has not been computed yet, do some work
-    trace!("static_alloc: Need to compute {:?}", def_id);
-    if tcx.is_foreign_item(def_id) {
-        return M::find_foreign_static(tcx, def_id);
-    }
-    let instance = Instance::mono(tcx.tcx, def_id);
-    let gid = GlobalId {
-        instance,
-        promoted: None,
-    };
-    tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-        // no need to report anything, the const_eval call takes care of that for statics
-        assert!(tcx.is_static(def_id).is_some());
-        EvalErrorKind::ReferencedConstant(err).into()
-    }).map(|val| {
-        // FIXME We got our static (will be a ByRef), now we make a *copy*?!?
-        tcx.const_to_allocation(val)
-    })
-}
-
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
@@ -343,13 +304,52 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Allocation accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    /// Helper function to obtain the global (tcx) allocation for a static
+    fn get_static_alloc(
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        id: AllocId,
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
+        let alloc = tcx.alloc_map.lock().get(id);
+        let def_id = match alloc {
+            Some(AllocType::Memory(mem)) => {
+                return Ok(mem)
+            }
+            Some(AllocType::Function(..)) => {
+                return err!(DerefFunctionPointer)
+            }
+            Some(AllocType::Static(did)) => {
+                did
+            }
+            None =>
+                return err!(DanglingPointerDeref),
+        };
+        // We got a "lazy" static that has not been computed yet, do some work
+        trace!("static_alloc: Need to compute {:?}", def_id);
+        if tcx.is_foreign_item(def_id) {
+            return M::find_foreign_static(tcx, def_id);
+        }
+        let instance = Instance::mono(tcx.tcx, def_id);
+        let gid = GlobalId {
+            instance,
+            promoted: None,
+        };
+        tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
+            // no need to report anything, the const_eval call takes care of that for statics
+            assert!(tcx.is_static(def_id).is_some());
+            EvalErrorKind::ReferencedConstant(err).into()
+        }).map(|val| {
+            // FIXME We got our static (will be a ByRef), now we make a *copy*?!?
+            tcx.const_to_allocation(val)
+        })
+    }
+
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
         match self.alloc_map.get(&id) {
             // Normal alloc?
             Some(alloc) => Ok(&alloc.1),
             // Static. No need to make any copies, just provide read access to the global static
             // memory in tcx.
-            None => const_eval_static::<M>(self.tcx, id),
+            None => Self::get_static_alloc(self.tcx, id),
         }
     }
 
@@ -381,7 +381,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         if ptr.offset.bytes() != 0 {
             return err!(InvalidFunctionPointer);
         }
-        debug!("reading fn ptr: {}", ptr.alloc_id);
+        trace!("reading fn ptr: {}", ptr.alloc_id);
         match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
             Some(AllocType::Function(instance)) => Ok(instance),
             _ => Err(EvalErrorKind::ExecuteMemory.into()),
@@ -610,7 +610,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         id: AllocId,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
-        let alloc = const_eval_static::<M>(self.tcx, id)?;
+        let alloc = Self::get_static_alloc(self.tcx, id)?;
         if alloc.mutability == Mutability::Immutable {
             return err!(ModifiedConstantMemory);
         }
