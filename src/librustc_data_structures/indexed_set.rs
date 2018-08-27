@@ -19,6 +19,20 @@ use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
 use rustc_serialize;
 
+/// This is implemented by all the index sets so that IdxSet::union() can be
+/// passed any type of index set.
+pub trait UnionIntoIdxSet<T: Idx> {
+    // Performs `other = other | self`.
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool;
+}
+
+/// This is implemented by all the index sets so that IdxSet::subtract() can be
+/// passed any type of index set.
+pub trait SubtractFromIdxSet<T: Idx> {
+    // Performs `other = other - self`.
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool;
+}
+
 /// Represents a set of some element type E, where each E is identified by some
 /// unique index type `T`.
 ///
@@ -68,34 +82,34 @@ impl<T: Idx> fmt::Debug for IdxSet<T> {
 }
 
 impl<T: Idx> IdxSet<T> {
-    fn new(init: Word, universe_size: usize) -> Self {
-        let num_words = (universe_size + (BITS_PER_WORD - 1)) / BITS_PER_WORD;
+    fn new(init: Word, domain_size: usize) -> Self {
+        let num_words = (domain_size + (BITS_PER_WORD - 1)) / BITS_PER_WORD;
         IdxSet {
             _pd: Default::default(),
             bits: vec![init; num_words],
         }
     }
 
-    /// Creates set holding every element whose index falls in range 0..universe_size.
-    pub fn new_filled(universe_size: usize) -> Self {
-        let mut result = Self::new(!0, universe_size);
-        result.trim_to(universe_size);
+    /// Creates set holding every element whose index falls in range 0..domain_size.
+    pub fn new_filled(domain_size: usize) -> Self {
+        let mut result = Self::new(!0, domain_size);
+        result.trim_to(domain_size);
         result
     }
 
     /// Creates set holding no elements.
-    pub fn new_empty(universe_size: usize) -> Self {
-        Self::new(0, universe_size)
+    pub fn new_empty(domain_size: usize) -> Self {
+        Self::new(0, domain_size)
     }
 
     /// Duplicates as a hybrid set.
     pub fn to_hybrid(&self) -> HybridIdxSet<T> {
-        // This universe_size may be slightly larger than the one specified
+        // This domain_size may be slightly larger than the one specified
         // upon creation, due to rounding up to a whole word. That's ok.
-        let universe_size = self.bits.len() * BITS_PER_WORD;
+        let domain_size = self.bits.len() * BITS_PER_WORD;
 
         // Note: we currently don't bother trying to make a Sparse set.
-        HybridIdxSet::Dense(self.to_owned(), universe_size)
+        HybridIdxSet::Dense(self.to_owned(), domain_size)
     }
 
     /// Removes all elements
@@ -105,19 +119,19 @@ impl<T: Idx> IdxSet<T> {
         }
     }
 
-    /// Sets all elements up to `universe_size`
-    pub fn set_up_to(&mut self, universe_size: usize) {
+    /// Sets all elements up to `domain_size`
+    pub fn set_up_to(&mut self, domain_size: usize) {
         for b in &mut self.bits {
             *b = !0;
         }
-        self.trim_to(universe_size);
+        self.trim_to(domain_size);
     }
 
-    /// Clear all elements above `universe_size`.
-    fn trim_to(&mut self, universe_size: usize) {
+    /// Clear all elements above `domain_size`.
+    fn trim_to(&mut self, domain_size: usize) {
         // `trim_block` is the first block where some bits have
         // to be cleared.
-        let trim_block = universe_size / BITS_PER_WORD;
+        let trim_block = domain_size / BITS_PER_WORD;
 
         // all the blocks above it have to be completely cleared.
         if trim_block < self.bits.len() {
@@ -125,9 +139,9 @@ impl<T: Idx> IdxSet<T> {
                 *b = 0;
             }
 
-            // at that block, the `universe_size % BITS_PER_WORD` lsbs
+            // at that block, the `domain_size % BITS_PER_WORD` LSBs
             // should remain.
-            let remaining_bits = universe_size % BITS_PER_WORD;
+            let remaining_bits = domain_size % BITS_PER_WORD;
             let mask = (1<<remaining_bits)-1;
             self.bits[trim_block] &= mask;
         }
@@ -164,48 +178,14 @@ impl<T: Idx> IdxSet<T> {
 
     /// Set `self = self | other` and return true if `self` changed
     /// (i.e., if new bits were added).
-    pub fn union(&mut self, other: &IdxSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), &Union)
-    }
-
-    /// Like `union()`, but takes a `SparseIdxSet` argument.
-    fn union_sparse(&mut self, other: &SparseIdxSet<T>) -> bool {
-        let mut changed = false;
-        for elem in other.iter() {
-            changed |= self.add(&elem);
-        }
-        changed
-    }
-
-    /// Like `union()`, but takes a `HybridIdxSet` argument.
-    pub fn union_hybrid(&mut self, other: &HybridIdxSet<T>) -> bool {
-        match other {
-            HybridIdxSet::Sparse(sparse, _) => self.union_sparse(sparse),
-            HybridIdxSet::Dense(dense, _) => self.union(dense),
-        }
+    pub fn union(&mut self, other: &impl UnionIntoIdxSet<T>) -> bool {
+        other.union_into(self)
     }
 
     /// Set `self = self - other` and return true if `self` changed.
     /// (i.e., if any bits were removed).
-    pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), &Subtract)
-    }
-
-    /// Like `subtract()`, but takes a `SparseIdxSet` argument.
-    fn subtract_sparse(&mut self, other: &SparseIdxSet<T>) -> bool {
-        let mut changed = false;
-        for elem in other.iter() {
-            changed |= self.remove(&elem);
-        }
-        changed
-    }
-
-    /// Like `subtract()`, but takes a `HybridIdxSet` argument.
-    pub fn subtract_hybrid(&mut self, other: &HybridIdxSet<T>) -> bool {
-        match other {
-            HybridIdxSet::Sparse(sparse, _) => self.subtract_sparse(sparse),
-            HybridIdxSet::Dense(dense, _) => self.subtract(dense),
-        }
+    pub fn subtract(&mut self, other: &impl SubtractFromIdxSet<T>) -> bool {
+        other.subtract_from(self)
     }
 
     /// Set `self = self & other` and return true if `self` changed.
@@ -220,6 +200,18 @@ impl<T: Idx> IdxSet<T> {
             iter: self.words().iter().enumerate(),
             _pd: PhantomData,
         }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for IdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        bitwise(other.words_mut(), self.words(), &Union)
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for IdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        bitwise(other.words_mut(), self.words(), &Subtract)
     }
 }
 
@@ -293,8 +285,8 @@ impl<T: Idx> SparseIdxSet<T> {
         }
     }
 
-    fn to_dense(&self, universe_size: usize) -> IdxSet<T> {
-        let mut dense = IdxSet::new_empty(universe_size);
+    fn to_dense(&self, domain_size: usize) -> IdxSet<T> {
+        let mut dense = IdxSet::new_empty(domain_size);
         for elem in self.0.iter() {
             dense.add(elem);
         }
@@ -305,6 +297,26 @@ impl<T: Idx> SparseIdxSet<T> {
         SparseIter {
             iter: self.0.iter(),
         }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for SparseIdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        let mut changed = false;
+        for elem in self.iter() {
+            changed |= other.add(&elem);
+        }
+        changed
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for SparseIdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        let mut changed = false;
+        for elem in self.iter() {
+            changed |= other.remove(&elem);
+        }
+        changed
     }
 }
 
@@ -323,7 +335,7 @@ impl<'a, T: Idx> Iterator for SparseIter<'a, T> {
 /// Like IdxSet, but with a hybrid representation: sparse when there are few
 /// elements in the set, but dense when there are many. It's especially
 /// efficient for sets that typically have a small number of elements, but a
-/// large `universe_size`, and are cleared frequently.
+/// large `domain_size`, and are cleared frequently.
 #[derive(Clone, Debug)]
 pub enum HybridIdxSet<T: Idx> {
     Sparse(SparseIdxSet<T>, usize),
@@ -331,20 +343,16 @@ pub enum HybridIdxSet<T: Idx> {
 }
 
 impl<T: Idx> HybridIdxSet<T> {
-    pub fn new_empty(universe_size: usize) -> Self {
-        HybridIdxSet::Sparse(SparseIdxSet::new(), universe_size)
-    }
-
-    fn universe_size(&mut self) -> usize {
-        match *self {
-            HybridIdxSet::Sparse(_, size) => size,
-            HybridIdxSet::Dense(_, size) => size,
-        }
+    pub fn new_empty(domain_size: usize) -> Self {
+        HybridIdxSet::Sparse(SparseIdxSet::new(), domain_size)
     }
 
     pub fn clear(&mut self) {
-        let universe_size = self.universe_size();
-        *self = HybridIdxSet::new_empty(universe_size);
+        let domain_size = match *self {
+            HybridIdxSet::Sparse(_, size) => size,
+            HybridIdxSet::Dense(_, size) => size,
+        };
+        *self = HybridIdxSet::new_empty(domain_size);
     }
 
     /// Returns true iff set `self` contains `elem`.
@@ -374,11 +382,11 @@ impl<T: Idx> HybridIdxSet<T> {
                 //        appease the borrow checker.
                 let dummy = HybridIdxSet::Sparse(SparseIdxSet::new(), 0);
                 match mem::replace(self, dummy) {
-                    HybridIdxSet::Sparse(sparse, universe_size) => {
-                        let mut dense = sparse.to_dense(universe_size);
+                    HybridIdxSet::Sparse(sparse, domain_size) => {
+                        let mut dense = sparse.to_dense(domain_size);
                         let changed = dense.add(elem);
                         assert!(changed);
-                        mem::replace(self, HybridIdxSet::Dense(dense, universe_size));
+                        mem::replace(self, HybridIdxSet::Dense(dense, domain_size));
                         changed
                     }
                     _ => panic!("impossible"),
@@ -401,7 +409,7 @@ impl<T: Idx> HybridIdxSet<T> {
     /// Converts to a dense set, consuming itself in the process.
     pub fn to_dense(self) -> IdxSet<T> {
         match self {
-            HybridIdxSet::Sparse(sparse, universe_size) => sparse.to_dense(universe_size),
+            HybridIdxSet::Sparse(sparse, domain_size) => sparse.to_dense(domain_size),
             HybridIdxSet::Dense(dense, _) => dense,
         }
     }
@@ -411,6 +419,24 @@ impl<T: Idx> HybridIdxSet<T> {
         match self {
             HybridIdxSet::Sparse(sparse, _) => HybridIter::Sparse(sparse.iter()),
             HybridIdxSet::Dense(dense, _) => HybridIter::Dense(dense.iter()),
+        }
+    }
+}
+
+impl<T: Idx> UnionIntoIdxSet<T> for HybridIdxSet<T> {
+    fn union_into(&self, other: &mut IdxSet<T>) -> bool {
+        match self {
+            HybridIdxSet::Sparse(sparse, _) => sparse.union_into(other),
+            HybridIdxSet::Dense(dense, _) => dense.union_into(other),
+        }
+    }
+}
+
+impl<T: Idx> SubtractFromIdxSet<T> for HybridIdxSet<T> {
+    fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
+        match self {
+            HybridIdxSet::Sparse(sparse, _) => sparse.subtract_from(other),
+            HybridIdxSet::Dense(dense, _) => dense.subtract_from(other),
         }
     }
 }

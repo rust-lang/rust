@@ -209,8 +209,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &mut sets, Location { block: bb, statement_index: j });
         results.0.operator.statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
-        sets.on_entry.union_hybrid(sets.gen_set);
-        sets.on_entry.subtract_hybrid(sets.kill_set);
+        sets.on_entry.union(sets.gen_set);
+        sets.on_entry.subtract(sets.kill_set);
     }
 
     results.0.operator.before_terminator_effect(

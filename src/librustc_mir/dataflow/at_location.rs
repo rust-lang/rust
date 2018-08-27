@@ -129,8 +129,8 @@ where
         F: FnOnce(Iter<BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
-        curr_state.union_hybrid(&self.stmt_gen);
-        curr_state.subtract_hybrid(&self.stmt_kill);
+        curr_state.union(&self.stmt_gen);
+        curr_state.subtract(&self.stmt_kill);
         f(curr_state.iter());
     }
 }
@@ -193,8 +193,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     }
 
     fn apply_local_effect(&mut self, _loc: Location) {
-        self.curr_state.union_hybrid(&self.stmt_gen);
-        self.curr_state.subtract_hybrid(&self.stmt_kill);
+        self.curr_state.union(&self.stmt_gen);
+        self.curr_state.subtract(&self.stmt_kill);
     }
 }
 

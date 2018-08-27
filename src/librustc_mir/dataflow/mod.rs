@@ -241,8 +241,8 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
                 let sets = self.builder.flow_state.sets.for_block(bb.index());
                 debug_assert!(in_out.words().len() == sets.on_entry.words().len());
                 in_out.overwrite(sets.on_entry);
-                in_out.union_hybrid(sets.gen_set);
-                in_out.subtract_hybrid(sets.kill_set);
+                in_out.union(sets.gen_set);
+                in_out.subtract(sets.kill_set);
             }
             self.builder.propagate_bits_into_graph_successors_of(
                 in_out, (bb, bb_data), &mut dirty_queue);
@@ -534,8 +534,8 @@ impl<'a, E:Idx> BlockSets<'a, E> {
     }
 
     fn apply_local_effect(&mut self) {
-        self.on_entry.union_hybrid(&self.gen_set);
-        self.on_entry.subtract_hybrid(&self.kill_set);
+        self.on_entry.union(self.gen_set);
+        self.on_entry.subtract(self.kill_set);
     }
 }
 
