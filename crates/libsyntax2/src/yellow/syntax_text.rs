@@ -99,3 +99,9 @@ impl SyntaxTextSlice for ops::RangeFrom<TextUnit> {
         Some(TextRange::from_to(self.start, range.end()))
     }
 }
+
+impl SyntaxTextSlice for ops::Range<TextUnit> {
+    fn restrict(&self, range: TextRange) -> Option<TextRange> {
+        TextRange::from_to(self.start, self.end).restrict(range)
+    }
+}
