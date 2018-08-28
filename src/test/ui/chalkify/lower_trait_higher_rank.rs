@@ -13,7 +13,7 @@
 #[rustc_dump_program_clauses] //~ ERROR program clause dump
 trait Foo<F> where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8
 {
-    fn s(F) -> F;
+    fn s(_: F) -> F;
 }
 
 fn main() {

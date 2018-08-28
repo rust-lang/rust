@@ -277,7 +277,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(ANONYMOUS_PARAMETERS),
             reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-            edition: None,
+            edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
             id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),

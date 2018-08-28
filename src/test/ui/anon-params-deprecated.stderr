@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(anonymous_parameters)]
    |         ^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
 warning: anonymous parameters are deprecated and will be removed in the next edition.
@@ -18,7 +18,7 @@ warning: anonymous parameters are deprecated and will be removed in the next edi
 LL |     fn bar_with_default_impl(String, String) {}
    |                              ^^^^^^ help: Try naming the parameter or explicitly ignoring it: `_: String`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
 warning: anonymous parameters are deprecated and will be removed in the next edition.
@@ -27,6 +27,6 @@ warning: anonymous parameters are deprecated and will be removed in the next edi
 LL |     fn bar_with_default_impl(String, String) {}
    |                                      ^^^^^^ help: Try naming the parameter or explicitly ignoring it: `_: String`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 

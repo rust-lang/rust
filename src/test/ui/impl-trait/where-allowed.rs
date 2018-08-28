@@ -125,7 +125,7 @@ trait InTraitDefnReturn {
 // Allowed and disallowed in trait impls
 trait DummyTrait {
     type Out;
-    fn in_trait_impl_parameter(impl Debug);
+    fn in_trait_impl_parameter(_: impl Debug);
     fn in_trait_impl_return() -> Self::Out;
 }
 impl DummyTrait for () {

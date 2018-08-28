@@ -266,7 +266,7 @@ macro_rules! late_lint_methods {
 
 macro_rules! expand_lint_pass_methods {
     ($context:ty, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(#[inline(always)] fn $name(&mut self, $context, $(_: $arg),*) {})*
+        $(#[inline(always)] fn $name(&mut self, _: $context, $(_: $arg),*) {})*
     )
 }
 
