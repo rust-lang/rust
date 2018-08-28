@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 unicode-xid = "0.1.0"
-text_unit = "0.1.3"
+text_unit = "0.1.4"
 itertools = "0.7.8"
 drop_bomb = "0.1.4"
 parking_lot = "0.6.0"

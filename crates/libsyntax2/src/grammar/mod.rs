@@ -119,8 +119,10 @@ fn abi(p: &mut Parser) {
 
 fn opt_fn_ret_type(p: &mut Parser) -> bool {
     if p.at(THIN_ARROW) {
+        let m = p.start();
         p.bump();
         types::type_(p);
+        m.complete(p, RET_TYPE);
         true
     } else {
         false

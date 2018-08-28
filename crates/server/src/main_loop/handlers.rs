@@ -4,7 +4,7 @@ use languageserver_types::{
     Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
     Command, TextDocumentIdentifier, WorkspaceEdit,
     SymbolInformation, Position, Location, TextEdit,
-    CompletionItem,
+    CompletionItem, InsertTextFormat, CompletionItemKind,
 };
 use serde_json::{to_value, from_value};
 use url_serde;
@@ -331,9 +331,17 @@ pub fn handle_completion(
         Some(items) => items,
     };
     let items = items.into_iter()
-        .map(|item| CompletionItem {
-            label: item.name,
-            .. Default::default()
+        .map(|item| {
+            let mut res = CompletionItem {
+                label: item.name,
+                .. Default::default()
+            };
+            if let Some(snip) = item.snippet {
+                res.insert_text = Some(snip);
+                res.insert_text_format = Some(InsertTextFormat::Snippet);
+                res.kind = Some(CompletionItemKind::Keyword);
+            };
+            res
         })
         .collect();
 

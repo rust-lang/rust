@@ -523,6 +523,10 @@ impl<'a> FnDef<'a> {
     pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
+
+    pub fn ret_type(self) -> Option<RetType<'a>> {
+        super::child_opt(self)
+    }
 }
 
 // FnPointerType
@@ -1411,6 +1415,24 @@ impl<'a> AstNode<'a> for ReferenceType<'a> {
 }
 
 impl<'a> ReferenceType<'a> {}
+
+// RetType
+#[derive(Debug, Clone, Copy)]
+pub struct RetType<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for RetType<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            RET_TYPE => Some(RetType { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> RetType<'a> {}
 
 // ReturnExpr
 #[derive(Debug, Clone, Copy)]

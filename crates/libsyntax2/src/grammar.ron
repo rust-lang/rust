@@ -119,6 +119,7 @@ Grammar(
         "STRUCT_DEF",
         "ENUM_DEF",
         "FN_DEF",
+        "RET_TYPE",
         "EXTERN_CRATE_ITEM",
         "MODULE",
         "USE_ITEM",
@@ -252,8 +253,10 @@ Grammar(
             options: [
                 ["param_list", "ParamList"],
                 ["body", "Block"],
+                ["ret_type", "RetType"]
             ],
         ),
+        "RetType": (),
         "StructDef": (
             traits: [
                 "NameOwner",

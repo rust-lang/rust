@@ -17,13 +17,14 @@ ROOT@[0; 42)
             PIPE@[16; 17)
             PIPE@[17; 18)
           WHITESPACE@[18; 19)
-          THIN_ARROW@[19; 21)
-          WHITESPACE@[21; 22)
-          TUPLE_TYPE@[22; 24)
-            L_PAREN@[22; 23)
-            R_PAREN@[23; 24)
-            err: `expected a block`
-            err: `expected SEMI`
+          RET_TYPE@[19; 24)
+            THIN_ARROW@[19; 21)
+            WHITESPACE@[21; 22)
+            TUPLE_TYPE@[22; 24)
+              L_PAREN@[22; 23)
+              R_PAREN@[23; 24)
+              err: `expected a block`
+              err: `expected SEMI`
       WHITESPACE@[24; 25)
       EXPR_STMT@[25; 39)
         BLOCK_EXPR@[25; 38)
