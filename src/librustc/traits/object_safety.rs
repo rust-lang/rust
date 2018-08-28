@@ -348,8 +348,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
         let traits = (self.lang_items().unsize_trait(),
-                      self.lang_items().coerce_unsized_trait());
-        let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
+                      self.lang_items().coerce_sized_trait());
+        let (unsize_did, coerce_sized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
             debug!("receiver_is_coercible: Missing Unsize or CoerceUnsized traits");
@@ -398,7 +398,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // Receiver: CoerceUnsized<Receiver<Self=U>>
         let obligation = {
             let predicate = ty::TraitRef {
-                def_id: coerce_unsized_did,
+                def_id: coerce_sized_did,
                 substs: self.mk_substs_trait(receiver_ty, &[target_receiver_ty.into()]),
             }.to_predicate();
 
