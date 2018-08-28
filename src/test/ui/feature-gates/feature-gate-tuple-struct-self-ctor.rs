@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S(u8, u16);
-type A = S;
+struct ST(i32, i32);
 
-fn main() {
-    let s = A(0, 1); //~ ERROR expected function
-    match s {
-        A(..) => {} //~ ERROR expected tuple struct/variant
+impl ST {
+    fn ctor() -> Self {
+        Self(1,2)
+        //~^ ERROR: expected function, found self type `Self` [E0423]
+        //~^^ ERROR: tuple struct Self constructors are unstable (see issue #51994) [E0658]
     }
 }

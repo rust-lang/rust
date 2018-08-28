@@ -1463,6 +1463,9 @@ pub struct Resolver<'a, 'b: 'a> {
     /// it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Def, ty::Visibility)>,
 
+    /// Map from tuple struct's DefId to VariantData's Def
+    tuple_structs: DefIdMap<Def>,
+
     /// Only used for better errors on `fn(): fn()`
     current_type_ascription: Vec<Span>,
 
@@ -1764,6 +1767,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             warned_proc_macros: FxHashSet(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: DefIdMap(),
+            tuple_structs: DefIdMap(),
             found_unresolved_macro: false,
             unused_macros: FxHashSet(),
             current_type_ascription: Vec::new(),
@@ -2204,6 +2208,19 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         None
     }
 
+    fn resolve_adt(&mut self, item: &Item, generics: &Generics) {
+        self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+            let item_def_id = this.definitions.local_def_id(item.id);
+            if this.session.features_untracked().self_in_typedefs {
+                this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                    visit::walk_item(this, item);
+                });
+            } else {
+                visit::walk_item(this, item);
+            }
+        });
+    }
+
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
         debug!("(resolving item) resolving {}", name);
@@ -2216,19 +2233,25 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                              |this| visit::walk_item(this, item));
             }
 
-            ItemKind::Enum(_, ref generics) |
-            ItemKind::Struct(_, ref generics) |
-            ItemKind::Union(_, ref generics) => {
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
-                    let item_def_id = this.definitions.local_def_id(item.id);
-                    if this.session.features_untracked().self_in_typedefs {
-                        this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
-                            visit::walk_item(this, item);
-                        });
-                    } else {
-                        visit::walk_item(this, item);
+            ItemKind::Struct(ref variant, ref generics) => {
+                if variant.is_tuple() || variant.is_unit() {
+                    if let Some(def_id) = self.definitions.opt_local_def_id(item.id) {
+                        if let Some(variant_id) = self.definitions.opt_local_def_id(variant.id()) {
+                            let variant_def = if variant.is_tuple() {
+                                Def::StructCtor(variant_id, CtorKind::Fn)
+                            } else {
+                                Def::StructCtor(variant_id, CtorKind::Const)
+                            };
+                            self.tuple_structs.insert(def_id, variant_def);
+                        }
                     }
-                });
+                }
+                self.resolve_adt(item, generics);
+            }
+
+            ItemKind::Enum(_, ref generics) |
+            ItemKind::Union(_, ref generics) => {
+                self.resolve_adt(item, generics);
             }
 
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
@@ -2503,6 +2526,32 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.ribs[TypeNS].pop();
     }
 
+    fn with_tuple_struct_self_ctor_rib<F>(&mut self, self_ty: &Ty, f: F)
+        where F: FnOnce(&mut Resolver)
+    {
+        let variant_def = if self.session.features_untracked().tuple_struct_self_ctor {
+            let base_def = self.def_map.get(&self_ty.id).map(|r| r.base_def());
+            if let Some(Def::Struct(ref def_id)) = base_def {
+                self.tuple_structs.get(def_id).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // when feature gate is enabled and `Self` is a tuple struct
+        if let Some(variant_def) = variant_def {
+            let mut self_type_rib = Rib::new(NormalRibKind);
+            self_type_rib.bindings.insert(keywords::SelfType.ident(), variant_def);
+            self.ribs[ValueNS].push(self_type_rib);
+            f(self);
+            self.ribs[ValueNS].pop();
+        } else {
+            f(self);
+        }
+    }
+
     fn resolve_implementation(&mut self,
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
@@ -2554,8 +2603,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                                                   ValueNS,
                                                                   impl_item.span,
                                                 |n, s| MethodNotMemberOfTrait(n, s));
-
-                                            visit::walk_impl_item(this, impl_item);
+                                            this.with_tuple_struct_self_ctor_rib(self_type, |this| {
+                                                visit::walk_impl_item(this, impl_item);
+                                            });
                                         }
                                         ImplItemKind::Type(ref ty) => {
                                             // If this is a trait impl, ensure the type

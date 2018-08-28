@@ -512,6 +512,9 @@ declare_features! (
 
     // Non-builtin attributes in inner attribute position
     (active, custom_inner_attributes, "1.30.0", Some(38356), None),
+
+    // tuple struct self constructor (RFC 2302)
+    (active, tuple_struct_self_ctor, "1.31.0", Some(51994), None),
 );
 
 declare_features! (
@@ -1735,6 +1738,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::Async(..) => {
                 gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
+            }
+            ast::ExprKind::Call(ref callee, _) => {
+                if let ast::ExprKind::Path(_, ref p) = callee.node {
+                    if p.segments.len() == 1 &&
+                       p.segments[0].ident.name == keywords::SelfType.name() {
+                        gate_feature_post!(&self, tuple_struct_self_ctor, e.span,
+                            "tuple struct Self constructors are unstable");
+                    }
+                }
             }
             _ => {}
         }
