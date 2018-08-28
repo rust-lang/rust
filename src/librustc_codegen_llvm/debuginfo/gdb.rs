@@ -18,7 +18,7 @@ use declare;
 use rustc::session::config::DebugInfo;
 use type_::Type;
 use value::Value;
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 use syntax::attr;
 

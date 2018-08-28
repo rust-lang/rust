@@ -20,14 +20,17 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, val_ty};
-use common::{C_bool, C_u8, C_i32, C_u32, C_u64, C_undef, C_null, C_usize, C_uint, C_uint_big};
+use common::{
+    C_bool, C_u8, C_i32, C_u32, C_u64, C_undef, C_null, C_usize,
+    C_uint, C_uint_big, IntPredicate, RealPredicate
+};
 use consts;
 use monomorphize;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use traits::{IntPredicate, RealPredicate, BuilderMethods};
+use interfaces::BuilderMethods;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};

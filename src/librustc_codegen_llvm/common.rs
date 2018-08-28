@@ -28,7 +28,7 @@ use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
-use traits::{BuilderMethods, OperandBundleDef};
+use interfaces::BuilderMethods;
 
 use libc::{c_uint, c_char};
 use std::iter;
@@ -49,6 +49,87 @@ pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> boo
 
 pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
+}
+
+pub struct OperandBundleDef<'a, Value : 'a> {
+    pub name: &'a str,
+    pub val: Value
+}
+
+impl OperandBundleDef<'ll, &'ll Value> {
+    pub fn new(name: &'ll str, val: &'ll Value) -> Self {
+        OperandBundleDef {
+            name,
+            val
+        }
+    }
+}
+
+pub enum IntPredicate {
+    IntEQ,
+    IntNE,
+    IntUGT,
+    IntUGE,
+    IntULT,
+    IntULE,
+    IntSGT,
+    IntSGE,
+    IntSLT,
+    IntSLE
+}
+
+#[allow(dead_code)]
+pub enum RealPredicate {
+    RealPredicateFalse,
+    RealOEQ,
+    RealOGT,
+    RealOGE,
+    RealOLT,
+    RealOLE,
+    RealONE,
+    RealORD,
+    RealUNO,
+    RealUEQ,
+    RealUGT,
+    RealUGE,
+    RealULT,
+    RealULE,
+    RealUNE,
+    RealPredicateTrue
+}
+
+pub enum AtomicRmwBinOp {
+    AtomicXchg,
+    AtomicAdd,
+    AtomicSub,
+    AtomicAnd,
+    AtomicNand,
+    AtomicOr,
+    AtomicXor,
+    AtomicMax,
+    AtomicMin,
+    AtomicUMax,
+    AtomicUMin
+}
+
+pub enum AtomicOrdering {
+    #[allow(dead_code)]
+    NotAtomic,
+    Unordered,
+    Monotonic,
+    // Consume,  // Not specified yet.
+    Acquire,
+    Release,
+    AcquireRelease,
+    SequentiallyConsistent,
+}
+
+pub enum SynchronizationScope {
+    // FIXME: figure out if this variant is needed at all.
+    #[allow(dead_code)]
+    Other,
+    SingleThread,
+    CrossThread,
 }
 
 /*

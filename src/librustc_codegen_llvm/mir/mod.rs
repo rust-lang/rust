@@ -25,7 +25,7 @@ use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
 use value::Value;
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;

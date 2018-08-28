@@ -20,7 +20,7 @@ use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
-use traits::{IntPredicate,BuilderMethods};
+use interfaces::BuilderMethods;
 
 pub fn size_and_align_of_dst(
     bx: &Builder<'_, 'll, 'tcx, &'ll Value>,

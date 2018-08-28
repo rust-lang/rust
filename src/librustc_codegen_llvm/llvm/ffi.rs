@@ -19,7 +19,7 @@ use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
-use traits;
+use common;
 use syntax;
 
 use super::RustString;
@@ -144,18 +144,18 @@ pub enum IntPredicate {
 }
 
 impl IntPredicate {
-    pub fn from_generic(intpre: traits::IntPredicate) -> Self {
+    pub fn from_generic(intpre: common::IntPredicate) -> Self {
         match intpre {
-            traits::IntPredicate::IntEQ => IntPredicate::IntEQ,
-            traits::IntPredicate::IntNE => IntPredicate::IntNE,
-            traits::IntPredicate::IntUGT => IntPredicate::IntUGT,
-            traits::IntPredicate::IntUGE => IntPredicate::IntUGE,
-            traits::IntPredicate::IntULT => IntPredicate::IntULT,
-            traits::IntPredicate::IntULE => IntPredicate::IntULE,
-            traits::IntPredicate::IntSGT => IntPredicate::IntSGT,
-            traits::IntPredicate::IntSGE => IntPredicate::IntSGE,
-            traits::IntPredicate::IntSLT => IntPredicate::IntSLT,
-            traits::IntPredicate::IntSLE => IntPredicate::IntSLE,
+            common::IntPredicate::IntEQ => IntPredicate::IntEQ,
+            common::IntPredicate::IntNE => IntPredicate::IntNE,
+            common::IntPredicate::IntUGT => IntPredicate::IntUGT,
+            common::IntPredicate::IntUGE => IntPredicate::IntUGE,
+            common::IntPredicate::IntULT => IntPredicate::IntULT,
+            common::IntPredicate::IntULE => IntPredicate::IntULE,
+            common::IntPredicate::IntSGT => IntPredicate::IntSGT,
+            common::IntPredicate::IntSGE => IntPredicate::IntSGE,
+            common::IntPredicate::IntSLT => IntPredicate::IntSLT,
+            common::IntPredicate::IntSLE => IntPredicate::IntSLE,
         }
     }
 }
@@ -183,24 +183,24 @@ pub enum RealPredicate {
 }
 
 impl RealPredicate {
-    pub fn from_generic(realpred: traits::RealPredicate) -> Self {
+    pub fn from_generic(realpred: common::RealPredicate) -> Self {
         match realpred {
-            traits::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
-            traits::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
-            traits::RealPredicate::RealOGT => RealPredicate::RealOGT,
-            traits::RealPredicate::RealOGE => RealPredicate::RealOGE,
-            traits::RealPredicate::RealOLT => RealPredicate::RealOLT,
-            traits::RealPredicate::RealOLE => RealPredicate::RealOLE,
-            traits::RealPredicate::RealONE => RealPredicate::RealONE,
-            traits::RealPredicate::RealORD => RealPredicate::RealORD,
-            traits::RealPredicate::RealUNO => RealPredicate::RealUNO,
-            traits::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
-            traits::RealPredicate::RealUGT => RealPredicate::RealUGT,
-            traits::RealPredicate::RealUGE => RealPredicate::RealUGE,
-            traits::RealPredicate::RealULT => RealPredicate::RealULT,
-            traits::RealPredicate::RealULE => RealPredicate::RealULE,
-            traits::RealPredicate::RealUNE => RealPredicate::RealUNE,
-            traits::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
+            common::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
+            common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
+            common::RealPredicate::RealOGT => RealPredicate::RealOGT,
+            common::RealPredicate::RealOGE => RealPredicate::RealOGE,
+            common::RealPredicate::RealOLT => RealPredicate::RealOLT,
+            common::RealPredicate::RealOLE => RealPredicate::RealOLE,
+            common::RealPredicate::RealONE => RealPredicate::RealONE,
+            common::RealPredicate::RealORD => RealPredicate::RealORD,
+            common::RealPredicate::RealUNO => RealPredicate::RealUNO,
+            common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
+            common::RealPredicate::RealUGT => RealPredicate::RealUGT,
+            common::RealPredicate::RealUGE => RealPredicate::RealUGE,
+            common::RealPredicate::RealULT => RealPredicate::RealULT,
+            common::RealPredicate::RealULE => RealPredicate::RealULE,
+            common::RealPredicate::RealUNE => RealPredicate::RealUNE,
+            common::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
         }
     }
 }
@@ -246,19 +246,19 @@ pub enum AtomicRmwBinOp {
 }
 
 impl AtomicRmwBinOp {
-    pub fn from_generic(op : traits::AtomicRmwBinOp) -> Self {
+    pub fn from_generic(op : common::AtomicRmwBinOp) -> Self {
         match op {
-            traits::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
-            traits::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
-            traits::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
-            traits::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
-            traits::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
-            traits::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
-            traits::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
-            traits::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
-            traits::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
-            traits::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
-            traits::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin
+            common::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
+            common::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
+            common::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
+            common::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
+            common::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
+            common::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
+            common::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
+            common::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
+            common::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
+            common::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
+            common::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin
         }
     }
 }
@@ -279,15 +279,15 @@ pub enum AtomicOrdering {
 }
 
 impl AtomicOrdering {
-    pub fn from_generic(ao : traits::AtomicOrdering) -> Self {
+    pub fn from_generic(ao : common::AtomicOrdering) -> Self {
         match ao {
-            traits::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
-            traits::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            traits::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
-            traits::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            traits::AtomicOrdering::Release => AtomicOrdering::Release,
-            traits::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
-            traits::AtomicOrdering::SequentiallyConsistent =>
+            common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
+            common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
+            common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
+            common::AtomicOrdering::Release => AtomicOrdering::Release,
+            common::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
+            common::AtomicOrdering::SequentiallyConsistent =>
                 AtomicOrdering::SequentiallyConsistent
         }
     }
@@ -306,11 +306,11 @@ pub enum SynchronizationScope {
 }
 
 impl SynchronizationScope {
-    pub fn from_generic(sc : traits::SynchronizationScope) -> Self {
+    pub fn from_generic(sc : common::SynchronizationScope) -> Self {
         match sc {
-            traits::SynchronizationScope::Other => SynchronizationScope::Other,
-            traits::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
-            traits::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
+            common::SynchronizationScope::Other => SynchronizationScope::Other,
+            common::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
+            common::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
         }
     }
 }

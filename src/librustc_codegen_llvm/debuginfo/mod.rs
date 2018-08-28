@@ -45,7 +45,7 @@ use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::ty::layout::{self, LayoutOf};
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 pub mod gdb;
 mod utils;

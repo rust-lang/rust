@@ -17,7 +17,7 @@ use super::FunctionDebugContext;
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
