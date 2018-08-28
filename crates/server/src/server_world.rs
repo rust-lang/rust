@@ -1,4 +1,5 @@
 use std::{
+    fs,
     path::{PathBuf, Path},
     collections::HashMap,
 };
@@ -78,10 +79,12 @@ impl ServerWorldState {
         let file_id = self.path_map.get_id(path).ok_or_else(|| {
             format_err!("change to unknown file: {}", path.display())
         })?;
-        let text = match self.mem_map.remove(&file_id) {
-            Some(text) => text,
+        match self.mem_map.remove(&file_id) {
+            Some(_) => (),
             None => bail!("unmatched close notification"),
         };
+        // Do this via file watcher ideally.
+        let text = fs::read_to_string(path).ok();
         self.analysis.change_file(file_id, text);
         Ok(())
     }
