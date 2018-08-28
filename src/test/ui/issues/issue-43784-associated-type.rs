@@ -23,3 +23,5 @@ impl<T> Partial<T> for T::Assoc where
 impl<T> Complete for T { //~ ERROR the trait bound `T: std::marker::Copy` is not satisfied
     type Assoc = T;
 }
+
+fn main() {}

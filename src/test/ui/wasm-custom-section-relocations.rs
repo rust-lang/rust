@@ -21,3 +21,5 @@ pub static C: usize = 3;
 
 #[link_section = "test"]
 pub static D: &usize = &C; //~ ERROR: no extra levels of indirection
+
+fn main() {}

@@ -55,3 +55,5 @@ fn check_legacy() {
     struct FromOutside;
     genmod_legacy!();
 }
+
+fn main() {}

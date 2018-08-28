@@ -18,3 +18,4 @@ enum Eu64 {
     Bu64 = 0x8000_0000_0000_0000 //~ERROR already exists
 }
 
+fn main() {}

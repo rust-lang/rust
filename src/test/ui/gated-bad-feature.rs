@@ -20,3 +20,5 @@
 #![feature = "foo"] //~ ERROR: malformed feature
 
 #![feature(test_removed_feature)] //~ ERROR: feature has been removed
+
+fn main() {}
