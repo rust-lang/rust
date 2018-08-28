@@ -22,6 +22,10 @@ pub(super) fn pattern(p: &mut Parser) {
     }
 }
 
+const PAT_RECOVERY_SET: TokenSet =
+    token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW];
+
+
 fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
     let la0 = p.nth(0);
     let la1 = p.nth(1);
@@ -52,7 +56,7 @@ fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
         L_PAREN => tuple_pat(p),
         L_BRACK => slice_pat(p),
         _ => {
-            p.err_and_bump("expected pattern");
+            p.err_recover("expected pattern", PAT_RECOVERY_SET);
             return None;
         }
     };

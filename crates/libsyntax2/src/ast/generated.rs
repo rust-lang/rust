@@ -893,6 +893,8 @@ pub enum ModuleItem<'a> {
     ImplItem(ImplItem<'a>),
     UseItem(UseItem<'a>),
     ExternCrateItem(ExternCrateItem<'a>),
+    ConstDef(ConstDef<'a>),
+    StaticDef(StaticDef<'a>),
 }
 
 impl<'a> AstNode<'a> for ModuleItem<'a> {
@@ -905,6 +907,8 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             IMPL_ITEM => Some(ModuleItem::ImplItem(ImplItem { syntax })),
             USE_ITEM => Some(ModuleItem::UseItem(UseItem { syntax })),
             EXTERN_CRATE_ITEM => Some(ModuleItem::ExternCrateItem(ExternCrateItem { syntax })),
+            CONST_DEF => Some(ModuleItem::ConstDef(ConstDef { syntax })),
+            STATIC_DEF => Some(ModuleItem::StaticDef(StaticDef { syntax })),
             _ => None,
         }
     }
@@ -917,6 +921,8 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             ModuleItem::ImplItem(inner) => inner.syntax(),
             ModuleItem::UseItem(inner) => inner.syntax(),
             ModuleItem::ExternCrateItem(inner) => inner.syntax(),
+            ModuleItem::ConstDef(inner) => inner.syntax(),
+            ModuleItem::StaticDef(inner) => inner.syntax(),
         }
     }
 }

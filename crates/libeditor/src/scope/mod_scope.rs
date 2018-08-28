@@ -13,6 +13,8 @@ impl ModuleScope {
                 ast::ModuleItem::StructDef(item) => Entry::new(item),
                 ast::ModuleItem::EnumDef(item) => Entry::new(item),
                 ast::ModuleItem::FnDef(item) => Entry::new(item),
+                ast::ModuleItem::ConstDef(item) => Entry::new(item),
+                ast::ModuleItem::StaticDef(item) => Entry::new(item),
                 ast::ModuleItem::TraitDef(item) => Entry::new(item),
                 ast::ModuleItem::ExternCrateItem(_) |
                 ast::ModuleItem::ImplItem(_) |

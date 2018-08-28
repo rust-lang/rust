@@ -334,7 +334,7 @@ Grammar(
         ),
         "ModuleItem": (
             enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "ImplItem",
-                   "UseItem", "ExternCrateItem" ]
+                   "UseItem", "ExternCrateItem", "ConstDef", "StaticDef" ]
         ),
 
         "TupleExpr": (),
