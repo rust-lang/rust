@@ -305,7 +305,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(_, Rvalue::Ref(_, _, ref place)) => {
                             // Find the underlying local for this (necessarilly interior) borrow.
                             let mut place = place.clone();
-                            if !place.elems.is_empty() {
+                            if !place.has_no_projection() {
                                 // for Place:
                                 //     Base.[a, b, Deref, c]
                                 //     ^^^^^^^^^^  ^^^^^  ^
@@ -381,9 +381,11 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 match mir[block].statements[statement_index].kind {
                     StatementKind::Assign(ref place, _) => {
                         if let PlaceBase::Local(local) = place.base {
-                            if temps[local] == TempState::PromotedOut {
-                                // Already promoted.
-                                continue;
+                            if place.has_no_projection() {
+                                if temps[local] == TempState::PromotedOut {
+                                    // Already promoted.
+                                    continue;
+                                }
                             }
                         }
                     }
@@ -429,9 +431,12 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 StatementKind::Assign(
                     Place {
                         base: PlaceBase::Local(index),
-                        elems: _,
+                        elems,
                     },
-                    _, ) |
+                    _,
+                ) if elems.is_empty() => {
+                    !promoted(index)
+                },
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)
@@ -444,11 +449,11 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             TerminatorKind::Drop {
                 location: Place {
                     base: PlaceBase::Local(index),
-                    elems: _,
+                    elems,
                 },
                 target,
                 ..
-            } => {
+            } if elems.is_empty() => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
                         target,

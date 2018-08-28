@@ -30,58 +30,57 @@ fn place_context<'a, 'tcx, D>(
 ) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
-    if let (base_place, Some(projection)) = place.final_projection(tcx){
-        match projection {
-            ProjectionElem::Deref => {
-                // Computing the inside the recursion makes this quadratic.
-                // We don't expect deep paths though.
-                let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
-                // A Deref projection may restrict the context, this depends on the type
-                // being deref'd.
-                let context = match ty.sty {
-                    ty::TyRef(re, _, mutbl) => {
-                        let re = match re {
-                            &RegionKind::ReScope(ce) => Some(ce),
-                            &RegionKind::ReErased =>
-                                bug!("AddValidation pass must be run before erasing lifetimes"),
-                            _ => None
-                        };
-                        (re, mutbl)
+    let mut place_context = match place.base {
+        PlaceBase::Local { .. } => (None, hir::MutMutable),
+        PlaceBase::Promoted(_)
+        | PlaceBase::Static(_) => (None, hir::MutImmutable),
+    };
+
+    if !place.has_no_projection() {
+        let mut base_ty = place.base.ty(local_decls);
+        let mut base_context = place_context;
+        for elem in place.elems.iter() {
+            match elem {
+                ProjectionElem::Deref => {
+                    // A Deref projection may restrict the context, this depends on the type
+                    // being deref'd.
+                    place_context = match base_ty.sty {
+                        ty::TyRef(re, _, mutbl) => {
+                            let re = match re {
+                                &RegionKind::ReScope(ce) => Some(ce),
+                                &RegionKind::ReErased =>
+                                    bug!("AddValidation pass must be run before erasing lifetimes"),
+                                _ => None
+                            };
+                            (re, mutbl)
+                        }
+                        ty::TyRawPtr(_) =>
+                        // There is no guarantee behind even a mutable raw pointer,
+                        // no write locks are acquired there, so we also don't want to
+                        // release any.
+                            (None, hir::MutImmutable),
+                        ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
+                        _ => bug!("Deref on a non-pointer type {:?}", base_ty),
+                    };
+                    // "Intersect" this restriction with proj.base.
+                    if let (Some(_), hir::MutImmutable) = place_context {
+                        // This is already as restricted as it gets, no need to even recurse
+                    } else {
+                        let re = place_context.0.or(base_context.0);
+                        let mutbl = place_context.1.and(base_context.1);
+                        place_context = (re, mutbl);
                     }
-                    ty::TyRawPtr(_) =>
-                    // There is no guarantee behind even a mutable raw pointer,
-                    // no write locks are acquired there, so we also don't want to
-                    // release any.
-                        (None, hir::MutImmutable),
-                    ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
-                    _ => bug!("Deref on a non-pointer type {:?}", ty),
-                };
-                // "Intersect" this restriction with proj.base.
-                if let (Some(_), hir::MutImmutable) = context {
-                    // This is already as restricted as it gets, no need to even recurse
-                    context
-                } else {
-                    let base_context = place_context(&place.projection_base(tcx), local_decls, tcx);
-                    // The region of the outermost Deref is always most restrictive.
-                    let re = context.0.or(base_context.0);
-                    let mutbl = context.1.and(base_context.1);
-                    (re, mutbl)
-                }
-            },
-            _ => place_context(&base_place, local_decls, tcx),
-        }
-    } else {
-        match place.base {
-            PlaceBase::Local { .. } => (None, hir::MutMutable),
-            PlaceBase::Promoted(_)
-            | PlaceBase::Static(_) => (None, hir::MutImmutable),
+
+                },
+                _ => {},
+            }
+            base_ty = tcx::PlaceTy::from(base_ty)
+                        .projection_ty(tcx, elem)
+                        .to_ty(tcx);
+            base_context = place_context;
         }
     }
-    // let mut place_context = match place.base {
-    //     PlaceBase::Local { .. } => (None, hir::MutMutable),
-    //     PlaceBase::Promoted(_)
-    //     | PlaceBase::Static(_) => (None, hir::MutImmutable),
-    // };
+    place_context
 }
 
 /// Check if this function contains an unsafe block or is an unsafe function.

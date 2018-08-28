@@ -108,10 +108,11 @@ impl MirPass for CopyPropagation {
                         StatementKind::Assign(
                             Place {
                                 base: PlaceBase::Local(local),
-                                elems: _,
+                                elems,
                             },
                             Rvalue::Use(ref operand)
-                        ) if local == dest_local => {
+                        ) if local == dest_local
+                            && elems.is_empty() => {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
                                 Operand::Move(ref src_place) => {
@@ -162,13 +163,13 @@ fn eliminate_self_assignments<'tcx>(
                     StatementKind::Assign(
                         Place {
                             base: PlaceBase::Local(local),
-                            elems: _,
+                            elems: elems1,
                         },
                         Rvalue::Use(
                             Operand::Copy(
                                 Place {
                                     base: PlaceBase::Local(src_local),
-                                    elems: _,
+                                    elems: elems2,
                                 }
                             )
                         ),
@@ -176,17 +177,20 @@ fn eliminate_self_assignments<'tcx>(
                     StatementKind::Assign(
                         Place {
                             base: PlaceBase::Local(local),
-                            elems: _,
+                            elems: elems1,
                         },
                         Rvalue::Use(
                             Operand::Move(
                                 Place {
                                     base: PlaceBase::Local(src_local),
-                                    elems: _,
+                                    elems: elems2,
                                 }
                             )
                         ),
-                    ) if local == dest_local && dest_local == src_local => {}
+                    ) if local == dest_local
+                        && dest_local == src_local
+                        && elems1.is_empty()
+                        && elems2.is_empty() => {}
                     _ => {
                         continue;
                     }
@@ -216,7 +220,12 @@ impl<'tcx> Action<'tcx> {
     ) -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let PlaceBase::Local(local) = src_place.base {
-            local
+            if !src_place.has_no_projection() {
+                local
+            } else {
+                debug!("  Can't copy-propagate local: source is not a local");
+                return None;
+            }
         } else {
             debug!("  Can't copy-propagate local: source is not a local");
             return None;

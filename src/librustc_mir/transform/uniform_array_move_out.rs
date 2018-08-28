@@ -1,5 +1,5 @@
-// Copyright 2015 The Rust Project Developers. See
-// the COPYRIGHT file at the top-level directory of this distribution and at
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -312,7 +312,7 @@ impl RestoreSubsliceArrayMoveOut {
                     Rvalue::Use(Operand::Move(ref place2)),
                 ) = statement.kind {
                     if let PlaceBase::Local(_) = place1.base {
-                        if place1.elems.is_empty() {
+                        if place1.has_no_projection() {
                             if let Some(projection) = place2.elems.last() {
                                 if let ProjectionElem::ConstantIndex {
                                     offset,

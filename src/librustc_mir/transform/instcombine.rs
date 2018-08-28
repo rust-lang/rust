@@ -12,6 +12,7 @@
 
 use rustc::mir::{Constant, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{TyCtxt, TypeVariants};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -92,13 +93,17 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if !place.elems.is_empty() {
+            if !place.has_no_projection() {
+                let mut base_ty = place.base.ty(self.mir);
                 for elem in place.elems.iter() {
                     if let ProjectionElem::Deref = elem {
-                        if place.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                        if base_ty.is_region_ptr() {
                             self.optimizations.and_stars.insert(location);
                         }
                     }
+                    base_ty = PlaceTy::from(base_ty)
+                                .projection_ty(self.tcx, elem)
+                                .to_ty(self.tcx);
                 }
             }
         }

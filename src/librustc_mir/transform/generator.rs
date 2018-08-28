@@ -113,7 +113,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefArgVisitor<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if place.base == PlaceBase::Local(self_arg()) {
+        if place.base == PlaceBase::Local(self_arg())
+            && place.has_no_projection() {
             *place = place.clone().deref(self.tcx);
         } else {
             self.super_place(place, context, location);
@@ -199,8 +200,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     location: Location) {
         if let PlaceBase::Local(l) = place.base {
             // Replace an Local in the remap with a generator struct access
-            if let Some(&(ty, idx)) = self.remap.get(&l) {
-                *place = self.make_field(idx, ty);
+            if place.has_no_projection() {
+                if let Some(&(ty, idx)) = self.remap.get(&l) {
+                    *place = self.make_field(idx, ty);
+                }
             }
         } else {
             self.super_place(place, context, location);
@@ -339,6 +342,15 @@ impl<'tcx> BorrowedLocals {
         match place.base {
             PlaceBase::Local(l) => { self.0.add(&l); }
             _ => (),
+        }
+        if !place.has_no_projection() {
+            for elem in place.elems.iter() {
+                if let ProjectionElem::Deref = elem {
+                    ();
+                } else {
+                    continue;
+                }
+            }
         }
     }
 }
@@ -586,7 +598,8 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     target,
                     unwind
                 }
-            } if PlaceBase::Local(gen) == place.base => (target, unwind, source_info),
+            } if PlaceBase::Local(gen) == place.base
+                && place.has_no_projection() => (target, unwind, source_info),
             _ => continue,
         };
         let unwind = if let Some(unwind) = unwind {

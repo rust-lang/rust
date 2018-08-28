@@ -63,10 +63,10 @@ impl RemoveNoopLandingPads {
                 StatementKind::Assign(
                     Place {
                         base: PlaceBase::Local(_),
-                        elems: _,
+                        elems,
                     },
                     Rvalue::Use(_)
-                ) => {
+                ) => if elems.is_empty() {
                     // Writing to a local (e.g. a drop flag) does not
                     // turn a landing pad to a non-nop
                 }

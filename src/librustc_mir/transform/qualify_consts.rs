@@ -255,13 +255,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                        // Part of `box expr`, we should've errored
                        // already for the Box allocation Rvalue.
                    }
-               } else {
-                   // This must be an explicit assignment.
-
-                   // Catch more errors in the destination.
-                   self.visit_place(dest, PlaceContext::Store, location);
-                   self.statement_like();
                }
+           } else {
+               // This must be an explicit assignment.
+               // Catch more errors in the destination.
+               self.visit_place(dest, PlaceContext::Store, location);
+               self.statement_like();
            }
         } else {
             match dest.base {
@@ -401,10 +400,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                                 _, _,
                                 Place {
                                     base: PlaceBase::Local(index),
-                                    elems: _,
+                                    elems,
                                 }
                             )
-                        ) => {
+                        ) if elems.is_empty() => {
                             promoted_temps.add(&index);
                         }
                         _ => {}
@@ -578,9 +577,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // Mark the consumed locals to indicate later drops are noops.
                 if let Operand::Move(ref place) = *operand {
                     if let PlaceBase::Local(local) = place.base {
-                        self.local_qualif[local] = self.local_qualif[local].map(|q|
-                            q - Qualif::NEEDS_DROP
-                        );
+                        if place.has_no_projection() {
+                            self.local_qualif[local] = self.local_qualif[local].map(|q|
+                                q - Qualif::NEEDS_DROP
+                            );
+                        }
                     }
                 }
             }
@@ -718,7 +719,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let candidate = Candidate::Ref(location);
                     // We can only promote interior borrows of promotable temps.
                     let mut place = place.clone();
-                    if !place.elems.is_empty() {
+                    if !place.has_no_projection() {
                         for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
                             match elem {
                                 ProjectionElem::Deref => break,
@@ -728,17 +729,18 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 }
                             }
                         }
-                    }
-                    if let PlaceBase::Local(local) = place.base {
-                        if self.mir.local_kind(local) == LocalKind::Temp {
-                            if let Some(qualif) = self.local_qualif[local] {
-                                // `forbidden_mut` is false, so we can safely ignore
-                                // `MUTABLE_INTERIOR` from the local's qualifications.
-                                // This allows borrowing fields which don't have
-                                // `MUTABLE_INTERIOR`, from a type that does, e.g.:
-                                // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                                if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
-                                    self.promotion_candidates.push(candidate);
+                    } else {
+                        if let PlaceBase::Local(local) = place.base {
+                            if self.mir.local_kind(local) == LocalKind::Temp {
+                                if let Some(qualif) = self.local_qualif[local] {
+                                    // `forbidden_mut` is false, so we can safely ignore
+                                    // `MUTABLE_INTERIOR` from the local's qualifications.
+                                    // This allows borrowing fields which don't have
+                                    // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                                    // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                                    if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
+                                        self.promotion_candidates.push(candidate);
+                                    }
                                 }
                             }
                         }
@@ -987,11 +989,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             if self.mode != Mode::Fn {
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let PlaceBase::Local(local) = place.base {
-                    if self.local_qualif[local].map_or(true, |q| q.contains(Qualif::NEEDS_DROP)) {
-                        Some(self.mir.local_decls[local].source_info.span)
+                let needs_drop = if place.has_no_projection() {
+                    if let PlaceBase::Local(local) = place.base {
+                        if self.local_qualif[local].map_or(
+                            true, |q| q.contains(Qualif::NEEDS_DROP)
+                            ) {
+                            Some(self.mir.local_decls[local].source_info.span)
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        Some(self.span)
                     }
                 } else {
                     Some(self.span)
@@ -1026,7 +1034,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let (Mode::ConstFn, PlaceBase::Local(ref index)) = (self.mode, dest.clone().base) {
             if self.mir.local_kind(*index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(*index) &&
-               !self.tcx.sess.features_untracked().const_let {
+               !self.tcx.sess.features_untracked().const_let &&
+               dest.has_no_projection() {
 
                 // Direct use of an argument is permitted.
                 match *rvalue {
@@ -1034,7 +1043,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         Operand::Copy(
                             Place {
                                 base: PlaceBase::Local(local),
-                                elems: _,
+                                elems,
                             }
                         )
                     ) |
@@ -1042,10 +1051,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         Operand::Move(
                             Place {
                                 base: PlaceBase::Local(local),
-                                elems: _,
+                                elems,
                             }
                         )
-                    ) => {
+                    ) => if elems.is_empty() {
                         if self.mir.local_kind(local) == LocalKind::Arg {
                             return;
                         }
@@ -1220,10 +1229,10 @@ impl MirPass for QualifyAndPromoteConstants {
                         location:
                         Place {
                             base: PlaceBase::Local(index),
-                            elems: _,
+                            elems,
                         },
                         target, ..
-                    } => {
+                    } if elems.is_empty() => {
                         if promoted_temps.contains(&index) {
                             terminator.kind = TerminatorKind::Goto {
                                 target,

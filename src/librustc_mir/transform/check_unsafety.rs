@@ -164,7 +164,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
         }
 
-        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
+        if !place.has_no_projection() {
             let old_source_info = self.source_info;
             if let PlaceBase::Local(local) = place.base {
                 if self.mir.local_decls[local].internal {
@@ -174,45 +174,50 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.source_info = self.mir.local_decls[local].source_info;
                 }
             }
-            let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
-            match base_ty.sty {
-                ty::TyRawPtr(..) => {
-                    self.require_unsafe("dereference of raw pointer",
-                                        "raw pointers may be NULL, dangling or unaligned; \
-                                        they can violate aliasing rules and cause data races: \
-                                        all of these are undefined behavior")
-                }
-                ty::TyAdt(adt, _) => {
-                    if adt.is_union() {
-                        if context == PlaceContext::Store ||
-                            context == PlaceContext::AsmOutput ||
-                            context == PlaceContext::Drop
-                            {
-                                let projection_ty = match projection {
-                                    ProjectionElem::Field(_, ty) => ty,
-                                    _ => span_bug!(
-                                        self.source_info.span,
-                                        "non-field projection {:?} from union?",
-                                        place)
-                                };
-                                if projection_ty.moves_by_default(self.tcx, self.param_env,
-                                                            self.source_info.span) {
-                                    self.require_unsafe(
-                                        "assignment to non-`Copy` union field",
-                                        "the previous content of the field will be dropped, which \
-                                         causes undefined behavior if the field was not properly \
-                                         initialized")
+            let mut base_ty = place.base.ty(self.mir);
+            for elem in place.elems.iter() {
+                match base_ty.sty {
+                    ty::TyRawPtr(..) => {
+                        self.require_unsafe("dereference of raw pointer",
+                                            "raw pointers may be NULL, dangling or unaligned; \
+                                            they can violate aliasing rules and cause data races: \
+                                            all of these are undefined behavior")
+                    }
+                    ty::TyAdt(adt, _) => {
+                        if adt.is_union() {
+                            if context == PlaceContext::Store ||
+                                context == PlaceContext::AsmOutput ||
+                                context == PlaceContext::Drop
+                                {
+                                    let projection_ty = match elem {
+                                        ProjectionElem::Field(_, ty) => ty,
+                                        _ => span_bug!(
+                                            self.source_info.span,
+                                            "non-field projection {:?} from union?",
+                                            place)
+                                    };
+                                    if projection_ty.moves_by_default(self.tcx, self.param_env,
+                                                                self.source_info.span) {
+                                        self.require_unsafe(
+                                            "assignment to non-`Copy` union field",
+                                            "the previous content of the field will be dropped, \
+                                            which causes undefined behavior if the field was not \
+                                            properly initialized")
+                                    } else {
+                                        // write to non-move union, safe
+                                    }
                                 } else {
-                                    // write to non-move union, safe
-                                }
-                            } else {
-                            self.require_unsafe("access to union field",
-                                                "the field may not be properly initialized: using \
-                                     uninitialized data will cause undefined behavior")
+                                self.require_unsafe("access to union field",
+                                                    "the field may not be properly initialized: \
+                                                    using uninitialized data will cause \
+                                                    undefined behavior")
+                            }
                         }
                     }
+                    _ => {}
                 }
-                _ => {}
+                base_ty = tcx::PlaceTy::from(base_ty)
+                    .projection_ty(self.tcx, elem).to_ty(self.tcx);
             }
             self.source_info = old_source_info;
         } else {

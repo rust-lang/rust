@@ -425,14 +425,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     } else {
                         false
                     };
-                    if !place.elems.is_empty() {
+                    if !place.has_no_projection() {
                        for elem in place.elems.iter() {
                            match elem {
                                ProjectionElem::Deref
                                | ProjectionElem::Index(_) => {
                                    dest_needs_borrow = true;
                                }
-                               _ => continue,
+                               _ => {},
                            }
                        }
                     }
@@ -586,9 +586,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         if let Operand::Move(ref place) = arg {
             if let PlaceBase::Local(local) = place.base {
-                if caller_mir.local_kind(local) == LocalKind::Temp {
-                    // Reuse the operand if it's a temporary already
-                    return local;
+                if place.has_no_projection() {
+                    if caller_mir.local_kind(local) == LocalKind::Temp {
+                        // Reuse the operand if it's a temporary already
+                        return local;
+                    }
                 }
             }
         }
@@ -652,7 +654,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_PLACE {
             match self.destination.base {
-                PlaceBase::Local(l) => {
+                PlaceBase::Local(l)
+                    if self.destination.has_no_projection() => {
                     *local = l;
                     return;
                 },
@@ -671,19 +674,23 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     _ctxt: PlaceContext<'tcx>,
                     _location: Location) {
-
-        match place.base {
-            PlaceBase::Local(RETURN_PLACE) => {
-                // Return pointer; update the place itself
-                *place = self.destination.clone();
-            },
-            PlaceBase::Promoted(ref mut promoted) => {
-                if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
-                    promoted.0 = p;
-                }
-            },
-            _ => self.super_place(place, _ctxt, _location),
+        if place.has_no_projection() {
+            match place.base {
+                PlaceBase::Local(RETURN_PLACE) => {
+                    // Return pointer; update the place itself
+                    *place = self.destination.clone();
+                },
+                PlaceBase::Promoted(ref mut promoted) => {
+                    if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
+                        promoted.0 = p;
+                    }
+                },
+                _ => self.super_place(place, _ctxt, _location),
+            }
+        } else {
+            self.super_place(place, _ctxt, _location);
         }
+
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {

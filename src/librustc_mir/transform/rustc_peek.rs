@@ -135,7 +135,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 base: PlaceBase::Local(_),
                 elems: _,
             }
-        ) => Some(place),
+        ) if place.has_no_projection() => Some(place),
         _ => None,
     };
 

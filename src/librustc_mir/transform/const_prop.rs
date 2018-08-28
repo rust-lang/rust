@@ -305,7 +305,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             _ => None,
         };
 
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
                 if let ProjectionElem::Field(field, _) = elem {
                     trace!("field projection on {:?}", place);
@@ -558,12 +558,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let PlaceBase::Local(local) = place.base {
-                        trace!("checking whether {:?} can be stored to {:?}", value, local);
-                        if self.can_const_prop[local] {
-                            trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.places[local].is_none());
-                            self.places[local] = Some(value);
+                    if !place.has_no_projection() {
+                        if let PlaceBase::Local(local) = place.base {
+                            trace!("checking whether {:?} can be stored to {:?}", value, local);
+                            if self.can_const_prop[local] {
+                                trace!("storing {:?} to {:?}", value, local);
+                                assert!(self.places[local].is_none());
+                                self.places[local] = Some(value);
+                            }
                         }
                     }
                 }
@@ -589,7 +591,9 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     match cond {
                         Operand::Move(place) | Operand::Copy(place) => {
                             if let PlaceBase::Local(local) = place.base {
-                                self.places[local] = None;
+                                if place.has_no_projection() {
+                                    self.places[local] = None;
+                                }
                             }
                         },
                         Operand::Constant(_) => {}
