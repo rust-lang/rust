@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code, unused_variables, non_camel_case_types, non_upper_case_globals)]
-#![deny(async_idents)]
+#![deny(keyword_idents)]
 
 // edition:2015
 // run-rustfix
