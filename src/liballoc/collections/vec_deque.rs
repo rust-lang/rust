@@ -202,10 +202,17 @@ impl<T> VecDeque<T> {
                                  len);
     }
 
-    /// Copies all values from `src` to `self`, wrapping around if needed.
-    /// Assumes capacity is sufficient.
+    /// Copies all values from `src` to the back of `self`, wrapping around if needed.
+    ///
+    /// # Safety
+    ///
+    /// The capacity must be sufficient to hold self.len() + src.len() elements.
+    /// If so, this function never panics.
     #[inline]
     unsafe fn copy_slice(&mut self, src: &[T]) {
+        let expected_new_len = self.len() + src.len();
+        debug_assert!(self.capacity() >= expected_new_len);
+
         let dst_high_ptr = self.ptr().add(self.head);
         let dst_high_len = self.cap() - self.head;
 
@@ -216,6 +223,7 @@ impl<T> VecDeque<T> {
         ptr::copy_nonoverlapping(src_low.as_ptr(), self.ptr(), src_low.len());
 
         self.head = self.wrap_add(self.head, src.len());
+        debug_assert!(self.len() == expected_new_len);
     }
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
@@ -1850,17 +1858,21 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // Guarantees there is space in `self` for `other
-        self.reserve(other.len());
-
         unsafe {
-            let (src_high, src_low) = other.as_slices();
-            self.copy_slice(src_low);
-            self.copy_slice(src_high);
-        }
+            // Guarantees there is space in `self` for `other`.
+            self.reserve(other.len());
 
-        // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
-        other.tail = other.head;
+            {
+                let (src_high, src_low) = other.as_slices();
+
+                // This is only safe because copy_slice never panics when capacity is sufficient.
+                self.copy_slice(src_low);
+                self.copy_slice(src_high);
+            }
+
+            // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
+            other.tail = other.head;
+        }
     }
 
     /// Retains only the elements specified by the predicate.
