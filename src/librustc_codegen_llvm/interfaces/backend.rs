@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod builder;
-mod backend;
-
-pub use self::builder::BuilderMethods;
-pub use self::backend::Backend;
+pub trait Backend {
+    type Value;
+    type BasicBlock;
+    type Type;
+}

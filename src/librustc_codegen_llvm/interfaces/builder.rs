@@ -14,6 +14,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
 use builder::MemFlags;
+use super::backend::Backend;
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -21,10 +22,7 @@ use syntax::ast::AsmDialect;
 
 
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
-    type Value;
-    type BasicBlock;
-    type Type;
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : Backend {
 
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, Self::Value>,
