@@ -28,6 +28,11 @@ impl TextUnit {
         }
         TextUnit(s.len() as u32)
     }
+
+    #[inline(always)]
+    pub fn checked_sub(self, other: TextUnit) -> Option<TextUnit> {
+        self.0.checked_sub(other.0).map(TextUnit)
+    }
 }
 
 impl fmt::Debug for TextUnit {
@@ -199,6 +204,17 @@ pub struct TextRange {
     end: TextUnit,
 }
 
+impl TextRange {
+    #[inline(always)]
+    pub fn checked_sub(self, other: TextUnit) -> Option<TextRange> {
+        let res = TextRange::offset_len(
+            self.start().checked_sub(other)?,
+            self.len()
+        );
+        Some(res)
+    }
+}
+
 impl fmt::Debug for TextRange {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <Self as fmt::Display>::fmt(self, f)
@@ -324,5 +340,16 @@ mod tests {
             r - u,
             TextRange::from_to(5.into(), 15.into()),
         );
+    }
+
+    #[test]
+    fn test_checked_ops() {
+        let x: TextUnit = 1.into();
+        assert_eq!(x.checked_sub(1.into()), Some(0.into()));
+        assert_eq!(x.checked_sub(2.into()), None);
+
+        let r = TextRange::from_to(1.into(), 2.into());
+        assert_eq!(r.checked_sub(1.into()), Some(TextRange::from_to(0.into(), 1.into())));
+        assert_eq!(x.checked_sub(2.into()), None);
     }
 }
