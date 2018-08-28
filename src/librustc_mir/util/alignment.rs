@@ -52,21 +52,21 @@ fn is_within_packed<'a, 'tcx, L>(
 where
     L: HasLocalDecls<'tcx>,
 {
-    if !place.elems.is_empty() {
-        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+    if !place.has_no_projection() {
+        let mut base_ty = place.base.ty(local_decls);
+        for elem in place.elems.iter() {
             match elem {
                 // encountered a Deref, which is ABI-aligned
                 ProjectionElem::Deref => break,
                 ProjectionElem::Field(..) => {
-                    let base_place = place.elem_base(tcx, i);
-                    let ty = base_place.ty(local_decls, tcx).to_ty(tcx);
-                    match ty.sty {
+                    match base_ty.sty {
                         ty::TyAdt(def, _) if def.repr.packed() => return true,
-                        _ => continue,
+                        _ => {},
                     }
                 }
-                _ => continue,
+                _ => {},
             }
+            base_ty = tcx::PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
         }
     }
 
