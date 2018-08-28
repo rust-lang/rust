@@ -220,6 +220,12 @@ impl Link {
     }
 
     fn resolve(&mut self, file_resolver: &FileResolver) {
+        if !self.ast().has_semi() {
+            self.problem = None;
+            self.points_to = Vec::new();
+            return;
+        }
+
         let mod_name = file_resolver.file_stem(self.owner.0);
         let is_dir_owner =
             mod_name == "mod" || mod_name == "lib" || mod_name == "main";

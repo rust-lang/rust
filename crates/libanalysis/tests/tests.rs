@@ -79,6 +79,19 @@ fn test_unresolved_module_diagnostic() {
 }
 
 #[test]
+fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
+    let mut world = WorldState::new();
+    world.change_file(FileId(1), Some("mod foo {}".to_string()));
+
+    let snap = world.snapshot(FileMap(&[(1, "/lib.rs")]));
+    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    assert_eq_dbg(
+        r#"[]"#,
+        &diagnostics,
+    );
+}
+
+#[test]
 fn test_resolve_parent_module() {
     let mut world = WorldState::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
