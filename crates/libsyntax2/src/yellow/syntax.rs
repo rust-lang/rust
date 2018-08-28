@@ -6,7 +6,7 @@ use std::{
 use smol_str::SmolStr;
 
 use {
-    yellow::{GreenNode, RedNode, TreeRoot, SyntaxRoot, RedPtr, RefRoot, OwnedRoot},
+    yellow::{GreenNode, RedNode, TreeRoot, SyntaxRoot, RedPtr, RefRoot, OwnedRoot, SyntaxText},
     SyntaxKind::{self, *},
     TextRange, TextUnit,
 };
@@ -58,6 +58,13 @@ impl SyntaxNode<OwnedRoot> {
     }
 }
 
+impl<'a> SyntaxNode<RefRoot<'a>> {
+    pub(crate) fn leaf_text_ref(self) -> Option<&'a SmolStr> {
+        let red = unsafe { self.red.get(self.root.syntax_root()) };
+        red.green().leaf_text_ref()
+    }
+}
+
 impl<R: TreeRoot> SyntaxNode<R> {
     pub fn borrowed<'a>(&'a self) -> SyntaxNodeRef<'a> {
         SyntaxNode {
@@ -66,7 +73,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
         }
     }
 
-    pub fn owned<'a>(&'a self) -> SyntaxNode {
+    pub fn owned(&self) -> SyntaxNode {
         SyntaxNode {
             root: self.root.owned(),
             red: self.red,
@@ -82,8 +89,8 @@ impl<R: TreeRoot> SyntaxNode<R> {
         TextRange::offset_len(red.start_offset(), red.green().text_len())
     }
 
-    pub fn text(&self) -> String {
-        self.red().green().text()
+    pub fn text(&self) -> SyntaxText {
+        SyntaxText::new(self.borrowed())
     }
 
     pub fn children(&self) -> impl Iterator<Item = SyntaxNode<R>> {
@@ -91,7 +98,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
         let n_children = self.red().n_children();
         let root = self.root.clone();
         (0..n_children).map(move |i| {
-            let red = unsafe { red.get(&root) };
+            let red = unsafe { red.get(root.syntax_root()) };
             SyntaxNode {
                 root: root.clone(),
                 red: red.get_child(i).unwrap(),
@@ -171,7 +178,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
     }
 
     fn red(&self) -> &RedNode {
-        unsafe { self.red.get(&self.root) }
+        unsafe { self.red.get(self.root.syntax_root()) }
     }
 }
 

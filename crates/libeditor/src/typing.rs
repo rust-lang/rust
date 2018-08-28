@@ -15,16 +15,15 @@ use {ActionResult, EditBuilder, find_node_at_offset};
 
 pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
     let range = if range.is_empty() {
-        let text = file.syntax().text();
-        let text = &text[TextRange::from_to(range.start(), TextUnit::of_str(&text))];
-        let pos = text.bytes().take_while(|&b| b != b'\n').count();
-        if pos == text.len() {
-            return ActionResult {
+        let syntax = file.syntax();
+        let text = syntax.text().slice(range.start()..);
+        let pos = match text.find('\n') {
+            None => return ActionResult {
                 edit: EditBuilder::new().finish(),
                 cursor_position: None
-            };
-        }
-        let pos: TextUnit = (pos as u32).into();
+            },
+            Some(pos) => pos
+        };
         TextRange::offset_len(
             range.start() + pos,
             TextUnit::of_char('\n'),
@@ -129,7 +128,7 @@ fn join_lambda_body(
     let expr = single_expr(block)?;
     edit.replace(
         block_expr.syntax().range(),
-        expr.syntax().text(),
+        expr.syntax().text().to_string(),
     );
     Some(())
 }

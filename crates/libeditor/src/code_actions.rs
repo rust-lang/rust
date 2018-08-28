@@ -29,8 +29,8 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
     let right = non_trivia_sibling(comma, Direction::Forward)?;
     Some(move || {
         let mut edit = EditBuilder::new();
-        edit.replace(left.range(), right.text());
-        edit.replace(right.range(), left.text());
+        edit.replace(left.range(), right.text().to_string());
+        edit.replace(right.range(), left.text().to_string());
         ActionResult {
             edit: edit.finish(),
             cursor_position: None,

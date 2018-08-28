@@ -43,21 +43,13 @@ impl GreenNode {
         }
     }
 
-    pub fn text(&self) -> String {
-        let mut buff = String::new();
-        go(self, &mut buff);
-        return buff;
-        fn go(node: &GreenNode, buff: &mut String) {
-            match node {
-                GreenNode::Leaf { text, .. } => buff.push_str(text.as_str()),
-                GreenNode::Branch(b) => b.children().iter().for_each(|child| go(child, buff)),
-            }
-        }
+    pub fn leaf_text(&self) -> Option<SmolStr> {
+        self.leaf_text_ref().map(Clone::clone)
     }
 
-    pub fn leaf_text(&self) -> Option<SmolStr> {
+    pub fn leaf_text_ref(&self) -> Option<&SmolStr> {
         match self {
-            GreenNode::Leaf { text, .. } => Some(text.clone()),
+            GreenNode::Leaf { text, .. } => Some(text),
             GreenNode::Branch(_) => None,
         }
     }

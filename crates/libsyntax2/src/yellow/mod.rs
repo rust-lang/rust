@@ -2,6 +2,7 @@ mod builder;
 mod green;
 mod red;
 mod syntax;
+mod syntax_text;
 
 use std::{
     sync::Arc,
@@ -12,6 +13,7 @@ pub(crate) use self::{
     builder::GreenBuilder,
     green::GreenNode,
     red::RedNode,
+    syntax_text::SyntaxText,
 };
 
 #[derive(Debug)]
@@ -31,6 +33,12 @@ pub trait TreeRoot: Clone + Send + Sync {
 pub struct OwnedRoot(Arc<SyntaxRoot>);
 #[derive(Clone, Copy, Debug)]
 pub struct RefRoot<'a>(&'a OwnedRoot); // TODO: shared_from_this instead of double indirection
+
+impl<'a> RefRoot<'a> {
+    fn syntax_root(&self) -> &'a SyntaxRoot {
+        self.0.syntax_root()
+    }
+}
 
 impl TreeRoot for OwnedRoot {
     fn borrowed(&self) -> RefRoot {
@@ -78,7 +86,7 @@ impl RedPtr {
         RedPtr(red.into())
     }
 
-    unsafe fn get<'a>(self, _root: &'a impl TreeRoot) -> &'a RedNode {
+    unsafe fn get<'a>(self, _root: &'a SyntaxRoot) -> &'a RedNode {
         &*self.0.as_ptr()
     }
 }

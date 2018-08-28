@@ -81,7 +81,7 @@ impl File {
     pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
         let text = replace_range(
-            node.text(),
+            node.text().to_string(),
             edit.delete - node.range().start(),
             &edit.insert,
         );
@@ -97,7 +97,7 @@ impl File {
         Some(File::new(green_root, errors))
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
-        let text = replace_range(self.syntax().text(), edit.delete, &edit.insert);
+        let text = replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
         File::parse(&text)
     }
     pub fn ast(&self) -> ast::Root {
