@@ -14,6 +14,7 @@ use {
 #[derive(Debug)]
 pub struct CompletionItem {
     pub name: String,
+    pub snippet: Option<String>
 }
 
 pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionItem>> {
@@ -33,7 +34,10 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         let scope = ModuleScope::new(root);
         res.extend(
             scope.entries().iter()
-                .map(|entry| CompletionItem { name: entry.name().to_string() })
+                .map(|entry| CompletionItem {
+                    name: entry.name().to_string(),
+                    snippet: None,
+                })
         )
     }
     Some(res)
@@ -43,7 +47,10 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
     acc.extend(
         scopes.scope_chain(name_ref.syntax())
             .flat_map(|scope| scopes.entries(scope).iter())
-            .map(|entry| CompletionItem { name: entry.name().to_string() })
+            .map(|entry| CompletionItem {
+                name: entry.name().to_string(),
+                snippet: None,
+            })
     )
 }
 
