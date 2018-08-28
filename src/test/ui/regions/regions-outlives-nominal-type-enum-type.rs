@@ -13,6 +13,8 @@
 //
 // Rule OutlivesNominalType from RFC 1214.
 
+// compile-pass
+
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
@@ -21,9 +23,8 @@ mod variant_struct_type {
         x: T
     }
     enum Bar<'a,'b> {
-        F(&'a Foo<&'b i32>) //~ ERROR reference has a longer lifetime
+        V(&'a Foo<&'b i32>)
     }
 }
 
-#[rustc_error]
 fn main() { }

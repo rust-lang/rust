@@ -274,7 +274,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(exhaustive_patterns)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]

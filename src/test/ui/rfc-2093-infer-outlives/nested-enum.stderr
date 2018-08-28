@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/nested-enum.rs:16:1
+  --> $DIR/nested-enum.rs:14:1
    |
-LL | / enum Foo<'a, T> { //~ ERROR 16:1: 19:2: rustc_outlives
+LL | / enum Foo<'a, T> { //~ ERROR 14:1: 17:2: rustc_outlives
 LL | |
 LL | |     One(Bar<'a, T>)
 LL | | }

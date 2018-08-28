@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(static_nobundle)]
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

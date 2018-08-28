@@ -35,7 +35,6 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]

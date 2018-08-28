@@ -17,7 +17,6 @@
 #![feature(proc_macro_internals)]
 #![feature(decl_macro)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(str_escape)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

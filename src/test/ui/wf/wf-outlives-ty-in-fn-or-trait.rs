@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that an appearance of `T` in fn args or in a trait object must
-// still meet the outlives bounds. Since this is a new requirement,
-// this is currently only a warning, not a hard error.
-
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
-trait Trait<T> { }
+trait Trait<'a, T> {
+    type Out;
+}
+
+impl<'a, T> Trait<'a, T> for usize {
+    type Out = &'a fn(T);
+}
 
 struct Foo<'a,T> {
     f: &'a fn(T),
-    //~^ ERROR E0309
 }
 
-struct Bar<'a,T> {
-    f: &'a Trait<T>,
-    //~^ ERROR E0309
+trait Baz<T> { }
+
+impl<'a, T> Trait<'a, T> for u32 {
+    type Out = &'a Baz<T>;
 }
 
-#[rustc_error]
 fn main() { }
 

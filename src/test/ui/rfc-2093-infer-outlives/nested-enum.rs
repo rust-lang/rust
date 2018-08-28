@@ -9,11 +9,9 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
-#![feature(infer_outlives_requirements)]
-
 
 #[rustc_outlives]
-enum Foo<'a, T> { //~ ERROR 16:1: 19:2: rustc_outlives
+enum Foo<'a, T> { //~ ERROR 14:1: 17:2: rustc_outlives
 
     One(Bar<'a, T>)
 }

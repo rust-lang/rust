@@ -10,24 +10,26 @@
 
 // ignore-tidy-linelength
 
+#![feature(rustc_attrs)]
+
 // Needs an explicit where clause stating outlives condition. (RFC 2093)
 
 // Type T needs to outlive lifetime 'a.
-enum Foo<'a, T> {
-
+#[rustc_outlives]
+enum Foo<'a, T> { //~ ERROR rustc_outlives
     One(Bar<'a, T>)
 }
 
 // Type U needs to outlive lifetime 'b
-struct Bar<'b, U> {
-    field2: &'b U //~ ERROR the parameter type `U` may not live long enough [E0309]
+#[rustc_outlives]
+struct Bar<'b, U> { //~ ERROR rustc_outlives
+    field2: &'b U
 }
 
-
-
 // Type K needs to outlive lifetime 'c.
-enum Ying<'c, K> {
-    One(&'c Yang<K>) //~ ERROR the parameter type `K` may not live long enough [E0309]
+#[rustc_outlives]
+enum Ying<'c, K> { //~ ERROR rustc_outlives
+    One(&'c Yang<K>)
 }
 
 struct Yang<V> {

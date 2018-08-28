@@ -15,7 +15,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(specialization)]
 
 #![recursion_limit="256"]

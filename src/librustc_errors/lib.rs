@@ -17,7 +17,6 @@
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(optin_builtin_traits)]
 
 extern crate atty;

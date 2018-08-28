@@ -13,8 +13,6 @@
 // Regression test that `infer_outlives_predicates` can be
 // used with incremental without an ICE.
 
-#![feature(infer_outlives_requirements)]
-
 struct Foo<'a, T> {
   x: &'a T
 }

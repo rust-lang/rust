@@ -16,7 +16,6 @@
 #![feature(libc)]
 #![feature(macro_at_most_once_rep)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(quote)]

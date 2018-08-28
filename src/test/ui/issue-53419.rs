@@ -10,8 +10,6 @@
 
 //compile-pass
 
-#![feature(infer_outlives_requirements)]
-
 struct Foo {
     bar: for<'r> Fn(usize, &'r FnMut())
 }
