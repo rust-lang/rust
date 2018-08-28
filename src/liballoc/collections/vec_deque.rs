@@ -1870,7 +1870,8 @@ impl<T> VecDeque<T> {
                 self.copy_slice(src_high);
             }
 
-            // Some values now exist in both `other` and `self` but are made inaccessible in `other`.
+            // Some values now exist in both `other` and `self` but are made inaccessible
+            // in`other`.
             other.tail = other.head;
         }
     }
