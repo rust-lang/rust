@@ -75,9 +75,13 @@ fn complete_keywords(file: &File, fn_def: Option<ast::FnDef>, name_ref: ast::Nam
         }
     }
 
-    // if let Some(fn_def) = fn_def {
-    //     acc.push(keyword("return", ""))
-    // }
+    if let Some(fn_def) = fn_def {
+        if fn_def.ret_type().is_some() {
+            acc.push(keyword("return", "return $0;"))
+        } else {
+            acc.push(keyword("return", "return;"))
+        }
+    }
 
     fn keyword(kw: &str, snip: &str) -> CompletionItem {
         CompletionItem {
@@ -189,7 +193,8 @@ mod tests {
             ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
                    CompletionItem { name: "match", snippet: Some("match $0 { }") },
                    CompletionItem { name: "while", snippet: Some("while $0 { }") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") }]"#);
+                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "return", snippet: Some("return;") }]"#);
     }
 
     #[test]
@@ -205,6 +210,20 @@ mod tests {
                    CompletionItem { name: "while", snippet: Some("while $0 { }") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "else", snippet: Some("else {$0}") },
-                   CompletionItem { name: "else if", snippet: Some("else if $0 { }") }]"#);
+                   CompletionItem { name: "else if", snippet: Some("else if $0 { }") },
+                   CompletionItem { name: "return", snippet: Some("return;") }]"#);
+    }
+
+    #[test]
+    fn test_completion_return_value() {
+        check_snippet_completion(r"
+            fn quux() -> i32{
+                <|>
+            }
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
+                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
+                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "return", snippet: Some("return $0;") }]"#);
     }
 }
