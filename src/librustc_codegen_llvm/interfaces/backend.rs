@@ -12,4 +12,5 @@ pub trait Backend {
     type Value;
     type BasicBlock;
     type Type;
+    type Context;
 }

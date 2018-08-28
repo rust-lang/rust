@@ -18,6 +18,7 @@ use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
+use interfaces::CommonMethods;
 use value::Value;
 
 use llvm;
@@ -32,7 +33,7 @@ use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
-use common::{CodegenCx, C_u64};
+use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout};
@@ -1810,7 +1811,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
                     member_description.offset.bits(),
                     match member_description.discriminant {
                         None => None,
-                        Some(value) => Some(C_u64(cx, value)),
+                        Some(value) => Some(cx.c_u64(value)),
                     },
                     member_description.flags,
                     member_description.type_metadata))

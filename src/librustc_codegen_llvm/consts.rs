@@ -15,7 +15,7 @@ use rustc::hir::Node;
 use debuginfo;
 use base;
 use monomorphize::MonoItem;
-use common::{CodegenCx, val_ty};
+use common::CodegenCx;
 use declare;
 use monomorphize::Instance;
 use syntax_pos::Span;
@@ -24,6 +24,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::ty::{self, Ty};
+use interfaces::CommonMethods;
 
 use rustc::ty::layout::{Align, LayoutOf};
 
@@ -72,13 +73,14 @@ pub fn addr_of_mut(
         let gv = match kind {
             Some(kind) if !cx.tcx.sess.fewer_names() => {
                 let name = cx.generate_local_symbol_name(kind);
-                let gv = declare::define_global(cx, &name[..], val_ty(cv)).unwrap_or_else(||{
-                    bug!("symbol `{}` is already defined", name);
+                let gv = declare::define_global(cx, &name[..],
+                    CodegenCx::val_ty(cv)).unwrap_or_else(||{
+                        bug!("symbol `{}` is already defined", name);
                 });
                 llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
                 gv
             },
-            _ => declare::define_private_global(cx, val_ty(cv)),
+            _ => declare::define_private_global(cx, CodegenCx::val_ty(cv)),
         };
         llvm::LLVMSetInitializer(gv, cv);
         set_global_alignment(cx, gv, align);
@@ -310,7 +312,7 @@ pub fn codegen_static<'a, 'tcx>(
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
-        let mut val_llty = val_ty(v);
+        let mut val_llty = CodegenCx::val_ty(v);
         let v = if val_llty == Type::i1(cx) {
             val_llty = Type::i8(cx);
             llvm::LLVMConstZExt(v, val_llty)

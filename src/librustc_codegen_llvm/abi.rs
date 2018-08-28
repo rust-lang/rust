@@ -11,7 +11,6 @@
 use llvm::{self, AttributePlace};
 use base;
 use builder::{Builder, MemFlags};
-use common::C_usize;
 use context::CodegenCx;
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
@@ -19,7 +18,7 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty};
@@ -245,7 +244,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                                   self.layout.align,
                                   bx.pointercast(llscratch, Type::i8p(cx)),
                                   scratch_align,
-                                  C_usize(cx, self.layout.size.bytes()),
+                                  CodegenCx::c_usize(cx, self.layout.size.bytes()),
                                   MemFlags::empty());
 
                 bx.lifetime_end(llscratch, scratch_size);
