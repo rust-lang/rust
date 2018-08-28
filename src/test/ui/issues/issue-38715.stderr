@@ -13,10 +13,5 @@ note: previous macro export is now shadowed
 LL | macro_rules! foo { ($i:ident) => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0601]: `main` function not found in crate `issue_38715`
-   |
-   = note: consider adding a `main` function to `$DIR/issue-38715.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

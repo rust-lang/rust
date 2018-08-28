@@ -15,3 +15,5 @@ mod foo {
     //~^ ERROR expected one of `)` or `,`, found `(`
     //~| ERROR cannot find type `foo` in this scope
 }
+
+fn main() {}
