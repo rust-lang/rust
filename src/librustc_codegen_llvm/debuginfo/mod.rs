@@ -494,7 +494,7 @@ pub fn declare_local(
     span: Span,
 ) {
     assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
-    let cx = bx.cx;
+    let cx = bx.cx();
 
     let file = span_start(cx, span).file;
     let file_metadata = file_metadata(cx,

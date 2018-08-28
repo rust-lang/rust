@@ -30,12 +30,12 @@ pub fn size_and_align_of_dst(
 ) -> (&'ll Value, &'ll Value) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, info);
-    if bx.cx.type_is_sized(t) {
-        let (size, align) = bx.cx.size_and_align_of(t);
+    if bx.cx().type_is_sized(t) {
+        let (size, align) = bx.cx().size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, info, size, align);
-        let size = CodegenCx::c_usize(bx.cx, size.bytes());
-        let align = CodegenCx::c_usize(bx.cx, align.abi());
+        let size = CodegenCx::c_usize(bx.cx(), size.bytes());
+        let align = CodegenCx::c_usize(bx.cx(), align.abi());
         return (size, align);
     }
     match t.sty {
@@ -48,12 +48,12 @@ pub fn size_and_align_of_dst(
             let unit = t.sequence_element_type(bx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let (size, align) = bx.cx.size_and_align_of(unit);
-            (bx.mul(info.unwrap(), CodegenCx::c_usize(bx.cx, size.bytes())),
-             CodegenCx::c_usize(bx.cx, align.abi()))
+            let (size, align) = bx.cx().size_and_align_of(unit);
+            (bx.mul(info.unwrap(), CodegenCx::c_usize(bx.cx(), size.bytes())),
+             CodegenCx::c_usize(bx.cx(), align.abi()))
         }
         _ => {
-            let cx = bx.cx;
+            let cx = bx.cx();
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
@@ -116,7 +116,7 @@ pub fn size_and_align_of_dst(
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = bx.sub(align, CodegenCx::c_usize(bx.cx, 1));
+            let addend = bx.sub(align, CodegenCx::c_usize(bx.cx(), 1));
             let size = bx.and(bx.add(size, addend), bx.neg(align));
 
             (size, align)

@@ -193,14 +193,14 @@ impl Funclet<'ll> {
     }
 }
 
-impl Backend for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl Backend for CodegenCx<'ll, 'tcx> {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     fn val_ty(v: &'ll Value) -> &'ll Type {
         unsafe {
             llvm::LLVMTypeOf(v)

@@ -202,7 +202,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
         if self.is_ignore() {
             return;
         }
-        let cx = bx.cx;
+        let cx = bx.cx();
         if self.is_sized_indirect() {
             OperandValue::Ref(val, None, self.layout.align).store(bx, dst)
         } else if self.is_unsized_indirect() {
@@ -757,7 +757,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // by the LLVM verifier.
             if let layout::Int(..) = scalar.value {
                 if !scalar.is_bool() {
-                    let range = scalar.valid_range_exclusive(bx.cx);
+                    let range = scalar.valid_range_exclusive(bx.cx());
                     if range.start != range.end {
                         bx.range_metadata(callsite, range);
                     }

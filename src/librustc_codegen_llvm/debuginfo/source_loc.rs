@@ -42,7 +42,7 @@ pub fn set_source_location(
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
-        let loc = span_start(bx.cx, span);
+        let loc = span_start(bx.cx(), span);
         InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
@@ -88,7 +88,7 @@ pub fn set_debug_location(
             // For MSVC, set the column number to zero.
             // Otherwise, emit it. This mimics clang behaviour.
             // See discussion in https://github.com/rust-lang/rust/issues/42921
-            let col_used =  if bx.cx.sess().target.target.options.is_like_msvc {
+            let col_used =  if bx.cx().sess().target.target.options.is_like_msvc {
                 UNKNOWN_COLUMN_NUMBER
             } else {
                 col as c_uint
@@ -97,7 +97,7 @@ pub fn set_debug_location(
 
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateDebugLocation(
-                    debug_context(bx.cx).llcontext,
+                    debug_context(bx.cx()).llcontext,
                     line as c_uint,
                     col_used,
                     scope,
