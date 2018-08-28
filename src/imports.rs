@@ -318,15 +318,10 @@ impl UseTree {
             attrs,
         };
 
-        let leading_modsep = if context.config.edition() == Edition::Edition2018 {
-            if a.prefix.to_string().len() > 2 && a.prefix.to_string().starts_with("::") {
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        let leading_modsep = context.config.edition() == Edition::Edition2018
+            && a.prefix.to_string().len() > 2
+            && a.prefix.to_string().starts_with("::");
+
         for p in &a.prefix.segments {
             if let Some(use_segment) = UseSegment::from_path_segment(context, p, leading_modsep) {
                 result.path.push(use_segment);
