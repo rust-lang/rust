@@ -110,9 +110,9 @@ fn comma_list(buf: &mut String, bra: &str, ket: &str, items: impl Iterator<Item=
     let mut first = true;
     for item in items {
         if !first {
-            first = false;
             buf.push_str(", ");
         }
+        first = false;
         write!(buf, "{}", item).unwrap();
     }
     buf.push_str(ket);
