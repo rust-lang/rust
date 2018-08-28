@@ -520,7 +520,7 @@ impl Rewrite for ast::GenericBounds {
         }
 
         let span = mk_sp(self.get(0)?.span().lo(), self.last()?.span().hi());
-        let has_paren = context.snippet(span).starts_with("(");
+        let has_paren = context.snippet(span).starts_with('(');
         let bounds_shape = if has_paren {
             shape.offset_left(1)?.sub_width(1)?
         } else {

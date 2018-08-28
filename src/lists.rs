@@ -209,8 +209,8 @@ pub enum Separator {
 }
 
 impl Separator {
-    pub fn len(&self) -> usize {
-        match *self {
+    pub fn len(self) -> usize {
+        match self {
             // 2 = `, `
             Separator::Comma => 2,
             // 3 = ` | `
