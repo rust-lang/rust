@@ -221,10 +221,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Assign(ref lhs, ref rhs) => {
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                if let PlaceBase::Local(local) = lhs.base {
-                    // FIXME: Handle the case in which we're assigning over
-                    // a projection (`foo.bar`).
-                    self.kill_borrows_on_local(sets, &local);
+                if lhs.has_no_projection() {
+                    if let PlaceBase::Local(local) = lhs.base {
+                        // FIXME: Handle the case in which we're assigning over
+                        // a projection (`foo.bar`).
+                        self.kill_borrows_on_local(sets, &local);
+                    }
                 }
 
                 // NOTE: if/when the Assign case is revised to inspect
@@ -258,18 +260,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
-                    if let Some(_projection) = lhs.projection() {
+                    if !lhs.has_no_projection() {
                         // ... can assign into projections,
                         // e.g. `box (&mut _)`. Current
                         // conservative solution: force
                         // immediate activation here.
                         sets.gen(&index);
-                    } else {
-                        match lhs.base {
-                            PlaceBase::Promoted(_)
-                            | PlaceBase::Local(..)
-                            | PlaceBase::Static(..) => {} // okay
-                        }
                     }
                 }
             }
@@ -288,7 +284,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                         if let PlaceBase::Local(local) = output.base {
                             // FIXME: Handle the case in which we're assigning over
                             // a projection (`foo.bar`).
-                            self.kill_borrows_on_local(sets, &local);
+                            if output.has_no_projection() {
+                                self.kill_borrows_on_local(sets, &local);
+                            }
                         }
                     }
                 }

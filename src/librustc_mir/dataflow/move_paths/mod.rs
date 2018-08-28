@@ -255,7 +255,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             PlaceBase::Promoted(_) |
             PlaceBase::Static(..) => LookupResult::Parent(None),
         };
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
                 result = match result {
                     LookupResult::Exact(base_path) => {
