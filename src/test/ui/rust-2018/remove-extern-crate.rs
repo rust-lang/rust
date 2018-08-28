@@ -8,20 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2015
-// aux-build:edition-kw-macro-2015.rs
+// run-rustfix
+// edition:2018
 // compile-pass
+// aux-build:remove-extern-crate.rs
 
-#![allow(keyword_idents)]
+#![warn(rust_2018_idioms)]
 
+extern crate core;
+extern crate core as another_name;
+use remove_extern_crate;
 #[macro_use]
-extern crate edition_kw_macro_2015;
+extern crate remove_extern_crate as something_else;
 
-mod one_async {
-    produces_async! {} // OK
-}
-mod two_async {
-    produces_async_raw! {} // OK
+fn main() {
+    another_name::mem::drop(3);
+    another::foo();
+    remove_extern_crate::foo!();
+    bar!();
 }
 
-fn main() {}
+mod another {
+    extern crate core;
+    use remove_extern_crate;
+
+    pub fn foo() {
+        core::mem::drop(4);
+        remove_extern_crate::foo!();
+    }
+}

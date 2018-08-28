@@ -8,31 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
 // edition:2018
+// compile-pass
+// aux-build:remove-extern-crate.rs
 
-#![allow(keyword_idents)]
+#![warn(rust_2018_idioms)]
 
-#[macro_export]
-macro_rules! produces_async {
-    () => (pub fn async() {})
+
+use core as another_name;
+use remove_extern_crate;
+#[macro_use]
+extern crate remove_extern_crate as something_else;
+
+fn main() {
+    another_name::mem::drop(3);
+    another::foo();
+    remove_extern_crate::foo!();
+    bar!();
 }
 
-#[macro_export]
-macro_rules! produces_async_raw {
-    () => (pub fn r#async() {})
-}
+mod another {
+    use core;
+    use remove_extern_crate;
 
-#[macro_export]
-macro_rules! consumes_async {
-    (async) => (1)
-}
-
-#[macro_export]
-macro_rules! consumes_async_raw {
-    (r#async) => (1)
-}
-
-#[macro_export]
-macro_rules! passes_ident {
-    ($i: ident) => ($i)
+    pub fn foo() {
+        core::mem::drop(4);
+        remove_extern_crate::foo!();
+    }
 }

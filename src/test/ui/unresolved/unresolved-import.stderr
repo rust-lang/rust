@@ -34,11 +34,6 @@ error[E0432]: unresolved import `Enum`
 LL |     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
    |         ^^^^ Did you mean `self::Enum`?
 
-error[E0601]: `main` function not found in crate `unresolved_import`
-   |
-   = note: consider adding a `main` function to `$DIR/unresolved-import.rs`
+error: aborting due to 6 previous errors
 
-error: aborting due to 7 previous errors
-
-Some errors occurred: E0432, E0601.
-For more information about an error, try `rustc --explain E0432`.
+For more information about this error, try `rustc --explain E0432`.

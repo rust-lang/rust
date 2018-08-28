@@ -39,7 +39,6 @@ use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
-use std::collections::HashSet;
 use rustc::util::nodemap::FxHashSet;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
@@ -304,14 +303,14 @@ pub struct MissingDoc {
     doc_hidden_stack: Vec<bool>,
 
     /// Private traits or trait items that leaked through. Don't check their methods.
-    private_traits: HashSet<ast::NodeId>,
+    private_traits: FxHashSet<ast::NodeId>,
 }
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
             doc_hidden_stack: vec![false],
-            private_traits: HashSet::new(),
+            private_traits: FxHashSet::default(),
         }
     }
 
@@ -908,7 +907,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
         let mut self_call_spans = vec![];
-        let mut visited = HashSet::new();
+        let mut visited = FxHashSet::default();
 
         while let Some(idx) = work_queue.pop() {
             if idx == cfg.exit {
@@ -1882,30 +1881,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
 }
 
 declare_lint! {
-    pub ASYNC_IDENTS,
+    pub KEYWORD_IDENTS,
     Allow,
-    "detects `async` being used as an identifier"
+    "detects edition keywords being used as an identifier"
 }
 
-/// Checks for uses of `async` as an identifier
+/// Checks for uses of edtion keywords used as an identifier
 #[derive(Clone)]
-pub struct Async2018;
+pub struct KeywordIdents;
 
-impl LintPass for Async2018 {
+impl LintPass for KeywordIdents {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ASYNC_IDENTS)
+        lint_array!(KEYWORD_IDENTS)
     }
 }
 
-impl Async2018 {
+impl KeywordIdents {
     fn check_tokens(&mut self, cx: &EarlyContext, tokens: TokenStream) {
         for tt in tokens.into_trees() {
             match tt {
                 TokenTree::Token(span, tok) => match tok.ident() {
                     // only report non-raw idents
-                    Some((ident, false)) if ident.as_str() == "async" => {
-                        self.report(cx, span.substitute_dummy(ident.span))
-                    },
+                    Some((ident, false)) => {
+                        self.check_ident(cx, ast::Ident {
+                            span: span.substitute_dummy(ident.span),
+                            ..ident
+                        });
+                    }
                     _ => {},
                 }
                 TokenTree::Delimited(_, ref delim) => {
@@ -1914,29 +1916,9 @@ impl Async2018 {
             }
         }
     }
-    fn report(&mut self, cx: &EarlyContext, span: Span) {
-        // don't lint `r#async`
-        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&span) {
-            return;
-        }
-        let mut lint = cx.struct_span_lint(
-            ASYNC_IDENTS,
-            span,
-            "`async` is a keyword in the 2018 edition",
-        );
-
-        // Don't suggest about raw identifiers if the feature isn't active
-        lint.span_suggestion_with_applicability(
-            span,
-            "you can use a raw identifier to stay compatible",
-            "r#async".to_string(),
-            Applicability::MachineApplicable,
-        );
-        lint.emit()
-    }
 }
 
-impl EarlyLintPass for Async2018 {
+impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext, mac_def: &ast::MacroDef, _id: ast::NodeId) {
         self.check_tokens(cx, mac_def.stream());
     }
@@ -1944,8 +1926,37 @@ impl EarlyLintPass for Async2018 {
         self.check_tokens(cx, mac.node.tts.clone().into());
     }
     fn check_ident(&mut self, cx: &EarlyContext, ident: ast::Ident) {
-        if ident.as_str() == "async" {
-            self.report(cx, ident.span);
+        let next_edition = match cx.sess.edition() {
+            Edition::Edition2015 => {
+                match &ident.as_str()[..] {
+                    "async" |
+                    "try" => Edition::Edition2018,
+                    _ => return,
+                }
+            }
+
+            // no new keywords yet for 2018 edition and beyond
+            _ => return,
+        };
+
+        // don't lint `r#foo`
+        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
+            return;
         }
+
+        let mut lint = cx.struct_span_lint(
+            KEYWORD_IDENTS,
+            ident.span,
+            &format!("`{}` is a keyword in the {} edition",
+                     ident.as_str(),
+                     next_edition),
+        );
+        lint.span_suggestion_with_applicability(
+            ident.span,
+            "you can use a raw identifier to stay compatible",
+            format!("r#{}", ident.as_str()),
+            Applicability::MachineApplicable,
+        );
+        lint.emit()
     }
 }

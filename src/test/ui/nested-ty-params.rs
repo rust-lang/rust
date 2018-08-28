@@ -14,3 +14,5 @@ fn hd<U>(v: Vec<U> ) -> U {
 
     return hd1(v);
 }
+
+fn main() {}

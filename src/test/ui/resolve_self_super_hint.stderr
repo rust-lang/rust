@@ -22,11 +22,6 @@ error[E0432]: unresolved import `alloc`
 LL |                 use alloc::HashMap;
    |                     ^^^^^ Did you mean `a::alloc`?
 
-error[E0601]: `main` function not found in crate `resolve_self_super_hint`
-   |
-   = note: consider adding a `main` function to `$DIR/resolve_self_super_hint.rs`
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors occurred: E0432, E0601.
-For more information about an error, try `rustc --explain E0432`.
+For more information about this error, try `rustc --explain E0432`.

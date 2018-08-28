@@ -26,7 +26,7 @@ use OneVector;
 use symbol::{keywords, Ident, Symbol};
 use ThinVec;
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -800,7 +800,7 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
-    pub expansions: HashMap<Span, Vec<String>>,
+    pub expansions: FxHashMap<Span, Vec<String>>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -821,7 +821,7 @@ impl<'a> ExtCtxt<'a> {
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
                 crate_span: None,
             },
-            expansions: HashMap::new(),
+            expansions: FxHashMap::default(),
         }
     }
 

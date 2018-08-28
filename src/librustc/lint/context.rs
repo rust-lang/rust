@@ -1046,7 +1046,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         self.check_id(id);
     }
 
-    fn visit_mac(&mut self, mac: &'ast ast::Mac) {
+    fn visit_mac(&mut self, mac: &'a ast::Mac) {
         run_lints!(self, check_mac, mac);
     }
 }

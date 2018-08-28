@@ -38,7 +38,7 @@ pub use self::ExternalLocation::*;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
@@ -741,7 +741,7 @@ fn write_shared(cx: &Context,
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
-    let mut themes: HashSet<String> = HashSet::new();
+    let mut themes: FxHashSet<String> = FxHashSet::default();
 
     for entry in &cx.shared.themes {
         let mut content = Vec::with_capacity(100000);
@@ -1539,35 +1539,36 @@ impl Ord for ItemEntry {
 
 #[derive(Debug)]
 struct AllTypes {
-    structs: HashSet<ItemEntry>,
-    enums: HashSet<ItemEntry>,
-    unions: HashSet<ItemEntry>,
-    primitives: HashSet<ItemEntry>,
-    traits: HashSet<ItemEntry>,
-    macros: HashSet<ItemEntry>,
-    functions: HashSet<ItemEntry>,
-    typedefs: HashSet<ItemEntry>,
-    existentials: HashSet<ItemEntry>,
-    statics: HashSet<ItemEntry>,
-    constants: HashSet<ItemEntry>,
-    keywords: HashSet<ItemEntry>,
+    structs: FxHashSet<ItemEntry>,
+    enums: FxHashSet<ItemEntry>,
+    unions: FxHashSet<ItemEntry>,
+    primitives: FxHashSet<ItemEntry>,
+    traits: FxHashSet<ItemEntry>,
+    macros: FxHashSet<ItemEntry>,
+    functions: FxHashSet<ItemEntry>,
+    typedefs: FxHashSet<ItemEntry>,
+    existentials: FxHashSet<ItemEntry>,
+    statics: FxHashSet<ItemEntry>,
+    constants: FxHashSet<ItemEntry>,
+    keywords: FxHashSet<ItemEntry>,
 }
 
 impl AllTypes {
     fn new() -> AllTypes {
+        let new_set = |cap| FxHashSet::with_capacity_and_hasher(cap, Default::default());
         AllTypes {
-            structs: HashSet::with_capacity(100),
-            enums: HashSet::with_capacity(100),
-            unions: HashSet::with_capacity(100),
-            primitives: HashSet::with_capacity(26),
-            traits: HashSet::with_capacity(100),
-            macros: HashSet::with_capacity(100),
-            functions: HashSet::with_capacity(100),
-            typedefs: HashSet::with_capacity(100),
-            existentials: HashSet::with_capacity(100),
-            statics: HashSet::with_capacity(100),
-            constants: HashSet::with_capacity(100),
-            keywords: HashSet::with_capacity(100),
+            structs: new_set(100),
+            enums: new_set(100),
+            unions: new_set(100),
+            primitives: new_set(26),
+            traits: new_set(100),
+            macros: new_set(100),
+            functions: new_set(100),
+            typedefs: new_set(100),
+            existentials: new_set(100),
+            statics: new_set(100),
+            constants: new_set(100),
+            keywords: new_set(100),
         }
     }
 
@@ -1595,7 +1596,7 @@ impl AllTypes {
     }
 }
 
-fn print_entries(f: &mut fmt::Formatter, e: &HashSet<ItemEntry>, title: &str,
+fn print_entries(f: &mut fmt::Formatter, e: &FxHashSet<ItemEntry>, title: &str,
                  class: &str) -> fmt::Result {
     if !e.is_empty() {
         let mut e: Vec<&ItemEntry> = e.iter().collect();
@@ -4185,7 +4186,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 }
             }
             let format_impls = |impls: Vec<&Impl>| {
-                let mut links = HashSet::new();
+                let mut links = FxHashSet::default();
                 impls.iter()
                            .filter_map(|i| {
                                let is_negative_impl = is_negative_impl(i.inner_impl());

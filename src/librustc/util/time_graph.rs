@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -40,7 +40,7 @@ struct PerThread {
 
 #[derive(Clone)]
 pub struct TimeGraph {
-    data: Arc<Mutex<HashMap<TimelineId, PerThread>>>,
+    data: Arc<Mutex<FxHashMap<TimelineId, PerThread>>>,
 }
 
 #[derive(Clone, Copy)]
@@ -68,7 +68,7 @@ impl Drop for RaiiToken {
 impl TimeGraph {
     pub fn new() -> TimeGraph {
         TimeGraph {
-            data: Arc::new(Mutex::new(HashMap::new()))
+            data: Arc::new(Mutex::new(FxHashMap::default()))
         }
     }
 
