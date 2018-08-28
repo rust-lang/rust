@@ -11,6 +11,7 @@
 use rustc::hir;
 use rustc::mir::ProjectionElem;
 use rustc::mir::{Local, Mir, Place, PlaceBase};
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, TyCtxt};
 
 /// Extension methods for the `Place` type.
@@ -32,8 +33,9 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                 tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
             }
         };
-        if !self.elems.is_empty() {
-            for elem in self.elems.iter().cloned().rev() {
+        if !self.has_no_projection() {
+            let mut base_ty = self.base.ty(mir);
+            for elem in self.elems.iter() {
                 is_unsafe_place = match elem {
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
@@ -41,12 +43,13 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Index(_) => continue,
                     ProjectionElem::Deref => {
-                        let ty = self.ty(mir, tcx).to_ty(tcx);
-                        match ty.sty {
+                        match base_ty.sty {
                             ty::TyRawPtr(..) => true,
                             _ => continue,
+                        }
                     }
-                }};
+                };
+                base_ty = PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
             }
         }
 

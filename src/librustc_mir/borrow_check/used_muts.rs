@@ -56,7 +56,9 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                     path.place, local, path.place
                 );
                 if let PlaceBase::Local(user_local) = path.place.base {
-                    self.mbcx.used_mut.insert(user_local);
+                    if path.place.has_no_projection() {
+                        self.mbcx.used_mut.insert(user_local);
+                    }
                 }
             }
         }

@@ -266,7 +266,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             match statement.kind {
                 StatementKind::Assign(ref place, ref rvalue) => {
                     debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
-                    if place.base == PlaceBase::Local(mir::RETURN_PLACE) {
+                    if place.base == PlaceBase::Local(mir::RETURN_PLACE) &&
+                        place.has_no_projection() {
                         ConstraintCategory::Return
                     } else {
                         match rvalue {

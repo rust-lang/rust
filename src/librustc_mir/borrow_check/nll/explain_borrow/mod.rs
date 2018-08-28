@@ -91,15 +91,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let PlaceBase::Local(borrowed_local) = place.base {
-                            let dropped_local_scope = mir.local_decls[local].visibility_scope;
-                            let borrowed_local_scope =
-                                mir.local_decls[borrowed_local].visibility_scope;
+                            if place.has_no_projection() {
+                                let dropped_local_scope = mir.local_decls[local].visibility_scope;
+                                let borrowed_local_scope =
+                                    mir.local_decls[borrowed_local].visibility_scope;
 
-                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
-                                err.note(
-                                    "values in a scope are dropped \
-                                     in the opposite order they are defined",
-                                );
+                                if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
+                                    err.note(
+                                        "values in a scope are dropped \
+                                         in the opposite order they are defined",
+                                    );
+                                }
                             }
                         }
                     }

@@ -94,7 +94,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 if let Some(StatementKind::Assign(
                     Place {
                         base: PlaceBase::Local(local),
-                        elems: _,
+                        elems,
                     },
                     Rvalue::Use(Operand::Move(move_from)),
                 )) = self.mir.basic_blocks()[location.block]
@@ -102,30 +102,32 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
                 {
-                    let local_decl = &self.mir.local_decls[*local];
-                    // opt_match_place is the
-                    // match_span is the span of the expression being matched on
-                    // match *x.y { ... }        match_place is Some(*x.y)
-                    //       ^^^^                match_span is the span of *x.y
-                    //
-                    // opt_match_place is None for let [mut] x = ... statements,
-                    // whether or not the right-hand side is a place expression
-                    if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                        opt_match_place: Some((ref opt_match_place, match_span)),
-                        binding_mode: _,
-                        opt_ty_info: _,
-                    }))) = local_decl.is_user_variable
-                    {
-                        self.append_binding_error(
-                            grouped_errors,
-                            kind,
-                            move_from,
-                            *local,
-                            opt_match_place,
-                            match_span,
-                            stmt_source_info.span,
-                        );
-                        return;
+                    if elems.is_empty() {
+                        let local_decl = &self.mir.local_decls[*local];
+                        // opt_match_place is the
+                        // match_span is the span of the expression being matched on
+                        // match *x.y { ... }        match_place is Some(*x.y)
+                        //       ^^^^                match_span is the span of *x.y
+                        //
+                        // opt_match_place is None for let [mut] x = ... statements,
+                        // whether or not the right-hand side is a place expression
+                        if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((ref opt_match_place, match_span)),
+                            binding_mode: _,
+                            opt_ty_info: _,
+                        }))) = local_decl.is_user_variable
+                        {
+                            self.append_binding_error(
+                                grouped_errors,
+                                kind,
+                                move_from,
+                                *local,
+                                opt_match_place,
+                                match_span,
+                                stmt_source_info.span,
+                            );
+                            return;
+                        }
                     }
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {

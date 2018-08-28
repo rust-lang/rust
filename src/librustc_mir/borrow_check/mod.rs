@@ -21,6 +21,7 @@ use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place, PlaceBase};
 use rustc::mir::{Field, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
@@ -958,9 +959,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             ty::TyClosure(def, substs) => {
                 if let Place {
                     base: PlaceBase::Local(local),
-                    elems: _,
+                    elems,
                 } = drop_place {
-                    if *local == Local::new(1) && !self.mir.upvar_decls.is_empty() {
+                    if *local == Local::new(1)
+                        && !self.mir.upvar_decls.is_empty()
+                        && elems.is_empty() {
                         substs
                             .upvar_tys(def, self.tcx)
                             .enumerate()
@@ -973,9 +976,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             ty::TyGenerator(def, substs, _) => {
                 if let Place {
                     base: PlaceBase::Local(local),
-                    elems: _,
+                    elems,
                 } = drop_place {
-                    if *local == Local::new(1) && !self.mir.upvar_decls.is_empty() {
+                    if *local == Local::new(1)
+                        && !self.mir.upvar_decls.is_empty()
+                        && elems.is_empty() {
                         substs
                             .upvar_tys(def, self.tcx)
                             .enumerate()
@@ -1405,7 +1410,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     }
 
                                     if let PlaceBase::Local(local) = place.base {
-                                        self.used_mut.insert(local);
+                                        if place.has_no_projection() {
+                                            self.used_mut.insert(local);
+                                        }
                                     }
                                 },
                                 _ => {}
@@ -1488,7 +1495,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // we'll have a memory leak) and assume that all statics have a destructor.
         //
         // FIXME: allow thread-locals to borrow other thread locals?
-        let (might_be_alive, will_be_dropped) = if !place.elems.is_empty() {
+        let (might_be_alive, will_be_dropped) = if !place.has_no_projection() {
             bug!("root of {:?} is a projection ({:?})?", place, place)
         } else {
             match place.base {
@@ -1769,7 +1776,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place: &Place<'tcx>,
     ) -> Result<MovePathIndex, NoMovePathFound> {
         let mut prefix = place.clone();
-        if !prefix.elems.is_empty() {
+        if !prefix.has_no_projection() {
             for (i, _) in prefix.elems.iter().cloned().enumerate().rev() {
                 prefix = place.elem_base(self.tcx, i);
                 if let Some(mpi) = self.move_path_for_place(&prefix) {
@@ -1802,7 +1809,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         debug!("check_if_assigned_path_is_moved place: {:?}", place);
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             let tcx = self.tcx;
             for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
                 let base_place = place.elem_base(tcx, i);
@@ -1988,7 +1995,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             is_local_mutation_allowed,
         } = root_place;
 
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             if let Some(field) = place.is_upvar_field_projection(self.mir, &self.tcx) {
                 self.used_mut_upvars.push(field);
             }
@@ -2068,17 +2075,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             is_local_mutation_allowed
         );
 
-        if !place.elems.is_empty() {
-            let mut base_place = place.clone();
-            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+        if !place.has_no_projection() {
+            let mut base_ty = place.base.ty(self.mir);
+            for elem in place.elems.iter() {
                 result = match elem {
                     // NOTE(review): deref is really special.
                     //
                     // All other projections are owned by their base path, so mutable if
                     // base path is mutable
                     ProjectionElem::Deref => {
-                        base_place = base_place.elem_base(self.tcx, i);
-                        let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        base_ty = PlaceTy::from(base_ty)
+                            .projection_ty(self.tcx, elem).to_ty(self.tcx);
                          match base_ty.sty {
                             ty::TyRef(_, _, mutbl) => {
                                 match mutbl {
@@ -2101,8 +2108,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                             }
                                             _ => LocalMutationIsAllowed::Yes,
                                         };
-
-                                        continue;
+                                        continue
                                     }
                                 }
                             }
@@ -2121,9 +2127,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 }
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
-                            _ if base_ty.is_box() => {
-                                continue;
-                            }
+                            _ if base_ty.is_box() => { continue; }
                             // Deref should only be for reference, pointers or boxes
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
@@ -2221,14 +2225,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut deepest = place.clone();
 
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                deepest = match elem {
+                match elem {
                     ProjectionElem::Deref
                         if place.ty(self.mir, self.tcx).to_ty(self.tcx).is_box() => {
-                           place.elem_base(self.tcx, i)
+                           deepest = place.elem_base(self.tcx, i);
                     },
-                    _ => continue,
+                    _ => {},
                 }
             }
         }

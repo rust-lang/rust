@@ -390,7 +390,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let borrow_span = borrow_spans.var_or_use();
 
         let proper_span = match root_place.base {
-            PlaceBase::Local(local) => self.mir.local_decls[local].source_info.span,
+            PlaceBase::Local(local) if root_place.has_no_projection()
+                => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 
@@ -528,15 +529,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         assigned_span: Span,
         err_place: &Place<'tcx>,
     ) {
-        let (from_arg, local_decl) = if let PlaceBase::Local(local) = err_place.base {
-            if let LocalKind::Arg = self.mir.local_kind(local) {
-                (true, Some(&self.mir.local_decls[local]))
-            } else {
-                (false, Some(&self.mir.local_decls[local]))
+        let (mut from_arg, mut local_decl) = (false, None);
+
+        if let PlaceBase::Local(local) = err_place.base {
+            if err_place.has_no_projection() {
+                if let LocalKind::Arg = self.mir.local_kind(local) {
+                    from_arg = true;
+                    local_decl = Some(&self.mir.local_decls[local]);
+                } else {
+                    local_decl = Some(&self.mir.local_decls[local]);
+                }
             }
-        } else {
-            (false, None)
-        };
+        }
 
         // If root local is initialized immediately (everything apart from let
         // PATTERN;) then make the error refer to that local, rather than the
@@ -630,7 +634,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         self.append_place_base_to_string(&place.base, buf)?;
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
                 self.append_place_projection_to_string(place, elem, buf, including_downcast)?;
             }
@@ -734,7 +738,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
              PlaceBase::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
              PlaceBase::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
         };
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
                 let proj_str = match elem {
                     ProjectionElem::Downcast(def, variant_index) => format!(
@@ -986,7 +990,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     match place {
                                         Operand::Copy(place)
                                         | Operand::Move(place)
-                                            if PlaceBase::Local(local) == place.base =>
+                                            if PlaceBase::Local(local) == place.base &&
+                                                place.has_no_projection() =>
                                         {
                                             debug!(
                                                 "find_closure_borrow_span: found captured local \

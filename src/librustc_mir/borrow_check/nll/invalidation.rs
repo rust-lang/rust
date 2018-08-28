@@ -328,6 +328,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             // directly accessed in the body of the closure/generator.
             ty::TyGenerator(def, substs, ..)
                 if drop_place.base == PlaceBase::Local(Local::new(1))
+                    && drop_place.has_no_projection()
                     && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.infcx.tcx).enumerate()
@@ -335,6 +336,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             }
             ty::TyClosure(def, substs)
                 if drop_place.base == PlaceBase::Local(Local::new(1))
+                    && drop_place.has_no_projection()
                     && !self.mir.upvar_decls.is_empty()
                 => {
                     substs.upvar_tys(def, self.infcx.tcx).enumerate()

@@ -13,7 +13,8 @@ use borrow_check::Overlap;
 use borrow_check::{Deep, Shallow, ShallowOrDeep};
 use rustc::hir;
 use rustc::mir::{Mir, Place, PlaceBase, PlaceElem, ProjectionElem};
-use rustc::ty::{self, Slice, Ty, TyCtxt};
+use rustc::mir::tcx::PlaceTy;
+use rustc::ty::{self, Ty, TyCtxt};
 use std::cmp::max;
 
 // FIXME(csmoe): rewrite place_conflict with slice
@@ -35,22 +36,14 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
                                    borrow_place: &Place<'tcx>,
                                    access_place: &Place<'tcx>| {
         // Enumerate for later base_place generation
-        let mut borrow_elems = borrow_place.elems.iter().cloned().enumerate();
+        let mut borrow_elems = borrow_place.elems.iter().cloned();
 
         let mut access_elems = access_place.elems.iter().cloned();
 
-        loop {
-            if let Some((i, borrow_elem)) = borrow_elems.next() {
-                let base_place = Place {
-                    base: borrow_place.clone().base,
-                    elems: if i > 0 {
-                        tcx.mk_place_elems(borrow_place.elems.iter().cloned().take(i))
-                    } else {
-                        Slice::empty()
-                    },
-                };
-                let base_ty = base_place.ty(mir, tcx).to_ty(tcx);
+        let mut borrow_base_ty = borrow_place.base.ty(mir);
 
+        loop {
+            if let Some(borrow_elem) = borrow_elems.next() {
                 if let Some(access_elem) = access_elems.next() {
                     debug!("places_conflict: access_elem = {:?}", access_elem);
 
@@ -66,7 +59,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
                     // check whether the components being borrowed vs
                     // accessed are disjoint (as in the second example,
                     // but not the first).
-                    match place_element_conflict(base_ty, (&borrow_elem, &access_elem)) {
+                    match place_element_conflict(borrow_base_ty, (&borrow_elem, &access_elem)) {
                         Overlap::Arbitrary => {
                             // We have encountered different fields of potentially
                             // the same union - the borrow now partially overlaps.
@@ -103,7 +96,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
                     // our place. This is a conflict if that is a part our
                     // access cares about.
 
-                    match (borrow_elem, &base_ty.sty, access) {
+                    match (borrow_elem, &borrow_base_ty.sty, access) {
                         (_, _, Shallow(Some(ArtificialField::Discriminant)))
                         | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
                             // The discriminant and array length are like
@@ -149,6 +142,9 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
                         }
                     }
                 }
+                borrow_base_ty = PlaceTy::from(borrow_base_ty)
+                                    .projection_ty(tcx, &borrow_elem)
+                                    .to_ty(tcx);
             } else {
                 // Borrow path ran out but access path may not
                 // have. Examples:
