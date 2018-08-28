@@ -18,7 +18,7 @@ use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
 use base;
 use callee;
 use builder::{Builder, MemFlags};
-use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_uint_big, C_undef};
+use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_uint_big, C_undef, IntPredicate};
 use consts;
 use meth;
 use monomorphize;
@@ -26,7 +26,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use traits::{IntPredicate,BuilderMethods};
+use interfaces::BuilderMethods;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;

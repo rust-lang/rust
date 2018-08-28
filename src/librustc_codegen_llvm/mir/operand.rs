@@ -21,7 +21,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use glue;
 
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 use std::fmt;
 

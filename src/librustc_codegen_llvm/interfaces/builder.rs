@@ -14,92 +14,11 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
 use builder::MemFlags;
-use value::Value;
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-pub struct OperandBundleDef<'a, Value : 'a> {
-    pub name: &'a str,
-    pub val: Value
-}
-
-impl OperandBundleDef<'ll, &'ll Value> {
-    pub fn new(name: &'ll str, val: &'ll Value) -> Self {
-        OperandBundleDef {
-            name,
-            val
-        }
-    }
-}
-
-pub enum IntPredicate {
-    IntEQ,
-    IntNE,
-    IntUGT,
-    IntUGE,
-    IntULT,
-    IntULE,
-    IntSGT,
-    IntSGE,
-    IntSLT,
-    IntSLE
-}
-
-#[allow(dead_code)]
-pub enum RealPredicate {
-    RealPredicateFalse,
-    RealOEQ,
-    RealOGT,
-    RealOGE,
-    RealOLT,
-    RealOLE,
-    RealONE,
-    RealORD,
-    RealUNO,
-    RealUEQ,
-    RealUGT,
-    RealUGE,
-    RealULT,
-    RealULE,
-    RealUNE,
-    RealPredicateTrue
-}
-
-pub enum AtomicRmwBinOp {
-    AtomicXchg,
-    AtomicAdd,
-    AtomicSub,
-    AtomicAnd,
-    AtomicNand,
-    AtomicOr,
-    AtomicXor,
-    AtomicMax,
-    AtomicMin,
-    AtomicUMax,
-    AtomicUMin
-}
-
-pub enum AtomicOrdering {
-    #[allow(dead_code)]
-    NotAtomic,
-    Unordered,
-    Monotonic,
-    // Consume,  // Not specified yet.
-    Acquire,
-    Release,
-    AcquireRelease,
-    SequentiallyConsistent,
-}
-
-pub enum SynchronizationScope {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
-    SingleThread,
-    CrossThread,
-}
 
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {

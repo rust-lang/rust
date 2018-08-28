@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use base;
 use builder::Builder;
-use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big};
+use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big, IntPredicate};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -23,7 +23,7 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use traits::{IntPredicate,BuilderMethods};
+use interfaces::BuilderMethods;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};

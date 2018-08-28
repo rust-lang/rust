@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use traits::{BuilderMethods, AtomicRmwBinOp, SynchronizationScope};
+use interfaces::BuilderMethods;
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -439,7 +439,7 @@ pub fn codegen_intrinsic_call(
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         name if name.starts_with("atomic_") => {
-            use traits::AtomicOrdering::*;
+            use self::AtomicOrdering::*;
 
             let split: Vec<&str> = name.split('_').collect();
 

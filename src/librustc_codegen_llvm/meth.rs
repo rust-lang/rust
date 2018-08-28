@@ -17,7 +17,7 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 
-use traits::BuilderMethods;
+use interfaces::BuilderMethods;
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;

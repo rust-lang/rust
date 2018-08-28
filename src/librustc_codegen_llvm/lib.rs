@@ -102,7 +102,7 @@ mod back {
     pub mod wasm;
 }
 
-mod traits;
+mod interfaces;
 
 mod abi;
 mod allocator;

@@ -10,7 +10,7 @@
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, OperandBundleDef, BasicBlock};
-use common::*;
+use common::{self, *};
 use type_;
 use value::Value;
 use libc::{c_uint, c_char};
@@ -18,7 +18,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use traits::{self, BuilderMethods};
+use interfaces::BuilderMethods;
 use syntax;
 
 use std::borrow::Cow;
@@ -194,7 +194,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
                   args: &[&'ll Value],
                   then: &'ll BasicBlock,
                   catch: &'ll BasicBlock,
-                  bundle: Option<&traits::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
+                  bundle: Option<&common::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -495,7 +495,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn atomic_load(
         &self,
         ptr: &'ll Value,
-        order: traits::AtomicOrdering,
+        order: common::AtomicOrdering,
         size: Size,
     ) -> &'ll Value {
         self.count_insn("load.atomic");
@@ -582,7 +582,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
    fn atomic_store(&self, val: &'ll Value, ptr: &'ll Value,
-                   order: traits::AtomicOrdering, size: Size) {
+                   order: common::AtomicOrdering, size: Size) {
         debug!("Store {:?} -> {:?}", val, ptr);
         self.count_insn("store.atomic");
         let ptr = self.check_store(val, ptr);
@@ -708,7 +708,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     /* Comparisons */
-    fn icmp(&self, op: traits::IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    fn icmp(&self, op: IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("icmp");
         let op = llvm::IntPredicate::from_generic(op);
         unsafe {
@@ -716,7 +716,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn fcmp(&self, op: traits::RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    fn fcmp(&self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("fcmp");
         unsafe {
             llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
@@ -1066,8 +1066,8 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        order: traits::AtomicOrdering,
-        failure_order: traits::AtomicOrdering,
+        order: common::AtomicOrdering,
+        failure_order: common::AtomicOrdering,
         weak: bool,
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
@@ -1085,10 +1085,10 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
     fn atomic_rmw(
         &self,
-        op: traits::AtomicRmwBinOp,
+        op: common::AtomicRmwBinOp,
         dst: &'ll Value,
         src: &'ll Value,
-        order: traits::AtomicOrdering,
+        order: common::AtomicOrdering,
     ) -> &'ll Value {
         unsafe {
             llvm::LLVMBuildAtomicRMW(
@@ -1101,7 +1101,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn atomic_fence(&self, order: traits::AtomicOrdering, scope: traits::SynchronizationScope) {
+    fn atomic_fence(&self, order: common::AtomicOrdering, scope: common::SynchronizationScope) {
         unsafe {
             llvm::LLVMRustBuildAtomicFence(
                 self.llbuilder,
@@ -1227,7 +1227,7 @@ impl BuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&traits::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
+                bundle: Option<&common::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",
