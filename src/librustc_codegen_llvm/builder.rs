@@ -18,7 +18,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, Backend};
 use syntax;
 
 use std::borrow::Cow;
@@ -55,12 +55,14 @@ bitflags! {
     }
 }
 
+impl Backend for Builder<'a, 'll, 'tcx, &'ll Value>  {
+        type Value = &'ll Value;
+        type BasicBlock = &'ll BasicBlock;
+        type Type = &'ll type_::Type;
+}
+
 impl BuilderMethods<'a, 'll, 'tcx>
     for Builder<'a, 'll, 'tcx, &'ll Value> {
-
-    type Value = &'ll Value;
-    type BasicBlock = &'ll BasicBlock;
-    type Type = &'ll type_::Type;
 
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
