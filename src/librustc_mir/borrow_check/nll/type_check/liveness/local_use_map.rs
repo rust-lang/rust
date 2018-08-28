@@ -97,7 +97,7 @@ impl LocalUseMap<'me> {
     }
 }
 
-struct LocalUseMapBuild<'me, 'map> {
+struct LocalUseMapBuild<'me, 'map: 'me> {
     local_use_map: &'me mut LocalUseMap<'map>,
     elements: &'me RegionValueElements,
 }
