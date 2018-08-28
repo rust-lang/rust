@@ -7,11 +7,11 @@ use libsyntax2::{
         walk::preorder,
         find_covering_node,
     },
-    text_utils::intersect,
+    text_utils::{intersect, contains_offset_nonstrict},
     SyntaxKind::*,
 };
 
-use {ActionResult, EditBuilder};
+use {ActionResult, EditBuilder, find_node_at_offset};
 
 pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
     let range = if range.is_empty() {
@@ -54,6 +54,26 @@ pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
         edit: edit.finish(),
         cursor_position: None,
     }
+}
+
+pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<ActionResult> {
+    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
+    if let_stmt.has_semi() {
+        return None;
+    }
+    if let Some(expr) = let_stmt.initializer() {
+        let expr_range = expr.syntax().range();
+        if contains_offset_nonstrict(expr_range, offset) && offset != expr_range.start() {
+            return None;
+        }
+    }
+    let offset = let_stmt.syntax().range().end();
+    let mut edit = EditBuilder::new();
+    edit.insert(offset, ";".to_string());
+    Some(ActionResult {
+        edit: edit.finish(),
+        cursor_position: None,
+    })
 }
 
 fn remove_newline(

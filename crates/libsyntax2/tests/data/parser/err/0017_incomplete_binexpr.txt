@@ -35,13 +35,12 @@ ROOT@[0; 47)
           INT_NUMBER@[33; 35) "92"
         SEMI@[35; 36)
       WHITESPACE@[36; 41)
-      BIN_EXPR@[41; 45)
+      BIN_EXPR@[41; 44)
         LITERAL@[41; 42)
           INT_NUMBER@[41; 42) "1"
         WHITESPACE@[42; 43)
         PLUS@[43; 44)
-        WHITESPACE@[44; 45)
         err: `expected expression`
-        ERROR@[45; 45)
+      WHITESPACE@[44; 45)
       R_CURLY@[45; 46)
   WHITESPACE@[46; 47)

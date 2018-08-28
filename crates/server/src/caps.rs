@@ -5,6 +5,7 @@ use languageserver_types::{
     TextDocumentSyncKind,
     ExecuteCommandOptions,
     CompletionOptions,
+    DocumentOnTypeFormattingOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -35,7 +36,10 @@ pub fn server_capabilities() -> ServerCapabilities {
         code_lens_provider: None,
         document_formatting_provider: None,
         document_range_formatting_provider: None,
-        document_on_type_formatting_provider: None,
+        document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
+            first_trigger_character: "=".to_string(),
+            more_trigger_character: None,
+        }),
         rename_provider: None,
         color_provider: None,
         execute_command_provider: Some(ExecuteCommandOptions {

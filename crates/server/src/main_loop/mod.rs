@@ -31,6 +31,7 @@ use {
         handle_completion,
         handle_runnables,
         handle_decorations,
+        handle_on_type_formatting,
     },
 };
 
@@ -160,6 +161,9 @@ fn on_request(
     )?;
     handle_request_on_threadpool::<req::DecorationsRequest>(
         &mut req, pool, world, sender, handle_decorations,
+    )?;
+    handle_request_on_threadpool::<req::OnTypeFormatting>(
+        &mut req, pool, world, sender, handle_on_type_formatting,
     )?;
     dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
         io.send(RawMsg::Response(resp.into_response(Ok(None))?));

@@ -273,7 +273,7 @@ Grammar(
         "Module": (
             traits: ["NameOwner", "AttrsOwner"],
             collections: [
-                ["modules", "Module"]
+                ["items", "ModuleItem"]
             ]
         ),
         "ConstDef": ( traits: [
@@ -330,6 +330,10 @@ Grammar(
                 "TypeParamsOwner",
                 "AttrsOwner"
             ],
+        ),
+        "ModuleItem": (
+            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "ImplItem",
+                   "UseItem", "ExternCrateItem" ]
         ),
 
         "TupleExpr": (),
@@ -479,6 +483,8 @@ Grammar(
         ),
         "Param": (
             options: [["pat", "Pat"]],
-        )
+        ),
+        "UseItem": (),
+        "ExternCrateItem": (),
     },
 )

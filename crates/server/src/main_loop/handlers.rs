@@ -314,6 +314,25 @@ pub fn handle_completion(
     Ok(Some(req::CompletionResponse::Array(items)))
 }
 
+pub fn handle_on_type_formatting(
+    world: ServerWorld,
+    params: req::DocumentOnTypeFormattingParams,
+) -> Result<Option<Vec<TextEdit>>> {
+    if params.ch != "=" {
+        return Ok(None);
+    }
+
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let offset = params.position.conv_with(&line_index);
+    let file = world.analysis().file_syntax(file_id)?;
+    let action = match libeditor::on_eq_typed(&file, offset) {
+        None => return Ok(None),
+        Some(action) => action,
+    };
+    Ok(Some(action.edit.conv_with(&line_index)))
+}
+
 pub fn handle_execute_command(
     world: ServerWorld,
     mut params: req::ExecuteCommandParams,

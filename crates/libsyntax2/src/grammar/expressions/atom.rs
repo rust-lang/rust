@@ -33,6 +33,9 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
                    RETURN_KW, IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
     ];
 
+const EXPR_RECOVERY_SET: TokenSet =
+    token_set![LET_KW];
+
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     match literal(p) {
         Some(m) => return Some(m),
@@ -73,7 +76,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         CONTINUE_KW => continue_expr(p),
         BREAK_KW => break_expr(p),
         _ => {
-            p.err_and_bump("expected expression");
+            p.err_recover("expected expression", EXPR_RECOVERY_SET);
             return None;
         }
     };

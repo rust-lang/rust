@@ -14,6 +14,7 @@ pub use languageserver_types::{
     TextDocumentPositionParams,
     TextEdit,
     CompletionParams, CompletionResponse,
+    DocumentOnTypeFormattingParams,
 };
 
 

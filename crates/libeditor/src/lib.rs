@@ -27,7 +27,7 @@ pub use self::{
         ActionResult,
         flip_comma, add_derive, add_impl,
     },
-    typing::join_lines,
+    typing::{join_lines, on_eq_typed},
     completion::scope_completion,
 };
 

@@ -12,6 +12,8 @@ fn mask(kind: SyntaxKind) -> u128 {
 }
 
 impl TokenSet {
+    const EMPTY: TokenSet = TokenSet(0);
+
     pub fn contains(&self, kind: SyntaxKind) -> bool {
         self.0 & mask(kind) != 0
     }
@@ -139,12 +141,21 @@ impl<'t> Parser<'t> {
 
     /// Create an error node and consume the next token.
     pub(crate) fn err_and_bump(&mut self, message: &str) {
-        let m = self.start();
-        self.error(message);
-        if !self.at(SyntaxKind::L_CURLY) && !self.at(SyntaxKind::R_CURLY) {
+        self.err_recover(message, TokenSet::EMPTY);
+    }
+
+    /// Create an error node and consume the next token.
+    pub(crate) fn err_recover(&mut self, message: &str, recovery_set: TokenSet) {
+        if self.at(SyntaxKind::L_CURLY)
+            || self.at(SyntaxKind::R_CURLY)
+            || recovery_set.contains(self.current()) {
+            self.error(message);
+        } else {
+            let m = self.start();
+            self.error(message);
             self.bump();
+            m.complete(self, ERROR);
         }
-        m.complete(self, ERROR);
     }
 }
 

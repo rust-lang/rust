@@ -439,6 +439,24 @@ impl<'a> ExprStmt<'a> {
     }
 }
 
+// ExternCrateItem
+#[derive(Debug, Clone, Copy)]
+pub struct ExternCrateItem<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ExternCrateItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            EXTERN_CRATE_ITEM => Some(ExternCrateItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ExternCrateItem<'a> {}
+
 // FieldExpr
 #[derive(Debug, Clone, Copy)]
 pub struct FieldExpr<'a> {
@@ -839,10 +857,50 @@ impl<'a> AstNode<'a> for Module<'a> {
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
 impl<'a> Module<'a> {
-    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
         super::children(self)
     }
 }
+
+// ModuleItem
+#[derive(Debug, Clone, Copy)]
+pub enum ModuleItem<'a> {
+    StructDef(StructDef<'a>),
+    EnumDef(EnumDef<'a>),
+    FnDef(FnDef<'a>),
+    TraitDef(TraitDef<'a>),
+    ImplItem(ImplItem<'a>),
+    UseItem(UseItem<'a>),
+    ExternCrateItem(ExternCrateItem<'a>),
+}
+
+impl<'a> AstNode<'a> for ModuleItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            STRUCT_DEF => Some(ModuleItem::StructDef(StructDef { syntax })),
+            ENUM_DEF => Some(ModuleItem::EnumDef(EnumDef { syntax })),
+            FN_DEF => Some(ModuleItem::FnDef(FnDef { syntax })),
+            TRAIT_DEF => Some(ModuleItem::TraitDef(TraitDef { syntax })),
+            IMPL_ITEM => Some(ModuleItem::ImplItem(ImplItem { syntax })),
+            USE_ITEM => Some(ModuleItem::UseItem(UseItem { syntax })),
+            EXTERN_CRATE_ITEM => Some(ModuleItem::ExternCrateItem(ExternCrateItem { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            ModuleItem::StructDef(inner) => inner.syntax(),
+            ModuleItem::EnumDef(inner) => inner.syntax(),
+            ModuleItem::FnDef(inner) => inner.syntax(),
+            ModuleItem::TraitDef(inner) => inner.syntax(),
+            ModuleItem::ImplItem(inner) => inner.syntax(),
+            ModuleItem::UseItem(inner) => inner.syntax(),
+            ModuleItem::ExternCrateItem(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> ModuleItem<'a> {}
 
 // Name
 #[derive(Debug, Clone, Copy)]
@@ -1761,6 +1819,24 @@ impl<'a> AstNode<'a> for TypeRef<'a> {
 }
 
 impl<'a> TypeRef<'a> {}
+
+// UseItem
+#[derive(Debug, Clone, Copy)]
+pub struct UseItem<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for UseItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            USE_ITEM => Some(UseItem { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> UseItem<'a> {}
 
 // WhereClause
 #[derive(Debug, Clone, Copy)]

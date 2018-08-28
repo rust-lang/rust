@@ -115,6 +115,15 @@ impl<'a> Module<'a> {
     }
 }
 
+impl<'a> LetStmt<'a> {
+    pub fn has_semi(self) -> bool {
+        match self.syntax().last_child() {
+            None => false,
+            Some(node) => node.kind() == SEMI,
+        }
+    }
+}
+
 impl<'a> IfExpr<'a> {
     pub fn then_branch(self) -> Option<Block<'a>> {
         self.blocks().nth(0)

@@ -9,7 +9,7 @@ use libeditor::{
     ActionResult,
     highlight, runnables, extend_selection, file_structure,
     flip_comma, add_derive, add_impl, matching_brace,
-    join_lines, scope_completion,
+    join_lines, on_eq_typed, scope_completion,
 };
 
 #[test]
@@ -227,7 +227,7 @@ pub fn reparse(&self, edit: &AtomEdit) -> File {
 #[test]
 fn test_join_lines_selection() {
     fn do_check(before: &str, after: &str) {
-        let (sel, before) = extract_range(&before);
+        let (sel, before) = extract_range(before);
         let file = file(&before);
         let result = join_lines(&file, sel);
         let actual = result.edit.apply(&before);
@@ -254,6 +254,48 @@ struct Foo <|>{
 ", r"
 struct Foo { f: u32 }
 ");
+}
+
+#[test]
+fn test_on_eq_typed() {
+    fn do_check(before: &str, after: &str) {
+        let (offset, before) = extract_offset(before);
+        let file = file(&before);
+        let result = on_eq_typed(&file, offset).unwrap();
+        let actual = result.edit.apply(&before);
+        assert_eq_text!(after, &actual);
+    }
+
+    do_check(r"
+fn foo() {
+    let foo =<|>
+}
+", r"
+fn foo() {
+    let foo =;
+}
+");
+    do_check(r"
+fn foo() {
+    let foo =<|> 1 + 1
+}
+", r"
+fn foo() {
+    let foo = 1 + 1;
+}
+");
+//     do_check(r"
+// fn foo() {
+//     let foo =<|>
+//     let bar = 1;
+// }
+// ", r"
+// fn foo() {
+//     let foo =;
+//     let bar = 1;
+// }
+// ");
+
 }
 
 #[test]
