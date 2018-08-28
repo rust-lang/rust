@@ -1269,6 +1269,15 @@ impl<'a> NameBinding<'a> {
     fn descr(&self) -> &'static str {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
     }
+
+    // Suppose that we resolved macro invocation with `invoc_id` to binding `binding` at some
+    // expansion round `max(invoc_id, binding)` when they both emerged from macros.
+    // Then this function returns `true` if `self` may emerge from a macro *after* that
+    // in some later round and screw up our previously found resolution.
+    fn may_appear_after(&self, _invoc_id: Mark, _binding: &NameBinding) -> bool {
+        // FIXME: This is a very conservative estimation.
+        self.expansion != Mark::root()
+    }
 }
 
 /// Interns the names of the primitive types.
@@ -3467,6 +3476,20 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
+        self.resolve_path_with_invoc_id(base_module, path, opt_ns, Mark::root(),
+                                        record_used, path_span, crate_lint)
+    }
+
+    fn resolve_path_with_invoc_id(
+        &mut self,
+        base_module: Option<ModuleOrUniformRoot<'a>>,
+        path: &[Ident],
+        opt_ns: Option<Namespace>, // `None` indicates a module path
+        invoc_id: Mark,
+        record_used: bool,
+        path_span: Span,
+        crate_lint: CrateLint,
+    ) -> PathResult<'a> {
         let mut module = base_module;
         let mut allow_super = true;
         let mut second_binding = None;
@@ -3555,8 +3578,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, record_used, record_used,
-                                                        false, path_span).map(|(b, _)| b)
+                self.resolve_lexical_macro_path_segment(ident, ns, invoc_id, record_used,
+                                                        record_used, false, path_span)
+                                                        .map(|(binding, _)| binding)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };

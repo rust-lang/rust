@@ -431,12 +431,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         Ok((def, self.get_macro(def)))
     }
 
-    pub fn resolve_macro_to_def_inner(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
+    pub fn resolve_macro_to_def_inner(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
                                       derives_in_scope: &[ast::Path], force: bool)
                                       -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
-        let invocation = self.invocations[&scope];
+        let invocation = self.invocations[&invoc_id];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
@@ -448,8 +448,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         if path.len() > 1 {
-            let res = self.resolve_path(None, &path, Some(MacroNS), false, span, CrateLint::No);
-            let def = match res {
+            let def = match self.resolve_path_with_invoc_id(None, &path, Some(MacroNS), invoc_id,
+                                                            false, span, CrateLint::No) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => {
@@ -480,11 +480,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         }
 
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
+        let legacy_resolution =
+            self.resolve_legacy_scope(path[0], invoc_id, &invocation.legacy_scope, false);
         let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, force,
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, invoc_id, false, force,
                                                           kind == MacroKind::Attr, span) {
                 Ok((binding, _)) => Ok(binding.def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
@@ -496,7 +497,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path[0], kind, result.ok()));
+            .push((invoc_id, path[0], kind, result.ok()));
 
         if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = result {} else {
             return result;
@@ -515,7 +516,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         enum ConvertToDeriveHelper { Yes, No, DontKnow }
         let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
         for derive in derives_in_scope {
-            match self.resolve_macro_path(derive, MacroKind::Derive, scope, &[], force) {
+            match self.resolve_macro_path(derive, MacroKind::Derive, invoc_id, &[], force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&path[0].name) {
                         convert_to_derive_helper = ConvertToDeriveHelper::Yes;
@@ -543,10 +544,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
+        invoc_id: Mark,
         record_used: bool,
         force: bool,
         is_attr: bool,
-        path_span: Span
+        path_span: Span,
     ) -> Result<(&'a NameBinding<'a>, FromPrelude), Determinacy> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
@@ -737,7 +739,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // Found another solution, if the first one was "weak", report an error.
                         if result.0.def() != innermost_result.0.def() &&
                            (innermost_result.0.is_glob_import() ||
-                            innermost_result.0.expansion != Mark::root()) {
+                            innermost_result.0.may_appear_after(invoc_id, result.0)) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
                                 name: ident.name,
@@ -781,8 +783,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     fn resolve_legacy_scope(&mut self,
-                            invocation_legacy_scope: &'a Cell<LegacyScope<'a>>,
                             ident: Ident,
+                            invoc_id: Mark,
+                            invoc_parent_legacy_scope: &'a Cell<LegacyScope<'a>>,
                             record_used: bool)
                             -> Option<&'a NameBinding<'a>> {
         let ident = ident.modern();
@@ -801,7 +804,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let mut innermost_result: Option<&NameBinding> = None;
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = invocation_legacy_scope;
+        let mut where_to_resolve = invoc_parent_legacy_scope;
         loop {
             let result = match where_to_resolve.get() {
                 LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
@@ -837,7 +840,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if let Some(innermost_result) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
                         if result.def() != innermost_result.def() &&
-                           innermost_result.expansion != Mark::root() {
+                           innermost_result.may_appear_after(invoc_id, result) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: ident.span,
                                 name: ident.name,
@@ -875,12 +878,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         }
 
-        for &(mark, ident, kind, def) in module.legacy_macro_resolutions.borrow().iter() {
+        for &(invoc_id, ident, kind, def) in module.legacy_macro_resolutions.borrow().iter() {
             let span = ident.span;
-            let legacy_scope = &self.invocations[&mark].legacy_scope;
-            let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident, true);
-            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, true,
-                                                                     kind == MacroKind::Attr, span);
+            let legacy_scope = &self.invocations[&invoc_id].legacy_scope;
+            let legacy_resolution = self.resolve_legacy_scope(ident, invoc_id, legacy_scope, true);
+            let resolution = self.resolve_lexical_macro_path_segment(
+                ident, MacroNS, invoc_id, true, true, kind == MacroKind::Attr, span
+            );
 
             let check_consistency = |this: &Self, new_def: Def| {
                 if let Some(def) = def {
@@ -913,7 +917,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     err.emit();
                 },
                 (Some(legacy_binding), Ok((binding, FromPrelude(from_prelude))))
-                        if !from_prelude || legacy_binding.expansion != Mark::root() => {
+                        if !from_prelude || legacy_binding.may_appear_after(invoc_id, binding) => {
                     if legacy_binding.def_ignoring_ambiguity() != binding.def_ignoring_ambiguity() {
                         self.report_ambiguity_error(ident.name, span, legacy_binding, binding);
                     }
