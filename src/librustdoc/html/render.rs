@@ -337,6 +337,15 @@ pub struct Cache {
     // and their parent id here and indexes them at the end of crate parsing.
     orphan_impl_items: Vec<(DefId, clean::Item)>,
 
+    // Similarly to `orphan_impl_items`, sometimes trait impls are picked up
+    // even though the trait itself is not exported. This can happen if a trait
+    // was defined in function/expression scope, since the impl will be picked
+    // up by `collect-trait-impls` but the trait won't be scraped out in the HIR
+    // crawl. In order to prevent crashes when looking for spotlight traits or
+    // when gathering trait documentation on a type, hold impls here while
+    // folding and add them to the cache later on if we find the trait.
+    orphan_trait_impls: Vec<(DefId, FxHashSet<DefId>, Impl)>,
+
     /// Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     /// we need the alias element to have an array of items.
     aliases: FxHashMap<String, Vec<IndexItem>>,
@@ -594,6 +603,7 @@ pub fn run(mut krate: clean::Crate,
         access_levels: krate.access_levels.clone(),
         crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
+        orphan_trait_impls: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
         deref_trait_did,
         deref_mut_trait_did,
@@ -635,6 +645,14 @@ pub fn run(mut krate: clean::Crate,
 
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
+
+    for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
+        if cache.traits.contains_key(&trait_did) {
+            for did in dids {
+                cache.impls.entry(did).or_insert(vec![]).push(impl_.clone());
+            }
+        }
+    }
 
     // Build our search index
     let index = build_index(&krate, &mut cache);
@@ -1224,7 +1242,7 @@ impl<'a> SourceCollector<'a> {
 impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.def_id.is_local() {
-            debug!("folding item \"{:?}\", a {}", item.name, item.type_());
+            debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.def_id);
         }
 
         // If this is a stripped module,
@@ -1457,10 +1475,16 @@ impl DocFolder for Cache {
                 } else {
                     unreachable!()
                 };
-                for did in dids {
-                    self.impls.entry(did).or_default().push(Impl {
-                        impl_item: item.clone(),
-                    });
+                let impl_item = Impl {
+                    impl_item: item,
+                };
+                if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
+                    for did in dids {
+                        self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
+                    }
+                } else {
+                    let trait_did = impl_item.trait_did().unwrap();
+                    self.orphan_trait_impls.push((trait_did, dids, impl_item));
                 }
                 None
             } else {

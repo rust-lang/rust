@@ -24,6 +24,7 @@
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 
 #![recursion_limit="256"]
 
