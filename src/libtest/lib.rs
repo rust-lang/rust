@@ -1018,10 +1018,12 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[cfg(any(target_os = "cloudabi", target_os = "redox",
-          all(target_arch = "wasm32", not(target_os = "emscripten"))))]
+#[cfg(any(target_os = "cloudabi",
+          target_os = "redox",
+          all(target_arch = "wasm32", not(target_os = "emscripten")),
+          target_env = "sgx"))]
 fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox
+    // FIXME: Implement isatty on Redox and SGX
     false
 }
 #[cfg(unix)]
@@ -1246,7 +1248,7 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+    #[cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), target_env = "sgx"))]
     fn num_cpus() -> usize {
         1
     }

@@ -61,10 +61,12 @@
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
 	branch = rust-release-80-v2
-
 [submodule "src/doc/rustc-guide"]
 	path = src/doc/rustc-guide
 	url = https://github.com/rust-lang/rustc-guide.git
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
 	url = https://github.com/rust-lang-nursery/edition-guide
+[submodule "src/rust-sgx"]
+	path = src/rust-sgx
+	url = https://github.com/fortanix/rust-sgx

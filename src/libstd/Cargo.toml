@@ -35,8 +35,11 @@ rustc_lsan = { path = "../librustc_lsan" }
 rustc_msan = { path = "../librustc_msan" }
 rustc_tsan = { path = "../librustc_tsan" }
 
-[target.'cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))'.dependencies]
+[target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), target_env = "sgx"))'.dependencies]
 dlmalloc = { path = '../rustc/dlmalloc_shim' }
+
+[target.x86_64-fortanix-unknown-sgx.dependencies]
+fortanix-sgx-abi = { path = "../rustc/fortanix-sgx-abi_shim" }
 
 [build-dependencies]
 cc = "1.0"
