@@ -287,7 +287,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.
+    /// in-bounds!  This follows C's/LLVM's rules.  The `access` boolean is just used
+    /// for the error message.
+    /// If you want to check bounds before doing a memory access, be sure to
+    /// check the pointer one past the end of your access, then everything will
+    /// work out exactly.
     pub fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
@@ -498,21 +502,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Byte accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    /// This checks alignment!
-    fn get_bytes_unchecked(
+    /// The last argument controls whether we error out when there are undefined
+    /// or pointer bytes.  You should never call this, call `get_bytes` or
+    /// `get_bytes_unchecked` instead,
+    fn get_bytes_internal(
         &self,
         ptr: Pointer,
         size: Size,
         align: Align,
+        check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]> {
-        // Zero-sized accesses can use dangling pointers,
-        // but they still have to be aligned and non-NULL
+        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        if size.bytes() == 0 {
-            return Ok(&[]);
-        }
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, self)?, true)?;
+        self.check_bounds(ptr.offset(size, &*self)?, true)?;
+
+        if check_defined_and_ptr {
+            self.check_defined(ptr, size)?;
+            if self.relocations(ptr, size)?.len() != 0 {
+                return err!(ReadPointerAsBytes);
+            }
+        }
+
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -520,35 +531,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(&alloc.bytes[offset..offset + size.bytes() as usize])
     }
 
-    /// This checks alignment!
-    fn get_bytes_unchecked_mut(
-        &mut self,
-        ptr: Pointer,
-        size: Size,
-        align: Align,
-    ) -> EvalResult<'tcx, &mut [u8]> {
-        // Zero-sized accesses can use dangling pointers,
-        // but they still have to be aligned and non-NULL
-        self.check_align(ptr.into(), align)?;
-        if size.bytes() == 0 {
-            return Ok(&mut []);
-        }
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, &*self)?, true)?;
-        let alloc = self.get_mut(ptr.alloc_id)?;
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let offset = ptr.offset.bytes() as usize;
-        Ok(&mut alloc.bytes[offset..offset + size.bytes() as usize])
+    #[inline]
+    fn get_bytes(&self, ptr: Pointer, size: Size, align: Align) -> EvalResult<'tcx, &[u8]> {
+        self.get_bytes_internal(ptr, size, align, true)
     }
 
-    fn get_bytes(&self, ptr: Pointer, size: Size, align: Align) -> EvalResult<'tcx, &[u8]> {
-        assert_ne!(size.bytes(), 0);
-        if self.relocations(ptr, size)?.len() != 0 {
-            return err!(ReadPointerAsBytes);
-        }
-        self.check_defined(ptr, size)?;
-        self.get_bytes_unchecked(ptr, size, align)
+    /// It is the caller's responsibility to handle undefined and pointer bytes.
+    #[inline]
+    fn get_bytes_with_undef_and_ptr(
+        &self,
+        ptr: Pointer,
+        size: Size,
+        align: Align
+    ) -> EvalResult<'tcx, &[u8]> {
+        self.get_bytes_internal(ptr, size, align, false)
     }
 
     fn get_bytes_mut(
@@ -557,10 +553,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
-        assert_ne!(size.bytes(), 0);
-        self.clear_relocations(ptr, size)?;
+        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
+        self.check_align(ptr.into(), align)?;
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, &self)?, true)?;
+
         self.mark_definedness(ptr, size, true)?;
-        self.get_bytes_unchecked_mut(ptr, size, align)
+        self.clear_relocations(ptr, size)?;
+
+        let alloc = self.get_mut(ptr.alloc_id)?;
+        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
+        let offset = ptr.offset.bytes() as usize;
+        Ok(&mut alloc.bytes[offset..offset + size.bytes() as usize])
     }
 }
 
@@ -672,7 +677,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         };
 
         // This also checks alignment.
-        let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
+        let src_bytes = self.get_bytes_with_undef_and_ptr(src, size, src_align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
@@ -775,7 +780,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Make sure we don't read part of a pointer as a pointer
         self.check_relocation_edges(ptr, size)?;
         // get_bytes_unchecked tests alignment
-        let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
+        let bytes = self.get_bytes_with_undef_and_ptr(
+            ptr, size, ptr_align.min(self.int_align(size))
+        )?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if !self.is_defined(ptr, size)? {
