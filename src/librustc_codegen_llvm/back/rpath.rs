@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -172,7 +172,7 @@ fn get_install_prefix_rpath(config: &mut RPathConfig) -> String {
 }
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
-    let mut set = HashSet::new();
+    let mut set = FxHashSet::default();
     let mut minimized = Vec::new();
     for rpath in rpaths {
         if set.insert(rpath) {

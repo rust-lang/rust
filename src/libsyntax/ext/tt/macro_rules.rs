@@ -27,8 +27,8 @@ use parse::token::Token::*;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
+use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::sync::Lrc;
@@ -451,14 +451,14 @@ struct FirstSets {
     // If two sequences have the same span in a matcher, then map that
     // span to None (invalidating the mapping here and forcing the code to
     // use a slow path).
-    first: HashMap<Span, Option<TokenSet>>,
+    first: FxHashMap<Span, Option<TokenSet>>,
 }
 
 impl FirstSets {
     fn new(tts: &[quoted::TokenTree]) -> FirstSets {
         use self::quoted::TokenTree;
 
-        let mut sets = FirstSets { first: HashMap::new() };
+        let mut sets = FirstSets { first: FxHashMap::default() };
         build_recur(&mut sets, tts);
         return sets;
 

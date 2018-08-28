@@ -67,9 +67,9 @@ use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::Substs;
 use util::dump_mir;
 use util::liveness::{self, IdentityMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_set::IdxSet;
-use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
@@ -142,10 +142,12 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     state_field: usize,
 
     // Mapping from Local to (type of local, generator struct index)
-    remap: HashMap<Local, (Ty<'tcx>, usize)>,
+    // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
+    remap: FxHashMap<Local, (Ty<'tcx>, usize)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    storage_liveness: HashMap<BasicBlock, liveness::LiveVarSet<Local>>,
+    // FIXME(eddyb) This should use `IndexVec<BasicBlock, Option<_>>`.
+    storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint>,
@@ -364,12 +366,15 @@ impl<'tcx> Visitor<'tcx> for BorrowedLocals {
     }
 }
 
-fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               mir: &Mir<'tcx>,
-                                               source: MirSource,
-                                               movable: bool) ->
-                                               (liveness::LiveVarSet<Local>,
-                                                HashMap<BasicBlock, liveness::LiveVarSet<Local>>) {
+fn locals_live_across_suspend_points(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    source: MirSource,
+    movable: bool,
+) -> (
+    liveness::LiveVarSet<Local>,
+    FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
+) {
     let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
 
@@ -413,7 +418,7 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         &liveness,
     );
 
-    let mut storage_liveness_map = HashMap::new();
+    let mut storage_liveness_map = FxHashMap::default();
 
     for (block, data) in mir.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -477,9 +482,9 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             interior: Ty<'tcx>,
                             movable: bool,
                             mir: &mut Mir<'tcx>)
-    -> (HashMap<Local, (Ty<'tcx>, usize)>,
+    -> (FxHashMap<Local, (Ty<'tcx>, usize)>,
         GeneratorLayout<'tcx>,
-        HashMap<BasicBlock, liveness::LiveVarSet<Local>>)
+        FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,

@@ -21,8 +21,7 @@ use edition::Edition;
 use symbol::Symbol;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use std::collections::HashMap;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -190,7 +189,7 @@ impl Mark {
 crate struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
-    markings: HashMap<(SyntaxContext, Mark, Transparency), SyntaxContext>,
+    markings: FxHashMap<(SyntaxContext, Mark, Transparency), SyntaxContext>,
     default_edition: Edition,
 }
 
@@ -212,7 +211,7 @@ impl HygieneData {
                 opaque: SyntaxContext(0),
                 opaque_and_semitransparent: SyntaxContext(0),
             }],
-            markings: HashMap::new(),
+            markings: FxHashMap::default(),
             default_edition: Edition::Edition2015,
         }
     }
@@ -231,7 +230,7 @@ pub fn set_default_edition(edition: Edition) {
 }
 
 pub fn clear_markings() {
-    HygieneData::with(|data| data.markings = HashMap::new());
+    HygieneData::with(|data| data.markings = FxHashMap::default());
 }
 
 impl SyntaxContext {

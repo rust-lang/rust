@@ -12,8 +12,8 @@
 
 pub use self::FileMatch::*;
 
+use rustc_data_structures::fx::FxHashSet;
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path<F>(&self, mut f: F) where
         F: FnMut(&Path, PathKind)
     {
-        let mut visited_dirs = HashSet::new();
+        let mut visited_dirs = FxHashSet::default();
 
         for (path, kind) in self.search_paths.iter(self.kind) {
             f(path, kind);

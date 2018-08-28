@@ -11,6 +11,7 @@
 #![allow(warnings)]
 
 use std::mem;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
@@ -21,7 +22,7 @@ use ty::context::TyCtxt;
 use errors::Diagnostic;
 use std::process;
 use std::{fmt, ptr};
-use std::collections::HashSet;
+
 #[cfg(parallel_queries)]
 use {
     rayon_core,
@@ -282,7 +283,7 @@ where
 fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
                      span: Span,
                      stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
-                     visited: &mut HashSet<*const QueryJob<'tcx>>
+                     visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> Option<Option<Waiter<'tcx>>> {
     if visited.contains(&query.as_ptr()) {
         return if let Some(p) = stack.iter().position(|q| q.1.as_ptr() == query.as_ptr()) {
@@ -321,7 +322,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
 #[cfg(parallel_queries)]
 fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
-    visited: &mut HashSet<*const QueryJob<'tcx>>
+    visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if visited.contains(&query.as_ptr()) {
@@ -357,7 +358,7 @@ fn remove_cycle<'tcx>(
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
     tcx: TyCtxt<'_, 'tcx, '_>
 ) -> bool {
-    let mut visited = HashSet::new();
+    let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
     if let Some(waiter) = cycle_check(jobs.pop().unwrap(),
@@ -389,7 +390,7 @@ fn remove_cycle<'tcx>(
         // connected to queries outside the cycle
         let entry_points: Vec<Lrc<QueryJob<'tcx>>> = stack.iter().filter_map(|query| {
             // Mark all the other queries in the cycle as already visited
-            let mut visited = HashSet::from_iter(stack.iter().filter_map(|q| {
+            let mut visited = FxHashSet::from_iter(stack.iter().filter_map(|q| {
                 if q.1.as_ptr() != query.1.as_ptr() {
                     Some(q.1.as_ptr())
                 } else {

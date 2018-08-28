@@ -29,8 +29,9 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::borrow::Cow;
@@ -417,14 +418,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 /// references.
 struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    footnotes: HashMap<String, (Vec<Event<'a>>, u16)>,
+    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
         Footnotes {
             inner: iter,
-            footnotes: HashMap::new(),
+            footnotes: FxHashMap::default(),
         }
     }
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
@@ -865,7 +866,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
 
 #[derive(Default)]
 pub struct IdMap {
-    map: HashMap<String, usize>,
+    map: FxHashMap<String, usize>,
 }
 
 impl IdMap {
@@ -880,7 +881,7 @@ impl IdMap {
     }
 
     pub fn reset(&mut self) {
-        self.map = HashMap::new();
+        self.map = FxHashMap::default();
     }
 
     pub fn derive(&mut self, candidate: String) -> String {
