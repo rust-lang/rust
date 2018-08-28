@@ -208,7 +208,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             PlaceBase::Promoted(..) => "PlaceBase::Promoted",
         }, place);
 
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
             for elem in place.elems.iter() {
                 self.visit_projection_elem(
                     elem,
