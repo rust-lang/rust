@@ -468,6 +468,13 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
     }
 }
 
+/// When we encounter a binder like `for<..> fn(..)`, we actually have
+/// to walk the `fn` value to find all the values bound by the `for`
+/// (these are not explicitly present in the ty representation right
+/// now). This visitor handles that: it descends the type, tracking
+/// binder depth, and finds late-bound regions targeting the
+/// `for<..`>.  For each of those, it creates an entry in
+/// `bound_region_scope`.
 struct ScopeInstantiator<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     // The debruijn index of the scope we are instantiating.
