@@ -1744,8 +1744,9 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The middle slice will have the greatest length
-    /// possible for a given type and input slice.
+    /// slice of a new type, and the suffix slice. The method does a best effort to make the
+    /// middle slice the greatest length possible for a given type and input slice, but only
+    /// your algorithm's performance should depend on that, not its correctness.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -1760,7 +1761,6 @@ impl<T> [T] {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(slice_align_to)]
     /// unsafe {
     ///     let bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
     ///     let (prefix, shorts, suffix) = bytes.align_to::<u16>();
@@ -1769,7 +1769,7 @@ impl<T> [T] {
     ///     // less_efficient_algorithm_for_bytes(suffix);
     /// }
     /// ```
-    #[unstable(feature = "slice_align_to", issue = "44488")]
+    #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
         if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
@@ -1797,8 +1797,9 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The middle slice will have the greatest length
-    /// possible for a given type and input slice.
+    /// slice of a new type, and the suffix slice. The method does a best effort to make the
+    /// middle slice the greatest length possible for a given type and input slice, but only
+    /// your algorithm's performance should depend on that, not its correctness.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -1813,7 +1814,6 @@ impl<T> [T] {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(slice_align_to)]
     /// unsafe {
     ///     let mut bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
     ///     let (prefix, shorts, suffix) = bytes.align_to_mut::<u16>();
@@ -1822,7 +1822,7 @@ impl<T> [T] {
     ///     // less_efficient_algorithm_for_bytes(suffix);
     /// }
     /// ```
-    #[unstable(feature = "slice_align_to", issue = "44488")]
+    #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
         if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
