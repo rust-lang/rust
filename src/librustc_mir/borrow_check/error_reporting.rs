@@ -13,7 +13,7 @@ use rustc::middle::region::ScopeTree;
 use rustc::mir::VarBindingForm;
 use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
 use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
-use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
+use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind};
 use rustc::ty;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
@@ -21,7 +21,7 @@ use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
 use super::borrow_set::BorrowData;
-use super::{Context, MirBorrowckCtxt};
+use super::{Context, ContextKind, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 
 use dataflow::move_paths::MovePathIndex;
@@ -371,6 +371,31 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         self.explain_why_borrow_contains_point(context, issued_borrow, None, &mut err);
+
+        let bb = &self.mir[context.loc.block];
+        if let (&TerminatorKind::Call { ref args, .. }, ContextKind::AssignRhs) =
+            (&bb.terminator().kind, context.kind)
+        {
+            let stmt = &bb.statements[context.loc.statement_index];
+            let assigned_place = match stmt.kind {
+                StatementKind::Assign(ref place, _) => place,
+                _ => unreachable!(),
+            };
+
+            for arg in args {
+                match arg {
+                    Operand::Copy(ref operand) | Operand::Move(ref operand) => {
+                        if assigned_place == operand {
+                            err.span_note(
+                                bb.terminator().source_info.span,
+                                &format!("consider extracting this into a `let`-binding")
+                            );
+                        }
+                    }
+                    Operand::Constant(..) => {}
+                }
+            }
+        }
 
         err.buffer(&mut self.errors_buffer);
     }
