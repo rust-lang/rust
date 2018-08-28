@@ -155,7 +155,7 @@ impl<'t> Parser<'t> {
             self.error(message);
             self.bump();
             m.complete(self, ERROR);
-        }
+        };
     }
 }
 

@@ -66,6 +66,8 @@ pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<ActionResult> {
         if contains_offset_nonstrict(expr_range, offset) && offset != expr_range.start() {
             return None;
         }
+    } else {
+        return None;
     }
     let offset = let_stmt.syntax().range().end();
     let mut edit = EditBuilder::new();

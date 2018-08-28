@@ -266,15 +266,15 @@ fn test_on_eq_typed() {
         assert_eq_text!(after, &actual);
     }
 
-    do_check(r"
-fn foo() {
-    let foo =<|>
-}
-", r"
-fn foo() {
-    let foo =;
-}
-");
+//     do_check(r"
+// fn foo() {
+//     let foo =<|>
+// }
+// ", r"
+// fn foo() {
+//     let foo =;
+// }
+// ");
     do_check(r"
 fn foo() {
     let foo =<|> 1 + 1
