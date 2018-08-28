@@ -78,7 +78,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     mut expr: Expr<'tcx>,
                                     adjustment: &Adjustment<'tcx>)
                                     -> Expr<'tcx> {
-    let Expr { temp_lifetime, span, .. } = expr;
+    let Expr { temp_lifetime, mut span, .. } = expr;
     let kind = match adjustment.kind {
         Adjust::ReifyFnPointer => {
             ExprKind::ReifyFnPointer { source: expr.to_ref() }
@@ -96,6 +96,25 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Cast { source: expr.to_ref() }
         }
         Adjust::Deref(None) => {
+            // Adjust the span from the block, to the last expression of the
+            // block. This is a better span when returning a mutable reference
+            // with too short a lifetime. The error message will use the span
+            // from the assignment to the return place, which should only point
+            // at the returned value, not the entire function body.
+            //
+            // fn return_short_lived<'a>(x: &'a mut i32) -> &'static mut i32 {
+            //      x
+            //   // ^ error message points at this expression.
+            // }
+            //
+            // We don't need to do this adjustment in the next match arm since
+            // deref coercions always start with a built-in deref.
+            if let ExprKind::Block { body } = expr.kind {
+                if let Some(ref last_expr) = body.expr {
+                    span = last_expr.span;
+                    expr.span = span;
+                }
+            }
             ExprKind::Deref { arg: expr.to_ref() }
         }
         Adjust::Deref(Some(deref)) => {
@@ -180,6 +199,13 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Use { source: cast_expr.to_ref() }
         }
         Adjust::Unsize => {
+            // See the above comment for Adjust::Deref
+            if let ExprKind::Block { body } = expr.kind {
+                if let Some(ref last_expr) = body.expr {
+                    span = last_expr.span;
+                    expr.span = span;
+                }
+            }
             ExprKind::Unsize { source: expr.to_ref() }
         }
     };
