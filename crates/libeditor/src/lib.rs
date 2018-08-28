@@ -1,6 +1,7 @@
 extern crate libsyntax2;
 extern crate superslice;
 extern crate itertools;
+extern crate join_to_string;
 #[cfg(test)]
 #[macro_use]
 extern crate test_utils as _test_utils;

@@ -2,6 +2,8 @@ use std::{
     fmt::{self, Write},
 };
 
+use join_to_string::join;
+
 use libsyntax2::{
     File, TextUnit,
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},

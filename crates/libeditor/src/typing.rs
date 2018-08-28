@@ -1,7 +1,7 @@
 use std::mem;
 
 use libsyntax2::{
-    TextUnit, TextRange, SyntaxNodeRef, File, AstNode,
+    TextUnit, TextRange, SyntaxNodeRef, File, AstNode, SyntaxKind,
     ast,
     algo::{
         walk::preorder,
@@ -48,6 +48,7 @@ pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
             remove_newline(&mut edit, node, text.as_str(), off);
         }
     }
+    eprintln!("{:?}", edit);
 
     ActionResult {
         edit: edit.finish(),
@@ -93,8 +94,10 @@ fn remove_newline(
         match (node.prev_sibling(), node.next_sibling()) {
             (Some(prev), Some(next)) => {
                 let range = TextRange::from_to(prev.range().start(), node.range().end());
-                if prev.kind() == COMMA && (next.kind() == R_PAREN || next.kind() == R_BRACK) {
+                if is_trailing_comma(prev.kind(), next.kind()) {
                     edit.delete(range);
+                } else if no_space_required(prev.kind(), next.kind()) {
+                    edit.delete(node.range());
                 } else if prev.kind() == COMMA && next.kind() == R_CURLY {
                     edit.replace(range, " ".to_string());
                 } else {
@@ -119,6 +122,20 @@ fn remove_newline(
         TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
         " ".to_string(),
     );
+}
+
+fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
+    match (left, right) {
+       (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
+       _ => false
+    }
+}
+
+fn no_space_required(left: SyntaxKind, right: SyntaxKind) -> bool {
+    match (left, right) {
+       (_, DOT) => true,
+        _ => false
+    }
 }
 
 fn join_single_expr_block(
@@ -252,6 +269,15 @@ struct Foo <|>{
     ", r"
 struct Foo { f: u32 }
     ");
+        do_check(r"
+fn foo() {
+    join(<|>type_params.type_params()
+            .filter_map(|it| it.name())
+            .map(|it| it.text())<|>)
+}", r"
+fn foo() {
+    join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
+}")
     }
 
     #[test]

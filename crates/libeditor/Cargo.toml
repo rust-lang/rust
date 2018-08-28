@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 itertools = "0.7.8"
 superslice = "0.1.0"
+join_to_string = "0.1.1"
 
 libsyntax2 = { path = "../libsyntax2" }
 
