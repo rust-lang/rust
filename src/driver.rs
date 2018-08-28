@@ -119,8 +119,8 @@ pub fn main() {
                     ls.register_late_pass(Some(sess), true, pass);
                 }
 
-                for (name, to) in lint_groups {
-                    ls.register_group(Some(sess), true, name, to);
+                for (name, (to, deprecated_name)) in lint_groups {
+                    ls.register_group(Some(sess), true, name, deprecated_name, to);
                 }
                 clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
 

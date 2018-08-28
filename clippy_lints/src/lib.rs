@@ -412,7 +412,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
 
-    reg.register_lint_group("clippy::restriction", vec![
+    reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
@@ -435,7 +435,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         write::USE_DEBUG,
     ]);
 
-    reg.register_lint_group("clippy::pedantic", vec![
+    reg.register_lint_group("clippy::pedantic", Some("clippy_pedantic"), vec![
         attrs::INLINE_ALWAYS,
         copies::MATCH_SAME_ARMS,
         copy_iterator::COPY_ITERATOR,
@@ -473,13 +473,13 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         use_self::USE_SELF,
     ]);
 
-    reg.register_lint_group("clippy::internal", vec![
+    reg.register_lint_group("clippy::internal", Some("clippy_internal"), vec![
         utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         utils::internal_lints::LINT_WITHOUT_LINT_PASS,
         utils::internal_lints::DEFAULT_HASH_TYPES,
     ]);
 
-    reg.register_lint_group("clippy::all", vec![
+    reg.register_lint_group("clippy::all", Some("clippy"), vec![
         approx_const::APPROX_CONSTANT,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
@@ -694,7 +694,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
-    reg.register_lint_group("clippy::style", vec![
+    reg.register_lint_group("clippy::style", Some("clippy_style"), vec![
         assign_ops::ASSIGN_OP_PATTERN,
         bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
@@ -778,7 +778,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         write::WRITELN_EMPTY_STRING,
     ]);
 
-    reg.register_lint_group("clippy::complexity", vec![
+    reg.register_lint_group("clippy::complexity", Some("clippy_complexity"), vec![
         assign_ops::MISREFACTORED_ASSIGN_OP,
         booleans::NONMINIMAL_BOOL,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
@@ -846,7 +846,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
-    reg.register_lint_group("clippy::correctness", vec![
+    reg.register_lint_group("clippy::correctness", Some("clippy_correctness"), vec![
         approx_const::APPROX_CONSTANT,
         attrs::DEPRECATED_SEMVER,
         attrs::USELESS_ATTRIBUTE,
@@ -900,7 +900,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         unused_io_amount::UNUSED_IO_AMOUNT,
     ]);
 
-    reg.register_lint_group("clippy::perf", vec![
+    reg.register_lint_group("clippy::perf", Some("clippy_perf"), vec![
         bytecount::NAIVE_BYTECOUNT,
         entry::MAP_ENTRY,
         escape::BOXED_LOCAL,
@@ -918,11 +918,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         vec::USELESS_VEC,
     ]);
 
-    reg.register_lint_group("clippy::cargo", vec![
+    reg.register_lint_group("clippy::cargo", Some("clippy_cargo"), vec![
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
     ]);
 
-    reg.register_lint_group("clippy::nursery", vec![
+    reg.register_lint_group("clippy::nursery", Some("clippy_nursery"), vec![
         attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
