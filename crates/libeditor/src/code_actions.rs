@@ -1,7 +1,3 @@
-use std::{
-    fmt::{self, Write},
-};
-
 use join_to_string::join;
 
 use libsyntax2::{
@@ -78,17 +74,15 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
         if let Some(type_params) = type_params {
-            buf.push_display(&type_params.syntax().text());
+            type_params.syntax().text()
+                .push_to(&mut buf);
         }
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
         if let Some(type_params) = type_params {
-            comma_list(
-                &mut buf, "<", ">",
-                type_params.type_params()
-                    .filter_map(|it| it.name())
-                    .map(|it| it.text())
-            );
+            join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
+                .surround_with("<", ">")
+                .to_buf(&mut buf);
         }
         buf.push_str(" {\n");
         let offset = start_offset + TextUnit::of_str(&buf);
@@ -105,30 +99,6 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
     siblings(node, direction)
         .skip(1)
         .find(|node| !node.kind().is_trivia())
-}
-
-fn comma_list(buf: &mut String, bra: &str, ket: &str, items: impl Iterator<Item=impl fmt::Display>) {
-    buf.push_str(bra);
-    let mut first = true;
-    for item in items {
-        if !first {
-            buf.push_str(", ");
-        }
-        first = false;
-        write!(buf, "{}", item).unwrap();
-    }
-    buf.push_str(ket);
-}
-
-trait PushDisplay {
-    fn push_display<T: fmt::Display>(&mut self, item: &T);
-}
-
-impl PushDisplay for String {
-    fn push_display<T: fmt::Display>(&mut self, item: &T) {
-        use std::fmt::Write;
-        write!(self, "{}", item).unwrap()
-    }
 }
 
 #[cfg(test)]

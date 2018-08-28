@@ -31,6 +31,9 @@ impl<'a> SyntaxText<'a> {
                 Some(&text[range])
             })
     }
+    pub fn push_to(&self, buf: &mut String) {
+        self.chunks().for_each(|it| buf.push_str(it));
+    }
     pub fn to_string(&self) -> String {
         self.chunks().collect()
     }
