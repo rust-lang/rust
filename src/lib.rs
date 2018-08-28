@@ -304,14 +304,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
-    fn try_ptr_op<'a>(
+    fn ptr_op<'a>(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
         left_layout: TyLayout<'tcx>,
         right: Scalar,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
         ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 

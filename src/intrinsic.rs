@@ -116,11 +116,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
-                let expect_old = self.read_value(args[1])?; // read as value for the sake of `binary_op()`
+                let expect_old = self.read_value(args[1])?; // read as value for the sake of `binary_op_val()`
                 let new = self.read_scalar(args[2])?;
-                let old = self.read_value(ptr.into())?; // read as value for the sake of `binary_op()`
-                // binary_op will bail if either of them is not a scalar
-                let (eq, _) = self.binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let old = self.read_value(ptr.into())?; // read as value for the sake of `binary_op_val()`
+                // binary_op_val will bail if either of them is not a scalar
+                let (eq, _) = self.binary_op_val(mir::BinOp::Eq, old, expect_old)?;
                 let res = Value::ScalarPair(old.to_scalar_or_undef(), eq.into());
                 self.write_value(res, dest)?; // old value is returned
                 // update ptr depending on comparison
@@ -167,8 +167,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     _ => bug!(),
                 };
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = self.binary_op(op, old, rhs)?;
-                self.write_scalar(val, ptr.into())?;
+                self.binop_ignore_overflow(op, old, rhs, ptr.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -255,8 +254,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let result = self.binary_op(op, a, b)?;
-                self.write_scalar(result.0, dest)?;
+                self.binop_ignore_overflow(op, a, b, dest)?;
             }
 
             "exact_div" => {
@@ -265,11 +263,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let a = self.read_value(args[0])?;
                 let b = self.read_value(args[1])?;
                 // check x % y != 0
-                if !self.binary_op(mir::BinOp::Rem, a, b)?.0.is_null() {
+                if !self.binary_op_val(mir::BinOp::Rem, a, b)?.0.is_null() {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
-                let result = self.binary_op(mir::BinOp::Div, a, b)?;
-                self.write_scalar(result.0, dest)?;
+                self.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
             },
 
             "likely" | "unlikely" | "forget" => {}
