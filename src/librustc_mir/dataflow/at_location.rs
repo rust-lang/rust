@@ -28,6 +28,15 @@ pub trait FlowsAtLocation {
     /// Reset the state bitvector to represent the entry to block `bb`.
     fn reset_to_entry_of(&mut self, bb: BasicBlock);
 
+    /// Reset the state bitvector to represent the exit of the
+    /// terminator of block `bb`.
+    ///
+    /// **Important:** In the case of a `Call` terminator, these
+    /// effects do *not* include the result of storing the destination
+    /// of the call, since that is edge-dependent (in other words, the
+    /// effects don't apply to the unwind edge).
+    fn reset_to_exit_of(&mut self, bb: BasicBlock);
+
     /// Build gen + kill sets for statement at `loc`.
     ///
     /// Note that invoking this method alone does not change the
@@ -140,6 +149,12 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
 {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
         self.curr_state.overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
+    }
+
+    fn reset_to_exit_of(&mut self, bb: BasicBlock) {
+        self.reset_to_entry_of(bb);
+        self.curr_state.union(self.base_results.sets().gen_set_for(bb.index()));
+        self.curr_state.subtract(self.base_results.sets().kill_set_for(bb.index()));
     }
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {

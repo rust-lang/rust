@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z emit-end-regions -Zborrowck=mir
-
-
 #![allow(warnings)]
+#![feature(nll)]
 
 struct Wrap<'p> { p: &'p mut i32 }
 

@@ -89,6 +89,10 @@ impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
         each_flow!(self, reset_to_entry_of(bb));
     }
 
+    fn reset_to_exit_of(&mut self, bb: BasicBlock) {
+        each_flow!(self, reset_to_exit_of(bb));
+    }
+
     fn reconstruct_statement_effect(&mut self, location: Location) {
         each_flow!(self, reconstruct_statement_effect(location));
     }
