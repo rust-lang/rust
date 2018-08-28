@@ -163,3 +163,132 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     }
     " "
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::{check_action, extract_range, extract_offset};
+
+    fn check_join_lines(before: &str, after: &str) {
+        check_action(before, after, |file, offset| {
+            let range = TextRange::offset_len(offset, 0.into());
+            let res = join_lines(file, range);
+            Some(res)
+        })
+    }
+
+    #[test]
+    fn test_join_lines_comma() {
+        check_join_lines(r"
+fn foo() {
+    <|>foo(1,
+    )
+}
+", r"
+fn foo() {
+    <|>foo(1)
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_lambda_block() {
+        check_join_lines(r"
+pub fn reparse(&self, edit: &AtomEdit) -> File {
+    <|>self.incremental_reparse(edit).unwrap_or_else(|| {
+        self.full_reparse(edit)
+    })
+}
+", r"
+pub fn reparse(&self, edit: &AtomEdit) -> File {
+    <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_block() {
+        check_join_lines(r"
+fn foo() {
+    foo(<|>{
+        92
+    })
+}", r"
+fn foo() {
+    foo(<|>92)
+}");
+    }
+
+    #[test]
+    fn test_join_lines_selection() {
+        fn do_check(before: &str, after: &str) {
+            let (sel, before) = extract_range(before);
+            let file = File::parse(&before);
+            let result = join_lines(&file, sel);
+            let actual = result.edit.apply(&before);
+            assert_eq_text!(after, &actual);
+        }
+
+        do_check(r"
+fn foo() {
+    <|>foo(1,
+        2,
+        3,
+    <|>)
+}
+    ", r"
+fn foo() {
+    foo(1, 2, 3)
+}
+    ");
+
+        do_check(r"
+struct Foo <|>{
+    f: u32,
+}<|>
+    ", r"
+struct Foo { f: u32 }
+    ");
+    }
+
+    #[test]
+    fn test_on_eq_typed() {
+        fn do_check(before: &str, after: &str) {
+            let (offset, before) = extract_offset(before);
+            let file = File::parse(&before);
+            let result = on_eq_typed(&file, offset).unwrap();
+            let actual = result.edit.apply(&before);
+            assert_eq_text!(after, &actual);
+        }
+
+        //     do_check(r"
+        // fn foo() {
+        //     let foo =<|>
+        // }
+        // ", r"
+        // fn foo() {
+        //     let foo =;
+        // }
+        // ");
+        do_check(r"
+fn foo() {
+    let foo =<|> 1 + 1
+}
+", r"
+fn foo() {
+    let foo = 1 + 1;
+}
+");
+        //     do_check(r"
+        // fn foo() {
+        //     let foo =<|>
+        //     let bar = 1;
+        // }
+        // ", r"
+        // fn foo() {
+        //     let foo =;
+        //     let bar = 1;
+        // }
+        // ");
+    }
+}

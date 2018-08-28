@@ -1,6 +1,9 @@
 extern crate libsyntax2;
 extern crate superslice;
 extern crate itertools;
+#[cfg(test)]
+#[macro_use]
+extern crate test_utils as _test_utils;
 
 mod extend_selection;
 mod symbols;
@@ -10,6 +13,8 @@ mod code_actions;
 mod typing;
 mod completion;
 mod scope;
+#[cfg(test)]
+mod test_utils;
 
 use libsyntax2::{
     File, TextUnit, TextRange, SyntaxNodeRef,
@@ -153,4 +158,69 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     ancestors(leaf)
         .filter_map(N::cast)
         .next()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::{assert_eq_dbg, extract_offset, add_cursor};
+
+    #[test]
+    fn test_highlighting() {
+        let file = File::parse(r#"
+// comment
+fn main() {}
+    println!("Hello, {}!", 92);
+"#);
+        let hls = highlight(&file);
+        assert_eq_dbg(
+            r#"[HighlightedRange { range: [1; 11), tag: "comment" },
+                HighlightedRange { range: [12; 14), tag: "keyword" },
+                HighlightedRange { range: [15; 19), tag: "function" },
+                HighlightedRange { range: [29; 36), tag: "text" },
+                HighlightedRange { range: [38; 50), tag: "string" },
+                HighlightedRange { range: [52; 54), tag: "literal" }]"#,
+            &hls,
+        );
+    }
+
+    #[test]
+    fn test_runnables() {
+      let file = File::parse(r#"
+fn main() {}
+
+#[test]
+fn test_foo() {}
+
+#[test]
+#[ignore]
+fn test_foo() {}
+"#);
+        let runnables = runnables(&file);
+        assert_eq_dbg(
+            r#"[Runnable { range: [1; 13), kind: Bin },
+                Runnable { range: [15; 39), kind: Test { name: "test_foo" } },
+                Runnable { range: [41; 75), kind: Test { name: "test_foo" } }]"#,
+            &runnables,
+        )
+    }
+
+    #[test]
+    fn test_matching_brace() {
+        fn do_check(before: &str, after: &str) {
+            let (pos, before) = extract_offset(before);
+            let file = File::parse(&before);
+            let new_pos = match matching_brace(&file, pos) {
+                None => pos,
+                Some(pos) => pos,
+            };
+            let actual = add_cursor(&before, new_pos);
+            assert_eq_text!(after, &actual);
+        }
+
+        do_check(
+            "struct Foo { a: i32, }<|>",
+            "struct Foo <|>{ a: i32, }",
+        );
+    }
 }

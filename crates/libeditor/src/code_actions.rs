@@ -128,3 +128,52 @@ impl PushDisplay for String {
         write!(self, "{}", item).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::check_action;
+
+    #[test]
+    fn test_swap_comma() {
+        check_action(
+            "fn foo(x: i32,<|> y: Result<(), ()>) {}",
+            "fn foo(y: Result<(), ()>,<|> x: i32) {}",
+            |file, off| flip_comma(file, off).map(|f| f()),
+        )
+    }
+
+    #[test]
+    fn test_add_derive() {
+        check_action(
+            "struct Foo { a: i32, <|>}",
+            "#[derive(<|>)]\nstruct Foo { a: i32, }",
+            |file, off| add_derive(file, off).map(|f| f()),
+        );
+        check_action(
+            "struct Foo { <|> a: i32, }",
+            "#[derive(<|>)]\nstruct Foo {  a: i32, }",
+            |file, off| add_derive(file, off).map(|f| f()),
+        );
+        check_action(
+            "#[derive(Clone)]\nstruct Foo { a: i32<|>, }",
+            "#[derive(Clone<|>)]\nstruct Foo { a: i32, }",
+            |file, off| add_derive(file, off).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn test_add_impl() {
+        check_action(
+            "struct Foo {<|>}\n",
+            "struct Foo {}\n\nimpl Foo {\n<|>\n}\n",
+            |file, off| add_impl(file, off).map(|f| f()),
+        );
+        check_action(
+            "struct Foo<T: Clone> {<|>}",
+            "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+            |file, off| add_impl(file, off).map(|f| f()),
+        );
+    }
+
+}

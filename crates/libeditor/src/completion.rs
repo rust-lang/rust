@@ -37,3 +37,55 @@ fn complete(name_ref: ast::NameRef, scopes: &FnScopes) -> Vec<CompletionItem> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::{assert_eq_dbg, extract_offset};
+
+    fn do_check(code: &str, expected_completions: &str) {
+        let (off, code) = extract_offset(&code);
+        let file = File::parse(&code);
+        let completions = scope_completion(&file, off).unwrap();
+        assert_eq_dbg(expected_completions, &completions);
+    }
+
+    #[test]
+    fn test_completion_let_scope() {
+        do_check(r"
+            fn quux(x: i32) {
+                let y = 92;
+                1 + <|>;
+                let z = ();
+            }
+            ", r#"[CompletionItem { name: "y" },
+                   CompletionItem { name: "x" }]"#);
+    }
+
+    #[test]
+    fn test_completion_if_let_scope() {
+        do_check(r"
+            fn quux() {
+                if let Some(x) = foo() {
+                    let y = 92;
+                };
+                if let Some(a) = bar() {
+                    let b = 62;
+                    1 + <|>
+                }
+            }
+            ", r#"[CompletionItem { name: "b" },
+                   CompletionItem { name: "a" }]"#);
+    }
+
+    #[test]
+    fn test_completion_for_scope() {
+        do_check(r"
+            fn quux() {
+                for x in &[1, 2, 3] {
+                    <|>
+                }
+            }
+            ", r#"[CompletionItem { name: "x" }]"#);
+    }
+}
