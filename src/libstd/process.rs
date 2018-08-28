@@ -626,6 +626,14 @@ impl Command {
 
     /// Sets the working directory for the child process.
     ///
+    /// # Platform-specific behavior
+    ///
+    /// If the program path is relative (e.g. `"./script.sh"`), it's ambiguous
+    /// whether it should be interpreted relative to the parent's working
+    /// directory or relative to `current_dir`. The behavior in this case is
+    /// platform specific and unstable, and it's recommended to use
+    /// [`canonicalize`] to get an absolute program path instead.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -638,6 +646,8 @@ impl Command {
     ///         .spawn()
     ///         .expect("ls command failed to start");
     /// ```
+    ///
+    /// [`canonicalize`]: ../fs/fn.canonicalize.html
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
