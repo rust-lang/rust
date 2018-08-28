@@ -15,6 +15,7 @@ use rustc_data_structures::bitvec::BitArray;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
+use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
 use rustc::ty;
@@ -162,8 +163,9 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                     location: Location) {
         let cx = self.fx.cx;
 
-        if !place.elems.is_empty() {
-            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+        if !place.has_no_projection() {
+            let mut base_ty = place.base.ty(self.fx.mir);
+            for elem in place.elems.iter().cloned() {
                 debug!("visit_place(place={:?}, context={:?})", place, context);
 
                 // Allow uses of projections that are ZSTs or from scalar fields.
@@ -172,20 +174,15 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                     _ => false
                 };
 
-                let base = place.elem_base(cx.tcx, i);
                 if is_consume {
-                    let base_ty = base.ty(self.fx.mir, cx.tcx);
-                    let base_ty = self.fx.monomorphize(&base_ty);
+                    base_ty = self.fx.monomorphize(&base_ty);
 
-                    // ZSTs don't require any actual memory access.
-                    let elem_ty = base_ty.projection_ty(cx.tcx, &elem).to_ty(cx.tcx);
-                    let elem_ty = self.fx.monomorphize(&elem_ty);
-                    if cx.layout_of(elem_ty).is_zst() {
+                    if cx.layout_of(base_ty).is_zst() {
                         return;
                     }
 
                     if let mir::ProjectionElem::Field(..) = elem {
-                        let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
+                        let layout = cx.layout_of(base_ty);
                         if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                             // Recurse with the same context, instead of `Projection`,
                             // potentially stopping at non-operand projections,
@@ -200,6 +197,7 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                     context = PlaceContext::Copy;
                     continue;
                 }
+                base_ty = PlaceTy::from(base_ty).projection_ty(cx.tcx, &elem).to_ty(cx.tcx);
             }
         }
 

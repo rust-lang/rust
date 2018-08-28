@@ -313,7 +313,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let mut result = None;
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if place.elems.is_empty() {
+        if place.has_no_projection() {
             if let mir::PlaceBase::Local(index) = place.base {
                 match self.locals[index] {
                     LocalRef::Operand(Some(o)) => {

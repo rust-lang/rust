@@ -417,10 +417,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
         debug!("codegen_place(place={:?})", place);
 
         let cx = bx.cx;
-        let tcx = cx.tcx;
-
-        let mut result = match place.base {
-            mir::PlaceBase::Local(index) => {
+        if let mir::PlaceBase::Local(index) = place.base {
+            if place.has_no_projection() {
                 match self.locals[index] {
                     LocalRef::Place(place) => {
                         return place;
@@ -430,6 +428,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                 }
             }
+        };
+        let mut result = match place.base {
+            mir::PlaceBase::Local(_) => bug!(),
             mir::PlaceBase::Promoted(box (index, ty)) => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
@@ -462,7 +463,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
         };
 
-        if !place.elems.is_empty() {
+        if !place.has_no_projection() {
+            let tcx = cx.tcx;
             for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
                 let base = place.elem_base(tcx, i);
                 result = match elem {

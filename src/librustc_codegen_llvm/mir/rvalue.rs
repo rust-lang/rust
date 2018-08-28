@@ -518,7 +518,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if place.elems.is_empty() {
+        if place.has_no_projection() {
             if let mir::PlaceBase::Local(index) = place.base {
                 if let LocalRef::Operand(Some(op)) = self.locals[index] {
                     if let ty::TyArray(_, n) = op.layout.ty.sty {
