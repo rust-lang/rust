@@ -1274,7 +1274,7 @@ impl DebruijnIndex {
     /// you would need to shift the index for `'a` into 1 new binder.
     #[must_use]
     pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex(self.0 + amount)
+        DebruijnIndex { private: self.private + amount }
     }
 
     /// Update this index in place by shifting it "in" through
@@ -1287,7 +1287,7 @@ impl DebruijnIndex {
     /// `amount` number of new binders.
     #[must_use]
     pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex(self.0 - amount)
+        DebruijnIndex { private: self.private - amount }
     }
 
     /// Update in place by shifting out from `amount` binders.
@@ -1316,11 +1316,11 @@ impl DebruijnIndex {
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
-        self.shifted_out((to_binder.0 - INNERMOST.0) as u32)
+        self.shifted_out((to_binder.private - INNERMOST.private) as u32)
     }
 }
 
-impl_stable_hash_for!(tuple_struct DebruijnIndex { index });
+impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {

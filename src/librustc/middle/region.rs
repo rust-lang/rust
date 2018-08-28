@@ -165,7 +165,7 @@ newtype_index! {
     }
 }
 
-impl_stable_hash_for!(tuple_struct ::middle::region::FirstStatementIndex { idx });
+impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 
 impl From<ScopeData> for Scope {
     #[inline]

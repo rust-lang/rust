@@ -41,15 +41,15 @@ newtype_index! {
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
         assert!(x < (u32::MAX as usize));
-        CrateNum(x as u32)
+        CrateNum { private: x as u32 }
     }
 
     pub fn from_u32(x: u32) -> CrateNum {
-        CrateNum(x)
+        CrateNum { private: x }
     }
 
     pub fn as_usize(&self) -> usize {
-        self.0 as usize
+        self.private as usize
     }
 
     pub fn as_u32(&self) -> u32 {
@@ -61,7 +61,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(&self.private, f)
     }
 }
 

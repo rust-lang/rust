@@ -97,7 +97,9 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
-        $v struct $type(u32);
+        $v struct $type {
+            private: u32
+        }
 
         impl $type {
             /// Extract value of this index as an integer.
@@ -111,12 +113,12 @@ macro_rules! newtype_index {
             #[inline]
             fn new(value: usize) -> Self {
                 assert!(value < ($max) as usize);
-                $type(value as u32)
+                $type { private: value as u32 }
             }
 
             #[inline]
             fn index(self) -> usize {
-                self.0 as usize
+                self.private as usize
             }
         }
 
@@ -151,13 +153,13 @@ macro_rules! newtype_index {
 
         impl From<$type> for u32 {
             fn from(v: $type) -> u32 {
-                v.0
+                v.private
             }
         }
 
         impl From<$type> for usize {
             fn from(v: $type) -> usize {
-                v.0 as usize
+                v.private as usize
             }
         }
 
@@ -193,7 +195,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]) => (
         impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                write!(fmt, $debug_format, self.0)
+                write!(fmt, $debug_format, self.private)
             }
         }
     );
@@ -376,7 +378,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        pub const $name: $type = $type($constant);
+        pub const $name: $type = $type { private: $constant  };
         newtype_index!(
             @derives      [$($derives,)*]
             @type         [$type]

@@ -132,7 +132,7 @@ pub struct Mir<'tcx> {
 }
 
 /// where execution begins
-pub const START_BLOCK: BasicBlock = BasicBlock(0);
+pub const START_BLOCK: BasicBlock = BasicBlock { private: 0 };
 
 impl<'tcx> Mir<'tcx> {
     pub fn new(
@@ -239,7 +239,7 @@ impl<'tcx> Mir<'tcx> {
 
     #[inline]
     pub fn local_kind(&self, local: Local) -> LocalKind {
-        let index = local.0 as usize;
+        let index = local.private as usize;
         if index == 0 {
             debug_assert!(
                 self.local_decls[local].mutability == Mutability::Mut,
