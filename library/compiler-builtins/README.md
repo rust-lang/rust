@@ -69,13 +69,13 @@ features = ["c"]
 
 ### Porting Reminders
 
-1. [Rust][4] and [C][5] have slightly different operator precedence. C evaluates comparisons (`== !=`) before bitwise operations (`& | ^`), while Rust evaluates the other way.
+1. [Rust][5a] and [C][5b] have slightly different operator precedence. C evaluates comparisons (`== !=`) before bitwise operations (`& | ^`), while Rust evaluates the other way.
 2. C assumes wrapping operations everywhere. Rust panics on overflow when in debug mode. Consider using the [Wrapping][6] type or the explicit [wrapping_*][7] functions where applicable.
 3. Note [C implicit casts][8], especially integer promotion. Rust is much more explicit about casting, so be sure that any cast which affects the output is ported to the Rust implementation.
 4. Rust has [many functions][9] for integer or floating point manipulation in the standard library. Consider using one of these functions rather than porting a new one.
 
-[4]: https://doc.rust-lang.org/reference.html#operator-precedence
-[5]: http://en.cppreference.com/w/c/language/operator_precedence
+[5a]: https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+[5b]: http://en.cppreference.com/w/c/language/operator_precedence
 [6]: https://doc.rust-lang.org/core/num/struct.Wrapping.html
 [7]: https://doc.rust-lang.org/std/primitive.i32.html#method.wrapping_add
 [8]: http://en.cppreference.com/w/cpp/language/implicit_conversion
