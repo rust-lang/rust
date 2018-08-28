@@ -1627,6 +1627,13 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                             tcx.mk_array(tcx.types.usize, 3),
                         )
                         /* FIXME use actual fn pointers
+                        Warning: naively computing the number of entries in the
+                        vtable by counting the methods on the trait + methods on
+                        all parent traits does not work, because some methods can
+                        be not object safe and thus excluded from the vtable.
+                        Increase this counter if you tried to implement this but
+                        failed to do it without duplicating a lot of code from
+                        other places in the compiler: 2
                         tcx.mk_tup(&[
                             tcx.mk_array(tcx.types.usize, 3),
                             tcx.mk_array(Option<fn()>),
