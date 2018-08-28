@@ -1441,6 +1441,10 @@ impl<'a> AstNode<'a> for Root<'a> {
 }
 
 impl<'a> Root<'a> {
+    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
+        super::children(self)
+    }
+
     pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
         super::children(self)
     }

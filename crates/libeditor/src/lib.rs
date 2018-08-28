@@ -18,7 +18,7 @@ mod test_utils;
 
 use libsyntax2::{
     File, TextUnit, TextRange, SyntaxNodeRef,
-    ast::{AstNode, NameOwner},
+    ast::{self, AstNode, NameOwner},
     algo::{walk, find_leaf_at_offset, ancestors},
     SyntaxKind::{self, *},
 };
@@ -126,8 +126,8 @@ pub fn syntax_tree(file: &File) -> String {
 }
 
 pub fn runnables(file: &File) -> Vec<Runnable> {
-    file.ast()
-        .functions()
+    walk::preorder(file.syntax())
+        .filter_map(ast::FnDef::cast)
         .filter_map(|f| {
             let name = f.name()?.text();
             let kind = if name == "main" {

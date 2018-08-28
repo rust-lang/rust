@@ -8,7 +8,7 @@ use libsyntax2::{
 
 use {
     AtomEdit, find_node_at_offset,
-    scope::FnScopes,
+    scope::{FnScopes, ModuleScope},
 };
 
 #[derive(Debug)]
@@ -24,18 +24,27 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         file.incremental_reparse(&edit)?
     };
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), offset)?;
-    let fn_def = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next()?;
-    let scopes = FnScopes::new(fn_def);
-    Some(complete(name_ref, &scopes))
+    let mut res = Vec::new();
+    if let Some(fn_def) = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next() {
+        let scopes = FnScopes::new(fn_def);
+        complete_fn(name_ref, &scopes, &mut res);
+    }
+    if let Some(root) = ancestors(name_ref.syntax()).filter_map(ast::Root::cast).next() {
+        let scope = ModuleScope::new(root);
+        res.extend(
+            scope.entries().iter()
+                .map(|entry| CompletionItem { name: entry.name().to_string() })
+        )
+    }
+    Some(res)
 }
 
-fn complete(name_ref: ast::NameRef, scopes: &FnScopes) -> Vec<CompletionItem> {
-    scopes.scope_chain(name_ref.syntax())
-        .flat_map(|scope| scopes.entries(scope).iter())
-        .map(|entry| CompletionItem {
-            name: entry.name().to_string()
-        })
-        .collect()
+fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
+    acc.extend(
+        scopes.scope_chain(name_ref.syntax())
+            .flat_map(|scope| scopes.entries(scope).iter())
+            .map(|entry| CompletionItem { name: entry.name().to_string() })
+    )
 }
 
 #[cfg(test)]
@@ -59,7 +68,8 @@ mod tests {
                 let z = ();
             }
             ", r#"[CompletionItem { name: "y" },
-                   CompletionItem { name: "x" }]"#);
+                   CompletionItem { name: "x" },
+                   CompletionItem { name: "quux" }]"#);
     }
 
     #[test]
@@ -75,7 +85,8 @@ mod tests {
                 }
             }
             ", r#"[CompletionItem { name: "b" },
-                   CompletionItem { name: "a" }]"#);
+                   CompletionItem { name: "a" },
+                   CompletionItem { name: "quux" }]"#);
     }
 
     #[test]
@@ -86,6 +97,20 @@ mod tests {
                     <|>
                 }
             }
-            ", r#"[CompletionItem { name: "x" }]"#);
+            ", r#"[CompletionItem { name: "x" },
+                   CompletionItem { name: "quux" }]"#);
+    }
+
+    #[test]
+    fn test_completion_mod_scope() {
+        do_check(r"
+            struct Foo;
+            enum Baz {}
+            fn quux() {
+                <|>
+            }
+            ", r#"[CompletionItem { name: "Foo" },
+                   CompletionItem { name: "Baz" },
+                   CompletionItem { name: "quux" }]"#);
     }
 }

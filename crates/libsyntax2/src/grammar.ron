@@ -238,6 +238,7 @@ Grammar(
     ast: {
         "Root": (
             collections: [
+                ["items", "ModuleItem"],
                 ["functions", "FnDef"],
                 ["modules", "Module"],
             ]
