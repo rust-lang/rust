@@ -371,6 +371,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
 
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
+    ("armv7r-none-eabihf", armv7r_none_eabihf),
 
     ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
