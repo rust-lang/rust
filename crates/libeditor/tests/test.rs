@@ -222,6 +222,15 @@ pub fn reparse(&self, edit: &AtomEdit) -> File {
     <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
 }
 ");
+    do_check(r"
+fn foo() {
+    foo(<|>{
+        92
+    })
+}", r"
+fn foo() {
+    foo(<|>92)
+}");
 }
 
 #[test]

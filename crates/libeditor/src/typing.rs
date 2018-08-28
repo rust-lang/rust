@@ -84,7 +84,7 @@ fn remove_newline(
     offset: TextUnit,
 ) {
     if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
-        if join_lambda_body(edit, node).is_some() {
+        if join_single_expr_block(edit, node).is_some() {
             return
         }
         match (node.prev_sibling(), node.next_sibling()) {
@@ -118,13 +118,12 @@ fn remove_newline(
     );
 }
 
-fn join_lambda_body(
+fn join_single_expr_block(
     edit: &mut EditBuilder,
     node: SyntaxNodeRef,
 ) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
-    let _lambda = ast::LambdaExpr::cast(block_expr.syntax().parent()?)?;
     let expr = single_expr(block)?;
     edit.replace(
         block_expr.syntax().range(),

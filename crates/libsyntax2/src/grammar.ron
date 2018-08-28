@@ -384,6 +384,7 @@ Grammar(
         "PrefixExpr": (),
         "RangeExpr": (),
         "BinExpr": (),
+        "Literal": (),
 
         "Expr": (
             enum: [
@@ -418,6 +419,7 @@ Grammar(
                 "PrefixExpr",
                 "RangeExpr",
                 "BinExpr",
+                "Literal",
             ],
         ),
 

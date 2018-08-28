@@ -339,6 +339,7 @@ pub enum Expr<'a> {
     PrefixExpr(PrefixExpr<'a>),
     RangeExpr(RangeExpr<'a>),
     BinExpr(BinExpr<'a>),
+    Literal(Literal<'a>),
 }
 
 impl<'a> AstNode<'a> for Expr<'a> {
@@ -375,6 +376,7 @@ impl<'a> AstNode<'a> for Expr<'a> {
             PREFIX_EXPR => Some(Expr::PrefixExpr(PrefixExpr { syntax })),
             RANGE_EXPR => Some(Expr::RangeExpr(RangeExpr { syntax })),
             BIN_EXPR => Some(Expr::BinExpr(BinExpr { syntax })),
+            LITERAL => Some(Expr::Literal(Literal { syntax })),
             _ => None,
         }
     }
@@ -411,6 +413,7 @@ impl<'a> AstNode<'a> for Expr<'a> {
             Expr::PrefixExpr(inner) => inner.syntax(),
             Expr::RangeExpr(inner) => inner.syntax(),
             Expr::BinExpr(inner) => inner.syntax(),
+            Expr::Literal(inner) => inner.syntax(),
         }
     }
 }
@@ -725,6 +728,24 @@ impl<'a> LetStmt<'a> {
         super::child_opt(self)
     }
 }
+
+// Literal
+#[derive(Debug, Clone, Copy)]
+pub struct Literal<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Literal<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LITERAL => Some(Literal { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Literal<'a> {}
 
 // LoopExpr
 #[derive(Debug, Clone, Copy)]
