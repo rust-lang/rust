@@ -136,7 +136,7 @@ impl<'tcx> Place<'tcx> {
         let mut place_ty = PlaceTy::from(self.base.ty(local_decls));
 
         // apply .projection_ty() to all elems but only returns the final one.
-        if !self.elems.is_empty() {
+        if !self.has_no_projection() {
             for elem in self.elems.iter() {
                 place_ty = place_ty.projection_ty(tcx, elem);
             }
@@ -207,6 +207,10 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
+    pub fn has_no_projection(&self) -> bool {
+        self.elems.is_empty()
+    }
+
     // for projection returns the base place;
     //     Base.[a, b, c] => Base.[a, b]
     //                 ^-- projection
@@ -230,7 +234,7 @@ impl<'tcx> Place<'tcx> {
         elem_index: usize,
     ) -> Place<'tcx> {
         // only works for place with projections
-        assert!(!self.elems.is_empty());
+        assert!(!self.has_no_projection());
 
         if elem_index < 1 {
             // Base.[a]
