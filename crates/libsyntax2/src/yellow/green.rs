@@ -43,10 +43,6 @@ impl GreenNode {
         }
     }
 
-    pub fn leaf_text(&self) -> Option<SmolStr> {
-        self.leaf_text_ref().map(Clone::clone)
-    }
-
     pub fn leaf_text_ref(&self) -> Option<&SmolStr> {
         match self {
             GreenNode::Leaf { text, .. } => Some(text),

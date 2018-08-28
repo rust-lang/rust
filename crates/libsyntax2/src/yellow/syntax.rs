@@ -153,7 +153,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
     }
 
     pub fn leaf_text(&self) -> Option<SmolStr> {
-        self.red().green().leaf_text()
+        self.borrowed().leaf_text_ref().map(|it| it.clone())
     }
 
     pub(crate) fn replace_with(&self, green: GreenNode) -> GreenNode {
