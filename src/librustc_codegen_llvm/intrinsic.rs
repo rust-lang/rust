@@ -97,7 +97,7 @@ pub fn codegen_intrinsic_call(
     llresult: &'ll Value,
     span: Span,
 ) {
-    let cx = bx.cx;
+    let cx = bx.cx();
     let tcx = cx.tcx;
 
     let (def_id, substs) = match callee_ty.sty {
@@ -209,7 +209,7 @@ pub fn codegen_intrinsic_call(
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            CodegenCx::c_bool(cx, bx.cx.type_needs_drop(tp_ty))
+            CodegenCx::c_bool(cx, bx.cx().type_needs_drop(tp_ty))
         }
         "offset" => {
             let ptr = args[0].immediate();
@@ -265,12 +265,12 @@ pub fn codegen_intrinsic_call(
             to_immediate(bx, load, cx.layout_of(tp_ty))
         },
         "volatile_store" => {
-            let dst = args[0].deref(bx.cx);
+            let dst = args[0].deref(bx.cx());
             args[1].val.volatile_store(bx, dst);
             return;
         },
         "unaligned_volatile_store" => {
-            let dst = args[0].deref(bx.cx);
+            let dst = args[0].deref(bx.cx());
             args[1].val.unaligned_volatile_store(bx, dst);
             return;
         },
@@ -300,12 +300,12 @@ pub fn codegen_intrinsic_call(
                 Some((width, signed)) =>
                     match name {
                         "ctlz" | "cttz" => {
-                            let y = CodegenCx::c_bool(bx.cx, false);
+                            let y = CodegenCx::c_bool(bx.cx(), false);
                             let llfn = cx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
                             bx.call(llfn, &[args[0].immediate(), y], None)
                         }
                         "ctlz_nonzero" | "cttz_nonzero" => {
-                            let y = CodegenCx::c_bool(bx.cx, true);
+                            let y = CodegenCx::c_bool(bx.cx(), true);
                             let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
                             let llfn = cx.get_intrinsic(llvm_name);
                             bx.call(llfn, &[args[0].immediate(), y], None)
@@ -328,7 +328,7 @@ pub fn codegen_intrinsic_call(
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
                                                     &name[..3], width);
-                            let llfn = bx.cx.get_intrinsic(&intrinsic);
+                            let llfn = bx.cx().get_intrinsic(&intrinsic);
 
                             // Convert `i1` to a `bool`, and write it to the out parameter
                             let pair = bx.call(llfn, &[
@@ -408,7 +408,7 @@ pub fn codegen_intrinsic_call(
         },
 
         "discriminant_value" => {
-            args[0].deref(bx.cx).codegen_get_discr(bx, ret_ty)
+            args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty)
         }
 
         name if name.starts_with("simd_") => {
@@ -472,7 +472,7 @@ pub fn codegen_intrinsic_call(
                             failorder,
                             weak);
                         let val = bx.extract_value(pair, 0);
-                        let success = bx.zext(bx.extract_value(pair, 1), Type::bool(bx.cx));
+                        let success = bx.zext(bx.extract_value(pair, 1), Type::bool(bx.cx()));
 
                         let dest = result.project_field(bx, 0);
                         bx.store(val, dest.llval, dest.align);
@@ -543,7 +543,7 @@ pub fn codegen_intrinsic_call(
         }
 
         "nontemporal_store" => {
-            let dst = args[0].deref(bx.cx);
+            let dst = args[0].deref(bx.cx());
             args[1].val.nontemporal_store(bx, dst);
             return;
         }
@@ -614,7 +614,7 @@ pub fn codegen_intrinsic_call(
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bx.cx.type_needs_drop(arg.layout.ty));
+                        assert!(!bx.cx().type_needs_drop(arg.layout.ty));
                         let (ptr, align) = match arg.val {
                             OperandValue::Ref(ptr, None, align) => (ptr, align),
                             _ => bug!()
@@ -625,11 +625,11 @@ pub fn codegen_intrinsic_call(
                         }).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
-                        let llvm_elem = one(ty_to_type(bx.cx, llvm_elem));
+                        let llvm_elem = one(ty_to_type(bx.cx(), llvm_elem));
                         vec![bx.pointercast(arg.immediate(), llvm_elem.ptr_to())]
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
-                        let llvm_elem = one(ty_to_type(bx.cx, llvm_elem));
+                        let llvm_elem = one(ty_to_type(bx.cx(), llvm_elem));
                         vec![
                             bx.bitcast(arg.immediate(),
                             Type::vector(llvm_elem, length as u64))
@@ -639,7 +639,7 @@ pub fn codegen_intrinsic_call(
                         // the LLVM intrinsic uses a smaller integer
                         // size than the C intrinsic's signature, so
                         // we have to trim it down here.
-                        vec![bx.trunc(arg.immediate(), Type::ix(bx.cx, llvm_width as u64))]
+                        vec![bx.trunc(arg.immediate(), Type::ix(bx.cx(), llvm_width as u64))]
                     }
                     _ => vec![arg.immediate()],
                 }
@@ -703,7 +703,7 @@ fn copy_intrinsic(
     src: &'ll Value,
     count: &'ll Value,
 ) -> &'ll Value {
-    let cx = bx.cx;
+    let cx = bx.cx();
     let (size, align) = cx.size_and_align_of(ty);
     let size = CodegenCx::c_usize(cx, size.bytes());
     let align = CodegenCx::c_i32(cx, align.abi() as i32);
@@ -738,7 +738,7 @@ fn memset_intrinsic(
     val: &'ll Value,
     count: &'ll Value
 ) -> &'ll Value {
-    let cx = bx.cx;
+    let cx = bx.cx();
     let (size, align) = cx.size_and_align_of(ty);
     let size = CodegenCx::c_usize(cx, size.bytes());
     let align = CodegenCx::c_i32(cx, align.abi() as i32);
@@ -757,7 +757,7 @@ fn try_intrinsic(
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        bx.store(CodegenCx::c_null(Type::i8p(&bx.cx)), dest, ptr_align);
+        bx.store(CodegenCx::c_null(Type::i8p(&bx.cx())), dest, ptr_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, cx, func, data, local_ptr, dest);
     } else {
@@ -781,9 +781,9 @@ fn codegen_msvc_try(
     dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(cx, &mut |bx| {
-        let cx = bx.cx;
+        let cx = bx.cx();
 
-        bx.set_personality_fn(bx.cx.eh_personality());
+        bx.set_personality_fn(bx.cx().eh_personality());
 
         let normal = bx.build_sibling_block("normal");
         let catchswitch = bx.build_sibling_block("catchswitch");
@@ -890,7 +890,7 @@ fn codegen_gnu_try(
     dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(cx, &mut |bx| {
-        let cx = bx.cx;
+        let cx = bx.cx();
 
         // Codegens the shims described above:
         //
@@ -925,7 +925,7 @@ fn codegen_gnu_try(
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false);
-        let vals = catch.landing_pad(lpad_ty, bx.cx.eh_personality(), 1);
+        let vals = catch.landing_pad(lpad_ty, bx.cx().eh_personality(), 1);
         catch.add_clause(vals, CodegenCx::c_null(Type::i8p(cx)));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align;
@@ -1119,7 +1119,7 @@ fn generic_simd_intrinsic(
                                     arg_idx, total_len);
                         None
                     }
-                    Some(idx) => Some(CodegenCx::c_i32(bx.cx, idx as i32)),
+                    Some(idx) => Some(CodegenCx::c_i32(bx.cx(), idx as i32)),
                 }
             })
             .collect();
@@ -1161,7 +1161,7 @@ fn generic_simd_intrinsic(
             _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty)
         }
         // truncate the mask to a vector of i1s
-        let i1 = Type::i1(bx.cx);
+        let i1 = Type::i1(bx.cx());
         let i1xn = Type::vector(i1, m_len as u64);
         let m_i1s = bx.trunc(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
@@ -1223,7 +1223,7 @@ fn generic_simd_intrinsic(
         };
 
         let llvm_name = &format!("llvm.{0}.v{1}{2}", name, in_len, ety);
-        let intrinsic = bx.cx.get_intrinsic(&llvm_name);
+        let intrinsic = bx.cx().get_intrinsic(&llvm_name);
         let c = bx.call(intrinsic,
                         &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                         None);
@@ -1380,27 +1380,27 @@ fn generic_simd_intrinsic(
         }
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = Type::i32(bx.cx);
-        let alignment = CodegenCx::c_i32(bx.cx, bx.cx.align_of(in_elem).abi() as i32);
+        let alignment_ty = Type::i32(bx.cx());
+        let alignment = CodegenCx::c_i32(bx.cx(), bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
-            let i1 = Type::i1(bx.cx);
+            let i1 = Type::i1(bx.cx());
             let i1xn = Type::vector(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
         // Type of the vector of pointers:
-        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx(), underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
         // Type of the vector of elements:
-        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx(), underlying_ty, in_len, pointer_count - 1);
         let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
 
         let llvm_intrinsic = format!("llvm.masked.gather.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
-        let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
+        let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
                                      Type::func(&[
                                          llvm_pointer_vec_ty,
                                          alignment_ty,
@@ -1480,29 +1480,29 @@ fn generic_simd_intrinsic(
         }
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = Type::i32(bx.cx);
-        let alignment = CodegenCx::c_i32(bx.cx, bx.cx.align_of(in_elem).abi() as i32);
+        let alignment_ty = Type::i32(bx.cx());
+        let alignment = CodegenCx::c_i32(bx.cx(), bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
-            let i1 = Type::i1(bx.cx);
+            let i1 = Type::i1(bx.cx());
             let i1xn = Type::vector(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
-        let ret_t = Type::void(bx.cx);
+        let ret_t = Type::void(bx.cx());
 
         // Type of the vector of pointers:
-        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx(), underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
         // Type of the vector of elements:
-        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx(), underlying_ty, in_len, pointer_count - 1);
         let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
 
         let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
-        let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
+        let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
                                      Type::func(&[llvm_elem_vec_ty,
                                                   llvm_pointer_vec_ty,
                                                   alignment_ty,
@@ -1559,8 +1559,8 @@ fn generic_simd_intrinsic(
                         } else {
                             // unordered arithmetic reductions do not:
                             match f.bit_width() {
-                                32 => CodegenCx::c_undef(Type::f32(bx.cx)),
-                                64 => CodegenCx::c_undef(Type::f64(bx.cx)),
+                                32 => CodegenCx::c_undef(Type::f32(bx.cx())),
+                                64 => CodegenCx::c_undef(Type::f64(bx.cx())),
                                 v => {
                                     return_error!(r#"
 unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
@@ -1637,7 +1637,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     }
 
                     // boolean reductions operate on vectors of i1s:
-                    let i1 = Type::i1(bx.cx);
+                    let i1 = Type::i1(bx.cx());
                     let i1xn = Type::vector(i1, in_len as u64);
                     bx.trunc(args[0].immediate(), i1xn)
                 };
@@ -1648,7 +1648,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                             if !$boolean {
                                 r
                             } else {
-                                bx.zext(r, Type::bool(bx.cx))
+                                bx.zext(r, Type::bool(bx.cx()))
                             }
                         )
                     },

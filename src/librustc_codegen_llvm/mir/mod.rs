@@ -274,7 +274,7 @@ pub fn codegen_mir(
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let layout = bx.cx.layout_of(fx.monomorphize(&decl.ty));
+            let layout = bx.cx().layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
@@ -284,7 +284,7 @@ pub fn codegen_mir(
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bx.cx, layout);
+                    return LocalRef::new_operand(bx.cx(), layout);
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
@@ -326,7 +326,7 @@ pub fn codegen_mir(
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bx.cx, layout)
+                    LocalRef::new_operand(bx.cx(), layout)
                 }
             }
         };
@@ -419,8 +419,8 @@ fn create_funclets(
                 // C++ personality function, but `catch (...)` has no type so
                 // it's null. The 64 here is actually a bitfield which
                 // represents that this is a catch-all block.
-                let null = CodegenCx::c_null(Type::i8p(bx.cx));
-                let sixty_four = CodegenCx::c_i32(bx.cx, 64);
+                let null = CodegenCx::c_null(Type::i8p(bx.cx()));
+                let sixty_four = CodegenCx::c_i32(bx.cx(), 64);
                 cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);
             }
@@ -479,7 +479,7 @@ fn arg_local_refs(
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bx, bx.cx.layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bx, bx.cx().layout_of(arg_ty), &name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &fx.fn_ty.args[idx];
                 idx += 1;
@@ -522,7 +522,7 @@ fn arg_local_refs(
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
                 PassMode::Ignore => {
-                    return local(OperandRef::new_zst(bx.cx, arg.layout));
+                    return local(OperandRef::new_zst(bx.cx(), arg.layout));
                 }
                 PassMode::Direct(_) => {
                     let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
@@ -601,7 +601,7 @@ fn arg_local_refs(
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
-                ty::Ref(_, ty, _)  => (bx.cx.layout_of(ty), true),
+                ty::Ref(_, ty, _)  => (bx.cx().layout_of(ty), true),
                 _ => (arg.layout, false)
             };
 
@@ -623,7 +623,7 @@ fn arg_local_refs(
             let env_alloca = !env_ref && unsafe { llvm::LLVMRustVersionMajor() < 6 };
             let env_ptr = if env_alloca {
                 let scratch = PlaceRef::alloca(bx,
-                    bx.cx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
+                    bx.cx().layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
                 bx.store(place.llval, scratch.llval, scratch.align);
                 scratch.llval

@@ -234,24 +234,24 @@ pub fn unsize_thin_ptr(
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bx.cx.type_is_sized(a));
-            let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
+            assert!(bx.cx().type_is_sized(a));
+            let ptr_ty = bx.cx().layout_of(b).llvm_type(bx.cx()).ptr_to();
+            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bx.cx.type_is_sized(a));
-            let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
+            assert!(bx.cx().type_is_sized(a));
+            let ptr_ty = bx.cx().layout_of(b).llvm_type(bx.cx()).ptr_to();
+            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_layout = bx.cx.layout_of(src_ty);
-            let dst_layout = bx.cx.layout_of(dst_ty);
+            let src_layout = bx.cx().layout_of(src_ty);
+            let dst_layout = bx.cx().layout_of(dst_ty);
             let mut result = None;
             for i in 0..src_layout.fields.count() {
-                let src_f = src_layout.field(bx.cx, i);
+                let src_f = src_layout.field(bx.cx(), i);
                 assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
@@ -259,15 +259,15 @@ pub fn unsize_thin_ptr(
                 }
                 assert_eq!(src_layout.size, src_f.size);
 
-                let dst_f = dst_layout.field(bx.cx, i);
+                let dst_f = dst_layout.field(bx.cx(), i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
                 result = Some(unsize_thin_ptr(bx, src, src_f.ty, dst_f.ty));
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx, 0, true)),
-             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx, 1, true)))
+            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx(), 0, true)),
+             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx(), 1, true)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -289,8 +289,8 @@ pub fn coerce_unsized_into(
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
-                let thin_ptr = dst.layout.field(bx.cx, abi::FAT_PTR_ADDR);
-                (bx.pointercast(base, thin_ptr.llvm_type(bx.cx)), info)
+                let thin_ptr = dst.layout.field(bx.cx(), abi::FAT_PTR_ADDR);
+                (bx.pointercast(base, thin_ptr.llvm_type(bx.cx())), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bx, base, src_ty, dst_ty)
@@ -385,7 +385,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 }
 
 pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
-    let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
+    let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
 
@@ -417,7 +417,7 @@ pub fn to_immediate_scalar(
     scalar: &layout::Scalar,
 ) -> &'ll Value {
     if scalar.is_bool() {
-        return bx.trunc(val, Type::i1(bx.cx));
+        return bx.trunc(val, Type::i1(bx.cx()));
     }
     val
 }
@@ -473,10 +473,10 @@ pub fn call_memset(
     align: &'ll Value,
     volatile: bool,
 ) -> &'ll Value {
-    let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
+    let ptr_width = &bx.cx().sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-    let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
-    let volatile = CodegenCx::c_bool(bx.cx, volatile);
+    let llintrinsicfn = bx.cx().get_intrinsic(&intrinsic_key);
+    let volatile = CodegenCx::c_bool(bx.cx(), volatile);
     bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 

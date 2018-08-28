@@ -195,20 +195,20 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         c,
                     )?;
                     if let Some(prim) = field.val.try_to_scalar() {
-                        let layout = bx.cx.layout_of(field_ty);
+                        let layout = bx.cx().layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
                         Ok(scalar_to_llvm(
-                            bx.cx, prim, scalar,
-                            layout.immediate_llvm_type(bx.cx),
+                            bx.cx(), prim, scalar,
+                            layout.immediate_llvm_type(bx.cx()),
                         ))
                     } else {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = CodegenCx::c_struct(bx.cx, &values?, false);
+                let llval = CodegenCx::c_struct(bx.cx(), &values?, false);
                 Ok((llval, c.ty))
             })
             .unwrap_or_else(|e| {
@@ -218,7 +218,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 );
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
-                let llty = bx.cx.layout_of(ty).llvm_type(bx.cx);
+                let llty = bx.cx().layout_of(ty).llvm_type(bx.cx());
                 (CodegenCx::c_undef(llty), ty)
             })
     }

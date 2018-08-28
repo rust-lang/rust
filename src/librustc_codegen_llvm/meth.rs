@@ -41,10 +41,10 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
+        let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx()).ptr_to().ptr_to());
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx, self.0)]),
+            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx(), self.0)]),
             ptr_align
         );
         bx.nonnull_metadata(ptr);
@@ -61,10 +61,10 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
+        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx()).ptr_to());
         let usize_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx, self.0)]),
+            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx(), self.0)]),
             usize_align
         );
         // Vtable loads are invariant

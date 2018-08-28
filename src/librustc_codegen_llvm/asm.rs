@@ -44,7 +44,7 @@ pub fn codegen_inline_asm(
         if out.is_indirect {
             indirect_outputs.push(place.load(bx).immediate());
         } else {
-            output_types.push(place.layout.llvm_type(bx.cx));
+            output_types.push(place.layout.llvm_type(bx.cx()));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -76,9 +76,9 @@ pub fn codegen_inline_asm(
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
-        0 => Type::void(bx.cx),
+        0 => Type::void(bx.cx()),
         1 => output_types[0],
-        _ => Type::struct_(bx.cx, &output_types, false)
+        _ => Type::struct_(bx.cx(), &output_types, false)
     };
 
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
@@ -108,13 +108,13 @@ pub fn codegen_inline_asm(
     // back to source locations.  See #17552.
     unsafe {
         let key = "srcloc";
-        let kind = llvm::LLVMGetMDKindIDInContext(bx.cx.llcx,
+        let kind = llvm::LLVMGetMDKindIDInContext(bx.cx().llcx,
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: &'ll Value = CodegenCx::c_i32(bx.cx, ia.ctxt.outer().as_u32() as i32);
+        let val: &'ll Value = CodegenCx::c_i32(bx.cx(), ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bx.cx.llcx, &val, 1));
+            llvm::LLVMMDNodeInContext(bx.cx().llcx, &val, 1));
     }
 
     return true;
