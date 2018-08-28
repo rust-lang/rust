@@ -131,9 +131,6 @@ pub struct Mir<'tcx> {
     cache: cache::Cache,
 }
 
-/// where execution begins
-pub const START_BLOCK: BasicBlock = BasicBlock { private: 0 };
-
 impl<'tcx> Mir<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -239,7 +236,7 @@ impl<'tcx> Mir<'tcx> {
 
     #[inline]
     pub fn local_kind(&self, local: Local) -> LocalKind {
-        let index = local.private as usize;
+        let index = local.as_usize();
         if index == 0 {
             debug_assert!(
                 self.local_decls[local].mutability == Mutability::Mut,
@@ -855,7 +852,8 @@ pub struct UpvarDecl {
 
 newtype_index! {
     pub struct BasicBlock {
-        DEBUG_FORMAT = "bb{}"
+        DEBUG_FORMAT = "bb{}",
+        const START_BLOCK = 0,
     }
 }
 

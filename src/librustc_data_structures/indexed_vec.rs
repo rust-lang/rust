@@ -102,23 +102,55 @@ macro_rules! newtype_index {
         }
 
         impl $type {
+            #[inline]
+            $v fn from_usize(value: usize) -> Self {
+                assert!(value < ($max as usize));
+                unsafe {
+                    $type::from_u32_unchecked(value as u32)
+                }
+            }
+
+            #[inline]
+            $v fn from_u32(value: u32) -> Self {
+                assert!(value < $max);
+                unsafe {
+                    $type::from_u32_unchecked(value)
+                }
+            }
+
+            #[inline]
+            $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
+                $type { private: value }
+            }
+
             /// Extract value of this index as an integer.
             #[inline]
             $v fn index(self) -> usize {
-                <Self as Idx>::index(self)
+                self.as_usize()
+            }
+
+            /// Extract value of this index as a usize.
+            #[inline]
+            $v const fn as_u32(self) -> u32 {
+                self.private
+            }
+
+            /// Extract value of this index as a u32.
+            #[inline]
+            $v const fn as_usize(self) -> usize {
+                self.private as usize
             }
         }
 
         impl Idx for $type {
             #[inline]
             fn new(value: usize) -> Self {
-                assert!(value < ($max) as usize);
-                $type { private: value as u32 }
+                Self::from(value)
             }
 
             #[inline]
             fn index(self) -> usize {
-                self.private as usize
+                usize::from(self)
             }
         }
 
@@ -153,25 +185,25 @@ macro_rules! newtype_index {
 
         impl From<$type> for u32 {
             fn from(v: $type) -> u32 {
-                v.private
+                v.as_u32()
             }
         }
 
         impl From<$type> for usize {
             fn from(v: $type) -> usize {
-                v.private as usize
+                v.as_usize()
             }
         }
 
         impl From<usize> for $type {
-            fn from(v: usize) -> Self {
-                Self::new(v)
+            fn from(value: usize) -> Self {
+                $type::from_usize(value)
             }
         }
 
         impl From<u32> for $type {
-            fn from(v: u32) -> Self {
-                Self::new(v as usize)
+            fn from(value: u32) -> Self {
+                $type::from_u32(value)
             }
         }
 
@@ -195,7 +227,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]) => (
         impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                write!(fmt, $debug_format, self.private)
+                write!(fmt, $debug_format, self.as_u32())
             }
         }
     );
@@ -378,7 +410,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        pub const $name: $type = $type { private: $constant  };
+        pub const $name: $type = unsafe { $type::from_u32_unchecked($constant) };
         newtype_index!(
             @derives      [$($derives,)*]
             @type         [$type]
