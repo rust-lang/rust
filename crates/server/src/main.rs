@@ -18,6 +18,7 @@ extern crate libeditor;
 extern crate libanalysis;
 extern crate libsyntax2;
 extern crate im;
+extern crate relative_path;
 
 mod io;
 mod caps;

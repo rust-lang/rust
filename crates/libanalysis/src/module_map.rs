@@ -1,6 +1,4 @@
-use std::{
-    path::{PathBuf},
-};
+use relative_path::RelativePathBuf;
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use libsyntax2::{
@@ -43,6 +41,18 @@ struct Link {
     owner: ModuleId,
     syntax: SyntaxNode,
     points_to: Vec<ModuleId>,
+    problem: Option<Problem>,
+}
+
+#[derive(Clone, Debug)]
+pub enum Problem {
+    UnresolvedModule {
+        candidate: RelativePathBuf,
+    },
+    NotDirOwner {
+        move_to: RelativePathBuf,
+        candidate: RelativePathBuf,
+    }
 }
 
 impl ModuleMap {
@@ -93,9 +103,24 @@ impl ModuleMap {
         res
     }
 
-    pub fn suggested_child_mod_path(&self, m: ast::Module) -> Option<PathBuf> {
-        let name = m.name()?;
-        Some(PathBuf::from(format!("../{}.rs", name.text())))
+    pub fn problems(
+        &self,
+        file: FileId,
+        file_resolver: &FileResolver,
+        syntax_provider: &SyntaxProvider,
+        mut cb: impl FnMut(ast::Name, &Problem),
+    ) {
+        let module = self.file2module(file);
+        let links = self.links(file_resolver, syntax_provider);
+        links
+            .links
+            .iter()
+            .filter(|link| link.owner == module)
+            .filter_map(|link| {
+                let problem = link.problem.as_ref()?;
+                Some((link, problem))
+            })
+            .for_each(|(link, problem)| cb(link.name_node(), problem))
     }
 
     fn links(
@@ -176,14 +201,17 @@ impl Link {
             owner,
             syntax: module.syntax().owned(),
             points_to: Vec::new(),
+            problem: None,
         };
         Some(link)
     }
 
     fn name(&self) -> SmolStr {
-        self.ast().name()
-            .unwrap()
-            .text()
+        self.name_node().text()
+    }
+
+    fn name_node(&self) -> ast::Name {
+        self.ast().name().unwrap()
     }
 
     fn ast(&self) -> ast::Module {
@@ -192,14 +220,30 @@ impl Link {
     }
 
     fn resolve(&mut self, file_resolver: &FileResolver) {
-        let name = self.name();
-        let paths = &[
-            PathBuf::from(format!("../{}.rs", name)),
-            PathBuf::from(format!("../{}/mod.rs", name)),
-        ];
-        self.points_to = paths.iter()
-            .filter_map(|path| file_resolver(self.owner.0, path))
-            .map(ModuleId)
-            .collect();
+        let mod_name = file_resolver.file_stem(self.owner.0);
+        let is_dir_owner =
+            mod_name == "mod" || mod_name == "lib" || mod_name == "main";
+
+        let file_mod = RelativePathBuf::from(format!("../{}.rs", self.name()));
+        let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", self.name()));
+        if is_dir_owner {
+            self.points_to = [&file_mod, &dir_mod].iter()
+                .filter_map(|path| file_resolver.resolve(self.owner.0, path))
+                .map(ModuleId)
+                .collect();
+            self.problem = if self.points_to.is_empty() {
+                Some(Problem::UnresolvedModule {
+                    candidate: file_mod,
+                })
+            } else {
+                None
+            }
+        } else {
+            self.points_to = Vec::new();
+            self.problem = Some(Problem::NotDirOwner {
+                move_to: RelativePathBuf::from(format!("../{}/mod.rs", mod_name)),
+                candidate: file_mod,
+            });
+        }
     }
 }

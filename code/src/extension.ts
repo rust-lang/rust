@@ -113,12 +113,26 @@ export function activate(context: vscode.ExtensionContext) {
             return await vscode.tasks.executeTask(task)
         }
     })
-    registerCommand('libsyntax-rust.createFile', async (uri_: string) => {
-        let uri = vscode.Uri.parse(uri_)
+    registerCommand('libsyntax-rust.fsEdit', async (ops: FsOp[]) => {
         let edit = new vscode.WorkspaceEdit()
-        edit.createFile(uri)
+        let created;
+        let moved;
+        for (let op of ops) {
+            if (op.type == "createFile") {
+                let uri = vscode.Uri.parse(op.uri!)
+                edit.createFile(uri)
+                created = uri
+            } else if (op.type == "moveFile") {
+                let src = vscode.Uri.parse(op.src!)
+                let dst = vscode.Uri.parse(op.dst!)
+                edit.renameFile(src, dst)
+                moved = dst
+            } else {
+                console.error(`unknown op: ${JSON.stringify(op)}`)
+            }
+        }
         await vscode.workspace.applyEdit(edit)
-        let doc = await vscode.workspace.openTextDocument(uri)
+        let doc = await vscode.workspace.openTextDocument((created || moved)!)
         await vscode.window.showTextDocument(doc)
     })
 
@@ -367,4 +381,11 @@ function createTask(spec: Runnable): vscode.Task {
     let f = vscode.workspace.workspaceFolders![0]
     let t = new vscode.Task(definition, f, definition.label, TASK_SOURCE, exec, ['$rustc']);
     return t;
+}
+
+interface FsOp {
+    type: string;
+    uri?: string;
+    src?: string;
+    dst?: string;
 }

@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+relative-path = "0.3.7"
 failure = "0.1.2"
 serde_json = "1.0.24"
 serde = "1.0.71"

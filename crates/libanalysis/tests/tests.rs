@@ -1,10 +1,38 @@
 extern crate libanalysis;
+extern crate relative_path;
 extern crate test_utils;
 
-use std::path::PathBuf;
+use std::path::{Path};
 
-use libanalysis::{WorldState, FileId};
+use relative_path::RelativePath;
+use libanalysis::{WorldState, FileId, FileResolver};
 use test_utils::assert_eq_dbg;
+
+struct FileMap(&'static [(u32, &'static str)]);
+
+impl FileMap {
+    fn path(&self, id: FileId) -> &'static Path {
+        let s = self.0.iter()
+            .find(|it| it.0 == id.0)
+            .unwrap()
+            .1;
+        Path::new(s)
+    }
+}
+
+impl FileResolver for FileMap {
+    fn file_stem(&self, id: FileId) -> String {
+        self.path(id).file_stem().unwrap().to_str().unwrap().to_string()
+    }
+    fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
+        let path = rel.to_path(self.path(id));
+        let path = path.to_str().unwrap();
+        let path = RelativePath::new(&path[1..]).normalize();
+        let &(id, _) = self.0.iter()
+            .find(|it| path == RelativePath::new(&it.1[1..]).normalize())?;
+        Some(FileId(id))
+    }
+}
 
 
 #[test]
@@ -13,14 +41,10 @@ fn test_resolve_module() {
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 
-    let snap = world.snapshot(|id, path| {
-        assert_eq!(id, FileId(1));
-        if path == PathBuf::from("../foo/mod.rs") {
-            return None;
-        }
-        assert_eq!(path, PathBuf::from("../foo.rs"));
-        Some(FileId(2))
-    });
+    let snap = world.snapshot(FileMap(&[
+        (1, "/lib.rs"),
+        (2, "/foo.rs"),
+    ]));
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into())
         .unwrap();
     assert_eq_dbg(
@@ -28,14 +52,10 @@ fn test_resolve_module() {
         &symbols,
     );
 
-    let snap = world.snapshot(|id, path| {
-        assert_eq!(id, FileId(1));
-        if path == PathBuf::from("../foo.rs") {
-            return None;
-        }
-        assert_eq!(path, PathBuf::from("../foo/mod.rs"));
-        Some(FileId(2))
-    });
+    let snap = world.snapshot(FileMap(&[
+        (1, "/lib.rs"),
+        (2, "/foo/mod.rs")
+    ]));
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into())
         .unwrap();
     assert_eq_dbg(
@@ -49,11 +69,11 @@ fn test_unresolved_module_diagnostic() {
     let mut world = WorldState::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
 
-    let snap = world.snapshot(|_id, _path| None);
+    let snap = world.snapshot(FileMap(&[(1, "/lib.rs")]));
     let diagnostics = snap.diagnostics(FileId(1)).unwrap();
     assert_eq_dbg(
         r#"[(Diagnostic { range: [4; 7), msg: "unresolved module" },
-             Some(CreateFile("../foo.rs")))]"#,
+             Some(QuickFix { fs_ops: [CreateFile { anchor: FileId(1), path: "../foo.rs" }] }))]"#,
         &diagnostics,
     );
 }
@@ -64,14 +84,10 @@ fn test_resolve_parent_module() {
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 
-    let snap = world.snapshot(|id, path| {
-        assert_eq!(id, FileId(1));
-        if path == PathBuf::from("../foo/mod.rs") {
-            return None;
-        }
-        assert_eq!(path, PathBuf::from("../foo.rs"));
-        Some(FileId(2))
-    });
+    let snap = world.snapshot(FileMap(&[
+        (1, "/lib.rs"),
+        (2, "/foo.rs"),
+    ]));
     let symbols = snap.parent_module(FileId(2));
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,

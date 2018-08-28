@@ -8,13 +8,13 @@ extern crate libsyntax2;
 extern crate libeditor;
 extern crate fst;
 extern crate rayon;
+extern crate relative_path;
 
 mod symbol_index;
 mod module_map;
 
 use std::{
     fmt,
-    path::{Path, PathBuf},
     panic,
     sync::{
         Arc,
@@ -24,6 +24,7 @@ use std::{
     time::Instant,
 };
 
+use relative_path::{RelativePath,RelativePathBuf};
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
@@ -37,13 +38,16 @@ use libeditor::{Diagnostic, LineIndex, FileSymbol, find_node_at_offset};
 
 use self::{
     symbol_index::FileSymbols,
-    module_map::{ModuleMap, ChangeKind},
+    module_map::{ModuleMap, ChangeKind, Problem},
 };
 pub use self::symbol_index::Query;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
-pub type FileResolver = dyn Fn(FileId, &Path) -> Option<FileId> + Send + Sync;
+pub trait FileResolver: Send + Sync + 'static {
+    fn file_stem(&self, id: FileId) -> String;
+    fn resolve(&self, id: FileId, path: &RelativePath) -> Option<FileId>;
+}
 
 #[derive(Debug)]
 pub struct WorldState {
@@ -84,7 +88,7 @@ impl WorldState {
 
     pub fn snapshot(
         &self,
-        file_resolver: impl Fn(FileId, &Path) -> Option<FileId> + 'static + Send + Sync,
+        file_resolver: impl FileResolver,
     ) -> World {
         World {
             needs_reindex: AtomicBool::new(false),
@@ -132,8 +136,20 @@ impl WorldState {
 }
 
 #[derive(Debug)]
-pub enum QuickFix {
-    CreateFile(PathBuf),
+pub struct QuickFix {
+    pub fs_ops: Vec<FsOp>,
+}
+
+#[derive(Debug)]
+pub enum FsOp {
+    CreateFile {
+        anchor: FileId,
+        path: RelativePathBuf,
+    },
+    MoveFile {
+        file: FileId,
+        path: RelativePathBuf,
+    }
 }
 
 impl World {
@@ -221,20 +237,49 @@ impl World {
             .into_iter()
             .map(|d| (d, None))
             .collect::<Vec<_>>();
-        for module in syntax.ast().modules() {
-            if module.has_semi() && self.resolve_module(file_id, module).is_empty() {
-                if let Some(name) = module.name() {
-                    let d = Diagnostic {
-                        range: name.syntax().range(),
-                        msg: "unresolved module".to_string(),
-                    };
-                    let quick_fix = self.data.module_map.suggested_child_mod_path(module)
-                        .map(QuickFix::CreateFile);
 
-                    res.push((d, quick_fix))
-                }
+        self.data.module_map.problems(
+            file_id,
+            &*self.file_resolver,
+            &|file_id| self.file_syntax(file_id).unwrap(),
+            |name_node, problem| {
+                let (diag, fix) = match problem {
+                    Problem::UnresolvedModule { candidate } => {
+                        let diag = Diagnostic {
+                            range: name_node.syntax().range(),
+                            msg: "unresolved module".to_string(),
+                        };
+                        let fix = QuickFix {
+                            fs_ops: vec![FsOp::CreateFile {
+                                anchor: file_id,
+                                path: candidate.clone(),
+                            }]
+                        };
+                        (diag, fix)
+                    }
+                    Problem::NotDirOwner { move_to, candidate } => {
+                        let diag = Diagnostic {
+                            range: name_node.syntax().range(),
+                            msg: "can't declare module at this location".to_string(),
+                        };
+                        let fix = QuickFix {
+                            fs_ops: vec![
+                                FsOp::MoveFile {
+                                    file: file_id,
+                                    path: move_to.clone(),
+                                },
+                                FsOp::CreateFile {
+                                    anchor: file_id,
+                                    path: move_to.join(candidate),
+                                }
+                            ],
+                        };
+                        (diag, fix)
+                    }
+                };
+                res.push((diag, Some(fix)))
             }
-        }
+        );
         Ok(res)
     }
 

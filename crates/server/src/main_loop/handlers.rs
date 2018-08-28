@@ -7,7 +7,8 @@ use languageserver_types::{
     CompletionItem,
 };
 use serde_json::{to_value, from_value};
-use libanalysis::{Query, QuickFix, FileId};
+use url_serde;
+use libanalysis::{self, Query, FileId};
 use libeditor;
 use libsyntax2::{
     TextUnit,
@@ -144,22 +145,47 @@ pub fn handle_code_action(
         if !contains_offset_nonstrict(diag.range, offset) {
             continue;
         }
-        let cmd = match quick_fix {
-            QuickFix::CreateFile(path) => {
-                let path = &path.to_str().unwrap()[3..]; // strip `../` b/c url is weird
-                let uri = params.text_document.uri.join(path)
-                    .unwrap();
-                let uri = ::url_serde::Ser::new(&uri);
-                Command {
-                    title: "Create file".to_string(),
-                    command: "libsyntax-rust.createFile".to_string(),
-                    arguments: Some(vec![to_value(uri).unwrap()]),
-                }
-            }
+        let mut ops = Vec::new();
+        for op in quick_fix.fs_ops {
+            let op = match op {
+                libanalysis::FsOp::CreateFile { anchor, path } => {
+                    let uri = world.file_id_to_uri(anchor)?;
+                    let path = &path.as_str()[3..]; // strip `../` b/c url is weird
+                    let uri = uri.join(path)?;
+                    FsOp::CreateFile { uri }
+                },
+                libanalysis::FsOp::MoveFile { file, path } => {
+                    let src = world.file_id_to_uri(file)?;
+                    let path = &path.as_str()[3..]; // strip `../` b/c url is weird
+                    let dst = src.join(path)?;
+                    FsOp::MoveFile { src, dst }
+                },
+            };
+            ops.push(op)
+        }
+        let cmd = Command {
+            title: "Create module".to_string(),
+            command: "libsyntax-rust.fsEdit".to_string(),
+            arguments: Some(vec![to_value(ops).unwrap()]),
         };
         res.push(cmd)
     }
     return Ok(Some(res));
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum FsOp {
+    CreateFile {
+        #[serde(with = "url_serde")]
+        uri: Url
+    },
+    MoveFile {
+        #[serde(with = "url_serde")]
+        src: Url,
+        #[serde(with = "url_serde")]
+        dst: Url,
+    }
 }
 
 pub fn handle_runnables(

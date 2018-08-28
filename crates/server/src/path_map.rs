@@ -1,6 +1,7 @@
 use std::path::{PathBuf, Path, Component};
 use im;
-use libanalysis::{FileId};
+use relative_path::RelativePath;
+use libanalysis::{FileId, FileResolver};
 
 #[derive(Debug, Default, Clone)]
 pub struct PathMap {
@@ -34,12 +35,6 @@ impl PathMap {
             .as_path()
     }
 
-    pub fn resolve(&self, id: FileId, relpath: &Path) -> Option<FileId> {
-        let path = self.get_path(id).join(relpath);
-        let path = normalize(&path);
-        self.get_id(&path)
-    }
-
     fn insert(&mut self, path: PathBuf, id: FileId) {
         self.path2id.insert(path.clone(), id);
         self.id2path.insert(id, path.clone());
@@ -49,6 +44,18 @@ impl PathMap {
         let id = FileId(self.next_id);
         self.next_id += 1;
         id
+    }
+}
+
+impl FileResolver for PathMap {
+    fn file_stem(&self, id: FileId) -> String {
+        self.get_path(id).file_stem().unwrap().to_str().unwrap().to_string()
+    }
+
+    fn resolve(&self, id: FileId, path: &RelativePath) -> Option<FileId> {
+        let path = path.to_path(&self.get_path(id));
+        let path = normalize(&path);
+        self.get_id(&path)
     }
 }
 
@@ -89,7 +96,7 @@ mod test {
         let id1 = m.get_or_insert(PathBuf::from("/foo"));
         let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"));
         assert_eq!(
-            m.resolve(id1, &PathBuf::from("bar.rs")),
+            m.resolve(id1, &RelativePath::new("bar.rs")),
             Some(id2),
         )
     }
