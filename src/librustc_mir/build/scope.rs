@@ -660,8 +660,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match drop_kind {
             DropKind::Value { .. } => if !needs_drop { return },
             DropKind::Storage => {
-                match place.base {
-                    PlaceBase::Local(index) => if index.index() <= self.arg_count {
+                match place {
+                    Place {
+                        base: PlaceBase::Local(index),
+                        elems,
+                    } => if index.index() <= self.arg_count
+                            && elems.is_empty() {
                         span_bug!(
                             span,
                             "`schedule_drop` called with index {} and arg_count {}",
@@ -938,8 +942,12 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 
                 // Drop the storage for both value and storage drops.
                 // Only temps and vars need their storage dead.
-                match drop_data.location.base {
-                    PlaceBase::Local(index) if index.index() > arg_count => {
+                match drop_data.location {
+                    Place {
+                        base: PlaceBase::Local(index),
+                        elems,
+                    } if index.index() > arg_count
+                        && elems.is_empty() => {
                         cfg.push(block, Statement {
                             source_info,
                             kind: StatementKind::StorageDead(index)
