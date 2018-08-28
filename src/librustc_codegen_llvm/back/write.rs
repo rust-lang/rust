@@ -25,6 +25,7 @@ use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
+use llvm_util;
 use {CodegenResults, ModuleSource, ModuleCodegen, CompiledModule, ModuleKind};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -173,7 +174,7 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
     let singlethread = sess.target.target.options.singlethread;
 
     let triple = SmallCStr::new(&sess.target.target.llvm_target);
-    let cpu = SmallCStr::new(sess.target_cpu());
+    let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = attributes::llvm_target_features(sess)
         .collect::<Vec<_>>()
         .join(",");

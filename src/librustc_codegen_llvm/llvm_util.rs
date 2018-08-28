@@ -17,6 +17,8 @@ use libc::c_int;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
 
+use std::str;
+use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
@@ -260,5 +262,21 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
             PrintRequest::TargetFeatures => llvm::LLVMRustPrintTargetFeatures(tm),
             _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
         }
+    }
+}
+
+pub fn target_cpu(sess: &Session) -> &str {
+    let name = match sess.opts.cg.target_cpu {
+        Some(ref s) => &**s,
+        None => &*sess.target.target.options.cpu
+    };
+    if name != "native" {
+        return name
+    }
+
+    unsafe {
+        let mut len = 0;
+        let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
+        str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
     }
 }
