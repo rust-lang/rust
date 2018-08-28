@@ -45,6 +45,7 @@ use std::mem;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::small_vec::ExpectOne;
 
+#[derive(Clone, Copy)]
 crate struct FromPrelude(bool);
 
 #[derive(Clone)]
@@ -578,15 +579,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         assert!(force || !record_used); // `record_used` implies `force`
         ident = ident.modern();
 
-        // Names from inner scope that can't shadow names from outer scopes, e.g.
-        // mod m { ... }
+        // This is *the* result, resolution from the scope closest to the resolved identifier.
+        // However, sometimes this result is "weak" because it comes from a glob import or
+        // a macro expansion, and in this case it cannot shadow names from outer scopes, e.g.
+        // mod m { ... } // solution in outer scope
         // {
-        //     use prefix::*; // if this imports another `m`, then it can't shadow the outer `m`
-        //                    // and we have and ambiguity error
+        //     use prefix::*; // imports another `m` - innermost solution
+        //                    // weak, cannot shadow the outer `m`, need to report ambiguity error
         //     m::mac!();
         // }
-        // This includes names from globs and from macro expansions.
-        let mut potentially_ambiguous_result: Option<(&NameBinding, FromPrelude)> = None;
+        // So we have to save the innermost solution and continue searching in outer scopes
+        // to detect potential ambiguities.
+        let mut innermost_result: Option<(&NameBinding, FromPrelude)> = None;
 
         enum WhereToResolve<'a> {
             Module(Module<'a>),
@@ -729,32 +733,25 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         return Ok(result);
                     }
 
-                    // Found a solution that is ambiguous with a previously found solution.
-                    // Push an ambiguity error for later reporting and
-                    // return something for better recovery.
-                    if let Some(previous_result) = potentially_ambiguous_result {
-                        if result.0.def() != previous_result.0.def() {
+                    if let Some(innermost_result) = innermost_result {
+                        // Found another solution, if the first one was "weak", report an error.
+                        if result.0.def() != innermost_result.0.def() &&
+                           (innermost_result.0.is_glob_import() ||
+                            innermost_result.0.expansion != Mark::root()) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
                                 name: ident.name,
-                                b1: previous_result.0,
+                                b1: innermost_result.0,
                                 b2: result.0,
                             });
-                            return Ok(previous_result);
+                            return Ok(innermost_result);
                         }
+                    } else {
+                        // Found the first solution.
+                        innermost_result = Some(result);
                     }
 
-                    // Found a solution that's not an ambiguity yet, but is "suspicious" and
-                    // can participate in ambiguities later on.
-                    // Remember it and go search for other solutions in outer scopes.
-                    if result.0.is_glob_import() || result.0.expansion != Mark::root() {
-                        potentially_ambiguous_result = Some(result);
-
-                        continue_search!();
-                    }
-
-                    // Found a solution that can't be ambiguous, great success.
-                    return Ok(result);
+                    continue_search!();
                 },
                 Err(Determinacy::Determined) => {
                     continue_search!();
@@ -763,9 +760,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         }
 
-        // Previously found potentially ambiguous result turned out to not be ambiguous after all.
-        if let Some(previous_result) = potentially_ambiguous_result {
-            return Ok(previous_result);
+        // The first found solution was the only one, return it.
+        if let Some(innermost_result) = innermost_result {
+            return Ok(innermost_result);
         }
 
         let determinacy = Determinacy::determined(force);
@@ -784,30 +781,31 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     fn resolve_legacy_scope(&mut self,
-                            scope: &'a Cell<LegacyScope<'a>>,
+                            invocation_legacy_scope: &'a Cell<LegacyScope<'a>>,
                             ident: Ident,
                             record_used: bool)
                             -> Option<&'a NameBinding<'a>> {
         let ident = ident.modern();
 
-        // Names from inner scope that can't shadow names from outer scopes, e.g.
-        // macro_rules! mac { ... }
+        // This is *the* result, resolution from the scope closest to the resolved identifier.
+        // However, sometimes this result is "weak" because it comes from a macro expansion,
+        // and in this case it cannot shadow names from outer scopes, e.g.
+        // macro_rules! m { ... } // solution in outer scope
         // {
-        //     define_mac!(); // if this generates another `macro_rules! mac`, then it can't shadow
-        //                    // the outer `mac` and we have and ambiguity error
-        //     mac!();
+        //     define_m!(); // generates another `macro_rules! m` - innermost solution
+        //                  // weak, cannot shadow the outer `m`, need to report ambiguity error
+        //     m!();
         // }
-        let mut potentially_ambiguous_result: Option<&NameBinding> = None;
+        // So we have to save the innermost solution and continue searching in outer scopes
+        // to detect potential ambiguities.
+        let mut innermost_result: Option<&NameBinding> = None;
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = scope;
+        let mut where_to_resolve = invocation_legacy_scope;
         loop {
             let result = match where_to_resolve.get() {
-                LegacyScope::Binding(legacy_binding) => if ident == legacy_binding.ident {
-                    Some(legacy_binding.binding)
-                } else {
-                    None
-                }
+                LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
+                    Some(legacy_binding.binding),
                 _ => None,
             };
 
@@ -836,32 +834,24 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         return Some(result);
                     }
 
-                    // Found a solution that is ambiguous with a previously found solution.
-                    // Push an ambiguity error for later reporting and
-                    // return something for better recovery.
-                    if let Some(previous_result) = potentially_ambiguous_result {
-                        if result.def() != previous_result.def() {
+                    if let Some(innermost_result) = innermost_result {
+                        // Found another solution, if the first one was "weak", report an error.
+                        if result.def() != innermost_result.def() &&
+                           innermost_result.expansion != Mark::root() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: ident.span,
                                 name: ident.name,
-                                b1: previous_result,
+                                b1: innermost_result,
                                 b2: result,
                             });
-                            return Some(previous_result);
+                            return Some(innermost_result);
                         }
+                    } else {
+                        // Found the first solution.
+                        innermost_result = Some(result);
                     }
 
-                    // Found a solution that's not an ambiguity yet, but is "suspicious" and
-                    // can participate in ambiguities later on.
-                    // Remember it and go search for other solutions in outer scopes.
-                    if result.expansion != Mark::root() {
-                        potentially_ambiguous_result = Some(result);
-
-                        continue_search!();
-                    }
-
-                    // Found a solution that can't be ambiguous.
-                    return Some(result);
+                    continue_search!();
                 }
                 None => {
                     continue_search!();
@@ -869,12 +859,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         }
 
-        // Previously found potentially ambiguous result turned out to not be ambiguous after all.
-        if let Some(previous_result) = potentially_ambiguous_result {
-            return Some(previous_result);
-        }
-
-        None
+        // The first found solution was the only one (or there was no solution at all), return it.
+        innermost_result
     }
 
     pub fn finalize_current_module_macro_resolutions(&mut self) {
