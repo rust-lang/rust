@@ -53,10 +53,9 @@ use mir::place::PlaceRef;
 use attributes;
 use builder::{Builder, MemFlags};
 use callee;
-use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{self, C_struct_in_context, C_array, val_ty, IntPredicate, RealPredicate};
+use common::{self, IntPredicate, RealPredicate};
 use consts;
 use context::CodegenCx;
 use debuginfo;
@@ -75,7 +74,7 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use std::any::Any;
 use std::ffi::CString;
@@ -200,7 +199,7 @@ pub fn unsized_info(
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            C_usize(cx, len.unwrap_usize(cx.tcx))
+            CodegenCx::c_usize(cx, len.unwrap_usize(cx.tcx))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -352,8 +351,8 @@ fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
-        let mut rhs_llty = val_ty(rhs);
-        let mut lhs_llty = val_ty(lhs);
+        let mut rhs_llty = CodegenCx::val_ty(rhs);
+        let mut lhs_llty = CodegenCx::val_ty(lhs);
         if rhs_llty.kind() == TypeKind::Vector {
             rhs_llty = rhs_llty.element_type()
         }
@@ -394,7 +393,7 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
     bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     val: &'ll Value
 ) -> &'ll Value {
-    if val_ty(val) == Type::i1(bx.cx()) {
+    if CodegenCx::val_ty(val) == Type::i1(bx.cx()) {
         bx.zext(val, Type::i8(bx.cx()))
     } else {
         val
@@ -434,7 +433,7 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, align);
-        let ptr = bx.pointercast(dst, val_ty(val).ptr_to());
+        let ptr = bx.pointercast(dst, CodegenCx::val_ty(val).ptr_to());
         bx.store_with_flags(val, ptr, align, flags);
         return;
     }
@@ -445,8 +444,8 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     let src_ptr = bx.pointercast(src, Type::i8p(cx));
     let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
     let size = bx.intcast(n_bytes, cx.isize_ty, false);
-    let align = C_i32(cx, align.abi() as i32);
-    let volatile = C_bool(cx, flags.contains(MemFlags::VOLATILE));
+    let align = CodegenCx::c_i32(cx, align.abi() as i32);
+    let volatile = CodegenCx::c_bool(cx, flags.contains(MemFlags::VOLATILE));
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
@@ -463,7 +462,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
         return;
     }
 
-    call_memcpy(bx, dst, src, C_usize(bx.cx(), size), align, flags);
+    call_memcpy(bx, dst, src, CodegenCx::c_usize(bx.cx(), size), align, flags);
 }
 
 pub fn call_memset(
@@ -477,7 +476,7 @@ pub fn call_memset(
     let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
-    let volatile = C_bool(bx.cx, volatile);
+    let volatile = CodegenCx::c_bool(bx.cx, volatile);
     bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
@@ -653,12 +652,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
-    let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
+    let llmeta = CodegenCx::c_bytes_in_context(metadata_llcx, &compressed);
+    let llconst = CodegenCx::c_struct_in_context(metadata_llcx, &[llmeta], false);
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, CodegenCx::val_ty(llconst), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
@@ -1237,7 +1236,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, val_ty(old_g));
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, CodegenCx::val_ty(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
@@ -1248,11 +1247,11 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if !cx.used_statics.borrow().is_empty() {
                 let name = const_cstr!("llvm.used");
                 let section = const_cstr!("llvm.metadata");
-                let array = C_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
+                let array = CodegenCx::c_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,
-                                                val_ty(array),
+                                                CodegenCx::val_ty(array),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
                     llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);

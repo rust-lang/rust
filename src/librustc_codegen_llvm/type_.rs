@@ -323,7 +323,7 @@ impl Type {
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
-            TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
+            TypeKind::FP128 | TypeKind::PPc_FP128 => 128,
             _ => bug!("llvm_float_width called on a non-float type")
         }
     }

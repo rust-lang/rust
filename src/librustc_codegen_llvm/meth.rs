@@ -10,14 +10,14 @@
 
 use abi::{FnType, FnTypeExt};
 use callee;
-use common::*;
+use context::CodegenCx;
 use builder::Builder;
 use consts;
 use monomorphize;
 use type_::Type;
 use value::Value;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
@@ -43,7 +43,10 @@ impl<'a, 'tcx> VirtualIndex {
 
         let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), ptr_align);
+        let ptr = bx.load(
+            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx, self.0)]),
+            ptr_align
+        );
         bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
@@ -60,7 +63,10 @@ impl<'a, 'tcx> VirtualIndex {
 
         let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
         let usize_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), usize_align);
+        let ptr = bx.load(
+            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx, self.0)]),
+            usize_align
+        );
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
         ptr
@@ -90,7 +96,7 @@ pub fn get_vtable(
     }
 
     // Not in the cache. Build it.
-    let nullptr = C_null(Type::i8p(cx));
+    let nullptr = CodegenCx::c_null(Type::i8p(cx));
 
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {
@@ -106,11 +112,11 @@ pub fn get_vtable(
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
-        C_usize(cx, size.bytes()),
-        C_usize(cx, align.abi())
+        CodegenCx::c_usize(cx, size.bytes()),
+        CodegenCx::c_usize(cx, align.abi())
     ].iter().cloned().chain(methods).collect();
 
-    let vtable_const = C_struct(cx, &components, false);
+    let vtable_const = CodegenCx::c_struct(cx, &components, false);
     let align = cx.data_layout().pointer_align;
     let vtable = consts::addr_of(cx, vtable_const, align, Some("vtable"));
 

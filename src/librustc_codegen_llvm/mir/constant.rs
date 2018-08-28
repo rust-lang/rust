@@ -20,14 +20,13 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
 use builder::Builder;
 use common::{CodegenCx};
-use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 use value::Value;
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use super::super::callee;
 use super::FunctionCx;
@@ -42,11 +41,11 @@ pub fn scalar_to_llvm(
     match cv {
         Scalar::Bits { size: 0, .. } => {
             assert_eq!(0, layout.value.size(cx).bytes());
-            C_undef(Type::ix(cx, 0))
+            CodegenCx::c_undef(Type::ix(cx, 0))
         },
         Scalar::Bits { bits, size } => {
             assert_eq!(size as u64, layout.value.size(cx).bytes());
-            let llval = C_uint_big(Type::ix(cx, bitsize), bits);
+            let llval = CodegenCx::c_uint_big(Type::ix(cx, bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
@@ -75,7 +74,7 @@ pub fn scalar_to_llvm(
             };
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                 consts::bitcast(base_addr, Type::i8p(cx)),
-                &C_usize(cx, ptr.offset.bytes()),
+                &CodegenCx::c_usize(cx, ptr.offset.bytes()),
                 1,
             ) };
             if layout.value != layout::Pointer {
@@ -98,7 +97,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_, &'ll Value>, alloc: &Allocati
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            llvals.push(C_bytes(cx, &alloc.bytes[next_offset..offset]));
+            llvals.push(CodegenCx::c_bytes(cx, &alloc.bytes[next_offset..offset]));
         }
         let ptr_offset = read_target_uint(
             layout.endian,
@@ -116,10 +115,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_, &'ll Value>, alloc: &Allocati
         next_offset = offset + pointer_size;
     }
     if alloc.bytes.len() >= next_offset {
-        llvals.push(C_bytes(cx, &alloc.bytes[next_offset ..]));
+        llvals.push(CodegenCx::c_bytes(cx, &alloc.bytes[next_offset ..]));
     }
 
-    C_struct(cx, &llvals, true)
+    CodegenCx::c_struct(cx, &llvals, true)
 }
 
 pub fn codegen_static_initializer(
@@ -209,7 +208,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = C_struct(bx.cx, &values?, false);
+                let llval = CodegenCx::c_struct(bx.cx, &values?, false);
                 Ok((llval, c.ty))
             })
             .unwrap_or_else(|e| {
@@ -220,7 +219,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
                 let llty = bx.cx.layout_of(ty).llvm_type(bx.cx);
-                (C_undef(llty), ty)
+                (CodegenCx::c_undef(llty), ty)
             })
     }
 }

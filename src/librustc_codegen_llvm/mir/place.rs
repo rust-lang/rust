@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use base;
 use builder::Builder;
-use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big, IntPredicate};
+use common::{CodegenCx, IntPredicate};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -23,7 +23,7 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -69,7 +69,7 @@ impl PlaceRef<'tcx, &'ll Value> {
 
         let llval = unsafe { LLVMConstInBoundsGEP(
             consts::bitcast(base_addr, Type::i8p(bx.cx)),
-            &C_usize(bx.cx, offset.bytes()),
+            &CodegenCx::c_usize(bx.cx, offset.bytes()),
             1,
         )};
         let llval = consts::bitcast(llval, layout.llvm_type(bx.cx).ptr_to());
@@ -103,7 +103,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                 assert_eq!(count, 0);
                 self.llextra.unwrap()
             } else {
-                C_usize(cx, count)
+                CodegenCx::c_usize(cx, count)
             }
         } else {
             bug!("unexpected layout `{:#?}` in PlaceRef::len", self.layout)
@@ -247,7 +247,7 @@ impl PlaceRef<'tcx, &'ll Value> {
 
         let meta = self.llextra;
 
-        let unaligned_offset = C_usize(cx, offset.bytes());
+        let unaligned_offset = CodegenCx::c_usize(cx, offset.bytes());
 
         // Get the alignment of the field
         let (_, unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
@@ -258,7 +258,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         //   (unaligned offset + (align - 1)) & -align
 
         // Calculate offset
-        let align_sub_1 = bx.sub(unsized_align, C_usize(cx, 1u64));
+        let align_sub_1 = bx.sub(unsized_align, CodegenCx::c_usize(cx, 1u64));
         let offset = bx.and(bx.add(unaligned_offset, align_sub_1),
         bx.neg(unsized_align));
 
@@ -288,14 +288,14 @@ impl PlaceRef<'tcx, &'ll Value> {
     ) -> &'ll Value {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
         if self.layout.abi.is_uninhabited() {
-            return C_undef(cast_to);
+            return CodegenCx::c_undef(cast_to);
         }
         match self.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = self.layout.ty.ty_adt_def().map_or(
                     index as u128,
                     |def| def.discriminant_for_variant(bx.cx.tcx, index).val);
-                return C_uint_big(cast_to, discr_val);
+                return CodegenCx::c_uint_big(cast_to, discr_val);
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},
@@ -326,22 +326,22 @@ impl PlaceRef<'tcx, &'ll Value> {
                 if niche_variants.start() == niche_variants.end() {
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_start == 0 {
-                        // HACK(eddyb) Using `C_null` as it works on all types.
-                        C_null(niche_llty)
+                        // HACK(eddyb) Using `c_null` as it works on all types.
+                        CodegenCx::c_null(niche_llty)
                     } else {
-                        C_uint_big(niche_llty, niche_start)
+                        CodegenCx::c_uint_big(niche_llty, niche_start)
                     };
                     bx.select(bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval),
-                        C_uint(cast_to, *niche_variants.start() as u64),
-                        C_uint(cast_to, dataful_variant as u64))
+                        CodegenCx::c_uint(cast_to, *niche_variants.start() as u64),
+                        CodegenCx::c_uint(cast_to, dataful_variant as u64))
                 } else {
                     // Rebase from niche values to discriminant values.
                     let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
-                    let lldiscr = bx.sub(lldiscr, C_uint_big(niche_llty, delta));
-                    let lldiscr_max = C_uint(niche_llty, *niche_variants.end() as u64);
+                    let lldiscr = bx.sub(lldiscr, CodegenCx::c_uint_big(niche_llty, delta));
+                    let lldiscr_max = CodegenCx::c_uint(niche_llty, *niche_variants.end() as u64);
                     bx.select(bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max),
                         bx.intcast(lldiscr, cast_to, false),
-                        C_uint(cast_to, dataful_variant as u64))
+                        CodegenCx::c_uint(cast_to, dataful_variant as u64))
                 }
             }
         }
@@ -363,7 +363,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                     .discriminant_for_variant(bx.tcx(), variant_index)
                     .val;
                 bx.store(
-                    C_uint_big(ptr.layout.llvm_type(bx.cx), to),
+                    CodegenCx::c_uint_big(ptr.layout.llvm_type(bx.cx), to),
                     ptr.llval,
                     ptr.align);
             }
@@ -379,10 +379,10 @@ impl PlaceRef<'tcx, &'ll Value> {
                         // Issue #34427: As workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
                         let llptr = bx.pointercast(self.llval, Type::i8(bx.cx).ptr_to());
-                        let fill_byte = C_u8(bx.cx, 0);
+                        let fill_byte = CodegenCx::c_u8(bx.cx, 0);
                         let (size, align) = self.layout.size_and_align();
-                        let size = C_usize(bx.cx, size.bytes());
-                        let align = C_u32(bx.cx, align.abi() as u32);
+                        let size = CodegenCx::c_usize(bx.cx, size.bytes());
+                        let align = CodegenCx::c_u32(bx.cx, align.abi() as u32);
                         base::call_memset(bx, llptr, fill_byte, size, align, false);
                     }
 
@@ -392,10 +392,10 @@ impl PlaceRef<'tcx, &'ll Value> {
                         .wrapping_add(niche_start);
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_value == 0 {
-                        // HACK(eddyb) Using `C_null` as it works on all types.
-                        C_null(niche_llty)
+                        // HACK(eddyb) Using `c_null` as it works on all types.
+                        CodegenCx::c_null(niche_llty)
                     } else {
-                        C_uint_big(niche_llty, niche_value)
+                        CodegenCx::c_uint_big(niche_llty, niche_value)
                     };
                     OperandValue::Immediate(niche_llval).store(bx, niche);
                 }
@@ -406,7 +406,7 @@ impl PlaceRef<'tcx, &'ll Value> {
     pub fn project_index(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, llindex: &'ll Value)
                          -> PlaceRef<'tcx, &'ll Value> {
         PlaceRef {
-            llval: bx.inbounds_gep(self.llval, &[C_usize(bx.cx, 0), llindex]),
+            llval: bx.inbounds_gep(self.llval, &[CodegenCx::c_usize(bx.cx, 0), llindex]),
             llextra: None,
             layout: self.layout.field(bx.cx, 0),
             align: self.align
@@ -481,7 +481,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         // so we generate an abort
                         let fnname = bx.cx.get_intrinsic(&("llvm.trap"));
                         bx.call(fnname, &[], None);
-                        let llval = C_undef(layout.llvm_type(bx.cx).ptr_to());
+                        let llval = CodegenCx::c_undef(layout.llvm_type(bx.cx).ptr_to());
                         PlaceRef::new_sized(llval, layout, layout.align)
                     }
                 }
@@ -514,27 +514,27 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let lloffset = C_usize(bx.cx, offset as u64);
+                        let lloffset = CodegenCx::c_usize(bx.cx, offset as u64);
                         cg_base.project_index(bx, lloffset)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
-                        let lloffset = C_usize(bx.cx, offset as u64);
+                        let lloffset = CodegenCx::c_usize(bx.cx, offset as u64);
                         let lllen = cg_base.len(bx.cx);
                         let llindex = bx.sub(lllen, lloffset);
                         cg_base.project_index(bx, llindex)
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
                         let mut subslice = cg_base.project_index(bx,
-                            C_usize(bx.cx, from as u64));
+                            CodegenCx::c_usize(bx.cx, from as u64));
                         let projected_ty = PlaceTy::Ty { ty: cg_base.layout.ty }
                             .projection_ty(tcx, &projection.elem).to_ty(bx.tcx());
                         subslice.layout = bx.cx.layout_of(self.monomorphize(&projected_ty));
 
                         if subslice.layout.is_unsized() {
                             subslice.llextra = Some(bx.sub(cg_base.llextra.unwrap(),
-                                C_usize(bx.cx, (from as u64) + (to as u64))));
+                                CodegenCx::c_usize(bx.cx, (from as u64) + (to as u64))));
                         }
 
                         // Cast the place pointer type to the new

@@ -22,6 +22,7 @@ use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use value::Value;
+use interfaces::CommonMethods;
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
@@ -83,7 +84,7 @@ pub fn get_fn(
         // This can occur on either a crate-local or crate-external
         // reference. It also occurs when testing libcore and in some
         // other weird situations. Annoying.
-        if common::val_ty(llfn) != llptrty {
+        if CodegenCx::val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
             consts::ptrcast(llfn, llptrty)
         } else {
@@ -92,7 +93,7 @@ pub fn get_fn(
         }
     } else {
         let llfn = declare::declare_fn(cx, &sym, fn_ty);
-        assert_eq!(common::val_ty(llfn), llptrty);
+        assert_eq!(CodegenCx::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {

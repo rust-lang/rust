@@ -12,13 +12,13 @@
 
 use llvm;
 
-use common::{C_bytes, CodegenCx, C_i32};
+use common::CodegenCx;
 use builder::Builder;
 use declare;
 use rustc::session::config::DebugInfo;
 use type_::Type;
 use value::Value;
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use syntax::attr;
 
@@ -30,7 +30,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder<'_, 'll
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx);
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let indices = [C_i32(bx.cx, 0), C_i32(bx.cx, 0)];
+        let indices = [CodegenCx::c_i32(bx.cx, 0), CodegenCx::c_i32(bx.cx, 0)];
         let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
         let volative_load_instruction = bx.volatile_load(element);
         unsafe {
@@ -64,7 +64,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_, &'
                 bug!("symbol `{}` is already defined", section_var_name)
             });
             llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(section_var, C_bytes(cx, section_contents));
+            llvm::LLVMSetInitializer(section_var, CodegenCx::c_bytes(cx, section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
             llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);

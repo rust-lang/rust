@@ -11,7 +11,7 @@
 use llvm::{self, AttributePlace};
 use base;
 use builder::{Builder, MemFlags};
-use common::{ty_fn_sig, C_usize};
+use common::ty_fn_sig;
 use context::CodegenCx;
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
@@ -19,7 +19,7 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use rustc_target::abi::{LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty};
@@ -242,7 +242,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 base::call_memcpy(bx,
                                   bx.pointercast(dst.llval, Type::i8p(cx)),
                                   bx.pointercast(llscratch, Type::i8p(cx)),
-                                  C_usize(cx, self.layout.size.bytes()),
+                                  CodegenCx::c_usize(cx, self.layout.size.bytes()),
                                   self.layout.align.min(scratch_align),
                                   MemFlags::empty());
 

@@ -11,6 +11,7 @@
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, OperandBundleDef, BasicBlock};
 use common::{self, *};
+use context::CodegenCx;
 use type_;
 use value::Value;
 use libc::{c_uint, c_char};
@@ -18,7 +19,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::{BuilderMethods, Backend};
+use interfaces::{BuilderMethods, Backend, CommonMethods};
 use syntax;
 
 use std::borrow::Cow;
@@ -59,6 +60,7 @@ impl Backend for Builder<'a, 'll, 'tcx, &'ll Value>  {
         type Value = &'ll Value;
         type BasicBlock = &'ll BasicBlock;
         type Type = &'ll type_::Type;
+        type Context = &'ll llvm::Context;
 }
 
 impl BuilderMethods<'a, 'll, 'tcx>
@@ -545,10 +547,10 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
 
         unsafe {
-            let llty = val_ty(load);
+            let llty = CodegenCx::val_ty(load);
             let v = [
-                C_uint_big(llty, range.start),
-                C_uint_big(llty, range.end)
+                CodegenCx::c_uint_big(llty, range.start),
+                CodegenCx::c_uint_big(llty, range.end)
             ];
 
             llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
@@ -613,7 +615,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
                 // *always* point to a metadata value of the integer 1.
                 //
                 // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-                let one = C_i32(self.cx, 1);
+                let one = CodegenCx::c_i32(self.cx, 1);
                 let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
                 llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
             }
@@ -779,7 +781,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
         let argtys = inputs.iter().map(|v| {
             debug!("Asm Input Type: {:?}", *v);
-            val_ty(*v)
+            CodegenCx::val_ty(*v)
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
@@ -860,11 +862,11 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
-            let elt_ty = val_ty(elt);
+            let elt_ty = CodegenCx::val_ty(elt);
             let undef = llvm::LLVMGetUndef(type_::Type::vector(elt_ty, num_elts as u64));
-            let vec = self.insert_element(undef, elt, C_i32(self.cx, 0));
+            let vec = self.insert_element(undef, elt, CodegenCx::c_i32(self.cx, 0));
             let vec_i32_ty = type_::Type::vector(type_::Type::i32(self.cx), num_elts as u64);
-            self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
+            self.shuffle_vector(vec, undef, CodegenCx::c_null(vec_i32_ty))
         }
     }
 
@@ -1171,8 +1173,8 @@ impl BuilderMethods<'a, 'll, 'tcx>
     fn check_store<'b>(&self,
                        val: &'ll Value,
                        ptr: &'ll Value) -> &'ll Value {
-        let dest_ptr_ty = val_ty(ptr);
-        let stored_ty = val_ty(val);
+        let dest_ptr_ty = CodegenCx::val_ty(ptr);
+        let stored_ty = CodegenCx::val_ty(val);
         let stored_ptr_ty = stored_ty.ptr_to();
 
         assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
@@ -1192,7 +1194,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
                       typ: &str,
                       llfn: &'ll Value,
                       args: &'b [&'ll Value]) -> Cow<'b, [&'ll Value]> {
-        let mut fn_ty = val_ty(llfn);
+        let mut fn_ty = CodegenCx::val_ty(llfn);
         // Strip off pointers
         while fn_ty.kind() == llvm::TypeKind::Pointer {
             fn_ty = fn_ty.element_type();
@@ -1204,7 +1206,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         let param_tys = fn_ty.func_params();
 
         let all_args_match = param_tys.iter()
-            .zip(args.iter().map(|&v| val_ty(v)))
+            .zip(args.iter().map(|&v| CodegenCx::val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
@@ -1215,7 +1217,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
             .zip(args.iter())
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = val_ty(actual_val);
+                let actual_ty = CodegenCx::val_ty(actual_val);
                 if expected_ty != actual_ty {
                     debug!("Type mismatch in function call of {:?}. \
                             Expected {:?} for param {}, got {:?}; injecting bitcast",
@@ -1259,7 +1261,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
         let ptr = self.pointercast(ptr, type_::Type::i8p(self.cx));
-        self.call(lifetime_intrinsic, &[C_u64(self.cx, size), ptr], None);
+        self.call(lifetime_intrinsic, &[CodegenCx::c_u64(self.cx, size), ptr], None);
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],

@@ -16,11 +16,12 @@ use std;
 
 use builder::Builder;
 use common::*;
+use context::CodegenCx;
 use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 pub fn size_and_align_of_dst(
     bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
@@ -33,8 +34,8 @@ pub fn size_and_align_of_dst(
         let (size, align) = bx.cx.size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, info, size, align);
-        let size = C_usize(bx.cx, size.bytes());
-        let align = C_usize(bx.cx, align.abi());
+        let size = CodegenCx::c_usize(bx.cx, size.bytes());
+        let align = CodegenCx::c_usize(bx.cx, align.abi());
         return (size, align);
     }
     match t.sty {
@@ -48,8 +49,8 @@ pub fn size_and_align_of_dst(
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let (size, align) = bx.cx.size_and_align_of(unit);
-            (bx.mul(info.unwrap(), C_usize(bx.cx, size.bytes())),
-             C_usize(bx.cx, align.abi()))
+            (bx.mul(info.unwrap(), CodegenCx::c_usize(bx.cx, size.bytes())),
+             CodegenCx::c_usize(bx.cx, align.abi()))
         }
         _ => {
             let cx = bx.cx;
@@ -65,8 +66,8 @@ pub fn size_and_align_of_dst(
             let sized_align = layout.align.abi();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
-            let sized_size = C_usize(cx, sized_size);
-            let sized_align = C_usize(cx, sized_align);
+            let sized_size = CodegenCx::c_usize(cx, sized_size);
+            let sized_align = CodegenCx::c_usize(cx, sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
@@ -92,12 +93,12 @@ pub fn size_and_align_of_dst(
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = match (const_to_opt_u128(sized_align, false),
-                               const_to_opt_u128(unsized_align, false)) {
+            let align = match (CodegenCx::const_to_opt_u128(sized_align, false),
+                               CodegenCx::const_to_opt_u128(unsized_align, false)) {
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
-                    C_usize(cx, std::cmp::max(sized_align, unsized_align) as u64)
+                    CodegenCx::c_usize(cx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => bx.select(bx.icmp(IntPredicate::IntUGT, sized_align, unsized_align),
                                sized_align,
@@ -115,7 +116,7 @@ pub fn size_and_align_of_dst(
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = bx.sub(align, C_usize(bx.cx, 1));
+            let addend = bx.sub(align, CodegenCx::c_usize(bx.cx, 1));
             let size = bx.and(bx.add(size, addend), bx.neg(align));
 
             (size, align)

@@ -45,8 +45,8 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
-use context::{is_pie_binary, get_reloc_model};
-use common::{C_bytes_in_context, val_ty};
+use context::{is_pie_binary, get_reloc_model, CodegenCx};
+use interfaces::CommonMethods;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
@@ -889,10 +889,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
                         llcx: &llvm::Context,
                         llmod: &llvm::Module,
                         bitcode: Option<&[u8]>) {
-    let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = CodegenCx::c_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        val_ty(llconst),
+        CodegenCx::val_ty(llconst),
         "rustc.embedded.module\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -909,10 +909,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-    let llconst = C_bytes_in_context(llcx, &[]);
+    let llconst = CodegenCx::c_bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        val_ty(llconst),
+        CodegenCx::val_ty(llconst),
         "rustc.embedded.cmdline\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);

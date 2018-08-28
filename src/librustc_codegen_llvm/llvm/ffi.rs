@@ -215,7 +215,7 @@ pub enum TypeKind {
     Double = 3,
     X86_FP80 = 4,
     FP128 = 5,
-    PPC_FP128 = 6,
+    PPc_FP128 = 6,
     Label = 7,
     Integer = 8,
     Function = 9,

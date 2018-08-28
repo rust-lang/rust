@@ -10,6 +10,8 @@
 
 mod builder;
 mod backend;
+mod common;
 
 pub use self::builder::BuilderMethods;
 pub use self::backend::Backend;
+pub use self::common::CommonMethods;

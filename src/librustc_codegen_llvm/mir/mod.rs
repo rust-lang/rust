@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, BasicBlock};
 use llvm::debuginfo::DIScope;
@@ -25,7 +24,7 @@ use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
 use value::Value;
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -420,8 +419,8 @@ fn create_funclets(
                 // C++ personality function, but `catch (...)` has no type so
                 // it's null. The 64 here is actually a bitfield which
                 // represents that this is a catch-all block.
-                let null = C_null(Type::i8p(bx.cx));
-                let sixty_four = C_i32(bx.cx, 64);
+                let null = CodegenCx::c_null(Type::i8p(bx.cx));
+                let sixty_four = CodegenCx::c_i32(bx.cx, 64);
                 cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);
             }

@@ -19,18 +19,15 @@ use std::{u128, i128};
 use base;
 use builder::Builder;
 use callee;
-use common::{self, val_ty};
-use common::{
-    C_bool, C_u8, C_i32, C_u32, C_u64, C_undef, C_null, C_usize,
-    C_uint, C_uint_big, IntPredicate, RealPredicate
-};
+use common::{self, IntPredicate, RealPredicate};
+use context::CodegenCx;
 use consts;
 use monomorphize;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use interfaces::BuilderMethods;
+use interfaces::{BuilderMethods, CommonMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -106,28 +103,28 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     return bx;
                 }
 
-                let start = dest.project_index(&bx, C_usize(bx.cx, 0)).llval;
+                let start = dest.project_index(&bx, CodegenCx::c_usize(bx.cx, 0)).llval;
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let align = C_i32(bx.cx, dest.align.abi() as i32);
-                    let size = C_usize(bx.cx, dest.layout.size.bytes());
+                    let align = CodegenCx::c_i32(bx.cx, dest.align.abi() as i32);
+                    let size = CodegenCx::c_usize(bx.cx, dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if common::is_const_integral(v) && common::const_to_uint(v) == 0 {
-                        let fill = C_u8(bx.cx, 0);
+                    if CodegenCx::is_const_integral(v) && CodegenCx::const_to_uint(v) == 0 {
+                        let fill = CodegenCx::c_u8(bx.cx, 0);
                         base::call_memset(&bx, start, fill, size, align, false);
                         return bx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
-                    if common::val_ty(v) == Type::i8(bx.cx) {
+                    if CodegenCx::val_ty(v) == Type::i8(bx.cx) {
                         base::call_memset(&bx, start, v, size, align, false);
                         return bx;
                     }
                 }
 
-                let count = C_usize(bx.cx, count);
+                let count = CodegenCx::c_usize(bx.cx, count);
                 let end = dest.project_index(&bx, count).llval;
 
                 let header_bx = bx.build_sibling_block("repeat_loop_header");
@@ -135,7 +132,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 let next_bx = bx.build_sibling_block("repeat_loop_next");
 
                 bx.br(header_bx.llbb());
-                let current = header_bx.phi(common::val_ty(start), &[start], &[bx.llbb()]);
+                let current = header_bx.phi(CodegenCx::val_ty(start), &[start], &[bx.llbb()]);
 
                 let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
                 header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
@@ -143,7 +140,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 cg_elem.val.store(&body_bx,
                     PlaceRef::new_sized(current, cg_elem.layout, dest.align));
 
-                let next = body_bx.inbounds_gep(current, &[C_usize(bx.cx, 1)]);
+                let next = body_bx.inbounds_gep(current, &[CodegenCx::c_usize(bx.cx, 1)]);
                 body_bx.br(header_bx.llbb());
                 header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
 
@@ -296,7 +293,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         let ll_t_out = cast.immediate_llvm_type(bx.cx);
                         if operand.layout.abi.is_uninhabited() {
                             return (bx, OperandRef {
-                                val: OperandValue::Immediate(C_undef(ll_t_out)),
+                                val: OperandValue::Immediate(CodegenCx::c_undef(ll_t_out)),
                                 layout: cast,
                             });
                         }
@@ -310,7 +307,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                     let discr_val = def
                                         .discriminant_for_variant(bx.cx.tcx, index)
                                         .val;
-                                    let discr = C_uint_big(ll_t_out, discr_val);
+                                    let discr = CodegenCx::c_uint_big(ll_t_out, discr_val);
                                     return (bx, OperandRef {
                                         val: OperandValue::Immediate(discr),
                                         layout: cast,
@@ -341,7 +338,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                     base::call_assume(&bx, bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,
-                                        C_uint_big(ll_t_in, *scalar.valid_range.end())
+                                        CodegenCx::c_uint_big(ll_t_in, *scalar.valid_range.end())
                                     ));
                                 }
                             }
@@ -492,7 +489,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bx.cx.type_is_sized(ty));
-                let val = C_usize(bx.cx, bx.cx.size_of(ty).bytes());
+                let val = CodegenCx::c_usize(bx.cx, bx.cx.size_of(ty).bytes());
                 let tcx = bx.tcx();
                 (bx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -503,8 +500,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
                 let (size, align) = bx.cx.size_and_align_of(content_ty);
-                let llsize = C_usize(bx.cx, size.bytes());
-                let llalign = C_usize(bx.cx, align.abi());
+                let llsize = CodegenCx::c_usize(bx.cx, size.bytes());
+                let llalign = CodegenCx::c_usize(bx.cx, align.abi());
                 let box_layout = bx.cx.layout_of(bx.tcx().mk_box(content_ty));
                 let llty_ptr = box_layout.llvm_type(bx.cx);
 
@@ -551,7 +548,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
                     let n = n.unwrap_usize(bx.cx.tcx);
-                    return common::C_usize(bx.cx, n);
+                    return CodegenCx::c_usize(bx.cx, n);
                 }
             }
         }
@@ -609,7 +606,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_unit {
-                C_bool(bx.cx, match op {
+                CodegenCx::c_bool(bx.cx, match op {
                     mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
                     mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
                     _ => unreachable!()
@@ -688,7 +685,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         // while the current crate doesn't use overflow checks.
         if !bx.cx.check_overflow {
             let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-            return OperandValue::Pair(val, C_bool(bx.cx, false));
+            return OperandValue::Pair(val, CodegenCx::c_bool(bx.cx, false));
         }
 
         let (val, of) = match op {
@@ -707,12 +704,12 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                  bx.extract_value(res, 1))
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
-                let lhs_llty = val_ty(lhs);
-                let rhs_llty = val_ty(rhs);
+                let lhs_llty = CodegenCx::val_ty(lhs);
+                let rhs_llty = CodegenCx::val_ty(rhs);
                 let invert_mask = common::shift_mask_val(&bx, lhs_llty, rhs_llty, true);
                 let outer_bits = bx.and(rhs, invert_mask);
 
-                let of = bx.icmp(IntPredicate::IntNE, outer_bits, C_null(rhs_llty));
+                let of = bx.icmp(IntPredicate::IntNE, outer_bits, CodegenCx::c_null(rhs_llty));
                 let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
 
                 (val, of)
@@ -839,9 +836,9 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
         use rustc_apfloat::Float;
         const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
                                             << (Single::MAX_EXP - Single::PRECISION as i16);
-        let max = C_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
+        let max = CodegenCx::c_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bx.icmp(IntPredicate::IntUGE, x, max);
-        let infinity_bits = C_u32(bx.cx, ieee::Single::INFINITY.to_bits() as u32);
+        let infinity_bits = CodegenCx::c_u32(bx.cx, ieee::Single::INFINITY.to_bits() as u32);
         let infinity = consts::bitcast(infinity_bits, float_ty);
         bx.select(overflow, infinity, bx.uitofp(x, float_ty))
     } else {
@@ -910,8 +907,8 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     }
     let float_bits_to_llval = |bits| {
         let bits_llval = match float_ty.float_width() {
-            32 => C_u32(bx.cx, bits as u32),
-            64 => C_u64(bx.cx, bits as u64),
+            32 => CodegenCx::c_u32(bx.cx, bits as u32),
+            64 => CodegenCx::c_u64(bx.cx, bits as u64),
             n => bug!("unsupported float width {}", n),
         };
         consts::bitcast(bits_llval, float_ty)
@@ -966,8 +963,8 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // performed is ultimately up to the backend, but at least x86 does perform them.
     let less_or_nan = bx.fcmp(RealPredicate::RealULT, x, f_min);
     let greater = bx.fcmp(RealPredicate::RealOGT, x, f_max);
-    let int_max = C_uint_big(int_ty, int_max(signed, int_ty));
-    let int_min = C_uint_big(int_ty, int_min(signed, int_ty) as u128);
+    let int_max = CodegenCx::c_uint_big(int_ty, int_max(signed, int_ty));
+    let int_min = CodegenCx::c_uint_big(int_ty, int_min(signed, int_ty) as u128);
     let s0 = bx.select(less_or_nan, int_min, fptosui_result);
     let s1 = bx.select(greater, int_max, s0);
 
@@ -976,7 +973,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // Therefore we only need to execute this step for signed integer types.
     if signed {
         // LLVM has no isNaN predicate, so we use (x == x) instead
-        bx.select(bx.fcmp(RealPredicate::RealOEQ, x, x), s1, C_uint(int_ty, 0))
+        bx.select(bx.fcmp(RealPredicate::RealOEQ, x, x), s1, CodegenCx::c_uint(int_ty, 0))
     } else {
         s1
     }
