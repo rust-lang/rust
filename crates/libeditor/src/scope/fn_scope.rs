@@ -24,11 +24,7 @@ impl FnScopes {
             scope_for: HashMap::new()
         };
         let root = scopes.root_scope();
-        fn_def.param_list().into_iter()
-            .flat_map(|it| it.params())
-            .filter_map(|it| it.pat())
-            .for_each(|it| scopes.add_bindings(root, it));
-
+        scopes.add_params_bindings(root, fn_def.param_list());
         if let Some(body) = fn_def.body() {
             compute_block_scopes(body, &mut scopes, root)
         }
@@ -55,6 +51,12 @@ impl FnScopes {
             .filter_map(ast::BindPat::cast)
             .filter_map(ScopeEntry::new);
         self.scopes[scope].entries.extend(entries);
+    }
+    fn add_params_bindings(&mut self, scope: ScopeId, params: Option<ast::ParamList>) {
+        params.into_iter()
+            .flat_map(|it| it.params())
+            .filter_map(|it| it.pat())
+            .for_each(|it| self.add_bindings(scope, it));
     }
     fn set_scope(&mut self, node: SyntaxNodeRef, scope: ScopeId) {
         self.scope_for.insert(node.owned(), scope);
@@ -102,12 +104,13 @@ fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: Sco
     for stmt in block.statements() {
         match stmt {
             ast::Stmt::LetStmt(stmt) => {
+                if let Some(expr) = stmt.initializer() {
+                    scopes.set_scope(expr.syntax(), scope);
+                    compute_expr_scopes(expr, scopes, scope);
+                }
                 scope = scopes.new_scope(scope);
                 if let Some(pat) = stmt.pat() {
                     scopes.add_bindings(scope, pat);
-                }
-                if let Some(expr) = stmt.initializer() {
-                    scopes.set_scope(expr.syntax(), scope)
                 }
             }
             ast::Stmt::ExprStmt(expr_stmt) => {
@@ -163,6 +166,20 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 compute_block_scopes(block, scopes, scope);
             }
         },
+        ast::Expr::LambdaExpr(e) => {
+            let mut scope = scopes.new_scope(scope);
+            scopes.add_params_bindings(scope, e.param_list());
+            if let Some(body) = e.body() {
+                scopes.set_scope(body.syntax(), scope);
+                compute_expr_scopes(body, scopes, scope);
+            }
+        }
+        ast::Expr::CallExpr(e) => {
+            e.arg_list().into_iter()
+                .flat_map(|it| it.args())
+                .chain(e.expr())
+                .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
+        }
         _ => {
             expr.syntax().children()
                 .filter_map(ast::Expr::cast)
@@ -188,4 +205,54 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
 struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libsyntax2::File;
+    use {find_node_at_offset, test_utils::extract_offset};
+
+    fn do_check(code: &str, expected: &[&str]) {
+        let (off, code) = extract_offset(code);
+        let code = {
+            let mut buf = String::new();
+            let off = u32::from(off) as usize;
+            buf.push_str(&code[..off]);
+            buf.push_str("marker");
+            buf.push_str(&code[off..]);
+            buf
+        };
+        let file = File::parse(&code);
+        let marker: ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
+        let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
+        let scopes = FnScopes::new(fn_def);
+        let actual = scopes.scope_chain(marker.syntax())
+            .flat_map(|scope| scopes.entries(scope))
+            .map(|it| it.name())
+            .collect::<Vec<_>>();
+        assert_eq!(expected, actual.as_slice());
+    }
+
+    #[test]
+    fn test_lambda_scope() {
+        do_check(r"
+            fn quux(foo: i32) {
+                let f = |bar| {
+                    <|>
+                };
+            }",
+            &["bar", "foo"],
+        );
+    }
+
+    #[test]
+    fn test_call_scope() {
+        do_check(r"
+            fn quux() {
+                f(|x| <|> );
+            }",
+            &["x"],
+        );
+    }
 }

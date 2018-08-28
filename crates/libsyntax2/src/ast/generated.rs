@@ -4,6 +4,28 @@ use {
     SyntaxKind::*,
 };
 
+// ArgList
+#[derive(Debug, Clone, Copy)]
+pub struct ArgList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ArgList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ARG_LIST => Some(ArgList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ArgList<'a> {
+    pub fn args(self) -> impl Iterator<Item = Expr<'a>> + 'a {
+        super::children(self)
+    }
+}
+
 // ArrayExpr
 #[derive(Debug, Clone, Copy)]
 pub struct ArrayExpr<'a> {
@@ -181,7 +203,15 @@ impl<'a> AstNode<'a> for CallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> CallExpr<'a> {}
+impl<'a> CallExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn arg_list(self) -> Option<ArgList<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // CastExpr
 #[derive(Debug, Clone, Copy)]
@@ -705,7 +735,15 @@ impl<'a> AstNode<'a> for LambdaExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LambdaExpr<'a> {}
+impl<'a> LambdaExpr<'a> {
+    pub fn param_list(self) -> Option<ParamList<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn body(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // LetStmt
 #[derive(Debug, Clone, Copy)]
@@ -729,6 +767,46 @@ impl<'a> LetStmt<'a> {
     }
 
     pub fn initializer(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// Lifetime
+#[derive(Debug, Clone, Copy)]
+pub struct Lifetime<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Lifetime<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LIFETIME => Some(Lifetime { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Lifetime<'a> {}
+
+// LifetimeParam
+#[derive(Debug, Clone, Copy)]
+pub struct LifetimeParam<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for LifetimeParam<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            LIFETIME_PARAM => Some(LifetimeParam { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> LifetimeParam<'a> {
+    pub fn lifetime(self) -> Option<Lifetime<'a>> {
         super::child_opt(self)
     }
 }
@@ -1811,6 +1889,10 @@ impl<'a> AstNode<'a> for TypeParamList<'a> {
 
 impl<'a> TypeParamList<'a> {
     pub fn type_params(self) -> impl Iterator<Item = TypeParam<'a>> + 'a {
+        super::children(self)
+    }
+
+    pub fn lifetime_params(self) -> impl Iterator<Item = LifetimeParam<'a>> + 'a {
         super::children(self)
     }
 }

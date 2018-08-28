@@ -67,6 +67,12 @@ impl<'a> Attr<'a> {
     }
 }
 
+impl<'a> Lifetime<'a> {
+    pub fn text(&self) -> SmolStr {
+        self.syntax().leaf_text().unwrap()
+    }
+}
+
 impl<'a> Name<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()

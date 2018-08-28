@@ -80,7 +80,9 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
         if let Some(type_params) = type_params {
-            join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
+            let lifetime_params = type_params.lifetime_params().filter_map(|it| it.lifetime()).map(|it| it.text());
+            let type_params = type_params.type_params().filter_map(|it| it.name()).map(|it| it.text());
+            join(lifetime_params.chain(type_params))
                 .surround_with("<", ">")
                 .to_buf(&mut buf);
         }
@@ -144,6 +146,11 @@ mod tests {
         check_action(
             "struct Foo<T: Clone> {<|>}",
             "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+            |file, off| add_impl(file, off).map(|f| f()),
+        );
+        check_action(
+            "struct Foo<'a, T: Foo<'a>> {<|>}",
+            "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n<|>\n}",
             |file, off| add_impl(file, off).map(|f| f()),
         );
     }

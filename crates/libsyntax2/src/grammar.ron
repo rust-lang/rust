@@ -344,7 +344,12 @@ Grammar(
         "ArrayExpr": (),
         "ParenExpr": (),
         "PathExpr": (),
-        "LambdaExpr": (),
+        "LambdaExpr": (
+            options: [
+                ["param_list", "ParamList"],
+                ["body", "Expr"],
+            ]
+        ),
         "IfExpr": (
             options: [ ["condition", "Condition"] ]
         ),
@@ -378,7 +383,12 @@ Grammar(
         "StructLit": (),
         "NamedFieldList": (),
         "NamedField": (),
-        "CallExpr": (),
+        "CallExpr": (
+            options: [
+                [ "expr", "Expr" ],
+                [ "arg_list", "ArgList" ],
+            ]
+        ),
         "IndexExpr": (),
         "MethodCallExpr": (),
         "FieldExpr": (),
@@ -457,8 +467,15 @@ Grammar(
         "NameRef": (),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
         "TokenTree": (),
-        "TypeParamList": ( collections: [ ["type_params", "TypeParam" ] ]),
+        "TypeParamList": (
+            collections: [
+                ["type_params", "TypeParam" ],
+                ["lifetime_params", "LifetimeParam" ],
+            ]
+        ),
         "TypeParam": ( traits: ["NameOwner"] ),
+        "LifetimeParam": ( options: [ ["lifetime", "Lifetime"] ] ),
+        "Lifetime": (),
         "WhereClause": (),
         "ExprStmt": (
             options: [ ["expr", "Expr"] ]
@@ -492,5 +509,10 @@ Grammar(
         ),
         "UseItem": (),
         "ExternCrateItem": (),
+        "ArgList": (
+            collections: [
+                ["args", "Expr"]
+            ]
+        )
     },
 )

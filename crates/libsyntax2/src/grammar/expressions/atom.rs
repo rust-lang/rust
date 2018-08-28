@@ -151,10 +151,11 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(MOVE_KW);
     params::param_list_opt_types(p);
     if opt_fn_ret_type(p) {
-        block(p);
-    } else {
-        expr(p);
+        if !p.at(L_CURLY) {
+            p.error("expected `{`");
+        }
     }
+    expr(p);
     m.complete(p, LAMBDA_EXPR)
 }
 
