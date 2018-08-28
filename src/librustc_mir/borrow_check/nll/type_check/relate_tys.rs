@@ -475,7 +475,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
 /// binder depth, and finds late-bound regions targeting the
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
-struct ScopeInstantiator<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
+struct ScopeInstantiator<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
