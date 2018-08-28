@@ -30,6 +30,7 @@ use ty::TyCtxt;
 use ty::query::Providers;
 
 use hir;
+use hir::Node;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
@@ -257,7 +258,7 @@ impl Scope {
         }
         let span = tcx.hir.span(node_id);
         if let ScopeData::Remainder(r) = self.data() {
-            if let hir::map::NodeBlock(ref blk) = tcx.hir.get(node_id) {
+            if let Node::Block(ref blk) = tcx.hir.get(node_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -1420,8 +1421,8 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         // record its impl/trait parent, as it can also have
         // lifetime parameters free in this body.
         match tcx.hir.get(id) {
-            hir::map::NodeImplItem(_) |
-            hir::map::NodeTraitItem(_) => {
+            Node::ImplItem(_) |
+            Node::TraitItem(_) => {
                 visitor.scope_tree.root_parent = Some(tcx.hir.get_parent(id));
             }
             _ => {}

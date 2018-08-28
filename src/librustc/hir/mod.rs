@@ -2370,3 +2370,32 @@ impl CodegenFnAttrs {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) || self.export_name.is_some()
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub enum Node<'hir> {
+    Item(&'hir Item),
+    ForeignItem(&'hir ForeignItem),
+    TraitItem(&'hir TraitItem),
+    ImplItem(&'hir ImplItem),
+    Variant(&'hir Variant),
+    Field(&'hir StructField),
+    AnonConst(&'hir AnonConst),
+    Expr(&'hir Expr),
+    Stmt(&'hir Stmt),
+    Ty(&'hir Ty),
+    TraitRef(&'hir TraitRef),
+    Binding(&'hir Pat),
+    Pat(&'hir Pat),
+    Block(&'hir Block),
+    Local(&'hir Local),
+    MacroDef(&'hir MacroDef),
+
+    /// StructCtor represents a tuple struct.
+    StructCtor(&'hir VariantData),
+
+    Lifetime(&'hir Lifetime),
+    GenericParam(&'hir GenericParam),
+    Visibility(&'hir Visibility),
+
+    Crate,
+}

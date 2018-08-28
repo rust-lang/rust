@@ -18,7 +18,7 @@
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::map::Map;
-use hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, ParamName};
+use hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, ParamName, Node};
 use ty::{self, TyCtxt, GenericParamDefKind};
 
 use errors::DiagnosticBuilder;
@@ -1440,10 +1440,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     debug!("node id first={:?}", node_id);
                     if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
-                        hir::map::NodeLifetime(hir_lifetime) => {
+                        Node::Lifetime(hir_lifetime) => {
                             Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.ident()))
                         }
-                        hir::map::NodeGenericParam(param) => {
+                        Node::GenericParam(param) => {
                             Some((param.id, param.span, param.name.ident()))
                         }
                         _ => None,
@@ -1466,10 +1466,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 None => {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
-                        hir::map::NodeLifetime(hir_lifetime) => {
+                        Node::Lifetime(hir_lifetime) => {
                             Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.ident()))
                         }
-                        hir::map::NodeGenericParam(param) => {
+                        Node::GenericParam(param) => {
                             Some((param.id, param.span, param.name.ident()))
                         }
                         _ => None,
@@ -1643,15 +1643,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir.body_owner(body_id);
                 match self.tcx.hir.get(fn_id) {
-                    hir::map::NodeItem(&hir::Item {
+                    Node::Item(&hir::Item {
                         node: hir::ItemKind::Fn(..),
                         ..
                     })
-                    | hir::map::NodeTraitItem(&hir::TraitItem {
+                    | Node::TraitItem(&hir::TraitItem {
                         node: hir::TraitItemKind::Method(..),
                         ..
                     })
-                    | hir::map::NodeImplItem(&hir::ImplItem {
+                    | Node::ImplItem(&hir::ImplItem {
                         node: hir::ImplItemKind::Method(..),
                         ..
                     }) => {
@@ -1868,12 +1868,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let parent = self.tcx.hir.get_parent_node(output.id);
         let body = match self.tcx.hir.get(parent) {
             // `fn` definitions and methods.
-            hir::map::NodeItem(&hir::Item {
+            Node::Item(&hir::Item {
                 node: hir::ItemKind::Fn(.., body),
                 ..
             }) => Some(body),
 
-            hir::map::NodeTraitItem(&hir::TraitItem {
+            Node::TraitItem(&hir::TraitItem {
                 node: hir::TraitItemKind::Method(_, ref m),
                 ..
             }) => {
@@ -1896,7 +1896,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
             }
 
-            hir::map::NodeImplItem(&hir::ImplItem {
+            Node::ImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(_, body),
                 ..
             }) => {
@@ -1918,7 +1918,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             // Foreign functions, `fn(...) -> R` and `Trait(...) -> R` (both types and bounds).
-            hir::map::NodeForeignItem(_) | hir::map::NodeTy(_) | hir::map::NodeTraitRef(_) => None,
+            Node::ForeignItem(_) | Node::Ty(_) | Node::TraitRef(_) => None,
             // Everything else (only closures?) doesn't
             // actually enjoy elision in return types.
             _ => {

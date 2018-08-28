@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use monomorphize::Instance;
 use rustc::hir;
+use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -94,7 +95,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
             match tcx.hir.get(node_id) {
-                hir::map::NodeForeignItem(..) => {
+                Node::ForeignItem(..) => {
                     let def_id = tcx.hir.local_def_id(node_id);
                     if tcx.is_statically_included_foreign_item(def_id) {
                         Some(def_id)
@@ -104,14 +105,14 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
 
                 // Only consider nodes that actually have exported symbols.
-                hir::map::NodeItem(&hir::Item {
+                Node::Item(&hir::Item {
                     node: hir::ItemKind::Static(..),
                     ..
                 }) |
-                hir::map::NodeItem(&hir::Item {
+                Node::Item(&hir::Item {
                     node: hir::ItemKind::Fn(..), ..
                 }) |
-                hir::map::NodeImplItem(&hir::ImplItem {
+                Node::ImplItem(&hir::ImplItem {
                     node: hir::ImplItemKind::Method(..),
                     ..
                 }) => {

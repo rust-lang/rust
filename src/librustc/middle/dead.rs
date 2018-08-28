@@ -12,7 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use hir::map as hir_map;
+use hir::Node;
 use hir::{self, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -29,16 +29,16 @@ use syntax::attr;
 use syntax_pos;
 
 // Any local node that may call something in its body block should be
-// explored. For example, if it's a live NodeItem that is a
+// explored. For example, if it's a live Node::Item that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
 fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             node_id: ast::NodeId) -> bool {
     match tcx.hir.find(node_id) {
-        Some(hir_map::NodeItem(..)) |
-        Some(hir_map::NodeImplItem(..)) |
-        Some(hir_map::NodeForeignItem(..)) |
-        Some(hir_map::NodeTraitItem(..)) =>
+        Some(Node::Item(..)) |
+        Some(Node::ImplItem(..)) |
+        Some(Node::ForeignItem(..)) |
+        Some(Node::TraitItem(..)) =>
             true,
         _ =>
             false
@@ -145,13 +145,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_node(&mut self, node: &hir_map::Node<'tcx>) {
+    fn visit_node(&mut self, node: &Node<'tcx>) {
         let had_repr_c = self.repr_has_repr_c;
         self.repr_has_repr_c = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         self.inherited_pub_visibility = false;
         match *node {
-            hir_map::NodeItem(item) => {
+            Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
@@ -173,13 +173,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     _ => ()
                 }
             }
-            hir_map::NodeTraitItem(trait_item) => {
+            Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
             }
-            hir_map::NodeImplItem(impl_item) => {
+            Node::ImplItem(impl_item) => {
                 intravisit::walk_impl_item(self, impl_item);
             }
-            hir_map::NodeForeignItem(foreign_item) => {
+            Node::ForeignItem(foreign_item) => {
                 intravisit::walk_foreign_item(self, &foreign_item);
             }
             _ => ()

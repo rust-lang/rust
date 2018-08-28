@@ -191,7 +191,7 @@
 use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc::hir::map as hir_map;
+use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{AllocId, ConstValue, ScalarMaybeUndef};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
@@ -740,7 +740,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
     };
 
     return match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeForeignItem(..)) => {
+        Some(Node::ForeignItem(..)) => {
             false // foreign items are linked against, not codegened.
         }
         Some(_) => true,

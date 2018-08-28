@@ -19,6 +19,7 @@ use hair::*;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
+use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
@@ -202,7 +203,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
         let tcx = self.tcx.global_tcx();
         let p = match tcx.hir.get(p.id) {
-            hir::map::NodePat(p) | hir::map::NodeBinding(p) => p,
+            Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
         Pattern::from_hir(tcx,

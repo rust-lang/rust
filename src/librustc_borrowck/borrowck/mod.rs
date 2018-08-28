@@ -21,7 +21,7 @@ pub use self::MovedValueUseKind::*;
 use self::InteriorKind::*;
 
 use rustc::hir::HirId;
-use rustc::hir::map as hir_map;
+use rustc::hir::Node;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
 use rustc::middle::borrowck::{BorrowCheckResult, SignalledError};
@@ -95,8 +95,8 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
 
     match tcx.hir.get(owner_id) {
-        hir_map::NodeStructCtor(_) |
-        hir_map::NodeVariant(_) => {
+        Node::StructCtor(_) |
+        Node::Variant(_) => {
             // We get invoked with anything that has MIR, but some of
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body
@@ -419,7 +419,7 @@ fn closure_to_block(closure_id: LocalDefId,
                     tcx: TyCtxt) -> ast::NodeId {
     let closure_id = tcx.hir.local_def_id_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
-        hir_map::NodeExpr(expr) => match expr.node {
+        Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
                 body_id.node_id
             }
@@ -908,7 +908,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     let node =  self.tcx.hir.get(node_id);
 
                     // This pattern probably always matches.
-                    if let hir_map::NodeExpr(
+                    if let Node::Expr(
                         hir::Expr { node: hir::ExprKind::Index(lhs, _), ..}
                     ) = node {
                         let ty = self.tables.expr_ty(lhs);
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 if let ty::ReScope(scope) = *super_scope {
                     let node_id = scope.node_id(self.tcx, &self.region_scope_tree);
                     match self.tcx.hir.find(node_id) {
-                        Some(hir_map::NodeStmt(_)) => {
+                        Some(Node::Stmt(_)) => {
                             if *sub_scope != ty::ReStatic {
                                 db.note("consider using a `let` binding to increase its lifetime");
                             }
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     fn local_binding_mode(&self, node_id: ast::NodeId) -> ty::BindingMode {
         let pat = match self.tcx.hir.get(node_id) {
-            hir_map::Node::NodeBinding(pat) => pat,
+            Node::Binding(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
 
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     None => return
                 };
 
-                if let hir_map::Node::NodeField(ref field) = self.tcx.hir.get(node_id) {
+                if let Node::Field(ref field) = self.tcx.hir.get(node_id) {
                     if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
                         db.span_label(field.ty.span, msg);
                     }

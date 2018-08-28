@@ -10,11 +10,12 @@
 
 //! Helper functions corresponding to lifetime errors due to
 //! anonymous regions.
+
 use hir;
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty::{self, Region, Ty};
 use hir::def_id::DefId;
-use hir::map as hir_map;
+use hir::Node;
 use syntax_pos::Span;
 
 // The struct contains the information about the anonymous region
@@ -137,8 +138,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             .as_local_node_id(suitable_region_binding_scope)
             .unwrap();
         let is_impl_item = match self.tcx.hir.find(node_id) {
-            Some(hir_map::NodeItem(..)) | Some(hir_map::NodeTraitItem(..)) => false,
-            Some(hir_map::NodeImplItem(..)) => {
+            Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
+            Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
             }
             _ => return None,

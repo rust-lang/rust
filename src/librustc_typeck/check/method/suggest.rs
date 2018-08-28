@@ -13,6 +13,7 @@
 
 use check::FnCtxt;
 use rustc::hir::map as hir_map;
+use hir::Node;
 use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
@@ -275,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         );
 
                                         match (filename, parent_node) {
-                                            (FileName::Real(_), hir_map::NodeLocal(hir::Local {
+                                            (FileName::Real(_), Node::Local(hir::Local {
                                                 source: hir::LocalSource::Normal,
                                                 ty,
                                                 ..
