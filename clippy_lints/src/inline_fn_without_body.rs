@@ -1,6 +1,6 @@
 //! checks for `#[inline]` on trait methods without bodies
 
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::{Attribute, Name};

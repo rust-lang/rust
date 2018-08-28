@@ -1,7 +1,7 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
 use rustc::cfg::CFG;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;

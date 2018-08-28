@@ -1,7 +1,7 @@
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::ty;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
@@ -189,9 +189,9 @@ fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
         };
 
         let stop_early = match parent_node {
-            map::Node::NodeExpr(expr) => check_expr(vis, expr),
-            map::Node::NodeStmt(stmt) => check_stmt(vis, stmt),
-            map::Node::NodeItem(_) => {
+            Node::Expr(expr) => check_expr(vis, expr),
+            Node::Stmt(stmt) => check_stmt(vis, stmt),
+            Node::Item(_) => {
                 // We reached the top of the function, stop.
                 break;
             },

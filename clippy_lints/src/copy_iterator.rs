@@ -1,6 +1,6 @@
 use crate::utils::{is_copy, match_path, paths, span_note_and_lint};
 use rustc::hir::{Item, ItemKind};
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 
 /// **What it does:** Checks for types that implement `Copy` as well as

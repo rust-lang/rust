@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::hir;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             // as a child node
             let mut parent_expr = cx.tcx.hir.get_parent_node(expr.id);
             while parent_expr != ast::CRATE_NODE_ID {
-                if let hir::map::Node::NodeExpr(e) = cx.tcx.hir.get(parent_expr) {
+                if let hir::Node::Expr(e) = cx.tcx.hir.get(parent_expr) {
                     match e.node {
                         hir::ExprKind::Binary(..)
                         | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
@@ -187,7 +187,7 @@ fn check_binop<'a>(
 
     if_chain! {
         if parent_impl != ast::CRATE_NODE_ID;
-        if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
+        if let hir::Node::Item(item) = cx.tcx.hir.get(parent_impl);
         if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];

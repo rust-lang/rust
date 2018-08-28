@@ -2,7 +2,7 @@ use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_an
 use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
@@ -133,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         // the crate node is the only one that is not in the map
                                         if_chain! {
                                             if parent_impl != ast::CRATE_NODE_ID;
-                                            if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
+                                            if let hir::Node::Item(item) = cx.tcx.hir.get(parent_impl);
                                             if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) =
                                                 item.node;
                                             if trait_ref.path.def.def_id() == trait_id;

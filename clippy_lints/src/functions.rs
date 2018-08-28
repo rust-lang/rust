@@ -1,7 +1,7 @@
 use matches::matches;
 use rustc::hir::intravisit;
 use rustc::hir;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::def::Def;
@@ -85,9 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         span: Span,
         nodeid: ast::NodeId,
     ) {
-        use rustc::hir::map::Node::*;
-
-        let is_impl = if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(nodeid)) {
+        let is_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(nodeid)) {
             matches!(item.node, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
         } else {
             false

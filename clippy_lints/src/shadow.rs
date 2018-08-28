@@ -1,5 +1,5 @@
 use crate::reexport::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;

@@ -1,7 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 use rustc::hir::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use std::cmp::Ordering;
 

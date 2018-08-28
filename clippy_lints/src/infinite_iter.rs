@@ -1,5 +1,5 @@
 use rustc::hir::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
 

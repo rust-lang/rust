@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::hir;
 use crate::utils::{is_try, match_qpath, match_trait_method, paths, span_lint};

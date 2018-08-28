@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, constant_context};
-use rustc::lint::*;
+use rustc::lint::LateContext;
 use rustc::hir::*;
 use rustc::ty::{TypeckTables};
 use std::hash::{Hash, Hasher};

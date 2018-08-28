@@ -2,7 +2,7 @@ use crate::reexport::*;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
@@ -140,7 +140,7 @@ impl LintPass for TypePass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
-        if let Some(map::NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -514,7 +514,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                         if !is_questionmark_desugar_marked_call(expr) {
                             if_chain!{
                                 let opt_parent_node = map.find(map.get_parent_node(expr.id));
-                                if let Some(hir::map::NodeExpr(parent_expr)) = opt_parent_node;
+                                if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
                                 if is_questionmark_desugar_marked_call(parent_expr);
                                 then {}
                                 else {

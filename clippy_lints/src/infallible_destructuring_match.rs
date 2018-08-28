@@ -1,6 +1,6 @@
 use super::utils::{get_arg_name, match_var, remove_blocks, snippet, span_lint_and_sugg};
 use rustc::hir::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 

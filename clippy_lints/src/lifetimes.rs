@@ -1,6 +1,6 @@
 use crate::reexport::*;
 use matches::matches;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::*;

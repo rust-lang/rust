@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use crate::utils::{higher, span_lint};

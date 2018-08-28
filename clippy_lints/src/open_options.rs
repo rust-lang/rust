@@ -1,5 +1,5 @@
 use rustc::hir::{Expr, ExprKind};
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::source_map::{Span, Spanned};

@@ -5,7 +5,7 @@ use crate::utils;
 use crate::utils::higher;
 use crate::utils::higher::Range;
 use rustc::hir::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast::RangeLimits;

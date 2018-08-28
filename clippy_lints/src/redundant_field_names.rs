@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use crate::utils::{span_lint_and_sugg};

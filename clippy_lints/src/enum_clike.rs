@@ -1,7 +1,7 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;

@@ -1,6 +1,6 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use rustc::lint::*;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, Lint};
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::source_map::Span;

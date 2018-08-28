@@ -1,8 +1,9 @@
 //! lint on multiple versions of a crate being used
 
-use rustc::lint::*;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
+use crate::utils::span_lint;
 
 use cargo_metadata;
 use itertools::Itertools;
@@ -43,7 +44,8 @@ impl EarlyLintPass for Pass {
         let metadata = match cargo_metadata::metadata_deps(None, true) {
             Ok(metadata) => metadata,
             Err(_) => {
-                cx.span_lint(
+                span_lint(
+                    cx,
                     MULTIPLE_CRATE_VERSIONS,
                     krate.span,
                     "could not read cargo metadata"
@@ -62,7 +64,8 @@ impl EarlyLintPass for Pass {
             if group.len() > 1 {
                 let versions = group.into_iter().map(|p| p.version).join(", ");
 
-                cx.span_lint(
+                span_lint(
+                    cx,
                     MULTIPLE_CRATE_VERSIONS,
                     krate.span,
                     &format!("multiple versions for dependency `{}`: {}", name, versions),

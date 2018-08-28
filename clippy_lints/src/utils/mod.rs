@@ -6,7 +6,7 @@ use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::map::Node;
+use rustc::hir::Node;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
@@ -309,9 +309,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.hir.get_parent(expr.id);
     match cx.tcx.hir.find(parent_id) {
-        Some(Node::NodeItem(&Item { ref name, .. })) => Some(*name),
-        Some(Node::NodeTraitItem(&TraitItem { ident, .. })) |
-        Some(Node::NodeImplItem(&ImplItem { ident, .. })) => Some(ident.name),
+        Some(Node::Item(&Item { ref name, .. })) => Some(*name),
+        Some(Node::TraitItem(&TraitItem { ident, .. })) |
+        Some(Node::ImplItem(&ImplItem { ident, .. })) => Some(ident.name),
         _ => None,
     }
 }
@@ -464,7 +464,7 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
         return None;
     }
     map.find(parent_id).and_then(|node| {
-        if let Node::NodeExpr(parent) = node {
+        if let Node::Expr(parent) = node {
             Some(parent)
         } else {
             None
@@ -478,11 +478,11 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
         .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
-            Node::NodeBlock(block) => Some(block),
-            Node::NodeItem(&Item {
+            Node::Block(block) => Some(block),
+            Node::Item(&Item {
                 node: ItemKind::Fn(_, _, _, eid),
                 ..
-            }) | Node::NodeImplItem(&ImplItem {
+            }) | Node::ImplItem(&ImplItem {
                 node: ImplItemKind::Method(_, eid),
                 ..
             }) => match cx.tcx.hir.body(eid).value.node {

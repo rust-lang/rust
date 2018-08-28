@@ -2,7 +2,7 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};

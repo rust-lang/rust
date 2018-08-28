@@ -1,6 +1,6 @@
 use matches::matches;
 use rustc::hir;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, Lint, LintContext};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
@@ -1145,14 +1145,14 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
             if let ty::Ref(..) = cx.tables.expr_ty(arg).sty {
                 let parent = cx.tcx.hir.get_parent_node(expr.id);
                 match cx.tcx.hir.get(parent) {
-                    hir::map::NodeExpr(parent) => match parent.node {
+                    hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
                         hir::ExprKind::AddrOf(..) |
                         // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
                         hir::ExprKind::MethodCall(..) => return,
                         _ => {},
                     }
-                    hir::map::NodeStmt(stmt) => {
+                    hir::Node::Stmt(stmt) => {
                         if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
                             if let hir::DeclKind::Local(ref loc) = decl.node {
                                 if let hir::PatKind::Ref(..) = loc.pat.node {

@@ -212,7 +212,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 if parent_id == cur_expr.id {
                     break;
                 }
-                if let Some(map::NodeExpr(parent_expr)) = cx.tcx.hir.find(parent_id) {
+                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir.find(parent_id) {
                     match &parent_expr.node {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced

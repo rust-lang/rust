@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use std::collections::HashSet;

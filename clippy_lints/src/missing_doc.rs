@@ -19,13 +19,13 @@
 //
 
 use rustc::hir;
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Span;
-use crate::utils::in_macro;
+use crate::utils::{span_lint, in_macro};
 
 /// **What it does:** Warns if there is missing doc for any documentable item
 /// (public or private).
@@ -87,7 +87,8 @@ impl MissingDoc {
             .iter()
             .any(|a| a.is_value_str() && a.name() == "doc");
         if !has_doc {
-            cx.span_lint(
+            span_lint(
+                cx,
                 MISSING_DOCS_IN_PRIVATE_ITEMS,
                 sp,
                 &format!("missing documentation for {}", desc),

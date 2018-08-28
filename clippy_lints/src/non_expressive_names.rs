@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::{LintArray, LintPass, EarlyContext, EarlyLintPass};
 use rustc::{declare_lint, lint_array};
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;

@@ -4,8 +4,7 @@ use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
-use rustc::lint::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use rustc::middle::region;
@@ -1330,7 +1329,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     let parent_scope = map.get_enclosing_scope(expr.id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
-        if let NodeBlock(block) = map.get(parent_id) {
+        if let Node::Block(block) = map.get(parent_id) {
             for (id, _) in visitor
                 .states
                 .iter()
@@ -1506,7 +1505,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
             if let Def::Local(node_id) = def {
                 let node_str = cx.tcx.hir.get(node_id);
                 if_chain! {
-                    if let map::Node::NodeBinding(pat) = node_str;
+                    if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, _, _, _) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
@@ -2047,7 +2046,7 @@ fn is_conditional(expr: &Expr) -> bool {
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
         if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
-        if let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
+        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
         }
@@ -2068,13 +2067,13 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
             return false;
         }
         match cx.tcx.hir.find(parent) {
-            Some(NodeExpr(expr)) => match expr.node {
+            Some(Node::Expr(expr)) => match expr.node {
                 ExprKind::Loop(..) | ExprKind::While(..) => {
                     return true;
                 },
                 _ => (),
             },
-            Some(NodeBlock(block)) => {
+            Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {
                     id,
                     iterator: iter_name,
@@ -2085,7 +2084,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
                     return false;
                 }
             },
-            Some(NodeStmt(_)) => (),
+            Some(Node::Stmt(_)) => (),
             _ => {
                 return false;
             },

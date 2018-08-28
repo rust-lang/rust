@@ -1,6 +1,6 @@
 //! lint on if expressions with an else if, but without a final else branch
 
-use rustc::lint::*;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
