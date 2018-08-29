@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 
 #![cfg_attr(not(stage0), feature(nll))]
 #![cfg_attr(not(stage0), feature(infer_outlives_requirements))]

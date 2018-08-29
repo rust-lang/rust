@@ -62,12 +62,12 @@ use syntax::edition::Edition;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
-mod bad_style;
+mod nonstandard_style;
 pub mod builtin;
 mod types;
 mod unused;
 
-use bad_style::*;
+use nonstandard_style::*;
 use builtin::*;
 use types::*;
 use unused::*;

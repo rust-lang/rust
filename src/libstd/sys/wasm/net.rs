@@ -297,7 +297,7 @@ pub fn lookup_host(_: &str) -> io::Result<LookupHost> {
     unsupported()
 }
 
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 pub mod netc {
     pub const AF_INET: u8 = 0;
     pub const AF_INET6: u8 = 1;

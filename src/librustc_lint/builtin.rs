@@ -54,7 +54,7 @@ use syntax::errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
 
-use bad_style::{MethodLateContext, method_context};
+use nonstandard_style::{MethodLateContext, method_context};
 
 // hardwired lints from librustc
 pub use lint::builtin::*;

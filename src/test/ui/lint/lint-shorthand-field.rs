@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(bad_style, unused_variables)]
+#![allow(nonstandard_style, unused_variables)]
 #![deny(non_shorthand_field_patterns)]
 
 struct Foo {
