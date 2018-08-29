@@ -2196,6 +2196,7 @@ impl AsRef<[u8]> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for String {
+    #[inline]
     fn from(s: &'a str) -> String {
         s.to_owned()
     }
