@@ -13,13 +13,14 @@ use libsyntax2::{
 
 use {EditBuilder, Edit, find_node_at_offset};
 
+// TODO: rename to FileEdit
 #[derive(Debug)]
-pub struct ActionResult {
+pub struct LocalEdit {
     pub edit: Edit,
     pub cursor_position: Option<TextUnit>,
 }
 
-pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let syntax = file.syntax();
 
     let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
@@ -29,14 +30,14 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
         let mut edit = EditBuilder::new();
         edit.replace(left.range(), right.text().to_string());
         edit.replace(right.range(), left.text().to_string());
-        ActionResult {
+        LocalEdit {
             edit: edit.finish(),
             cursor_position: None,
         }
     })
 }
 
-pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     Some(move || {
         let derive_attr = nominal
@@ -56,14 +57,14 @@ pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
                 tt.syntax().range().end() - TextUnit::of_char(')')
             }
         };
-        ActionResult {
+        LocalEdit {
             edit: edit.finish(),
             cursor_position: Some(offset),
         }
     })
 }
 
-pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> ActionResult + 'a> {
+pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     let name = nominal.name()?;
 
@@ -90,7 +91,7 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
         let offset = start_offset + TextUnit::of_str(&buf);
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
-        ActionResult {
+        LocalEdit {
             edit: edit.finish(),
             cursor_position: Some(offset),
         }

@@ -12,6 +12,7 @@ extern crate relative_path;
 
 mod symbol_index;
 mod module_map;
+mod api;
 
 use std::{
     fmt,
@@ -34,13 +35,14 @@ use libsyntax2::{
     ast::{self, AstNode, NameOwner},
     SyntaxKind::*,
 };
-use libeditor::{Diagnostic, LineIndex, FileSymbol, find_node_at_offset};
+use libeditor::{LineIndex, FileSymbol, find_node_at_offset};
 
 use self::{
     symbol_index::FileSymbols,
     module_map::{ModuleMap, ChangeKind, Problem},
 };
 pub use self::symbol_index::Query;
+pub use self::api::*;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
@@ -95,6 +97,13 @@ impl WorldState {
             file_resolver: Arc::new(file_resolver),
             data: self.data.clone()
         }
+    }
+
+    pub fn analysis(
+        &self,
+        file_resolver: impl FileResolver,
+    ) -> Analysis {
+        Analysis { imp: self.snapshot(file_resolver) }
     }
 
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
@@ -231,11 +240,11 @@ impl World {
         Ok(vec![])
     }
 
-    pub fn diagnostics(&self, file_id: FileId) -> Result<Vec<(Diagnostic, Option<QuickFix>)>> {
-        let syntax = self.file_syntax(file_id)?;
+    pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
+        let syntax = self.file_syntax(file_id).unwrap();
         let mut res = libeditor::diagnostics(&syntax)
             .into_iter()
-            .map(|d| (d, None))
+            .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
             .collect::<Vec<_>>();
 
         self.data.module_map.problems(
@@ -243,44 +252,62 @@ impl World {
             &*self.file_resolver,
             &|file_id| self.file_syntax(file_id).unwrap(),
             |name_node, problem| {
-                let (diag, fix) = match problem {
+                let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
-                        let diag = Diagnostic {
+                        let create_file = FileSystemEdit::CreateFile {
+                            anchor: file_id,
+                            path: candidate.clone(),
+                        };
+                        let fix = SourceChange {
+                            label: "create module".to_string(),
+                            source_file_edits: Vec::new(),
+                            file_system_edits: vec![create_file],
+                            cursor_position: None,
+                        };
+                        Diagnostic {
                             range: name_node.syntax().range(),
-                            msg: "unresolved module".to_string(),
-                        };
-                        let fix = QuickFix {
-                            fs_ops: vec![FsOp::CreateFile {
-                                anchor: file_id,
-                                path: candidate.clone(),
-                            }]
-                        };
-                        (diag, fix)
+                            message: "unresolved module".to_string(),
+                            fix: Some(fix),
+                        }
                     }
                     Problem::NotDirOwner { move_to, candidate } => {
-                        let diag = Diagnostic {
+                        let move_file = FileSystemEdit::MoveFile { file: file_id, path: move_to.clone() };
+                        let create_file = FileSystemEdit::CreateFile { anchor: file_id, path: move_to.join(candidate) };
+                        let fix = SourceChange {
+                            label: "move file and create module".to_string(),
+                            source_file_edits: Vec::new(),
+                            file_system_edits: vec![move_file, create_file],
+                            cursor_position: None,
+                        };
+                        Diagnostic {
                             range: name_node.syntax().range(),
-                            msg: "can't declare module at this location".to_string(),
-                        };
-                        let fix = QuickFix {
-                            fs_ops: vec![
-                                FsOp::MoveFile {
-                                    file: file_id,
-                                    path: move_to.clone(),
-                                },
-                                FsOp::CreateFile {
-                                    anchor: file_id,
-                                    path: move_to.join(candidate),
-                                }
-                            ],
-                        };
-                        (diag, fix)
+                            message: "can't declare module at this location".to_string(),
+                            fix: Some(fix),
+                        }
                     }
                 };
-                res.push((diag, Some(fix)))
+                res.push(diag)
             }
         );
-        Ok(res)
+        res
+    }
+
+    pub fn assists(&self, file_id: FileId, offset: TextUnit) -> Vec<SourceChange> {
+        let file = self.file_syntax(file_id).unwrap();
+        let actions = vec![
+            ("flip comma", libeditor::flip_comma(&file, offset).map(|f| f())),
+            ("add `#[derive]`", libeditor::add_derive(&file, offset).map(|f| f())),
+            ("add impl", libeditor::add_impl(&file, offset).map(|f| f())),
+        ];
+        let mut res = Vec::new();
+        for (name, local_edit) in actions {
+            if let Some(local_edit) = local_edit {
+                res.push(SourceChange::from_local_edit(
+                    file_id, name, local_edit
+                ))
+            }
+        }
+        res
     }
 
     fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {

@@ -5,7 +5,7 @@ use std::{
 };
 
 use languageserver_types::Url;
-use libanalysis::{FileId, WorldState, World};
+use libanalysis::{FileId, WorldState, Analysis};
 
 use {
     Result,
@@ -22,7 +22,7 @@ pub struct ServerWorldState {
 
 #[derive(Clone)]
 pub struct ServerWorld {
-    pub analysis: World,
+    pub analysis: Analysis,
     pub path_map: PathMap,
 }
 
@@ -91,14 +91,14 @@ impl ServerWorldState {
 
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
-            analysis: self.analysis.snapshot(self.path_map.clone()),
+            analysis: self.analysis.analysis(self.path_map.clone()),
             path_map: self.path_map.clone()
         }
     }
 }
 
 impl ServerWorld {
-    pub fn analysis(&self) -> &World {
+    pub fn analysis(&self) -> &Analysis {
         &self.analysis
     }
 

@@ -1,14 +1,16 @@
 use languageserver_types::{
     Range, SymbolKind, Position, TextEdit, Location, Url,
     TextDocumentIdentifier, VersionedTextDocumentIdentifier, TextDocumentItem,
+    TextDocumentPositionParams, TextDocumentEdit,
 };
 use libeditor::{LineIndex, LineCol, Edit, AtomEdit};
 use libsyntax2::{SyntaxKind, TextUnit, TextRange};
-use libanalysis::FileId;
+use libanalysis::{FileId, SourceChange, SourceFileEdit, FileSystemEdit};
 
 use {
     Result,
     server_world::ServerWorld,
+    req,
 };
 
 pub trait Conv {
@@ -165,6 +167,82 @@ impl<'a> TryConvWith for &'a TextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
         world.uri_to_file_id(&self.uri)
+    }
+}
+
+impl<T: TryConvWith> TryConvWith for Vec<T> {
+    type Ctx = <T as TryConvWith>::Ctx;
+    type Output = Vec<<T as TryConvWith>::Output>;
+    fn try_conv_with(self, ctx: &Self::Ctx) -> Result<Self::Output> {
+        let mut res = Vec::with_capacity(self.len());
+        for item in self {
+            res.push(item.try_conv_with(ctx)?);
+        }
+        Ok(res)
+    }
+}
+
+impl TryConvWith for SourceChange {
+    type Ctx = ServerWorld;
+    type Output = req::SourceChange;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<req::SourceChange> {
+        let cursor_position = match self.cursor_position {
+            None => None,
+            Some(pos) => {
+                let line_index = world.analysis().file_line_index(pos.file_id);
+                Some(TextDocumentPositionParams {
+                    text_document: TextDocumentIdentifier::new(pos.file_id.try_conv_with(world)?),
+                    position: pos.offset.conv_with(&line_index),
+                })
+            }
+        };
+        let source_file_edits = self.source_file_edits.try_conv_with(world)?;
+        let file_system_edits = self.file_system_edits.try_conv_with(world)?;
+        Ok(req::SourceChange {
+            label: self.label,
+            source_file_edits,
+            file_system_edits,
+            cursor_position,
+        })
+    }
+}
+
+impl TryConvWith for SourceFileEdit {
+    type Ctx = ServerWorld;
+    type Output = TextDocumentEdit;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<TextDocumentEdit> {
+        let text_document = VersionedTextDocumentIdentifier {
+            uri: self.file_id.try_conv_with(world)?,
+            version: None,
+        };
+        let line_index = world.analysis().file_line_index(self.file_id);
+        let edits = self.edits
+            .into_iter()
+            .map_conv_with(&line_index)
+            .collect();
+        Ok(TextDocumentEdit { text_document, edits })
+    }
+}
+
+impl TryConvWith for FileSystemEdit {
+    type Ctx = ServerWorld;
+    type Output = req::FileSystemEdit;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<req::FileSystemEdit> {
+        let res = match self {
+            FileSystemEdit::CreateFile { anchor, path } => {
+                let uri = world.file_id_to_uri(anchor)?;
+                let path = &path.as_str()[3..]; // strip `../` b/c url is weird
+                let uri = uri.join(path)?;
+                req::FileSystemEdit::CreateFile { uri }
+            },
+            FileSystemEdit::MoveFile { file, path } => {
+                let src = world.file_id_to_uri(file)?;
+                let path = &path.as_str()[3..]; // strip `../` b/c url is weird
+                let dst = src.join(path)?;
+                req::FileSystemEdit::MoveFile { src, dst }
+            },
+        };
+        Ok(res)
     }
 }
 

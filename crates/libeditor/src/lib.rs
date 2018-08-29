@@ -30,11 +30,11 @@ pub use self::{
     symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
     edit::{EditBuilder, Edit},
     code_actions::{
-        ActionResult,
+        LocalEdit,
         flip_comma, add_derive, add_impl,
     },
     typing::{join_lines, on_eq_typed},
-    completion::scope_completion,
+    completion::{scope_completion, CompletionItem},
 };
 
 #[derive(Debug)]

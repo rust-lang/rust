@@ -12,8 +12,7 @@ use {
 };
 
 #[derive(Debug)]
-pub struct
-       CompletionItem {
+pub struct CompletionItem {
     pub name: String,
     pub snippet: Option<String>
 }

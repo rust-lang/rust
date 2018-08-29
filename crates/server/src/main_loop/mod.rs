@@ -7,7 +7,6 @@ use std::{
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::Url;
-use serde_json::to_value;
 
 use {
     req, dispatch,
@@ -15,24 +14,6 @@ use {
     io::{Io, RawMsg, RawRequest, RawNotification},
     vfs::FileEvent,
     server_world::{ServerWorldState, ServerWorld},
-    main_loop::handlers::{
-        handle_syntax_tree,
-        handle_extend_selection,
-        publish_diagnostics,
-        publish_decorations,
-        handle_document_symbol,
-        handle_code_action,
-        handle_execute_command,
-        handle_workspace_symbol,
-        handle_goto_definition,
-        handle_find_matching_brace,
-        handle_parent_module,
-        handle_join_lines,
-        handle_completion,
-        handle_runnables,
-        handle_decorations,
-        handle_on_type_formatting,
-    },
 };
 
 pub(super) fn main_loop(
@@ -45,7 +26,6 @@ pub(super) fn main_loop(
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
 
-    let mut next_request_id = 0;
     let mut pending_requests: HashSet<u64> = HashSet::new();
     let mut fs_events_receiver = Some(&fs_events_receiver);
     loop {
@@ -78,12 +58,6 @@ pub(super) fn main_loop(
             }
             Event::Task(task) => {
                 match task {
-                    Task::Request(mut request) => {
-                        request.id = next_request_id;
-                        pending_requests.insert(next_request_id);
-                        next_request_id += 1;
-                        io.send(RawMsg::Request(request));
-                    }
                     Task::Respond(response) =>
                         io.send(RawMsg::Response(response)),
                     Task::Notify(n) =>
@@ -125,79 +99,26 @@ fn on_request(
     sender: &Sender<Task>,
     req: RawRequest,
 ) -> Result<bool> {
-    let mut req = Some(req);
-    handle_request_on_threadpool::<req::SyntaxTree>(
-        &mut req, pool, world, sender, handle_syntax_tree,
-    )?;
-    handle_request_on_threadpool::<req::ExtendSelection>(
-        &mut req, pool, world, sender, handle_extend_selection,
-    )?;
-    handle_request_on_threadpool::<req::FindMatchingBrace>(
-        &mut req, pool, world, sender, handle_find_matching_brace,
-    )?;
-    handle_request_on_threadpool::<req::DocumentSymbolRequest>(
-        &mut req, pool, world, sender, handle_document_symbol,
-    )?;
-    handle_request_on_threadpool::<req::CodeActionRequest>(
-        &mut req, pool, world, sender, handle_code_action,
-    )?;
-    handle_request_on_threadpool::<req::Runnables>(
-        &mut req, pool, world, sender, handle_runnables,
-    )?;
-    handle_request_on_threadpool::<req::WorkspaceSymbol>(
-        &mut req, pool, world, sender, handle_workspace_symbol,
-    )?;
-    handle_request_on_threadpool::<req::GotoDefinition>(
-        &mut req, pool, world, sender, handle_goto_definition,
-    )?;
-    handle_request_on_threadpool::<req::Completion>(
-        &mut req, pool, world, sender, handle_completion,
-    )?;
-    handle_request_on_threadpool::<req::ParentModule>(
-        &mut req, pool, world, sender, handle_parent_module,
-    )?;
-    handle_request_on_threadpool::<req::JoinLines>(
-        &mut req, pool, world, sender, handle_join_lines,
-    )?;
-    handle_request_on_threadpool::<req::DecorationsRequest>(
-        &mut req, pool, world, sender, handle_decorations,
-    )?;
-    handle_request_on_threadpool::<req::OnTypeFormatting>(
-        &mut req, pool, world, sender, handle_on_type_formatting,
-    )?;
-    dispatch::handle_request::<req::ExecuteCommand, _>(&mut req, |params, resp| {
-        io.send(RawMsg::Response(resp.into_response(Ok(None))?));
+    let mut pool_dispatcher = PoolDispatcher {
+        req: Some(req),
+        pool, world, sender
+    };
+    pool_dispatcher
+        .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
+        .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
+        .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
+        .on::<req::JoinLines>(handlers::handle_join_lines)?
+        .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
+        .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
+        .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
+        .on::<req::GotoDefinition>(handlers::handle_goto_definition)?
+        .on::<req::ParentModule>(handlers::handle_parent_module)?
+        .on::<req::Runnables>(handlers::handle_runnables)?
+        .on::<req::DecorationsRequest>(handlers::handle_decorations)?
+        .on::<req::Completion>(handlers::handle_completion)?
+        .on::<req::CodeActionRequest>(handlers::handle_code_action)?;
 
-        let world = world.snapshot();
-        let sender = sender.clone();
-        pool.execute(move || {
-            let (edit, cursor) = match handle_execute_command(world, params) {
-                Ok(res) => res,
-                Err(e) => return sender.send(Task::Die(e)),
-            };
-            match to_value(edit) {
-                Err(e) => return sender.send(Task::Die(e.into())),
-                Ok(params) => {
-                    let request = RawRequest {
-                        id: 0,
-                        method: <req::ApplyWorkspaceEdit as req::ClientRequest>::METHOD.to_string(),
-                        params,
-                    };
-                    sender.send(Task::Request(request))
-                }
-            }
-            if let Some(cursor) = cursor {
-                let request = RawRequest {
-                    id: 0,
-                    method: <req::MoveCursor as req::ClientRequest>::METHOD.to_string(),
-                    params: to_value(cursor).unwrap(),
-                };
-                sender.send(Task::Request(request))
-            }
-        });
-        Ok(())
-    })?;
-
+    let mut req = pool_dispatcher.req;
     let mut shutdown = false;
     dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
         let resp = resp.into_response(Ok(()))?;
@@ -273,27 +194,33 @@ fn on_notification(
     Ok(())
 }
 
-fn handle_request_on_threadpool<R: req::ClientRequest>(
-    req: &mut Option<RawRequest>,
-    pool: &ThreadPool,
-    world: &ServerWorldState,
-    sender: &Sender<Task>,
-    f: fn(ServerWorld, R::Params) -> Result<R::Result>,
-) -> Result<()>
-{
-    dispatch::handle_request::<R, _>(req, |params, resp| {
-        let world = world.snapshot();
-        let sender = sender.clone();
-        pool.execute(move || {
-            let res = f(world, params);
-            let task = match resp.into_response(res) {
-                Ok(resp) => Task::Respond(resp),
-                Err(e) => Task::Die(e),
-            };
-            sender.send(task);
-        });
-        Ok(())
-    })
+struct PoolDispatcher<'a> {
+    req: Option<RawRequest>,
+    pool: &'a ThreadPool,
+    world: &'a ServerWorldState,
+    sender: &'a Sender<Task>,
+}
+
+impl<'a> PoolDispatcher<'a> {
+    fn on<'b, R: req::ClientRequest>(&'b mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&'b mut Self> {
+        let world = self.world;
+        let sender = self.sender;
+        let pool = self.pool;
+        dispatch::handle_request::<R, _>(&mut self.req, |params, resp| {
+            let world = world.snapshot();
+            let sender = sender.clone();
+            pool.execute(move || {
+                let res = f(world, params);
+                let task = match resp.into_response(res) {
+                    Ok(resp) => Task::Respond(resp),
+                    Err(e) => Task::Die(e),
+                };
+                sender.send(task);
+            });
+            Ok(())
+        })?;
+        Ok(self)
+    }
 }
 
 fn update_file_notifications_on_threadpool(
@@ -303,7 +230,7 @@ fn update_file_notifications_on_threadpool(
     uri: Url,
 ) {
     pool.execute(move || {
-        match publish_diagnostics(world.clone(), uri.clone()) {
+        match handlers::publish_diagnostics(world.clone(), uri.clone()) {
             Err(e) => {
                 error!("failed to compute diagnostics: {:?}", e)
             }
@@ -312,7 +239,7 @@ fn update_file_notifications_on_threadpool(
                 sender.send(Task::Notify(not));
             }
         }
-        match publish_decorations(world, uri) {
+        match handlers::publish_decorations(world, uri) {
             Err(e) => {
                 error!("failed to compute decorations: {:?}", e)
             }

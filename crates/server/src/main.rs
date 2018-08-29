@@ -35,7 +35,7 @@ use crossbeam_channel::bounded;
 use flexi_logger::{Logger, Duplicate};
 
 use ::{
-    io::{Io, RawMsg, RawResponse, RawRequest, RawNotification},
+    io::{Io, RawMsg, RawResponse, RawNotification},
 };
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -109,7 +109,6 @@ fn initialize(io: &mut Io) -> Result<()> {
 
 enum Task {
     Respond(RawResponse),
-    Request(RawRequest),
     Notify(RawNotification),
     Die(::failure::Error),
 }

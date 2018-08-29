@@ -1,8 +1,8 @@
 use libsyntax2::{File, TextUnit};
 pub use _test_utils::*;
-use ActionResult;
+use LocalEdit;
 
-pub fn check_action<F: Fn(&File, TextUnit) -> Option<ActionResult>> (
+pub fn check_action<F: Fn(&File, TextUnit) -> Option<LocalEdit>> (
     before: &str,
     after: &str,
     f: F,

@@ -11,14 +11,14 @@ use libsyntax2::{
     SyntaxKind::*,
 };
 
-use {ActionResult, EditBuilder, find_node_at_offset};
+use {LocalEdit, EditBuilder, find_node_at_offset};
 
-pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
+pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
         let pos = match text.find('\n') {
-            None => return ActionResult {
+            None => return LocalEdit {
                 edit: EditBuilder::new().finish(),
                 cursor_position: None
             },
@@ -50,13 +50,13 @@ pub fn join_lines(file: &File, range: TextRange) -> ActionResult {
     }
     eprintln!("{:?}", edit);
 
-    ActionResult {
+    LocalEdit {
         edit: edit.finish(),
         cursor_position: None,
     }
 }
 
-pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<ActionResult> {
+pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<LocalEdit> {
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.has_semi() {
         return None;
@@ -75,7 +75,7 @@ pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<ActionResult> {
     let offset = let_stmt.syntax().range().end();
     let mut edit = EditBuilder::new();
     edit.insert(offset, ";".to_string());
-    Some(ActionResult {
+    Some(LocalEdit {
         edit: edit.finish(),
         cursor_position: None,
     })
@@ -277,7 +277,41 @@ fn foo() {
 }", r"
 fn foo() {
     join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
-}")
+}");
+
+        do_check(r"
+pub fn handle_find_matching_brace(
+    world: ServerWorld,
+    params: req::FindMatchingBraceParams,
+) -> Result<Vec<Position>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_syntax(file_id);
+    let line_index = world.analysis().file_line_index(file_id);
+    let res = params.offsets
+        .into_iter()
+        .map_conv_with(&line_index)
+        .map(|offset| <|>{
+            world.analysis().matching_brace(&file, offset).unwrap_or(offset)
+        }<|>)
+        .map_conv_with(&line_index)
+        .collect();
+    Ok(res)
+}", r"
+pub fn handle_find_matching_brace(
+    world: ServerWorld,
+    params: req::FindMatchingBraceParams,
+) -> Result<Vec<Position>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_syntax(file_id);
+    let line_index = world.analysis().file_line_index(file_id);
+    let res = params.offsets
+        .into_iter()
+        .map_conv_with(&line_index)
+        .map(|offset| world.analysis().matching_brace(&file, offset).unwrap_or(offset))
+        .map_conv_with(&line_index)
+        .collect();
+    Ok(res)
+}");
     }
 
     #[test]

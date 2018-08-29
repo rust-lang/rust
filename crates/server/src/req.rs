@@ -15,6 +15,7 @@ pub use languageserver_types::{
     TextEdit,
     CompletionParams, CompletionResponse,
     DocumentOnTypeFormattingParams,
+    TextDocumentEdit,
 };
 
 
@@ -115,14 +116,6 @@ pub struct Decoration {
     pub tag: &'static str
 }
 
-pub enum MoveCursor {}
-
-impl Request for MoveCursor {
-    type Params = Position;
-    type Result = ();
-    const METHOD: &'static str = "m/moveCursor";
-}
-
 pub enum ParentModule {}
 
 impl Request for ParentModule {
@@ -135,7 +128,7 @@ pub enum JoinLines {}
 
 impl Request for JoinLines {
     type Params = JoinLinesParams;
-    type Result = Vec<TextEdit>;
+    type Result = SourceChange;
     const METHOD: &'static str = "m/joinLines";
 }
 
@@ -169,4 +162,28 @@ pub struct Runnable {
     pub bin: String,
     pub args: Vec<String>,
     pub env: HashMap<String, String>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceChange {
+    pub label: String,
+    pub source_file_edits: Vec<TextDocumentEdit>,
+    pub file_system_edits: Vec<FileSystemEdit>,
+    pub cursor_position: Option<TextDocumentPositionParams>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum FileSystemEdit {
+    CreateFile {
+        #[serde(with = "url_serde")]
+        uri: Url
+    },
+    MoveFile {
+        #[serde(with = "url_serde")]
+        src: Url,
+        #[serde(with = "url_serde")]
+        dst: Url,
+    }
 }

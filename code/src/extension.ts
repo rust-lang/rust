@@ -60,11 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
             textDocument: { uri: editor.document.uri.toString() },
             range: client.code2ProtocolConverter.asRange(editor.selection),
         }
-        let response = await client.sendRequest<lc.TextEdit[]>("m/joinLines", request)
-        let edits = client.protocol2CodeConverter.asTextEdits(response)
-        let wsEdit = new vscode.WorkspaceEdit()
-        wsEdit.set(editor.document.uri, edits)
-        return vscode.workspace.applyEdit(wsEdit)
+        let change = await client.sendRequest<SourceChange>("m/joinLines", request)
+        await applySourceChange(change)
     })
     registerCommand('libsyntax-rust.parentModule', async () => {
         let editor = vscode.window.activeTextEditor
@@ -113,28 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
             return await vscode.tasks.executeTask(task)
         }
     })
-    registerCommand('libsyntax-rust.fsEdit', async (ops: FsOp[]) => {
-        let edit = new vscode.WorkspaceEdit()
-        let created;
-        let moved;
-        for (let op of ops) {
-            if (op.type == "createFile") {
-                let uri = vscode.Uri.parse(op.uri!)
-                edit.createFile(uri)
-                created = uri
-            } else if (op.type == "moveFile") {
-                let src = vscode.Uri.parse(op.src!)
-                let dst = vscode.Uri.parse(op.dst!)
-                edit.renameFile(src, dst)
-                moved = dst
-            } else {
-                console.error(`unknown op: ${JSON.stringify(op)}`)
-            }
-        }
-        await vscode.workspace.applyEdit(edit)
-        let doc = await vscode.workspace.openTextDocument((created || moved)!)
-        await vscode.window.showTextDocument(doc)
-    })
+    registerCommand('libsyntax-rust.applySourceChange', applySourceChange)
 
     dispose(vscode.workspace.registerTextDocumentContentProvider(
         'libsyntax-rust',
@@ -205,18 +181,6 @@ function startServer() {
                     editor,
                     params.decorations,
                 )
-            }
-        )
-        client.onRequest(
-            new lc.RequestType<lc.Position, void, any, any>("m/moveCursor"),
-            (params: lc.Position, token: lc.CancellationToken) => {
-                let editor = vscode.window.activeTextEditor;
-                if (!editor) return
-                if (!editor.selection.isEmpty) return
-                let position = client.protocol2CodeConverter.asPosition(params)
-                afterLs(() => {
-                    editor!.selection = new vscode.Selection(position, position)
-                })
             }
         )
     })
@@ -383,9 +347,56 @@ function createTask(spec: Runnable): vscode.Task {
     return t;
 }
 
-interface FsOp {
+interface FileSystemEdit {
     type: string;
     uri?: string;
     src?: string;
     dst?: string;
+}
+
+interface SourceChange {
+    label: string,
+    sourceFileEdits: lc.TextDocumentEdit[],
+    fileSystemEdits: FileSystemEdit[],
+    cursorPosition?: lc.TextDocumentPositionParams,
+}
+
+async function applySourceChange(change: SourceChange) {
+    console.log(`applySOurceChange ${JSON.stringify(change)}`)
+    let wsEdit = new vscode.WorkspaceEdit()
+    for (let sourceEdit of change.sourceFileEdits) {
+        let uri = client.protocol2CodeConverter.asUri(sourceEdit.textDocument.uri)
+        let edits = client.protocol2CodeConverter.asTextEdits(sourceEdit.edits)
+        wsEdit.set(uri, edits)
+    }
+    let created;
+    let moved;
+    for (let fsEdit of change.fileSystemEdits) {
+        if (fsEdit.type == "createFile") {
+            let uri = vscode.Uri.parse(fsEdit.uri!)
+            wsEdit.createFile(uri)
+            created = uri
+        } else if (fsEdit.type == "moveFile") {
+            let src = vscode.Uri.parse(fsEdit.src!)
+            let dst = vscode.Uri.parse(fsEdit.dst!)
+            wsEdit.renameFile(src, dst)
+            moved = dst
+        } else {
+            console.error(`unknown op: ${JSON.stringify(fsEdit)}`)
+        }
+    }
+    let toOpen = created || moved
+    let toReveal = change.cursorPosition
+    await vscode.workspace.applyEdit(wsEdit)
+    if (toOpen) {
+        let doc = await vscode.workspace.openTextDocument(toOpen)
+        await vscode.window.showTextDocument(doc)
+    } else if (toReveal) {
+        let uri = client.protocol2CodeConverter.asUri(toReveal.textDocument.uri)
+        let position = client.protocol2CodeConverter.asPosition(toReveal.position)
+        let editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.uri != uri) return
+        if (!editor.selection.isEmpty) return
+        editor!.selection = new vscode.Selection(position, position)
+    }
 }
