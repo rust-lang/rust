@@ -40,9 +40,16 @@ mod imp {
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
+    fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool { false }
 
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
+        use sync::atomic::{AtomicBool, Ordering};
+        static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
+        if GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed) {
+            return false;
+        }
+
         let mut read = 0;
         while read < v.len() {
             let result = getrandom(&mut v[read..]);
@@ -50,8 +57,10 @@ mod imp {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {
                     continue;
+                } else if err == libc::ENOSYS {
+                    GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
                 } else if err == libc::EAGAIN {
-                    return false
+                    return false;
                 } else {
                     panic!("unexpected getrandom error: {}", err);
                 }
@@ -59,52 +68,26 @@ mod imp {
                 read += result as usize;
             }
         }
-
-        return true
+        true
     }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn is_getrandom_available() -> bool {
-        use io;
-        use sync::atomic::{AtomicBool, Ordering};
-        use sync::Once;
-
-        static CHECKER: Once = Once::new();
-        static AVAILABLE: AtomicBool = AtomicBool::new(false);
-
-        CHECKER.call_once(|| {
-            let mut buf: [u8; 0] = [];
-            let result = getrandom(&mut buf);
-            let available = if result == -1 {
-                let err = io::Error::last_os_error().raw_os_error();
-                err != Some(libc::ENOSYS)
-            } else {
-                true
-            };
-            AVAILABLE.store(available, Ordering::Relaxed);
-        });
-
-        AVAILABLE.load(Ordering::Relaxed)
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn is_getrandom_available() -> bool { false }
 
     pub fn fill_bytes(v: &mut [u8]) {
         // getrandom_fill_bytes here can fail if getrandom() returns EAGAIN,
         // meaning it would have blocked because the non-blocking pool (urandom)
-        // has not initialized in the kernel yet due to a lack of entropy the
+        // has not initialized in the kernel yet due to a lack of entropy. The
         // fallback we do here is to avoid blocking applications which could
         // depend on this call without ever knowing they do and don't have a
-        // work around.  The PRNG of /dev/urandom will still be used but not
-        // over a completely full entropy pool
-        if is_getrandom_available() && getrandom_fill_bytes(v) {
-            return
+        // work around. The PRNG of /dev/urandom will still be used but over a
+        // possibly predictable entropy pool.
+        if getrandom_fill_bytes(v) {
+            return;
         }
 
-        let mut file = File::open("/dev/urandom")
-            .expect("failed to open /dev/urandom");
-        file.read_exact(v).expect("failed to read /dev/urandom");
+        // getrandom failed because it is permanently or temporarily (because
+        // of missing entropy) unavailable. Open /dev/urandom, read from it,
+        // and close it again.
+        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
+        file.read_exact(v).expect("failed to read /dev/urandom")
     }
 }
 
