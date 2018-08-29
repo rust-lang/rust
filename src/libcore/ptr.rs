@@ -16,35 +16,23 @@
 //!
 //! # Safety
 //!
-//! Many functions in this module take raw pointers as arguments and dereference
-//! them. For this to be safe, these pointers must be valid. However, because
-//! rust does not yet have a formal memory model, determining whether an
-//! arbitrary pointer is valid for a given operation can be tricky.
+//! Many functions in this module take raw pointers as arguments and read from
+//! or write to them. For this to be safe, these pointers must be *valid*.
+//! Whether a pointer is valid depends on the operation it is used for
+//! (read or write), and the extent of the memory that is accessed (i.e.,
+//! how many bytes are read/written). Most functions use `*mut T` and `*const T`
+//! to access only a single value, in which case the documentation omits the size
+//! and implicitly assumes it to be `size_of::<T>()` bytes.
 //!
-//! There are two types of operations on memory, reads and writes. A single
-//! pointer can be valid for any combination of these operations. For example, a
-//! pointer is not valid for writes if a `&mut` exists which [refers to the same
-//! memory][aliasing]. The set of operations for which a pointer argument must
-//! be valid is explicitly documented for each function. This is not strictly
-//! necessary for `*const` arguments, as they can only be used for reads and
-//! never for writes.
-//!
-//! Some functions (e.g. [`copy`]) take a single pointer but
-//! operate on many values. In this case, the function will state the size of
-//! the operation for which the pointer must be valid. For example,
-//! `copy::<T>(&src, &mut dst, 3)` requires `dst` to be valid for writes of
-//! `size_of::<T>() * 3` bytes. When the documentation requires that a pointer
-//! be valid for an operation but omits the size of that operation, the size is
-//! implied to be `size_of::<T>()` bytes.
-//!
-//! While we can't yet define whether an arbitrary pointer is a valid one, there
+//! While we can't yet define whether an arbitrary pointer is valid, there
 //! are a few rules regarding validity:
 //!
-//! * The result of casting a reference to a pointer is valid for as long as the
-//!   underlying object is live.
-//! * A [null] pointer is *never* valid.
+//! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
 //! * All pointers (except for the null pointer) are valid for all operations of
 //!   [size zero][zst].
+//! * The result of casting a reference to a pointer is valid for as long as the
+//!   underlying object is live and no reference (just raw pointers) is used to
+//!   access the same memory.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmentic,
 //! are enough to correctly implement many useful things in unsafe code. Still,
@@ -60,6 +48,10 @@
 //! this requirement in their documentation. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
 //!
+//! When a function requires proper alignment, it does so even if the access
+//! has size 0, i.e., even if memory is not actually touched. Consider using
+//! [`NonNull::dangling`] in such cases.
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
@@ -69,6 +61,7 @@
 //! [`offset`]: ../../std/primitive.pointer.html#method.offset
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
+//! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -121,6 +114,8 @@ pub use intrinsics::write_bytes;
 /// foo` counts as a use because it will cause the the value to be dropped
 /// again. [`write`] can be used to overwrite data without causing it to be
 /// dropped.
+///
+/// These restrictions apply even if `T` has size `0`.
 ///
 /// [valid]: ../ptr/index.html#safety
 /// [`Copy`]: ../marker/trait.Copy.html
@@ -211,6 +206,8 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
+/// These restrictions apply even if `T` has size `0`.
+///
 /// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
@@ -277,6 +274,8 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// * The region of memory beginning at `x` with a size of `count *
 ///   size_of::<T>()` bytes must *not* overlap with the region of memory
 ///   beginning at `y` with the same size.
+///
+/// These restrictions apply even if `T` has size `0`.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -389,6 +388,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// * `dest` must be properly aligned.
 ///
+/// These restrictions apply even if `T` has size `0`.
+///
 /// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
@@ -425,6 +426,8 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
+///
+/// These restrictions apply even if `T` has size `0`.
 ///
 /// ## Ownership of the Returned Value
 ///
@@ -540,6 +543,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
+/// These restrictions apply even if `T` has size `0`.
+///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read`]: ./fn.read.html
 /// [`write_unaligned`]: ./fn.write_unaligned.html
@@ -616,6 +621,8 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
 ///
+/// These restrictions apply even if `T` has size `0`.
+///
 /// [valid]: ../ptr/index.html#safety
 /// [`write_unaligned`]: ./fn.write_unaligned.html
 ///
@@ -686,6 +693,8 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must be [valid] for writes.
+///
+/// These restrictions apply even if `T` has size `0`.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -770,6 +779,8 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
 /// incorrect.
 ///
+/// These restrictions apply even if `T` has size `0`.
+///
 /// [valid]: ../ptr/index.html#safety
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read`]: ./fn.read.html
@@ -838,6 +849,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// * `dst` must be [valid] for writes.
 ///
 /// * `dst` must be properly aligned.
+///
+/// These restrictions apply even if `T` has size `0`.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///

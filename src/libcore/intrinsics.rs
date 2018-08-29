@@ -986,10 +986,13 @@ extern "rust-intrinsic" {
     ///   size_of::<T>()` bytes must *not* overlap with the region of memory
     ///   beginning at `dst` with the same size.
     ///
-    /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
+    /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
+    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using *both* the values
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
+    ///
+    /// These restrictions apply even if the effectively copied size (`count *
+    /// size_of::<T>()`) is `0`.
     ///
     /// [`Copy`]: ../marker/trait.Copy.html
     /// [`read`]: ../ptr/fn.read.html
@@ -1071,6 +1074,9 @@ extern "rust-intrinsic" {
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
+    /// These restrictions apply even if the effectively copied size (`count *
+    /// size_of::<T>()`) is `0`.
+    ///
     /// [`Copy`]: ../marker/trait.Copy.html
     /// [`read`]: ../ptr/fn.read.html
     /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
@@ -1114,6 +1120,9 @@ extern "rust-intrinsic" {
     /// size_of::<T>()` bytes to the given region of memory results in a valid
     /// value of `T`. Creating an invalid value of `T` can result in undefined
     /// behavior.
+    ///
+    /// These restrictions apply even if the effectively written size (`count *
+    /// size_of::<T>()`) is `0`.
     ///
     /// [valid]: ../ptr/index.html#safety
     ///
@@ -1164,7 +1173,7 @@ extern "rust-intrinsic" {
     /// `min_align_of::<T>()`
     ///
     /// The volatile parameter is set to `true`, so it will not be optimized out
-    /// unless size is equal to zero..
+    /// unless size is equal to zero.
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
