@@ -14,4 +14,4 @@ mod common;
 
 pub use self::builder::BuilderMethods;
 pub use self::backend::Backend;
-pub use self::common::CommonMethods;
+pub use self::common::{CommonMethods, CommonWriteMethods};

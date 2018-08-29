@@ -11,9 +11,7 @@
 use super::Backend;
 use syntax::symbol::LocalInternedString;
 
-pub trait CommonMethods : Backend {
-    fn val_ty(v: Self::Value) -> Self::Type;
-
+pub trait CommonMethods : Backend + CommonWriteMethods {
     // Constant constructors
     fn c_null(&self, t: Self::Type) -> Self::Value;
     fn c_undef(&self, t: Self::Type) -> Self::Value;
@@ -50,7 +48,6 @@ pub trait CommonMethods : Backend {
     fn c_array(ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
     fn c_vector(elts: &[Self::Value]) -> Self::Value;
     fn c_bytes(&self, bytes: &[u8]) -> Self::Value;
-    fn c_bytes_in_context(llcx: Self::Context, bytes: &[u8]) -> Self::Value;
 
     fn const_get_elt(v: Self::Value, idx: u64) -> Self::Value;
     fn const_get_real(v: Self::Value) -> Option<(f64, bool)>;
@@ -58,4 +55,9 @@ pub trait CommonMethods : Backend {
     fn is_const_integral(v: Self::Value) -> bool;
     fn is_const_real(v: Self::Value) -> bool;
     fn const_to_opt_u128(v: Self::Value, sign_ext: bool) -> Option<u128>;
+}
+
+pub trait CommonWriteMethods : Backend {
+        fn val_ty(v: Self::Value) -> Self::Type;
+        fn c_bytes_in_context(llcx: Self::Context, bytes: &[u8]) -> Self::Value;
 }

@@ -24,7 +24,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, CommonMethods};
+use interfaces::{Backend, CommonMethods, CommonWriteMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -203,11 +203,6 @@ impl Backend for CodegenCx<'ll, 'tcx, &'ll Value> {
 }
 
 impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
-    fn val_ty(v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
-    }
 
     // LLVM constant constructors.
     fn c_null(&self, t: &'ll Type) -> &'ll Value {
@@ -354,13 +349,6 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn c_bytes(&self, bytes: &[u8]) -> &'ll Value {
         Self::c_bytes_in_context(&self.llcx, bytes)
-    }
-
-    fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
-        }
     }
 
     fn const_get_elt(v: &'ll Value, idx: u64) -> &'ll Value {
@@ -550,5 +538,20 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
             })
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
+    }
+}
+
+impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+    fn val_ty(v: &'ll Value) -> &'ll Type {
+        unsafe {
+            llvm::LLVMTypeOf(v)
+        }
+    }
+
+    fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        unsafe {
+            let ptr = bytes.as_ptr() as *const c_char;
+            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        }
     }
 }
