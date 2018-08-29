@@ -133,7 +133,7 @@ enum Method {
 }
 
 impl Method {
-    fn suggestion(&self) -> &'static str {
+    fn suggestion(self) -> &'static str {
         match *self {
             Method::Offset => "add",
             Method::WrappingOffset => "wrapping_add",
