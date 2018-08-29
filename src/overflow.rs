@@ -291,7 +291,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
                 list_items[self.items.len() - 1].item = placeholder;
             }
-            _ if self.items.len() >= 1 => {
+            _ if !self.items.is_empty() => {
                 list_items[self.items.len() - 1].item = self
                     .items
                     .last()
