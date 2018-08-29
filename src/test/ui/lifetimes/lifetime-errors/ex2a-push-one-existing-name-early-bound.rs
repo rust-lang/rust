@@ -17,5 +17,4 @@ fn baz<'a, 'b, T>(x: &mut Vec<&'a T>, y: &T)
     x.push(y); //~ ERROR explicit lifetime required
 }
 fn main() {
-let x = baz;
 }
