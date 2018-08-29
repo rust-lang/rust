@@ -176,7 +176,12 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         };
         let replacement = visibility_qualified(&item.vis, &base_replacement);
         tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
-            .span_suggestion_short(extern_crate.span, &help, replacement)
+            .span_suggestion_short_with_applicability(
+                extern_crate.span,
+                &help,
+                replacement,
+                Applicability::MachineApplicable,
+            )
             .emit();
     }
 }
