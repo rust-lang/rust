@@ -134,7 +134,7 @@ enum Method {
 
 impl Method {
     fn suggestion(self) -> &'static str {
-        match *self {
+        match self {
             Method::Offset => "add",
             Method::WrappingOffset => "wrapping_add",
         }
@@ -143,7 +143,7 @@ impl Method {
 
 impl fmt::Display for Method {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+        match self {
             Method::Offset => write!(f, "offset"),
             Method::WrappingOffset => write!(f, "wrapping_offset"),
         }
