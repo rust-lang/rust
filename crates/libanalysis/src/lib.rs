@@ -56,7 +56,7 @@ pub struct WorldState {
     data: Arc<WorldData>
 }
 
-pub struct World {
+pub(crate) struct World {
     needs_reindex: AtomicBool,
     file_resolver: Arc<FileResolver>,
     data: Arc<WorldData>,
@@ -88,22 +88,16 @@ impl WorldState {
         }
     }
 
-    pub fn snapshot(
-        &self,
-        file_resolver: impl FileResolver,
-    ) -> World {
-        World {
-            needs_reindex: AtomicBool::new(false),
-            file_resolver: Arc::new(file_resolver),
-            data: self.data.clone()
-        }
-    }
-
     pub fn analysis(
         &self,
         file_resolver: impl FileResolver,
     ) -> Analysis {
-        Analysis { imp: self.snapshot(file_resolver) }
+        let imp = World {
+            needs_reindex: AtomicBool::new(false),
+            file_resolver: Arc::new(file_resolver),
+            data: self.data.clone()
+        };
+        Analysis { imp }
     }
 
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
