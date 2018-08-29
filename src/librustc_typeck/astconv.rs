@@ -12,8 +12,7 @@
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
-use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::array_vec::ArrayVec;
+use smallvec::SmallVec;
 use hir::{self, GenericArg, GenericArgs};
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -431,18 +430,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         // We manually build up the substitution, rather than using convenience
         // methods in subst.rs so that we can iterate over the arguments and
         // parameters in lock-step linearly, rather than trying to match each pair.
-        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
-            AccumulateVec::Array(ArrayVec::new())
-        } else {
-            AccumulateVec::Heap(Vec::with_capacity(count))
-        };
-
-        fn push_kind<'tcx>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>, kind: Kind<'tcx>) {
-            match substs {
-                AccumulateVec::Array(ref mut arr) => arr.push(kind),
-                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
-            }
-        }
+        let mut substs: SmallVec<[Kind<'tcx>; 8]> = SmallVec::with_capacity(count);
 
         // Iterate over each segment of the path.
         while let Some((def_id, defs)) = stack.pop() {
@@ -451,7 +439,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             // If we have already computed substitutions for parents, we can use those directly.
             while let Some(&param) = params.peek() {
                 if let Some(&kind) = parent_substs.get(param.index as usize) {
-                    push_kind(&mut substs, kind);
+                    substs.push(kind);
                     params.next();
                 } else {
                     break;
@@ -463,7 +451,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 if let Some(&param) = params.peek() {
                     if param.index == 0 {
                         if let GenericParamDefKind::Type { .. } = param.kind {
-                            push_kind(&mut substs, self_ty.map(|ty| ty.into())
+                            substs.push(self_ty.map(|ty| ty.into())
                                 .unwrap_or_else(|| inferred_kind(None, param, true)));
                             params.next();
                         }
@@ -487,7 +475,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         match (arg, &param.kind) {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime)
                             | (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
-                                push_kind(&mut substs, provided_kind(param, arg));
+                                substs.push(provided_kind(param, arg));
                                 args.next();
                                 params.next();
                             }
@@ -501,7 +489,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                             (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
                                 // We expected a lifetime argument, but got a type
                                 // argument. That means we're inferring the lifetimes.
-                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
+                                substs.push(inferred_kind(None, param, infer_types));
                                 params.next();
                             }
                         }
@@ -518,7 +506,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         match param.kind {
                             GenericParamDefKind::Lifetime | GenericParamDefKind::Type { .. } => {
                                 let kind = inferred_kind(Some(&substs), param, infer_types);
-                                push_kind(&mut substs, kind);
+                                substs.push(kind);
                             }
                         }
                         args.next();
@@ -1041,7 +1029,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
             .chain(existential_projections
                    .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
-            .collect::<AccumulateVec<[_; 8]>>();
+            .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.stable_cmp(tcx, b));
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 

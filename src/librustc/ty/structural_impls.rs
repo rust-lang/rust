@@ -16,8 +16,8 @@
 use mir::interpret::{ConstValue, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use smallvec::SmallVec;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -741,7 +741,7 @@ BraceStructTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_existential_predicates(&v)
     }
 
@@ -760,7 +760,7 @@ EnumTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|t| t.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_type_list(&v)
     }
 
@@ -1016,7 +1016,7 @@ BraceStructTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
         folder.tcx().intern_predicates(&v)
     }
 

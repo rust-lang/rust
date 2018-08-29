@@ -52,7 +52,7 @@ use ty::BindingMode;
 use ty::CanonicalTy;
 use util::nodemap::{DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
+use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
@@ -2840,7 +2840,7 @@ pub trait InternIteratorElement<T, R>: Sized {
 impl<T, R> InternIteratorElement<T, R> for T {
     type Output = R;
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        f(&iter.collect::<AccumulateVec<[_; 8]>>())
+        f(&iter.collect::<SmallVec<[_; 8]>>())
     }
 }
 
@@ -2849,14 +2849,14 @@ impl<'a, T, R> InternIteratorElement<T, R> for &'a T
 {
     type Output = R;
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        f(&iter.cloned().collect::<AccumulateVec<[_; 8]>>())
+        f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
     }
 }
 
 impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     type Output = Result<R, E>;
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        Ok(f(&iter.collect::<Result<AccumulateVec<[_; 8]>, _>>()?))
+        Ok(f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?))
     }
 }
 

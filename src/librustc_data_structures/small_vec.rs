@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A vector type intended to be used for collecting from iterators onto the stack.
+//! A vector type intended to be used for small vectors.
 //!
-//! Space for up to N elements is provided on the stack.  If more elements are collected, Vec is
-//! used to store the values on the heap. SmallVec is similar to AccumulateVec, but adds
-//! the ability to push elements.
+//! Space for up to N elements is provided on the stack. If more elements are collected, Vec is
+//! used to store the values on the heap.
 //!
 //! The N above is determined by Array's implementor, by way of an associated constant.
 
