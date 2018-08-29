@@ -509,6 +509,9 @@ h4 > code, h3 > code, .invisible > code {
 	top: -9px;
 	left: -13px;
 }
+.methods > .stability {
+	margin-top: -8px;
+}
 
 nav {
 	border-bottom: 1px solid;
