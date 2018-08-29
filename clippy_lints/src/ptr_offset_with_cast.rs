@@ -56,14 +56,13 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
             None => return,
         };
 
-        utils::span_lint_and_sugg(
-            cx,
-            PTR_OFFSET_WITH_CAST,
-            expr.span,
-            "use of `offset` with a `usize` casted to an `isize`",
-            "try",
-            build_suggestion(cx, receiver_expr, cast_lhs_expr),
-        );
+        let msg = "use of `offset` with a `usize` casted to an `isize`";
+        if let Some(sugg) = build_suggestion(cx, receiver_expr, cast_lhs_expr) {
+            utils::span_lint_and_sugg(cx, PTR_OFFSET_WITH_CAST, expr.span, msg, "try", sugg);
+        } else {
+            utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, msg);
+        }
+
     }
 }
 
@@ -114,12 +113,12 @@ fn build_suggestion<'a, 'tcx>(
     cx: &lint::LateContext<'a, 'tcx>,
     receiver_expr: &hir::Expr,
     cast_lhs_expr: &hir::Expr,
-) -> String {
+) -> Option<String> {
     match (
         utils::snippet_opt(cx, receiver_expr.span),
         utils::snippet_opt(cx, cast_lhs_expr.span)
     ) {
-        (Some(receiver), Some(cast_lhs)) => format!("{}.add({})", receiver, cast_lhs),
-        _ => String::new(),
+        (Some(receiver), Some(cast_lhs)) => Some(format!("{}.add({})", receiver, cast_lhs)),
+        _ => None,
     }
 }
