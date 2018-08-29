@@ -470,7 +470,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `T` by applying a function to a
+    /// Maps a `Result<T, E>` to `U` by applying a function to a
     /// contained [`Ok`] value, or a fallback function to a
     /// contained [`Err`] value.
     ///
