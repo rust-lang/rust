@@ -384,7 +384,8 @@ for ::mir::interpret::ConstValue<'gcx> {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher);
             }
-            ByRef(alloc, offset) => {
+            ByRef(id, alloc, offset) => {
+                id.hash_stable(hcx, hasher);
                 alloc.hash_stable(hcx, hasher);
                 offset.hash_stable(hcx, hasher);
             }
@@ -446,7 +447,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
         }
         self.undef_mask.hash_stable(hcx, hasher);
         self.align.hash_stable(hcx, hasher);
-        self.runtime_mutability.hash_stable(hcx, hasher);
+        self.mutability.hash_stable(hcx, hasher);
     }
 }
 
@@ -516,7 +517,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             InvalidMemoryAccess |
             InvalidFunctionPointer |
             InvalidBool |
-            InvalidDiscriminant |
             InvalidNullPointerUsage |
             ReadPointerAsBytes |
             ReadBytesAsPointer |
@@ -549,6 +549,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             GeneratorResumedAfterReturn |
             GeneratorResumedAfterPanic |
             InfiniteLoop => {}
+            InvalidDiscriminant(val) => val.hash_stable(hcx, hasher),
             Panic { ref msg, ref file, line, col } => {
                 msg.hash_stable(hcx, hasher);
                 file.hash_stable(hcx, hasher);

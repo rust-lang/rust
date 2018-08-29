@@ -1043,13 +1043,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = allocs.replace(interned) {
+        if let Some(prev) = allocs.replace(interned) { // insert into interner
             bug!("Tried to overwrite interned Allocation: {:#?}", prev)
         }
         interned
     }
 
-    /// Allocates a byte or string literal for `mir::interpret`
+    /// Allocates a byte or string literal for `mir::interpret`, read-only
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // create an allocation that just contains these bytes
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);

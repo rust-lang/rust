@@ -14,7 +14,7 @@ use ty::layout::{HasDataLayout, Size};
 use ty::subst::Substs;
 use hir::def_id::DefId;
 
-use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
+use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend};
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
@@ -32,8 +32,9 @@ pub enum ConstValue<'tcx> {
     ///
     /// The second field may be undef in case of `Option<usize>::None`
     ScalarPair(Scalar, ScalarMaybeUndef),
-    /// Used only for the remaining cases. An allocation + offset into the allocation
-    ByRef(&'tcx Allocation, Size),
+    /// Used only for the remaining cases. An allocation + offset into the allocation.
+    /// Invariant: The AllocId matches the allocation.
+    ByRef(AllocId, &'tcx Allocation, Size),
 }
 
 impl<'tcx> ConstValue<'tcx> {
@@ -185,6 +186,57 @@ impl<'tcx> Scalar {
             _ => err!(InvalidBool),
         }
     }
+
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        let val = self.to_u32()?;
+        match ::std::char::from_u32(val) {
+            Some(c) => Ok(c),
+            None => err!(InvalidChar(val as u128)),
+        }
+    }
+
+    pub fn to_u8(self) -> EvalResult<'static, u8> {
+        let sz = Size::from_bits(8);
+        let b = self.to_bits(sz)?;
+        assert_eq!(b as u8 as u128, b);
+        Ok(b as u8)
+    }
+
+    pub fn to_u32(self) -> EvalResult<'static, u32> {
+        let sz = Size::from_bits(32);
+        let b = self.to_bits(sz)?;
+        assert_eq!(b as u32 as u128, b);
+        Ok(b as u32)
+    }
+
+    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'static, u64> {
+        let b = self.to_bits(cx.data_layout().pointer_size)?;
+        assert_eq!(b as u64 as u128, b);
+        Ok(b as u64)
+    }
+
+    pub fn to_i8(self) -> EvalResult<'static, i8> {
+        let sz = Size::from_bits(8);
+        let b = self.to_bits(sz)?;
+        let b = sign_extend(b, sz) as i128;
+        assert_eq!(b as i8 as i128, b);
+        Ok(b as i8)
+    }
+
+    pub fn to_i32(self) -> EvalResult<'static, i32> {
+        let sz = Size::from_bits(32);
+        let b = self.to_bits(sz)?;
+        let b = sign_extend(b, sz) as i128;
+        assert_eq!(b as i32 as i128, b);
+        Ok(b as i32)
+    }
+
+    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'static, i64> {
+        let b = self.to_bits(cx.data_layout().pointer_size)?;
+        let b = sign_extend(b, cx.data_layout().pointer_size) as i128;
+        assert_eq!(b as i64 as i128, b);
+        Ok(b as i64)
+    }
 }
 
 impl From<Pointer> for Scalar {
@@ -228,6 +280,7 @@ impl From<Scalar> for ScalarMaybeUndef {
 }
 
 impl<'tcx> ScalarMaybeUndef {
+    #[inline]
     pub fn not_undef(self) -> EvalResult<'static, Scalar> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
@@ -235,15 +288,53 @@ impl<'tcx> ScalarMaybeUndef {
         }
     }
 
+    #[inline(always)]
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         self.not_undef()?.to_ptr()
     }
 
+    #[inline(always)]
     pub fn to_bits(self, target_size: Size) -> EvalResult<'tcx, u128> {
         self.not_undef()?.to_bits(target_size)
     }
 
+    #[inline(always)]
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {
         self.not_undef()?.to_bool()
+    }
+
+    #[inline(always)]
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        self.not_undef()?.to_char()
+    }
+
+    #[inline(always)]
+    pub fn to_u8(self) -> EvalResult<'tcx, u8> {
+        self.not_undef()?.to_u8()
+    }
+
+    #[inline(always)]
+    pub fn to_u32(self) -> EvalResult<'tcx, u32> {
+        self.not_undef()?.to_u32()
+    }
+
+    #[inline(always)]
+    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_usize(cx)
+    }
+
+    #[inline(always)]
+    pub fn to_i8(self) -> EvalResult<'tcx, i8> {
+        self.not_undef()?.to_i8()
+    }
+
+    #[inline(always)]
+    pub fn to_i32(self) -> EvalResult<'tcx, i32> {
+        self.not_undef()?.to_i32()
+    }
+
+    #[inline(always)]
+    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_isize(cx)
     }
 }

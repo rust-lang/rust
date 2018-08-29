@@ -458,7 +458,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
                     Ok(val) => match val.val {
-                        mir::interpret::ConstValue::ByRef(alloc, offset) => {
+                        mir::interpret::ConstValue::ByRef(_, alloc, offset) => {
                             PlaceRef::from_const_alloc(bx, layout, alloc, offset)
                         }
                         _ => bug!("promoteds should have an allocation: {:?}", val),

@@ -2,7 +2,7 @@ error[E0080]: this constant likely exhibits undefined behavior
   --> $DIR/ub-enum.rs:22:1
    |
 LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.b };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer at .<enum-tag>, but expected something in the range 0..=0
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -10,7 +10,7 @@ error[E0080]: this constant likely exhibits undefined behavior
   --> $DIR/ub-enum.rs:35:1
    |
 LL | const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0 at .<enum-tag>, but expected something in the range 2..=2
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid enum discriminant 0
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

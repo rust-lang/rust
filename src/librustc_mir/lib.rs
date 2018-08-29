@@ -83,6 +83,7 @@ pub mod transform;
 pub mod util;
 pub mod interpret;
 pub mod monomorphize;
+pub mod const_eval;
 
 pub use hair::pattern::check_crate as matchck_crate;
 use rustc::ty::query::Providers;

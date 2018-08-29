@@ -11,16 +11,17 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use std::hash::{Hash, Hasher};
 use std::convert::TryInto;
 
-use rustc::mir;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
+use rustc::{mir, ty};
+use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{
     GlobalId, ConstValue, Scalar, EvalResult, Pointer, ScalarMaybeUndef, EvalErrorKind
 };
-use super::{EvalContext, Machine, MemPlace, MPlaceTy, PlaceExtra, MemoryKind};
+use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 
 /// A `Value` represents a single immediate self-contained Rust value.
 ///
@@ -64,6 +65,14 @@ impl<'tcx> Value {
         self.to_scalar_or_undef().not_undef()
     }
 
+    #[inline]
+    pub fn to_scalar_pair(self) -> EvalResult<'tcx, (Scalar, Scalar)> {
+        match self {
+            Value::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
+            Value::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
+        }
+    }
+
     /// Convert the value into a pointer (or a pointer-sized integer).
     /// Throws away the second half of a ScalarPair!
     #[inline]
@@ -71,24 +80,6 @@ impl<'tcx> Value {
         match self {
             Value::Scalar(ptr) |
             Value::ScalarPair(ptr, _) => ptr.not_undef(),
-        }
-    }
-
-    pub fn to_scalar_dyn_trait(self) -> EvalResult<'tcx, (Scalar, Pointer)> {
-        match self {
-            Value::ScalarPair(ptr, vtable) =>
-                Ok((ptr.not_undef()?, vtable.to_ptr()?)),
-            _ => bug!("expected ptr and vtable, got {:?}", self),
-        }
-    }
-
-    pub fn to_scalar_slice(self, cx: impl HasDataLayout) -> EvalResult<'tcx, (Scalar, u64)> {
-        match self {
-            Value::ScalarPair(ptr, val) => {
-                let len = val.to_bits(cx.data_layout().pointer_size)?;
-                Ok((ptr.not_undef()?, len as u64))
-            }
-            _ => bug!("expected ptr and length, got {:?}", self),
         }
     }
 }
@@ -150,7 +141,7 @@ impl Operand {
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpTy<'tcx> {
-    pub op: Operand,
+    crate op: Operand, // ideally we'd make this private, but we are not there yet
     pub layout: TyLayout<'tcx>,
 }
 
@@ -181,6 +172,20 @@ impl<'tcx> From<ValTy<'tcx>> for OpTy<'tcx> {
         }
     }
 }
+
+// Validation needs to hash OpTy, but we cannot hash Layout -- so we just hash the type
+impl<'tcx> Hash for OpTy<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.op.hash(state);
+        self.layout.ty.hash(state);
+    }
+}
+impl<'tcx> PartialEq for OpTy<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.op == other.op && self.layout.ty == other.layout.ty
+    }
+}
+impl<'tcx> Eq for OpTy<'tcx> {}
 
 impl<'tcx> OpTy<'tcx> {
     #[inline]
@@ -227,7 +232,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         mplace: MPlaceTy<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        if mplace.extra != PlaceExtra::None {
+        if mplace.layout.is_unsized() {
+            // Dont touch unsized
             return Ok(None);
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
@@ -266,7 +272,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in a `Value`, not on which data is stored there currently.
-    pub(super) fn try_read_value(
+    pub(crate) fn try_read_value(
         &self,
         src: OpTy<'tcx>,
     ) -> EvalResult<'tcx, Result<Value, MemPlace>> {
@@ -298,6 +304,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Value::ScalarPair(..) => bug!("got ScalarPair for type: {:?}", op.layout.ty),
             Value::Scalar(val) => Ok(val),
         }
+    }
+
+    // Turn the MPlace into a string (must already be dereferenced!)
+    pub fn read_str(
+        &self,
+        mplace: MPlaceTy<'tcx>,
+    ) -> EvalResult<'tcx, &str> {
+        let len = mplace.len(self)?;
+        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
+        let str = ::std::str::from_utf8(bytes)
+            .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+        Ok(str)
     }
 
     pub fn uninit_operand(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Operand> {
@@ -360,7 +378,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok(OpTy { op: Operand::Immediate(value), layout: field_layout })
     }
 
-    pub(super) fn operand_downcast(
+    pub fn operand_downcast(
         &self,
         op: OpTy<'tcx>,
         variant: usize,
@@ -411,12 +429,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     // avoid allocations.  If you already know the layout, you can pass it in
     // to avoid looking it up again.
     fn eval_place_to_op(
-        &mut self,
+        &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
         use rustc::mir::Place::*;
-        Ok(match *mir_place {
+        let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
             Local(local) => {
                 let op = *self.frame().locals[local].access()?;
@@ -430,21 +448,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.operand_projection(op, &proj.elem)?
             }
 
-            // Everything else is an mplace, so we just call `eval_place`.
-            // Note that getting an mplace for a static aways requires `&mut`,
-            // so this does not "cost" us anything in terms if mutability.
-            Promoted(_) | Static(_) => {
-                let place = self.eval_place(mir_place)?;
-                place.to_mem_place().into()
-            }
-        })
+            _ => self.eval_place_to_mplace(mir_place)?.into(),
+        };
+
+        trace!("eval_place_to_op: got {:?}", *op);
+        Ok(op)
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
     /// if you already know the layout, you can save two some table lookups
     /// by passing it in here.
     pub fn eval_operand(
-        &mut self,
+        &self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
@@ -469,8 +484,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     /// Evaluate a bunch of operands at once
-    pub(crate) fn eval_operands(
-        &mut self,
+    pub(super) fn eval_operands(
+        &self,
         ops: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, Vec<OpTy<'tcx>>> {
         ops.into_iter()
@@ -479,12 +494,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 
     // Also used e.g. when miri runs into a constant.
-    // Unfortunately, this needs an `&mut` to be able to allocate a copy of a `ByRef`
-    // constant.  This bleeds up to `eval_operand` needing `&mut`.
-    pub fn const_value_to_op(
-        &mut self,
+    pub(super) fn const_value_to_op(
+        &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand> {
+        trace!("const_value_to_op: {:?}", val);
         match val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -493,9 +507,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     promoted: None,
                 })
             }
-            ConstValue::ByRef(alloc, offset) => {
-                // FIXME: Allocate new AllocId for all constants inside
-                let id = self.memory.allocate_value(alloc.clone(), MemoryKind::Stack)?;
+            ConstValue::ByRef(id, alloc, offset) => {
+                // We rely on mutability being set correctly in that allocation to prevent writes
+                // where none should happen -- and for `static mut`, we copy on demand anyway.
                 Ok(Operand::from_ptr(Pointer::new(id, offset), alloc.align))
             },
             ConstValue::ScalarPair(a, b) =>
@@ -504,52 +518,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 Ok(Operand::Immediate(Value::Scalar(x.into()))),
         }
     }
+    pub fn const_to_op(
+        &self,
+        cnst: &ty::Const<'tcx>,
+    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+        let op = self.const_value_to_op(cnst.val)?;
+        Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
+    }
 
-    pub(super) fn global_to_op(&mut self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
+    pub(super) fn global_to_op(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
         let cv = self.const_eval(gid)?;
         self.const_value_to_op(cv.val)
     }
 
-    /// We cannot do self.read_value(self.eval_operand) due to eval_operand taking &mut self,
-    /// so this helps avoid unnecessary let.
-    #[inline]
-    pub fn eval_operand_and_read_value(
-        &mut self,
-        op: &mir::Operand<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, ValTy<'tcx>> {
-        let op = self.eval_operand(op, layout)?;
-        self.read_value(op)
-    }
-
-    /// reads a tag and produces the corresponding variant index
-    pub fn read_discriminant_as_variant_index(
+    /// Read discriminant, return the runtime value as well as the variant index.
+    pub fn read_discriminant(
         &self,
         rval: OpTy<'tcx>,
-    ) -> EvalResult<'tcx, usize> {
-        match rval.layout.variants {
-            layout::Variants::Single { index } => Ok(index),
-            layout::Variants::Tagged { .. } => {
-                let discr_val = self.read_discriminant_value(rval)?;
-                rval.layout.ty
-                    .ty_adt_def()
-                    .expect("tagged layout for non adt")
-                    .discriminants(self.tcx.tcx)
-                    .position(|var| var.val == discr_val)
-                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant.into())
-            }
-            layout::Variants::NicheFilling { .. } => {
-                let discr_val = self.read_discriminant_value(rval)?;
-                assert_eq!(discr_val as usize as u128, discr_val);
-                Ok(discr_val as usize)
-            },
-        }
-    }
-
-    pub fn read_discriminant_value(
-        &self,
-        rval: OpTy<'tcx>,
-    ) -> EvalResult<'tcx, u128> {
+    ) -> EvalResult<'tcx, (u128, usize)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
         if rval.layout.abi == layout::Abi::Uninhabited {
             return err!(Unreachable);
@@ -560,20 +546,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let discr_val = rval.layout.ty.ty_adt_def().map_or(
                     index as u128,
                     |def| def.discriminant_for_variant(*self.tcx, index).val);
-                return Ok(discr_val);
+                return Ok((discr_val, index));
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},
         }
+        // read raw discriminant value
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_value(discr_op)?;
-        trace!("discr value: {:?}", discr_val);
         let raw_discr = discr_val.to_scalar()?;
+        trace!("discr value: {:?}", raw_discr);
+        // post-process
         Ok(match rval.layout.variants {
             layout::Variants::Single { .. } => bug!(),
-            // FIXME: We should catch invalid discriminants here!
             layout::Variants::Tagged { .. } => {
-                if discr_val.layout.ty.is_signed() {
+                let real_discr = if discr_val.layout.ty.is_signed() {
                     let i = raw_discr.to_bits(discr_val.layout.size)? as i128;
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant
@@ -590,7 +577,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     (truncatee << shift) >> shift
                 } else {
                     raw_discr.to_bits(discr_val.layout.size)?
-                }
+                };
+                // Make sure we catch invalid discriminants
+                let index = rval.layout.ty
+                    .ty_adt_def()
+                    .expect("tagged layout for non adt")
+                    .discriminants(self.tcx.tcx)
+                    .position(|var| var.val == real_discr)
+                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(real_discr))?;
+                (real_discr, index)
             },
             layout::Variants::NicheFilling {
                 dataful_variant,
@@ -600,8 +595,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             } => {
                 let variants_start = *niche_variants.start() as u128;
                 let variants_end = *niche_variants.end() as u128;
-                match raw_discr {
+                let real_discr = match raw_discr {
                     Scalar::Ptr(_) => {
+                        // The niche must be just 0 (which a pointer value never is)
                         assert!(niche_start == 0);
                         assert!(variants_start == variants_end);
                         dataful_variant as u128
@@ -616,7 +612,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             dataful_variant as u128
                         }
                     },
-                }
+                };
+                let index = real_discr as usize;
+                assert_eq!(index as u128, real_discr);
+                assert!(index < rval.layout.ty
+                    .ty_adt_def()
+                    .expect("tagged layout for non adt")
+                    .variants.len());
+                (real_discr, index)
             }
         })
     }

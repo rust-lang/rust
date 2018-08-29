@@ -76,8 +76,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.loop_detector.observe_and_analyze(&self.machine, &self.stack, &self.memory)
     }
 
+    pub fn run(&mut self) -> EvalResult<'tcx> {
+        while self.step()? {}
+        Ok(())
+    }
+
     /// Returns true as long as there are more things to do.
-    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+    fn step(&mut self) -> EvalResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
         }
@@ -122,7 +127,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 variant_index,
             } => {
                 let dest = self.eval_place(place)?;
-                self.write_discriminant_value(variant_index, dest)?;
+                self.write_discriminant_index(variant_index, dest)?;
             }
 
             // Mark locals as alive
@@ -147,10 +152,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     M::validation_op(self, op, operand)?;
                 }
             }
-            EndRegion(ce) => {
-                M::end_region(self, Some(ce))?;
-            }
 
+            EndRegion(..) => {}
             UserAssertTy(..) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
@@ -185,9 +188,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             BinaryOp(bin_op, ref left, ref right) => {
                 let layout = if binop_left_homogeneous(bin_op) { Some(dest.layout) } else { None };
-                let left = self.eval_operand_and_read_value(left, layout)?;
+                let left = self.read_value(self.eval_operand(left, layout)?)?;
                 let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
-                let right = self.eval_operand_and_read_value(right, layout)?;
+                let right = self.read_value(self.eval_operand(right, layout)?)?;
                 self.binop_ignore_overflow(
                     bin_op,
                     left,
@@ -198,9 +201,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
-                let left = self.eval_operand_and_read_value(left, None)?;
+                let left = self.read_value(self.eval_operand(left, None)?)?;
                 let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
-                let right = self.eval_operand_and_read_value(right, layout)?;
+                let right = self.read_value(self.eval_operand(right, layout)?)?;
                 self.binop_with_overflow(
                     bin_op,
                     left,
@@ -211,7 +214,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
-                let val = self.eval_operand_and_read_value(operand, Some(dest.layout))?;
+                let val = self.read_value(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val.to_scalar()?, dest.layout)?;
                 self.write_scalar(val, dest)?;
             }
@@ -219,7 +222,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant_value(variant_index, dest)?;
+                        self.write_discriminant_index(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)
                         } else {
@@ -243,7 +246,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Repeat(ref operand, _) => {
                 let op = self.eval_operand(operand, None)?;
                 let dest = self.force_allocation(dest)?;
-                let length = dest.len();
+                let length = dest.len(&self)?;
 
                 if length > 0 {
                     // write the first
@@ -265,7 +268,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
-                let len = mplace.len();
+                let len = mplace.len(&self)?;
                 let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
                     Scalar::Bits {
@@ -278,7 +281,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?.to_ref(&self);
+                let val = self.force_allocation(src)?.to_ref();
                 self.write_value(val, dest)?;
             }
 
@@ -309,7 +312,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             Discriminant(ref place) => {
                 let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant_value(self.place_to_op(place)?)?;
+                let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
                 let size = dest.layout.size.bytes() as u8;
                 self.write_scalar(Scalar::Bits {
                     bits: discr_val,
@@ -327,8 +330,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         debug!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;
+
+        let old_stack = self.cur_frame();
+        let old_bb = self.frame().block;
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
+            // This should change *something*
+            debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             debug!("// {:?}", self.frame().block);
         }
         Ok(())

@@ -57,7 +57,7 @@ pub fn scalar_to_llvm(
             let base_addr = match alloc_type {
                 Some(AllocType::Memory(alloc)) => {
                     let init = const_alloc_to_llvm(cx, alloc);
-                    if alloc.runtime_mutability == Mutability::Mutable {
+                    if alloc.mutability == Mutability::Mutable {
                         consts::addr_of_mut(cx, init, alloc.align, None)
                     } else {
                         consts::addr_of(cx, init, alloc.align, None)
@@ -134,7 +134,7 @@ pub fn codegen_static_initializer(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstValue::ByRef(alloc, n) if n.bytes() == 0 => alloc,
+        ConstValue::ByRef(_, alloc, n) if n.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok((const_alloc_to_llvm(cx, alloc), alloc))

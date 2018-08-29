@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused)]
+
 // normalize-stderr-test "alignment \d+" -> "alignment N"
 // normalize-stderr-test "offset \d+" -> "offset N"
 // normalize-stderr-test "allocation \d+" -> "allocation N"
@@ -37,7 +39,8 @@ union SliceTransmute {
     bad: BadSliceRepr,
     slice: &'static [u8],
     str: &'static str,
-    my_str: &'static Str,
+    my_str: &'static MyStr,
+    my_slice: &'static MySliceBool,
 }
 
 #[repr(C)]
@@ -71,7 +74,12 @@ union DynTransmute {
 trait Trait {}
 impl Trait for bool {}
 
-struct Str(str);
+// custom unsized type
+struct MyStr(str);
+
+// custom unsized type with sized fields
+struct MySlice<T: ?Sized>(bool, T);
+type MySliceBool = MySlice<[bool]>;
 
 // OK
 const A: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.str};
@@ -81,8 +89,8 @@ const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 }
 // bad str
 const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
 //~^ ERROR this constant likely exhibits undefined behavior
-// bad str in Str
-const C2: &Str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
+// bad str in user-defined unsized type
+const C2: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
 //~^ ERROR this constant likely exhibits undefined behavior
 
 // OK
@@ -107,9 +115,24 @@ const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 
 // bad data *inside* the trait object
 const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
 //~^ ERROR this constant likely exhibits undefined behavior
-
 // bad data *inside* the slice
 const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
+//~^ ERROR this constant likely exhibits undefined behavior
+
+// good MySliceBool
+const I1: &MySliceBool = &MySlice(true, [false]);
+// bad: sized field is not okay
+const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
+//~^ ERROR this constant likely exhibits undefined behavior
+// bad: unsized part is not okay
+const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
+//~^ ERROR this constant likely exhibits undefined behavior
+
+// invalid UTF-8
+const J1: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
+//~^ ERROR this constant likely exhibits undefined behavior
+// invalid UTF-8 in user-defined str-like
+const J2: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
 //~^ ERROR this constant likely exhibits undefined behavior
 
 fn main() {

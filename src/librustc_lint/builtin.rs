@@ -1612,21 +1612,15 @@ fn validate_const<'a, 'tcx>(
     gid: ::rustc::mir::interpret::GlobalId<'tcx>,
     what: &str,
 ) {
-    let mut ecx = ::rustc_mir::interpret::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
+    let ecx = ::rustc_mir::interpret::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
     let result = (|| {
-        use rustc_target::abi::LayoutOf;
-        use rustc_mir::interpret::OpTy;
-
-        let op = ecx.const_value_to_op(constant.val)?;
-        let layout = ecx.layout_of(constant.ty)?;
-        let place = ecx.allocate_op(OpTy { op, layout })?.into();
-
-        let mut todo = vec![(place, Vec::new())];
+        let op = ecx.const_to_op(constant)?;
+        let mut todo = vec![(op, Vec::new())];
         let mut seen = FxHashSet();
-        seen.insert(place);
-        while let Some((place, mut path)) = todo.pop() {
-            ecx.validate_mplace(
-                place,
+        seen.insert(op);
+        while let Some((op, mut path)) = todo.pop() {
+            ecx.validate_operand(
+                op,
                 &mut path,
                 &mut seen,
                 &mut todo,

@@ -19,7 +19,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    MPlaceTy, Machine, EvalContext
+    OpTy, Machine, EvalContext
 };
 
 macro_rules! validation_failure{
@@ -187,39 +187,39 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    /// This function checks the memory where `dest` points to.  The place must be sized
-    /// (i.e., dest.extra == PlaceExtra::None).
+    /// This function checks the data at `op`.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
     /// starts must not be changed!
-    pub fn validate_mplace(
+    pub fn validate_operand(
         &self,
-        dest: MPlaceTy<'tcx>,
+        dest: OpTy<'tcx>,
         path: &mut Vec<PathElem>,
-        seen: &mut FxHashSet<(MPlaceTy<'tcx>)>,
-        todo: &mut Vec<(MPlaceTy<'tcx>, Vec<PathElem>)>,
+        seen: &mut FxHashSet<(OpTy<'tcx>)>,
+        todo: &mut Vec<(OpTy<'tcx>, Vec<PathElem>)>,
     ) -> EvalResult<'tcx> {
-        self.memory.dump_alloc(dest.to_ptr()?.alloc_id);
-        trace!("validate_mplace: {:?}, {:#?}", *dest, dest.layout);
+        trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
 
         // Find the right variant.  We have to handle this as a prelude, not via
         // proper recursion with the new inner layout, to be able to later nicely
         // print the field names of the enum field that is being accessed.
         let (variant, dest) = match dest.layout.variants {
-            layout::Variants::NicheFilling { niche: ref tag, .. } |
-            layout::Variants::Tagged { ref tag, .. } => {
-                let size = tag.value.size(self);
-                // we first read the tag value as scalar, to be able to validate it
-                let tag_mplace = self.mplace_field(dest, 0)?;
-                let tag_value = self.read_scalar(tag_mplace.into())?;
-                path.push(PathElem::Tag);
-                self.validate_scalar(
-                    tag_value, size, tag, &path, tag_mplace.layout.ty
-                )?;
-                path.pop(); // remove the element again
-                // then we read it again to get the index, to continue
-                let variant = self.read_discriminant_as_variant_index(dest.into())?;
-                let inner_dest = self.mplace_downcast(dest, variant)?;
+            layout::Variants::NicheFilling { .. } |
+            layout::Variants::Tagged { .. } => {
+                let variant = match self.read_discriminant(dest) {
+                    Ok(res) => res.1,
+                    Err(err) => match err.kind {
+                        EvalErrorKind::InvalidDiscriminant(val) =>
+                            return validation_failure!(
+                                format!("invalid enum discriminant {}", val), path
+                            ),
+                        _ =>
+                            return validation_failure!(
+                                format!("non-integer enum discriminant"), path
+                            ),
+                    }
+                };
+                let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
                 path.push(PathElem::Field(dest.layout.ty
                                           .ty_adt_def()
@@ -229,6 +229,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 (variant, inner_dest)
             },
             layout::Variants::Single { index } => {
+                // Pre-processing for trait objects: Treat them at their real type.
+                // (We do not do this for slices and strings: For slices it is not needed,
+                // `mplace_array_fields` does the right thing, and for strings there is no
+                // real type that would show the actual length.)
+                let dest = match dest.layout.ty.sty {
+                    ty::Dynamic(..) => {
+                        let dest = dest.to_mem_place(); // immediate trait objects are not a thing
+                        match self.unpack_dyn_trait(dest) {
+                            Ok(res) => res.1.into(),
+                            Err(_) =>
+                                return validation_failure!(
+                                    "invalid vtable in fat pointer", path
+                                ),
+                        }
+                    }
+                    _ => dest
+                };
                 (index, dest)
             }
         };
@@ -251,7 +268,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // expectation.
                     layout::Abi::Scalar(ref scalar_layout) => {
                         let size = scalar_layout.value.size(self);
-                        let value = self.read_value(dest.into())?;
+                        let value = match self.read_value(dest) {
+                            Ok(val) => val,
+                            Err(err) => match err.kind {
+                                EvalErrorKind::PointerOutOfBounds { .. } |
+                                EvalErrorKind::ReadUndefBytes =>
+                                    return validation_failure!(
+                                        "uninitialized or out-of-bounds memory", path
+                                    ),
+                                _ =>
+                                    return validation_failure!(
+                                        "unrepresentable data", path
+                                    ),
+                            }
+                        };
                         let scalar = value.to_scalar_or_undef();
                         self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
                         if scalar_layout.value == Primitive::Pointer {
@@ -260,18 +290,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                                 if let Some(AllocType::Static(did)) = alloc_kind {
                                     // statics from other crates are already checked.
-                                    // extern statics should not be validated as they have no body.
+                                    // extern statics cannot be validated as they have no body.
                                     if !did.is_local() || self.tcx.is_foreign_item(did) {
                                         return Ok(());
                                     }
                                 }
                                 if value.layout.ty.builtin_deref(false).is_some() {
-                                    trace!("Recursing below ptr {:#?}", value);
-                                    let ptr_place = self.ref_to_mplace(value)?;
-                                    // we have not encountered this pointer+layout
-                                    // combination before
-                                    if seen.insert(ptr_place) {
-                                        todo.push((ptr_place, path_clone_and_deref(path)));
+                                    let ptr_op = self.ref_to_mplace(value)?.into();
+                                    // we have not encountered this pointer+layout combination
+                                    // before.
+                                    if seen.insert(ptr_op) {
+                                        trace!("Recursing below ptr {:#?}", *value);
+                                        todo.push((ptr_op, path_clone_and_deref(path)));
                                     }
                                 }
                             }
@@ -285,49 +315,98 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
-            layout::FieldPlacement::Array { .. } => {
-                for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
-                    let field = field?;
-                    path.push(PathElem::ArrayElem(i));
-                    self.validate_mplace(field, path, seen, todo)?;
-                    path.truncate(path_len);
+            layout::FieldPlacement::Array { .. } if !dest.layout.is_zst() => {
+                let dest = dest.to_mem_place(); // non-ZST array/slice/str cannot be immediate
+                // Special handling for strings to verify UTF-8
+                match dest.layout.ty.sty {
+                    ty::Str => {
+                        match self.read_str(dest) {
+                            Ok(_) => {},
+                            Err(err) => match err.kind {
+                                EvalErrorKind::PointerOutOfBounds { .. } |
+                                EvalErrorKind::ReadUndefBytes =>
+                                    // The error here looks slightly different than it does
+                                    // for slices, because we do not report the index into the
+                                    // str at which we are OOB.
+                                    return validation_failure!(
+                                        "uninitialized or out-of-bounds memory", path
+                                    ),
+                                _ =>
+                                    return validation_failure!(
+                                        "non-UTF-8 data in str", path
+                                    ),
+                            }
+                        }
+                    }
+                    _ => {
+                        // This handles the unsized case correctly as well, as well as
+                        // SIMD an all sorts of other array-like types.
+                        for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
+                            let field = field?;
+                            path.push(PathElem::ArrayElem(i));
+                            self.validate_operand(field.into(), path, seen, todo)?;
+                            path.truncate(path_len);
+                        }
+                    }
                 }
             },
+            layout::FieldPlacement::Array { .. } => {
+                // An empty array.  Nothing to do.
+            }
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                // Fat pointers need special treatment.
+                // Fat pointers are treated like pointers, not aggregates.
                 if dest.layout.ty.builtin_deref(true).is_some() {
                     // This is a fat pointer.
-                    let ptr = match self.ref_to_mplace(self.read_value(dest.into())?) {
+                    let ptr = match self.read_value(dest.into())
+                        .and_then(|val| self.ref_to_mplace(val))
+                    {
                         Ok(ptr) => ptr,
-                        Err(err) => match err.kind {
-                            EvalErrorKind::ReadPointerAsBytes =>
-                                return validation_failure!(
-                                    "fat pointer length is not a valid integer", path
-                                ),
-                            EvalErrorKind::ReadBytesAsPointer =>
-                                return validation_failure!(
-                                    "fat pointer vtable is not a valid pointer", path
-                                ),
-                            _ => return Err(err),
-                        }
+                        Err(_) =>
+                            return validation_failure!(
+                                "undefined location or metadata in fat pointer", path
+                            ),
                     };
-                    let unpacked_ptr = self.unpack_unsized_mplace(ptr)?;
+                    // check metadata early, for better diagnostics
+                    match self.tcx.struct_tail(ptr.layout.ty).sty {
+                        ty::Dynamic(..) => {
+                            match ptr.extra.unwrap().to_ptr() {
+                                Ok(_) => {},
+                                Err(_) =>
+                                    return validation_failure!(
+                                        "non-pointer vtable in fat pointer", path
+                                    ),
+                            }
+                        }
+                        ty::Slice(..) | ty::Str => {
+                            match ptr.extra.unwrap().to_usize(self) {
+                                Ok(_) => {},
+                                Err(_) =>
+                                    return validation_failure!(
+                                        "non-integer slice length in fat pointer", path
+                                    ),
+                            }
+                        }
+                        _ =>
+                            bug!("Unexpected unsized type tail: {:?}",
+                                self.tcx.struct_tail(ptr.layout.ty)
+                            ),
+                    }
                     // for safe ptrs, recursively check it
                     if !dest.layout.ty.is_unsafe_ptr() {
-                        trace!("Recursing below fat ptr {:?} (unpacked: {:?})", ptr, unpacked_ptr);
-                        if seen.insert(unpacked_ptr) {
-                            todo.push((unpacked_ptr, path_clone_and_deref(path)));
+                        let ptr = ptr.into();
+                        if seen.insert(ptr) {
+                            trace!("Recursing below fat ptr {:?}", ptr);
+                            todo.push((ptr, path_clone_and_deref(path)));
                         }
                     }
                 } else {
                     // Not a pointer, perform regular aggregate handling below
                     for i in 0..offsets.len() {
-                        let field = self.mplace_field(dest, i as u64)?;
+                        let field = self.operand_field(dest, i as u64)?;
                         path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                        self.validate_mplace(field, path, seen, todo)?;
+                        self.validate_operand(field, path, seen, todo)?;
                         path.truncate(path_len);
                     }
-                    // FIXME: For a TyStr, check that this is valid UTF-8.
                 }
             }
         }

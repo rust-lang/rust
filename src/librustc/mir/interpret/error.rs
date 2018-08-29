@@ -190,7 +190,7 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
-    InvalidDiscriminant,
+    InvalidDiscriminant(u128),
     PointerOutOfBounds {
         ptr: Pointer,
         access: bool,
@@ -302,7 +302,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "tried to use a function pointer after offsetting it",
             InvalidBool =>
                 "invalid boolean value read",
-            InvalidDiscriminant =>
+            InvalidDiscriminant(..) =>
                 "invalid enum discriminant value read",
             PointerOutOfBounds { .. } =>
                 "pointer offset outside bounds of allocation",
@@ -488,6 +488,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                        align {}", size.bytes(), align.abi(), size2.bytes(), align2.abi()),
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
+            InvalidDiscriminant(val) =>
+                write!(f, "encountered invalid enum discriminant {}", val),
             _ => write!(f, "{}", self.description()),
         }
     }
