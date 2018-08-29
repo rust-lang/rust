@@ -494,7 +494,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 42);
     /// ```
     #[inline]
-    #[stable(feature = "rust1", since = "1.30.0")]
+    #[stable(feature = "result_map_or_else", since = "1.30.0")]
     pub fn map_or_else<U, M: FnOnce(T) -> U, F: FnOnce(E) -> U>(self, fallback: F, map: M) -> U {
         self.map(map).unwrap_or_else(fallback)
     }
