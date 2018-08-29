@@ -30,7 +30,7 @@ use crate::utils;
 /// ```
 declare_clippy_lint! {
     pub PTR_OFFSET_WITH_CAST,
-    style,
+    complexity,
     "uneeded pointer offset cast"
 }
 
