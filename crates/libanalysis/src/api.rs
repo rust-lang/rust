@@ -55,11 +55,9 @@ pub struct Analysis {
 impl Analysis {
     pub fn file_syntax(&self, file_id: FileId) -> File {
         self.imp.file_syntax(file_id)
-            .unwrap()
     }
     pub fn file_line_index(&self, file_id: FileId) -> LineIndex {
         self.imp.file_line_index(file_id)
-            .unwrap()
     }
     pub fn extend_selection(&self, file: &File, range: TextRange) -> TextRange {
         libeditor::extend_selection(file, range).unwrap_or(range)
@@ -88,7 +86,6 @@ impl Analysis {
     }
     pub fn approximately_resolve_symbol(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, FileSymbol)> {
         self.imp.approximately_resolve_symbol(file_id, offset)
-            .unwrap()
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)

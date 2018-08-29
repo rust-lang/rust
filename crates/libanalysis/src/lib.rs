@@ -141,16 +141,16 @@ impl WorldState {
 }
 
 impl World {
-    pub fn file_syntax(&self, file_id: FileId) -> Result<File> {
-        let data = self.file_data(file_id)?;
-        Ok(data.syntax().clone())
+    pub fn file_syntax(&self, file_id: FileId) -> File {
+        self.file_data(file_id).syntax().clone()
     }
 
-    pub fn file_line_index(&self, id: FileId) -> Result<LineIndex> {
-        let data = self.file_data(id)?;
-        let index = data.lines
-            .get_or_init(|| LineIndex::new(&data.text));
-        Ok(index.clone())
+    pub fn file_line_index(&self, id: FileId) -> LineIndex {
+        let data = self.file_data(id);
+        data
+            .lines
+            .get_or_init(|| LineIndex::new(&data.text))
+            .clone()
     }
 
     pub fn world_symbols(&self, mut query: Query) -> Vec<(FileId, FileSymbol)> {
@@ -170,7 +170,7 @@ impl World {
             .parent_modules(
                 id,
                 &*self.file_resolver,
-                &|file_id| self.file_syntax(file_id).unwrap(),
+                &|file_id| self.file_syntax(file_id),
             )
             .into_iter()
             .map(|(id, name, node)| {
@@ -189,11 +189,11 @@ impl World {
         &self,
         id: FileId,
         offset: TextUnit,
-    ) -> Result<Vec<(FileId, FileSymbol)>> {
-        let file = self.file_syntax(id)?;
+    ) -> Vec<(FileId, FileSymbol)> {
+        let file = self.file_syntax(id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
-            return Ok(self.index_resolve(name_ref));
+            return self.index_resolve(name_ref);
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -212,15 +212,15 @@ impl World {
                         (id, symbol)
                     }).collect();
 
-                    return Ok(res);
+                    return res;
                 }
             }
         }
-        Ok(vec![])
+        vec![]
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
-        let syntax = self.file_syntax(file_id).unwrap();
+        let syntax = self.file_syntax(file_id);
         let mut res = libeditor::diagnostics(&syntax)
             .into_iter()
             .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
@@ -229,7 +229,7 @@ impl World {
         self.data.module_map.problems(
             file_id,
             &*self.file_resolver,
-            &|file_id| self.file_syntax(file_id).unwrap(),
+            &|file_id| self.file_syntax(file_id),
             |name_node, problem| {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
@@ -272,7 +272,7 @@ impl World {
     }
 
     pub fn assists(&self, file_id: FileId, offset: TextUnit) -> Vec<SourceChange> {
-        let file = self.file_syntax(file_id).unwrap();
+        let file = self.file_syntax(file_id);
         let actions = vec![
             ("flip comma", libeditor::flip_comma(&file, offset).map(|f| f())),
             ("add `#[derive]`", libeditor::add_derive(&file, offset).map(|f| f())),
@@ -308,7 +308,7 @@ impl World {
             .child_module_by_name(
                 id, name.as_str(),
                 &*self.file_resolver,
-                &|file_id| self.file_syntax(file_id).unwrap(),
+                &|file_id| self.file_syntax(file_id),
             )
             .into_iter()
             .map(|id| module_map.module2file(id))
@@ -326,10 +326,10 @@ impl World {
         }
     }
 
-    fn file_data(&self, file_id: FileId) -> Result<Arc<FileData>> {
+    fn file_data(&self, file_id: FileId) -> Arc<FileData> {
         match self.data.file_map.get(&file_id) {
-            Some(data) => Ok(data.clone()),
-            None => bail!("unknown file: {:?}", file_id),
+            Some(data) => data.clone(),
+            None => panic!("unknown file: {:?}", file_id),
         }
     }
 }
