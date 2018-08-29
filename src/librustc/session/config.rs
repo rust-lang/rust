@@ -37,10 +37,10 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
+use rustc_data_structures::fx::FxHashSet;
 use std::{fmt, str};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
@@ -1373,7 +1373,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let max_atomic_width = sess.target.target.max_atomic_width();
     let atomic_cas = sess.target.target.options.atomic_cas;
 
-    let mut ret = HashSet::new();
+    let mut ret = FxHashSet::default();
     // Target bindings.
     ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
     if let Some(ref fam) = sess.target.target.options.target_family {

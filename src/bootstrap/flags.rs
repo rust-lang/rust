@@ -125,7 +125,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
             "stage to build (indicates compiler to use/test, e.g. stage 0 uses the \
              bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)",
             "N");
-        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling", "N");
+        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling \
+            (pass multiple times to keep e.g. both stages 0 and 1)", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");

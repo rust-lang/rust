@@ -47,7 +47,6 @@ use jobserver::Client;
 
 use std;
 use std::cell::{self, Cell, RefCell};
-use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::io::Write;
@@ -122,7 +121,7 @@ pub struct Session {
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
     /// macro name and definition span in the source crate.
-    pub imported_macro_spans: OneThread<RefCell<HashMap<Span, (String, Span)>>>,
+    pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
 
@@ -1122,7 +1121,7 @@ pub fn build_session_(
         injected_allocator: Once::new(),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
-        imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
+        imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),

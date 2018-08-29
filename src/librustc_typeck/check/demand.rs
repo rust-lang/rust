@@ -351,11 +351,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if !self.infcx.type_moves_by_default(self.param_env,
                                                                 checked,
                                                                 sp) {
-                                let sp = cm.call_span_if_macro(sp);
-                                if let Ok(code) = cm.span_to_snippet(sp) {
-                                    return Some((sp,
-                                                 "consider dereferencing the borrow",
-                                                 format!("*{}", code)));
+                                // do not suggest if the span comes from a macro (#52783)
+                                if let (Ok(code),
+                                        true) = (cm.span_to_snippet(sp), sp == expr.span) {
+                                    return Some((
+                                        sp,
+                                        "consider dereferencing the borrow",
+                                        format!("*{}", code),
+                                    ));
                                 }
                             }
                         }

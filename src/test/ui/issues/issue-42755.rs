@@ -15,3 +15,5 @@ macro_rules! foo {
 }
 
 foo!(a);
+
+fn main() {}
