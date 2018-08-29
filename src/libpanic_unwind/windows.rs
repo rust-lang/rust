@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 #![allow(dead_code)]
 #![cfg(windows)]
 
