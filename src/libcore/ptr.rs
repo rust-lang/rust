@@ -24,8 +24,8 @@
 //! to access only a single value, in which case the documentation omits the size
 //! and implicitly assumes it to be `size_of::<T>()` bytes.
 //!
-//! While we can't yet define whether an arbitrary pointer is valid, there
-//! are a few rules regarding validity:
+//! The precise rules for validity are not determined yet.  The guarantees that are
+//! provided at this point are very minimal:
 //!
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
 //! * All pointers (except for the null pointer) are valid for all operations of
@@ -35,9 +35,8 @@
 //!   access the same memory.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmentic,
-//! are enough to correctly implement many useful things in unsafe code. Still,
-//! unsafe code should be carefully examined since some of the finer
-//! details—notably the [aliasing] rules—are not yet settled. For more
+//! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
+//! will be provided eventually, as the [aliasing] rules are being determined. For more
 //! information, see the [book] as well as the section in the reference devoted
 //! to [undefined behavior][ub].
 //!
