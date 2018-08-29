@@ -11,7 +11,7 @@
 //! Unwinding implementation of top of native Win64 SEH,
 //! however the unwind handler data (aka LSDA) uses GCC-compatible encoding.
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 #![allow(private_no_mangle_fns)]
 
 use alloc::boxed::Box;

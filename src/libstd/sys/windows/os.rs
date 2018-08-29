@@ -10,7 +10,7 @@
 
 //! Implementation of `std::os` functionality for Windows
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 
 use os::windows::prelude::*;
 

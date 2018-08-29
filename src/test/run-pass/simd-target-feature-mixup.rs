@@ -52,7 +52,7 @@ fn is_sigill(status: ExitStatus) -> bool {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 mod test {
     // An SSE type
     #[repr(simd)]

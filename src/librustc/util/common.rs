@@ -84,7 +84,7 @@ pub struct ProfQDumpParams {
     pub dump_profq_msg_log:bool,
 }
 
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryMsg {
     pub query: &'static str,
