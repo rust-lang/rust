@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -31,7 +31,7 @@ use llvm_util;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 pub struct LinkerInfo {
-    exports: HashMap<CrateType, Vec<String>>,
+    exports: FxHashMap<CrateType, Vec<String>>,
 }
 
 impl LinkerInfo {

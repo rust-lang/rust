@@ -37,7 +37,7 @@
 //! Note that this module has a #[cfg(windows)] above it as none of this logic
 //! is required on Unix.
 
-#![allow(bad_style, dead_code)]
+#![allow(nonstandard_style, dead_code)]
 
 use std::env;
 use std::io;

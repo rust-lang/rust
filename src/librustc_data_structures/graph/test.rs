@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+use fx::FxHashMap;
 use std::cmp::max;
 use std::slice;
 use std::iter;
@@ -18,8 +18,8 @@ use super::*;
 pub struct TestGraph {
     num_nodes: usize,
     start_node: usize,
-    successors: HashMap<usize, Vec<usize>>,
-    predecessors: HashMap<usize, Vec<usize>>,
+    successors: FxHashMap<usize, Vec<usize>>,
+    predecessors: FxHashMap<usize, Vec<usize>>,
 }
 
 impl TestGraph {
@@ -27,8 +27,8 @@ impl TestGraph {
         let mut graph = TestGraph {
             num_nodes: start_node + 1,
             start_node,
-            successors: HashMap::new(),
-            predecessors: HashMap::new(),
+            successors: FxHashMap::default(),
+            predecessors: FxHashMap::default(),
         };
         for &(source, target) in edges {
             graph.num_nodes = max(graph.num_nodes, source + 1);

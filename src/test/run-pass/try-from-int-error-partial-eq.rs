@@ -8,31 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
+#![feature(try_from)]
+#![allow(unused_must_use)]
 
-#![allow(keyword_idents)]
+use std::convert::TryFrom;
+use std::num::TryFromIntError;
 
-#[macro_export]
-macro_rules! produces_async {
-    () => (pub fn async() {})
-}
-
-#[macro_export]
-macro_rules! produces_async_raw {
-    () => (pub fn r#async() {})
-}
-
-#[macro_export]
-macro_rules! consumes_async {
-    (async) => (1)
-}
-
-#[macro_export]
-macro_rules! consumes_async_raw {
-    (r#async) => (1)
-}
-
-#[macro_export]
-macro_rules! passes_ident {
-    ($i: ident) => ($i)
+fn main() {
+    let x: u32 = 125;
+    let y: Result<u8, TryFromIntError> = u8::try_from(x);
+    y == Ok(125);
 }

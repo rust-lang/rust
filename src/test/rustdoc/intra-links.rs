@@ -75,7 +75,7 @@ pub static THIS_STATIC: usize = 5usize;
 
 pub trait SoAmbiguous {}
 
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 pub fn SoAmbiguous() {}
 
 

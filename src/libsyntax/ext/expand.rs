@@ -34,7 +34,7 @@ use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use visit::{self, Visitor};
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::fs::File;
 use std::io::Read;
 use std::iter::FromIterator;
@@ -319,7 +319,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
         let mut expanded_fragments = Vec::new();
-        let mut derives: HashMap<Mark, Vec<_>> = HashMap::new();
+        let mut derives: FxHashMap<Mark, Vec<_>> = FxHashMap::default();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {

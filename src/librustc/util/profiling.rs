@@ -21,7 +21,7 @@ macro_rules! define_categories {
             $($name),*
         }
 
-        #[allow(bad_style)]
+        #[allow(nonstandard_style)]
         struct Categories<T> {
             $($name: T),*
         }

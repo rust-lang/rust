@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::Read;
@@ -31,7 +31,7 @@ macro_rules! try_something {
 #[derive(Debug, Clone, Eq)]
 pub struct CssPath {
     pub name: String,
-    pub children: HashSet<CssPath>,
+    pub children: FxHashSet<CssPath>,
 }
 
 // This PartialEq implementation IS NOT COMMUTATIVE!!!
@@ -66,7 +66,7 @@ impl CssPath {
     fn new(name: String) -> CssPath {
         CssPath {
             name,
-            children: HashSet::new(),
+            children: FxHashSet::default(),
         }
     }
 }
@@ -211,7 +211,7 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
              .join(" ")
 }
 
-fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
+fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
     let mut paths = Vec::with_capacity(50);
 
     while *pos < events.len() {

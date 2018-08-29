@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_docs, bad_style)]
+#![allow(missing_docs, nonstandard_style)]
 
 use ptr;
 use ffi::{OsStr, OsString};

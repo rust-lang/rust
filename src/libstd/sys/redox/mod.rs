@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code, missing_docs, bad_style)]
+#![allow(dead_code, missing_docs, nonstandard_style)]
 
 use io::{self, ErrorKind};
 
