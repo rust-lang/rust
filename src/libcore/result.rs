@@ -485,6 +485,7 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(result_map_or_else)]
     /// let k = 21;
     ///
     /// let x : Result<_, &str> = Ok("foo");
