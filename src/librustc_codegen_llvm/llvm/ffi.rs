@@ -1449,6 +1449,7 @@ extern "C" {
     pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
     pub fn LLVMRustPrintTargetFeatures(T: &TargetMachine);
 
+    pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
