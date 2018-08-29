@@ -194,6 +194,23 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         scope
     }
 
+    fn lookup_bound_region(
+        &self,
+        debruijn: ty::DebruijnIndex,
+        br: &ty::BoundRegion,
+        scopes: &[BoundRegionScope],
+    ) -> RegionVid {
+        // The debruijn index is a "reverse index" into the
+        // scopes listing. So when we have INNERMOST (0), we
+        // want the *last* scope pushed, and so forth.
+        let debruijn_index = debruijn.index() - ty::INNERMOST.index();
+        let scope = &scopes[scopes.len() - debruijn_index - 1];
+
+        // Find this bound region in that scope to map to a
+        // particular region.
+        scope.map[br]
+    }
+
     fn replace_bound_region(
         &self,
         universal_regions: &UniversalRegions<'tcx>,
@@ -201,17 +218,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         scopes: &[BoundRegionScope],
     ) -> RegionVid {
         match r {
-            ty::ReLateBound(debruijn, br) => {
-                // The debruijn index is a "reverse index" into the
-                // scopes listing. So when we have INNERMOST (0), we
-                // want the *last* scope pushed, and so forth.
-                let debruijn_index = debruijn.index() - ty::INNERMOST.index();
-                let scope = &scopes[scopes.len() - debruijn_index - 1];
-
-                // Find this bound region in that scope to map to a
-                // particular region.
-                scope.map[br]
-            }
+            ty::ReLateBound(debruijn, br) => self.lookup_bound_region(*debruijn, br, scopes),
 
             ty::ReVar(v) => *v,
 
