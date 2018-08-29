@@ -7,13 +7,13 @@ matrix:
         - cargo gen-kinds --verify
         - cargo gen-tests --verify
         - cargo test
-    - rust: nightly
-      before_script:
-        - rustup component add clippy-preview
-        - rustup component add rustfmt-preview
-      script:
-        - cargo fmt --all -- --check || true
-        - cargo clippy
+    # - rust: nightly
+    #   before_script:
+    #     - rustup component add clippy-preview
+    #     - rustup component add rustfmt-preview
+    #   script:
+    #     - cargo fmt --all -- --check || true
+    #     - cargo clippy
 
   allow_failures:
     - rust nightly
