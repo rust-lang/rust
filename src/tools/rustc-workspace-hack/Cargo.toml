@@ -23,6 +23,8 @@ syn = { version = "0.14", features = ['extra-traits'] }
 version = "0.3"
 features = [
   "basetsd",
+  "consoleapi",
+  "errhandlingapi",
   "jobapi",
   "jobapi2",
   "lmcons",
@@ -32,6 +34,7 @@ features = [
   "ntsecapi",
   "ntstatus",
   "profileapi",
+  "processenv",
   "psapi",
   "schannel",
   "securitybaseapi",
