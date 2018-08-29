@@ -75,7 +75,12 @@ use self::Ordering::*;
 /// the same book if their ISBN matches, even if the formats differ:
 ///
 /// ```
-/// enum BookFormat { Paperback, Hardback, Ebook }
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,
@@ -93,6 +98,84 @@ use self::Ordering::*;
 ///
 /// assert!(b1 == b2);
 /// assert!(b1 != b3);
+/// ```
+///
+/// ## How can I compare two different types?
+///
+/// The type you can compare with is controlled by `PartialEq`'s type parameter.
+/// For example, let's tweak our previous code a bit:
+///
+/// ```
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+///
+/// impl PartialEq<BookFormat> for Book {
+///     fn eq(&self, other: &BookFormat) -> bool {
+///         match (&self.format, other) {
+///            (BookFormat::Paperback, BookFormat::Paperback) => true,
+///            (BookFormat::Hardback,  BookFormat::Hardback)  => true,
+///            (BookFormat::Ebook,     BookFormat::Ebook)     => true,
+///            (_, _) => false,
+///         }
+///     }
+/// }
+///
+/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
+///
+/// assert!(b1 == BookFormat::Paperback);
+/// assert!(b1 != BookFormat::Ebook);
+/// ```
+///
+/// By changing `impl PartialEq for Book` to `impl PartialEq<BookFormat> for Book`,
+/// we've changed what type we can use on the right side of the `==` operator.
+/// This lets us use it in the `assert!` statements at the bottom.
+///
+/// You can also combine these implementations to let the `==` operator work with
+/// two different types:
+///
+/// ```
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
+///
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+///
+/// impl PartialEq<BookFormat> for Book {
+///     fn eq(&self, other: &BookFormat) -> bool {
+///         match (&self.format, other) {
+///            (&BookFormat::Paperback, &BookFormat::Paperback) => true,
+///            (&BookFormat::Hardback,  &BookFormat::Hardback)  => true,
+///            (&BookFormat::Ebook,     &BookFormat::Ebook)     => true,
+///            (_, _) => false,
+///         }
+///     }
+/// }
+///
+/// impl PartialEq for Book {
+///     fn eq(&self, other: &Book) -> bool {
+///         self.isbn == other.isbn
+///     }
+/// }
+///
+/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
+/// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
+///
+/// assert!(b1 == BookFormat::Paperback);
+/// assert!(b1 != BookFormat::Ebook);
+/// assert!(b1 == b2);
 /// ```
 ///
 /// # Examples
