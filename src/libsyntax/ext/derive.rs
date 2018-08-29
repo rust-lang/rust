@@ -17,7 +17,7 @@ use parse::parser::PathStyle;
 use symbol::Symbol;
 use syntax_pos::Span;
 
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 
 pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
@@ -48,7 +48,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
 pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
     where T: HasAttrs,
 {
-    let (mut names, mut pretty_name) = (HashSet::new(), "derive(".to_owned());
+    let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
     for (i, path) in traits.iter().enumerate() {
         if i > 0 {
             pretty_name.push_str(", ");

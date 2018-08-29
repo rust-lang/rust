@@ -28,8 +28,8 @@ use ThinVec;
 use tokenstream::{ThinTokenStream, TokenStream};
 
 use serialize::{self, Encoder, Decoder};
-use std::collections::HashSet;
 use std::fmt;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use std::u32;
 
@@ -407,7 +407,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = HashSet<(Name, Option<Symbol>)>;
+pub type CrateConfig = FxHashSet<(Name, Option<Symbol>)>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
