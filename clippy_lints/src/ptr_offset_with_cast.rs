@@ -1,4 +1,4 @@
-use rustc::{declare_lint, hir, lint, lint_array, ty};
+use rustc::{declare_lint, hir, lint, lint_array};
 use crate::utils;
 
 /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
@@ -107,11 +107,7 @@ fn is_expr_ty_raw_ptr<'a, 'tcx>(
     cx: &lint::LateContext<'a, 'tcx>,
     expr: &hir::Expr,
 ) -> bool {
-    if let ty::RawPtr(..) = cx.tables.expr_ty(expr).sty {
-        true
-    } else {
-        false
-    }
+    cx.tables.expr_ty(expr).is_unsafe_ptr()
 }
 
 fn build_suggestion<'a, 'tcx>(
