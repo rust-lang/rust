@@ -422,11 +422,7 @@ impl Builder {
                         Some(p) => p,
                         None => return false,
                     };
-                    let target = match pkg.target.get(&c.target) {
-                        Some(t) => t,
-                        None => return false,
-                    };
-                    target.available
+                    pkg.target.get(&c.target).is_some()
                 };
                 extensions.retain(&has_component);
                 components.retain(&has_component);
