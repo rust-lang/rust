@@ -25,7 +25,7 @@ use std::{
     time::Instant,
 };
 
-use relative_path::{RelativePath,RelativePathBuf};
+use relative_path::RelativePath;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
@@ -135,23 +135,6 @@ impl WorldState {
             });
         }
         Arc::get_mut(&mut self.data).unwrap()
-    }
-}
-
-#[derive(Debug)]
-pub struct QuickFix {
-    pub fs_ops: Vec<FsOp>,
-}
-
-#[derive(Debug)]
-pub enum FsOp {
-    CreateFile {
-        anchor: FileId,
-        path: RelativePathBuf,
-    },
-    MoveFile {
-        file: FileId,
-        path: RelativePathBuf,
     }
 }
 
