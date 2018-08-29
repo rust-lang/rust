@@ -10,7 +10,7 @@
 
 // compile-pass
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 struct S(pub &'static u32, pub u32);
 

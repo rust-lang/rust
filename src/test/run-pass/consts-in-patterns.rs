@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 const FOO: isize = 10;
 const BAR: isize = 3;

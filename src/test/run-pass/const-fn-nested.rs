@@ -10,7 +10,7 @@
 
 // Test a call whose argument is the result of another call.
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 const fn sub(x: u32, y: u32) -> u32 {
     x - y

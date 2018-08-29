@@ -15,7 +15,7 @@
 // permitted as `Foo` is not copy (even in a static/const
 // initializer).
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 struct Foo(usize);
 

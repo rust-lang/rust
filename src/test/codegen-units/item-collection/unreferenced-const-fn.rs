@@ -13,7 +13,7 @@
 
 // NB: We do not expect *any* monomorphization to be generated here.
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 #![deny(dead_code)]
 #![crate_type = "rlib"]
 
