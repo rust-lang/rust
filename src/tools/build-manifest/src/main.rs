@@ -216,9 +216,23 @@ struct Builder {
     rustfmt_git_commit_hash: Option<String>,
     llvm_tools_git_commit_hash: Option<String>,
     lldb_git_commit_hash: Option<String>,
+
+    should_sign: bool,
 }
 
 fn main() {
+    // Avoid signing packages while manually testing
+    // Do NOT set this envvar in CI
+    let should_sign = env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err();
+
+    // Safety check to ensure signing is always enabled on CI
+    // The CI environment variable is set by both Travis and AppVeyor
+    if !should_sign && env::var("CI").is_ok() {
+        println!("The 'BUILD_MANIFEST_DISABLE_SIGNING' env var can't be enabled on CI.");
+        println!("If you're not running this on CI, unset the 'CI' env var.");
+        panic!();
+    }
+
     let mut args = env::args().skip(1);
     let input = PathBuf::from(args.next().unwrap());
     let output = PathBuf::from(args.next().unwrap());
@@ -231,8 +245,12 @@ fn main() {
     let llvm_tools_release = args.next().unwrap();
     let lldb_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
+
+    // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
-    t!(io::stdin().read_to_string(&mut passphrase));
+    if should_sign {
+        t!(io::stdin().read_to_string(&mut passphrase));
+    }
 
     Builder {
         rust_release,
@@ -265,6 +283,8 @@ fn main() {
         rustfmt_git_commit_hash: None,
         llvm_tools_git_commit_hash: None,
         lldb_git_commit_hash: None,
+
+        should_sign,
     }.build();
 }
 
@@ -588,6 +608,10 @@ impl Builder {
     }
 
     fn sign(&self, path: &Path) {
+        if !self.should_sign {
+            return;
+        }
+
         let filename = path.file_name().unwrap().to_str().unwrap();
         let asc = self.output.join(format!("{}.asc", filename));
         println!("signing: {:?}", path);
