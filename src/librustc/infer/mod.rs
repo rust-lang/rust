@@ -931,14 +931,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Create a fresh region variable with the next available index.
-    ///
-    /// # Parameters
-    ///
-    /// - `origin`: information about why we created this variable, for use
-    ///   during diagnostics / error-reporting.
+    /// The variable will be created in the maximum universe created
+    /// thus far, allowing it to name any region created thus far.
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region<'tcx> {
+        self.next_region_var_in_universe(origin, self.universe())
+    }
+
+    /// Create a fresh region variable with the next available index
+    /// in the given universe; typically, you can use
+    /// `next_region_var` and just use the maximal universe.
+    pub fn next_region_var_in_universe(
+        &self,
+        origin: RegionVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> ty::Region<'tcx> {
         let region_var = self.borrow_region_constraints()
-            .new_region_var(self.universe(), origin);
+            .new_region_var(universe, origin);
         self.tcx.mk_region(ty::ReVar(region_var))
     }
 
@@ -950,6 +958,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::NLL(origin))
+    }
+
+    /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    pub fn next_nll_region_var_in_universe(
+        &self,
+        origin: NLLRegionVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> ty::Region<'tcx> {
+        self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
     }
 
     pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> Kind<'tcx> {
