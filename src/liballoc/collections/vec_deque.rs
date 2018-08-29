@@ -19,6 +19,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
+use core::isize;
 use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -210,6 +211,9 @@ impl<T> VecDeque<T> {
     /// If so, this function never panics.
     #[inline]
     unsafe fn copy_slice(&mut self, src: &[T]) {
+        /// This is guaranteed by `RawVec`.
+        debug_assert!(self.capacity() <= isize::MAX as usize);
+
         let expected_new_len = self.len() + src.len();
         debug_assert!(self.capacity() >= expected_new_len);
 
