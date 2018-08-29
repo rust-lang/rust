@@ -142,6 +142,7 @@ pub mod panic_unimplemented;
 pub mod partialeq_ne_impl;
 pub mod precedence;
 pub mod ptr;
+pub mod ptr_offset_with_cast;
 pub mod question_mark;
 pub mod ranges;
 pub mod redundant_field_names;
@@ -408,6 +409,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box default_trait_access::DefaultTraitAccess);
     reg.register_late_lint_pass(box indexing_slicing::IndexingSlicing);
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
+    reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
 
     reg.register_lint_group("clippy_restriction", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -631,6 +633,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
+        ptr_offset_with_cast::PTR_OFFSET_WITH_CAST,
         question_mark::QUESTION_MARK,
         ranges::ITERATOR_STEP_BY_ZERO,
         ranges::RANGE_MINUS_ONE,
@@ -815,6 +818,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
+        ptr_offset_with_cast::PTR_OFFSET_WITH_CAST,
         ranges::RANGE_MINUS_ONE,
         ranges::RANGE_PLUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,
