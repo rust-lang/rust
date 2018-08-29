@@ -1116,7 +1116,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_if_possible(t).to_string()
     }
 
-    pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    // We have this force-inlined variant of shallow_resolve() for the one
+    // callsite that is extremely hot. All other callsites use the normal
+    // variant.
+    #[inline(always)]
+    pub fn inlined_shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
@@ -1155,6 +1159,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 typ
             }
         }
+    }
+
+    pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
+        self.inlined_shallow_resolve(typ)
     }
 
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
