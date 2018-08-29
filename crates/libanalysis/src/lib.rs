@@ -42,7 +42,9 @@ use self::{
     module_map::{ModuleMap, ChangeKind, Problem},
 };
 pub use self::symbol_index::Query;
-pub use self::api::*;
+pub use self::api::{
+    Analysis, SourceChange, SourceFileEdit, FileSystemEdit, Position, Diagnostic, Runnable, RunnableKind
+};
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
