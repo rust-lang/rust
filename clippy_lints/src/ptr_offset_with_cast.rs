@@ -126,6 +126,7 @@ fn build_suggestion<'a, 'tcx>(
     Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
 }
 
+#[derive(Copy, Clone)]
 enum Method {
     Offset,
     WrappingOffset,
