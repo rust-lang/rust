@@ -29,23 +29,8 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 mod imp {
     use fs::File;
     use io::Read;
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     use libc;
-    use sync::atomic::{AtomicBool, AtomicI32, Ordering};
-    use sys::os::errno;
-
-    static GETRANDOM_URANDOM_FD: AtomicI32 = AtomicI32::new(-1);
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn is_getrandom_permanently_unavailable() -> bool {
-        GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed)
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn is_getrandom_permanently_unavailable() -> bool {
-        true
-    }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
@@ -59,7 +44,11 @@ mod imp {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
-        if is_getrandom_permanently_unavailable() {
+        use sync::atomic::{AtomicBool, Ordering};
+        use sys::os::errno;
+
+        static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
+        if GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed) {
             return false;
         }
 
@@ -96,33 +85,11 @@ mod imp {
             return;
         }
 
-        // getrandom failed for some reason. If the getrandom call is
-        // permanently unavailable (OS without getrandom, or OS version without
-        // getrandom), we'll keep around the fd for /dev/urandom for future
-        // requests, to avoid re-opening the file on every call.
-        //
-        // Otherwise, open /dev/urandom, read from it, and close it again.
-        use super::super::ext::io::{FromRawFd, IntoRawFd};
-        let mut fd = GETRANDOM_URANDOM_FD.load(Ordering::Relaxed);
-        let mut close_fd = false;
-        if fd == -1 {
-            if !is_getrandom_permanently_unavailable() {
-                close_fd = true;
-            }
-            let file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
-            fd = file.into_raw_fd();
-            // If some other thread also opened /dev/urandom and set the global
-            // fd already, we close our fd at the end of the function.
-            if !close_fd && GETRANDOM_URANDOM_FD.compare_and_swap(-1, fd, Ordering::Relaxed) != -1 {
-                close_fd = true;
-            }
-        }
-        let mut file = unsafe { File::from_raw_fd(fd) };
-        let res = file.read_exact(v);
-        if !close_fd {
-            let _ = file.into_raw_fd();
-        }
-        res.expect("failed to read /dev/urandom");
+        // getrandom failed because it is permanently or temporarily (because
+        // of missing entropy) unavailable. Open /dev/urandom, read from it,
+        // and close it again.
+        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
+        file.read_exact(v).expect("failed to read /dev/urandom")
     }
 }
 
