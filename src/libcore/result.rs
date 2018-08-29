@@ -470,6 +470,35 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Maps a `Result<T, E>` to `T` by applying a function to a
+    /// contained [`Ok`] value, or a fallback function to a
+    /// contained [`Err`] value.
+    ///
+    /// This function can be used to unpack a successful result
+    /// while handling an error.
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let k = 21;
+    ///
+    /// let x = Ok("foo");
+    /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 3);
+    ///
+    /// let x = Err("bar");
+    /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 42);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.30.0")]
+    pub fn map_or_else<U, M: FnOnce(T) -> U, F: FnOnce(E) -> U>(self, fallback: F, map: M) -> U {
+        self.map(map).unwrap_or_else(fallback)
+    }
+
     /// Maps a `Result<T, E>` to `Result<T, F>` by applying a function to a
     /// contained [`Err`] value, leaving an [`Ok`] value untouched.
     ///
