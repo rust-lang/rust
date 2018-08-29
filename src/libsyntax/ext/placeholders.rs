@@ -21,7 +21,7 @@ use symbol::keywords;
 use ThinVec;
 use util::move_map::MoveMap;
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
@@ -81,7 +81,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
 }
 
 pub struct PlaceholderExpander<'a, 'b: 'a> {
-    expanded_fragments: HashMap<ast::NodeId, AstFragment>,
+    expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
     cx: &'a mut ExtCtxt<'b>,
     monotonic: bool,
 }
@@ -90,7 +90,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         PlaceholderExpander {
             cx,
-            expanded_fragments: HashMap::new(),
+            expanded_fragments: FxHashMap::default(),
             monotonic,
         }
     }

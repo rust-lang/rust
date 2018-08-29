@@ -13,6 +13,7 @@
 use session::config;
 use middle::lang_items;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -22,8 +23,6 @@ use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
 use ty::TyCtxt;
-
-use std::collections::HashSet;
 
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
@@ -101,7 +100,7 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return
     }
 
-    let mut missing = HashSet::new();
+    let mut missing = FxHashSet::default();
     for &cnum in tcx.crates().iter() {
         for &item in tcx.missing_lang_items(cnum).iter() {
             missing.insert(item);

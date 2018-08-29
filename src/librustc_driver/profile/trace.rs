@@ -10,10 +10,10 @@
 
 use super::*;
 use syntax_pos::SpanData;
+use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
-use std::collections::hash_map::HashMap;
 use rustc::dep_graph::{DepNode};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -149,7 +149,7 @@ fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usi
     }
 }
 
-fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &[Rec]) {
+fn compute_counts_rec(counts: &mut FxHashMap<String,QueryMetric>, traces: &[Rec]) {
     for t in traces.iter() {
         match t.effect {
             Effect::TimeBegin(ref msg) => {
@@ -200,7 +200,7 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &[Rec]) 
     }
 }
 
-pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetric>) {
+pub fn write_counts(count_file: &mut File, counts: &mut FxHashMap<String,QueryMetric>) {
     use rustc::util::common::duration_to_secs_str;
     use std::cmp::Reverse;
 
@@ -219,7 +219,7 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
 
 pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &[Rec]) {
     let capacity = traces.iter().fold(0, |acc, t| acc + 1 + t.extent.len());
-    let mut counts : HashMap<String, QueryMetric> = HashMap::with_capacity(capacity);
+    let mut counts = FxHashMap::with_capacity_and_hasher(capacity, Default::default());
     compute_counts_rec(&mut counts, traces);
     write_counts(counts_file, &mut counts);
 

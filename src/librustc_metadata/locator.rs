@@ -226,6 +226,7 @@ use cstore::{MetadataRef, MetadataBlob};
 use creader::Library;
 use schema::{METADATA_HEADER, rustc_version};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{config, Session};
@@ -239,7 +240,6 @@ use syntax_pos::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
 use std::cmp;
-use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::io::{self, Read};
@@ -308,7 +308,7 @@ impl CratePaths {
 
 impl<'a> Context<'a> {
     pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
-        let mut seen_paths = HashSet::new();
+        let mut seen_paths = FxHashSet::default();
         match self.extra_filename {
             Some(s) => self.find_library_crate(s, &mut seen_paths)
                 .or_else(|| self.find_library_crate("", &mut seen_paths)),
@@ -431,7 +431,7 @@ impl<'a> Context<'a> {
 
     fn find_library_crate(&mut self,
                           extra_prefix: &str,
-                          seen_paths: &mut HashSet<PathBuf>)
+                          seen_paths: &mut FxHashSet<PathBuf>)
                           -> Option<Library> {
         // If an SVH is specified, then this is a transitive dependency that
         // must be loaded via -L plus some filtering.
