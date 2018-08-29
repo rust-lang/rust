@@ -28,7 +28,7 @@ foo!(); //~ ERROR `foo` is ambiguous
 
 macro_rules! m2 { () => {
     macro_rules! foo { () => {} }
-    foo!(); //~ ERROR `foo` is ambiguous
+    foo!();
 }}
 m2!();
 //^ Since `foo` is not used outside this expansion, it is not a shadowing error.

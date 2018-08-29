@@ -17,3 +17,8 @@ macro_rules! mac {
 macro_rules! inline {
     () => ()
 }
+
+#[macro_export]
+macro_rules! from_prelude {
+    () => ()
+}

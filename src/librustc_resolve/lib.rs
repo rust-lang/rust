@@ -1274,9 +1274,18 @@ impl<'a> NameBinding<'a> {
     // expansion round `max(invoc_id, binding)` when they both emerged from macros.
     // Then this function returns `true` if `self` may emerge from a macro *after* that
     // in some later round and screw up our previously found resolution.
-    fn may_appear_after(&self, _invoc_id: Mark, _binding: &NameBinding) -> bool {
-        // FIXME: This is a very conservative estimation.
-        self.expansion != Mark::root()
+    fn may_appear_after(&self, invoc_id: Mark, binding: &NameBinding) -> bool {
+        // self > max(invoc_id, binding) => !(self <= invoc_id || self <= binding)
+        // Expansions are partially ordered, so "may appear after" is an inversion of
+        // "certainly appears before or simultaneously" and includes unordered cases.
+        let self_parent_expansion = self.expansion;
+        let other_parent_expansion = binding.expansion;
+        let invoc_parent_expansion = invoc_id.parent();
+        let certainly_before_other_or_simultaneously =
+            other_parent_expansion.is_descendant_of(self_parent_expansion);
+        let certainly_before_invoc_or_simultaneously =
+            invoc_parent_expansion.is_descendant_of(self_parent_expansion);
+        !(certainly_before_other_or_simultaneously || certainly_before_invoc_or_simultaneously)
     }
 }
 
