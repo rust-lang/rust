@@ -50,6 +50,7 @@ impl Step for Std {
         println!("Checking std artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libstd_stamp(builder, compiler, target),
                   true);
 
@@ -98,6 +99,7 @@ impl Step for Rustc {
         println!("Checking compiler artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &librustc_stamp(builder, compiler, target),
                   true);
 
@@ -149,6 +151,7 @@ impl Step for CodegenBackend {
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &codegen_backend_stamp(builder, compiler, target, backend),
                   true);
     }
@@ -187,6 +190,7 @@ impl Step for Test {
         println!("Checking test artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libtest_stamp(builder, compiler, target),
                   true);
 
@@ -236,6 +240,7 @@ impl Step for Rustdoc {
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &rustdoc_stamp(builder, compiler, target),
                   true);
 

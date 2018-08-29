@@ -1885,6 +1885,34 @@ impl Step for HashSign {
     }
 }
 
+// Maybe add libLLVM.so to the lib-dir. It will only have been built if
+// LLVM tools are linked dynamically.
+// Note: This function does no yet support Windows but we also don't support
+//       linking LLVM tools dynamically on Windows yet.
+fn maybe_install_llvm_dylib(builder: &Builder,
+                            target: Interned<String>,
+                            image: &Path) {
+    let src_libdir = builder
+        .llvm_out(target)
+        .join("lib");
+
+    // Usually libLLVM.so is a symlink to something like libLLVM-6.0.so.
+    // Since tools link to the latter rather than the former, we have to
+    // follow the symlink to find out what to distribute.
+    let llvm_dylib_path = src_libdir.join("libLLVM.so");
+    if llvm_dylib_path.exists() {
+        let llvm_dylib_path = llvm_dylib_path.canonicalize().unwrap_or_else(|e| {
+            panic!("dist: Error calling canonicalize path `{}`: {}",
+                   llvm_dylib_path.display(), e);
+        });
+
+        let dst_libdir = image.join("lib");
+        t!(fs::create_dir_all(&dst_libdir));
+
+        builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct LlvmTools {
     pub stage: u32,
@@ -1929,17 +1957,17 @@ impl Step for LlvmTools {
         drop(fs::remove_dir_all(&image));
 
         // Prepare the image directory
-        let bindir = builder
+        let src_bindir = builder
             .llvm_out(target)
             .join("bin");
-        let dst = image.join("lib/rustlib")
-            .join(target)
-            .join("bin");
-        t!(fs::create_dir_all(&dst));
+        let dst_bindir = image.join("bin");
+        t!(fs::create_dir_all(&dst_bindir));
         for tool in LLVM_TOOLS {
-            let exe = bindir.join(exe(tool, &target));
-            builder.install(&exe, &dst, 0o755);
+            let exe = src_bindir.join(exe(tool, &target));
+            builder.install(&exe, &dst_bindir, 0o755);
         }
+
+        maybe_install_llvm_dylib(builder, target, &image);
 
         // Prepare the overlay
         let overlay = tmp.join("llvm-tools-overlay");
@@ -2025,7 +2053,6 @@ impl Step for Lldb {
         let dst = image.join("lib");
         t!(fs::create_dir_all(&dst));
         for entry in t!(fs::read_dir(&libdir)) {
-            // let entry = t!(entry);
             let entry = entry.unwrap();
             if let Ok(name) = entry.file_name().into_string() {
                 if name.starts_with("liblldb.") && !name.ends_with(".a") {
@@ -2059,6 +2086,9 @@ impl Step for Lldb {
                 }
             }
         }
+
+        // Copy libLLVM.so to the lib dir as well, if needed.
+        maybe_install_llvm_dylib(builder, target, &image);
 
         // Prepare the overlay
         let overlay = tmp.join("lldb-overlay");

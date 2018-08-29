@@ -21,6 +21,12 @@
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 
+# Indicates whether LLVM should be built with ThinLTO. Note that this will
+# only succeed if you use clang, lld, llvm-ar, and llvm-ranlib in your C/C++
+# toolchain (see the `cc`, `cxx`, `linker`, `ar`, and `ranlib` options below).
+# More info at: https://clang.llvm.org/docs/ThinLTO.html#clang-bootstrap
+#thin-lto = false
+
 # Indicates whether an LLVM Release build should include debug info
 #release-debuginfo = false
 
@@ -387,6 +393,10 @@
 # Archiver to be used to assemble static libraries compiled from C/C++ code.
 # Note: an absolute path should be used, otherwise LLVM build will break.
 #ar = "ar"
+
+# Ranlib to be used to assemble static libraries compiled from C/C++ code.
+# Note: an absolute path should be used, otherwise LLVM build will break.
+#ranlib = "ranlib"
 
 # Linker to be used to link Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on

@@ -153,6 +153,11 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+        if builder.config.llvm_thin_lto && !emscripten {
+            cfg.define("LLVM_ENABLE_LTO", "Thin")
+               .define("LLVM_ENABLE_LLD", "ON");
+        }
+
         // By default, LLVM will automatically find OCaml and, if it finds it,
         // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
         // to /usr/bin/ocaml.
@@ -166,14 +171,10 @@ impl Step for Llvm {
 
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
-        // for the tools.  We don't distribute any of those tools, so this is
-        // just a local concern.  However, it doesn't work well everywhere.
-        //
-        // If we are shipping llvm tools then we statically link them LLVM
-        if (target.contains("linux-gnu") || target.contains("apple-darwin")) &&
-            !builder.config.llvm_tools_enabled &&
-            !want_lldb {
-                cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+        // for the tools. We don't do this on every platform as it doesn't work
+        // equally well everywhere.
+        if builder.llvm_link_tools_dynamically(target) && !emscripten {
+            cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
@@ -376,6 +377,14 @@ fn configure_cmake(builder: &Builder,
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
             cfg.define("CMAKE_AR", sanitize_cc(ar));
+        }
+    }
+
+    if let Some(ranlib) = builder.ranlib(target) {
+        if ranlib.is_absolute() {
+            // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
+            // tries to resolve this path in the LLVM build directory.
+            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
         }
     }
 
