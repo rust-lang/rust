@@ -6,5 +6,11 @@ error: use of `offset` with a `usize` casted to an `isize`
    |
    = note: `-D ptr-offset-with-cast` implied by `-D warnings`
 
-error: aborting due to previous error
+error: use of `wrapping_offset` with a `usize` casted to an `isize`
+  --> $DIR/ptr_offset_with_cast.rs:14:9
+   |
+14 |         ptr.wrapping_offset(offset_usize as isize);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.wrapping_add(offset_usize)`
+
+error: aborting due to 2 previous errors
 

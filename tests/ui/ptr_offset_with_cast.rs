@@ -10,5 +10,9 @@ fn main() {
         ptr.offset(offset_usize as isize);
         ptr.offset(offset_isize as isize);
         ptr.offset(offset_u8 as isize);
+
+        ptr.wrapping_offset(offset_usize as isize);
+        ptr.wrapping_offset(offset_isize as isize);
+        ptr.wrapping_offset(offset_u8 as isize);
     }
 }

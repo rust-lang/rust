@@ -1,5 +1,6 @@
 use rustc::{declare_lint, hir, lint, lint_array};
 use crate::utils;
+use std::fmt;
 
 /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
 /// `isize`.
@@ -44,23 +45,23 @@ impl lint::LintPass for Pass {
 
 impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &lint::LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        // Check if the expressions is a ptr.offset method call
-        let [receiver_expr, arg_expr] = match expr_as_ptr_offset_call(cx, expr) {
+        // Check if the expressions is a ptr.offset or ptr.wrapping_offset method call
+        let (receiver_expr, arg_expr, method) = match expr_as_ptr_offset_call(cx, expr) {
             Some(call_arg) => call_arg,
             None => return,
         };
 
-        // Check if the argument to ptr.offset is a cast from usize
+        // Check if the argument to the method call is a cast from usize
         let cast_lhs_expr = match expr_as_cast_from_usize(cx, arg_expr) {
             Some(cast_lhs_expr) => cast_lhs_expr,
             None => return,
         };
 
-        let msg = "use of `offset` with a `usize` casted to an `isize`";
-        if let Some(sugg) = build_suggestion(cx, receiver_expr, cast_lhs_expr) {
-            utils::span_lint_and_sugg(cx, PTR_OFFSET_WITH_CAST, expr.span, msg, "try", sugg);
+        let msg = format!("use of `{}` with a `usize` casted to an `isize`", method);
+        if let Some(sugg) = build_suggestion(cx, method, receiver_expr, cast_lhs_expr) {
+            utils::span_lint_and_sugg(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg, "try", sugg);
         } else {
-            utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, msg);
+            utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
         }
 
     }
@@ -79,15 +80,20 @@ fn expr_as_cast_from_usize<'a, 'tcx>(
     None
 }
 
-// If the given expression is a ptr::offset method call, return the receiver and the arg of the
-// method call.
+// If the given expression is a ptr::offset  or ptr::wrapping_offset method call, return the
+// receiver, the arg of the method call, and the method.
 fn expr_as_ptr_offset_call<'a, 'tcx>(
     cx: &lint::LateContext<'a, 'tcx>,
     expr: &'tcx hir::Expr,
-) -> Option<[&'tcx hir::Expr; 2]> {
+) -> Option<(&'tcx hir::Expr, &'tcx hir::Expr, Method)> {
     if let hir::ExprKind::MethodCall(ref path_segment, _, ref args) = expr.node {
-        if path_segment.ident.name == "offset" && is_expr_ty_raw_ptr(cx, &args[0]) {
-            return Some([&args[0], &args[1]]);
+        if is_expr_ty_raw_ptr(cx, &args[0]) {
+            if path_segment.ident.name == "offset" {
+                return Some((&args[0], &args[1], Method::Offset));
+            }
+            if path_segment.ident.name == "wrapping_offset" {
+                return Some((&args[0], &args[1], Method::WrappingOffset));
+            }
         }
     }
     None
@@ -111,6 +117,7 @@ fn is_expr_ty_raw_ptr<'a, 'tcx>(
 
 fn build_suggestion<'a, 'tcx>(
     cx: &lint::LateContext<'a, 'tcx>,
+    method: Method,
     receiver_expr: &hir::Expr,
     cast_lhs_expr: &hir::Expr,
 ) -> Option<String> {
@@ -118,7 +125,32 @@ fn build_suggestion<'a, 'tcx>(
         utils::snippet_opt(cx, receiver_expr.span),
         utils::snippet_opt(cx, cast_lhs_expr.span)
     ) {
-        (Some(receiver), Some(cast_lhs)) => Some(format!("{}.add({})", receiver, cast_lhs)),
+        (Some(receiver), Some(cast_lhs)) => {
+            Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
+        },
         _ => None,
+    }
+}
+
+enum Method {
+    Offset,
+    WrappingOffset,
+}
+
+impl Method {
+    fn suggestion(&self) -> &'static str {
+        match *self {
+            Method::Offset => "add",
+            Method::WrappingOffset => "wrapping_add",
+        }
+    }
+}
+
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Method::Offset => write!(f, "offset"),
+            Method::WrappingOffset => write!(f, "wrapping_offset"),
+        }
     }
 }
