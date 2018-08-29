@@ -16,6 +16,7 @@
 #![allow(dead_code)]
 #![deny(clippy_group)]
 //~^ WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
+//~^^ WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 

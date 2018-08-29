@@ -280,25 +280,27 @@ impl<'a> LintLevelsBuilder<'a> {
                                 let (lvl, src) =
                                     self.sets
                                         .get_lint_level(lint, self.cur, Some(&specs), &sess);
+                                let msg = format!(
+                                    "lint name `{}` is deprecated \
+                                     and may not have an effect in the future \
+                                     Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
+                                    name
+                                );
                                 let mut err = lint::struct_lint_level(
                                     self.sess,
                                     lint,
                                     lvl,
                                     src,
                                     Some(li.span.into()),
-                                    &format!(
-                                        "lint name `{}` is deprecated \
-                                         and may not have an effect in the future",
-                                        name
-                                    ),
+                                    &msg,
                                 );
                                 err.span_suggestion_with_applicability(
                                     li.span,
                                     "change it to",
                                     new_lint_name.to_string(),
                                     Applicability::MachineApplicable,
-                                );
-                                err.emit();
+                                ).emit();
+
                                 let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
                                 for id in ids {
                                     specs.insert(*id, (level, src));
