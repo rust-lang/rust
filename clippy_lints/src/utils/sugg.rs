@@ -175,15 +175,6 @@ impl<'a> Sugg<'a> {
         make_unop("&mut *", self)
     }
 
-    /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
-    /// suggestion.
-    pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
-        match limit {
-            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, end),
-        }
-    }
-
     /// Add parenthesis to any expression that might need them. Suitable to the
     /// `self` argument of
     /// a method call (eg. to build `bar.foo()` or `(1 + 2).foo()`).
