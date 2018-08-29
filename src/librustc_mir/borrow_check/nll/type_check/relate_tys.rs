@@ -194,6 +194,14 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         scope
     }
 
+    /// When we encounter binders during the type traversal, we record
+    /// the value to substitute for each of the things contained in
+    /// that binder. (This will be either a universal placeholder or
+    /// an existential inference variable.) Given the debruijn index
+    /// `debruijn` (and name `br`) of some binder we have now
+    /// encountered, this routine finds the value that we instantiated
+    /// the region with; to do so, it indexes backwards into the list
+    /// of ambient scopes `scopes`.
     fn lookup_bound_region(
         &self,
         debruijn: ty::DebruijnIndex,
@@ -211,6 +219,9 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         scope.map[br]
     }
 
+    /// If `r` is a bound region, find the scope in which it is bound
+    /// (from `scopes`) and return the value that we instantiated it
+    /// with. Otherwise just return `r`.
     fn replace_bound_region(
         &self,
         universal_regions: &UniversalRegions<'tcx>,
@@ -226,6 +237,8 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         }
     }
 
+    /// Push a new outlives requirement into our output set of
+    /// constraints.
     fn push_outlives(&mut self, sup: RegionVid, sub: RegionVid) {
         debug!("push_outlives({:?}: {:?})", sup, sub);
 
@@ -243,6 +256,9 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         }
     }
 
+    /// When we encounter a canonical variable `var` in the output,
+    /// equate it with `kind`. If the variable has been previously
+    /// equated, then equate it again.
     fn equate_var(
         &mut self,
         var: CanonicalVar,
