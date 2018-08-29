@@ -26,6 +26,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_codegen_utils::symbol_export;
 use time_graph::Timeline;
 use {ModuleCodegen, ModuleLlvm, ModuleKind};
+use std::marker::PhantomData;
 
 use libc;
 
@@ -767,6 +768,7 @@ impl ThinModule {
                 llmod_raw,
                 llcx,
                 tm,
+                phantom: PhantomData
             },
             name: self.name().to_string(),
             kind: ModuleKind::Regular,

@@ -282,7 +282,7 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
                                                     s.len() as c_uint,
                                                     !null_terminated as Bool);
             let sym = &self.generate_local_symbol_name("str");
-            let g = declare::define_global(&self, &sym[..], Self::val_ty(sc)).unwrap_or_else(||{
+            let g = declare::define_global(&self, &sym[..], &self.val_ty(sc)).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::LLVMSetInitializer(g, sc);
@@ -318,19 +318,7 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
         elts: &[&'ll Value],
         packed: bool
     ) -> &'ll Value {
-        Self::c_struct_in_context(&self.llcx, elts, packed)
-    }
-
-    fn c_struct_in_context(
-        llcx: &'a llvm::Context,
-        elts: &[&'a Value],
-        packed: bool,
-    ) -> &'a Value {
-        unsafe {
-            llvm::LLVMConstStructInContext(llcx,
-                                           elts.as_ptr(), elts.len() as c_uint,
-                                           packed as Bool)
-        }
+        &self.c_struct_in_context(&self.llcx, elts, packed)
     }
 
     fn c_array(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
@@ -346,7 +334,7 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn c_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        Self::c_bytes_in_context(&self.llcx, bytes)
+        &self.c_bytes_in_context(&self.llcx, bytes)
     }
 
     fn const_get_elt(v: &'ll Value, idx: u64) -> &'ll Value {
@@ -411,6 +399,35 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 }
 
+impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
+    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        unsafe {
+            llvm::LLVMTypeOf(v)
+        }
+    }
+
+    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        unsafe {
+            let ptr = bytes.as_ptr() as *const c_char;
+            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        }
+    }
+
+    fn c_struct_in_context(
+        &self,
+        llcx: &'a llvm::Context,
+        elts: &[&'a Value],
+        packed: bool,
+    ) -> &'a Value {
+        unsafe {
+            llvm::LLVMConstStructInContext(llcx,
+                                           elts.as_ptr(), elts.len() as c_uint,
+                                           packed as Bool)
+        }
+    }
+}
+
+
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
@@ -461,7 +478,7 @@ pub fn build_unchecked_rshift(
 }
 
 fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx>, rhs: &'ll Value) -> &'ll Value {
-    let rhs_llty = CodegenCx::val_ty(rhs);
+    let rhs_llty = bx.cx().val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
@@ -487,20 +504,5 @@ pub fn shift_mask_val(
             bx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
-    }
-}
-
-impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
-    fn val_ty(v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
-    }
-
-    fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
-        }
     }
 }

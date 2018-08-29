@@ -24,7 +24,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
-use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
+use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic, BasicBlock, True};
 use llvm_util;
 use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, // ModuleLlvm,
      CachedModuleCodegen};
@@ -45,10 +45,12 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
-use context::{is_pie_binary, get_reloc_model, CodegenCx};
-use interfaces::CommonWriteMethods;
+use context::{is_pie_binary, get_reloc_model};
+use interfaces::{Backend, CommonWriteMethods};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
+use value::Value;
+use std::marker::PhantomData;
 
 use std::any::Any;
 use std::ffi::{CString, CStr};
@@ -351,7 +353,7 @@ struct AssemblerCommand {
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
-pub struct CodegenContext {
+pub struct CodegenContext<'ll> {
     // Resources needed when running LTO
     pub time_passes: bool,
     pub lto: Lto,
@@ -393,9 +395,12 @@ pub struct CodegenContext {
     time_graph: Option<TimeGraph>,
     // The assembler command if no_integrated_as option is enabled, None otherwise
     assembler_cmd: Option<Arc<AssemblerCommand>>,
+    // This field is used to give a lifetime parameter to the struct so that it can implement
+    // the Backend trait.
+    phantom: PhantomData<&'ll ()>
 }
 
-impl CodegenContext {
+impl CodegenContext<'ll> {
     pub fn create_diag_handler(&self) -> Handler {
         Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
     }
@@ -423,13 +428,49 @@ impl CodegenContext {
     }
 }
 
+impl<'ll> Backend for CodegenContext<'ll> {
+    type Value = &'ll Value;
+    type BasicBlock = &'ll BasicBlock;
+    type Type = &'ll Type;
+    type Context = &'ll llvm::Context;
+}
+
+impl CommonWriteMethods for CodegenContext<'ll> {
+    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        unsafe {
+            llvm::LLVMTypeOf(v)
+        }
+    }
+
+    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        unsafe {
+            let ptr = bytes.as_ptr() as *const c_char;
+            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        }
+    }
+
+    fn c_struct_in_context(
+        &self,
+        llcx: &'a llvm::Context,
+        elts: &[&'a Value],
+        packed: bool,
+    ) -> &'a Value {
+        unsafe {
+            llvm::LLVMConstStructInContext(llcx,
+                                           elts.as_ptr(), elts.len() as c_uint,
+                                           packed as llvm::Bool)
+        }
+    }
+}
+
+
 pub struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext, &'a Handler),
+    data: *mut (&'a CodegenContext<'a>, &'a Handler),
     llcx: &'a llvm::Context,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
-    pub fn new(cgcx: &'a CodegenContext,
+    pub fn new(cgcx: &'a CodegenContext<'a>,
                handler: &'a Handler,
                llcx: &'a llvm::Context) -> Self {
         let data = Box::into_raw(Box::new((cgcx, handler)));
@@ -884,10 +925,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
                         llcx: &llvm::Context,
                         llmod: &llvm::Module,
                         bitcode: Option<&[u8]>) {
-    let llconst = CodegenCx::c_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = cgcx.c_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        CodegenCx::val_ty(llconst),
+        cgcx.val_ty(llconst),
         "rustc.embedded.module\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -904,10 +945,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-    let llconst = CodegenCx::c_bytes_in_context(llcx, &[]);
+    let llconst = cgcx.c_bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        CodegenCx::val_ty(llconst),
+        cgcx.val_ty(llconst),
         "rustc.embedded.cmdline\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -1614,6 +1655,7 @@ fn start_executing_work(tcx: TyCtxt,
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
         assembler_cmd,
+        phantom: PhantomData
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -2108,7 +2150,7 @@ pub const CODEGEN_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
 const LLVM_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
     time_graph::WorkPackageKind(&["#7DB67A", "#C6EEC4", "#ACDAAA", "#579354", "#3E6F3C"]);
 
-fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
+fn spawn_work(cgcx: CodegenContext<'static>, work: WorkItem) {
     let depth = time_depth();
 
     thread::spawn(move || {

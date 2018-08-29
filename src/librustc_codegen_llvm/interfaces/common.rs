@@ -40,11 +40,6 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
         elts: &[Self::Value],
         packed: bool
     ) -> Self::Value;
-    fn c_struct_in_context(
-        llcx: Self::Context,
-        elts: &[Self::Value],
-        packed: bool,
-    ) -> Self::Value;
     fn c_array(ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
     fn c_vector(elts: &[Self::Value]) -> Self::Value;
     fn c_bytes(&self, bytes: &[u8]) -> Self::Value;
@@ -58,6 +53,12 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
 }
 
 pub trait CommonWriteMethods : Backend {
-        fn val_ty(v: Self::Value) -> Self::Type;
-        fn c_bytes_in_context(llcx: Self::Context, bytes: &[u8]) -> Self::Value;
+        fn val_ty(&self, v: Self::Value) -> Self::Type;
+        fn c_bytes_in_context(&self, llcx: Self::Context, bytes: &[u8]) -> Self::Value;
+        fn c_struct_in_context(
+            &self,
+            llcx: Self::Context,
+            elts: &[Self::Value],
+            packed: bool,
+        ) -> Self::Value;
 }

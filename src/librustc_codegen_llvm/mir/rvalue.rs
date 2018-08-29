@@ -118,7 +118,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
-                    if CodegenCx::val_ty(v) == Type::i8(bx.cx()) {
+                    if bx.cx().val_ty(v) == Type::i8(bx.cx()) {
                         base::call_memset(&bx, start, v, size, align, false);
                         return bx;
                     }
@@ -132,7 +132,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 let next_bx = bx.build_sibling_block("repeat_loop_next");
 
                 bx.br(header_bx.llbb());
-                let current = header_bx.phi(CodegenCx::val_ty(start), &[start], &[bx.llbb()]);
+                let current = header_bx.phi(bx.cx().val_ty(start), &[start], &[bx.llbb()]);
 
                 let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
                 header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
@@ -705,8 +705,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                  bx.extract_value(res, 1))
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
-                let lhs_llty = CodegenCx::val_ty(lhs);
-                let rhs_llty = CodegenCx::val_ty(rhs);
+                let lhs_llty = bx.cx().val_ty(lhs);
+                let rhs_llty = bx.cx().val_ty(rhs);
                 let invert_mask = common::shift_mask_val(&bx, lhs_llty, rhs_llty, true);
                 let outer_bits = bx.and(rhs, invert_mask);
 

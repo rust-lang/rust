@@ -74,13 +74,13 @@ pub fn addr_of_mut(
             Some(kind) if !cx.tcx.sess.fewer_names() => {
                 let name = cx.generate_local_symbol_name(kind);
                 let gv = declare::define_global(cx, &name[..],
-                    CodegenCx::val_ty(cv)).unwrap_or_else(||{
+                    cx.val_ty(cv)).unwrap_or_else(||{
                         bug!("symbol `{}` is already defined", name);
                 });
                 llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
                 gv
             },
-            _ => declare::define_private_global(cx, CodegenCx::val_ty(cv)),
+            _ => declare::define_private_global(cx, cx.val_ty(cv)),
         };
         llvm::LLVMSetInitializer(gv, cv);
         set_global_alignment(cx, gv, align);
@@ -312,7 +312,7 @@ pub fn codegen_static<'a, 'tcx>(
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
-        let mut val_llty = CodegenCx::val_ty(v);
+        let mut val_llty = cx.val_ty(v);
         let v = if val_llty == Type::i1(cx) {
             val_llty = Type::i8(cx);
             llvm::LLVMConstZExt(v, val_llty)
