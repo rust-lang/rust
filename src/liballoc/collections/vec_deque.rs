@@ -19,6 +19,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
+use core::isize;
 use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -200,6 +201,33 @@ impl<T> VecDeque<T> {
         ptr::copy_nonoverlapping(self.ptr().add(src),
                                  self.ptr().add(dst),
                                  len);
+    }
+
+    /// Copies all values from `src` to the back of `self`, wrapping around if needed.
+    ///
+    /// # Safety
+    ///
+    /// The capacity must be sufficient to hold self.len() + src.len() elements.
+    /// If so, this function never panics.
+    #[inline]
+    unsafe fn copy_slice(&mut self, src: &[T]) {
+        /// This is guaranteed by `RawVec`.
+        debug_assert!(self.capacity() <= isize::MAX as usize);
+
+        let expected_new_len = self.len() + src.len();
+        debug_assert!(self.capacity() >= expected_new_len);
+
+        let dst_high_ptr = self.ptr().add(self.head);
+        let dst_high_len = self.cap() - self.head;
+
+        let split = cmp::min(src.len(), dst_high_len);
+        let (src_high, src_low) = src.split_at(split);
+
+        ptr::copy_nonoverlapping(src_high.as_ptr(), dst_high_ptr, src_high.len());
+        ptr::copy_nonoverlapping(src_low.as_ptr(), self.ptr(), src_low.len());
+
+        self.head = self.wrap_add(self.head, src.len());
+        debug_assert!(self.len() == expected_new_len);
     }
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
@@ -1024,7 +1052,7 @@ impl<T> VecDeque<T> {
             iter: Iter {
                 tail: drain_tail,
                 head: drain_head,
-                ring: unsafe { self.buffer_as_mut_slice() },
+                ring: unsafe { self.buffer_as_slice() },
             },
         }
     }
@@ -1834,8 +1862,22 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // naive impl
-        self.extend(other.drain(..));
+        unsafe {
+            // Guarantees there is space in `self` for `other`.
+            self.reserve(other.len());
+
+            {
+                let (src_high, src_low) = other.as_slices();
+
+                // This is only safe because copy_slice never panics when capacity is sufficient.
+                self.copy_slice(src_low);
+                self.copy_slice(src_high);
+            }
+
+            // Some values now exist in both `other` and `self` but are made inaccessible
+            // in`other`.
+            other.tail = other.head;
+        }
     }
 
     /// Retains only the elements specified by the predicate.
@@ -2593,8 +2635,8 @@ impl<T> From<VecDeque<T>> for Vec<T> {
                         let mut right_offset = 0;
                         for i in left_edge..right_edge {
                             right_offset = (i - left_edge) % (cap - right_edge);
-                            let src: isize = (right_edge + right_offset) as isize;
-                            ptr::swap(buf.add(i), buf.offset(src));
+                            let src = right_edge + right_offset;
+                            ptr::swap(buf.add(i), buf.add(src));
                         }
                         let n_ops = right_edge - left_edge;
                         left_edge += n_ops;
