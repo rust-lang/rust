@@ -504,7 +504,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
-    /// `get_bytes_unchecked` instead,
+    /// `get_bytes_with_undef_and_ptr` instead,
     fn get_bytes_internal(
         &self,
         ptr: Pointer,
@@ -519,9 +519,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
-            if self.relocations(ptr, size)?.len() != 0 {
-                return err!(ReadPointerAsBytes);
-            }
+            self.check_relocations(ptr, size)?;
+        } else {
+            // We still don't want relocations on the *edges*
+            self.check_relocation_edges(ptr, size)?;
         }
 
         let alloc = self.get(ptr.alloc_id)?;
@@ -537,6 +538,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
+    /// However, this still checks that there are no relocations on the egdes.
     #[inline]
     fn get_bytes_with_undef_and_ptr(
         &self,
@@ -547,6 +549,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.get_bytes_internal(ptr, size, align, false)
     }
 
+    /// Just calling this already marks everything as defined and removes relocations,
+    /// so be sure to actually put data there!
     fn get_bytes_mut(
         &mut self,
         ptr: Pointer,
@@ -654,11 +658,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         let src = src.to_ptr()?;
         let dest = dest.to_ptr()?;
-        self.check_relocation_edges(src, size)?;
 
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
+        // (`get_bytes_with_undef_and_ptr` below checks that there are no
+        // relocations overlapping the edges; those would not be handled correctly).
         let relocations = {
             let relocations = self.relocations(src, size)?;
             let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
@@ -676,7 +681,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_relocations
         };
 
-        // This also checks alignment.
+        // This also checks alignment, and relocation edges on the src.
         let src_bytes = self.get_bytes_with_undef_and_ptr(src, size, src_align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
@@ -710,8 +715,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         }
 
+        // copy definedness to the destination
         self.copy_undef_mask(src, dest, size, length)?;
-        // copy back the relocations
+        // copy the relocations to the destination
         self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
 
         Ok(())
@@ -724,9 +730,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         match alloc.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let p1 = Size::from_bytes((size + 1) as u64);
-                if self.relocations(ptr, p1)?.len() != 0 {
-                    return err!(ReadPointerAsBytes);
-                }
+                self.check_relocations(ptr, p1)?;
                 self.check_defined(ptr, p1)?;
                 Ok(&alloc.bytes[offset..offset + size])
             }
@@ -777,9 +781,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         ptr_align: Align,
         size: Size
     ) -> EvalResult<'tcx, ScalarMaybeUndef> {
-        // Make sure we don't read part of a pointer as a pointer
-        self.check_relocation_edges(ptr, size)?;
-        // get_bytes_unchecked tests alignment
+        // get_bytes_unchecked tests alignment and relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(
             ptr, size, ptr_align.min(self.int_align(size))
         )?;
@@ -794,9 +796,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let bits = read_target_uint(self.tcx.data_layout.endian, bytes).unwrap();
         // See if we got a pointer
         if size != self.pointer_size() {
-            if self.relocations(ptr, size)?.len() != 0 {
-                return err!(ReadPointerAsBytes);
-            }
+            // *Now* better make sure that the inside also is free of relocations.
+            self.check_relocations(ptr, size)?;
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
@@ -887,16 +888,35 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Relocations
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    /// Return all relocations overlapping with the given ptr-offset pair.
     fn relocations(
         &self,
         ptr: Pointer,
         size: Size,
     ) -> EvalResult<'tcx, &[(Size, AllocId)]> {
+        // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
+        // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
-        let end = ptr.offset + size;
+        let end = ptr.offset + size; // this does overflow checking
         Ok(self.get(ptr.alloc_id)?.relocations.range(Size::from_bytes(start)..end))
     }
 
+    /// Check that there ar eno relocations overlapping with the given range.
+    #[inline(always)]
+    fn check_relocations(&self, ptr: Pointer, size: Size) -> EvalResult<'tcx> {
+        if self.relocations(ptr, size)?.len() != 0 {
+            err!(ReadPointerAsBytes)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Remove all relocations inside the given range.
+    /// If there are relocations overlapping with the edges, they
+    /// are removed as well *and* the bytes they cover are marked as
+    /// uninitialized.  This is a somewhat odd "spooky action at a distance",
+    /// but it allows strictly more code to run than if we would just error
+    /// immediately in that case.
     fn clear_relocations(&mut self, ptr: Pointer, size: Size) -> EvalResult<'tcx> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
@@ -929,12 +949,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Error if there are relocations overlapping with the egdes of the
+    /// given memory range.
+    #[inline]
     fn check_relocation_edges(&self, ptr: Pointer, size: Size) -> EvalResult<'tcx> {
-        let overlapping_start = self.relocations(ptr, Size::ZERO)?.len();
-        let overlapping_end = self.relocations(ptr.offset(size, self)?, Size::ZERO)?.len();
-        if overlapping_start + overlapping_end != 0 {
-            return err!(ReadPointerAsBytes);
-        }
+        self.check_relocations(ptr, Size::ZERO)?;
+        self.check_relocations(ptr.offset(size, self)?, Size::ZERO)?;
         Ok(())
     }
 }

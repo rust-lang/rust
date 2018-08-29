@@ -496,7 +496,9 @@ pub struct Allocation {
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
     /// Maps from byte addresses to allocations.
-    /// Only the first byte of a pointer is inserted into the map.
+    /// Only the first byte of a pointer is inserted into the map; i.e.,
+    /// every entry in this map applies to `pointer_size` consecutive bytes starting
+    /// at the given offset.
     pub relocations: Relocations,
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
