@@ -208,31 +208,31 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     // LLVM constant constructors.
-    fn c_null(t: &'ll Type) -> &'ll Value {
+    fn c_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstNull(t)
         }
     }
 
-    fn c_undef(t: &'ll Type) -> &'ll Value {
+    fn c_undef(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMGetUndef(t)
         }
     }
 
-    fn c_int(t: &'ll Type, i: i64) -> &'ll Value {
+    fn c_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
         unsafe {
             llvm::LLVMConstInt(t, i as u64, True)
         }
     }
 
-    fn c_uint(t: &'ll Type, i: u64) -> &'ll Value {
+    fn c_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
         unsafe {
             llvm::LLVMConstInt(t, i, False)
         }
     }
 
-    fn c_uint_big(t: &'ll Type, u: u128) -> &'ll Value {
+    fn c_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
         unsafe {
             let words = [u as u64, (u >> 64) as u64];
             llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
@@ -240,19 +240,19 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn c_bool(&self, val: bool) -> &'ll Value {
-        Self::c_uint(Type::i1(&self), val as u64)
+        &self.c_uint(Type::i1(&self), val as u64)
     }
 
     fn c_i32(&self, i: i32) -> &'ll Value {
-        Self::c_int(Type::i32(&self), i as i64)
+        &self.c_int(Type::i32(&self), i as i64)
     }
 
     fn c_u32(&self, i: u32) -> &'ll Value {
-        Self::c_uint(Type::i32(&self), i as u64)
+        &self.c_uint(Type::i32(&self), i as u64)
     }
 
     fn c_u64(&self, i: u64) -> &'ll Value {
-        Self::c_uint(Type::i64(&self), i)
+        &self.c_uint(Type::i64(&self), i)
     }
 
     fn c_usize(&self, i: u64) -> &'ll Value {
@@ -262,11 +262,11 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
             assert!(i < (1<<bit_size));
         }
 
-        Self::c_uint(&self.isize_ty, i)
+        &self.c_uint(&self.isize_ty, i)
     }
 
     fn c_u8(&self, i: u8) -> &'ll Value {
-        Self::c_uint(Type::i8(&self), i as u64)
+        &self.c_uint(Type::i8(&self), i as u64)
     }
 
 
@@ -489,9 +489,9 @@ pub fn shift_mask_val(
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
             let val = llty.int_width() - 1;
             if invert {
-                CodegenCx::c_int(mask_llty, !val as i64)
+                bx.cx.c_int(mask_llty, !val as i64)
             } else {
-                CodegenCx::c_uint(mask_llty, val)
+                bx.cx.c_uint(mask_llty, val)
             }
         },
         TypeKind::Vector => {

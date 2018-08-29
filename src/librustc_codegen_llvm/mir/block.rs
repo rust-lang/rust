@@ -172,7 +172,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     slot.storage_dead(&bx);
 
                     if !bx.sess().target.target.options.custom_unwind_resume {
-                        let mut lp = CodegenCx::c_undef(self.landing_pad_type());
+                        let mut lp = bx.cx().c_undef(self.landing_pad_type());
                         lp = bx.insert_value(lp, lp0, 0);
                         lp = bx.insert_value(lp, lp1, 1);
                         bx.resume(lp);
@@ -210,7 +210,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         }
                     } else {
                         let switch_llty = bx.cx().layout_of(switch_ty).immediate_llvm_type(bx.cx());
-                        let llval = CodegenCx::c_uint_big(switch_llty, values[0]);
+                        let llval = bx.cx().c_uint_big(switch_llty, values[0]);
                         let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                         bx.cond_br(cmp, lltrue, llfalse);
                     }
@@ -221,7 +221,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                            values.len());
                     let switch_llty = bx.cx().layout_of(switch_ty).immediate_llvm_type(bx.cx());
                     for (&value, target) in values.iter().zip(targets) {
-                        let llval = CodegenCx::c_uint_big(switch_llty, value);
+                        let llval =bx.cx().c_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
                         bx.add_case(switch, llval, llbb)
                     }
@@ -563,7 +563,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            CodegenCx::c_undef(fn_ty.ret.memory_ty(bx.cx()).ptr_to())
+                            bx.cx().c_undef(fn_ty.ret.memory_ty(bx.cx()).ptr_to())
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => dst.llval,
@@ -744,7 +744,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
-            llargs.push(CodegenCx::c_undef(ty.llvm_type(bx.cx())));
+            llargs.push(bx.cx().c_undef(ty.llvm_type(bx.cx())));
         }
 
         if arg.is_ignore() {
