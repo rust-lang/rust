@@ -121,15 +121,9 @@ fn build_suggestion<'a, 'tcx>(
     receiver_expr: &hir::Expr,
     cast_lhs_expr: &hir::Expr,
 ) -> Option<String> {
-    match (
-        utils::snippet_opt(cx, receiver_expr.span),
-        utils::snippet_opt(cx, cast_lhs_expr.span)
-    ) {
-        (Some(receiver), Some(cast_lhs)) => {
-            Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
-        },
-        _ => None,
-    }
+    let receiver = utils::snippet_opt(cx, receiver_expr.span)?;
+    let cast_lhs = utils::snippet_opt(cx, cast_lhs_expr.span)?;
+    Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
 }
 
 enum Method {
