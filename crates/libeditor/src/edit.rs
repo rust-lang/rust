@@ -1,5 +1,8 @@
 use {TextRange, TextUnit};
-use libsyntax2::AtomEdit;
+use libsyntax2::{
+    AtomEdit,
+    text_utils::contains_offset_nonstrict,
+};
 
 #[derive(Debug, Clone)]
 pub struct Edit {
@@ -15,19 +18,15 @@ impl EditBuilder {
     pub fn new() -> EditBuilder {
         EditBuilder { atoms: Vec::new() }
     }
-
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
         self.atoms.push(AtomEdit::replace(range, replace_with))
     }
-
     pub fn delete(&mut self, range: TextRange) {
         self.atoms.push(AtomEdit::delete(range))
     }
-
     pub fn insert(&mut self, offset: TextUnit, text: String) {
         self.atoms.push(AtomEdit::insert(offset, text))
     }
-
     pub fn finish(self) -> Edit {
         let mut atoms = self.atoms;
         atoms.sort_by_key(|a| a.delete.start());
@@ -35,6 +34,9 @@ impl EditBuilder {
             assert!(a1.delete.end() <= a2.delete.start())
         }
         Edit { atoms }
+    }
+    pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
+        self.atoms.iter().any(|atom| contains_offset_nonstrict(atom.delete, offset))
     }
 }
 

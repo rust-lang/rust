@@ -13,7 +13,6 @@ use libsyntax2::{
 
 use {EditBuilder, Edit, find_node_at_offset};
 
-// TODO: rename to FileEdit
 #[derive(Debug)]
 pub struct LocalEdit {
     pub edit: Edit,

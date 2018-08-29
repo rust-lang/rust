@@ -45,10 +45,11 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
         for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
             let pos: TextUnit = (pos as u32).into();
             let off = node.range().start() + range.start() + pos;
-            remove_newline(&mut edit, node, text.as_str(), off);
+            if !edit.invalidates_offset(off) {
+                remove_newline(&mut edit, node, text.as_str(), off);
+            }
         }
     }
-    eprintln!("{:?}", edit);
 
     LocalEdit {
         edit: edit.finish(),
@@ -239,17 +240,17 @@ fn foo() {
 }");
     }
 
-    #[test]
-    fn test_join_lines_selection() {
-        fn do_check(before: &str, after: &str) {
-            let (sel, before) = extract_range(before);
-            let file = File::parse(&before);
-            let result = join_lines(&file, sel);
-            let actual = result.edit.apply(&before);
-            assert_eq_text!(after, &actual);
-        }
+    fn check_join_lines_sel(before: &str, after: &str) {
+        let (sel, before) = extract_range(before);
+        let file = File::parse(&before);
+        let result = join_lines(&file, sel);
+        let actual = result.edit.apply(&before);
+        assert_eq_text!(after, &actual);
+    }
 
-        do_check(r"
+    #[test]
+    fn test_join_lines_selection_fn_args() {
+        check_join_lines_sel(r"
 fn foo() {
     <|>foo(1,
         2,
@@ -261,15 +262,22 @@ fn foo() {
     foo(1, 2, 3)
 }
     ");
+    }
 
-        do_check(r"
+    #[test]
+    fn test_join_lines_selection_struct() {
+        check_join_lines_sel(r"
 struct Foo <|>{
     f: u32,
 }<|>
     ", r"
 struct Foo { f: u32 }
     ");
-        do_check(r"
+    }
+
+    #[test]
+    fn test_join_lines_selection_dot_chain() {
+        check_join_lines_sel(r"
 fn foo() {
     join(<|>type_params.type_params()
             .filter_map(|it| it.name())
@@ -278,39 +286,22 @@ fn foo() {
 fn foo() {
     join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
 }");
+    }
 
-        do_check(r"
-pub fn handle_find_matching_brace(
-    world: ServerWorld,
-    params: req::FindMatchingBraceParams,
-) -> Result<Vec<Position>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
-    let line_index = world.analysis().file_line_index(file_id);
-    let res = params.offsets
-        .into_iter()
-        .map_conv_with(&line_index)
+    #[test]
+    fn test_join_lines_selection_lambda_block_body() {
+        check_join_lines_sel(r"
+pub fn handle_find_matching_brace() {
+    params.offsets
         .map(|offset| <|>{
             world.analysis().matching_brace(&file, offset).unwrap_or(offset)
         }<|>)
-        .map_conv_with(&line_index)
         .collect();
-    Ok(res)
 }", r"
-pub fn handle_find_matching_brace(
-    world: ServerWorld,
-    params: req::FindMatchingBraceParams,
-) -> Result<Vec<Position>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
-    let line_index = world.analysis().file_line_index(file_id);
-    let res = params.offsets
-        .into_iter()
-        .map_conv_with(&line_index)
+pub fn handle_find_matching_brace() {
+    params.offsets
         .map(|offset| world.analysis().matching_brace(&file, offset).unwrap_or(offset))
-        .map_conv_with(&line_index)
         .collect();
-    Ok(res)
 }");
     }
 

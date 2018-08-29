@@ -41,23 +41,21 @@ fn test_resolve_module() {
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 
-    let snap = world.snapshot(FileMap(&[
+    let snap = world.analysis(FileMap(&[
         (1, "/lib.rs"),
         (2, "/foo.rs"),
     ]));
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into())
-        .unwrap();
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into());
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
     );
 
-    let snap = world.snapshot(FileMap(&[
+    let snap = world.analysis(FileMap(&[
         (1, "/lib.rs"),
         (2, "/foo/mod.rs")
     ]));
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into())
-        .unwrap();
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into());
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -69,11 +67,17 @@ fn test_unresolved_module_diagnostic() {
     let mut world = WorldState::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
 
-    let snap = world.snapshot(FileMap(&[(1, "/lib.rs")]));
-    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
+    let diagnostics = snap.diagnostics(FileId(1));
     assert_eq_dbg(
-        r#"[(Diagnostic { range: [4; 7), msg: "unresolved module" },
-             Some(QuickFix { fs_ops: [CreateFile { anchor: FileId(1), path: "../foo.rs" }] }))]"#,
+        r#"[Diagnostic {
+            message: "unresolved module",
+            range: [4; 7),
+            fix: Some(SourceChange {
+                label: "create module",
+                source_file_edits: [],
+                file_system_edits: [CreateFile { anchor: FileId(1), path: "../foo.rs" }],
+                cursor_position: None }) }]"#,
         &diagnostics,
     );
 }
@@ -83,8 +87,8 @@ fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let mut world = WorldState::new();
     world.change_file(FileId(1), Some("mod foo {}".to_string()));
 
-    let snap = world.snapshot(FileMap(&[(1, "/lib.rs")]));
-    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
+    let diagnostics = snap.diagnostics(FileId(1));
     assert_eq_dbg(
         r#"[]"#,
         &diagnostics,
@@ -97,7 +101,7 @@ fn test_resolve_parent_module() {
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 
-    let snap = world.snapshot(FileMap(&[
+    let snap = world.analysis(FileMap(&[
         (1, "/lib.rs"),
         (2, "/foo.rs"),
     ]));
