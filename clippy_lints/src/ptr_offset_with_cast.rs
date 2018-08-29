@@ -1,5 +1,4 @@
 use rustc::{declare_lint, hir, lint, lint_array, ty};
-use syntax::ast;
 use crate::utils;
 
 /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
@@ -100,7 +99,7 @@ fn is_expr_ty_usize<'a, 'tcx>(
     cx: &lint::LateContext<'a, 'tcx>,
     expr: &hir::Expr,
 ) -> bool {
-    cx.tables.expr_ty(expr).sty == ty::TyKind::Uint(ast::UintTy::Usize)
+    cx.tables.expr_ty(expr) == cx.tcx.types.usize
 }
 
 // Is the type of the expression a raw pointer?
