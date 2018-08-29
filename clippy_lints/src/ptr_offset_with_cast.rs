@@ -51,7 +51,7 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
             None => return,
         };
 
-        // Check if the parameter to ptr.offset is a cast from usize to isize
+        // Check if the argument to ptr.offset is a cast from usize
         let cast_lhs_expr = match expr_as_cast_from_usize(cx, arg_expr) {
             Some(cast_lhs_expr) => cast_lhs_expr,
             None => return,
