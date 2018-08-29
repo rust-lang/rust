@@ -46,7 +46,7 @@ use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model, CodegenCx};
-use interfaces::CommonMethods;
+use interfaces::CommonWriteMethods;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 

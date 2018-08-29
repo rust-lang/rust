@@ -24,7 +24,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, CommonMethods};
+use interfaces::{Backend, CommonMethods, CommonWriteMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -201,11 +201,6 @@ impl Backend for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
-    fn val_ty(v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
-    }
 
     // LLVM constant constructors.
     fn c_null(&self, t: &'ll Type) -> &'ll Value {
@@ -354,13 +349,6 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
         Self::c_bytes_in_context(&self.llcx, bytes)
     }
 
-    fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
-        }
-    }
-
     fn const_get_elt(v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             assert_eq!(idx as c_uint as u64, idx);
@@ -499,5 +487,20 @@ pub fn shift_mask_val(
             bx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
+    }
+}
+
+impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
+    fn val_ty(v: &'ll Value) -> &'ll Type {
+        unsafe {
+            llvm::LLVMTypeOf(v)
+        }
+    }
+
+    fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        unsafe {
+            let ptr = bytes.as_ptr() as *const c_char;
+            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        }
     }
 }

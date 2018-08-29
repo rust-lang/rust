@@ -27,7 +27,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
