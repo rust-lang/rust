@@ -1,7 +1,7 @@
 use relative_path::RelativePathBuf;
 use libsyntax2::{File, TextRange, TextUnit, AtomEdit};
 use libeditor;
-use {World, FileId, Query};
+use {imp::AnalysisImpl, FileId, Query};
 
 pub use libeditor::{
     LocalEdit, StructureNode, LineIndex, FileSymbol,
@@ -49,7 +49,7 @@ pub struct Diagnostic {
 
 #[derive(Clone, Debug)]
 pub struct Analysis {
-    pub(crate) imp: World
+    pub(crate) imp: AnalysisImpl
 }
 
 impl Analysis {
