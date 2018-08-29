@@ -68,11 +68,16 @@ extern crate tempfile;
 extern crate memmap;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
+use interfaces::{Backend, CommonWriteMethods};
+use value::Value;
+use type_::Type;
 
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::path::{PathBuf};
 use std::sync::mpsc;
+use std::marker::PhantomData;
+use libc::{c_uint, c_char};
 use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
@@ -274,7 +279,7 @@ struct ModuleCodegen {
     /// as the crate name and disambiguator.
     /// We currently generate these names via CodegenUnit::build_cgu_name().
     name: String,
-    module_llvm: ModuleLlvm,
+    module_llvm: ModuleLlvm<'static>,
     kind: ModuleKind,
 }
 
@@ -332,16 +337,24 @@ struct CompiledModule {
     bytecode_compressed: Option<PathBuf>,
 }
 
-struct ModuleLlvm {
+struct ModuleLlvm<'ll> {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
+    phantom: PhantomData<&'ll ()>
 }
 
-unsafe impl Send for ModuleLlvm { }
-unsafe impl Sync for ModuleLlvm { }
+impl<'ll> Backend for ModuleLlvm<'ll> {
+    type Value = &'ll Value;
+    type BasicBlock = &'ll llvm::BasicBlock;
+    type Type = &'ll Type;
+    type Context = &'ll llvm::Context;
+}
 
-impl ModuleLlvm {
+unsafe impl Send for ModuleLlvm<'ll> { }
+unsafe impl Sync for ModuleLlvm<'ll> { }
+
+impl ModuleLlvm<'ll> {
     fn new(sess: &Session, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
@@ -351,6 +364,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm: create_target_machine(sess, false),
+                phantom: PhantomData
             }
         }
     }
@@ -362,7 +376,39 @@ impl ModuleLlvm {
     }
 }
 
-impl Drop for ModuleLlvm {
+impl CommonWriteMethods for ModuleLlvm<'ll> {
+    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        unsafe {
+            llvm::LLVMTypeOf(v)
+        }
+    }
+
+    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        unsafe {
+            let ptr = bytes.as_ptr() as *const c_char;
+            return llvm::LLVMConstStringInContext(
+                llcx,
+                ptr,
+                bytes.len() as c_uint,
+                llvm::True);
+        }
+    }
+
+    fn c_struct_in_context(
+        &self,
+        llcx: &'a llvm::Context,
+        elts: &[&'a Value],
+        packed: bool,
+    ) -> &'a Value {
+        unsafe {
+            llvm::LLVMConstStructInContext(llcx,
+                                           elts.as_ptr(), elts.len() as c_uint,
+                                           packed as llvm::Bool)
+        }
+    }
+}
+
+impl Drop for ModuleLlvm<'ll> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));

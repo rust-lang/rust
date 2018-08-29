@@ -547,7 +547,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
 
         unsafe {
-            let llty = CodegenCx::val_ty(load);
+            let llty = self.cx.val_ty(load);
             let v = [
                 self.cx.c_uint_big(llty, range.start),
                 self.cx.c_uint_big(llty, range.end)
@@ -781,7 +781,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
         let argtys = inputs.iter().map(|v| {
             debug!("Asm Input Type: {:?}", *v);
-            CodegenCx::val_ty(*v)
+            self.cx.val_ty(*v)
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
@@ -862,7 +862,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
-            let elt_ty = CodegenCx::val_ty(elt);
+            let elt_ty = self.cx.val_ty(elt);
             let undef = llvm::LLVMGetUndef(type_::Type::vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, CodegenCx::c_i32(self.cx, 0));
             let vec_i32_ty = type_::Type::vector(type_::Type::i32(self.cx), num_elts as u64);
@@ -1173,8 +1173,8 @@ impl BuilderMethods<'a, 'll, 'tcx>
     fn check_store<'b>(&self,
                        val: &'ll Value,
                        ptr: &'ll Value) -> &'ll Value {
-        let dest_ptr_ty = CodegenCx::val_ty(ptr);
-        let stored_ty = CodegenCx::val_ty(val);
+        let dest_ptr_ty = self.cx.val_ty(ptr);
+        let stored_ty = self.cx.val_ty(val);
         let stored_ptr_ty = stored_ty.ptr_to();
 
         assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
@@ -1194,7 +1194,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
                       typ: &str,
                       llfn: &'ll Value,
                       args: &'b [&'ll Value]) -> Cow<'b, [&'ll Value]> {
-        let mut fn_ty = CodegenCx::val_ty(llfn);
+        let mut fn_ty = self.cx.val_ty(llfn);
         // Strip off pointers
         while fn_ty.kind() == llvm::TypeKind::Pointer {
             fn_ty = fn_ty.element_type();
@@ -1206,7 +1206,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         let param_tys = fn_ty.func_params();
 
         let all_args_match = param_tys.iter()
-            .zip(args.iter().map(|&v| CodegenCx::val_ty(v)))
+            .zip(args.iter().map(|&v| self.cx().val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
@@ -1217,7 +1217,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
             .zip(args.iter())
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = CodegenCx::val_ty(actual_val);
+                let actual_ty = self.cx().val_ty(actual_val);
                 if expected_ty != actual_ty {
                     debug!("Type mismatch in function call of {:?}. \
                             Expected {:?} for param {}, got {:?}; injecting bitcast",

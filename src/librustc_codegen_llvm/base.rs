@@ -335,12 +335,13 @@ pub fn coerce_unsized_into(
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &Builder<'_, 'll, '_, &'ll Value>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
+    bx: &Builder<'_, 'll, '_, &'ll Value>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
 ) -> &'ll Value {
-    cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
+    cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
-fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
+fn cast_shift_rhs<'ll, F, G>(bx: &Builder<'_, 'll, '_, &'ll Value>,
+                             op: hir::BinOpKind,
                              lhs: &'ll Value,
                              rhs: &'ll Value,
                              trunc: F,
@@ -351,8 +352,8 @@ fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
-        let mut rhs_llty = CodegenCx::val_ty(rhs);
-        let mut lhs_llty = CodegenCx::val_ty(lhs);
+        let mut rhs_llty = bx.cx().val_ty(rhs);
+        let mut lhs_llty = bx.cx().val_ty(lhs);
         if rhs_llty.kind() == TypeKind::Vector {
             rhs_llty = rhs_llty.element_type()
         }
@@ -393,7 +394,7 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
     bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     val: &'ll Value
 ) -> &'ll Value {
-    if CodegenCx::val_ty(val) == Type::i1(bx.cx()) {
+    if bx.cx().val_ty(val) == Type::i1(bx.cx()) {
         bx.zext(val, Type::i8(bx.cx()))
     } else {
         val
@@ -433,7 +434,7 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, align);
-        let ptr = bx.pointercast(dst, CodegenCx::val_ty(val).ptr_to());
+        let ptr = bx.pointercast(dst, bx.cx().val_ty(val).ptr_to());
         bx.store_with_flags(val, ptr, align, flags);
         return;
     }
@@ -652,12 +653,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    let llmeta = CodegenCx::c_bytes_in_context(metadata_llcx, &compressed);
-    let llconst = CodegenCx::c_struct_in_context(metadata_llcx, &[llmeta], false);
+    let llmeta = llvm_module.c_bytes_in_context(metadata_llcx, &compressed);
+    let llconst = llvm_module.c_struct_in_context(metadata_llcx, &[llmeta], false);
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, CodegenCx::val_ty(llconst), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, llvm_module.val_ty(llconst), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
@@ -1236,7 +1237,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, CodegenCx::val_ty(old_g));
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
@@ -1251,7 +1252,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,
-                                                CodegenCx::val_ty(array),
+                                                cx.val_ty(array),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
                     llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
