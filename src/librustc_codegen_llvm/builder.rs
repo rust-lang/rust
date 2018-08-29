@@ -549,8 +549,8 @@ impl BuilderMethods<'a, 'll, 'tcx>
         unsafe {
             let llty = CodegenCx::val_ty(load);
             let v = [
-                CodegenCx::c_uint_big(llty, range.start),
-                CodegenCx::c_uint_big(llty, range.end)
+                self.cx.c_uint_big(llty, range.start),
+                self.cx.c_uint_big(llty, range.end)
             ];
 
             llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
@@ -866,7 +866,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
             let undef = llvm::LLVMGetUndef(type_::Type::vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, CodegenCx::c_i32(self.cx, 0));
             let vec_i32_ty = type_::Type::vector(type_::Type::i32(self.cx), num_elts as u64);
-            self.shuffle_vector(vec, undef, CodegenCx::c_null(vec_i32_ty))
+            self.shuffle_vector(vec, undef, self.cx.c_null(vec_i32_ty))
         }
     }
 

@@ -15,11 +15,11 @@ pub trait CommonMethods : Backend {
     fn val_ty(v: Self::Value) -> Self::Type;
 
     // Constant constructors
-    fn c_null(t: Self::Type) -> Self::Value;
-    fn c_undef(t: Self::Type) -> Self::Value;
-    fn c_int(t: Self::Type, i: i64) -> Self::Value;
-    fn c_uint(t: Self::Type, i: u64) -> Self::Value;
-    fn c_uint_big(t: Self::Type, u: u128) -> Self::Value;
+    fn c_null(&self, t: Self::Type) -> Self::Value;
+    fn c_undef(&self, t: Self::Type) -> Self::Value;
+    fn c_int(&self, t: Self::Type, i: i64) -> Self::Value;
+    fn c_uint(&self, t: Self::Type, i: u64) -> Self::Value;
+    fn c_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
     fn c_bool(&self, val: bool) -> Self::Value;
     fn c_i32(&self, i: i32) -> Self::Value;
     fn c_u32(&self, i: u32) -> Self::Value;

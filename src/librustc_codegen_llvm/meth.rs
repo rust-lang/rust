@@ -96,7 +96,7 @@ pub fn get_vtable(
     }
 
     // Not in the cache. Build it.
-    let nullptr = CodegenCx::c_null(Type::i8p(cx));
+    let nullptr = cx.c_null(Type::i8p(cx));
 
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {

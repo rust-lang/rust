@@ -41,11 +41,11 @@ pub fn scalar_to_llvm(
     match cv {
         Scalar::Bits { size: 0, .. } => {
             assert_eq!(0, layout.value.size(cx).bytes());
-            CodegenCx::c_undef(Type::ix(cx, 0))
+            cx.c_undef(Type::ix(cx, 0))
         },
         Scalar::Bits { bits, size } => {
             assert_eq!(size as u64, layout.value.size(cx).bytes());
-            let llval = CodegenCx::c_uint_big(Type::ix(cx, bitsize), bits);
+            let llval = cx.c_uint_big(Type::ix(cx, bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
@@ -74,7 +74,7 @@ pub fn scalar_to_llvm(
             };
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                 consts::bitcast(base_addr, Type::i8p(cx)),
-                &CodegenCx::c_usize(cx, ptr.offset.bytes()),
+                &cx.c_usize(ptr.offset.bytes()),
                 1,
             ) };
             if layout.value != layout::Pointer {
@@ -219,7 +219,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
                 let llty = bx.cx().layout_of(ty).llvm_type(bx.cx());
-                (CodegenCx::c_undef(llty), ty)
+                (bx.cx().c_undef(llty), ty)
             })
     }
 }
