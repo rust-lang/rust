@@ -177,6 +177,7 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
+    #[allow(dead_code)]
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),

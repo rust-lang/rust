@@ -21,8 +21,10 @@ use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
-use syntax::ptr::P;
 use syntax::symbol::keywords;
+
+mod camel_case;
+pub use self::camel_case::{camel_case_from, camel_case_until};
 
 pub mod comparisons;
 pub mod conf;
@@ -36,8 +38,6 @@ pub mod author;
 pub mod ptr;
 pub mod usage;
 pub use self::hir_utils::{SpanlessEq, SpanlessHash};
-
-pub type MethodArgs = HirVec<P<Expr>>;
 
 pub mod higher;
 
@@ -103,17 +103,6 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
         _ => false,
-    }
-}
-
-/// Check if the method call given in `expr` belongs to given type.
-pub fn match_impl_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
-    let trt_id = cx.tcx.impl_of_method(method_call.def_id());
-    if let Some(trt_id) = trt_id {
-        match_def_path(cx.tcx, trt_id, path)
-    } else {
-        false
     }
 }
 
@@ -755,69 +744,6 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Return the index of the character after the first camel-case component of
-/// `s`.
-pub fn camel_case_until(s: &str) -> usize {
-    let mut iter = s.char_indices();
-    if let Some((_, first)) = iter.next() {
-        if !first.is_uppercase() {
-            return 0;
-        }
-    } else {
-        return 0;
-    }
-    let mut up = true;
-    let mut last_i = 0;
-    for (i, c) in iter {
-        if up {
-            if c.is_lowercase() {
-                up = false;
-            } else {
-                return last_i;
-            }
-        } else if c.is_uppercase() {
-            up = true;
-            last_i = i;
-        } else if !c.is_lowercase() {
-            return i;
-        }
-    }
-    if up {
-        last_i
-    } else {
-        s.len()
-    }
-}
-
-/// Return index of the last camel-case component of `s`.
-pub fn camel_case_from(s: &str) -> usize {
-    let mut iter = s.char_indices().rev();
-    if let Some((_, first)) = iter.next() {
-        if !first.is_lowercase() {
-            return s.len();
-        }
-    } else {
-        return s.len();
-    }
-    let mut down = true;
-    let mut last_i = s.len();
-    for (i, c) in iter {
-        if down {
-            if c.is_uppercase() {
-                down = false;
-                last_i = i;
-            } else if !c.is_lowercase() {
-                return last_i;
-            }
-        } else if c.is_lowercase() {
-            down = true;
-        } else {
-            return last_i;
-        }
-    }
-    last_i
-}
-
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
@@ -1108,4 +1034,85 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId
         enclosing_node = map.get_parent(enclosing_node);
     }
     false
+}
+
+#[cfg(test)]
+mod test {
+    use super::{trim_multiline, without_block_comments};
+
+    #[test]
+    fn test_trim_multiline_single_line() {
+        assert_eq!("", trim_multiline("".into(), false));
+        assert_eq!("...", trim_multiline("...".into(), false));
+        assert_eq!("...", trim_multiline("    ...".into(), false));
+        assert_eq!("...", trim_multiline("\t...".into(), false));
+        assert_eq!("...", trim_multiline("\t\t...".into(), false));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_trim_multiline_block() {
+        assert_eq!("\
+    if x {
+        y
+    } else {
+        z
+    }", trim_multiline("    if x {
+            y
+        } else {
+            z
+        }".into(), false));
+        assert_eq!("\
+    if x {
+    \ty
+    } else {
+    \tz
+    }", trim_multiline("    if x {
+        \ty
+        } else {
+        \tz
+        }".into(), false));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_trim_multiline_empty_line() {
+        assert_eq!("\
+    if x {
+        y
+
+    } else {
+        z
+    }", trim_multiline("    if x {
+            y
+
+        } else {
+            z
+        }".into(), false));
+    }
+
+    #[test]
+    fn test_without_block_comments_lines_without_block_comments() {
+        let result = without_block_comments(vec!["/*", "", "*/"]);
+        println!("result: {:?}", result);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);
+        assert_eq!(result, vec!["", "#[crate_type = \"lib\"]", ""]);
+
+        let result = without_block_comments(vec!["/* rust", "", "*/"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* one-line comment */"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* nested", "/* multi-line", "comment", "*/", "test", "*/"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* nested /* inline /* comment */ test */ */"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["foo", "bar", "baz"]);
+        assert_eq!(result, vec!["foo", "bar", "baz"]);
+    }
 }

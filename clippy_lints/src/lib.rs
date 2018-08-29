@@ -48,9 +48,9 @@ macro_rules! declare_clippy_lint {
     };
 }
 
-pub mod consts;
+mod consts;
 #[macro_use]
-pub mod utils;
+mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
