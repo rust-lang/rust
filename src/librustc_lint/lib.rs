@@ -110,7 +110,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     }
 
     add_pre_expansion_builtin!(sess,
-        Async2018,
+        KeywordIdents,
     );
 
     add_early_builtin!(sess,
@@ -240,7 +240,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
-            id: LintId::of(ASYNC_IDENTS),
+            id: LintId::of(KEYWORD_IDENTS),
             reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
             edition: Some(Edition::Edition2018),
         },
@@ -349,6 +349,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_renamed("bare_trait_object", "bare_trait_objects");
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
+    store.register_renamed("async_idents", "keyword_idents");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");

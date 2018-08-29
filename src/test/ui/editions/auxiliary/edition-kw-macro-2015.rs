@@ -10,7 +10,7 @@
 
 // edition:2015
 
-#![allow(async_idents)]
+#![allow(keyword_idents)]
 
 #[macro_export]
 macro_rules! produces_async {
