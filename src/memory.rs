@@ -1,12 +1,13 @@
-
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub enum MemoryKind {
-    /// Error if deallocated any other way than `rust_deallocate`
+    /// `__rust_alloc` memory
     Rust,
-    /// Error if deallocated any other way than `free`
+    /// `malloc` memory
     C,
     /// Part of env var emulation
     Env,
+    // mutable statics
+    MutStatic,
 }
 
 impl Into<::rustc_mir::interpret::MemoryKind<MemoryKind>> for MemoryKind {

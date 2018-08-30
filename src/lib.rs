@@ -1,7 +1,4 @@
-#![feature(
-    rustc_private,
-    catch_expr,
-)]
+#![feature(rustc_private)]
 
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
 
@@ -16,17 +13,17 @@ extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
 
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
-use rustc::ty::subst::Subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
 use rustc_data_structures::fx::FxHasher;
 
 use syntax::ast::Mutability;
-use syntax::codemap::Span;
+use syntax::attr;
 
+use std::marker::PhantomData;
 use std::collections::{HashMap, BTreeMap};
 use std::hash::{Hash, Hasher};
 
@@ -41,89 +38,23 @@ mod memory;
 mod tls;
 mod locks;
 mod range_map;
-mod validation;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::EvalContextExt as TlsEvalContextExt;
+use memory::MemoryKind as MiriMemoryKind;
 use locks::LockInfo;
-use locks::MemoryExt as LockMemoryExt;
-use validation::EvalContextExt as ValidationEvalContextExt;
 use range_map::RangeMap;
-use validation::{ValidationQuery, AbsPlace};
-
-pub trait ScalarExt {
-    fn null(size: Size) -> Self;
-    fn from_i32(i: i32) -> Self;
-    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self;
-    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self;
-    fn from_f32(f: f32) -> Self;
-    fn from_f64(f: f64) -> Self;
-    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64>;
-    fn is_null(self) -> bool;
-    /// HACK: this function just extracts all bits if `defined != 0`
-    /// Mainly used for args of C-functions and we should totally correctly fetch the size
-    /// of their arguments
-    fn to_bytes(self) -> EvalResult<'static, u128>;
-}
-
-impl ScalarExt for Scalar {
-    fn null(size: Size) -> Self {
-        Scalar::Bits { bits: 0, size: size.bytes() as u8 }
-    }
-
-    fn from_i32(i: i32) -> Self {
-        Scalar::Bits { bits: i as u32 as u128, size: 4 }
-    }
-
-    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i.into(), size: ptr_size.bytes() as u8 }
-    }
-
-    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i.into() as u128, size: ptr_size.bytes() as u8 }
-    }
-
-    fn from_f32(f: f32) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
-    }
-
-    fn from_f64(f: f64) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
-    }
-
-    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64> {
-        let b = self.to_bits(ecx.memory.pointer_size())?;
-        assert_eq!(b as u64 as u128, b);
-        Ok(b as u64)
-    }
-
-    fn is_null(self) -> bool {
-        match self {
-            Scalar::Bits { bits, .. } => bits == 0,
-            Scalar::Ptr(_) => false
-        }
-    }
-
-    fn to_bytes(self) -> EvalResult<'static, u128> {
-        match self {
-            Scalar::Bits { bits, size } => {
-                assert_ne!(size, 0);
-                Ok(bits)
-            },
-            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
-        }
-    }
-}
+use helpers::{ScalarExt, FalibleScalarExt};
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     start_wrapper: Option<DefId>,
-) -> EvalResult<'tcx, (EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>, Option<Pointer>)> {
+) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = EvalContext::new(
-        tcx.at(syntax::codemap::DUMMY_SP),
+        tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Default::default(),
         MemoryData::new()
@@ -131,7 +62,6 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
-    let mut cleanup_ptr = None; // Scalar to be deallocated when we are done
 
     if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
         return err!(Unimplemented(
@@ -160,11 +90,10 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             )));
         }
 
-        // Return value
+        // Return value (in static memory so that it does not count as leak)
         let size = ecx.tcx.data_layout.pointer_size;
         let align = ecx.tcx.data_layout.pointer_align;
-        let ret_ptr = ecx.memory_mut().allocate(size, align, MemoryKind::Stack)?;
-        cleanup_ptr = Some(ret_ptr);
+        let ret_ptr = ecx.memory_mut().allocate(size, align, MiriMemoryKind::MutStatic.into())?;
 
         // Push our stack frame
         ecx.push_stack_frame(
@@ -172,7 +101,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             start_mir.span,
             start_mir,
             Place::from_ptr(ret_ptr, align),
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
@@ -180,31 +109,22 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // First argument: pointer to main()
         let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let main_ty = main_instance.ty(ecx.tcx.tcx);
-        let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::Ptr(main_ptr).into()),
-                ty: main_ptr_ty,
-            },
-            dest,
-        )?;
+        ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
         // Second argument (argc): 1
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let ty = ecx.tcx.types.isize;
-        ecx.write_scalar(dest, Scalar::from_int(1, ptr_size), ty)?;
+        ecx.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
 
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-        let foo = ecx.memory.allocate_bytes(b"foo\0");
-        let ptr_align = ecx.tcx.data_layout.pointer_align;
-        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, MemoryKind::Stack)?;
-        ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo).into(), ptr_size, ptr_align, false)?;
-        ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
-        ecx.write_ptr(dest, foo_ptr.into(), ty)?;
+        let foo = ecx.memory.allocate_static_bytes(b"foo\0");
+        let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
+        let foo_layout = ecx.layout_of(foo_ty)?;
+        let foo_place = ecx.allocate(foo_layout, MemoryKind::Stack)?; // will be interned in just a second
+        ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
+        ecx.memory.intern_static(foo_place.to_ptr()?.alloc_id, Mutability::Immutable)?;
+        ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
     } else {
@@ -213,7 +133,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             main_mir.span,
             main_mir,
             Place::from_scalar_ptr(Scalar::from_int(1, ptr_size).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         // No arguments
@@ -221,7 +141,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         assert!(args.next().is_none(), "main function must not have arguments");
     }
 
-    Ok((ecx, cleanup_ptr))
+    Ok(ecx)
 }
 
 pub fn eval_main<'a, 'tcx: 'a>(
@@ -229,26 +149,22 @@ pub fn eval_main<'a, 'tcx: 'a>(
     main_id: DefId,
     start_wrapper: Option<DefId>,
 ) {
-    let (mut ecx, cleanup_ptr) = create_ecx(tcx, main_id, start_wrapper).expect("Couldn't create ecx");
+    let mut ecx = create_ecx(tcx, main_id, start_wrapper).expect("Couldn't create ecx");
 
-    let res: EvalResult = do catch {
-        while ecx.step()? {}
-        ecx.run_tls_dtors()?;
-        if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory_mut().deallocate(
-                cleanup_ptr,
-                None,
-                MemoryKind::Stack,
-            )?;
-        }
-    };
+    let res: EvalResult = (|| {
+        ecx.run()?;
+        ecx.run_tls_dtors()
+    })();
 
     match res {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
-            if leaks != 0 {
-                // TODO: Prevent leaks which aren't supposed to be there
-                //tcx.sess.err("the evaluated program leaked memory");
+            // Disable the leak test on some platforms where we likely do not
+            // correctly implement TLS destructors.
+            let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
+            let ignore_leaks = target_os == "windows" || target_os == "macos";
+            if !ignore_leaks && leaks != 0 {
+                tcx.sess.err("the evaluated program leaked memory");
             }
         }
         Err(e) => {
@@ -273,6 +189,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 ecx.tcx.sess.err(&e.to_string());
             }
 
+            /* Nice try, but with MIRI_BACKTRACE this shows 100s of backtraces.
             for (i, frame) in ecx.stack().iter().enumerate() {
                 trace!("-------------------");
                 trace!("Frame {}", i);
@@ -282,7 +199,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                         trace!("    local {}: {:?}", i, local);
                     }
                 }
-            }
+            }*/
         }
     }
 }
@@ -293,15 +210,15 @@ pub struct Evaluator<'tcx> {
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
 
-    /// Places that were suspended by the validation subsystem, and will be recovered later
-    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
+    /// Use the lifetime
+    _dummy : PhantomData<&'tcx ()>,
 }
 
 impl<'tcx> Hash for Evaluator<'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Evaluator {
             env_vars,
-            suspended: _,
+            _dummy: _,
         } = self;
 
         env_vars.iter()
@@ -337,8 +254,6 @@ pub struct MemoryData<'tcx> {
     /// Only mutable (static mut, heap, stack) allocations have an entry in this map.
     /// The entry is created when allocating the memory and deleted after deallocation.
     locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
-
-    statics: HashMap<GlobalId<'tcx>, AllocId>,
 }
 
 impl<'tcx> MemoryData<'tcx> {
@@ -347,7 +262,6 @@ impl<'tcx> MemoryData<'tcx> {
             next_thread_local: 1, // start with 1 as we must not use 0 on Windows
             thread_local: BTreeMap::new(),
             locks: HashMap::new(),
-            statics: HashMap::new(),
         }
     }
 }
@@ -358,134 +272,54 @@ impl<'tcx> Hash for MemoryData<'tcx> {
             next_thread_local: _,
             thread_local,
             locks: _,
-            statics: _,
         } = self;
 
         thread_local.hash(state);
     }
 }
 
-impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryData = MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
 
+    const MUT_STATIC_KIND: Option<memory::MemoryKind> = Some(memory::MemoryKind::MutStatic);
+
     /// Returns Ok() when the function was handled, fail otherwise
-    fn eval_fn_call<'a>(
+    fn find_fn<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Place, mir::BasicBlock)>,
-        args: &[ValTy<'tcx>],
-        span: Span,
-        sig: ty::FnSig<'tcx>,
-    ) -> EvalResult<'tcx, bool> {
-        ecx.eval_fn_call(instance, destination, args, span, sig)
+        args: &[OpTy<'tcx>],
+        dest: Option<PlaceTy<'tcx>>,
+        ret: Option<mir::BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+        ecx.find_fn(instance, args, dest, ret)
     }
 
     fn call_intrinsic<'a>(
         ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[ValTy<'tcx>],
-        dest: Place,
-        dest_layout: TyLayout<'tcx>,
-        target: mir::BasicBlock,
+        args: &[OpTy<'tcx>],
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        ecx.call_intrinsic(instance, args, dest, dest_layout, target)
+        ecx.call_intrinsic(instance, args, dest)
     }
 
     fn try_ptr_op<'a>(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
-        left_ty: ty::Ty<'tcx>,
+        left_layout: TyLayout<'tcx>,
         right: Scalar,
-        right_ty: ty::Ty<'tcx>,
+        right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
-        ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
-    }
-
-    fn mark_static_initialized<'a>(
-        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx, bool> {
-        use memory::MemoryKind::*;
-        match mem.get_alloc_kind(id) {
-            // FIXME: This could be allowed, but not for env vars set during miri execution
-            Some(MemoryKind::Machine(Env)) => err!(Unimplemented("statics can't refer to env vars".to_owned())),
-            _ => Ok(false), // TODO: What does the bool mean?
-        }
-    }
-
-    fn init_static<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        cid: GlobalId<'tcx>,
-    ) -> EvalResult<'tcx, AllocId> {
-        // Step 1: If the static has already been evaluated return the cached version
-        if let Some(alloc_id) = ecx.memory.data.statics.get(&cid) {
-            return Ok(*alloc_id);
-        }
-
-        let tcx = ecx.tcx.tcx;
-
-        // Step 2: Load mir
-        let mut mir = ecx.load_mir(cid.instance.def)?;
-        if let Some(index) = cid.promoted {
-            mir = &mir.promoted[index];
-        }
-        assert!(mir.arg_count == 0);
-
-        // Step 3: Allocate storage
-        let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-        assert!(!layout.is_unsized());
-        let ptr = ecx.memory.allocate(
-            layout.size,
-            layout.align,
-            MemoryKind::Stack,
-        )?;
-
-        // Step 4: Cache allocation id for recursive statics
-        assert!(ecx.memory.data.statics.insert(cid, ptr.alloc_id).is_none());
-
-        // Step 5: Push stackframe to evaluate static
-        let cleanup = StackPopCleanup::None;
-        ecx.push_stack_frame(
-            cid.instance,
-            mir.span,
-            mir,
-            Place::from_ptr(ptr, layout.align),
-            cleanup,
-        )?;
-
-        // Step 6: Step until static has been initialized
-        let call_stackframe = ecx.stack().len();
-        while ecx.step()? && ecx.stack().len() >= call_stackframe {
-            if ecx.stack().len() == call_stackframe {
-                let frame = ecx.frame_mut();
-                let bb = &frame.mir.basic_blocks()[frame.block];
-                if bb.statements.len() == frame.stmt && !bb.is_cleanup {
-                    if let ::rustc::mir::TerminatorKind::Return = bb.terminator().kind {
-                        for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
-                            // Don't deallocate locals, because the return value might reference them
-                            frame.storage_dead(local);
-                        }
-                    }
-                }
-            }
-        }
-
-        // TODO: Freeze immutable statics without copying them to the global static cache
-
-        // Step 7: Return the alloc
-        Ok(ptr.alloc_id)
+        ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ty: ty::Ty<'tcx>,
-        dest: Place,
+        dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
-        let layout = ecx.layout_of(ty)?;
-
+        trace!("box_alloc for {:?}", dest.layout.ty);
         // Call the `exchange_malloc` lang item
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
@@ -494,100 +328,54 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             malloc,
             malloc_mir.span,
             malloc_mir,
-            dest,
+            *dest,
             // Don't do anything when we are done.  The statement() function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
             // exchange_malloc returns, we go on evaluating exactly where we want to be.
-            StackPopCleanup::None,
+            StackPopCleanup::None { cleanup: true },
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
-        let usize = ecx.tcx.types.usize;
-        let ptr_size = ecx.memory.pointer_size();
+        let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
 
         // First argument: size
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::from_uint(match layout.size.bytes() {
-                    0 => 1,
-                    size => size,
-                }, ptr_size).into()),
-                ty: usize,
-            },
-            dest,
-        )?;
+        // (0 is allowed here, this is expected to be handled by the lang item)
+        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let size = layout.size.bytes();
+        ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
 
         // Second argument: align
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_value(
-            ValTy {
-                value: Value::Scalar(Scalar::from_uint(layout.align.abi(), ptr_size).into()),
-                ty: usize,
-            },
-            dest,
-        )?;
+        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let align = layout.align.abi();
+        ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
         // No more arguments
         assert!(args.next().is_none(), "exchange_malloc lang item has more arguments than expected");
         Ok(())
     }
 
-    fn global_item_with_linkage<'a>(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _mutability: Mutability,
-    ) -> EvalResult<'tcx> {
-        panic!("remove this function from rustc");
-    }
+    fn find_foreign_static<'a>(
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
+        let attrs = tcx.get_attrs(def_id);
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+            Some(name) => name.as_str(),
+            None => tcx.item_name(def_id).as_str(),
+        };
 
-    fn check_locks<'a>(
-        mem: &Memory<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer,
-        size: Size,
-        access: AccessKind,
-    ) -> EvalResult<'tcx> {
-        mem.check_locks(ptr, size.bytes(), access)
-    }
-
-    fn add_lock<'a>(
-        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-    ) {
-        mem.data.locks.insert(id, RangeMap::new());
-    }
-
-    fn free_lock<'a>(
-        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        id: AllocId,
-        len: u64,
-    ) -> EvalResult<'tcx> {
-        mem.data.locks
-            .remove(&id)
-            .expect("allocation has no corresponding locks")
-            .check(
-                Some(mem.cur_frame),
-                0,
-                len,
-                AccessKind::Read,
-            )
-            .map_err(|lock| {
-                EvalErrorKind::DeallocatedLockedMemory {
-                    //ptr, FIXME
-                    ptr: Pointer {
-                        alloc_id: AllocId(0),
-                        offset: Size::from_bytes(0),
-                    },
-                    lock: lock.active,
-                }.into()
-            })
-    }
-
-    fn end_region<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        reg: Option<::rustc::middle::region::Scope>,
-    ) -> EvalResult<'tcx> {
-        ecx.end_region(reg)
+        let alloc = match &link_name[..] {
+            "__cxa_thread_atexit_impl" => {
+                // This should be all-zero, pointer-sized
+                let data = vec![0; tcx.data_layout.pointer_size.bytes() as usize];
+                let alloc = Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align);
+                tcx.intern_const_alloc(alloc)
+            }
+            _ => return err!(Unimplemented(
+                    format!("can't access foreign static: {}", link_name),
+                )),
+        };
+        Ok(alloc)
     }
 
     fn validation_op<'a>(

@@ -1,4 +1,6 @@
-// ignore-test FIXME: leak detection is disabled
+// ignore-windows: We do not check leaks on Windows
+// ignore-macos: We do not check leaks on macOS
+
 //error-pattern: the evaluated program leaked memory
 
 use std::rc::Rc;

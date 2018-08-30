@@ -1,128 +1,71 @@
-use mir;
-use rustc::ty::Ty;
-use rustc::ty::layout::{LayoutOf, Size};
+use rustc::ty::layout::Size;
 
-use super::{Scalar, ScalarExt, EvalResult, EvalContext, ValTy};
-use rustc_mir::interpret::sign_extend;
+use super::{Scalar, ScalarMaybeUndef, EvalResult};
 
-pub trait EvalContextExt<'tcx> {
-    fn wrapping_pointer_offset(
-        &self,
-        ptr: Scalar,
-        pointee_ty: Ty<'tcx>,
-        offset: i64,
-    ) -> EvalResult<'tcx, Scalar>;
-
-    fn pointer_offset(
-        &self,
-        ptr: Scalar,
-        pointee_ty: Ty<'tcx>,
-        offset: i64,
-    ) -> EvalResult<'tcx, Scalar>;
-
-    fn value_to_isize(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, i64>;
-
-    fn value_to_usize(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, u64>;
-
-    fn value_to_i32(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, i32>;
-
-    fn value_to_u8(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, u8>;
+pub trait ScalarExt {
+    fn null(size: Size) -> Self;
+    fn from_i32(i: i32) -> Self;
+    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self;
+    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self;
+    fn from_f32(f: f32) -> Self;
+    fn from_f64(f: f64) -> Self;
+    fn is_null(self) -> bool;
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
-    fn wrapping_pointer_offset(
-        &self,
-        ptr: Scalar,
-        pointee_ty: Ty<'tcx>,
-        offset: i64,
-    ) -> EvalResult<'tcx, Scalar> {
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
-        let offset = offset.overflowing_mul(pointee_size).0;
-        Ok(ptr.ptr_wrapping_signed_offset(offset, self))
+pub trait FalibleScalarExt {
+    /// HACK: this function just extracts all bits if `defined != 0`
+    /// Mainly used for args of C-functions and we should totally correctly fetch the size
+    /// of their arguments
+    fn to_bytes(self) -> EvalResult<'static, u128>;
+}
+
+impl ScalarExt for Scalar {
+    fn null(size: Size) -> Self {
+        Scalar::Bits { bits: 0, size: size.bytes() as u8 }
     }
 
-    fn pointer_offset(
-        &self,
-        ptr: Scalar,
-        pointee_ty: Ty<'tcx>,
-        offset: i64,
-    ) -> EvalResult<'tcx, Scalar> {
-        // This function raises an error if the offset moves the pointer outside of its allocation.  We consider
-        // ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
-        // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
-        // allocation.
+    fn from_i32(i: i32) -> Self {
+        Scalar::Bits { bits: i as u32 as u128, size: 4 }
+    }
 
-        if ptr.is_null() {
-            // NULL pointers must only be offset by 0
-            return if offset == 0 {
-                Ok(ptr)
-            } else {
-                err!(InvalidNullPointerUsage)
-            };
-        }
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
-         if let Some(offset) = offset.checked_mul(pointee_size) {
-            let ptr = ptr.ptr_signed_offset(offset, self)?;
-            // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
-            if let Scalar::Ptr(ptr) = ptr {
-                self.memory.check_bounds(ptr, false)?;
-            } else if ptr.is_null() {
-                // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return err!(InvalidNullPointerUsage);
-            }
-            Ok(ptr)
-        } else {
-            err!(Overflow(mir::BinOp::Mul))
+    fn from_uint(i: impl Into<u128>, size: Size) -> Self {
+        Scalar::Bits { bits: i.into(), size: size.bytes() as u8 }
+    }
+
+    fn from_int(i: impl Into<i128>, size: Size) -> Self {
+        Scalar::Bits { bits: i.into() as u128, size: size.bytes() as u8 }
+    }
+
+    fn from_f32(f: f32) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
+    }
+
+    fn from_f64(f: f64) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
+    }
+
+    fn is_null(self) -> bool {
+        match self {
+            Scalar::Bits { bits, .. } => bits == 0,
+            Scalar::Ptr(_) => false
         }
     }
+}
 
-    fn value_to_isize(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, i64> {
-        assert_eq!(value.ty, self.tcx.types.isize);
-        let raw = self.value_to_scalar(value)?.to_bits(self.memory.pointer_size())?;
-        let raw = sign_extend(raw, self.layout_of(self.tcx.types.isize).unwrap());
-        Ok(raw as i64)
+impl FalibleScalarExt for Scalar {
+    fn to_bytes(self) -> EvalResult<'static, u128> {
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_ne!(size, 0);
+                Ok(bits)
+            },
+            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
+        }
     }
+}
 
-    fn value_to_usize(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, u64> {
-        assert_eq!(value.ty, self.tcx.types.usize);
-        self.value_to_scalar(value)?.to_bits(self.memory.pointer_size()).map(|v| v as u64)
-    }
-
-    fn value_to_i32(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, i32> {
-        assert_eq!(value.ty, self.tcx.types.i32);
-        let raw = self.value_to_scalar(value)?.to_bits(Size::from_bits(32))?;
-        let raw = sign_extend(raw, self.layout_of(self.tcx.types.i32).unwrap());
-        Ok(raw as i32)
-    }
-
-    fn value_to_u8(
-        &self,
-        value: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, u8> {
-        assert_eq!(value.ty, self.tcx.types.u8);
-        self.value_to_scalar(value)?.to_bits(Size::from_bits(8)).map(|v| v as u8)
+impl FalibleScalarExt for ScalarMaybeUndef {
+    fn to_bytes(self) -> EvalResult<'static, u128> {
+        self.not_undef()?.to_bytes()
     }
 }
