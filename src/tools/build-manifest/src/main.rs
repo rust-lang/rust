@@ -121,6 +121,17 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-unknown-redox",
 ];
 
+static DOCS_TARGETS: &'static [&'static str] = &[
+    "i686-apple-darwin",
+    "i686-pc-windows-gnu",
+    "i686-pc-windows-msvc",
+    "i686-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+];
+
 static MINGW: &'static [&'static str] = &[
     "i686-pc-windows-gnu",
     "x86_64-pc-windows-gnu",
@@ -338,7 +349,7 @@ impl Builder {
         self.package("cargo", &mut manifest.pkg, HOSTS);
         self.package("rust-mingw", &mut manifest.pkg, MINGW);
         self.package("rust-std", &mut manifest.pkg, TARGETS);
-        self.package("rust-docs", &mut manifest.pkg, TARGETS);
+        self.package("rust-docs", &mut manifest.pkg, DOCS_TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("clippy-preview", &mut manifest.pkg, HOSTS);
