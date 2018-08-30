@@ -1601,8 +1601,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let Some(&init_index) = first_init_index {
             // And, if so, report an error.
             let init = &self.move_data.inits[init_index];
+            let span = init.span(&self.mir);
             self.report_illegal_reassignment(
-                context, place_span, init.span(&self.mir), place_span.0
+                context, place_span, span, place_span.0
             );
         }
     }
