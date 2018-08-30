@@ -1017,13 +1017,13 @@ extern "rust-intrinsic" {
     ///     unsafe {
     ///         // The call to offset is always safe because `Vec` will never
     ///         // allocate more than `isize::MAX` bytes.
-    ///         let dst = dst.as_mut_ptr().offset(dst_len as isize);
-    ///         let src = src.as_ptr();
+    ///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+    ///         let src_ptr = src.as_ptr();
     ///
     ///         // The two regions cannot overlap becuase mutable references do
     ///         // not alias, and two different vectors cannot own the same
     ///         // memory.
-    ///         ptr::copy_nonoverlapping(src, dst, src_len);
+    ///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
     ///
     ///         // Truncate `src` without dropping its contents. This cannot panic,
     ///         // so double-drops cannot happen.
@@ -1145,7 +1145,7 @@ extern "rust-intrinsic" {
     /// Creating an invalid value:
     ///
     /// ```
-    /// use std::ptr;
+    /// use std::{mem, ptr};
     ///
     /// let mut v = Box::new(0i32);
     ///
