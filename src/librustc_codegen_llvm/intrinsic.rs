@@ -1114,8 +1114,8 @@ fn generic_simd_intrinsic(
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = CodegenCx::const_get_elt(vector, i as u64);
-                match CodegenCx::const_to_opt_u128(val, true) {
+                let val = bx.cx().const_get_elt(vector, i as u64);
+                match bx.cx().const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
                         None
@@ -1136,7 +1136,7 @@ fn generic_simd_intrinsic(
 
         return Ok(bx.shuffle_vector(args[0].immediate(),
                                     args[1].immediate(),
-                                    CodegenCx::c_vector(&indices)))
+                                    bx.cx().c_vector(&indices)))
     }
 
     if name == "simd_insert" {
@@ -1549,7 +1549,7 @@ fn generic_simd_intrinsic(
                             //   code is generated
                             // * if the accumulator of the fmul isn't 1, incorrect
                             //   code is generated
-                            match CodegenCx::const_get_real(acc) {
+                            match bx.cx().const_get_real(acc) {
                                 None => return_error!("accumulator of {} is not a constant", $name),
                                 Some((v, loses_info)) => {
                                     if $name.contains("mul") && v != 1.0_f64 {

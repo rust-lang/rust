@@ -324,7 +324,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond = self.codegen_operand(&bx, cond).immediate();
-                let mut const_cond = CodegenCx::const_to_opt_u128(cond, false).map(|c| c == 1);
+                let mut const_cond = bx.cx().const_to_opt_u128(cond, false).map(|c| c == 1);
 
                 // This case can currently arise only from functions marked
                 // with #[rustc_inherit_overflow_checks] and inlined from

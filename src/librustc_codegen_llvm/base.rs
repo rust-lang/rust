@@ -1151,7 +1151,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if !cx.used_statics.borrow().is_empty() {
                 let name = const_cstr!("llvm.used");
                 let section = const_cstr!("llvm.metadata");
-                let array = CodegenCx::c_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
+                let array = cx.c_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,

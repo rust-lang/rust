@@ -34,8 +34,8 @@ pub fn size_and_align_of_dst(
         let (size, align) = bx.cx().size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, info, size, align);
-        let size = CodegenCx::c_usize(bx.cx(), size.bytes());
-        let align = CodegenCx::c_usize(bx.cx(), align.abi());
+        let size = bx.cx().c_usize(size.bytes());
+        let align = bx.cx().c_usize(align.abi());
         return (size, align);
     }
     match t.sty {
@@ -49,8 +49,8 @@ pub fn size_and_align_of_dst(
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let (size, align) = bx.cx().size_and_align_of(unit);
-            (bx.mul(info.unwrap(), CodegenCx::c_usize(bx.cx(), size.bytes())),
-             CodegenCx::c_usize(bx.cx(), align.abi()))
+            (bx.mul(info.unwrap(), bx.cx().c_usize(size.bytes())),
+             bx.cx().c_usize(align.abi()))
         }
         _ => {
             let cx = bx.cx();
@@ -93,8 +93,8 @@ pub fn size_and_align_of_dst(
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = match (CodegenCx::const_to_opt_u128(sized_align, false),
-                               CodegenCx::const_to_opt_u128(unsized_align, false)) {
+            let align = match (bx.cx().const_to_opt_u128(sized_align, false),
+                               bx.cx().const_to_opt_u128(unsized_align, false)) {
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
