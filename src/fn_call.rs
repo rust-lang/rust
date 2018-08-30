@@ -544,15 +544,20 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
 
             // Determining stack base address
             "pthread_attr_init" | "pthread_attr_destroy" | "pthread_attr_get_np" |
-            "pthread_getattr_np" | "pthread_self" => {
+            "pthread_getattr_np" | "pthread_self" | "pthread_get_stacksize_np" => {
                 self.write_null(dest)?;
             }
             "pthread_attr_getstack" => {
                 // second argument is where we are supposed to write the stack size
                 let ptr = self.ref_to_mplace(self.read_value(args[1])?)?;
-                self.write_scalar(Scalar::from_int(0x80000, args[1].layout.size), ptr.into())?;
+                let stackaddr = Scalar::from_int(0x80000, args[1].layout.size); // just any address
+                self.write_scalar(stackaddr, ptr.into())?;
                 // return 0
                 self.write_null(dest)?;
+            }
+            "pthread_get_stackaddr_np" => {
+                let stackaddr = Scalar::from_int(0x80000, dest.layout.size); // just any address
+                self.write_scalar(stackaddr, dest)?;
             }
 
             // Stub out calls for condvar, mutex and rwlock to just return 0
