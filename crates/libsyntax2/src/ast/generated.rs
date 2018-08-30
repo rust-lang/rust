@@ -1278,6 +1278,24 @@ impl<'a> AstNode<'a> for Pat<'a> {
 
 impl<'a> Pat<'a> {}
 
+// Path
+#[derive(Debug, Clone, Copy)]
+pub struct Path<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Path<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PATH => Some(Path { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Path<'a> {}
+
 // PathExpr
 #[derive(Debug, Clone, Copy)]
 pub struct PathExpr<'a> {

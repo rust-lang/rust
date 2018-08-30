@@ -21,11 +21,10 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
     // Insert a fake ident to get a valid parse tree
     let file = {
         let edit = AtomEdit::insert(offset, "intellijRulezz".to_string());
-        // Don't bother with completion if incremental reparse fails
-        file.incremental_reparse(&edit)?
+        file.reparse(&edit)
     };
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), offset)?;
-    if !is_ident_expr(name_ref) {
+    if !is_single_segment(name_ref) {
         return None;
     }
 
@@ -50,11 +49,11 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
     Some(res)
 }
 
-fn is_ident_expr(name_ref: ast::NameRef) -> bool {
-    match ancestors(name_ref.syntax()).filter_map(ast::Expr::cast).next() {
+fn is_single_segment(name_ref: ast::NameRef) -> bool {
+    match ancestors(name_ref.syntax()).filter_map(ast::Path::cast).next() {
         None => false,
-        Some(expr) => {
-            expr.syntax().range() == name_ref.syntax().range()
+        Some(path) => {
+            path.syntax().range() == name_ref.syntax().range()
         }
     }
 }
@@ -201,6 +200,15 @@ mod tests {
             ", r#"[CompletionItem { name: "Foo", snippet: None },
                    CompletionItem { name: "Baz", snippet: None },
                    CompletionItem { name: "quux", snippet: None }]"#);
+    }
+
+    #[test]
+    fn test_complete_type() {
+        check_scope_completion(r"
+            struct Foo;
+            fn x() -> <|>
+        ", r#"[CompletionItem { name: "Foo", snippet: None },
+               CompletionItem { name: "x", snippet: None }]"#)
     }
 
     #[test]

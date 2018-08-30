@@ -513,6 +513,7 @@ Grammar(
             collections: [
                 ["args", "Expr"]
             ]
-        )
+        ),
+        "Path": (),
     },
 )
