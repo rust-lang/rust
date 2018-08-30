@@ -966,6 +966,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                      "the `#[rustc_test_marker]` attribute \
                                       is used internally to track tests",
                                      cfg_fn!(rustc_attrs))),
+    ("rustc_transparent_macro", Whitelisted, Gated(Stability::Unstable,
+                                                   "rustc_attrs",
+                                                   "used internally for testing macro hygiene",
+                                                    cfg_fn!(rustc_attrs))),
 
     // RFC #2094
     ("nll", Whitelisted, Gated(Stability::Unstable,

@@ -1,0 +1,195 @@
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:93:13
+   |
+LL |             m!(); //~ ERROR `m` is ambiguous
+   |             ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:89:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:131:42
+   |
+LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+   |                                          ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:127:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:140:9
+   |
+LL |         m!(); //~ ERROR `m` is ambiguous
+   |         ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:136:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:156:9
+   |
+LL |         m!(); //~ ERROR `m` is ambiguous
+   |         ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:77:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:172:13
+   |
+LL |             m!(); //~ ERROR `m` is ambiguous
+   |             ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:77:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:210:42
+   |
+LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+   |                                          ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:77:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:224:9
+   |
+LL |         m!(); //~ ERROR `m` is ambiguous
+   |         ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:219:13
+   |
+LL |             macro_rules! m { () => {} }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-legacy.rs:254:42
+   |
+LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+   |                                          ^
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:80:9
+   |
+LL |         macro_rules! m { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-legacy.rs:249:13
+   |
+LL |             macro_rules! m { () => {} }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0659`.
