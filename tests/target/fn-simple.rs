@@ -108,3 +108,12 @@ crate fn init() {}
 
 // #2630
 fn make_map<T, F: (Fn(&T) -> String)>(records: &Vec<T>, key_fn: F) -> HashMap<String, usize> {}
+
+// #2956
+fn bar(
+    beans: Asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf,
+    spam: bool,
+    eggs: bool,
+) -> bool {
+    unimplemented!();
+}
