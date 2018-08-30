@@ -1310,11 +1310,17 @@ impl<T> JoinHandle<T> {
 
     /// Waits for the associated thread to finish.
     ///
+    /// In terms of [atomic memory orderings],  the completion of the associated
+    /// thread synchronizes with this function returning. In other words, all
+    /// operations performed by that thread are ordered before all
+    /// operations that happen after `join` returns.
+    ///
     /// If the child thread panics, [`Err`] is returned with the parameter given
     /// to [`panic`].
     ///
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`panic`]: ../../std/macro.panic.html
+    /// [atomic memory orderings]: ../../std/sync/atomic/index.html
     ///
     /// # Panics
     ///
