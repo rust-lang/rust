@@ -8,8 +8,17 @@ use std::fs;
 use std::io::prelude::*;
 
 lazy_static! {
-    static ref DEC_CLIPPY_LINT_RE: Regex = Regex::new(r#"declare_clippy_lint!\s*[\{(]\s*pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*(?P<cat>[a-z_]+)\s*,\s*"(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]"#).unwrap();
-    static ref DEC_DEPRECATED_LINT_RE: Regex = Regex::new(r#"declare_deprecated_lint!\s*[{(]\s*pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*"(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]"#).unwrap();
+    static ref DEC_CLIPPY_LINT_RE: Regex = Regex::new(r#"(?x)
+        declare_clippy_lint!\s*[\{(]\s*
+        pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+        (?P<cat>[a-z_]+)\s*,\s*
+        "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
+    "#).unwrap();
+    static ref DEC_DEPRECATED_LINT_RE: Regex = Regex::new(r#"(?x)
+        declare_deprecated_lint!\s*[{(]\s*
+        pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+        "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
+    "#).unwrap();
     static ref NL_ESCAPE_RE: Regex = Regex::new(r#"\\\n\s*"#).unwrap();
     pub static ref DOCS_LINK: String = "https://rust-lang-nursery.github.io/rust-clippy/master/index.html".to_string();
 }
