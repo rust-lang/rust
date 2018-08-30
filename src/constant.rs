@@ -1,8 +1,10 @@
 use cranelift_module::*;
 use crate::prelude::*;
-use rustc::mir::interpret::{read_target_uint, AllocId, AllocType, ConstValue, GlobalId};
+use rustc::mir::interpret::{
+    read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId,
+};
 use rustc::ty::Const;
-use rustc_mir::interpret::{CompileTimeEvaluator, Memory};
+use rustc_mir::interpret::{CompileTimeEvaluator, EvalContext, Memory, MemoryKind};
 use syntax::ast::Mutability as AstMutability;
 
 #[derive(Default)]
@@ -120,7 +122,22 @@ fn trans_const_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
-    let alloc = fx.tcx.const_to_allocation(const_);
+    // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
+    let result = || -> EvalResult<'tcx, &'tcx Allocation> {
+        let mut ecx = EvalContext::new(
+            fx.tcx.at(DUMMY_SP),
+            ty::ParamEnv::reveal_all(),
+            CompileTimeEvaluator,
+            (),
+        );
+        let op = ecx.const_to_op(const_)?;
+        let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
+        ecx.copy_op(op, ptr.into())?;
+        let alloc = ecx.memory.get(ptr.to_ptr()?.alloc_id)?;
+        Ok(fx.tcx.intern_const_alloc(alloc.clone()))
+    };
+    let alloc = result().expect("unable to convert ConstValue to Allocation");
+
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
     fx.constants.todo.insert(TodoItem::Alloc(alloc_id));
@@ -190,7 +207,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                 let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
 
                 let alloc = match const_.val {
-                    ConstValue::ByRef(alloc, n) if n.bytes() == 0 => alloc,
+                    ConstValue::ByRef(_alloc_id, alloc, n) if n.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
@@ -208,7 +225,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 
         data_ctx.define(
             alloc.bytes.to_vec().into_boxed_slice(),
-            match alloc.runtime_mutability {
+            match alloc.mutability {
                 AstMutability::Mutable => Writability::Writable,
                 AstMutability::Immutable => Writability::Readonly,
             },
