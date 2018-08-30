@@ -510,6 +510,9 @@ h4 > code, h3 > code, .invisible > code {
 	top: -9px;
 	left: -13px;
 }
+.methods > .stability {
+	margin-top: -8px;
+}
 
 #main > .stability {
 	margin-top: 0;
