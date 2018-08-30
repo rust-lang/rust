@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
-use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
+use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then, snippet_opt};
 use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;
 
@@ -49,7 +49,10 @@ declare_clippy_lint! {
 /// **Why is this bad?** The code is more readable with an inclusive range
 /// like `x..=y`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Will add unnecessary pair of parentheses when the
+/// expression is not wrapped in a pair but starts with a opening parenthesis
+/// and ends with a closing one.
+/// I.e: let _ = (f()+1)..(f()+1) results in let _ = ((f()+1)..(f()+1)).
 ///
 /// **Example:**
 /// ```rust
@@ -145,9 +148,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     |db| {
                         let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
-                        db.span_suggestion(expr.span,
+                        if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
+                            if is_wrapped.starts_with("(") && is_wrapped.ends_with(")") {
+                                db.span_suggestion(expr.span,
+                                           "use",
+                                           format!("({}..={})", start, end));
+                            } else {
+                                db.span_suggestion(expr.span,
                                            "use",
                                            format!("{}..={}", start, end));
+                            }
+                        }
                     },
                 );
             }

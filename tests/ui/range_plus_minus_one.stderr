@@ -42,7 +42,7 @@ error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:28:13
    |
 28 |     let _ = (f()+1)..(f()+1);
-   |             ^^^^^^^^^^^^^^^^ help: use: `(f()+1)..=f()`
+   |             ^^^^^^^^^^^^^^^^ help: use: `((f()+1)..=f())`
 
 error: aborting due to 7 previous errors
 
