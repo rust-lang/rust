@@ -43,7 +43,7 @@ use dataflow::DataflowResultsConsumer;
 use dataflow::FlowAtLocation;
 use dataflow::MoveDataParamEnv;
 use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::{EverInitializedPlaces, MovingOutStatements};
+use dataflow::EverInitializedPlaces;
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -186,15 +186,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
-    let flow_move_outs = FlowAtLocation::new(do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        MovingOutStatements::new(tcx, mir, &mdpe),
-        |bd, i| DebugFormatted::new(&bd.move_data().moves[i]),
-    ));
     let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
@@ -268,7 +259,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mut state = Flows::new(
         flow_borrows,
         flow_uninits,
-        flow_move_outs,
         flow_ever_inits,
         polonius_output,
     );
@@ -1617,7 +1607,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let place = self.base_path(place_span.0);
 
         let maybe_uninits = &flow_state.uninits;
-        let curr_move_outs = &flow_state.move_outs;
 
         // Bad scenarios:
         //
@@ -1663,7 +1652,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         desired_action,
                         place_span,
                         mpi,
-                        curr_move_outs,
                     );
                     return; // don't bother finding other problems.
                 }
@@ -1691,7 +1679,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let place = self.base_path(place_span.0);
 
         let maybe_uninits = &flow_state.uninits;
-        let curr_move_outs = &flow_state.move_outs;
 
         // Bad scenarios:
         //
@@ -1727,7 +1714,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     desired_action,
                     place_span,
                     child_mpi,
-                    curr_move_outs,
                 );
                 return; // don't bother finding other problems.
             }

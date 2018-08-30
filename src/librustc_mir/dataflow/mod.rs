@@ -28,7 +28,7 @@ use std::usize;
 
 pub use self::impls::{MaybeStorageLive};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-pub use self::impls::{DefinitelyInitializedPlaces, MovingOutStatements};
+pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::Borrows;
 pub use self::impls::HaveBeenBorrowedLocals;
@@ -38,7 +38,7 @@ pub(crate) use self::drop_flag_effects::*;
 use self::move_paths::MoveData;
 
 mod at_location;
-mod drop_flag_effects;
+pub mod drop_flag_effects;
 mod graphviz;
 mod impls;
 pub mod move_paths;
@@ -508,18 +508,6 @@ impl<'a, E:Idx> BlockSets<'a, E> {
     {
         for j in i {
             self.gen(j.borrow());
-        }
-    }
-
-    fn gen_all_and_assert_dead<I>(&mut self, i: I)
-        where I: IntoIterator,
-        I::Item: Borrow<E>
-    {
-        for j in i {
-            let j = j.borrow();
-            let retval = self.gen_set.add(j);
-            self.kill_set.remove(j);
-            assert!(retval);
         }
     }
 

@@ -22,13 +22,13 @@ use super::MoveDataParamEnv;
 
 use util::elaborate_drops::DropFlagState;
 
-use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex, InitIndex};
+use super::move_paths::{HasMoveData, MoveData, MovePathIndex, InitIndex};
 use super::move_paths::{LookupResult, InitKind};
 use super::{BitDenotation, BlockSets, InitialFlow};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
-use super::{on_lookup_result_bits, for_location_inits};
+use super::on_lookup_result_bits;
 
 mod storage_liveness;
 
@@ -208,40 +208,6 @@ impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
-}
-
-/// `MovingOutStatements` tracks the statements that perform moves out
-/// of particular places. More precisely, it tracks whether the
-/// *effect* of such moves (namely, the uninitialization of the
-/// place in question) can reach some point in the control-flow of
-/// the function, or if that effect is "killed" by some intervening
-/// operation reinitializing that place.
-///
-/// The resulting dataflow is a more enriched version of
-/// `MaybeUninitializedPlaces`. Both structures on their own only tell
-/// you if a place *might* be uninitialized at a given point in the
-/// control flow. But `MovingOutStatements` also includes the added
-/// data of *which* particular statement causing the deinitialization
-/// that the borrow checker's error message may need to report.
-#[allow(dead_code)]
-pub struct MovingOutStatements<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
-}
-
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> MovingOutStatements<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
-        MovingOutStatements { tcx: tcx, mir: mir, mdpe: mdpe }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -488,83 +454,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
-    type Idx = MoveOutIndex;
-    fn name() -> &'static str { "moving_out" }
-    fn bits_per_block(&self) -> usize {
-        self.move_data().moves.len()
-    }
-
-    fn start_block_effect(&self, _sets: &mut IdxSet<MoveOutIndex>) {
-        // no move-statements have been executed prior to function
-        // execution, so this method has no effect on `_sets`.
-    }
-
-    fn statement_effect(&self,
-                        sets: &mut BlockSets<MoveOutIndex>,
-                        location: Location) {
-        let (tcx, mir, move_data) = (self.tcx, self.mir, self.move_data());
-        let stmt = &mir[location.block].statements[location.statement_index];
-        let loc_map = &move_data.loc_map;
-        let path_map = &move_data.path_map;
-
-        match stmt.kind {
-            // this analysis only tries to find moves explicitly
-            // written by the user, so we ignore the move-outs
-            // created by `StorageDead` and at the beginning
-            // of a function.
-            mir::StatementKind::StorageDead(_) => {}
-            _ => {
-                debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
-                       stmt, location, &loc_map[location]);
-                // Every path deinitialized by a *particular move*
-                // has corresponding bit, "gen'ed" (i.e. set)
-                // here, in dataflow vector
-                sets.gen_all_and_assert_dead(&loc_map[location]);
-            }
-        }
-
-        for_location_inits(tcx, mir, move_data, location,
-                           |mpi| sets.kill_all(&path_map[mpi]));
-    }
-
-    fn terminator_effect(&self,
-                         sets: &mut BlockSets<MoveOutIndex>,
-                         location: Location)
-    {
-        let (tcx, mir, move_data) = (self.tcx, self.mir, self.move_data());
-        let term = mir[location.block].terminator();
-        let loc_map = &move_data.loc_map;
-        let path_map = &move_data.path_map;
-
-        debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
-               term, location, &loc_map[location]);
-        sets.gen_all_and_assert_dead(&loc_map[location]);
-
-        for_location_inits(tcx, mir, move_data, location,
-                           |mpi| sets.kill_all(&path_map[mpi]));
-    }
-
-    fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MoveOutIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place) {
-        let move_data = self.move_data();
-        let bits_per_block = self.bits_per_block();
-
-        let path_map = &move_data.path_map;
-        on_lookup_result_bits(self.tcx,
-                              self.mir,
-                              move_data,
-                              move_data.rev_lookup.find(dest_place),
-                              |mpi| for moi in &path_map[mpi] {
-                                  assert!(moi.index() < bits_per_block);
-                                  in_out.remove(&moi);
-                              });
-    }
-}
-
 impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = InitIndex;
     fn name() -> &'static str { "ever_init" }
@@ -682,13 +571,6 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, '
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
-    #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // moves from both preds are in scope
-    }
-}
-
 impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
@@ -724,13 +606,6 @@ impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx>
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)
-    }
-}
-
-impl<'a, 'gcx, 'tcx> InitialFlow for MovingOutStatements<'a, 'gcx, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = no loans in scope by default
     }
 }
 

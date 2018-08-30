@@ -204,6 +204,28 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
+    pub fn predecessor_locations(&self, loc: Location) -> impl Iterator<Item = Location> + '_ {
+        let if_zero_locations = if loc.statement_index == 0 {
+            let predecessor_blocks = self.predecessors_for(loc.block);
+            let num_predecessor_blocks = predecessor_blocks.len();
+            Some((0 .. num_predecessor_blocks)
+                .map(move |i| predecessor_blocks[i])
+                .map(move |bb| self.terminator_loc(bb))
+            )
+        } else {
+            None
+        };
+
+        let if_not_zero_locations = if loc.statement_index == 0 {
+            None
+        } else {
+            Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
+        };
+
+        if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
+    }
+
+    #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(self)
     }
