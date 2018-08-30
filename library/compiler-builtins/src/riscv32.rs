@@ -1,7 +1,8 @@
 intrinsics! {
     // Implementation from gcc
     // https://raw.githubusercontent.com/gcc-mirror/gcc/master/libgcc/config/epiphany/mulsi3.c
-    pub extern "C" fn __mulsi3(mut a: u32, mut b: u32) -> u32 {
+    pub extern "C" fn __mulsi3(a: u32, b: u32) -> u32 {
+        let (mut a, mut b) = (a, b);
         let mut r: usize = 0;
 
         while a > 0 {
