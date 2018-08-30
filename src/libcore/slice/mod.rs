@@ -21,14 +21,9 @@
 // The library infrastructure for slices is fairly messy. There's
 // a lot of stuff defined here. Let's keep it clean.
 //
-// Since slices don't support inherent methods; all operations
-// on them are defined on traits, which are then re-exported from
-// the prelude for convenience. So there are a lot of traits here.
-//
 // The layout of this file is thus:
 //
-// * Slice-specific 'extension' traits and their implementations. This
-//   is where most of the slice API resides.
+// * Inherent methods. This is where most of the slice API resides.
 // * Implementations of a few common traits with important slice ops.
 // * Definitions of a bunch of iterators.
 // * Free functions.
