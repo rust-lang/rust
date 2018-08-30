@@ -104,7 +104,7 @@ macro_rules! newtype_index {
         impl $type {
             $v const MAX_AS_U32: u32 = $max;
 
-            $v const MAX: $type = unsafe { $type::from_u32_unchecked($max) };
+            $v const MAX: $type = $type::from_u32_const($max);
 
             #[inline]
             $v fn from_usize(value: usize) -> Self {
@@ -117,6 +117,24 @@ macro_rules! newtype_index {
             #[inline]
             $v fn from_u32(value: u32) -> Self {
                 assert!(value <= $max);
+                unsafe {
+                    $type::from_u32_unchecked(value)
+                }
+            }
+
+            /// Hacky variant of `from_u32` for use in constants.
+            /// This version checks the "max" constraint by using an
+            /// invalid array dereference.
+            #[inline]
+            $v const fn from_u32_const(value: u32) -> Self {
+                // This will fail at const eval time unless `value <=
+                // max` is true (in which case we get the index 0).
+                // It will also fail at runtime, of course, but in a
+                // kind of wacky way.
+                let _ = ["out of range value used"][
+                    !(value <= $max) as usize
+                ];
+
                 unsafe {
                     $type::from_u32_unchecked(value)
                 }
@@ -424,7 +442,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        pub const $name: $type = unsafe { $type::from_u32_unchecked($constant) };
+        pub const $name: $type = $type::from_u32_const($constant);
         newtype_index!(
             @derives      [$($derives,)*]
             @type         [$type]
