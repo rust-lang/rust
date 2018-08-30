@@ -401,18 +401,38 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 }
 
+pub fn val_ty(v: &'ll Value) -> &'ll Type {
+    unsafe {
+        llvm::LLVMTypeOf(v)
+    }
+}
+
+pub fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+    unsafe {
+        let ptr = bytes.as_ptr() as *const c_char;
+        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+    }
+}
+
+pub fn c_struct_in_context(
+    llcx: &'a llvm::Context,
+    elts: &[&'a Value],
+    packed: bool,
+) -> &'a Value {
+    unsafe {
+        llvm::LLVMConstStructInContext(llcx,
+                                       elts.as_ptr(), elts.len() as c_uint,
+                                       packed as Bool)
+    }
+}
+
 impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
+        val_ty(v)
     }
 
     fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
-        }
+        c_bytes_in_context(llcx, bytes)
     }
 
     fn c_struct_in_context(
@@ -421,11 +441,7 @@ impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        unsafe {
-            llvm::LLVMConstStructInContext(llcx,
-                                           elts.as_ptr(), elts.len() as c_uint,
-                                           packed as Bool)
-        }
+        c_struct_in_context(llcx, elts, packed)
     }
 }
 

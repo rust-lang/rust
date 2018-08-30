@@ -27,7 +27,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
-use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic, BasicBlock, True};
+use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic, BasicBlock};
 use llvm_util;
 use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, // ModuleLlvm,
      CachedModuleCodegen};
@@ -47,6 +47,7 @@ use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
 use interfaces::{Backend, CommonWriteMethods};
+use common;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 use value::Value;
@@ -433,16 +434,11 @@ impl<'ll> Backend for CodegenContext<'ll> {
 
 impl CommonWriteMethods for CodegenContext<'ll> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
+        common::val_ty(v)
     }
 
     fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
-        }
+        common::c_bytes_in_context(llcx, bytes)
     }
 
     fn c_struct_in_context(
@@ -451,11 +447,7 @@ impl CommonWriteMethods for CodegenContext<'ll> {
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        unsafe {
-            llvm::LLVMConstStructInContext(llcx,
-                                           elts.as_ptr(), elts.len() as c_uint,
-                                           packed as llvm::Bool)
-        }
+        common::c_struct_in_context(llcx, elts, packed)
     }
 }
 

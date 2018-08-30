@@ -77,7 +77,6 @@ use std::any::Any;
 use std::path::{PathBuf};
 use std::sync::mpsc;
 use std::marker::PhantomData;
-use libc::{c_uint, c_char};
 use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
@@ -378,20 +377,11 @@ impl ModuleLlvm<'ll> {
 
 impl CommonWriteMethods for ModuleLlvm<'ll> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        unsafe {
-            llvm::LLVMTypeOf(v)
-        }
+        common::val_ty(v)
     }
 
     fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        unsafe {
-            let ptr = bytes.as_ptr() as *const c_char;
-            return llvm::LLVMConstStringInContext(
-                llcx,
-                ptr,
-                bytes.len() as c_uint,
-                llvm::True);
-        }
+        common::c_bytes_in_context(llcx, bytes)
     }
 
     fn c_struct_in_context(
@@ -400,11 +390,7 @@ impl CommonWriteMethods for ModuleLlvm<'ll> {
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        unsafe {
-            llvm::LLVMConstStructInContext(llcx,
-                                           elts.as_ptr(), elts.len() as c_uint,
-                                           packed as llvm::Bool)
-        }
+        common::c_struct_in_context(llcx, elts, packed)
     }
 }
 
