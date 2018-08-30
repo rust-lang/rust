@@ -60,6 +60,7 @@ impl Backend for Builder<'a, 'll, 'tcx, &'ll Value>  {
         type Value = &'ll Value;
         type BasicBlock = &'ll BasicBlock;
         type Type = &'ll type_::Type;
+        type TypeKind = llvm::TypeKind;
         type Context = &'ll llvm::Context;
 }
 
