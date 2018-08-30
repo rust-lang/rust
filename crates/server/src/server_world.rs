@@ -61,10 +61,11 @@ impl ServerWorldState {
         self.analysis_host.change_files(changes);
     }
 
-    pub fn add_mem_file(&mut self, path: PathBuf, text: String) {
+    pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {
         let file_id = self.path_map.get_or_insert(path);
         self.mem_map.insert(file_id, None);
         self.analysis_host.change_file(file_id, Some(text));
+        file_id
     }
 
     pub fn change_mem_file(&mut self, path: &Path, text: String) -> Result<()> {
@@ -75,7 +76,7 @@ impl ServerWorldState {
         Ok(())
     }
 
-    pub fn remove_mem_file(&mut self, path: &Path) -> Result<()> {
+    pub fn remove_mem_file(&mut self, path: &Path) -> Result<FileId> {
         let file_id = self.path_map.get_id(path).ok_or_else(|| {
             format_err!("change to unknown file: {}", path.display())
         })?;
@@ -86,7 +87,7 @@ impl ServerWorldState {
         // Do this via file watcher ideally.
         let text = fs::read_to_string(path).ok();
         self.analysis_host.change_file(file_id, text);
-        Ok(())
+        Ok(file_id)
     }
 
     pub fn snapshot(&self) -> ServerWorld {

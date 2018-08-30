@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use languageserver_types::{
-    Diagnostic, DiagnosticSeverity, Url, DocumentSymbol,
+    Diagnostic, DiagnosticSeverity, DocumentSymbol,
     Command, TextDocumentIdentifier,
     SymbolInformation, Position, Location, TextEdit,
     CompletionItem, InsertTextFormat, CompletionItemKind,
@@ -325,9 +325,9 @@ pub fn handle_code_action(
 
 pub fn publish_diagnostics(
     world: ServerWorld,
-    uri: Url
+    file_id: FileId,
 ) -> Result<req::PublishDiagnosticsParams> {
-    let file_id = world.uri_to_file_id(&uri)?;
+    let uri = world.file_id_to_uri(file_id)?;
     let line_index = world.analysis().file_line_index(file_id);
     let diagnostics = world.analysis().diagnostics(file_id)
         .into_iter()
@@ -344,9 +344,9 @@ pub fn publish_diagnostics(
 
 pub fn publish_decorations(
     world: ServerWorld,
-    uri: Url
+    file_id: FileId,
 ) -> Result<req::PublishDecorationsParams> {
-    let file_id = world.uri_to_file_id(&uri)?;
+    let uri = world.file_id_to_uri(file_id)?;
     Ok(req::PublishDecorationsParams {
         uri,
         decorations: highlight(&world, file_id),

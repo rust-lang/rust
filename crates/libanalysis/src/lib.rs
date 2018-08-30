@@ -12,6 +12,8 @@ mod symbol_index;
 mod module_map;
 mod imp;
 
+use std::sync::Arc;
+
 use relative_path::{RelativePath, RelativePathBuf};
 use libsyntax2::{File, TextRange, TextUnit, AtomEdit};
 use imp::{AnalysisImpl, AnalysisHostImpl};
@@ -31,7 +33,7 @@ pub trait FileResolver: Send + Sync + 'static {
 
 #[derive(Debug)]
 pub struct AnalysisHost {
-    pub(crate) imp: AnalysisHostImpl
+    imp: AnalysisHostImpl
 }
 
 impl AnalysisHost {
@@ -39,7 +41,7 @@ impl AnalysisHost {
         AnalysisHost { imp: AnalysisHostImpl::new() }
     }
     pub fn analysis(&self, file_resolver: impl FileResolver) -> Analysis {
-        Analysis { imp: self.imp.analysis(file_resolver) }
+        Analysis { imp: self.imp.analysis(Arc::new(file_resolver)) }
     }
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
         self.change_files(::std::iter::once((file_id, text)));
@@ -121,7 +123,7 @@ impl Query {
 
 #[derive(Clone, Debug)]
 pub struct Analysis {
-    pub(crate) imp: AnalysisImpl
+    imp: AnalysisImpl
 }
 
 impl Analysis {

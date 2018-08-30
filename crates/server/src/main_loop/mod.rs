@@ -1,4 +1,5 @@
 mod handlers;
+mod subscriptions;
 
 use std::{
     collections::{HashSet},
@@ -6,7 +7,7 @@ use std::{
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
-use languageserver_types::Url;
+use libanalysis::FileId;
 
 use {
     req, dispatch,
@@ -14,6 +15,7 @@ use {
     io::{Io, RawMsg, RawRequest, RawNotification},
     vfs::FileEvent,
     server_world::{ServerWorldState, ServerWorld},
+    main_loop::subscriptions::{Subscriptions},
 };
 
 pub(super) fn main_loop(
@@ -28,6 +30,7 @@ pub(super) fn main_loop(
 
     let mut pending_requests: HashSet<u64> = HashSet::new();
     let mut fs_events_receiver = Some(&fs_events_receiver);
+    let mut subs = Subscriptions::new();
     loop {
         enum Event {
             Msg(RawMsg),
@@ -47,7 +50,7 @@ pub(super) fn main_loop(
                 None => Event::FsWatcherDead,
             }
         };
-
+        let mut state_changed = false;
         match event {
             Event::ReceiverDead => {
                 io.cleanup_receiver()?;
@@ -70,6 +73,7 @@ pub(super) fn main_loop(
             Event::Fs(events) => {
                 trace!("fs change, {} events", events.len());
                 state.apply_fs_changes(events);
+                state_changed = true;
             }
             Event::Msg(msg) => {
                 match msg {
@@ -79,7 +83,8 @@ pub(super) fn main_loop(
                         }
                     }
                     RawMsg::Notification(not) => {
-                        on_notification(io, &mut state, pool, &task_sender, not)?
+                        on_notification(io, &mut state, &mut subs, not)?;
+                        state_changed = true;
                     }
                     RawMsg::Response(resp) => {
                         if !pending_requests.remove(&resp.id) {
@@ -89,6 +94,15 @@ pub(super) fn main_loop(
                 }
             }
         };
+
+        if state_changed {
+            update_file_notifications_on_threadpool(
+                pool,
+                state.snapshot(),
+                task_sender.clone(),
+                subs.subscriptions(),
+            )
+        }
     }
 }
 
@@ -140,8 +154,7 @@ fn on_request(
 fn on_notification(
     io: &mut Io,
     state: &mut ServerWorldState,
-    pool: &ThreadPool,
-    sender: &Sender<Task>,
+    subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {
     let mut not = Some(not);
@@ -149,13 +162,8 @@ fn on_notification(
         let uri = params.text_document.uri;
         let path = uri.to_file_path()
             .map_err(|()| format_err!("invalid uri: {}", uri))?;
-        state.add_mem_file(path, params.text_document.text);
-        update_file_notifications_on_threadpool(
-            pool,
-            state.snapshot(),
-            sender.clone(),
-            uri,
-        );
+        let file_id = state.add_mem_file(path, params.text_document.text);
+        subs.add_sub(file_id);
         Ok(())
     })?;
     dispatch::handle_notification::<req::DidChangeTextDocument, _>(&mut not, |mut params| {
@@ -166,23 +174,15 @@ fn on_notification(
             .ok_or_else(|| format_err!("empty changes"))?
             .text;
         state.change_mem_file(path.as_path(), text)?;
-        update_file_notifications_on_threadpool(
-            pool,
-            state.snapshot(),
-            sender.clone(),
-            uri,
-        );
         Ok(())
     })?;
     dispatch::handle_notification::<req::DidCloseTextDocument, _>(&mut not, |params| {
         let uri = params.text_document.uri;
         let path = uri.to_file_path()
             .map_err(|()| format_err!("invalid uri: {}", uri))?;
-        state.remove_mem_file(path.as_path())?;
-        let not = req::PublishDiagnosticsParams {
-            uri,
-            diagnostics: Vec::new(),
-        };
+        let file_id = state.remove_mem_file(path.as_path())?;
+        subs.remove_sub(file_id);
+        let not = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
         let not = dispatch::send_notification::<req::PublishDiagnostics>(not);
         io.send(RawMsg::Notification(not));
         Ok(())
@@ -227,25 +227,27 @@ fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: ServerWorld,
     sender: Sender<Task>,
-    uri: Url,
+    subscriptions: Vec<FileId>,
 ) {
     pool.execute(move || {
-        match handlers::publish_diagnostics(world.clone(), uri.clone()) {
-            Err(e) => {
-                error!("failed to compute diagnostics: {:?}", e)
+        for file_id in subscriptions {
+            match handlers::publish_diagnostics(world.clone(), file_id) {
+                Err(e) => {
+                    error!("failed to compute diagnostics: {:?}", e)
+                }
+                Ok(params) => {
+                    let not = dispatch::send_notification::<req::PublishDiagnostics>(params);
+                    sender.send(Task::Notify(not));
+                }
             }
-            Ok(params) => {
-                let not = dispatch::send_notification::<req::PublishDiagnostics>(params);
-                sender.send(Task::Notify(not));
-            }
-        }
-        match handlers::publish_decorations(world, uri) {
-            Err(e) => {
-                error!("failed to compute decorations: {:?}", e)
-            }
-            Ok(params) => {
-                let not = dispatch::send_notification::<req::PublishDecorations>(params);
-                sender.send(Task::Notify(not))
+            match handlers::publish_decorations(world.clone(), file_id) {
+                Err(e) => {
+                    error!("failed to compute decorations: {:?}", e)
+                }
+                Ok(params) => {
+                    let not = dispatch::send_notification::<req::PublishDecorations>(params);
+                    sender.send(Task::Notify(not))
+                }
             }
         }
     });

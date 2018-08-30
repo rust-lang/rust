@@ -39,11 +39,11 @@ impl AnalysisHostImpl {
 
     pub fn analysis(
         &self,
-        file_resolver: impl FileResolver,
+        file_resolver: Arc<dyn FileResolver>,
     ) -> AnalysisImpl {
         AnalysisImpl {
             needs_reindex: AtomicBool::new(false),
-            file_resolver: Arc::new(file_resolver),
+            file_resolver,
             data: self.data.clone(),
         }
     }
@@ -78,7 +78,7 @@ impl AnalysisHostImpl {
 
 pub(crate) struct AnalysisImpl {
     needs_reindex: AtomicBool,
-    file_resolver: Arc<FileResolver>,
+    file_resolver: Arc<dyn FileResolver>,
     data: Arc<WorldData>,
 }
 
@@ -236,15 +236,13 @@ impl AnalysisImpl {
             ("add `#[derive]`", libeditor::add_derive(&file, offset).map(|f| f())),
             ("add impl", libeditor::add_impl(&file, offset).map(|f| f())),
         ];
-        let mut res = Vec::new();
-        for (name, local_edit) in actions {
-            if let Some(local_edit) = local_edit {
-                res.push(SourceChange::from_local_edit(
-                    file_id, name, local_edit
+        actions.into_iter()
+            .filter_map(|(name, local_edit)| {
+                Some(SourceChange::from_local_edit(
+                    file_id, name, local_edit?,
                 ))
-            }
-        }
-        res
+            })
+            .collect()
     }
 
     fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {
