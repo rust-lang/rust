@@ -16,5 +16,11 @@ error: only int, `bool` and `char` operations are stable in const fn
 LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` operations
    |                          ^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: can only call other `min_const_fn` within a `min_const_fn`
+  --> $DIR/min_const_fn_libstd_stability.rs:44:32
+   |
+LL | const fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
+   |                                ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
