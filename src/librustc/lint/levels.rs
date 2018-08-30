@@ -282,7 +282,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                         .get_lint_level(lint, self.cur, Some(&specs), &sess);
                                 let msg = format!(
                                     "lint name `{}` is deprecated \
-                                     and may not have an effect in the future \
+                                     and may not have an effect in the future. \
                                      Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
                                     name
                                 );

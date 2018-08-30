@@ -417,7 +417,7 @@ impl LintStore {
                             new_name.to_string(),
                         )));
                     }
-                    CheckLintNameResult::Tool(Ok(&ids.0))
+                    CheckLintNameResult::Tool(Err((Some(&ids.0), complete_name)))
                 }
             },
             Some(&Id(ref id)) => {
