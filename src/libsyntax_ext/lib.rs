@@ -71,6 +71,18 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          enable_quotes: bool) {
     deriving::register_builtin_derives(resolver);
 
+    {
+        let mut register_unshadowable = |name, ext| {
+            resolver.add_unshadowable_attr(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
+        };
+
+        register_unshadowable(Symbol::intern("test"),
+            MultiModifier(Box::new(test::expand_test)));
+
+        register_unshadowable(Symbol::intern("bench"),
+            MultiModifier(Box::new(test::expand_bench)));
+    }
+
     let mut register = |name, ext| {
         resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
@@ -133,8 +145,6 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
-    register(Symbol::intern("test"), MultiModifier(Box::new(test::expand_test)));
-    register(Symbol::intern("bench"), MultiModifier(Box::new(test::expand_bench)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),

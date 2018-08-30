@@ -769,8 +769,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("cfg_attr", Normal, Ungated),
     ("main", Normal, Ungated),
     ("start", Normal, Ungated),
-    ("test", Normal, Ungated),
-    ("bench", Normal, Ungated),
     ("repr", Normal, Ungated),
     ("path", Normal, Ungated),
     ("abi", Normal, Ungated),

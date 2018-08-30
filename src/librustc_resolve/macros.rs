@@ -207,6 +207,23 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         self.macro_prelude.insert(ident.name, binding);
     }
 
+    fn add_unshadowable_attr(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
+        let def_id = DefId {
+            krate: BUILTIN_MACROS_CRATE,
+            index: DefIndex::from_array_index(self.macro_map.len(),
+                                              DefIndexAddressSpace::Low),
+        };
+        let kind = ext.kind();
+        self.macro_map.insert(def_id, ext);
+        let binding = self.arenas.alloc_name_binding(NameBinding {
+            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
+            span: DUMMY_SP,
+            vis: ty::Visibility::Invisible,
+            expansion: Mark::root(),
+        });
+        self.unshadowable_attrs.insert(ident.name, binding);
+    }
+
     fn resolve_imports(&mut self) {
         ImportResolver { resolver: self }.resolve_imports()
     }
@@ -462,8 +479,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             return def;
         }
 
-        if kind == MacroKind::Attr && *&path[0].as_str() == "test" {
-            return Ok(self.macro_prelude.get(&path[0].name).unwrap().def())
+        if kind == MacroKind::Attr && path.len() == 1 {
+            if let Some(ext) = self.unshadowable_attrs.get(&path[0].name) {
+                return Ok(ext.def());
+            }
         }
 
         let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
