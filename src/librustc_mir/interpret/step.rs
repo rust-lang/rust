@@ -73,7 +73,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 "Constant evaluating a complex constant, this might take some time");
         }
 
-        self.loop_detector.observe_and_analyze(&self.machine, &self.memory, &self.stack[..])
+        self.loop_detector.observe_and_analyze(
+            &self.tcx,
+            &self.machine,
+            &self.memory,
+            &self.stack[..],
+        )
     }
 
     pub fn run(&mut self) -> EvalResult<'tcx> {

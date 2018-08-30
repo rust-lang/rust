@@ -227,12 +227,13 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
 
     pub fn observe_and_analyze(
         &mut self,
+        tcx: &TyCtxt<'b, 'tcx, 'tcx>,
         machine: &M,
         memory: &Memory<'a, 'mir, 'tcx, M>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
 
-        let mut hcx = memory.tcx.get_stable_hashing_context();
+        let mut hcx = tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
         (machine, stack).hash_stable(&mut hcx, &mut hasher);
         let hash = hasher.finish();
