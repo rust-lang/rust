@@ -54,17 +54,17 @@ impl Lint {
 
 pub fn collect_all() -> Vec<Lint> {
     let mut lints = vec![];
-    for direntry in lint_files() {
-        lints.append(&mut collect_from_file(&direntry));
+    for dir_entry in lint_files() {
+        lints.append(&mut collect_from_file(&dir_entry));
     }
     lints
 }
 
-fn collect_from_file(direntry: &fs::DirEntry) -> Vec<Lint> {
-    let mut file = fs::File::open(direntry.path()).unwrap();
+fn collect_from_file(dir_entry: &fs::DirEntry) -> Vec<Lint> {
+    let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
-    parse_contents(&content, direntry.path().file_stem().unwrap().to_str().unwrap())
+    parse_contents(&content, dir_entry.path().file_stem().unwrap().to_str().unwrap())
 }
 
 fn parse_contents(content: &str, filename: &str) -> Vec<Lint> {
