@@ -575,6 +575,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 let addr = self.read_scalar(args[0])?.not_undef()?;
                 self.write_scalar(addr, dest)?;
             }
+            "mprotect" => {
+                self.write_null(dest)?;
+            }
 
             // Windows API subs
             "AddVectoredExceptionHandler" => {
