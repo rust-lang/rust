@@ -1,3 +1,5 @@
+// ignore-windows
+
 //error-pattern: the evaluated program leaked memory
 
 use std::rc::Rc;

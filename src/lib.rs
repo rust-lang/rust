@@ -159,7 +159,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
     match res {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
-            if leaks != 0 {
+            // Disable the leak test on some platforms where we likely do not
+            // correctly implement TLS destructors.
+            let target_os = &ecx.tcx.tcx.sess.target.target.target_os;
+            if target_os.to_lowercase() != "windows" && leaks != 0 {
                 tcx.sess.err("the evaluated program leaked memory");
             }
         }
