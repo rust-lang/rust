@@ -20,7 +20,7 @@ use std::mem;
 use super::abs_domain::Lift;
 
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
-use super::{MoveError, InitIndex, Init, LookupResult, InitKind};
+use super::{MoveError, InitIndex, Init, InitLocation, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
 
 struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -237,10 +237,9 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.mir.args_iter() {
             let path = self.data.rev_lookup.locals[arg];
-            let span = self.mir.local_decls[arg].source_info.span;
 
             let init = self.data.inits.push(Init {
-                path, span, kind: InitKind::Deep
+                path, kind: InitKind::Deep, location: InitLocation::Argument(arg),
             });
 
             debug!("gather_args: adding init {:?} of {:?} for argument {:?}",
@@ -428,7 +427,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 
         if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
             let init = self.builder.data.inits.push(Init {
-                span: self.builder.mir.source_info(self.loc).span,
+                location: InitLocation::Statement(self.loc),
                 path,
                 kind,
             });

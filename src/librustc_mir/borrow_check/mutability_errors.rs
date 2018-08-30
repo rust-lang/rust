@@ -16,6 +16,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
+use dataflow::move_paths::InitLocation;
 use borrow_check::MirBorrowckCtxt;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
