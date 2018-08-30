@@ -434,6 +434,7 @@ impl<'ll> Backend for CodegenContext<'ll> {
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Context = &'ll llvm::Context;
+    type TypeKind = llvm::TypeKind;
 }
 
 impl CommonWriteMethods for CodegenContext<'ll> {

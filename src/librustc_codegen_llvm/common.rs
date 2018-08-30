@@ -197,6 +197,7 @@ impl Backend for CodegenCx<'ll, 'tcx> {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
+    type TypeKind = llvm::TypeKind;
     type Context = &'ll llvm::Context;
 }
 

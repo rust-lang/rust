@@ -11,7 +11,9 @@
 mod builder;
 mod backend;
 mod common;
+mod type_;
 
 pub use self::builder::BuilderMethods;
 pub use self::backend::Backend;
 pub use self::common::{CommonMethods, CommonWriteMethods};
+pub use self::type_::TypeMethods;
