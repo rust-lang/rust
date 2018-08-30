@@ -40,16 +40,16 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
         elts: &[Self::Value],
         packed: bool
     ) -> Self::Value;
-    fn c_array(ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
-    fn c_vector(elts: &[Self::Value]) -> Self::Value;
+    fn c_array(&self, ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
+    fn c_vector(&self, elts: &[Self::Value]) -> Self::Value;
     fn c_bytes(&self, bytes: &[u8]) -> Self::Value;
 
-    fn const_get_elt(v: Self::Value, idx: u64) -> Self::Value;
-    fn const_get_real(v: Self::Value) -> Option<(f64, bool)>;
-    fn const_to_uint(v: Self::Value) -> u64;
-    fn is_const_integral(v: Self::Value) -> bool;
-    fn is_const_real(v: Self::Value) -> bool;
-    fn const_to_opt_u128(v: Self::Value, sign_ext: bool) -> Option<u128>;
+    fn const_get_elt(&self, v: Self::Value, idx: u64) -> Self::Value;
+    fn const_get_real(&self, v: Self::Value) -> Option<(f64, bool)>;
+    fn const_to_uint(&self, v: Self::Value) -> u64;
+    fn is_const_integral(&self, v: Self::Value) -> bool;
+    fn is_const_real(&self, v: Self::Value) -> bool;
+    fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 }
 
 pub trait CommonWriteMethods : Backend {

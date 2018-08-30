@@ -323,13 +323,13 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         &self.c_struct_in_context(&self.llcx, elts, packed)
     }
 
-    fn c_array(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+    fn c_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         unsafe {
             return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
         }
     }
 
-    fn c_vector(elts: &[&'ll Value]) -> &'ll Value {
+    fn c_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
         unsafe {
             return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
         }
@@ -339,7 +339,7 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         &self.c_bytes_in_context(&self.llcx, bytes)
     }
 
-    fn const_get_elt(v: &'ll Value, idx: u64) -> &'ll Value {
+    fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             assert_eq!(idx as c_uint as u64, idx);
             let us = &[idx as c_uint];
@@ -352,9 +352,9 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    fn const_get_real(v: &'ll Value) -> Option<(f64, bool)> {
+    fn const_get_real(&self, v: &'ll Value) -> Option<(f64, bool)> {
         unsafe {
-            if Self::is_const_real(v) {
+            if self.is_const_real(v) {
                 let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
                 let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
                 let loses_info = if loses_info == 1 { true } else { false };
@@ -365,27 +365,27 @@ impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    fn const_to_uint(v: &'ll Value) -> u64 {
+    fn const_to_uint(&self, v: &'ll Value) -> u64 {
         unsafe {
             llvm::LLVMConstIntGetZExtValue(v)
         }
     }
 
-    fn is_const_integral(v: &'ll Value) -> bool {
+    fn is_const_integral(&self, v: &'ll Value) -> bool {
         unsafe {
             llvm::LLVMIsAConstantInt(v).is_some()
         }
     }
 
-    fn is_const_real(v: &'ll Value) -> bool {
+    fn is_const_real(&self, v: &'ll Value) -> bool {
         unsafe {
             llvm::LLVMIsAConstantFP(v).is_some()
         }
     }
 
-    fn const_to_opt_u128(v: &'ll Value, sign_ext: bool) -> Option<u128> {
+    fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
         unsafe {
-            if Self::is_const_integral(v) {
+            if self.is_const_integral(v) {
                 let (mut lo, mut hi) = (0u64, 0u64);
                 let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
                                                            &mut hi, &mut lo);

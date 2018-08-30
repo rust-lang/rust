@@ -20,7 +20,6 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, IntPredicate, RealPredicate};
-use context::CodegenCx;
 use consts;
 use monomorphize;
 use type_::Type;
@@ -110,7 +109,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let size = bx.cx().c_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if CodegenCx::is_const_integral(v) && CodegenCx::const_to_uint(v) == 0 {
+                    if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
                         let fill = bx.cx().c_u8(0);
                         base::call_memset(&bx, start, fill, size, align, false);
                         return bx;
