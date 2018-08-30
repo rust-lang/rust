@@ -1,18 +1,27 @@
-From 439444eb7d5557daa5e8cfafd1317816fefdad70 Mon Sep 17 00:00:00 2001
+From 9db209102bf5f7850ccd456be0d5af09405ee950 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Wed, 8 Aug 2018 15:51:42 +0200
+Date: Thu, 30 Aug 2018 20:47:12 +0200
 Subject: [PATCH] Disable future and task modules, because they contain unsized
  types
 
 ---
- src/libcore/lib.rs | 2 ++
- src/libcore/mem.rs | 6 ++++--
+ src/libcore/lib.rs    | 4 +++-
+ src/libcore/option.rs | 4 +++-
  2 files changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 71fcff2..7dcbb4b 100644
+index 9b64b7d..9d2e230 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
+@@ -188,7 +188,7 @@ pub mod cell;
+ pub mod char;
+ pub mod panic;
+ pub mod panicking;
+-pub mod pin;
++//pub mod pin;
+ pub mod iter;
+ pub mod option;
+ pub mod raw;
 @@ -202,9 +202,11 @@ pub mod time;
  
  pub mod unicode;
@@ -25,38 +34,35 @@ index 71fcff2..7dcbb4b 100644
  
  /* Heap memory allocator trait */
  #[allow(missing_docs)]
-diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 642fffa..f5a22ab 100644
---- a/src/libcore/mem.rs
-+++ b/src/libcore/mem.rs
-@@ -18,12 +18,12 @@
- use clone;
- use cmp;
- use fmt;
--use future::{Future, UnsafeFutureObj};
-+//use future::{Future, UnsafeFutureObj};
- use hash;
- use intrinsics;
- use marker::{Copy, PhantomData, Sized, Unpin, Unsize};
- use ptr;
--use task::{Context, Poll};
-+//use task::{Context, Poll};
- use ops::{Deref, DerefMut, CoerceUnsized};
+diff --git a/src/libcore/option.rs b/src/libcore/option.rs
+index 3879abb..16204a8 100644
+--- a/src/libcore/option.rs
++++ b/src/libcore/option.rs
+@@ -147,7 +147,7 @@
  
- #[stable(feature = "rust1", since = "1.0.0")]
-@@ -1148,6 +1148,7 @@ impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinM
- #[unstable(feature = "pin", issue = "49150")]
- impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
+ use iter::{FromIterator, FusedIterator, TrustedLen};
+ use {hint, mem, ops::{self, Deref}};
+-use pin::PinMut;
++//use pin::PinMut;
  
-+/*
- #[unstable(feature = "futures_api", issue = "50547")]
- unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinMut<'a, F>
-     where F: Future<Output = T> + 'a
-@@ -1162,3 +1163,4 @@ unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinMut<'a, F>
+ // Note that this is not a lang item per se, but it has a hidden dependency on
+ // `Iterator`, which is one. The compiler assumes that the `next` method of
+@@ -270,6 +270,7 @@ impl<T> Option<T> {
+         }
+     }
  
-     unsafe fn drop(_ptr: *mut ()) {}
- }
-+*/
++    /*
+     /// Converts from `Option<T>` to `Option<PinMut<'_, T>>`
+     #[inline]
+     #[unstable(feature = "pin", issue = "49150")]
+@@ -278,6 +279,7 @@ impl<T> Option<T> {
+             PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
+         }
+     }
++    */
+ 
+     /////////////////////////////////////////////////////////////////////////
+     // Getting to contained values
 -- 
-2.15.2 (Apple Git-101.1)
+2.11.0
 
