@@ -1621,20 +1621,19 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 match tcx.struct_tail(pointee).sty {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
-                    ty::Dynamic(data, _) => {
-                        let trait_def_id = data.principal().unwrap().def_id();
-                        let num_fns: u64 = crate::traits::supertrait_def_ids(tcx, trait_def_id)
-                            .map(|trait_def_id| {
-                                tcx.associated_items(trait_def_id)
-                                    .filter(|item| item.kind == ty::AssociatedKind::Method)
-                                    .count() as u64
-                            })
-                            .sum();
+                    ty::Dynamic(_, _) => {
                         tcx.mk_imm_ref(
                             tcx.types.re_static,
-                            tcx.mk_array(tcx.types.usize, 3 + num_fns),
+                            tcx.mk_array(tcx.types.usize, 3),
                         )
                         /* FIXME use actual fn pointers
+                        Warning: naively computing the number of entries in the
+                        vtable by counting the methods on the trait + methods on
+                        all parent traits does not work, because some methods can
+                        be not object safe and thus excluded from the vtable.
+                        Increase this counter if you tried to implement this but
+                        failed to do it without duplicating a lot of code from
+                        other places in the compiler: 2
                         tcx.mk_tup(&[
                             tcx.mk_array(tcx.types.usize, 3),
                             tcx.mk_array(Option<fn()>),
