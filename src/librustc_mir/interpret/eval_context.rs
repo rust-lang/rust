@@ -24,6 +24,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
+    ErrorHandled,
     GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
     truncate, sign_extend,
@@ -611,8 +612,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|_| {
-            EvalErrorKind::ReferencedConstant.into()
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| {
+            match err {
+                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
+                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
+            }
         })
     }
 
