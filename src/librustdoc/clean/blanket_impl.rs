@@ -69,7 +69,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
         let real_name = name.clone().map(|name| Ident::from_str(&name));
         let param_env = self.cx.tcx.param_env(def_id);
         for &trait_def_id in self.cx.all_traits.iter() {
-            if !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) ||
+            if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
                self.cx.generated_synthetics
                       .borrow_mut()
                       .get(&(def_id, trait_def_id))
