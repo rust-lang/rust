@@ -1024,10 +1024,9 @@ extern "rust-intrinsic" {
     ///         // not alias, and two different vectors cannot own the same
     ///         // memory.
     ///         ptr::copy_nonoverlapping(src, dst, src_len);
-    ///     }
     ///
-    ///     unsafe {
-    ///         // Truncate `src` without dropping its contents.
+    ///         // Truncate `src` without dropping its contents. This cannot panic,
+    ///         // so double-drops cannot happen.
     ///         src.set_len(0);
     ///
     ///         // Notify `dst` that it now holds the contents of `src`.
@@ -1054,7 +1053,9 @@ extern "rust-intrinsic" {
     /// If the source and destination will *never* overlap,
     /// [`copy_nonoverlapping`] can be used instead.
     ///
-    /// `copy` is semantically equivalent to C's [`memmove`].
+    /// `copy` is semantically equivalent to C's [`memmove`].  Copying takes place as
+    /// if the bytes were copied from `src` to a temporary array and then copied from
+    /// the array to `dst`-
     ///
     /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
     /// [`memmove`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memmove
@@ -1143,7 +1144,7 @@ extern "rust-intrinsic" {
     ///
     /// Creating an invalid value:
     ///
-    /// ```no_run
+    /// ```
     /// use std::ptr;
     ///
     /// let mut v = Box::new(0i32);
@@ -1155,7 +1156,10 @@ extern "rust-intrinsic" {
     /// }
     ///
     /// // At this point, using or dropping `v` results in undefined behavior.
-    /// // v = Box::new(0i32); // ERROR
+    /// // drop(v); // ERROR
+    ///
+    /// // Leaking it does not invoke drop and is fine:
+    /// mem::forget(v)
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);

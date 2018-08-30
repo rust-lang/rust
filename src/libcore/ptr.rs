@@ -274,7 +274,8 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///   size_of::<T>()` bytes must *not* overlap with the region of memory
 ///   beginning at `y` with the same size.
 ///
-/// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
+/// the pointers must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -369,7 +370,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     }
 }
 
-/// Moves `src` into the pointed `dest`, returning the previous `dest` value.
+/// Moves `src` into the pointed `dst`, returning the previous `dst` value.
 ///
 /// Neither value is dropped.
 ///
@@ -383,9 +384,9 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dest` must be [valid] for writes.
+/// * `dst` must be [valid] for writes.
 ///
-/// * `dest` must be properly aligned.
+/// * `dst` must be properly aligned.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
@@ -409,8 +410,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
-    mem::swap(&mut *dest, &mut src); // cannot overlap
+pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+    mem::swap(&mut *dst, &mut src); // cannot overlap
     src
 }
 
@@ -447,8 +448,8 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 /// let mut s = String::from("foo");
 /// unsafe {
-///     // `s2` now points to the same underlying memory as `s1`.
-///     let mut s2 = ptr::read(&s);
+///     // `s2` now points to the same underlying memory as `s`.
+///     let mut s2: String = ptr::read(&s);
 ///
 ///     assert_eq!(s2, "foo");
 ///
@@ -558,7 +559,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// use std::ptr;
 ///
 /// #[repr(packed, C)]
-/// #[derive(Default)]
 /// struct Packed {
 ///     _padding: u8,
 ///     unaligned: u32,
@@ -570,10 +570,11 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// };
 ///
 /// let v = unsafe {
-///     // Take a reference to a 32-bit integer which is not aligned.
-///     let unaligned = &x.unaligned;
+///     // Take the address of a 32-bit integer which is not aligned.
+///     // This must be done as a raw pointer; unaligned references are invalid.
+///     let unaligned = &x.unaligned as *const u32;
 ///
-///     // Dereferencing normally will emit an unaligned load instruction,
+///     // Dereferencing normally will emit an aligned load instruction,
 ///     // causing undefined behavior.
 ///     // let v = *unaligned; // ERROR
 ///
