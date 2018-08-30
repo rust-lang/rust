@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-musl
+// ignore-x86
+
 use std::fmt::Debug;
 
 trait Foo {

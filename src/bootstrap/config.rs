@@ -108,6 +108,7 @@ pub struct Config {
     pub rust_codegen_backends: Vec<Interned<String>>,
     pub rust_codegen_backends_dir: String,
     pub rust_verify_llvm_ir: bool,
+    pub rust_remap_debuginfo: bool,
 
     pub build: Interned<String>,
     pub hosts: Vec<Interned<String>>,
@@ -319,6 +320,7 @@ struct Rust {
     deny_warnings: Option<bool>,
     backtrace_on_ice: Option<bool>,
     verify_llvm_ir: Option<bool>,
+    remap_debuginfo: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -554,6 +556,7 @@ impl Config {
             set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
             set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
+            set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends = backends.iter()

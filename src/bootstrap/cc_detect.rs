@@ -39,7 +39,7 @@ use std::process::Command;
 use build_helper::output;
 use cc;
 
-use Build;
+use {Build, GitRepo};
 use config::Target;
 use cache::Interned;
 
@@ -107,7 +107,7 @@ pub fn find(build: &mut Build) {
 
         build.cc.insert(target, compiler);
         build.verbose(&format!("CC_{} = {:?}", &target, build.cc(target)));
-        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target)));
+        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target, GitRepo::Rustc)));
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
             build.ar.insert(target, ar);

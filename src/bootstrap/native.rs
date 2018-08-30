@@ -33,6 +33,7 @@ use util::{self, exe};
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
+use GitRepo;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
@@ -369,8 +370,8 @@ fn configure_cmake(builder: &Builder,
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", builder.cflags(target).join(" "));
-    let mut cxxflags = builder.cflags(target).join(" ");
+    cfg.define("CMAKE_C_FLAGS", builder.cflags(target, GitRepo::Llvm).join(" "));
+    let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if building_dist_binaries {
         if builder.config.llvm_static_stdcpp && !target.contains("windows") {
             cxxflags.push_str(" -static-libstdc++");
@@ -676,7 +677,7 @@ impl Step for Openssl {
         };
         configure.arg(os);
         configure.env("CC", builder.cc(target));
-        for flag in builder.cflags(target) {
+        for flag in builder.cflags(target, GitRepo::Rustc) {
             configure.arg(flag);
         }
         // There is no specific os target for android aarch64 or x86_64,
