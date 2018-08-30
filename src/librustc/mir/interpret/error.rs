@@ -12,7 +12,7 @@ use std::{fmt, env};
 
 use mir;
 use ty::{Ty, layout};
-use ty::layout::{Size, Align};
+use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -113,9 +113,10 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<ast::NodeId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error.kind {
+            EvalErrorKind::Layout(LayoutError::Unknown(_)) |
             EvalErrorKind::TooGeneric => return Err(ErrorHandled::TooGeneric),
-            EvalErrorKind::TypeckError |
-            EvalErrorKind::Layout(_) => return Err(ErrorHandled::Reported),
+            EvalErrorKind::Layout(LayoutError::SizeOverflow(_)) |
+            EvalErrorKind::TypeckError => return Err(ErrorHandled::Reported),
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
