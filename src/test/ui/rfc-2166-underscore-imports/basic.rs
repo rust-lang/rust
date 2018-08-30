@@ -30,7 +30,7 @@ mod m {
 mod unused {
     use m::Tr1 as _; //~ WARN unused import
     use S as _; //~ WARN unused import
-    extern crate core as _; //~ WARN unused extern crate
+    extern crate core as _; // OK
 }
 
 mod outer {
