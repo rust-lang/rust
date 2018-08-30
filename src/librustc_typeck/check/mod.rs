@@ -1178,6 +1178,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         }
                     }
                 } else {
+                    let span = fcx.tcx.sess.source_map().def_span(span);
                     fcx.tcx.sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1226,6 +1227,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         }
                     }
                 } else {
+                    let span = fcx.tcx.sess.source_map().def_span(span);
                     fcx.tcx.sess.span_err(span, "function should have one argument");
                 }
             } else {
