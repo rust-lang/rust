@@ -10,5 +10,5 @@
 
 fn main() {
     concat!(test!());
-    //~^ error: `test` can only be used in attributes
+    //~^ error: cannot find macro `test!` in this scope
 }
