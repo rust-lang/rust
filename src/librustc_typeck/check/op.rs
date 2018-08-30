@@ -256,14 +256,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let source_map = self.tcx.sess.source_map();
                     match is_assign {
                         IsAssign::Yes => {
-                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0368,
-                                                "binary assignment operation `{}=` \
-                                                cannot be applied to type `{}`",
-                                                op.node.as_str(),
-                                                lhs_ty);
-                            err.span_label(lhs_expr.span,
-                                    format!("cannot use `{}=` on type `{}`",
-                                    op.node.as_str(), lhs_ty));
+                            let mut err = struct_span_err!(
+                                self.tcx.sess,
+                                expr.span,
+                                E0368,
+                                "binary assignment operation `{}=` cannot be applied to type `{}`",
+                                op.node.as_str(),
+                                lhs_ty,
+                            );
+                            err.span_label(
+                                lhs_expr.span,
+                                format!("cannot use `{}=` on type `{}`",
+                                op.node.as_str(), lhs_ty),
+                            );
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
@@ -280,13 +285,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             rty = rty_inner;
                                         }
                                         let msg = &format!(
-                                                "`{}=` can be used on '{}', you can \
-                                                dereference `{2}`: `*{2}`",
-                                                op.node.as_str(),
-                                                rty,
-                                                lstring
+                                            "`{}=` can be used on '{}', you can dereference `{}`",
+                                            op.node.as_str(),
+                                            rty,
+                                            lstring,
                                         );
-                                        err.help(msg);
+                                        err.span_suggestion_with_applicability(
+                                            lhs_expr.span,
+                                            msg,
+                                            format!("*{}", lstring),
+                                            errors::Applicability::MachineApplicable,
+                                        );
                                         suggested_deref = true;
                                     }
                                 }
