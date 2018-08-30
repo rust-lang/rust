@@ -49,5 +49,5 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box Pass);
-    reg.register_lint_group("lint_me", vec![TEST_LINT, PLEASE_LINT]);
+    reg.register_lint_group("lint_me", None, vec![TEST_LINT, PLEASE_LINT]);
 }

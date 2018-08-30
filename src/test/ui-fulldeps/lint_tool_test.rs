@@ -10,13 +10,16 @@
 
 // aux-build:lint_tool_test.rs
 // ignore-stage1
+// compile-flags: --cfg foo
 #![feature(plugin)]
 #![feature(tool_lints)]
 #![plugin(lint_tool_test)]
 #![allow(dead_code)]
+#![cfg_attr(foo, warn(test_lint))]
+//~^ WARNING lint name `test_lint` is deprecated and may not have an effect in the future
+//~^^ WARNING lint name `test_lint` is deprecated and may not have an effect in the future
 #![deny(clippy_group)]
 //~^ WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
-//~^^ WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 
