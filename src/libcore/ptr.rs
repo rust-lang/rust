@@ -774,8 +774,8 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
-/// Memory read with `read_volatile` should almost always be written to using
-/// [`write_volatile`].
+/// Memory accessed with `read_volatile` or [`write_volatile`] should not be
+/// accessed with non-volatile operations.
 ///
 /// [`write_volatile`]: ./fn.write_volatile.html
 ///
@@ -844,8 +844,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
-/// Memory written with `write_volatile` should almost always be read from using
-/// [`read_volatile`].
+/// Memory accessed with [`read_volatile`] or `write_volatile` should not be
+/// accessed with non-volatile operations.
 ///
 /// `write_volatile` does not drop the contents of `dst`. This is safe, but it
 /// could leak allocations or resources, so care should be taken not to overwrite
