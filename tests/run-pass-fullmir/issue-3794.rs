@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-msvc
-//ignore-macos
+//ignore-msvc: Stdout not implemented on Windows
 #![feature(box_syntax)]
 
 trait T {

@@ -1,5 +1,4 @@
-//ignore-msvc
-//ignore-macos
+//ignore-msvc: Stdout not implemented on Windows
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 fn main() {
