@@ -22,7 +22,7 @@ use syntax::ast::AsmDialect;
 
 
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : Backend {
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll>: Backend {
 
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, Self::Value>,
@@ -271,7 +271,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : Backend {
         typ: &str,
         llfn: Self::Value,
         args: &'b [Self::Value]
-    ) -> Cow<'b, [Self::Value]> where [Self::Value] : ToOwned;
+    ) -> Cow<'b, [Self::Value]> where [Self::Value]: ToOwned;
     fn lifetime_start(&self, ptr: Self::Value, size: Size);
     fn lifetime_end(&self, ptr: Self::Value, size: Size);
 

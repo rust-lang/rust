@@ -96,7 +96,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            llvals.push(CodegenCx::c_bytes(cx, &alloc.bytes[next_offset..offset]));
+            llvals.push(cx.c_bytes(&alloc.bytes[next_offset..offset]));
         }
         let ptr_offset = read_target_uint(
             dl.endian,
@@ -114,10 +114,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         next_offset = offset + pointer_size;
     }
     if alloc.bytes.len() >= next_offset {
-        llvals.push(CodegenCx::c_bytes(cx, &alloc.bytes[next_offset ..]));
+        llvals.push(cx.c_bytes(&alloc.bytes[next_offset ..]));
     }
 
-    CodegenCx::c_struct(cx, &llvals, true)
+    cx.c_struct(&llvals, true)
 }
 
 pub fn codegen_static_initializer(
@@ -207,7 +207,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = CodegenCx::c_struct(bx.cx(), &values?, false);
+                let llval = bx.cx().c_struct(&values?, false);
                 Ok((llval, c.ty))
             })
             .unwrap_or_else(|_| {

@@ -50,7 +50,7 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
     ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
 }
 
-pub struct OperandBundleDef<'a, Value : 'a> {
+pub struct OperandBundleDef<'a, Value: 'a> {
     pub name: &'a str,
     pub val: Value
 }
@@ -200,7 +200,7 @@ impl Backend for CodegenCx<'ll, 'tcx> {
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx : 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
 
     // LLVM constant constructors.
     fn c_null(&self, t: &'ll Type) -> &'ll Value {
@@ -424,7 +424,7 @@ pub fn c_struct_in_context(
     }
 }
 
-impl<'ll, 'tcx : 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx: 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         val_ty(v)
     }

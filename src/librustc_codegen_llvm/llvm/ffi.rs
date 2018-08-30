@@ -246,7 +246,7 @@ pub enum AtomicRmwBinOp {
 }
 
 impl AtomicRmwBinOp {
-    pub fn from_generic(op : common::AtomicRmwBinOp) -> Self {
+    pub fn from_generic(op: common::AtomicRmwBinOp) -> Self {
         match op {
             common::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
             common::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
@@ -279,7 +279,7 @@ pub enum AtomicOrdering {
 }
 
 impl AtomicOrdering {
-    pub fn from_generic(ao : common::AtomicOrdering) -> Self {
+    pub fn from_generic(ao: common::AtomicOrdering) -> Self {
         match ao {
             common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
             common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
@@ -306,7 +306,7 @@ pub enum SynchronizationScope {
 }
 
 impl SynchronizationScope {
-    pub fn from_generic(sc : common::SynchronizationScope) -> Self {
+    pub fn from_generic(sc: common::SynchronizationScope) -> Self {
         match sc {
             common::SynchronizationScope::Other => SynchronizationScope::Other,
             common::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
@@ -356,7 +356,7 @@ pub enum AsmDialect {
 }
 
 impl AsmDialect {
-    pub fn from_generic(asm : syntax::ast::AsmDialect) -> Self {
+    pub fn from_generic(asm: syntax::ast::AsmDialect) -> Self {
         match asm {
             syntax::ast::AsmDialect::Att => AsmDialect::Att,
             syntax::ast::AsmDialect::Intel => AsmDialect::Intel

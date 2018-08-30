@@ -244,7 +244,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                                   self.layout.align,
                                   bx.pointercast(llscratch, Type::i8p(cx)),
                                   scratch_align,
-                                  CodegenCx::c_usize(cx, self.layout.size.bytes()),
+                                  cx.c_usize(self.layout.size.bytes()),
                                   MemFlags::empty());
 
                 bx.lifetime_end(llscratch, scratch_size);

@@ -44,7 +44,7 @@ impl<'a, 'tcx> VirtualIndex {
         let llvtable = bx.pointercast(llvtable, fn_ty.ptr_to_llvm_type(bx.cx()).ptr_to());
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx(), self.0)]),
+            bx.inbounds_gep(llvtable, &[bx.cx().c_usize(self.0)]),
             ptr_align
         );
         bx.nonnull_metadata(ptr);
@@ -64,7 +64,7 @@ impl<'a, 'tcx> VirtualIndex {
         let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx()).ptr_to());
         let usize_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[CodegenCx::c_usize(bx.cx(), self.0)]),
+            bx.inbounds_gep(llvtable, &[bx.cx().c_usize(self.0)]),
             usize_align
         );
         // Vtable loads are invariant
@@ -112,11 +112,11 @@ pub fn get_vtable(
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
-        CodegenCx::c_usize(cx, size.bytes()),
-        CodegenCx::c_usize(cx, align.abi())
+        cx.c_usize(size.bytes()),
+        cx.c_usize(align.abi())
     ].iter().cloned().chain(methods).collect();
 
-    let vtable_const = CodegenCx::c_struct(cx, &components, false);
+    let vtable_const = cx.c_struct(&components, false);
     let align = cx.data_layout().pointer_align;
     let vtable = consts::addr_of(cx, vtable_const, align, Some("vtable"));
 

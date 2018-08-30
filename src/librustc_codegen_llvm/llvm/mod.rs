@@ -273,7 +273,7 @@ impl OperandBundleDef<'a> {
         OperandBundleDef { raw: def }
     }
 
-    pub fn from_generic(bundle : &common::OperandBundleDef<'a, &'a Value>) -> Self {
+    pub fn from_generic(bundle: &common::OperandBundleDef<'a, &'a Value>) -> Self {
         Self::new(bundle.name, &[bundle.val])
     }
 }

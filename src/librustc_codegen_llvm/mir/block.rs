@@ -19,7 +19,6 @@ use base;
 use callee;
 use builder::{Builder, MemFlags};
 use common::{self, IntPredicate};
-use context::CodegenCx;
 use consts;
 use meth;
 use monomorphize;
@@ -347,7 +346,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
                 // Pass the condition through llvm.expect for branch hinting.
                 let expect = bx.cx().get_intrinsic(&"llvm.expect.i1");
-                let cond = bx.call(expect, &[cond, CodegenCx::c_bool(bx.cx(), expected)], None);
+                let cond = bx.call(expect, &[cond, bx.cx().c_bool(expected)], None);
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);
@@ -365,9 +364,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 // Get the location information.
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                let filename = CodegenCx::c_str_slice(bx.cx(), filename);
-                let line = CodegenCx::c_u32(bx.cx(), loc.line as u32);
-                let col = CodegenCx::c_u32(bx.cx(), loc.col.to_usize() as u32 + 1);
+                let filename = bx.cx().c_str_slice(filename);
+                let line = bx.cx().c_u32(loc.line as u32);
+                let col = bx.cx().c_u32(loc.col.to_usize() as u32 + 1);
                 let align = tcx.data_layout.aggregate_align
                     .max(tcx.data_layout.i32_align)
                     .max(tcx.data_layout.pointer_align);
@@ -378,8 +377,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         let len = self.codegen_operand(&mut bx, len).immediate();
                         let index = self.codegen_operand(&mut bx, index).immediate();
 
-                        let file_line_col = CodegenCx::c_struct(bx.cx(),
-                             &[filename, line, col], false);
+                        let file_line_col = bx.cx().c_struct(&[filename, line, col], false);
                         let file_line_col = consts::addr_of(bx.cx(),
                                                             file_line_col,
                                                             align,
@@ -390,9 +388,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     _ => {
                         let str = msg.description();
                         let msg_str = Symbol::intern(str).as_str();
-                        let msg_str = CodegenCx::c_str_slice(bx.cx(), msg_str);
-                        let msg_file_line_col = CodegenCx::c_struct(
-                            bx.cx(),
+                        let msg_str = bx.cx().c_str_slice(msg_str);
+                        let msg_file_line_col = bx.cx().c_struct(
                             &[msg_str, filename, line, col],
                             false
                         );
