@@ -5,7 +5,7 @@ extern crate test_utils;
 use std::path::{Path};
 
 use relative_path::RelativePath;
-use libanalysis::{WorldState, FileId, FileResolver};
+use libanalysis::{AnalysisHost, FileId, FileResolver};
 use test_utils::assert_eq_dbg;
 
 struct FileMap(&'static [(u32, &'static str)]);
@@ -37,7 +37,7 @@ impl FileResolver for FileMap {
 
 #[test]
 fn test_resolve_module() {
-    let mut world = WorldState::new();
+    let mut world = AnalysisHost::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 
@@ -64,7 +64,7 @@ fn test_resolve_module() {
 
 #[test]
 fn test_unresolved_module_diagnostic() {
-    let mut world = WorldState::new();
+    let mut world = AnalysisHost::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
 
     let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
@@ -84,7 +84,7 @@ fn test_unresolved_module_diagnostic() {
 
 #[test]
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
-    let mut world = WorldState::new();
+    let mut world = AnalysisHost::new();
     world.change_file(FileId(1), Some("mod foo {}".to_string()));
 
     let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
@@ -97,7 +97,7 @@ fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
 
 #[test]
 fn test_resolve_parent_module() {
-    let mut world = WorldState::new();
+    let mut world = AnalysisHost::new();
     world.change_file(FileId(1), Some("mod foo;".to_string()));
     world.change_file(FileId(2), Some("".to_string()));
 

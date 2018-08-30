@@ -9,14 +9,14 @@ use std::{
     panic,
 };
 
+use rayon::prelude::*;
+use once_cell::sync::OnceCell;
+use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
 use libsyntax2::{
     TextUnit, TextRange, SmolStr, File, AstNode,
     SyntaxKind::*,
     ast::{self, NameOwner},
 };
-use rayon::prelude::*;
-use once_cell::sync::OnceCell;
-use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
 
 use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
@@ -44,11 +44,11 @@ impl AnalysisHostImpl {
         AnalysisImpl {
             needs_reindex: AtomicBool::new(false),
             file_resolver: Arc::new(file_resolver),
-            data: self.data.clone()
+            data: self.data.clone(),
         }
     }
 
-    pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
+    pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
         for (file_id, text) in changes {
             let change_kind = if data.file_map.remove(&file_id).is_some() {
@@ -72,20 +72,14 @@ impl AnalysisHostImpl {
     }
 
     fn data_mut(&mut self) -> &mut WorldData {
-        if Arc::get_mut(&mut self.data).is_none() {
-            self.data = Arc::new(WorldData {
-                file_map: self.data.file_map.clone(),
-                module_map: self.data.module_map.clone(),
-            });
-        }
-        Arc::get_mut(&mut self.data).unwrap()
+        Arc::make_mut(&mut self.data)
     }
 }
 
 pub(crate) struct AnalysisImpl {
-    pub(crate) needs_reindex: AtomicBool,
-    pub(crate) file_resolver: Arc<FileResolver>,
-    pub(crate) data: Arc<WorldData>,
+    needs_reindex: AtomicBool,
+    file_resolver: Arc<FileResolver>,
+    data: Arc<WorldData>,
 }
 
 impl fmt::Debug for AnalysisImpl {
@@ -280,7 +274,7 @@ impl AnalysisImpl {
     }
 
     fn reindex(&self) {
-        if self.needs_reindex.compare_and_swap(false, true, SeqCst) {
+        if self.needs_reindex.compare_and_swap(true, false, SeqCst) {
             let now = Instant::now();
             let data = &*self.data;
             data.file_map
@@ -298,22 +292,22 @@ impl AnalysisImpl {
     }
 }
 
-#[derive(Default, Debug)]
-pub(crate) struct WorldData {
-    pub(crate) file_map: HashMap<FileId, Arc<FileData>>,
-    pub(crate) module_map: ModuleMap,
+#[derive(Clone, Default, Debug)]
+struct WorldData {
+    file_map: HashMap<FileId, Arc<FileData>>,
+    module_map: ModuleMap,
 }
 
 #[derive(Debug)]
-pub(crate) struct FileData {
-    pub(crate) text: String,
-    pub(crate) symbols: OnceCell<FileSymbols>,
-    pub(crate) syntax: OnceCell<File>,
-    pub(crate) lines: OnceCell<LineIndex>,
+struct FileData {
+    text: String,
+    symbols: OnceCell<FileSymbols>,
+    syntax: OnceCell<File>,
+    lines: OnceCell<LineIndex>,
 }
 
 impl FileData {
-    pub(crate) fn new(text: String) -> FileData {
+    fn new(text: String) -> FileData {
         FileData {
             text,
             symbols: OnceCell::new(),

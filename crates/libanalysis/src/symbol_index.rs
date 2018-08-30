@@ -4,6 +4,7 @@ use libsyntax2::{
     SyntaxKind::{self, *},
 };
 use fst::{self, IntoStreamer, Streamer};
+use Query;
 
 #[derive(Debug)]
 pub(crate) struct FileSymbols {
@@ -30,38 +31,7 @@ impl FileSymbols {
     }
 }
 
-pub struct Query {
-    query: String,
-    lowercased: String,
-    only_types: bool,
-    exact: bool,
-    limit: usize,
-}
-
 impl Query {
-    pub fn new(query: String) -> Query {
-        let lowercased = query.to_lowercase();
-        Query {
-            query,
-            lowercased,
-            only_types: false,
-            exact: false,
-            limit: usize::max_value()
-        }
-    }
-
-    pub fn only_types(&mut self) {
-        self.only_types = true;
-    }
-
-    pub fn exact(&mut self) {
-        self.exact = true;
-    }
-
-    pub fn limit(&mut self, limit: usize) {
-        self.limit = limit
-    }
-
     pub(crate) fn process(
         &mut self,
         file: &FileSymbols,
