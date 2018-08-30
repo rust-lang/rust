@@ -242,6 +242,7 @@
         }
     }
 
+    highlightSourceLines(null);
     window.onhashchange = highlightSourceLines;
 
     // Gets the human-readable string for the virtual-key code of the
