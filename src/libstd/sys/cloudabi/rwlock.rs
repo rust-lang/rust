@@ -32,11 +32,13 @@ pub unsafe fn raw(r: &RWLock) -> *mut AtomicU32 {
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
+const NEW: RWLock = RWLock {
+    lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)),
+};
+
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock {
-            lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)),
-        }
+        NEW
     }
 
     pub unsafe fn try_read(&self) -> bool {
