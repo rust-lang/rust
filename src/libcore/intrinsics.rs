@@ -991,8 +991,8 @@ extern "rust-intrinsic" {
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
-    /// These restrictions apply even if the effectively copied size (`count *
-    /// size_of::<T>()`) is `0`.
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointers must be non-NULL and properly aligned.
     ///
     /// [`Copy`]: ../marker/trait.Copy.html
     /// [`read`]: ../ptr/fn.read.html
@@ -1074,8 +1074,8 @@ extern "rust-intrinsic" {
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
-    /// These restrictions apply even if the effectively copied size (`count *
-    /// size_of::<T>()`) is `0`.
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointers must be non-NULL and properly aligned.
     ///
     /// [`Copy`]: ../marker/trait.Copy.html
     /// [`read`]: ../ptr/fn.read.html
@@ -1121,8 +1121,8 @@ extern "rust-intrinsic" {
     /// value of `T`. Creating an invalid value of `T` can result in undefined
     /// behavior.
     ///
-    /// These restrictions apply even if the effectively written size (`count *
-    /// size_of::<T>()`) is `0`.
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+    /// `0`, the pointer must be non-NULL and properly aligned.
     ///
     /// [valid]: ../ptr/index.html#safety
     ///

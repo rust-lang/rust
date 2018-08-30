@@ -114,7 +114,7 @@ pub use intrinsics::write_bytes;
 /// again. [`write`] can be used to overwrite data without causing it to be
 /// dropped.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 /// [`Copy`]: ../marker/trait.Copy.html
@@ -205,7 +205,7 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -274,7 +274,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///   size_of::<T>()` bytes must *not* overlap with the region of memory
 ///   beginning at `y` with the same size.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -387,7 +387,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// * `dest` must be properly aligned.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -426,7 +426,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// ## Ownership of the Returned Value
 ///
@@ -542,7 +542,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read`]: ./fn.read.html
@@ -620,7 +620,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 /// [`write_unaligned`]: ./fn.write_unaligned.html
@@ -693,7 +693,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// * `dst` must be [valid] for writes.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -778,7 +778,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
 /// incorrect.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 /// [`Copy`]: ../marker/trait.Copy.html
@@ -849,7 +849,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// These restrictions apply even if `T` has size `0`.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
