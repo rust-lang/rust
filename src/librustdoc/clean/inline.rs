@@ -29,8 +29,6 @@ use clean::{
     self,
     GetDefId,
     ToSource,
-    get_auto_traits_with_def_id,
-    get_blanket_impls_with_def_id,
 };
 
 use super::Clean;
@@ -56,7 +54,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
     let inner = match def {
         Def::Trait(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
-            ret.extend(build_impls(cx, did, false));
+            ret.extend(build_impls(cx, did));
             clean::TraitItem(build_external_trait(cx, did))
         }
         Def::Fn(did) => {
@@ -65,27 +63,27 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         }
         Def::Struct(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
-            ret.extend(build_impls(cx, did, true));
+            ret.extend(build_impls(cx, did));
             clean::StructItem(build_struct(cx, did))
         }
         Def::Union(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Union);
-            ret.extend(build_impls(cx, did, true));
+            ret.extend(build_impls(cx, did));
             clean::UnionItem(build_union(cx, did))
         }
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
-            ret.extend(build_impls(cx, did, false));
+            ret.extend(build_impls(cx, did));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
         Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
-            ret.extend(build_impls(cx, did, true));
+            ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
         Def::ForeignTy(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
-            ret.extend(build_impls(cx, did, false));
+            ret.extend(build_impls(cx, did));
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -275,24 +273,12 @@ fn build_type_alias(cx: &DocContext, did: DefId) -> clean::Typedef {
     }
 }
 
-pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean::Item> {
+pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
     for &did in tcx.inherent_impls(did).iter() {
         build_impl(cx, did, &mut impls);
-    }
-
-    if auto_traits {
-        let auto_impls = get_auto_traits_with_def_id(cx, did);
-        {
-            let mut renderinfo = cx.renderinfo.borrow_mut();
-            let new_impls: Vec<clean::Item> = auto_impls.into_iter()
-                .filter(|i| renderinfo.inlined.insert(i.def_id)).collect();
-
-            impls.extend(new_impls);
-        }
-        impls.extend(get_blanket_impls_with_def_id(cx, did));
     }
 
     impls
