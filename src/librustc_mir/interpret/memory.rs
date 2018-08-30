@@ -258,13 +258,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
-                // FIXME: what on earth does this line do? docs or fix needed!
-                let v = ((bits as u128) % (1 << self.pointer_size().bytes())) as u64;
-                if v == 0 {
+                assert!(bits < (1u128 << self.pointer_size().bits()));
+                if bits == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
-                // the base address if the "integer allocation" is 0 and hence always aligned
-                (v, required_align)
+                // the "base address" is 0 and hence always aligned
+                (bits as u64, required_align)
             }
         };
         // Check alignment
