@@ -155,6 +155,7 @@ macro_rules! newtype_index {
         }
 
         impl ::std::iter::Step for $type {
+            #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
                     &Idx::index(*start),
@@ -162,46 +163,55 @@ macro_rules! newtype_index {
                 )
             }
 
+            #[inline]
             fn replace_one(&mut self) -> Self {
                 ::std::mem::replace(self, Self::new(1))
             }
 
+            #[inline]
             fn replace_zero(&mut self) -> Self {
                 ::std::mem::replace(self, Self::new(0))
             }
 
+            #[inline]
             fn add_one(&self) -> Self {
                 Self::new(Idx::index(*self) + 1)
             }
 
+            #[inline]
             fn sub_one(&self) -> Self {
                 Self::new(Idx::index(*self) - 1)
             }
 
+            #[inline]
             fn add_usize(&self, u: usize) -> Option<Self> {
                 Idx::index(*self).checked_add(u).map(Self::new)
             }
         }
 
         impl From<$type> for u32 {
+            #[inline]
             fn from(v: $type) -> u32 {
                 v.as_u32()
             }
         }
 
         impl From<$type> for usize {
+            #[inline]
             fn from(v: $type) -> usize {
                 v.as_usize()
             }
         }
 
         impl From<usize> for $type {
+            #[inline]
             fn from(value: usize) -> Self {
                 $type::from_usize(value)
             }
         }
 
         impl From<u32> for $type {
+            #[inline]
             fn from(value: u32) -> Self {
                 $type::from_u32(value)
             }
