@@ -1,4 +1,5 @@
-// Just instantiate some data structures to make sure we got all their foreign items covered
+// Just instantiate some data structures to make sure we got all their foreign items covered.
+// Requires full MIR on Windows.
 
 use std::sync;
 
