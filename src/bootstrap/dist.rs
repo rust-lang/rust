@@ -501,6 +501,13 @@ impl Step for Rustc {
             t!(fs::create_dir_all(&backends_dst));
             builder.cp_r(&backends_src, &backends_dst);
 
+            // Copy libLLVM.so to the lib dir as well, if needed. While not
+            // technically needed by rustc itself it's needed by lots of other
+            // components like the llvm tools and LLD. LLD is included below and
+            // tools/LLDB come later, so let's just throw it in the rustc
+            // component for now.
+            maybe_install_llvm_dylib(builder, host, image);
+
             // Copy over lld if it's there
             if builder.config.lld_enabled {
                 let exe = exe("rust-lld", &compiler.host);
@@ -1967,8 +1974,6 @@ impl Step for LlvmTools {
             builder.install(&exe, &dst_bindir, 0o755);
         }
 
-        maybe_install_llvm_dylib(builder, target, &image);
-
         // Prepare the overlay
         let overlay = tmp.join("llvm-tools-overlay");
         drop(fs::remove_dir_all(&overlay));
@@ -2086,9 +2091,6 @@ impl Step for Lldb {
                 }
             }
         }
-
-        // Copy libLLVM.so to the lib dir as well, if needed.
-        maybe_install_llvm_dylib(builder, target, &image);
 
         // Prepare the overlay
         let overlay = tmp.join("lldb-overlay");
