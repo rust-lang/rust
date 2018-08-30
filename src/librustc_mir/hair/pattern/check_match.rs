@@ -540,12 +540,16 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                       "cannot bind by-move into a pattern guard")
                 .span_label(p.span, "moves value into pattern guard")
                 .emit();
-        } else if by_ref_span.is_some() {
-            struct_span_err!(cx.tcx.sess, p.span, E0009,
-                            "cannot bind by-move and by-ref in the same pattern")
-                    .span_label(p.span, "by-move pattern here")
-                    .span_label(by_ref_span.unwrap(), "both by-ref and by-move used")
-                    .emit();
+        } else if let Some(by_ref_span) = by_ref_span {
+            struct_span_err!(
+                cx.tcx.sess,
+                p.span,
+                E0009,
+                "cannot bind by-move and by-ref in the same pattern",
+            )
+            .span_label(p.span, "by-move pattern here")
+            .span_label(by_ref_span, "both by-ref and by-move used")
+            .emit();
         }
     };
 
