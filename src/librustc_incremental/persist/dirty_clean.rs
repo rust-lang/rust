@@ -24,7 +24,6 @@
 //! the required condition is not met.
 //!
 
-use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::vec::Vec;
 use rustc::dep_graph::{DepNode, label_strs};
@@ -193,7 +192,7 @@ const LABELS_TRAIT: &[&[&str]] = &[
 //
 //     TypeOfItem for these.
 
-type Labels = HashSet<String>;
+type Labels = FxHashSet<String>;
 
 /// Represents the requested configuration by rustc_clean/dirty
 struct Assertion {
@@ -205,13 +204,13 @@ impl Assertion {
     fn from_clean_labels(labels: Labels) -> Assertion {
         Assertion {
             clean: labels,
-            dirty: Labels::new(),
+            dirty: Labels::default(),
         }
     }
 
     fn from_dirty_labels(labels: Labels) -> Assertion {
         Assertion {
-            clean: Labels::new(),
+            clean: Labels::default(),
             dirty: labels,
         }
     }
@@ -328,7 +327,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             }
         }
         // if no `label` or `except` is given, only the node's group are asserted
-        Labels::new()
+        Labels::default()
     }
 
     /// Return all DepNode labels that should be asserted for this item.
@@ -436,7 +435,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 
     fn resolve_labels(&self, item: &NestedMetaItem, value: &str) -> Labels {
-        let mut out: Labels = HashSet::new();
+        let mut out = Labels::default();
         for label in value.split(',') {
             let label = label.trim();
             if DepNode::has_label_string(label) {

@@ -39,7 +39,6 @@ use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
-use std::collections::HashSet;
 use rustc::util::nodemap::FxHashSet;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
@@ -305,14 +304,14 @@ pub struct MissingDoc {
     doc_hidden_stack: Vec<bool>,
 
     /// Private traits or trait items that leaked through. Don't check their methods.
-    private_traits: HashSet<ast::NodeId>,
+    private_traits: FxHashSet<ast::NodeId>,
 }
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
             doc_hidden_stack: vec![false],
-            private_traits: HashSet::new(),
+            private_traits: FxHashSet::default(),
         }
     }
 
@@ -909,7 +908,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
         let mut self_call_spans = vec![];
-        let mut visited = HashSet::new();
+        let mut visited = FxHashSet::default();
 
         while let Some(idx) = work_queue.pop() {
             if idx == cfg.exit {

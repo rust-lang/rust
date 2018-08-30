@@ -91,7 +91,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     // of macro use (callsite) spans. We store these to ensure
     // we only write one macro def per unique macro definition, and
     // one macro use per unique callsite span.
-    // mac_defs: HashSet<Span>,
+    // mac_defs: FxHashSet<Span>,
     macro_calls: FxHashSet<Span>,
 }
 
@@ -107,7 +107,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             dumper,
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
-            // mac_defs: HashSet::new(),
+            // mac_defs: FxHashSet::default(),
             macro_calls: FxHashSet(),
         }
     }
