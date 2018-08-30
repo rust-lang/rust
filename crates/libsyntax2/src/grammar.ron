@@ -337,7 +337,7 @@ Grammar(
         ),
         "ModuleItem": (
             enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "ImplItem",
-                   "UseItem", "ExternCrateItem", "ConstDef", "StaticDef" ]
+                   "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
         ),
 
         "TupleExpr": (),
@@ -507,13 +507,33 @@ Grammar(
         "Param": (
             options: [["pat", "Pat"]],
         ),
-        "UseItem": (),
+        "UseItem": (
+            options: [["use_tree", "UseTree"]]
+        ),
+        "UseTree": (
+            options: [
+                ["path", "Path"],
+                ["use_tree_list", "UseTreeList"],
+            ]
+        ),
+        "UseTreeList": (
+            collections: [["use_trees", "UseTree"]]
+        ),
         "ExternCrateItem": (),
         "ArgList": (
             collections: [
                 ["args", "Expr"]
             ]
         ),
-        "Path": (),
+        "Path": (
+            options: [
+                ["segment", "PathSegment"]
+            ]
+        ),
+        "PathSegment": (
+            options: [
+                ["name_ref", "NameRef"]
+            ]
+        ),
     },
 )

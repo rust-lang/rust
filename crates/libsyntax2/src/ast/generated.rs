@@ -977,6 +977,7 @@ pub enum ModuleItem<'a> {
     ExternCrateItem(ExternCrateItem<'a>),
     ConstDef(ConstDef<'a>),
     StaticDef(StaticDef<'a>),
+    Module(Module<'a>),
 }
 
 impl<'a> AstNode<'a> for ModuleItem<'a> {
@@ -991,6 +992,7 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             EXTERN_CRATE_ITEM => Some(ModuleItem::ExternCrateItem(ExternCrateItem { syntax })),
             CONST_DEF => Some(ModuleItem::ConstDef(ConstDef { syntax })),
             STATIC_DEF => Some(ModuleItem::StaticDef(StaticDef { syntax })),
+            MODULE => Some(ModuleItem::Module(Module { syntax })),
             _ => None,
         }
     }
@@ -1005,6 +1007,7 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
             ModuleItem::ExternCrateItem(inner) => inner.syntax(),
             ModuleItem::ConstDef(inner) => inner.syntax(),
             ModuleItem::StaticDef(inner) => inner.syntax(),
+            ModuleItem::Module(inner) => inner.syntax(),
         }
     }
 }
@@ -1294,7 +1297,11 @@ impl<'a> AstNode<'a> for Path<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Path<'a> {}
+impl<'a> Path<'a> {
+    pub fn segment(self) -> Option<PathSegment<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // PathExpr
 #[derive(Debug, Clone, Copy)]
@@ -1331,6 +1338,28 @@ impl<'a> AstNode<'a> for PathPat<'a> {
 }
 
 impl<'a> PathPat<'a> {}
+
+// PathSegment
+#[derive(Debug, Clone, Copy)]
+pub struct PathSegment<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for PathSegment<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            PATH_SEGMENT => Some(PathSegment { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> PathSegment<'a> {
+    pub fn name_ref(self) -> Option<NameRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // PathType
 #[derive(Debug, Clone, Copy)]
@@ -1989,7 +2018,59 @@ impl<'a> AstNode<'a> for UseItem<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> UseItem<'a> {}
+impl<'a> UseItem<'a> {
+    pub fn use_tree(self) -> Option<UseTree<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// UseTree
+#[derive(Debug, Clone, Copy)]
+pub struct UseTree<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for UseTree<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            USE_TREE => Some(UseTree { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> UseTree<'a> {
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn use_tree_list(self) -> Option<UseTreeList<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// UseTreeList
+#[derive(Debug, Clone, Copy)]
+pub struct UseTreeList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for UseTreeList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            USE_TREE_LIST => Some(UseTreeList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> UseTreeList<'a> {
+    pub fn use_trees(self) -> impl Iterator<Item = UseTree<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // WhereClause
 #[derive(Debug, Clone, Copy)]
