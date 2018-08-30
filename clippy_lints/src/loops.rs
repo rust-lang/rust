@@ -223,6 +223,27 @@ declare_clippy_lint! {
      written as a for loop"
 }
 
+/// **What it does:** Checks for functions collecting an iterator when collect
+/// is not needed.
+///
+/// **Why is this bad?** `collect` causes the allocation of a new data structure,
+/// when this allocation may not be needed.
+///
+/// **Known problems:**
+/// None
+///
+/// **Example:**
+/// ```rust
+/// let len = iterator.collect::<Vec<_>>().len();
+/// // should be
+/// let len = iterator.count();
+/// ```
+declare_clippy_lint! {
+    pub NEEDLESS_COLLECT,
+    perf,
+    "collecting an iterator when collect is not needed"
+}
+
 /// **What it does:** Checks for loops over ranges `x..y` where both `x` and `y`
 /// are constant and `x` is greater or equal to `y`, unless the range is
 /// reversed or has a negative `.step_by(_)`.
@@ -400,6 +421,7 @@ impl LintPass for Pass {
             FOR_LOOP_OVER_OPTION,
             WHILE_LET_LOOP,
             UNUSED_COLLECT,
+            NEEDLESS_COLLECT,
             REVERSE_RANGE_LOOP,
             EXPLICIT_COUNTER_LOOP,
             EMPTY_LOOP,
@@ -523,6 +545,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprKind::While(ref cond, _, _) = expr.node {
             check_infinite_loop(cx, cond, expr);
         }
+
+        check_needless_collect(expr, cx);
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
@@ -2240,4 +2264,68 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
+}
+
+fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) {
+    if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node {
+            if chain_method.ident.name == "collect" && match_trait_method(cx, &args[0], &paths::ITERATOR) {
+                if method.ident.name == "len" {
+                    span_lint_and_sugg(
+                        cx,
+                        NEEDLESS_COLLECT,
+                        expr.span,
+                        "you are collecting an iterator to check its length",
+                        "consider replacing with",
+                        generate_needless_collect_len_sugg(&args[0], cx),
+                    );
+                }
+                if method.ident.name == "is_empty" {
+                    span_lint_and_sugg(
+                        cx,
+                        NEEDLESS_COLLECT,
+                        expr.span,
+                        "you are collecting an iterator to check if it is empty",
+                        "consider replacing with",
+                        generate_needless_collect_is_empty_sugg(&args[0], cx),
+                    );
+                }
+                if method.ident.name == "contains" {
+                    span_lint_and_sugg(
+                        cx,
+                        NEEDLESS_COLLECT,
+                        expr.span,
+                        "you are collecting an iterator to check if contains an element",
+                        "consider replacing with",
+                        generate_needless_collect_contains_sugg(&args[0], &args[1], cx),
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn generate_needless_collect_len_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
+    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
+        let iter = snippet(cx, args[0].span, "??");
+        return format!("{}.count()", iter);
+    }
+    unreachable!();
+}
+
+fn generate_needless_collect_is_empty_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
+    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
+        let iter = snippet(cx, args[0].span, "??");
+        return format!("{}.any(|_| true)", iter);
+    }
+    unreachable!();
+}
+
+fn generate_needless_collect_contains_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, contains_arg: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
+    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
+        let iter = snippet(cx, args[0].span, "??");
+        let arg = snippet(cx, contains_arg.span, "??");
+        return format!("{}.any(|&x| x == {})", iter, if arg.starts_with('&') { &arg[1..] } else { &arg });
+    }
+    unreachable!();
 }
