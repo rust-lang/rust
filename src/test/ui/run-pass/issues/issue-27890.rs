@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 static PLUS_ONE: &'static (Fn(i32) -> i32 + Sync) = (&|x: i32| { x + 1 })
     as &'static (Fn(i32) -> i32 + Sync);
 

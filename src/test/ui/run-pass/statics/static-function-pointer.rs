@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn f(x: isize) -> isize { x }
 fn g(x: isize) -> isize { 2 * x }

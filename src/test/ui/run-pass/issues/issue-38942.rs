@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // See https://github.com/rust-lang/rust/issues/38942
 
 #[repr(u64)]

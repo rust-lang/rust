@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:--test
 
 // This verifies that the test generation doesn't crash when we have

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #[derive(Debug)]
 enum a_tag {
     a_tag_var(u64)

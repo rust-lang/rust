@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we can quantify lifetimes outside a constraint (i.e., including
 // the self type) in a where clause.
 

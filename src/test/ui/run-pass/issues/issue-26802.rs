@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Foo<'a> {
     fn bar<'b>(&self, x: &'b u8) -> u8 where 'a: 'b { *x+7 }
 }

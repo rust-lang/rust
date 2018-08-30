@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum E { V0, V1(isize) }
 static C: &'static E = &E::V0;

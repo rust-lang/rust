@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that binary operators allow subtyping on both the LHS and RHS,
 // and as such do not introduce unnecessarily strict lifetime constraints.
 

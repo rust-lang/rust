@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A model for how the `Fn` traits could work. You can implement at
 // most one of `Go`, `GoMut`, or `GoOnce`, and then the others follow
 // automatically.

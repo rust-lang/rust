@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:anon-extern-mod-cross-crate-1.rs
 // pretty-expanded FIXME #23616
 // ignore-wasm32-bare no libc to test ffi with

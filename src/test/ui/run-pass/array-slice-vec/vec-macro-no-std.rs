@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-emscripten no no_std executables
 
 #![feature(lang_items, start, libc, alloc)]

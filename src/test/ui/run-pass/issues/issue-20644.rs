@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with codegen ignoring binders.
 

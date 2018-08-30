@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:mir_external_refs.rs
 
 extern crate mir_external_refs as ext;

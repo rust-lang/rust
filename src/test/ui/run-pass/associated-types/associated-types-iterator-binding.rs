@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn pairwise_sub<T:DoubleEndedIterator<Item=isize>>(mut t: T) -> isize {
     let mut result = 0;

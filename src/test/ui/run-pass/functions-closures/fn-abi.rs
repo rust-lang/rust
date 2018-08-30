@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Ensure that declarations and types which use `extern fn` both have the same
 // ABI (#9309).
 

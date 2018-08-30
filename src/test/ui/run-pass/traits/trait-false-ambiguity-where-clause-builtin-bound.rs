@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we do not error out because of a (False) ambiguity
 // between the builtin rules for Sized and the where clause. Issue
 // #20959.

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that type inference for range patterns works correctly (is bi-directional).
 
 pub fn main() {

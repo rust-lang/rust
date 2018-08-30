@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to successfully compile a setup where a trait
 // (`Trait1`) references a struct (`SomeType<u32>`) which in turn
 // carries a predicate that references the trait (`u32 : Trait1`,

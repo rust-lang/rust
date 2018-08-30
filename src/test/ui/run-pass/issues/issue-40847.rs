@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 macro_rules! gen {
     ($name:ident ( $($dol:tt $var:ident)* ) $($body:tt)*) => {
         macro_rules! $name {

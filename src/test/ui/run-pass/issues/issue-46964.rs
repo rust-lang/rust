@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 mod my_mod {
     #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
     pub struct Name<'a> {

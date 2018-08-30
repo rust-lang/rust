@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::{str, string};
 
 const A: [u8; 2] = ['h' as u8, 'i' as u8];

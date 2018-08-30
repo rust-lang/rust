@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test an issue where we reported ambiguity between the where-clause
 // and the blanket impl. The only important thing is that compilation
 // succeeds here. Issue #22110.

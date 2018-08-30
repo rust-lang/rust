@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub struct Xyz<'a, V> {
     pub v: (V, &'a u32),
 }

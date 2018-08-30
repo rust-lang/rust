@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const CONST_REF: &[u8; 3] = b"foo";
 
 trait Foo {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum E { V16(u16), V32(u32) }
 struct S { a: E, b: u16, c: u16 }

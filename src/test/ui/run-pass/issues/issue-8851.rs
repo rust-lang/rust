@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // after fixing #9384 and implementing hygiene for match bindings,
 // this now fails because the insertion of the 'y' into the match
 // doesn't cause capture. Making this macro hygienic (as I've done)

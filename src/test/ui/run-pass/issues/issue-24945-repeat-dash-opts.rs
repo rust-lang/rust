@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test is just checking that we continue to accept `-g -g -O -O`
 // as options to the compiler.
 

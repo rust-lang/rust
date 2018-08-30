@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 36278: On an unsized struct with >1 level of nontrivial
 // nesting, ensure we are computing dynamic size of prefix correctly.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // write_volatile causes an LLVM assert with composite types
 
 #![feature(volatile)]

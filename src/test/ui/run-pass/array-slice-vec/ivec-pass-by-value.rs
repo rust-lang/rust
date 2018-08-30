@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn f(_a: Vec<isize> ) { }
 pub fn main() { f(vec![1, 2, 3, 4, 5]); }

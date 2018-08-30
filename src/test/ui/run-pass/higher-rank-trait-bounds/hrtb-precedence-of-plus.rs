@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // pretty-expanded FIXME #23616
 
 // Test that `Fn(isize) -> isize + 'static` parses as `(Fn(isize) -> isize) +

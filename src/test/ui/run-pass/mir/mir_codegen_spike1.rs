@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A simple spike test for MIR version of codegen.
 
 fn sum(x: i32, y: i32) -> i32 {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue_12612_1.rs
 // aux-build:issue_12612_2.rs
 

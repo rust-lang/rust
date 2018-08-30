@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that for loops can bind elements as mutable references
 
 fn main() {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that we do not get an error when you use `<Self as Get>::Value` in
 // the trait definition if there is no default method and for every impl,
 // `Self` does implement `Get`.

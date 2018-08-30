@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-tidy-linelength
 
 // Regression test for #29227. The problem here was that MIR

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // In theory, it doesn't matter what order destructors are run in for rust
 // because we have explicit ownership of values meaning that there's no need to
 // run one before another. With unsafe code, however, there may be a safe

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that when we write `x.foo()`, we do not have to know the
 // complete type of `x` in order to type-check the method call. In
 // this case, we know that `x: Vec<_1>`, but we don't know what type

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue-25185-1.rs
 // aux-build:issue-25185-2.rs
 // ignore-wasm32-bare no libc for ffi testing

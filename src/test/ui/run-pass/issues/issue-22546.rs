@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Parsing patterns with paths with type parameters (issue #22544)
 
 use std::default::Default;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #30527 - We were not generating arms with guards in certain cases.
 
 fn match_with_guard(x: Option<i8>) -> i8 {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that `&PrinterSupport`, which is really short for `&'a
 // PrinterSupport<'b>`, gets properly expanded when it appears in a
 // closure type. This used to result in messed up De Bruijn indices.

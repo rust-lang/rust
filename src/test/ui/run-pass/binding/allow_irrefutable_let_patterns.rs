@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(irrefutable_let_patterns)]
 
 // must-compile-successfully-irrefutable_let_patterns_with_gate

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a where clause that uses a non-normalized projection type.
 
 // pretty-expanded FIXME #23616

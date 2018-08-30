@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Assert that `mut self` on an immediate value doesn't
 // allow mutating the original - issue #10615.
 

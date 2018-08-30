@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-windows
 // exec-env:RUST_LOG=debug
 // ignore-emscripten no threads support

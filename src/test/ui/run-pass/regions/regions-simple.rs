@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub fn main() {
     let mut x: isize = 3;
     let y: &mut isize = &mut x;

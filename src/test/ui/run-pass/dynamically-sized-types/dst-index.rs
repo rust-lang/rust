@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.
 

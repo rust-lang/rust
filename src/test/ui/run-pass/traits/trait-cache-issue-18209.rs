@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the cache results from the default method do not pollute
 // the cache for the later call in `load()`.
 //

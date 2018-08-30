@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This file is intended to test only that methods are automatically
 // reachable for each numeric type, for each exported impl, with no imports
 // necessary. Testing the methods of the impls is done within the source

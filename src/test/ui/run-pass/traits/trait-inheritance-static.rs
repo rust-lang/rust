@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 pub trait MyNum {
     fn from_int(_: isize) -> Self;

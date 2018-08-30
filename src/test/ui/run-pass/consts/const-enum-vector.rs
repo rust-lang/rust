@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum E { V1(isize), V0 }
 static C: [E; 3] = [E::V0, E::V1(0xDEADBEE), E::V0];

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test the case where we resolve `C::Result` and the trait bound
 // itself includes a `Self::Item` shorthand.
 //

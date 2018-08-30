@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that merely having lifetime parameters is not
 // enough for codegen to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.

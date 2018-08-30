@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that labels injected by macros do not break hygiene.  This
 // checks cases where the macros invocations are under the rhs of a
 // let statement.

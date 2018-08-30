@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test stack overflow triggered by evaluating the implications. To be
 // WF, the type `Receipt<Complete>` would require that `<Complete as
 // Async>::Cancel` be WF. This normalizes to `Receipt<Complete>`

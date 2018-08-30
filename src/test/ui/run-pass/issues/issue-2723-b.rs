@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue_2723_a.rs
 
 extern crate issue_2723_a;

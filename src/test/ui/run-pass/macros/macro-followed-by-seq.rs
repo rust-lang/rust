@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #25436: check that things which can be
 // followed by any token also permit X* to come afterwards.
 

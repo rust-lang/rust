@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // check that we don't have linear stack usage with multiple calls to `push`
 
 #![feature(test)]

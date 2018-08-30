@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that you can supply `&F` where `F: FnMut()`.
 
 #![feature(lang_items)]

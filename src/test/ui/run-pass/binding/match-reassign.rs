@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #23698: The reassignment checker only cared
 // about the last assignment in a match arm body
 

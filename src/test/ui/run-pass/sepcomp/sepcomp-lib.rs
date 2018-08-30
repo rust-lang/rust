@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:sepcomp_lib.rs
 
 // Test linking against a library built with -C codegen-units > 1

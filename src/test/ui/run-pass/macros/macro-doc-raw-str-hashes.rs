@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // The number of `#`s used to wrap the documentation comment should differ regarding the content.
 //
 // Related issue: #27489

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to handle the relationships between free
 // regions bound in a closure callback.
 

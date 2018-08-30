@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #40951.
 
 const FOO: [&'static str; 1] = ["foo"];

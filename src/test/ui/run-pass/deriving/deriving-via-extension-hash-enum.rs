@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #[derive(Hash)]
 enum Foo {
     Bar(isize, char),

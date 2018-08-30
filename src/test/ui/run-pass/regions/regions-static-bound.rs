@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn invariant_id<'a,'b>(t: &'b mut &'static ()) -> &'b mut &'a ()
     where 'a: 'static { t }
 fn static_id<'a>(t: &'a ()) -> &'static ()

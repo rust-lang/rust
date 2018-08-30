@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the type of `sum` falls back to `i32` here,
 // and that the for loop desugaring doesn't interfere with
 // that.

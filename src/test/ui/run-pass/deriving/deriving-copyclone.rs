@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 //! Test that #[derive(Copy, Clone)] produces a shallow copy
 //! even when a member violates RFC 1521
 

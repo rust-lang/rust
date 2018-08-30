@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Ensure that types that rely on obligations are autoderefed
 // correctly
 

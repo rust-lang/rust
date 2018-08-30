@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub fn main() {
     assert_eq!([1, 2, 3][..], vec![1, 2, 3][..]);
 }

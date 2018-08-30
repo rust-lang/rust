@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue-41394.rs
 
 extern crate issue_41394 as lib;

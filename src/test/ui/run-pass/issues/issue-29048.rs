@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub struct Chan;
 pub struct ChanSelect<'c, T> {
     chans: Vec<(&'c Chan, T)>,

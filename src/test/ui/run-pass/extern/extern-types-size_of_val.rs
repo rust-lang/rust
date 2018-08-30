@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(extern_types)]
 
 use std::mem::{size_of_val, align_of_val};

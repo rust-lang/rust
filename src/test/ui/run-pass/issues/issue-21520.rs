@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the requirement (in `Bar`) that `T::Bar : 'static` does
 // not wind up propagating to `T`.
 

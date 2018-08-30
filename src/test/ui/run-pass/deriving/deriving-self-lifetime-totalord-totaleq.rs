@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::cmp::Ordering::{Less,Equal,Greater};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

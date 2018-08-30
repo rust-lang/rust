@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 // compile-flags: -Z saturating-float-casts
 

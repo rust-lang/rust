@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:macro_with_super_1.rs
 
 // pretty-expanded FIXME #23616

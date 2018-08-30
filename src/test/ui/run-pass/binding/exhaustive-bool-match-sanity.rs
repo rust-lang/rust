@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #33540
 // We previously used to generate a 3-armed boolean `SwitchInt` in the
 // MIR of the function `foo` below. #33583 changed rustc to

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 type Big = [u64; 8];
 struct Pair<'a> { a: isize, b: &'a Big }

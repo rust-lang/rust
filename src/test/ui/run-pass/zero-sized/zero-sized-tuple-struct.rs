@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![allow(unused_assignments)]
 
 // Make sure that the constructor args are codegened for zero-sized tuple structs

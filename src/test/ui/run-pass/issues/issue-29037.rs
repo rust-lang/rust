@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test ensures that each pointer type `P<X>` is covariant in `X`.
 
 use std::rc::Rc;

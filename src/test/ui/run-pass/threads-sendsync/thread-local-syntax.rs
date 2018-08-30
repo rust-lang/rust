@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![deny(missing_docs)]
 //! this tests the syntax of `thread_local!`
 

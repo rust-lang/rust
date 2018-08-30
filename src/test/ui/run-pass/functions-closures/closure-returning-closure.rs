@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let f = |_||x, y| x+y;
     assert_eq!(f(())(1, 2), 3);

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the call operator autoderefs when calling to an object type.
 
 use std::ops::FnMut;

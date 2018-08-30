@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that constant expressions can be used in vec repeat syntax.
 
 // pretty-expanded FIXME #23616

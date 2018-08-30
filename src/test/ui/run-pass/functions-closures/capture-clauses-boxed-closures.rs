@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn each<T, F>(x: &[T], mut f: F) where F: FnMut(&T) {
     for val in x {

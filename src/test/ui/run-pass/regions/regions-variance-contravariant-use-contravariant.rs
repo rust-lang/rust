@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that a type which is contravariant with respect to its region
 // parameter compiles successfully when used in a contravariant way.
 //

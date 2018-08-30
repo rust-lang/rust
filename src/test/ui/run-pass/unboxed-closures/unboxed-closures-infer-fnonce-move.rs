@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to infer a suitable kind for this `move`
 // closure that is just called (`FnOnce`).
 

@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// run-pass
 // Ensure that we deduce expected argument types when a `fn()` type is expected (#41755)
 
 fn foo(f: fn(Vec<u32>) -> usize) { }

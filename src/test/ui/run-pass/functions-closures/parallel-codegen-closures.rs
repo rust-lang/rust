@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests parallel codegen - this can fail if the symbol for the anonymous
 // closure in `sum` pollutes the second codegen unit from the first.
 

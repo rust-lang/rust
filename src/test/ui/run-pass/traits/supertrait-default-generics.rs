@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // There is some other borrowck bug, so we make the stuff not mut.
 
 

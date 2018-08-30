@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:static-function-pointer-aux.rs
 
 extern crate static_function_pointer_aux as aux;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Destructuring struct variants would ICE where regular structs wouldn't
 
 enum Foo {

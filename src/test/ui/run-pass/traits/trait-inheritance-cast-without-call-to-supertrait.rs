@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Testing that we can cast to a subtrait and call subtrait
 // methods. Not testing supertrait methods
 

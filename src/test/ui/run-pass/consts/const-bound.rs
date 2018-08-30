@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Make sure const bounds work on things, and test that a few types
 // are const.
 

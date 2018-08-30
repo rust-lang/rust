@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub fn main() {
     let v : &[(isize,isize)] = &[ (1, 2), (3, 4), (5, 6) ];
     for &(x, y) in v {

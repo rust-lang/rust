@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #[derive(Copy, Clone)]
 struct cat {
     meow: extern "Rust" fn(),

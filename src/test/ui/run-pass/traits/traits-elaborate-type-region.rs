@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![allow(dead_code)]
 
 // Test that we elaborate `Type: 'region` constraints and infer various important things.

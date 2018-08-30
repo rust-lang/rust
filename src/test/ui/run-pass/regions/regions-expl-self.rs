@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that you can insert an explicit lifetime in explicit self.
 
 // pretty-expanded FIXME #23616

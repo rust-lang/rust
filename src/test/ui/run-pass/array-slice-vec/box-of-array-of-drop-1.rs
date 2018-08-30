@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that we cleanup a fixed size Box<[D; k]> properly when D has a
 // destructor.
 

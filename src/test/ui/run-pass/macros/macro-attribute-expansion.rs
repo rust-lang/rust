@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 macro_rules! descriptions {
     ($name:ident is $desc:expr) => {
         // Check that we will correctly expand attributes

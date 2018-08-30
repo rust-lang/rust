@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub extern "C" fn tuple2() -> (u16, u8) {
     (1, 2)
 }

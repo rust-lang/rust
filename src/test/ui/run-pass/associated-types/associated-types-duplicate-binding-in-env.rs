@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that we do not report ambiguities when the same predicate
 // appears in the environment twice. Issue #21965.
 

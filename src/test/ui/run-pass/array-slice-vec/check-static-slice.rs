@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Check that the various ways of getting to a reference to a vec (both sized
 // and unsized) work properly.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we don't ICE when inlining a function from another
 // crate that uses a trait method as a value due to incorrectly
 // translating the def ID of the trait during AST decoding.

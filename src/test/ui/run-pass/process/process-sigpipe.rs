@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-android since the dynamic linker sets a SIGPIPE handler (to do
 // a crash report) so inheritance is moot on the entire platform
 

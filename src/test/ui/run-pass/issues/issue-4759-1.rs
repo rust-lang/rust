@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait U { fn f(self); }
 impl U for isize { fn f(self) {} }
 pub fn main() { 4.f(); }

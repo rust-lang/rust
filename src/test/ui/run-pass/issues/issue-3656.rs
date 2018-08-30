@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #3656
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.

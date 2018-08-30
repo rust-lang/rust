@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(repr_packed)]
 #![allow(non_camel_case_types)]
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test how resolving a projection interacts with inference.  In this
 // case, we were eagerly unifying the type variable for the iterator
 // type with `I` from the where clause, ignoring the in-scope `impl`

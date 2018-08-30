@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // no-prefer-dynamic
 // aux-build:cgu_test.rs
 // aux-build:cgu_test_a.rs

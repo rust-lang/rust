@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #29740. Inefficient MIR matching algorithms
 // generated way too much code for this sort of case, leading to OOM.
 

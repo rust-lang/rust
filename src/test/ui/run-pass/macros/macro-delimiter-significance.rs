@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     vec![1_usize, 2, 3].len();
 }

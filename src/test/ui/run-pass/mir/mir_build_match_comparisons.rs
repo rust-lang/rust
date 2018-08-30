@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn test1(x: i8) -> i32 {
   match x {
     1...10 => 0,

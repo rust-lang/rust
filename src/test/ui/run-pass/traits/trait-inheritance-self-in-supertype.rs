@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test for issue #4183: use of Self in supertraits.
 
 pub static FUZZY_EPSILON: f64 = 0.1;

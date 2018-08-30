@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![deny(non_snake_case)]
 #![feature(stmt_expr_attributes)]
 

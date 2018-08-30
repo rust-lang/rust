@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Testing that this impl turns A into a Quux, because
 // A is already a Foo Bar Baz
 

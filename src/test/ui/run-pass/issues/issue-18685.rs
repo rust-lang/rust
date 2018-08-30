@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the self param space is not used in a conflicting
 // manner by unboxed closures within a default method on a trait
 

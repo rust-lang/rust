@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we don't ICE when codegenning a generic impl method from
 // an extern crate that contains a match expression on a local
 // variable place where one of the match case bodies contains an

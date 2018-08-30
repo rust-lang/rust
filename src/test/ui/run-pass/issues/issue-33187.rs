@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Foo<A: Repr>(<A as Repr>::Data);
 
 impl<A> Copy for Foo<A> where <A as Repr>::Data: Copy { }

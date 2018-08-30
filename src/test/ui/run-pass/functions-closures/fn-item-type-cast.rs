@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test explicit coercions from a fn item type to a fn pointer type.
 
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This is meant to be a comprehensive test of invocations with/without
 // trailing commas (or other, similar optionally-trailing separators).
 // Every macro is accounted for, even those not tested in this file.

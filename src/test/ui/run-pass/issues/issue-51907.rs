@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Foo {
     extern fn borrow(&self);
     extern fn take(self: Box<Self>);

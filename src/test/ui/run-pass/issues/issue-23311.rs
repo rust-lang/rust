@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we do not ICE when pattern matching an array against a slice.
 
 #![feature(slice_patterns)]

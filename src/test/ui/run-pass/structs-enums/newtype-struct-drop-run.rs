@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Make sure the destructor is run for newtype structs.
 
 use std::cell::Cell;

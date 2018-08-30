@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait methods {
     fn to_bytes(&self) -> Vec<u8> ;
 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Uncovered during work on new scoping rules for safe destructors
 // as an important use case to support properly.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This time we're testing repeatedly going up and down both stacks to
 // make sure the stack pointers are maintained properly in both
 // directions

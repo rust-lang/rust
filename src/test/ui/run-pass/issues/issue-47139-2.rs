@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #47139:
 //
 // Same as issue-47139-1.rs, but the impls of dummy are in the

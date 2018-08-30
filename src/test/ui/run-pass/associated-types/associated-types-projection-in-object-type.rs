@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Corrected regression test for #20831. The original did not compile.
 // When fixed, it revealed another problem concerning projections that
 // appear in associated type bindings in object types, which were not

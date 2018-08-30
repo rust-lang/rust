@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that the type checker permits us to reassign `z` which
 // started out with a longer lifetime and was reassigned to a shorter
 // one (it should infer to be the intersection).

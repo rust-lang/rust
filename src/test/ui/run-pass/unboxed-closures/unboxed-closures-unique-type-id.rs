@@ -7,7 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
+
+// run-pass
+
 // This code used to produce the following ICE:
 //
 //    error: internal compiler error: get_unique_type_id_of_type() -

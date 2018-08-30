@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Equal {
     fn equal(&self, other: &Self) -> bool;
     fn equals<T,U>(&self, this: &T, that: &T, x: &U, y: &U) -> bool

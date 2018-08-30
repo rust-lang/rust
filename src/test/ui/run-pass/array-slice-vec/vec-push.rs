@@ -8,4 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 pub fn main() { let mut v = vec![1, 2, 3]; v.push(1); }

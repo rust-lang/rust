@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub fn main() {
     let pi = 3.1415927f64;
     println!("{}", -pi * (pi + 2.0 / pi) - pi * 5.0);

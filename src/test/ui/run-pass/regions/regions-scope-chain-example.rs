@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This is an example where the older inference algorithm failed. The
 // specifics of why it failed are somewhat, but not entirely, tailed
 // to the algorithm. Ultimately the problem is that when computing the

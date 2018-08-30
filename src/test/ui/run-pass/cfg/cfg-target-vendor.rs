@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(cfg_target_vendor)]
 
 #[cfg(target_vendor = "unknown")]

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test to make sure that explicit self params work inside closures
 
 // pretty-expanded FIXME #23616

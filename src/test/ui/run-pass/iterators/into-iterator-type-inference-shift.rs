@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for type inference failure around shifting. In this
 // case, the iteration yields an isize, but we hadn't run the full type
 // propagation yet, and so we just saw a type variable, yielding an

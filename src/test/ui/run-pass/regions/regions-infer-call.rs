@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn takes_two(x: &isize, y: &isize) -> isize { *x + *y }
 

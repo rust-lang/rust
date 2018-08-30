@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:-Zmir-opt-level=2
 pub trait Foo {
     fn bar(&self) -> usize { 2 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(slice_patterns)]
 
 fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {

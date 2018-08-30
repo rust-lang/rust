@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to infer that the type of `x` is `isize` based
 // on the expected type from the object.
 

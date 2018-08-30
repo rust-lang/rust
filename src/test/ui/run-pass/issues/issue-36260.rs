@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Make sure this compiles without getting a linker error because of missing
 // drop-glue because the collector missed adding drop-glue for the closure:
 

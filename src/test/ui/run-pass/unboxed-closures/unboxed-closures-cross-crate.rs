@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that unboxed closures work with cross-crate inlining
 // Acts as a regression test for #16790, #18378 and #18543
 

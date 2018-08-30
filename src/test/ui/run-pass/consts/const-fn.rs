@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A very basic test of const fn functionality.
 
 #![feature(const_fn, const_indexing)]

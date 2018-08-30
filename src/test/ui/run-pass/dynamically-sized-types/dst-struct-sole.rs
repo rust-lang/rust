@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // As dst-struct.rs, but the unsized field is the only field in the struct.
 
 

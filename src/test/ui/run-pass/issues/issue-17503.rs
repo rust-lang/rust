@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let s: &[isize] = &[0, 1, 2, 3, 4];
     let ss: &&[isize] = &s;

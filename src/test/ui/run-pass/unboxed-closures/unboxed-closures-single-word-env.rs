@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Ensures that single-word environments work right in unboxed closures.
 // These take a different path in codegen.
 

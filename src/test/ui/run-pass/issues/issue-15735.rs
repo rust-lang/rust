@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct A<'a> {
     a: &'a i32,
     b: &'a i32,

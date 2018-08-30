@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test deserializes an enum in-place by transmuting to a union that
 // should have the same layout, and manipulating the tag and payloads
 // independently. This verifies that `repr(some_int)` has a stable representation,

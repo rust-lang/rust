@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn into_inner() -> [u64; 1024] {
     let mut x = 10 + 20;
     [x; 1024]

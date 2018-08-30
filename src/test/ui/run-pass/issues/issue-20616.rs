@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 type MyType<'a, T> = &'a T;
 
 // combine lifetime bounds and type arguments in usual way

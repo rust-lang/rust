@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Checks that extern fn pointers implement the full range of Fn traits.
 
 use std::ops::{Fn,FnMut,FnOnce};

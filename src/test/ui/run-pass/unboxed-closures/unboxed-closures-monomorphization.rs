@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that unboxed closures in contexts with free type parameters
 // monomorphize correctly (issue #16791)
 

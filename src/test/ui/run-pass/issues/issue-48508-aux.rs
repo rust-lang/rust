@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-test Not a test. Used by issue-48508.rs
 
 pub fn other() -> f64 {

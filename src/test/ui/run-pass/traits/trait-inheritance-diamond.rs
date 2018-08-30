@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // B and C both require A, so D does as well, twice, but that's just fine
 
 

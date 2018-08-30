@@ -7,6 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// run-pass
+
 fn ret() -> u32 {
     static x: u32 = 10;
     x & if true { 10u32 } else { 20u32 } & x

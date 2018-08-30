@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-emscripten apparently only works in optimized mode
 
 const TEST_DATA: [u8; 32 * 1024 * 1024] = [42; 32 * 1024 * 1024];

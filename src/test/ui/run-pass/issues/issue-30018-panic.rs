@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for Issue #30018. This is very similar to the
 // original reported test, except that the panic is wrapped in a
 // spawned thread to isolate the expected error result from the

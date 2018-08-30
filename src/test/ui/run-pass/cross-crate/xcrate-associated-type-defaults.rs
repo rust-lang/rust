@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:xcrate_associated_type_defaults.rs
 
 extern crate xcrate_associated_type_defaults;

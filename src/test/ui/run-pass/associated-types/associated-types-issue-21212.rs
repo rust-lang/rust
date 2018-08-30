@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #21212: an overflow occurred during trait
 // checking where normalizing `Self::Input` led to normalizing the
 // where clauses in the environment which in turn required normalizing

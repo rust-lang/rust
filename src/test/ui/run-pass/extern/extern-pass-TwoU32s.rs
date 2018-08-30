@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-wasm32-bare no libc for ffi testing
 
 // Test a foreign function that accepts and returns a struct

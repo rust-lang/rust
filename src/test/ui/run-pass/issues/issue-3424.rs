@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // rustc --test ignores2.rs && ./ignores2
 
 pub struct Path;

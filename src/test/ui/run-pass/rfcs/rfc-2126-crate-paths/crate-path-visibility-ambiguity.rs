@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
 

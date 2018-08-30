@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Note: This test was used to demonstrate #5873 (now #23898).
 
 enum State { ST_NULL, ST_WHITESPACE }

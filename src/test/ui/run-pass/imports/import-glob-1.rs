@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This should resolve fine. Prior to fix, the last import
 // was being tried too early, and marked as unrsolved before
 // the glob import had a chance to be resolved.

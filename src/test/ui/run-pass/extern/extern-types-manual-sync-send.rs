@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that unsafe impl for Sync/Send can be provided for extern types.
 
 #![feature(extern_types)]

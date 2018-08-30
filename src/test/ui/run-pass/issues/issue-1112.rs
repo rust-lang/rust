@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #1112
 // Alignment of interior pointers to dynamic-size types
 

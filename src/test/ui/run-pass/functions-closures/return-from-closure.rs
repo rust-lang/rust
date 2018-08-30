@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // just to make sure that `return` is only returning from the closure,
 // not the surrounding function.
 

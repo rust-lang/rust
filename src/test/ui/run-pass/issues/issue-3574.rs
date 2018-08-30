@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
 
 

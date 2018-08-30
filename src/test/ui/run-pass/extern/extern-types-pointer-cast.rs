@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that pointers to extern types can be cast from/to usize,
 // despite being !Sized.
 

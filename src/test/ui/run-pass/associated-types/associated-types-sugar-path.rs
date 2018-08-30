@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test paths to associated types using the type-parameter-only sugar.
 
 use std::ops::Deref;

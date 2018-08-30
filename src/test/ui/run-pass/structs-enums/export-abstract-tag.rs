@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // We can export tags without exporting the variants to create a simple
 // sort of ADT.
 

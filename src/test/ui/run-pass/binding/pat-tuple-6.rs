@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn tuple() {
     let x = (1, 2, 3, 4, 5);
     match x {

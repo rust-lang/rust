@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Wrapper<'a, T: ?Sized>(&'a mut i32, T);
 
 impl<'a, T: ?Sized> Drop for Wrapper<'a, T> {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct A<F: FnOnce()->T,T>(F::Output);
 struct B<F: FnOnce()->T,T>(A<F,T>);
 

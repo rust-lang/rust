@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:pub_use_mods_xcrate.rs
 
 // pretty-expanded FIXME #23616

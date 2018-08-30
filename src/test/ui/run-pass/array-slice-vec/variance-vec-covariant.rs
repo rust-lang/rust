@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that vec is now covariant in its argument type.
 
 #![allow(dead_code)]

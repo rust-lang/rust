@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a call whose argument is the result of another call.
 
 #![feature(min_const_fn)]

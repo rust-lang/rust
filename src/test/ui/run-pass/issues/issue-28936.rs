@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub type Session = i32;
 pub struct StreamParser<'a, T> {
     _tokens: T,

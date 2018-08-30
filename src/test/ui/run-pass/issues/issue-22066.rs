@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub trait LineFormatter<'a> {
     type Iter: Iterator<Item=&'a str> + 'a;
     fn iter(&'a self, line: &'a str) -> Self::Iter;

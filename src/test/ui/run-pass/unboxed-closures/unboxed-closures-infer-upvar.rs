@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the type variable in the type(`Vec<_>`) of a closed over
 // variable does not interfere with type inference.
 

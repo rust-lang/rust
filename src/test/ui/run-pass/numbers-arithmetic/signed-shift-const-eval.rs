@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum test { thing = -5 >> 1_usize }
 pub fn main() {

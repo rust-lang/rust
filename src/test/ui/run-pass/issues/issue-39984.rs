@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #39984.
 //
 // The key here is that the error type of the `Ok` call ought to be

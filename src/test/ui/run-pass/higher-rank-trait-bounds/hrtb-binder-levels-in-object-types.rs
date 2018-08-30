@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we handle binder levels in object types correctly.
 // Initially, the reference to `'tcx` in the object type
 // `&Typer<'tcx>` was getting an incorrect binder level, yielding

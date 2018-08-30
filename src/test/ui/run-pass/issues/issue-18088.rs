@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 pub trait Indexable<T>: std::ops::Index<usize, Output = T> {
     fn index2(&self, i: usize) -> &T {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // (Closes #7911) Test that we can use the same self expression
 // with different mutability in macro in two methods
 

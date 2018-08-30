@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use foo::bar;
 mod foo {
     pub use foo::zed::bar;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:-g
 
 // In this test we just want to make sure that the code below does not lead to

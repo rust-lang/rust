@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that type assignability is used to search for instances when
 // making method calls, but only if there aren't any matches without
 // it.

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 enum maybe<T> { nothing, just(T), }
 
 fn foo(x: maybe<isize>) {

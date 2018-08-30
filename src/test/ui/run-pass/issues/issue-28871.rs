@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #28871. The problem is that rustc encountered
 // two ways to project, one from a where clause and one from the where
 // clauses on the trait definition. (In fact, in this case, the where

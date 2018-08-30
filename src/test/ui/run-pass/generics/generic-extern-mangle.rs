@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::ops::Add;
 
 extern "C" fn foo<T: Add>(a: T, b: T) -> T::Output { a + b }

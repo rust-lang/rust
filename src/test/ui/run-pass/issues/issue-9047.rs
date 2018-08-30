@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn decode() -> String {
     'outer: loop {
         let mut ch_start: usize;

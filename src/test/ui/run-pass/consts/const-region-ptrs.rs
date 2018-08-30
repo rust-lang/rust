@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Pair<'a> { a: isize, b: &'a isize }
 
 const x: &'static isize = &10;

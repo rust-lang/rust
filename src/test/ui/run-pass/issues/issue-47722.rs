@@ -7,7 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
+
+// run-pass
+
 // Tests that automatic coercions from &mut T to *mut T
 // allow borrows of T to expire immediately - essentially, that
 // they work identically to 'foo as *mut T'

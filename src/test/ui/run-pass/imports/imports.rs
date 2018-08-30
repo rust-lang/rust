@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![allow(unused)]
 
 // Like other items, private imports can be imported and used non-lexically in paths.

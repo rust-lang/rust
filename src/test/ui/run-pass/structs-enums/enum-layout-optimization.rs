@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we will do various size optimizations to enum layout, but
 // *not* if `#[repr(u8)]` or `#[repr(C)]` is passed. See also #40029.
 

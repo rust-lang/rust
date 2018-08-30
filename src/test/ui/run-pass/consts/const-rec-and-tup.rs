@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Pair { a: f64, b: f64 }
 
 struct AnotherPair { x: (i64, i64), y: Pair }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const ARR: [usize; 5] = [5, 4, 3, 2, 1];
 
 fn main() {

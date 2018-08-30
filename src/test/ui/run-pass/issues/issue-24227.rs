@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This resulted in an ICE. Test for future-proofing
 // Issue #24227
 

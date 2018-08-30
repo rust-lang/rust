@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test use of stabilized const fns in std formerly using individual feature gates.
 
 use std::cell::Cell;

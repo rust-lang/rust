@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #2263.
 
 // Here, `f` is a function that takes a pointer `x` and a function

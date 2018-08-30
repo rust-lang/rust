@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:--test
 // rustc-env:RUSTC_BOOTSTRAP_KEY=
 #![cfg(any())] // This test should be configured away

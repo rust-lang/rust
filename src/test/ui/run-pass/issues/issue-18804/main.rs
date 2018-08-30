@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test for issue #18804, #[linkage] does not propagate thorugh generic
 // functions. Failure results in a linker error.
 

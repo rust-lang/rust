@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Various uses of `T::Item` syntax where the bound that supplies
 // `Item` originates in a where-clause, not the declaration of
 // `T`. Issue #20300.

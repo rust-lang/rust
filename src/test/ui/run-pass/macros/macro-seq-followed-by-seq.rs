@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test of allowing two sequences repetitions in a row,
 // functionality added as byproduct of RFC amendment #1384
 //   https://github.com/rust-lang/rfcs/pull/1384

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 enum Foo {
     Bar(Option<i8>, (), (), Vec<i32>),
     Baz,

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test case where an associated type is referenced from within the
 // supertrait definition. Issue #20220.
 

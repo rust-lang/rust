@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum blah { a(isize, isize, usize), b(isize, isize), c, }
 

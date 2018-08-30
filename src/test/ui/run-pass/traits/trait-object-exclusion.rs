@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Future: 'static {
     // The requirement for Self: Sized must prevent instantiation of
     // Future::forget in vtables, otherwise there's an infinite type

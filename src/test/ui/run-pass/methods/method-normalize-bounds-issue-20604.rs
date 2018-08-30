@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we handle projection types which wind up important for
 // resolving methods. This test was reduced from a larger example; the
 // call to `foo()` at the end was failing to resolve because the

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 enum t1 { a(isize), b(usize), }
 struct T2 {x: t1, y: isize}

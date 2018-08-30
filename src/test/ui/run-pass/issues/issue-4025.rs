@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 /*
 # if b { x } else { y } requires identical types for x and y
 */

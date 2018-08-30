@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 36036: computing the layout of a type composed from another
 // trait's associated type caused compiler to ICE when the associated
 // type was allowed to be unsized, even though the known instantiated

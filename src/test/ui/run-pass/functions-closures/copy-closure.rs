@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that closures implement `Copy`.
 
 fn call<T, F: FnOnce() -> T>(f: F) -> T { f() }

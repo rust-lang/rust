@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 // Test to make sure the destructors run in the right order.
 // Each destructor sets it's tag in the corresponding entry

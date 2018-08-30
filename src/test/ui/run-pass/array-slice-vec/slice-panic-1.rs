@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-emscripten no threads support
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.

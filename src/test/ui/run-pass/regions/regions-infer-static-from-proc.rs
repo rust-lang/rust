@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that the 'static bound on a proc influences lifetimes of
 // region variables contained within (otherwise, region inference will
 // give `x` a very short lifetime).

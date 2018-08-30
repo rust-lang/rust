@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 1974
 // Don't double free the condition allocation
 // pretty-expanded FIXME #23616

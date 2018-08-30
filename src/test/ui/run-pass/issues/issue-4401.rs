@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub fn main() {
     let mut count = 0;
     for _ in 0..999_999 { count += 1; }

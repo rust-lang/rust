@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests calls to closure arguments where the closure takes 2 arguments.
 // This is a bit tricky due to rust-call ABI.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test use of const fn from another crate without a feature gate.
 
 // aux-build:const_fn_lib.rs

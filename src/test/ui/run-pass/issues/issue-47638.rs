@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn id<'c, 'b>(f: &'c &'b Fn(&i32)) -> &'c &'b Fn(&'static i32) {
     f
 }

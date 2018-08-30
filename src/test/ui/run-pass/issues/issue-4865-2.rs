@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Previously, this would have failed to resolve due to the circular
 // block between `use say` and `pub use hello::*`.
 //

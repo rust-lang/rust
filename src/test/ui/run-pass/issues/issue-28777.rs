@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let v1 = { 1 + {2} * {3} };
     let v2 =   1 + {2} * {3}  ;

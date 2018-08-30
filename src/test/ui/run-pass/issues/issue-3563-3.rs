@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,
 // non-copyable struct, unit testing.  To run execute: rustc --test shapes.rs &&
 // ./shapes

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #[derive(Debug)]
 struct Message<'a, P: 'a = &'a [u8]> {
     header: &'a [u8],

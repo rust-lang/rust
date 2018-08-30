@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests the range assertion wraparound case when reading discriminants.
 
 #[repr(u8)]

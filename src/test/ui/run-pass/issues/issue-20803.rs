@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::ops::Add;
 
 fn foo<T>(x: T) -> <i32 as Add<T>>::Output where i32: Add<T> {

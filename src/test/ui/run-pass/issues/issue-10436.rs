@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn works<T>(x: T) -> Vec<T> { vec![x] }
 
 fn also_works<T: Clone>(x: T) -> Vec<T> { vec![x] }

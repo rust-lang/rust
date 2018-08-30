@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:--cfg set1
 
 #![cfg_attr(set1, feature(custom_attribute))]

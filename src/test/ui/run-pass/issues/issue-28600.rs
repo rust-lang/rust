@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #28600 ICE: pub extern fn with parameter type &str inside struct impl
 
 struct Test;

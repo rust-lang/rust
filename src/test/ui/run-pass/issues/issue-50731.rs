@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 enum Void {}
 fn foo(_: Result<(Void, u32), (Void, String)>) {}
 fn main() {

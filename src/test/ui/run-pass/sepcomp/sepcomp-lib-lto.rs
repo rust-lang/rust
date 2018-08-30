@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that we can use `-C lto` when linking against libraries that were
 // separately compiled.
 

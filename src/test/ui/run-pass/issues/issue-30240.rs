@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let &ref a = &[0i32] as &[_];
     assert_eq!(a, &[0i32] as &[_]);

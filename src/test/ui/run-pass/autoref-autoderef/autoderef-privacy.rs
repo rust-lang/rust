@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check we do not select a private method or field when computing autoderefs
 
 #![allow(unused)]

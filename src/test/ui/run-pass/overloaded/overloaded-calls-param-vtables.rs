@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that nested vtables work with overloaded calls.
 
 // pretty-expanded FIXME #23616

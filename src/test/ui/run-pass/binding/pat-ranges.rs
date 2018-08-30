@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Parsing of range patterns
 
 const NUM1: i32 = 10;

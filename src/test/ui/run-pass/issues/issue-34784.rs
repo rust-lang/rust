@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const C: *const u8 = &0;
 
 fn foo(x: *const u8) {

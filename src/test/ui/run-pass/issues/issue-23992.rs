@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub struct Outer<T: Trait>(T);
 pub struct Inner<'a> { value: &'a bool }
 

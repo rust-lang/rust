@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // test that ordinary fat pointer operations work.
 
 struct Wrapper<T: ?Sized>(u32, T);

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #39292. The object vtable was being
 // incorrectly left with a null pointer.
 

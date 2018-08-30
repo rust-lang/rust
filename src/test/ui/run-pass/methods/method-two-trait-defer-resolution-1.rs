@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we pick which version of `foo` to run based on the
 // type that is (ultimately) inferred for `x`.
 

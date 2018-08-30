@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 trait DigitCollection: Sized {
     type Iter: Iterator<Item = u8>;

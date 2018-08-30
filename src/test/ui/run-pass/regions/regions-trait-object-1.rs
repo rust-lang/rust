@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This is a regression test for something that only came up while
 // attempting to bootstrap libsyntax; it is adapted from
 // `syntax::ext::tt::generic_extension`.

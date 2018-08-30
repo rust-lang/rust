@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a foreign function that accepts empty struct.
 
 // pretty-expanded FIXME #23616

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that labels injected by macros do not break hygiene.
 
 // Issue #24278: The label/lifetime shadowing checker from #24162

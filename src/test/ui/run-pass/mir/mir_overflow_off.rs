@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags: -Z force-overflow-checks=off
 
 // Test that with MIR codegen, overflow checks can be

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 
 fn two<F>(mut it: F) where F: FnMut(isize) { it(0); it(1); }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:xcrate-trait-lifetime-param.rs
 
 // pretty-expanded FIXME #23616

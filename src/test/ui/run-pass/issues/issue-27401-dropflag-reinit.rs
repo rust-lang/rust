@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-pretty issue #37201
 
 // Check that when a `let`-binding occurs in a loop, its associated

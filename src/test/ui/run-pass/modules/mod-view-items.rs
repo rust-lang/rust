@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test view items inside non-file-level mods
 
 // This is a regression test for an issue where we were failing to

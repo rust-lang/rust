@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Empty struct defined with braces add names into type namespace
 // Empty struct defined without braces add names into both type and value namespaces
 

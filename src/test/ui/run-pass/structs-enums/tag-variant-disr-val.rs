@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use color::{red, green, blue, black, white, imaginary, purple, orange};
 
 #[derive(Copy, Clone)]

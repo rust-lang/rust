@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A battery of tests to ensure destructors of unboxed closure environments
 // run at the right times.
 

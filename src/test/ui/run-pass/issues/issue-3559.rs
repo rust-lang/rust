@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::collections::HashMap;
 
 fn check_strs(actual: &str, expected: &str) -> bool {

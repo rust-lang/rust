@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 macro_rules! m { (<$t:ty>) => { stringify!($t) } }
 fn main() {
     println!("{}", m!(<Vec<i32>>));

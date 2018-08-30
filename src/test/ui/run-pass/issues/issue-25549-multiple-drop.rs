@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Foo<'r>(&'r mut i32);
 
 impl<'r> Drop for Foo<'r> {

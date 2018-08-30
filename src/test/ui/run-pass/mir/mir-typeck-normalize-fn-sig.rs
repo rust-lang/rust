@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This code was creating an ICE in the MIR type checker. The reason
 // is that we are reifying a reference to a function (`foo::<'x>`),
 // which involves extracting its signature, but we were not

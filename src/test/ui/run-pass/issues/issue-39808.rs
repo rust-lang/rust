@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![allow(unreachable_code)]
 
 // Regression test for #39808. The type parameter of `Owned` was

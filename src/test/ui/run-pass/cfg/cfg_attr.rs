@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags:--cfg set1 --cfg set2
 #![allow(dead_code)]
 use std::fmt::Debug;

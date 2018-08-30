@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 23611: this test is ensuring that, for an instance `X` of the
 // enum `E`, if you swap in a different variant during the execution
 // of the `<E as Drop>::drop`, then the appropriate substructure will

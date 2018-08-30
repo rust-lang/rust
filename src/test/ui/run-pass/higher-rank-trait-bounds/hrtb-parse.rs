@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we can parse all the various places that a `for` keyword
 // can appear representing universal quantification.
 

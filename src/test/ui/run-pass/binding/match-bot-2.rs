@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // n.b. This was only ever failing with optimization disabled.
 
 fn a() -> isize { match return 1 { 2 => 3, _ => panic!() } }

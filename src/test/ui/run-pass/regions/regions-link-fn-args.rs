@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that region inference correctly links up the regions when a
 // `ref` borrow occurs inside a fn argument.
 

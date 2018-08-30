@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct A;
 impl Drop for A {
     fn drop(&mut self) {}

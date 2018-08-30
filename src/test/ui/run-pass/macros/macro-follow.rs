@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check the macro follow sets (see corresponding cfail test).
 
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}

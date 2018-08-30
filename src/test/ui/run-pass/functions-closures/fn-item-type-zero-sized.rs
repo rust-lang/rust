@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that fn item types are zero-sized.
 
 use std::mem::{size_of, size_of_val};

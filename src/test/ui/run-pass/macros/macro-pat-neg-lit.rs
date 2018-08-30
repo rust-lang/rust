@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 macro_rules! enum_number {
     ($name:ident { $($variant:ident = $value:expr, )* }) => {
         enum $name {

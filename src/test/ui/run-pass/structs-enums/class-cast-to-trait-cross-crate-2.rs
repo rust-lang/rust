@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:cci_class_cast.rs
 
 #![feature(box_syntax)]

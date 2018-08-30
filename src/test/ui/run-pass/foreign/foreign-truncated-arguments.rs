@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags: -O
 // Regression test for https://github.com/rust-lang/rust/issues/33868
 

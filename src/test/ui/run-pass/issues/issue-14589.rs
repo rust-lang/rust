@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 

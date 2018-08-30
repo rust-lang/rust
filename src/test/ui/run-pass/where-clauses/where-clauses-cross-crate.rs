@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:where_clauses_xc.rs
 
 extern crate where_clauses_xc;

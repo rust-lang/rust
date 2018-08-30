@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This is largely checking that we now accept code where temp values
 // are borrowing from the input parameters (the `foo` case below).
 //

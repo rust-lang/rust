@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This tests for an ICE (and, if ignored, subsequent LLVM abort) when
 // a lifetime-parametric fn is passed into a context whose expected
 // type has a differing lifetime parameterization.

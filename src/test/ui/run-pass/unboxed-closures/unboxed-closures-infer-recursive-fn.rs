@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(fn_traits, unboxed_closures)]
 
 use std::marker::PhantomData;

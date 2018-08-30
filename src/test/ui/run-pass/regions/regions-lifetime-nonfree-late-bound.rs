@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This is a regression test for the ICE from issue #10846.
 //
 // The original issue causing the ICE: the LUB-computations during

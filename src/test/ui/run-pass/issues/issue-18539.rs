@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that coercing bare fn's that return a zero sized type to
 // a closure doesn't cause an LLVM ERROR
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 

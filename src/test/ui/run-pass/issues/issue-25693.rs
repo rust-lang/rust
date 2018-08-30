@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 pub trait Parameters { type SelfRef; }
 
 struct RP<'a> { _marker: std::marker::PhantomData<&'a ()> }

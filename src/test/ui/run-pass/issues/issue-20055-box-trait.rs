@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // See Issues #20055 and #21695.
 
 // We are checking here that the temporaries `Box<[i8, k]>`, for `k`

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let mut shrinker: Box<Iterator<Item=i32>> = Box::new(vec![1].into_iter());
     println!("{:?}", shrinker.next());

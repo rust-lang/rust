@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn const_mir() -> f32 { 9007199791611905.0 }
 
 fn main() {

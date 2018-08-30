@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that coercions unify the expected return type of a polymorphic
 // function call, instead of leaving the type variables as they were.
 

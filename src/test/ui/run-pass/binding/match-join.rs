@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn foo<T>(y: Option<T>) {
     let mut x: isize;
     let mut rs: Vec<isize> = Vec::new();

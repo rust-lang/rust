@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that codegen_path checks whether a
 // pattern-bound var is an upvar (when codegenning
 // the for-each body)

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 type Func = fn(usize, usize) -> usize;
 
 fn foo(a: usize, b: usize) -> usize { a + b }

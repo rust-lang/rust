@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // We used to have a __rust_abi shim that resulted in duplicated symbols
 // whenever the item path wasn't enough to disambiguate between them.
 fn main() {

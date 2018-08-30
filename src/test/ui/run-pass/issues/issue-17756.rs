@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const count : usize = 2 as usize;
 fn main() {
     let larger : [usize; count*2];

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Previously the closure's argument would be inferred to
 // <S as ITrait<'a>>::Item, causing an error in MIR type
 // checking

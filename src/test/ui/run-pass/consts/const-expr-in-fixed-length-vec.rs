@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that constant expressions can be used for declaring the
 // type of a fixed length vector.
 

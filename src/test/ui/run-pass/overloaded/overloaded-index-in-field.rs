@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 

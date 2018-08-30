@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test an issue where global caching was causing free regions from
 // distinct scopes to be compared (`'g` and `'h`). The only important
 // thing is that compilation succeeds here.

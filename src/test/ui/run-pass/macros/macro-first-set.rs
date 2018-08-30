@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![cfg_attr(stage0, feature(macro_vis_matcher))]
 
 //{{{ issue 40569 ==============================================================

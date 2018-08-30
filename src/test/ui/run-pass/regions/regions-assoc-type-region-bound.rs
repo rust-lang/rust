@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the compiler considers the 'a bound declared in the
 // trait. Issue #20890.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Parser<'a, I, O> {
     parse: Box<FnMut(I) -> Result<O, String> + 'a>
 }

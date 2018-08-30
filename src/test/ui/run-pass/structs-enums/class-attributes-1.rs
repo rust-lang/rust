@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // pp-exact - Make sure we actually print the attributes
 #![allow(unused_attribute)]
 #![feature(custom_attribute)]

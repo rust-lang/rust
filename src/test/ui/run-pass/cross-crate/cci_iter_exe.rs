@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:cci_iter_lib.rs
 
 extern crate cci_iter_lib;

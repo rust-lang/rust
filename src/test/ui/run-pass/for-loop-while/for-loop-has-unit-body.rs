@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     // Check that the tail statement in the body unifies with something
     for _ in 0..3 {

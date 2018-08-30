@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that you can use a fn lifetime parameter as part of
 // the value for a type parameter in a bound.
 

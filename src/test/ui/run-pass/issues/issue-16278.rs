@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-tidy-cr
 
 // this file has some special \r\n endings (use xxd to see them)

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Ensure that we can copy out of a fixed-size array.
 //
 // (Compare with compile-fail/move-out-of-array-1.rs)

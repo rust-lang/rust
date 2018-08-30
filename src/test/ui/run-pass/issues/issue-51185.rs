@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn foo() -> impl Into<for<'a> fn(&'a ())> {
     (|_| {}) as for<'a> fn(&'a ())
 }

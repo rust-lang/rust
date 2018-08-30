@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // The logic for parsing Kleene operators in macros has a special case to disambiguate `?`.
 // Specifically, `$(pat)?` is the ZeroOrOne operator whereas `$(pat)?+` or `$(pat)?*` are the
 // ZeroOrMore and OneOrMore operators using `?` as a separator. These tests are intended to

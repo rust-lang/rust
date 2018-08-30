@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the lifetime from the enclosing `&` is "inherited"
 // through the `MyBox` struct.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:anon_trait_static_method_lib.rs
 
 extern crate anon_trait_static_method_lib;

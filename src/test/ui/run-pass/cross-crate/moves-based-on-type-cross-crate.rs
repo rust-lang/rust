@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:moves_based_on_type_lib.rs
 
 // pretty-expanded FIXME #23616

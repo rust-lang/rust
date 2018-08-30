@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that a where clause attached to a method allows us to add
 // additional constraints to a parameter out of scope.
 

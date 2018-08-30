@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to type-check this example. In particular,
 // knowing that `T: 'a` allows us to deduce that `[U]: 'a` (because
 // when `T=[U]` it implies that `U: 'a`).

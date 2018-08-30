@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for Issue #29092.
 //
 // (Possibly redundant with regression test run-pass/issue-30530.rs)

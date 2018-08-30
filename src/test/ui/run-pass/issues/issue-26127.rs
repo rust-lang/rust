@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Tr { type T; }
 impl Tr for u8 { type T=(); }
 struct S<I: Tr>(I::T);

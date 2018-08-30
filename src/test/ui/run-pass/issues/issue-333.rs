@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn quux<T>(x: T) -> T { let f = id::<T>; return f(x); }
 

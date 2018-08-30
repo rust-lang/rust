@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // To work around #46855
 // compile-flags: -Z mir-opt-level=0
 // Regression test for the inhabitedness of unions with uninhabited variants, issue #46845

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const JSVAL_TAG_CLEAR: u32 = 0xFFFFFF80;
 const JSVAL_TYPE_INT32: u8 = 0x01;
 const JSVAL_TYPE_UNDEFINED: u8 = 0x02;

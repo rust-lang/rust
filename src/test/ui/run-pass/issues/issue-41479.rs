@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn split<A, B>(pair: (A, B)) {
     let _a = pair.0;
     let _b = pair.1;

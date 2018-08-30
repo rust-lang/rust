@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 

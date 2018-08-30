@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test references to `Self::Item` in the trait. Issue #20220.
 
 

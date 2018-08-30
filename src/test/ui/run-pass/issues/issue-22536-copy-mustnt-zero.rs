@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for Issue #22536: If a type implements Copy, then
 // moving it must not zero the original memory.
 

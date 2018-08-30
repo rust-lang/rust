@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 33903:
 // Built-in indexing should be used even when the index is not
 // trivially an integer

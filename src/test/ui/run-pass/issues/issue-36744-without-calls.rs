@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests for an LLVM abort when storing a lifetime-parametric fn into
 // context that is expecting one that is not lifetime-parametric
 // (i.e. has no `for <'_>`).

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that item-less traits do not cause dropck to inject extra
 // region constraints.
 

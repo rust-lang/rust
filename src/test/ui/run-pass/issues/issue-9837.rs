@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const C1: i32 = 0x12345678;
 const C2: isize = C1 as i16 as isize;
 

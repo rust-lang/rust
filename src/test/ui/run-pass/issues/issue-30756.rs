@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![forbid(unsafe_code)]
 
 thread_local!(static FOO: u8 = 1);

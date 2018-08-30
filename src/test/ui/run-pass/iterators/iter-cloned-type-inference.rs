@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test to see that the element type of .cloned() can be inferred
 // properly. Previously this would fail to deduce the type of `sum`.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // this used to cause exponential code-size blowup during LLVM passes.
 
 #![feature(test)]

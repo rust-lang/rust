@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that the result of type ascription has adjustments applied
 
 #![feature(type_ascription)]

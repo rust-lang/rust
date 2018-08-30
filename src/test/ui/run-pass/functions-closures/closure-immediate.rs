@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 // After the work to reoptimize structs, it became possible for immediate logic to fail.
 // This test verifies that it actually works.

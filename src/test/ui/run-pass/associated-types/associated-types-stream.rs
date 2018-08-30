@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test references to the trait `Stream` in the bounds for associated
 // types defined on `Stream`. Issue #20551.
 

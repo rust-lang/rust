@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(cfg_target_feature)]
 
 #[cfg(any(not(target_arch = "x86"), target_feature = "sse2"))]

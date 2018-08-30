@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test binary_search_by_key lifetime. Issue #34683
 
 #[derive(Debug)]

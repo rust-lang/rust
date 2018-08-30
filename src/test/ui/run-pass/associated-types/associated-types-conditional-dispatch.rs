@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we evaluate projection predicates to winnow out
 // candidates during trait selection and method resolution (#20296).
 // If we don't properly winnow out candidates based on the output type

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This should resolve fine even with the circular imports as
 // they are not `pub`.
 

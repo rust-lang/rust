@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const RHS: u8 = 8;
 const IRHS: i8 = 8;
 const RHS16: u16 = 8;

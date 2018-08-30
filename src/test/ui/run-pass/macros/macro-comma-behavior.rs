@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Ideally, any macro call with a trailing comma should behave
 // identically to a call without the comma.
 //

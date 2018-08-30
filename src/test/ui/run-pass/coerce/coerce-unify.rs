@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that coercions can unify if-else, match arms and array elements.
 
 // Try to construct if-else chains, matches and arrays out of given expressions.

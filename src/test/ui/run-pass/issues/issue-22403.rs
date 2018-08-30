@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let x = Box::new([1, 2, 3]);
     let y = x as Box<[i32]>;

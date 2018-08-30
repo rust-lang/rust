@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 /// A compile-time map from identifiers to arbitrary (heterogeneous) expressions
 macro_rules! ident_map {
     ( $name:ident = { $($key:ident => $e:expr,)* } ) => {

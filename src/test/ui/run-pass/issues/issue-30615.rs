@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     &0u8 as *const u8 as *const PartialEq<u8>;
     &[0u8] as *const [u8; 1] as *const [u8];

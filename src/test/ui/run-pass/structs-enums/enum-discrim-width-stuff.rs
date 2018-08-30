@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {

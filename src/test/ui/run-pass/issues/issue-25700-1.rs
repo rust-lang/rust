@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct S<T: 'static>(Option<&'static T>);
 
 trait Tr { type Out; }

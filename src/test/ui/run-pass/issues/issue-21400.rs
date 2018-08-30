@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #21400 which itself was extracted from
 // stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580
 

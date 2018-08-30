@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for #36053. ICE was caused due to obligations being
 // added to a special, dedicated fulfillment cx during a
 // probe. Problem seems to be related to the particular definition of

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test an edge case in region inference: the lifetime of the borrow
 // of `*x` must be extended to at least 'a.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #34751 ICE: 'rustc' panicked at 'assertion failed: !substs.has_regions_escaping_depth(0)'
 
 #[allow(dead_code)]

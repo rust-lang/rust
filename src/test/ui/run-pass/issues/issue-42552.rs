@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for an obscure issue with the projection cache.
 
 fn into_iter<I: Iterator>(a: &I) -> Groups<I> {

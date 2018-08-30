@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 static FOO: [isize; 3] = [1, 2, 3];
 
 pub fn main() {

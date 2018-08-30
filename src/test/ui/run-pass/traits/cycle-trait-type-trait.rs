@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a case where a supertrait references a type that references
 // the original trait. This poses no problem at the moment.
 

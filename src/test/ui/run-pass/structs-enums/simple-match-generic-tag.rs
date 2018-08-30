@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 enum opt<T> { none, some(T) }
 
 pub fn main() {

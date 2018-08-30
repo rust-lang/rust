@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Example taken from RFC 1238 text
 
 // https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md

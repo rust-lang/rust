@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Checks that the Fn trait hierarchy rules permit
 // FnMut or FnOnce to be used where FnMut is implemented.
 

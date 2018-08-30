@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #7526: lowercase static constants in patterns look like bindings
 
 // This is similar to compile-fail/match-static-const-lc, except it

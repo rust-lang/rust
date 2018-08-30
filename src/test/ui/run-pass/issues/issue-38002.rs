@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that constant ADTs are codegened OK, part k of N.
 
 enum Bar {

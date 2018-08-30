@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:associated-types-cc-lib.rs
 
 // Test that we are able to reference cross-crate traits that employ

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #21010: Normalize associated types in
 // various special paths in the `type_is_immediate` function.
 

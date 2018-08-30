@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we mutate a counter on the stack only when we expect to.
 
 fn call<F>(f: F) where F : FnOnce() {

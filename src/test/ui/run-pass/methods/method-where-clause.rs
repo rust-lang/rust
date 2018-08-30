@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we can use method notation to call methods based on a
 // where clause type, and not only type parameters.
 

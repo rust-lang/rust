@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // compile-flags: -Z force-overflow-checks=on
 // ignore-emscripten no threads support
 

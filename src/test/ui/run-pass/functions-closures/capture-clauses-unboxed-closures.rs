@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
     for val in x {
         f(val)

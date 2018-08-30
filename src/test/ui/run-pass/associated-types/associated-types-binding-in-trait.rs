@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a case where the associated type binding (to `bool`, in this
 // case) is derived from the trait definition. Issue #21636.
 

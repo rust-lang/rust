@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test ensures that vec.into_iter does not overconstrain element lifetime.
 
 pub fn main() {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that static methods can be invoked on `type` aliases
 
 #![allow(unused_variables)]

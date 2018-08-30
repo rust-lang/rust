@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that when we match a trait reference like `Foo<A>: Foo<_#0t>`,
 // we unify with `_#0t` with `A`. In this code, if we failed to do
 // that, then you get an unconstrained type-variable in `call`.

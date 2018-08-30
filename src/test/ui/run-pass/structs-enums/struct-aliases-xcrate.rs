@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:xcrate_struct_aliases.rs
 
 extern crate xcrate_struct_aliases;

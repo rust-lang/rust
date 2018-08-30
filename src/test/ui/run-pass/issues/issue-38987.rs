@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn main() {
     let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-emscripten fma not implemented in emscripten
 
 macro_rules! assert_approx_eq {

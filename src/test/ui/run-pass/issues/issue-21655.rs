@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn test(it: &mut Iterator<Item=i32>) {
     for x in it {

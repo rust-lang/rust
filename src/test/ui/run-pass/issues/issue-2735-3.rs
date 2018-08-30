@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::cell::Cell;
 
 // This test should behave exactly like issue-2735-2

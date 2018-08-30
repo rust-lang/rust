@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue #2005: Check that boxed fixed-size arrays are properly
 // accounted for (namely, only deallocated if they were actually
 // created) when they appear as temporaries in unused arms of a match

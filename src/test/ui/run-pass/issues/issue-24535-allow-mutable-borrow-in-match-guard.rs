@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test illustrates that under NLL, we can remove our overly
 // conservative approach for disallowing mutations of match inputs.
 

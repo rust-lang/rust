@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test what happens when a HR obligation is applied to an impl with
 // "outlives" bounds. Currently we're pretty conservative here; this
 // will probably improve in time.

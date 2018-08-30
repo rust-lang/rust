@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that `#[test]` works with extern-absolute-paths enabled.
 //
 // Regression test for #47075.

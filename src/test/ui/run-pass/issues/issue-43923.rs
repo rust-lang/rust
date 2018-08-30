@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct A<T: ?Sized> { ptr: T }
 
 fn foo<T>(x: &A<[T]>) {}

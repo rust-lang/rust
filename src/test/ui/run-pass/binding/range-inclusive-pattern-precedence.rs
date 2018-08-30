@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(box_patterns, pattern_parentheses)]
 
 const VALUE: usize = 21;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait X {
     fn call<T: std::fmt::Debug>(&self, x: &T);
     fn default_method<T: std::fmt::Debug>(&self, x: &T) {

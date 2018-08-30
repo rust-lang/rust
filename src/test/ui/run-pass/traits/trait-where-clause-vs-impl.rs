@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that when there is a conditional (but blanket) impl and a
 // where clause, we don't get confused in trait resolution.
 //

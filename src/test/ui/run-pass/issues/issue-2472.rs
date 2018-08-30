@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue_2472_b.rs
 
 // pretty-expanded FIXME #23616

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 pub fn main() {
     assert_eq!((0 + 0u8) as char, '\0');

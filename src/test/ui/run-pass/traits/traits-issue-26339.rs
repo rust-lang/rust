@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that the right implementation is called through a trait
 // object when supertraits include multiple references to the
 // same trait, with different type parameters.

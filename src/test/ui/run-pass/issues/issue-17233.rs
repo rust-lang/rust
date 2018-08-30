@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 const X1: &'static [u8] = &[b'1'];
 const X2: &'static [u8] = b"1";

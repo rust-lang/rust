@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Extending Num and using inherited static methods
 
 // pretty-expanded FIXME #23616

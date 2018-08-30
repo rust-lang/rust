@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(unsize, coerce_unsized)]
 
 // Verfies that PhantomData is ignored for DST coercions

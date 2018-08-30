@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-wasm32
 
 #![feature(decl_macro, macros_in_extern)]

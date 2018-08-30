@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This code produces a CFG with critical edges that, if we don't
 // handle properly, will cause invalid codegen.
 

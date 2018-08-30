@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #39665
 
 fn batches(n: &u32) -> impl Iterator<Item=&u32> {

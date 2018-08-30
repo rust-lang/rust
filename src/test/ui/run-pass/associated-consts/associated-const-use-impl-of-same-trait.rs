@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 // The main purpose of this test is to ensure that different impls of the same
 // trait can refer to each other without setting off the static recursion check

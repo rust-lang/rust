@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-cloudabi stdout does not map to file descriptor 1 by default
 // ignore-wasm32-bare no libc
 

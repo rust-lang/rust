@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn g<X>(x: X) -> X { return x; }
 
 #[derive(Clone)]

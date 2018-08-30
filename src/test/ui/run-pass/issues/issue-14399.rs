@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #14399
 // We'd previously ICE if we had a method call whose return
 // value was coerced to a trait object. (v.clone() returns Box<B1>

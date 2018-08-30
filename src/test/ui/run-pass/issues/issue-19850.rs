@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that `<Type as Trait>::Output` and `Self::Output` are accepted as type annotations in let
 // bindings
 

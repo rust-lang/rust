@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Issue 15523: derive(PartialOrd) should use the provided
 // discriminant values for the derived ordering.
 //

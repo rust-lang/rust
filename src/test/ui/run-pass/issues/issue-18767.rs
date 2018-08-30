@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that regionck uses the right memcat for patterns in for loops
 // and doesn't ICE.
 

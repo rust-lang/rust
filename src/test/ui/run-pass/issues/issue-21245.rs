@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #21245. Check that we are able to infer
 // the types in these examples correctly. It used to be that
 // insufficient type propagation caused the type of the iterator to be

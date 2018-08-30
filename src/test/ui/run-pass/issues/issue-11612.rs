@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // #11612
 // We weren't updating the auto adjustments with all the resolved
 // type information after type check.

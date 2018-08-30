@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 trait Stream { type Item; }
 impl<'a> Stream for &'a str { type Item = u8; }
 fn f<'s>(s: &'s str) -> (&'s str, <&'s str as Stream>::Item) {

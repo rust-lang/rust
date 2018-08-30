@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-pretty `dyn ::foo` parses differently in the current edition
 
 use std::fmt::Display;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Don't fail if we encounter a NonNull<T> where T is an unsized type
 
 use std::ptr::NonNull;

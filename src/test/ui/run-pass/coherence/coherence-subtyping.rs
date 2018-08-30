@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that two distinct impls which match subtypes of one another
 // yield coherence errors (or not) depending on the variance.
 

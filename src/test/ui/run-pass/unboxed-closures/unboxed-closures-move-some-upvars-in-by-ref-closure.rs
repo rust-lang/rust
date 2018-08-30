@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that in a by-ref once closure we move some variables even as
 // we capture others by mutable reference.
 

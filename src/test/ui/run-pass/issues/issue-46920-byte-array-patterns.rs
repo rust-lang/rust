@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 const CURSOR_PARTITION_LABEL: &'static [u8] = b"partition";
 const CURSOR_EVENT_TYPE_LABEL: &'static [u8] = b"event_type";
 const BYTE_PATTERN: &'static [u8; 5] = b"hello";

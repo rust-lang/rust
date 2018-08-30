@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:issue-31702-1.rs
 // aux-build:issue-31702-2.rs
 // ignore-test: FIXME(#31702) when this test was added it was thought that the

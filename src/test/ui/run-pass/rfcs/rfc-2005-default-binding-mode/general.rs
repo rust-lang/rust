@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 fn some_or_wildcard(r: &Option<i32>, b: &i32) {
     let _: &i32 = match r {
         Some(a) => a,

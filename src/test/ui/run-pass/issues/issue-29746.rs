@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // zip!(a1,a2,a3,a4) is equivalent to:
 //  a1.zip(a2).zip(a3).zip(a4).map(|(((x1,x2),x3),x4)| (x1,x2,x3,x4))
 macro_rules! zip {

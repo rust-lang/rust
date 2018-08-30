@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 static mut DROP_RAN: bool = false;
 
 trait Bar {

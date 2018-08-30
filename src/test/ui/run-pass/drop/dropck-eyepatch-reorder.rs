@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 #![feature(dropck_eyepatch)]
 
 // The point of this test is to test uses of `#[may_dangle]` attribute

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-emscripten no threads support
 
 // Regression test for unwrapping the result of `join`, issue #21291

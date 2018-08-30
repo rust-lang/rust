@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test a case of a trait which extends the same supertrait twice, but
 // with difference type parameters. Test that we can invoke the
 // various methods in various ways successfully.

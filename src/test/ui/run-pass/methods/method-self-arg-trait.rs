@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test method calls with self as an argument
 
 #![feature(box_syntax)]

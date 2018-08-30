@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Make sure several unnamed function parameters don't conflict with each other
 
 trait Tr {

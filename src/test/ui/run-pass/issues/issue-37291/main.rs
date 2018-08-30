@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:lib.rs
 
 // Regression test for #37291. The problem was that the starting

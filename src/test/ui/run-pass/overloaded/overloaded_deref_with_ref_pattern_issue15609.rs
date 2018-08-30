@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we choose Deref or DerefMut appropriately based on mutability of ref bindings (#15609).
 
 fn main() {

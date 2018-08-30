@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we are able to resolve conditional dispatch.  Here, the
 // blanket impl for T:Copy coexists with an impl for Box<T>, because
 // Box does not impl Copy.

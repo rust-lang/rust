@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 struct Function<T, F> { t: T, f: F }
 
 impl<T, R> Function<T, fn() -> R> { fn foo() { } }

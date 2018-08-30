@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that a trait is still object-safe (and usable) if it has
 // generic methods so long as they require `Self : Sized`.
 

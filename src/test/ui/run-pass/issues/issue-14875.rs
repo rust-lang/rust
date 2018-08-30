@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // ignore-wasm32-bare always compiled as panic=abort right now
 
 // Check that values are not leaked when a dtor panics (#14875)

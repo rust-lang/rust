@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // These crossed imports should resolve fine, and not block on
 // each other and be reported as unresolved.
 

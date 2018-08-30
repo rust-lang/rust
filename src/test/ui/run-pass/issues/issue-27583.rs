@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Regression test for issue #27583. Unclear how useful this will be
 // going forward, since the issue in question was EXTREMELY sensitive
 // to compiler internals (like the precise numbering of nodes), but

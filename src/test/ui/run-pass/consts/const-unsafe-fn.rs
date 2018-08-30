@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // A quick test of 'unsafe const fn' functionality
 
 #![feature(min_const_fn)]

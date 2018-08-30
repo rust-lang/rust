@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:trait_safety_lib.rs
 
 // Simple smoke test that unsafe traits can be compiled across crates.

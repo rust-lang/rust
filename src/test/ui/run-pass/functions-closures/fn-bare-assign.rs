@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 
 fn f(i: isize, called: &mut bool) {
     assert_eq!(i, 10);

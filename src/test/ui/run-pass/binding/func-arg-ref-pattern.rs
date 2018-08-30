@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // exec-env:RUST_POISON_ON_FREE=1
 
 // Test argument patterns where we create refs to the inside of

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // test for issue #30244
 
 #[derive(Copy, Clone)]

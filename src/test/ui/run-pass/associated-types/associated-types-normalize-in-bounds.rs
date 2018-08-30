@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Test that we normalize associated types that appear in bounds; if
 // we didn't, the call to `self.split2()` fails to type check.
 

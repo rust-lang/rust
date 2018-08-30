@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // check that the derived impls for the comparison traits shortcircuit
 // where possible, by having a type that panics when compared as the
 // second element, so this passes iff the instances shortcircuit.

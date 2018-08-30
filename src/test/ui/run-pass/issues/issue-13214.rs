@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // defining static with struct that contains enum
 // with &'static str variant used to cause ICE
 

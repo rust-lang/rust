@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 use std::fmt;
 struct NoisyDrop<T: fmt::Debug>(T);
 impl<T: fmt::Debug> Drop for NoisyDrop<T> {

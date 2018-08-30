@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // pretty-expanded FIXME #23616
 
 fn Matrix4<T>(m11: T, m12: T, m13: T, m14: T,

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Ensure that we can do a destructuring bind of a fixed-size array,
 // even when the element type has a destructor.
 

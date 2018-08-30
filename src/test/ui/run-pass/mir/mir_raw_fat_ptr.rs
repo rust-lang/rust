@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // check raw fat pointer ops in mir
 // FIXME: please improve this when we get monomorphization support
 

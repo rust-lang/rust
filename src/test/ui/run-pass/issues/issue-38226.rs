@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // This test makes sure that we don't run into a linker error because of the
 // middle::reachable pass missing trait methods with default impls.
 
