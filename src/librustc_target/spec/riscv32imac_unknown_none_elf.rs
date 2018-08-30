@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use spec::{LinkerFlavor, LldFlavor, PanicStrategy,
+           Target, TargetOptions, TargetResult};
 use spec::abi::{Abi};
 
 pub fn target() -> TargetResult {
@@ -22,10 +23,10 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         arch: "riscv32".to_string(),
-        linker_flavor: LinkerFlavor::Ld,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
-            linker: Some("riscv32-unknown-elf-ld".to_string()),
+            linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
             max_atomic_width: Some(32),
             atomic_cas: false, // incomplete +a extension
