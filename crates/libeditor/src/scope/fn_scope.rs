@@ -180,6 +180,11 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 .chain(e.expr())
                 .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
         }
+        ast::Expr::LoopExpr(e) => {
+            if let Some(block) = e.body() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        }
         _ => {
             expr.syntax().children()
                 .filter_map(ast::Expr::cast)
@@ -251,6 +256,19 @@ mod tests {
         do_check(r"
             fn quux() {
                 f(|x| <|> );
+            }",
+            &["x"],
+        );
+    }
+
+    #[test]
+    fn test_loop_scope() {
+        do_check(r"
+            fn quux() {
+                loop {
+                    let x = ();
+                    <|>
+                };
             }",
             &["x"],
         );
