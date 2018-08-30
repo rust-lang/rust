@@ -17,17 +17,17 @@ use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
 use middle::region;
-use mir::interpret::{EvalErrorKind, Scalar, ScalarMaybeUndef, ConstValue};
+use mir::interpret::{ConstValue, EvalErrorKind, Scalar, ScalarMaybeUndef};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use smallvec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::ReadGuard;
 use rustc_serialize as serialize;
+use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::ops::{Index, IndexMut};
@@ -208,9 +208,10 @@ impl<'tcx> Mir<'tcx> {
         let if_zero_locations = if loc.statement_index == 0 {
             let predecessor_blocks = self.predecessors_for(loc.block);
             let num_predecessor_blocks = predecessor_blocks.len();
-            Some((0 .. num_predecessor_blocks)
-                .map(move |i| predecessor_blocks[i])
-                .map(move |bb| self.terminator_loc(bb))
+            Some(
+                (0..num_predecessor_blocks)
+                    .map(move |i| predecessor_blocks[i])
+                    .map(move |bb| self.terminator_loc(bb)),
             )
         } else {
             None
@@ -219,10 +220,16 @@ impl<'tcx> Mir<'tcx> {
         let if_not_zero_locations = if loc.statement_index == 0 {
             None
         } else {
-            Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
+            Some(Location {
+                block: loc.block,
+                statement_index: loc.statement_index - 1,
+            })
         };
 
-        if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
+        if_zero_locations
+            .into_iter()
+            .flatten()
+            .chain(if_not_zero_locations)
     }
 
     #[inline]
@@ -577,13 +584,15 @@ impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
 });
 
 mod binding_form_impl {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
     use ich::StableHashingContext;
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable<W: StableHasherResult>(&self,
-                                            hcx: &mut StableHashingContext<'a>,
-                                            hasher: &mut StableHasher<W>) {
+        fn hash_stable<W: StableHasherResult>(
+            &self,
+            hcx: &mut StableHashingContext<'a>,
+            hasher: &mut StableHasher<W>,
+        ) {
             use super::BindingForm::*;
             ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -1500,16 +1509,17 @@ impl<'tcx> TerminatorKind<'tcx> {
                     .map(|&u| {
                         let mut s = String::new();
                         let c = ty::Const {
-                            val: ConstValue::Scalar(Scalar::Bits {
+                            val: ConstValue::Scalar(
+                                Scalar::Bits {
                                     bits: u,
                                     size: size.bytes() as u8,
-                                }.into()),
+                                }.into(),
+                            ),
                             ty: switch_ty,
                         };
                         fmt_const_val(&mut s, &c).unwrap();
                         s.into()
-                    })
-                    .chain(iter::once(String::from("otherwise").into()))
+                    }).chain(iter::once(String::from("otherwise").into()))
                     .collect()
             }
             Call {
@@ -2039,7 +2049,13 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<CanonicalTy<'tcx>>, Option<usize>),
+    Adt(
+        &'tcx AdtDef,
+        usize,
+        &'tcx Substs<'tcx>,
+        Option<CanonicalTy<'tcx>>,
+        Option<usize>,
+    ),
 
     Closure(DefId, ClosureSubsts<'tcx>),
     Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
@@ -2289,7 +2305,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
                 return write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i);
             }
             Char => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
-            _ => {},
+            _ => {}
         }
     }
     // print function definitons
@@ -2305,14 +2321,12 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
                         if let Some(interpret::AllocType::Memory(alloc)) = alloc {
                             assert_eq!(len as usize as u128, len);
-                            let slice = &alloc
-                                .bytes
-                                    [(ptr.offset.bytes() as usize)..]
-                                    [..(len as usize)];
+                            let slice =
+                                &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
                             let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
                             write!(f, "{:?}", s)
                         } else {
-                             write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                            write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
                         }
                     });
                 }
@@ -2843,15 +2857,13 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 let kind = box match **kind {
                     AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
                     AggregateKind::Tuple => AggregateKind::Tuple,
-                    AggregateKind::Adt(def, v, substs, user_ty, n) => {
-                        AggregateKind::Adt(
-                            def,
-                            v,
-                            substs.fold_with(folder),
-                            user_ty.fold_with(folder),
-                            n,
-                        )
-                    }
+                    AggregateKind::Adt(def, v, substs, user_ty, n) => AggregateKind::Adt(
+                        def,
+                        v,
+                        substs.fold_with(folder),
+                        user_ty.fold_with(folder),
+                        n,
+                    ),
                     AggregateKind::Closure(id, substs) => {
                         AggregateKind::Closure(id, substs.fold_with(folder))
                     }
@@ -2882,8 +2894,9 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 (match **kind {
                     AggregateKind::Array(ty) => ty.visit_with(visitor),
                     AggregateKind::Tuple => false,
-                    AggregateKind::Adt(_, _, substs, user_ty, _) =>
-                        substs.visit_with(visitor) || user_ty.visit_with(visitor),
+                    AggregateKind::Adt(_, _, substs, user_ty, _) => {
+                        substs.visit_with(visitor) || user_ty.visit_with(visitor)
+                    }
                     AggregateKind::Closure(_, substs) => substs.visit_with(visitor),
                     AggregateKind::Generator(_, substs, _) => substs.visit_with(visitor),
                 }) || fields.visit_with(visitor)

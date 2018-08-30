@@ -26,8 +26,8 @@ use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 
 use dataflow::drop_flag_effects;
-use dataflow::move_paths::MovePathIndex;
 use dataflow::move_paths::indexes::MoveOutIndex;
+use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
@@ -347,10 +347,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if issued_spans == borrow_spans {
             borrow_spans.var_span_label(
                 &mut err,
-                format!(
-                    "borrows occur due to use of `{}` in closure",
-                    desc_place
-                ),
+                format!("borrows occur due to use of `{}` in closure", desc_place),
             );
         } else {
             let borrow_place = &issued_borrow.borrowed_place;
@@ -365,7 +362,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             borrow_spans.var_span_label(
                 &mut err,
-                format!("second borrow occurs due to use of `{}` in closure", desc_place),
+                format!(
+                    "second borrow occurs due to use of `{}` in closure",
+                    desc_place
+                ),
             );
         }
 
@@ -412,10 +412,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
             Some(_) if self.is_place_thread_local(root_place) => {
-                self.report_thread_local_value_does_not_live_long_enough(
-                    drop_span,
-                    borrow_span,
-                )
+                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
             }
             Some(name) => self.report_local_value_does_not_live_long_enough(
                 context,
@@ -461,7 +458,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let mut err = self.tcx.path_does_not_live_long_enough(
-            borrow_span, &format!("`{}`", name), Origin::Mir);
+            borrow_span,
+            &format!("`{}`", name),
+            Origin::Mir,
+        );
 
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(
@@ -485,11 +485,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             drop_span, borrow_span
         );
 
-        let mut err = self.tcx.thread_local_value_does_not_live_long_enough(
-            borrow_span, Origin::Mir);
+        let mut err = self
+            .tcx
+            .thread_local_value_does_not_live_long_enough(borrow_span, Origin::Mir);
 
-        err.span_label(borrow_span,
-                       "thread-local variables cannot be borrowed beyond the end of the function");
+        err.span_label(
+            borrow_span,
+            "thread-local variables cannot be borrowed beyond the end of the function",
+        );
         err.span_label(drop_span, "end of enclosing function is here");
         err
     }
@@ -520,11 +523,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err
     }
 
-    fn get_moved_indexes(
-        &mut self,
-        context: Context,
-        mpi: MovePathIndex,
-    ) -> Vec<MoveOutIndex> {
+    fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveOutIndex> {
         let mir = self.mir;
 
         let mut stack = Vec::new();
@@ -533,16 +532,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut visited = FxHashSet();
         let mut result = vec![];
 
-        'dfs:
-        while let Some(l) = stack.pop() {
-            debug!("report_use_of_moved_or_uninitialized: current_location={:?}", l);
+        'dfs: while let Some(l) = stack.pop() {
+            debug!(
+                "report_use_of_moved_or_uninitialized: current_location={:?}",
+                l
+            );
 
             if !visited.insert(l) {
                 continue;
             }
 
             // check for moves
-            let stmt_kind = mir[l.block].statements.get(l.statement_index).map(|s| &s.kind);
+            let stmt_kind = mir[l.block]
+                .statements
+                .get(l.statement_index)
+                .map(|s| &s.kind);
             if let Some(StatementKind::StorageDead(..)) = stmt_kind {
                 // this analysis only tries to find moves explicitly
                 // written by the user, so we ignore the move-outs
@@ -578,13 +582,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             // check for inits
             let mut any_match = false;
-            drop_flag_effects::for_location_inits(
-                self.tcx,
-                self.mir,
-                self.move_data,
-                l,
-                |m| if m == mpi { any_match = true; },
-            );
+            drop_flag_effects::for_location_inits(self.tcx, self.mir, self.move_data, l, |m| {
+                if m == mpi {
+                    any_match = true;
+                }
+            });
             if any_match {
                 continue 'dfs;
             }
@@ -964,8 +966,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let attrs = self.tcx.get_attrs(statik.def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
 
-            debug!("is_place_thread_local: attrs={:?} is_thread_local={:?}",
-                   attrs, is_thread_local);
+            debug!(
+                "is_place_thread_local: attrs={:?} is_thread_local={:?}",
+                attrs, is_thread_local
+            );
             is_thread_local
         } else {
             debug!("is_place_thread_local: no");
@@ -983,7 +987,7 @@ pub(super) enum UseSpans {
         // it's present.
         args_span: Span,
         // The span of the first use of the captured variable inside the closure.
-        var_span: Span
+        var_span: Span,
     },
     // This access has a single span associated to it: common case.
     OtherUse(Span),
