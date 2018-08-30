@@ -8,31 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
+// run-rustfix
+// compile-pass
 
-#![allow(keyword_idents)]
+#![warn(rust_2018_compatibility)]
 
-#[macro_export]
-macro_rules! produces_async {
-    () => (pub fn async() {})
+fn main() {
+    try();
 }
 
-#[macro_export]
-macro_rules! produces_async_raw {
-    () => (pub fn r#async() {})
-}
-
-#[macro_export]
-macro_rules! consumes_async {
-    (async) => (1)
-}
-
-#[macro_export]
-macro_rules! consumes_async_raw {
-    (r#async) => (1)
-}
-
-#[macro_export]
-macro_rules! passes_ident {
-    ($i: ident) => ($i)
+fn try() {
 }
