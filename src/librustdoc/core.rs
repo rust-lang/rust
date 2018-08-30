@@ -41,7 +41,6 @@ use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
@@ -64,8 +63,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
-    /// Later on moved into `clean::Crate`
-    pub access_levels: RefCell<AccessLevels<DefId>>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -506,15 +503,17 @@ pub fn run_core(search_paths: SearchPaths,
                 clean::path_to_def(&tcx, &["core", "marker", "Send"])
             };
 
+            let mut renderinfo = RenderInfo::default();
+            renderinfo.access_levels = access_levels;
+
             let ctxt = DocContext {
                 tcx,
                 resolver: &resolver,
                 crate_name,
                 cstore: cstore.clone(),
-                access_levels: RefCell::new(access_levels),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
-                renderinfo: Default::default(),
+                renderinfo: RefCell::new(renderinfo),
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
@@ -597,7 +596,6 @@ pub fn run_core(search_paths: SearchPaths,
 
             ctxt.sess().abort_if_errors();
 
-            krate.access_levels = Arc::new(ctxt.access_levels.into_inner());
             krate.external_traits = ctxt.external_traits.into_inner();
 
             (krate, ctxt.renderinfo.into_inner(), passes)

@@ -269,7 +269,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 Def::Enum(did) |
                 Def::ForeignTy(did) |
                 Def::TyAlias(did) if !self_is_hidden => {
-                    self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
+                    self.cx.renderinfo
+                        .borrow_mut()
+                        .access_levels.map
+                        .insert(did, AccessLevel::Public);
                 },
                 Def::Mod(did) => if !self_is_hidden {
                     ::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
@@ -284,7 +287,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             Some(n) => n, None => return false
         };
 
-        let is_private = !self.cx.access_levels.borrow().is_public(def_did);
+        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(def_did);
         let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
 
         // Only inline if requested or if the item would otherwise be stripped

@@ -28,7 +28,6 @@ use syntax::symbol::InternedString;
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::mir::interpret::ConstValue;
-use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::ty::fold::TypeFolder;
 use rustc::middle::lang_items;
@@ -135,7 +134,6 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
-    pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: FxHashMap<DefId, Trait>,
@@ -216,7 +214,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
             module: Some(module),
             externs,
             primitives,
-            access_levels: Arc::new(Default::default()),
             external_traits: Default::default(),
             masked_crates,
         }
@@ -2433,7 +2430,7 @@ impl Clean<Type> for hir::Ty {
                 if let Def::TyAlias(def_id) = path.def {
                     // Substitute private type aliases
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
-                        if !cx.access_levels.borrow().is_exported(def_id) {
+                        if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
                             alias = Some(&cx.tcx.hir.expect_item(node_id).node);
                         }
                     }

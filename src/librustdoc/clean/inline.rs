@@ -296,7 +296,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
+            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(traitref.def_id) {
                 return
             }
         }
@@ -317,7 +317,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.access_levels.borrow().is_doc_reachable(did) {
+            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(did) {
                 return
             }
         }

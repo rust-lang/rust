@@ -313,7 +313,7 @@ pub struct Cache {
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
-    pub access_levels: Arc<AccessLevels<DefId>>,
+    pub access_levels: AccessLevels<DefId>,
 
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub crate_version: Option<String>,
@@ -359,6 +359,7 @@ pub struct RenderInfo {
     pub external_paths: ::core::ExternalPaths,
     pub external_typarams: FxHashMap<DefId, String>,
     pub exact_paths: FxHashMap<DefId, Vec<String>>,
+    pub access_levels: AccessLevels<DefId>,
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
     pub owned_box_did: Option<DefId>,
@@ -578,6 +579,7 @@ pub fn run(mut krate: clean::Crate,
         external_paths,
         external_typarams,
         exact_paths,
+        access_levels,
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
@@ -600,7 +602,7 @@ pub fn run(mut krate: clean::Crate,
         extern_locations: FxHashMap(),
         primitive_locations: FxHashMap(),
         stripped_mod: false,
-        access_levels: krate.access_levels.clone(),
+        access_levels,
         crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         orphan_trait_impls: Vec::new(),
