@@ -149,7 +149,8 @@ pub use intrinsics::write_bytes;
 /// assert!(weak.upgrade().is_none());
 /// ```
 ///
-/// Drops a potentially unaligned value by copying it to aligned memory first:
+/// Unaligned values cannot be dropped in place, they must be copied to an aligned
+/// location first:
 /// ```
 /// use std::ptr;
 /// use std::mem;
@@ -158,7 +159,7 @@ pub use intrinsics::write_bytes;
 ///     let mut copy: T = mem::uninitialized();
 ///     let copy = &mut copy as *mut T;
 ///     ptr::copy(to_drop, copy, 1);
-///     ptr::drop_in_place(copy);
+///     drop(copy);
 /// }
 ///
 /// #[repr(packed, C)]
