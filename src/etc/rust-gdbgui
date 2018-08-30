@@ -20,8 +20,8 @@ gdbgui - https://gdbgui.com - is a graphical front-end to GDB
 that runs in a browser. This script invokes gdbgui with the Rust
 pretty printers loaded.
 
-Simple usage  : rust-gdbgui target\debug\myprog
-With arguments: rust-gdbgui 'target\debug\myprog arg1 arg2...'
+Simple usage  : rust-gdbgui target/debug/myprog
+With arguments: rust-gdbgui 'target/debug/myprog arg1 arg2...'
   (note the quotes)
 
 
@@ -32,7 +32,7 @@ in its options make sure to disable the 'Add breakpoint to main after
 loading executable' setting to avoid a 'File not found: main' warning
 on startup.
 
-Instead, type 'main' into the file browser and you should get
+Instead, type 'main' into gdbgui's file browser and you should get
 auto-completion on the filename. Just pick 'main.rs', add a breakpoint
 by clicking in the line number gutter, and type 'r' or hit the Restart
 icon to start your program running.
