@@ -313,5 +313,14 @@ mod tests {
                    CompletionItem { name: "continue", snippet: Some("continue") },
                    CompletionItem { name: "break", snippet: Some("break") },
                    CompletionItem { name: "return", snippet: Some("return $0") }]"#);
+        check_snippet_completion(r"
+            fn quux() -> i32 {
+                loop { || { <|> } }
+            }
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
+                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
+                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "return", snippet: Some("return $0") }]"#);
     }
 }
