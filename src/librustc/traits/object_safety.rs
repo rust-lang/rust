@@ -331,13 +331,40 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         None
     }
 
-    // checks the type of the self argument, and makes sure it implements
-    // the CoerceUnsized requirement:
-    // forall (U) {
-    //     if (Self: Unsize<U>) {
-    //         Receiver: CoerceUnsized<Receiver<Self=U>>
-    //     }
-    // }
+    /// checks the method's receiver (the `self` argument) can be coerced from
+    /// a fat pointer, including the trait object vtable, to a thin pointer.
+    /// e.g. from `Rc<dyn Trait>` to `Rc<T>`, where `T` is the erased type of the underlying value.
+    /// More formally:
+    /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
+    /// - require the following bound:
+    ///       forall(T: Trait) {
+    ///           Receiver[Self -> dyn Trait]: CoerceSized<Receiver[Self -> T]>
+    ///       }
+    ///   where `Foo[X -> Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
+    ///   (substitution notation).
+    ///
+    /// some examples of receiver types and their required obligation
+    /// - `self` => `dyn Trait: CoerceSized<T>`
+    /// - `&'a mut self` => `&'a mut dyn Trait: CoerceSized<&'a mut T>`
+    /// - `self: Rc<Self>` => `Rc<dyn Trait>: CoerceSized<Rc<T>>`
+    ///
+    /// examples where this does *not* hold, and the receiver is not object safe:
+    /// - `self: &&Self`. There is no way to turn an `&&dyn Trait` into an `&&T`. To do so, you
+    ///   would need to change the inner `&` from a fat pointer to a thin pointer... TODO
+    ///
+    /// In practice, there are issues with the above bound: `where` clauses that apply to `Self`
+    /// would have to apply to `T`, and trait object types have a lot of parameters that need to
+    /// be filled in (lifetime and type parameters, and the lifetime of the actual object). So in
+    /// the implementation, we use the following, more general bound:
+    ///     forall (U: ?Sized) {
+    ///         if (Self: Unsize<U>) {
+    ///             Receiver[Self -> U]: CoerceSized<Receiver>
+    ///         }
+    ///     }
+    ///
+    /// for `self: Self`, this means `U: CoerceSized<Self>`
+    /// for `self: &'a mut Self`, this means `&'a mut U: CoerceSized<&'a mut Self>`
+    /// for `self: Rc<Self>`, this means `Rc<U>: CoerceSized<Rc<Self>>`
     #[allow(dead_code)]
     fn receiver_is_coercible(
         self,
@@ -357,12 +384,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         };
 
         // use a bogus type parameter to mimick a forall(U) query
-        // using u32::MAX for now. This is BAD and will probably break when
-        // this method is called recursively, or at least if someone does a hacky thing
-        // like this elsewhere in the compiler
+        // using u32::MAX for now. This is a hack that will be replaced when we have real forall
+        // queries
         let target_self_ty: Ty<'tcx> = self.mk_ty_param(
             ::std::u32::MAX,
-            Name::intern("mikeyhewROCKS").as_interned_str(),
+            Name::intern("RustaceansAreAwesome").as_interned_str(),
         );
 
         // create a modified param env, with
@@ -391,15 +417,14 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 self.mk_param_from_def(param)
             }
         });
+        // the type `Receiver[Self -> U]` in the query
+        let unsized_receiver_ty = receiver_ty.subst(self, receiver_substs);
 
-        // the type `Receiver<Self=U>` in the query
-        let target_receiver_ty = receiver_ty.subst(self, receiver_substs);
-
-        // Receiver: CoerceUnsized<Receiver<Self=U>>
+        // Receiver[Self -> U]: CoerceSized<Receiver>
         let obligation = {
             let predicate = ty::TraitRef {
                 def_id: coerce_sized_did,
-                substs: self.mk_substs_trait(receiver_ty, &[target_receiver_ty.into()]),
+                substs: self.mk_substs_trait(unsized_receiver_ty, &[receiver_ty.into()]),
             }.to_predicate();
 
             Obligation::new(
@@ -409,7 +434,6 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             )
         };
 
-        // return whether `Receiver: CoerceUnsized<Receiver<Self=U>>` holds
         self.infer_ctxt().enter(|ref infcx| {
             infcx.predicate_must_hold(&obligation)
         })
