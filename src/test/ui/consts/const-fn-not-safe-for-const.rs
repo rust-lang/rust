@@ -10,14 +10,14 @@
 
 // Test that we can't call random fns in a const fn or do other bad things.
 
-#![feature(const_fn)]
+#![feature(const_fn, const_transmute)]
 
 use std::mem::transmute;
 
 fn random() -> u32 { 0 }
 
 const fn sub(x: &u32) -> usize {
-    unsafe { transmute(x) } //~ ERROR E0015
+    unsafe { transmute(x) }
 }
 
 const fn sub1() -> u32 {

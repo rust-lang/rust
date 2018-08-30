@@ -830,6 +830,18 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             | "cttz_nonzero"
                             | "ctlz"
                             | "ctlz_nonzero" => is_const_fn = Some(def_id),
+                            "transmute" => {
+                                if self.mode != Mode::Fn {
+                                    is_const_fn = Some(def_id);
+                                    if !self.tcx.sess.features_untracked().const_transmute {
+                                        emit_feature_err(
+                                            &self.tcx.sess.parse_sess, "const_transmute",
+                                            self.span, GateIssue::Language,
+                                            &format!("The use of std::mem::transmute() \
+                                            is gated in {}s", self.mode));
+                                    }
+                                }
+                            }
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
