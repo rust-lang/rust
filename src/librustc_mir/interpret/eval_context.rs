@@ -214,10 +214,10 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
         stack: &Vec<Frame<'mir, 'tcx>>,
         memory: &Memory<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, ()> {
-        let snapshot = (machine, stack, memory);
-
         let mut fx = FxHasher::default();
-        snapshot.hash(&mut fx);
+        // don't hash the memory, that takes too much time, just compare when you hit a collision
+        // should be rare enough
+        (machine, stack).hash(&mut fx);
         let hash = fx.finish();
 
         if self.hashes.insert(hash) {
