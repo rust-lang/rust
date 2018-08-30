@@ -289,7 +289,7 @@ fn rewrite_match_pattern(
         guard,
         shape,
         trimmed_last_line_width(&pats_str),
-        pats_str.contains("\n"),
+        pats_str.contains('\n'),
     )?;
 
     Some(format!("{}{}", pats_str, guard_str))

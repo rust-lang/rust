@@ -525,7 +525,7 @@ fn rewrite_comment_inner(
 
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 
-fn hide_sharp_behind_comment<'a>(s: &'a str) -> Cow<'a, str> {
+fn hide_sharp_behind_comment(s: &str) -> Cow<str> {
     if s.trim_left().starts_with("# ") {
         Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
     } else {
@@ -823,8 +823,8 @@ pub enum FullCodeCharKind {
 }
 
 impl FullCodeCharKind {
-    pub fn is_comment(&self) -> bool {
-        match *self {
+    pub fn is_comment(self) -> bool {
+        match self {
             FullCodeCharKind::StartComment
             | FullCodeCharKind::InComment
             | FullCodeCharKind::EndComment => true,
@@ -832,11 +832,11 @@ impl FullCodeCharKind {
         }
     }
 
-    pub fn is_string(&self) -> bool {
-        *self == FullCodeCharKind::InString
+    pub fn is_string(self) -> bool {
+        self == FullCodeCharKind::InString
     }
 
-    fn to_codecharkind(&self) -> CodeCharKind {
+    fn to_codecharkind(self) -> CodeCharKind {
         if self.is_comment() {
             CodeCharKind::Comment
         } else {
@@ -987,9 +987,7 @@ impl<'a> Iterator for LineClasses<'a> {
     type Item = (FullCodeCharKind, String);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.base.peek().is_none() {
-            return None;
-        }
+        self.base.peek()?;
 
         let mut line = String::new();
 
@@ -1174,7 +1172,7 @@ pub fn filter_normal_code(code: &str) -> String {
         }
         _ => (),
     });
-    if !code.ends_with("\n") && buffer.ends_with("\n") {
+    if !code.ends_with('\n') && buffer.ends_with('\n') {
         buffer.pop();
     }
     buffer

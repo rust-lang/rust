@@ -223,7 +223,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         // 1 = "("
         let combine_arg_with_callee = self.items.len() == 1
             && self.items[0].to_expr().is_some()
-            && self.ident.len() + 1 <= self.context.config.tab_spaces();
+            && self.ident.len() < self.context.config.tab_spaces();
         let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, self.items);
 
         // Replace the last item with its first line to see if it fits with
