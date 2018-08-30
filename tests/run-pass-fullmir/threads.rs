@@ -8,8 +8,12 @@ fn main() {
     let _ = m.lock();
     drop(m);
 
-    let rw = sync::RwLock::new(0);
-    let _ = rw.read();
-    let _ = rw.write();
-    drop(rw);
+    // We don't provide RwLock on Windows
+    #[cfg(not(target_os = "windows"))]
+    {
+        let rw = sync::RwLock::new(0);
+        let _ = rw.read();
+        let _ = rw.write();
+        drop(rw);
+    }
 }
