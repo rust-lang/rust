@@ -294,7 +294,7 @@ You can put new impls into the `config` module. They look something like this:
 
 ```rust
 impl<'tcx> QueryDescription for queries::type_of<'tcx> {
-    fn describe(tcx: TyCtxt, key: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: DefId) -> String {
         format!("computing the type of `{}`", tcx.item_path_str(key))
     }
 }

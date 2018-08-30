@@ -54,7 +54,7 @@ impl LintLevelSets {
         return me
     }
 
-    pub fn builder(sess: &Session) -> LintLevelsBuilder {
+    pub fn builder(sess: &Session) -> LintLevelsBuilder<'_> {
         LintLevelsBuilder::new(sess, LintLevelSets::new(sess))
     }
 

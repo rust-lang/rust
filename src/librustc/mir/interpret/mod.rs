@@ -253,7 +253,7 @@ pub struct AllocDecodingState {
 
 impl AllocDecodingState {
 
-    pub fn new_decoding_session(&self) -> AllocDecodingSession {
+    pub fn new_decoding_session(&self) -> AllocDecodingSession<'_> {
         static DECODER_SESSION_ID: AtomicU32 = AtomicU32::new(0);
         let counter = DECODER_SESSION_ID.fetch_add(1, Ordering::SeqCst);
 
@@ -394,7 +394,7 @@ impl<'s> AllocDecodingSession<'s> {
 }
 
 impl fmt::Display for AllocId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }

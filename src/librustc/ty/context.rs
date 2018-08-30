@@ -301,7 +301,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.get(&id.local_id)
     }
 
-    pub fn iter(&self) -> hash_map::Iter<hir::ItemLocalId, V> {
+    pub fn iter(&self) -> hash_map::Iter<'_, hir::ItemLocalId, V> {
         self.data.iter()
     }
 }
@@ -325,7 +325,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.get_mut(&id.local_id)
     }
 
-    pub fn entry(&mut self, id: hir::HirId) -> Entry<hir::ItemLocalId, V> {
+    pub fn entry(&mut self, id: hir::HirId) -> Entry<'_, hir::ItemLocalId, V> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.entry(id.local_id)
     }
@@ -483,56 +483,56 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn type_dependent_defs(&self) -> LocalTableInContext<Def> {
+    pub fn type_dependent_defs(&self) -> LocalTableInContext<'_, Def> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.type_dependent_defs
         }
     }
 
-    pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<Def> {
+    pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<'_, Def> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.type_dependent_defs
         }
     }
 
-    pub fn field_indices(&self) -> LocalTableInContext<usize> {
+    pub fn field_indices(&self) -> LocalTableInContext<'_, usize> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.field_indices
         }
     }
 
-    pub fn field_indices_mut(&mut self) -> LocalTableInContextMut<usize> {
+    pub fn field_indices_mut(&mut self) -> LocalTableInContextMut<'_, usize> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.field_indices
         }
     }
 
-    pub fn user_provided_tys(&self) -> LocalTableInContext<CanonicalTy<'tcx>> {
+    pub fn user_provided_tys(&self) -> LocalTableInContext<'_, CanonicalTy<'tcx>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.user_provided_tys
         }
     }
 
-    pub fn user_provided_tys_mut(&mut self) -> LocalTableInContextMut<CanonicalTy<'tcx>> {
+    pub fn user_provided_tys_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalTy<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.user_provided_tys
         }
     }
 
-    pub fn node_types(&self) -> LocalTableInContext<Ty<'tcx>> {
+    pub fn node_types(&self) -> LocalTableInContext<'_, Ty<'tcx>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.node_types
         }
     }
 
-    pub fn node_types_mut(&mut self) -> LocalTableInContextMut<Ty<'tcx>> {
+    pub fn node_types_mut(&mut self) -> LocalTableInContextMut<'_, Ty<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.node_types
@@ -557,7 +557,7 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<&'tcx Substs<'tcx>> {
+    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<'_, &'tcx Substs<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.node_substs
@@ -574,7 +574,7 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_substs.get(&id.local_id).cloned()
     }
 
-    pub fn user_substs_mut(&mut self) -> LocalTableInContextMut<CanonicalSubsts<'tcx>> {
+    pub fn user_substs_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalSubsts<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.user_substs
@@ -614,7 +614,7 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(expr.hir_id)
     }
 
-    pub fn adjustments(&self) -> LocalTableInContext<Vec<ty::adjustment::Adjustment<'tcx>>> {
+    pub fn adjustments(&self) -> LocalTableInContext<'_, Vec<ty::adjustment::Adjustment<'tcx>>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.adjustments
@@ -622,7 +622,7 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn adjustments_mut(&mut self)
-                           -> LocalTableInContextMut<Vec<ty::adjustment::Adjustment<'tcx>>> {
+                           -> LocalTableInContextMut<'_, Vec<ty::adjustment::Adjustment<'tcx>>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.adjustments
@@ -663,7 +663,7 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn pat_binding_modes(&self) -> LocalTableInContext<BindingMode> {
+    pub fn pat_binding_modes(&self) -> LocalTableInContext<'_, BindingMode> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.pat_binding_modes
@@ -671,14 +671,14 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn pat_binding_modes_mut(&mut self)
-                           -> LocalTableInContextMut<BindingMode> {
+                           -> LocalTableInContextMut<'_, BindingMode> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.pat_binding_modes
         }
     }
 
-    pub fn pat_adjustments(&self) -> LocalTableInContext<Vec<Ty<'tcx>>> {
+    pub fn pat_adjustments(&self) -> LocalTableInContext<'_, Vec<Ty<'tcx>>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.pat_adjustments,
@@ -686,7 +686,7 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn pat_adjustments_mut(&mut self)
-                           -> LocalTableInContextMut<Vec<Ty<'tcx>>> {
+                           -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.pat_adjustments,
@@ -697,56 +697,56 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    pub fn closure_kind_origins(&self) -> LocalTableInContext<(Span, ast::Name)> {
+    pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, ast::Name)> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.closure_kind_origins
         }
     }
 
-    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<(Span, ast::Name)> {
+    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<'_, (Span, ast::Name)> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.closure_kind_origins
         }
     }
 
-    pub fn liberated_fn_sigs(&self) -> LocalTableInContext<ty::FnSig<'tcx>> {
+    pub fn liberated_fn_sigs(&self) -> LocalTableInContext<'_, ty::FnSig<'tcx>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.liberated_fn_sigs
         }
     }
 
-    pub fn liberated_fn_sigs_mut(&mut self) -> LocalTableInContextMut<ty::FnSig<'tcx>> {
+    pub fn liberated_fn_sigs_mut(&mut self) -> LocalTableInContextMut<'_, ty::FnSig<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.liberated_fn_sigs
         }
     }
 
-    pub fn fru_field_types(&self) -> LocalTableInContext<Vec<Ty<'tcx>>> {
+    pub fn fru_field_types(&self) -> LocalTableInContext<'_, Vec<Ty<'tcx>>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.fru_field_types
         }
     }
 
-    pub fn fru_field_types_mut(&mut self) -> LocalTableInContextMut<Vec<Ty<'tcx>>> {
+    pub fn fru_field_types_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.fru_field_types
         }
     }
 
-    pub fn cast_kinds(&self) -> LocalTableInContext<ty::cast::CastKind> {
+    pub fn cast_kinds(&self) -> LocalTableInContext<'_, ty::cast::CastKind> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.cast_kinds
         }
     }
 
-    pub fn cast_kinds_mut(&mut self) -> LocalTableInContextMut<ty::cast::CastKind> {
+    pub fn cast_kinds_mut(&mut self) -> LocalTableInContextMut<'_, ty::cast::CastKind> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.cast_kinds
@@ -831,10 +831,11 @@ impl<'tcx> CommonTypes<'tcx> {
         // Ensure our type representation does not grow
         #[cfg(target_pointer_width = "64")]
         #[allow(dead_code)]
-        static ASSERT_TY_KIND: () = [()][!(::std::mem::size_of::<ty::TyKind>() <= 24) as usize];
+        static ASSERT_TY_KIND: () =
+            [()][!(::std::mem::size_of::<ty::TyKind<'_>>() <= 24) as usize];
         #[cfg(target_pointer_width = "64")]
         #[allow(dead_code)]
-        static ASSERT_TYS: () = [()][!(::std::mem::size_of::<ty::TyS>() <= 32) as usize];
+        static ASSERT_TYS: () = [()][!(::std::mem::size_of::<ty::TyS<'_>>() <= 32) as usize];
 
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
@@ -2007,7 +2008,7 @@ pub mod tls {
 
     /// This is a callback from libsyntax as it cannot access the implicit state
     /// in librustc otherwise
-    fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
+    fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with(|tcx| {
             write!(f, "{}", tcx.sess.source_map().span_to_string(span))
         })
@@ -2130,9 +2131,9 @@ pub mod tls {
         } else {
             // We could get a ImplicitCtxt pointer from another thread.
             // Ensure that ImplicitCtxt is Sync
-            sync::assert_sync::<ImplicitCtxt>();
+            sync::assert_sync::<ImplicitCtxt<'_, '_, '_>>();
 
-            unsafe { f(Some(&*(context as *const ImplicitCtxt))) }
+            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_, '_>))) }
         }
     }
 
@@ -2156,7 +2157,7 @@ pub mod tls {
             unsafe {
                 let gcx = tcx.gcx as *const _ as usize;
                 assert!(context.tcx.gcx as *const _ as usize == gcx);
-                let context: &ImplicitCtxt = mem::transmute(context);
+                let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
         })
@@ -2176,7 +2177,7 @@ pub mod tls {
                 let interners = tcx.interners as *const _ as usize;
                 assert!(context.tcx.gcx as *const _ as usize == gcx);
                 assert!(context.tcx.interners as *const _ as usize == interners);
-                let context: &ImplicitCtxt = mem::transmute(context);
+                let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
         })
@@ -2216,7 +2217,7 @@ macro_rules! sty_debug_print {
                 both_infer: usize,
             }
 
-            pub fn go(tcx: TyCtxt) {
+            pub fn go(tcx: TyCtxt<'_, '_, '_>) {
                 let mut total = DebugStat {
                     total: 0,
                     region_infer: 0, ty_infer: 0, both_infer: 0,
@@ -2458,7 +2459,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    const_: mk_const(|c: &Const| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
+    const_: mk_const(|c: &Const<'_>| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2467,7 +2468,7 @@ macro_rules! slice_interners {
             &[$ty<'tcx>],
             |a, v| List::from_arena(a, v),
             Deref::deref,
-            |xs: &[$ty]| xs.iter().any(keep_local)) -> List<$ty<'tcx>>);)+
+            |xs: &[$ty<'_>]| xs.iter().any(keep_local)) -> List<$ty<'tcx>>);)+
     )
 }
 
@@ -2857,7 +2858,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 
-    pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal {
+    pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal<'_> {
         &self.intern_goals(&[goal])[0]
     }
 
@@ -3024,7 +3025,7 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about

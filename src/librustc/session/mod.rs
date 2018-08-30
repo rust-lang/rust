@@ -705,7 +705,7 @@ impl Session {
                 .expect("missing sysroot and default_sysroot in Session"),
         }
     }
-    pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
+    pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
         filesearch::FileSearch::new(
             self.sysroot(),
             self.opts.target_triple.triple(),
@@ -713,7 +713,7 @@ impl Session {
             kind,
         )
     }
-    pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
+    pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
         filesearch::FileSearch::new(
             self.sysroot(),
             config::host_triple(),
@@ -803,7 +803,7 @@ impl Session {
         *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
     }
 
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<PathBuf> {
+    pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
         cell::Ref::map(
             incr_comp_session,
@@ -826,7 +826,7 @@ impl Session {
         )
     }
 
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<PathBuf>> {
+    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
         if self.opts.incremental.is_some() {
             Some(self.incr_comp_session_dir())
         } else {
@@ -1253,7 +1253,7 @@ impl CrateDisambiguator {
 }
 
 impl fmt::Display for CrateDisambiguator {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let (a, b) = self.0.as_value();
         let as_u128 = a as u128 | ((b as u128) << 64);
         f.write_str(&base_n::encode(as_u128, base_n::CASE_INSENSITIVE))

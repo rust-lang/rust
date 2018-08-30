@@ -708,7 +708,7 @@ struct HasTypeFlagsVisitor {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
-    fn visit_ty(&mut self, t: Ty) -> bool {
+    fn visit_ty(&mut self, t: Ty<'_>) -> bool {
         debug!("HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}", t, t.flags, self.flags);
         t.flags.intersects(self.flags)
     }

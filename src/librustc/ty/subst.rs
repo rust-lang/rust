@@ -73,13 +73,13 @@ impl<'tcx> UnpackedKind<'tcx> {
 }
 
 impl<'tcx> Ord for Kind<'tcx> {
-    fn cmp(&self, other: &Kind) -> Ordering {
+    fn cmp(&self, other: &Kind<'_>) -> Ordering {
         self.unpack().cmp(&other.unpack())
     }
 }
 
 impl<'tcx> PartialOrd for Kind<'tcx> {
-    fn partial_cmp(&self, other: &Kind) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Kind<'_>) -> Option<Ordering> {
         Some(self.cmp(&other))
     }
 }
@@ -111,7 +111,7 @@ impl<'tcx> Kind<'tcx> {
 }
 
 impl<'tcx> fmt::Debug for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{:?}", lt),
             UnpackedKind::Type(ty) => write!(f, "{:?}", ty),
@@ -120,7 +120,7 @@ impl<'tcx> fmt::Debug for Kind<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
             UnpackedKind::Type(ty) => write!(f, "{}", ty),

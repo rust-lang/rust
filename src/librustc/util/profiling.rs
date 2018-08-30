@@ -61,7 +61,7 @@ macro_rules! define_categories {
                 }
             }
 
-            fn print(&self, lock: &mut StdoutLock) {
+            fn print(&self, lock: &mut StdoutLock<'_>) {
                 writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
                     .unwrap();
                 writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")

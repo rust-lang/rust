@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn report_similar_impl_candidates(&self,
                                       mut impl_candidates: Vec<ty::TraitRef<'tcx>>,
-                                      err: &mut DiagnosticBuilder)
+                                      err: &mut DiagnosticBuilder<'_>)
     {
         if impl_candidates.is_empty() {
             return;
@@ -930,7 +930,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    pub fn get_fn_like_arguments(&self, node: Node) -> (Span, Vec<ArgKind>) {
+    pub fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
         match node {
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
@@ -1378,7 +1378,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn note_obligation_cause<T>(&self,
-                                err: &mut DiagnosticBuilder,
+                                err: &mut DiagnosticBuilder<'_>,
                                 obligation: &Obligation<'tcx, T>)
         where T: fmt::Display
     {
@@ -1389,7 +1389,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn note_obligation_cause_code<T>(&self,
-                                     err: &mut DiagnosticBuilder,
+                                     err: &mut DiagnosticBuilder<'_>,
                                      predicate: &T,
                                      cause_code: &ObligationCauseCode<'tcx>,
                                      obligated_types: &mut Vec<&ty::TyS<'tcx>>)
@@ -1545,7 +1545,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder) {
+    fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
         let current_limit = self.tcx.sess.recursion_limit.get();
         let suggested_limit = current_limit * 2;
         err.help(&format!("consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",

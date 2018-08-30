@@ -327,56 +327,56 @@ macro_rules! declare_combined_late_lint_pass {
 }
 
 pub trait EarlyLintPass: LintPass {
-    fn check_ident(&mut self, _: &EarlyContext, _: ast::Ident) { }
-    fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
-    fn check_crate_post(&mut self, _: &EarlyContext, _: &ast::Crate) { }
-    fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_mod_post(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
-    fn check_foreign_item_post(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
-    fn check_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
-    fn check_item_post(&mut self, _: &EarlyContext, _: &ast::Item) { }
-    fn check_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
-    fn check_block(&mut self, _: &EarlyContext, _: &ast::Block) { }
-    fn check_block_post(&mut self, _: &EarlyContext, _: &ast::Block) { }
-    fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
-    fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
-    fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
-    fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
-    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
-    fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
-    fn check_where_predicate(&mut self, _: &EarlyContext, _: &ast::WherePredicate) { }
-    fn check_poly_trait_ref(&mut self, _: &EarlyContext, _: &ast::PolyTraitRef,
+    fn check_ident(&mut self, _: &EarlyContext<'_>, _: ast::Ident) { }
+    fn check_crate(&mut self, _: &EarlyContext<'_>, _: &ast::Crate) { }
+    fn check_crate_post(&mut self, _: &EarlyContext<'_>, _: &ast::Crate) { }
+    fn check_mod(&mut self, _: &EarlyContext<'_>, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_mod_post(&mut self, _: &EarlyContext<'_>, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_foreign_item(&mut self, _: &EarlyContext<'_>, _: &ast::ForeignItem) { }
+    fn check_foreign_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::ForeignItem) { }
+    fn check_item(&mut self, _: &EarlyContext<'_>, _: &ast::Item) { }
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::Item) { }
+    fn check_local(&mut self, _: &EarlyContext<'_>, _: &ast::Local) { }
+    fn check_block(&mut self, _: &EarlyContext<'_>, _: &ast::Block) { }
+    fn check_block_post(&mut self, _: &EarlyContext<'_>, _: &ast::Block) { }
+    fn check_stmt(&mut self, _: &EarlyContext<'_>, _: &ast::Stmt) { }
+    fn check_arm(&mut self, _: &EarlyContext<'_>, _: &ast::Arm) { }
+    fn check_pat(&mut self, _: &EarlyContext<'_>, _: &ast::Pat) { }
+    fn check_expr(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
+    fn check_expr_post(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
+    fn check_ty(&mut self, _: &EarlyContext<'_>, _: &ast::Ty) { }
+    fn check_generic_param(&mut self, _: &EarlyContext<'_>, _: &ast::GenericParam) { }
+    fn check_generics(&mut self, _: &EarlyContext<'_>, _: &ast::Generics) { }
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &EarlyContext<'_>, _: &ast::PolyTraitRef,
                             _: &ast::TraitBoundModifier) { }
-    fn check_fn(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
-    fn check_fn_post(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
-    fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
-    fn check_trait_item_post(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
-    fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
-    fn check_impl_item_post(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
-    fn check_struct_def(&mut self, _: &EarlyContext,
+    fn check_fn(&mut self, _: &EarlyContext<'_>,
+        _: ast_visit::FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
+    fn check_fn_post(&mut self, _: &EarlyContext<'_>,
+        _: ast_visit::FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
+    fn check_trait_item(&mut self, _: &EarlyContext<'_>, _: &ast::TraitItem) { }
+    fn check_trait_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::TraitItem) { }
+    fn check_impl_item(&mut self, _: &EarlyContext<'_>, _: &ast::ImplItem) { }
+    fn check_impl_item_post(&mut self, _: &EarlyContext<'_>, _: &ast::ImplItem) { }
+    fn check_struct_def(&mut self, _: &EarlyContext<'_>,
         _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_struct_def_post(&mut self, _: &EarlyContext,
+    fn check_struct_def_post(&mut self, _: &EarlyContext<'_>,
         _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
-    fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
-    fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
-    fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
-    fn check_mac_def(&mut self, _: &EarlyContext, _: &ast::MacroDef, _id: ast::NodeId) { }
-    fn check_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
+    fn check_struct_field(&mut self, _: &EarlyContext<'_>, _: &ast::StructField) { }
+    fn check_variant(&mut self, _: &EarlyContext<'_>, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_variant_post(&mut self, _: &EarlyContext<'_>, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_lifetime(&mut self, _: &EarlyContext<'_>, _: &ast::Lifetime) { }
+    fn check_path(&mut self, _: &EarlyContext<'_>, _: &ast::Path, _: ast::NodeId) { }
+    fn check_attribute(&mut self, _: &EarlyContext<'_>, _: &ast::Attribute) { }
+    fn check_mac_def(&mut self, _: &EarlyContext<'_>, _: &ast::MacroDef, _id: ast::NodeId) { }
+    fn check_mac(&mut self, _: &EarlyContext<'_>, _: &ast::Mac) { }
 
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-    fn enter_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    fn enter_lint_attrs(&mut self, _: &EarlyContext<'_>, _: &[ast::Attribute]) { }
 
     /// Counterpart to `enter_lint_attrs`.
-    fn exit_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    fn exit_lint_attrs(&mut self, _: &EarlyContext<'_>, _: &[ast::Attribute]) { }
 }
 
 /// A lint pass boxed up as a trait object.
@@ -728,7 +728,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.lint_levels = lint_levels;
 }
 

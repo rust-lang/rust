@@ -273,7 +273,7 @@ impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt<'_, '_, '_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
@@ -536,7 +536,7 @@ impl<'tcx> Eq for TyS<'tcx> {}
 
 impl<'tcx> Hash for TyS<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const TyS).hash(s)
+        (self as *const TyS<'_>).hash(s)
     }
 }
 
@@ -649,7 +649,7 @@ impl<T: Copy> List<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for List<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }
@@ -1263,7 +1263,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.skip_binder().projection_ty.item_def_id
     }
 
-    pub fn to_poly_trait_ref(&self, tcx: TyCtxt) -> PolyTraitRef<'tcx> {
+    pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'_, '_, '_>) -> PolyTraitRef<'tcx> {
         // Note: unlike with TraitRef::to_poly_trait_ref(),
         // self.0.trait_ref is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our
@@ -1541,7 +1541,7 @@ impl UniverseIndex {
 }
 
 impl fmt::Debug for UniverseIndex {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "U{}", self.as_u32())
     }
 }
@@ -1931,7 +1931,7 @@ impl_stable_hash_for!(struct ReprOptions {
 });
 
 impl ReprOptions {
-    pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
+    pub fn new(tcx: TyCtxt<'_, '_, '_>, did: DefId) -> ReprOptions {
         let mut flags = ReprFlags::empty();
         let mut size = None;
         let mut max_align = 0;
@@ -1999,7 +1999,7 @@ impl ReprOptions {
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
-    fn new(tcx: TyCtxt,
+    fn new(tcx: TyCtxt<'_, '_, '_>,
            did: DefId,
            kind: AdtKind,
            variants: Vec<VariantDef>,
@@ -2644,7 +2644,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn field_index(self, node_id: NodeId, tables: &TypeckTables) -> usize {
+    pub fn field_index(self, node_id: NodeId, tables: &TypeckTables<'_>) -> usize {
         let hir_id = self.hir.node_to_hir_id(node_id);
         tables.field_indices().get(hir_id).cloned().expect("no index for a field")
     }
@@ -2971,7 +2971,7 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 }
 
 /// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition
-pub fn is_impl_trait_defn(tcx: TyCtxt, def_id: DefId) -> Option<DefId> {
+pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefId> {
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         if let Node::Item(item) = tcx.hir.get(node_id) {
             if let hir::ItemKind::Existential(ref exist_ty) = item.node {
@@ -3051,7 +3051,7 @@ fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
@@ -3106,13 +3106,13 @@ impl SymbolName {
 }
 
 impl fmt::Display for SymbolName {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
 
 impl fmt::Debug for SymbolName {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
 }

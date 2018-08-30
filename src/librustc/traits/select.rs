@@ -110,7 +110,7 @@ impl IntercrateAmbiguityCause {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint<'a, 'tcx>(&self,
-                                                   err: &mut ::errors::DiagnosticBuilder) {
+                                                   err: &mut ::errors::DiagnosticBuilder<'_>) {
         err.note(&self.intercrate_ambiguity_hint());
     }
 
@@ -537,7 +537,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// Wraps a commit_if_ok s.t. obligations collected during it are not returned in selection if
     /// the transaction fails and s.t. old obligations are retained.
     fn commit_if_ok<T, E, F>(&mut self, f: F) -> Result<T, E> where
-        F: FnOnce(&mut Self, &infer::CombinedSnapshot) -> Result<T, E>
+        F: FnOnce(&mut Self, &infer::CombinedSnapshot<'cx, 'tcx>) -> Result<T, E>
     {
         self.infcx.commit_if_ok(|snapshot| f(self, snapshot))
     }
@@ -1221,7 +1221,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
-        let candidates: Result<Vec<Option<EvaluatedCandidate>>, _> = candidates
+        let candidates: Result<Vec<Option<EvaluatedCandidate<'_>>>, _> = candidates
             .into_iter()
             .map(|c| match self.evaluate_candidate(stack, &c) {
                 Ok(eval) if eval.may_apply() => Ok(Some(EvaluatedCandidate {
@@ -1233,7 +1233,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             })
             .collect();
 
-        let mut candidates: Vec<EvaluatedCandidate> =
+        let mut candidates: Vec<EvaluatedCandidate<'_>> =
             candidates?.into_iter().filter_map(|c| c).collect();
 
         debug!("winnowed to {} candidates for {:?}: {:?}",
@@ -3245,8 +3245,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     fn fast_reject_trait_refs(&mut self,
-                              obligation: &TraitObligation,
-                              impl_trait_ref: &ty::TraitRef)
+                              obligation: &TraitObligation<'_>,
+                              impl_trait_ref: &ty::TraitRef<'_>)
                               -> bool
     {
         // We can avoid creating type variables and doing the full
@@ -3536,7 +3536,7 @@ impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
 }
 
 impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "TraitObligationStack({:?})", self.obligation)
     }
 }
@@ -3552,7 +3552,7 @@ impl<T: Clone> WithDepNode<T> {
         WithDepNode { dep_node, cached_value }
     }
 
-    pub fn get(&self, tcx: TyCtxt) -> T {
+    pub fn get(&self, tcx: TyCtxt<'_, '_, '_>) -> T {
         tcx.dep_graph.read_index(self.dep_node);
         self.cached_value.clone()
     }

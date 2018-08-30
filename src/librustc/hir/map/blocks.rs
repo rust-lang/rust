@@ -143,7 +143,7 @@ impl<'a> ClosureParts<'a> {
 
 impl<'a> FnLikeNode<'a> {
     /// Attempts to construct a FnLikeNode from presumed FnLike node input.
-    pub fn from_node(node: Node) -> Option<FnLikeNode> {
+    pub fn from_node(node: Node<'_>) -> Option<FnLikeNode<'_>> {
         let fn_like = match node {
             map::Node::Item(item) => item.is_fn_like(),
             map::Node::TraitItem(tm) => tm.is_fn_like(),
@@ -173,15 +173,15 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn span(self) -> Span {
-        self.handle(|i: ItemFnParts| i.span,
+        self.handle(|i: ItemFnParts<'_>| i.span,
                     |_, _, _: &'a ast::MethodSig, _, _, span, _| span,
-                    |c: ClosureParts| c.span)
+                    |c: ClosureParts<'_>| c.span)
     }
 
     pub fn id(self) -> NodeId {
-        self.handle(|i: ItemFnParts| i.id,
+        self.handle(|i: ItemFnParts<'_>| i.id,
                     |id, _, _: &'a ast::MethodSig, _, _, _, _| id,
-                    |c: ClosureParts| c.id)
+                    |c: ClosureParts<'_>| c.id)
     }
 
     pub fn constness(self) -> ast::Constness {

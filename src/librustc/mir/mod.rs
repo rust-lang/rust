@@ -845,7 +845,7 @@ impl<'tcx> LocalDecl<'tcx> {
     ///
     /// This must be inserted into the `local_decls` list as the first local.
     #[inline]
-    pub fn new_return_place(return_ty: Ty, span: Span) -> LocalDecl {
+    pub fn new_return_place(return_ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
@@ -1082,11 +1082,11 @@ pub type SuccessorsMut<'a> =
     iter::Chain<option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> Successors {
+    pub fn successors(&self) -> Successors<'_> {
         self.kind.successors()
     }
 
-    pub fn successors_mut(&mut self) -> SuccessorsMut {
+    pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
         self.kind.successors_mut()
     }
 
@@ -1115,7 +1115,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn successors(&self) -> Successors {
+    pub fn successors(&self) -> Successors<'_> {
         use self::TerminatorKind::*;
         match *self {
             Resume
@@ -1200,7 +1200,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn successors_mut(&mut self) -> SuccessorsMut {
+    pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
         use self::TerminatorKind::*;
         match *self {
             Resume
@@ -1363,7 +1363,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 
     pub fn retain_statements<F>(&mut self, mut f: F)
     where
-        F: FnMut(&mut Statement) -> bool,
+        F: FnMut(&mut Statement<'_>) -> bool,
     {
         for s in &mut self.statements {
             if !f(s) {
@@ -1437,7 +1437,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 }
 
 impl<'tcx> Debug for TerminatorKind<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_head(fmt)?;
         let successor_count = self.successors().count();
         let labels = self.fmt_successor_labels();
@@ -1731,7 +1731,7 @@ pub enum ValidationOp {
 }
 
 impl Debug for ValidationOp {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::ValidationOp::*;
         match *self {
             Acquire => write!(fmt, "Acquire"),
@@ -1752,7 +1752,7 @@ pub struct ValidationOperand<'tcx, T> {
 }
 
 impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(fmt, "{:?}: {:?}", self.place, self.ty)?;
         if let Some(ce) = self.re {
             // (reuse lifetime rendering policy from ppaux.)
@@ -1766,7 +1766,7 @@ impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
@@ -1923,7 +1923,7 @@ impl<'tcx> Place<'tcx> {
 }
 
 impl<'tcx> Debug for Place<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Place::*;
 
         match *self {
@@ -2018,7 +2018,7 @@ pub enum Operand<'tcx> {
 }
 
 impl<'tcx> Debug for Operand<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Operand::*;
         match *self {
             Constant(ref a) => write!(fmt, "{:?}", a),
@@ -2203,7 +2203,7 @@ pub enum UnOp {
 }
 
 impl<'tcx> Debug for Rvalue<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Rvalue::*;
 
         match *self {
@@ -2242,7 +2242,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             Aggregate(ref kind, ref places) => {
-                fn fmt_tuple(fmt: &mut Formatter, places: &[Operand]) -> fmt::Result {
+                fn fmt_tuple(fmt: &mut Formatter<'_>, places: &[Operand<'_>]) -> fmt::Result {
                     let mut tuple_fmt = fmt.debug_tuple("");
                     for place in places {
                         tuple_fmt.field(place);
@@ -2356,14 +2356,14 @@ newtype_index! {
 }
 
 impl<'tcx> Debug for Constant<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(fmt, "const ")?;
         fmt_const_val(fmt, self.literal)
     }
 }
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const) -> fmt::Result {
+pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Result {
     use ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;
@@ -2478,7 +2478,7 @@ pub struct Location {
 }
 
 impl fmt::Debug for Location {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{:?}[{}]", self.block, self.statement_index)
     }
 }

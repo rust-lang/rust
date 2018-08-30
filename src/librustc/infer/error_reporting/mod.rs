@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(
         self,
         region_scope_tree: &region::ScopeTree,
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
         prefix: &str,
         region: ty::Region<'tcx>,
         suffix: &str,
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn note_and_explain_free_region(
         self,
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
         prefix: &str,
         region: ty::Region<'tcx>,
         suffix: &str,
@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn emit_msg_span(
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
         prefix: &str,
         description: String,
         span: Option<Span>,
@@ -424,11 +424,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(
         &self,
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
         terr: &TypeError<'tcx>,
         sp: Span,
     ) {
-        let report_path_match = |err: &mut DiagnosticBuilder, did1: DefId, did2: DefId| {
+        let report_path_match = |err: &mut DiagnosticBuilder<'_>, did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
@@ -750,7 +750,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         values.1.push_normal("<");
                     }
 
-                    fn lifetime_display(lifetime: Region) -> String {
+                    fn lifetime_display(lifetime: Region<'_>) -> String {
                         let s = lifetime.to_string();
                         if s.is_empty() {
                             "'_".to_string()

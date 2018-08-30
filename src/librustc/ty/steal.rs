@@ -42,7 +42,7 @@ impl<T> Steal<T> {
         }
     }
 
-    pub fn borrow(&self) -> MappedReadGuard<T> {
+    pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         ReadGuard::map(self.value.borrow(), |opt| match *opt {
             None => bug!("attempted to read from stolen value"),
             Some(ref v) => v

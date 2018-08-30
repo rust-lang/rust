@@ -320,7 +320,7 @@ macro_rules! implement_ty_decoder {
                     read_f64 -> f64;
                     read_f32 -> f32;
                     read_char -> char;
-                    read_str -> Cow<str>;
+                    read_str -> Cow<'_, str>;
                 }
 
                 fn error(&mut self, err: &str) -> Self::Error {
@@ -417,4 +417,3 @@ macro_rules! implement_ty_decoder {
         }
     }
 }
-

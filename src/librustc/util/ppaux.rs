@@ -46,7 +46,7 @@ thread_local! {
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut cx = PrintContext::new();
             $with(self, f, &mut cx)
         }
@@ -225,9 +225,9 @@ pub trait Print {
 impl PrintContext {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
-                             inputs: &[Ty],
+                             inputs: &[Ty<'_>],
                              variadic: bool,
-                             output: Ty)
+                             output: Ty<'_>)
                              -> fmt::Result {
         write!(f, "(")?;
         let mut inputs = inputs.iter();
@@ -250,9 +250,9 @@ impl PrintContext {
 
     fn parameterized<F: fmt::Write>(&mut self,
                                     f: &mut F,
-                                    substs: &subst::Substs,
+                                    substs: &subst::Substs<'_>,
                                     mut did: DefId,
-                                    projections: &[ty::ProjectionPredicate])
+                                    projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
         let key = ty::tls::with(|tcx| tcx.def_key(did));
         let mut item_name = if let Some(name) = key.disambiguated_data.data.get_opt_name() {
@@ -395,12 +395,12 @@ impl PrintContext {
         let print_regions = |f: &mut F, start: &str, skip, count| {
             // Don't print any regions if they're all erased.
             let regions = || substs.regions().skip(skip).take(count);
-            if regions().all(|r: ty::Region| *r == ty::ReErased) {
+            if regions().all(|r: ty::Region<'_>| *r == ty::ReErased) {
                 return Ok(());
             }
 
             for region in regions() {
-                let region: ty::Region = region;
+                let region: ty::Region<'_> = region;
                 start_or_continue(f, start, ", ")?;
                 if verbose {
                     write!(f, "{:?}", region)?;
@@ -564,9 +564,9 @@ pub fn identify_regions() -> bool {
 }
 
 pub fn parameterized<F: fmt::Write>(f: &mut F,
-                                    substs: &subst::Substs,
+                                    substs: &subst::Substs<'_>,
                                     did: DefId,
-                                    projections: &[ty::ProjectionPredicate])
+                                    projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
     PrintContext::new().parameterized(f, substs, did, projections)
 }
@@ -646,7 +646,7 @@ define_print! {
 }
 
 impl fmt::Debug for ty::GenericParamDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_name = match self.kind {
             ty::GenericParamDefKind::Lifetime => "Lifetime",
             ty::GenericParamDefKind::Type {..} => "Type",
@@ -660,7 +660,7 @@ impl fmt::Debug for ty::GenericParamDef {
 }
 
 impl fmt::Debug for ty::TraitDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.def_id))
         })
@@ -668,7 +668,7 @@ impl fmt::Debug for ty::TraitDef {
 }
 
 impl fmt::Debug for ty::AdtDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.did))
         })
@@ -676,7 +676,7 @@ impl fmt::Debug for ty::AdtDef {
 }
 
 impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ClosureUpvar({:?},{:?})",
                self.def,
                self.ty)
@@ -684,7 +684,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 }
 
 impl fmt::Debug for ty::UpvarId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarId({:?};`{}`;{:?})",
                self.var_id,
                ty::tls::with(|tcx| tcx.hir.name(tcx.hir.hir_to_node_id(self.var_id))),
@@ -693,7 +693,7 @@ impl fmt::Debug for ty::UpvarId {
 }
 
 impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarBorrow({:?}, {:?})",
                self.kind, self.region)
     }
@@ -942,25 +942,25 @@ define_print! {
 }
 
 impl fmt::Debug for ty::TyVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}t", self.index)
     }
 }
 
 impl fmt::Debug for ty::IntVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}i", self.index)
     }
 }
 
 impl fmt::Debug for ty::FloatVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}f", self.index)
     }
 }
 
 impl fmt::Debug for ty::RegionVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some((region, counter)) = get_highlight_region_for_regionvid() {
             debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
             return if *self == region {
@@ -1006,7 +1006,7 @@ define_print! {
 }
 
 impl fmt::Debug for ty::IntVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::IntType(ref v) => v.fmt(f),
             ty::UintType(ref v) => v.fmt(f),
@@ -1015,7 +1015,7 @@ impl fmt::Debug for ty::IntVarValue {
 }
 
 impl fmt::Debug for ty::FloatVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -1026,7 +1026,7 @@ impl fmt::Debug for ty::FloatVarValue {
     where T: fmt::Display + for<'a> ty::Lift<'a>,
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }*/

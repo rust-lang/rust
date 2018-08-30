@@ -158,7 +158,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> String {
     let cm = tcx.sess.source_map();
     match lnk {
         FreeVarNode(s) => {
@@ -195,13 +195,13 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 impl fmt::Debug for LiveNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ln({})", self.get())
     }
 }
 
 impl fmt::Debug for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "v({})", self.get())
     }
 }
@@ -371,7 +371,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
         }
     }
 
-    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
+    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps<'_, '_>);
 
     let body = ir.tcx.hir.body(body_id);
 
@@ -1388,7 +1388,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_loop(&mut self,
                               expr: &Expr,
-                              kind: LoopKind,
+                              kind: LoopKind<'_>,
                               body: &hir::Block,
                               succ: LiveNode)
                               -> LiveNode {

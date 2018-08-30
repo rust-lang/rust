@@ -16,7 +16,7 @@ use errors::DiagnosticBuilder;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub(super) fn note_region_origin(&self,
-                                     err: &mut DiagnosticBuilder,
+                                     err: &mut DiagnosticBuilder<'_>,
                                      origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => {

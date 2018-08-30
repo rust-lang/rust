@@ -337,7 +337,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
-fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
+fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
                                 trait_ref: ty::TraitRef<'tcx>,
                                 in_crate: InCrate)
                                 -> Result<(), OrphanCheckErr<'tcx>>
@@ -389,7 +389,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
     return Err(OrphanCheckErr::NoLocalInputType);
 }
 
-fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
+fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
@@ -402,19 +402,19 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
     }
 }
 
-fn is_possibly_remote_type(ty: Ty, _in_crate: InCrate) -> bool {
+fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
     match ty.sty {
         ty::Projection(..) | ty::Param(..) => true,
         _ => false,
     }
 }
 
-fn ty_is_local(tcx: TyCtxt, ty: Ty, in_crate: InCrate) -> bool {
+fn ty_is_local(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
         fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
-fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
+fn fundamental_ty(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
     match ty.sty {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
@@ -434,7 +434,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
+fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {

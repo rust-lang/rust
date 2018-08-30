@@ -57,7 +57,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 }
 
 pub fn find_entry_point(session: &Session,
-                        hir_map: &hir_map::Map,
+                        hir_map: &hir_map::Map<'_>,
                         crate_name: &str) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateType::Executable
@@ -113,7 +113,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
 }
 
 
-fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
+fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     match entry_point_type(item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
@@ -154,7 +154,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
     }
 }
 
-fn configure_main(this: &mut EntryContext, crate_name: &str) {
+fn configure_main(this: &mut EntryContext<'_, '_>, crate_name: &str) {
     if let Some((node_id, span)) = this.start_fn {
         this.session.entry_fn.set(Some((node_id, span, EntryFnType::Start)));
     } else if let Some((node_id, span)) = this.attr_main_fn {

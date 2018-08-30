@@ -157,7 +157,7 @@ pub enum LayoutError<'tcx> {
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             LayoutError::Unknown(ty) => {
                 write!(f, "the type `{:?}` has an unknown layout", ty)
@@ -195,7 +195,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     *providers = ty::query::Providers {
         layout_raw,
         ..*providers
@@ -250,7 +250,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
             Prefixed(Size, Align),
         }
-        let univariant_uninterned = |fields: &[TyLayout], repr: &ReprOptions, kind| {
+        let univariant_uninterned = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
             let packed = repr.packed();
             if packed && repr.align > 0 {
                 bug!("struct cannot be packed and aligned");
@@ -283,7 +283,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     fields.len()
                 };
                 let optimizing = &mut inverse_memory_index[..end];
-                let field_align = |f: &TyLayout| {
+                let field_align = |f: &TyLayout<'_>| {
                     if packed { f.align.min(pack).abi() } else { f.align.abi() }
                 };
                 match kind {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 size
             })
         };
-        let univariant = |fields: &[TyLayout], repr: &ReprOptions, kind| {
+        let univariant = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
             Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
         };
         debug_assert!(!ty.has_infer_types());
@@ -723,7 +723,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // but *not* an encoding of the discriminant (e.g. a tag value).
                 // See issue #49298 for more details on the need to leave space
                 // for non-ZST uninhabited data (mostly partial initialization).
-                let absent = |fields: &[TyLayout]| {
+                let absent = |fields: &[TyLayout<'_>]| {
                     let uninhabited = fields.iter().any(|f| f.abi == Abi::Uninhabited);
                     let is_zst = fields.iter().all(|f| f.is_zst());
                     uninhabited && is_zst
@@ -1403,7 +1403,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
         }
     }
 
-    pub fn same_size(self, other: SizeSkeleton) -> bool {
+    pub fn same_size(self, other: SizeSkeleton<'_>) -> bool {
         match (self, other) {
             (SizeSkeleton::Known(a), SizeSkeleton::Known(b)) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. },

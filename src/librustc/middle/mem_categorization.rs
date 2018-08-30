@@ -324,7 +324,7 @@ impl MutabilityCategory {
     }
 
     fn from_pointer_kind(base_mutbl: MutabilityCategory,
-                         ptr: PointerKind) -> MutabilityCategory {
+                         ptr: PointerKind<'_>) -> MutabilityCategory {
         let ret = match ptr {
             Unique => {
                 base_mutbl.inherit()
@@ -341,7 +341,8 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: TyCtxt, tables: &ty::TypeckTables, id: ast::NodeId) -> MutabilityCategory {
+    fn from_local(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>,
+                  id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.hir.get(id) {
             Node::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
@@ -1488,7 +1489,7 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    pub fn descriptive_string(&self, tcx: TyCtxt) -> String {
+    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".to_string()
@@ -1546,7 +1547,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 }
 
-pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
+pub fn ptr_sigil(ptr: PointerKind<'_>) -> &'static str {
     match ptr {
         Unique => "Box",
         BorrowedPtr(ty::ImmBorrow, _) => "&",
@@ -1557,7 +1558,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
 }
 
 impl fmt::Debug for InteriorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             InteriorField(FieldIndex(_, info)) => write!(f, "{}", info),
             InteriorElement(..) => write!(f, "[]"),
@@ -1566,13 +1567,13 @@ impl fmt::Debug for InteriorKind {
 }
 
 impl fmt::Debug for Upvar {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}/{:?}", self.id, self.kind)
     }
 }
 
 impl fmt::Display for Upvar {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let kind = match self.kind {
             ty::ClosureKind::Fn => "Fn",
             ty::ClosureKind::FnMut => "FnMut",
