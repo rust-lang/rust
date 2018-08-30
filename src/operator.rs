@@ -148,11 +148,30 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     left == right
                 }
             }
-            // Comparing ptr and integer -- we only allow compating with NULL
-            (Scalar::Ptr(_), Scalar::Bits { bits: 0, .. }) |
-            (Scalar::Bits { bits: 0, .. }, Scalar::Ptr(_)) => false,
-            // Nothing else is supported
-            _ => return err!(InvalidPointerMath),
+            // Comparing ptr and integer -- we allow compating with NULL, and with addresses
+            // so close to the end of the `usize` range that they cannot overlap with an allocation
+            // of the given size.
+            (Scalar::Ptr(ptr), Scalar::Bits { bits, size }) |
+            (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
+                assert_eq!(size as u64, self.pointer_size().bytes());
+                if bits == 0 {
+                    // Nothing equals 0
+                    false
+                } else {
+                    // Compute the highest address at which this allocation could live
+                    let alloc = self.memory.get(ptr.alloc_id)?;
+                    let max_base_addr =
+                        (1u128 << self.pointer_size().bits()) - alloc.bytes.len() as u128;
+                    let max_addr = max_base_addr + ptr.offset.bytes() as u128;
+                    if bits > max_addr {
+                        // The integer is too big, this cannot possibly be equal
+                        false
+                    } else {
+                        // TODO: We could also take alignment into account
+                        return err!(InvalidPointerMath);
+                    }
+                }
+            }
         })
     }
 
