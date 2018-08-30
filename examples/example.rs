@@ -141,9 +141,9 @@ unsafe fn call_uninit() -> u8 {
 }
 
 // TODO: enable when fat pointers are supported
-/*unsafe fn deref_str_ptr(s: *const str) -> &'static str {
+unsafe fn deref_str_ptr(s: *const str) -> &'static str {
     &*s
-}*/
+}
 
 fn use_array(arr: [u8; 3]) -> u8 {
     arr[1]
@@ -151,6 +151,10 @@ fn use_array(arr: [u8; 3]) -> u8 {
 
 fn repeat_array() -> [u8; 3] {
     [0; 3]
+}
+
+fn array_as_slice(arr: &[u8; 3]) -> &[u8] {
+    arr
 }
 
 /*unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
@@ -175,4 +179,8 @@ fn make_array() -> [u8; 3] {
 
 fn some_promoted_tuple() -> &'static (&'static str, &'static str) {
     &("abc", "some")
+}
+
+fn index_slice(s: &[u8]) -> u8 {
+    s[2]
 }

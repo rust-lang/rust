@@ -19,6 +19,24 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
     }
 }
 
+fn scalar_to_cton_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
+    match scalar.value.size(tcx).bits() {
+        8 => types::I8,
+        16 => types::I16,
+        32 => types::I32,
+        64 => types::I64,
+        size => bug!("Unsupported scalar size {}", size),
+    }
+}
+
+fn ptr_referee<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.sty {
+        ty::Ref(_, ty, _) => ty,
+        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty,
+        _ => bug!("{:?}", ty),
+    }
+}
+
 pub fn cton_type_from_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
@@ -198,6 +216,43 @@ impl<'tcx> CValue<'tcx> {
         CValue::ByRef(field_ptr, field_layout)
     }
 
+    pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+        if self.layout().ty == dest.layout().ty {
+            dest.write_cvalue(fx, self); // FIXME this shouldn't happen (rust-lang/rust#53602)
+            return;
+        }
+        match &self.layout().ty.sty {
+            ty::Ref(_, ty, _) | ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
+                let (ptr, extra) = match ptr_referee(dest.layout().ty).sty {
+                    ty::Slice(slice_elem_ty) => match ty.sty {
+                        ty::Array(array_elem_ty, size) => {
+                            assert_eq!(slice_elem_ty, array_elem_ty);
+                            let ptr = self.load_value(fx);
+                            let extra = fx
+                                .bcx
+                                .ins()
+                                .iconst(fx.module.pointer_type(), size.unwrap_usize(fx.tcx) as i64);
+                            (ptr, extra)
+                        }
+                        _ => bug!("unsize non array {:?} to slice", ty),
+                    },
+                    ty::Dynamic(_, _) => match ty.sty {
+                        ty::Dynamic(_, _) => self.load_value_pair(fx),
+                        _ => unimpl!("unsize of type ... to {:?}", dest.layout().ty),
+                    },
+                    _ => bug!(
+                        "unsize of type {:?} to {:?}",
+                        self.layout().ty,
+                        dest.layout().ty
+                    ),
+                };
+                println!("ty {:?}", self.layout().ty);
+                dest.write_cvalue(fx, CValue::ByValPair(ptr, extra, dest.layout()));
+            }
+            ty => unimpl!("unsize of non ptr {:?}", ty),
+        }
+    }
+
     pub fn const_val<'a>(
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
@@ -224,18 +279,19 @@ impl<'tcx> CValue<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum CPlace<'tcx> {
     Var(Local, TyLayout<'tcx>),
-    Addr(Value, TyLayout<'tcx>),
+    Addr(Value, Option<Value>, TyLayout<'tcx>),
 }
 
 impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
-            CPlace::Var(_, layout) | CPlace::Addr(_, layout) => layout,
+            CPlace::Var(_, layout) | CPlace::Addr(_, _, layout) => layout,
         }
     }
 
     pub fn temp(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, ty: Ty<'tcx>) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
+        assert!(!layout.is_unsized());
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             size: layout.size.bytes() as u32,
@@ -245,6 +301,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             fx.bcx
                 .ins()
                 .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+            None,
             layout,
         )
     }
@@ -255,10 +312,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
+        assert!(!layout.is_unsized());
         CPlace::Addr(
             fx.bcx
                 .ins()
                 .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+            None,
             layout,
         )
     }
@@ -266,13 +325,17 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
             CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(mir_var(var)), layout),
-            CPlace::Addr(addr, layout) => CValue::ByRef(addr, layout),
+            CPlace::Addr(addr, extra, layout) => {
+                assert!(extra.is_none(), "unsized values are not yet supported");
+                CValue::ByRef(addr, layout)
+            }
         }
     }
 
     pub fn expect_addr(self) -> Value {
         match self {
-            CPlace::Addr(addr, _layout) => addr,
+            CPlace::Addr(addr, None, _layout) => addr,
+            CPlace::Addr(_, _, _) => bug!("Expected sized CPlace::Addr, found {:?}", self),
             CPlace::Var(_, _) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
     }
@@ -308,7 +371,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 let data = from.load_value(fx);
                 fx.bcx.def_var(mir_var(var), data)
             }
-            CPlace::Addr(addr, layout) => {
+            CPlace::Addr(addr, None, layout) => {
                 let size = layout.size.bytes() as i32;
 
                 match from {
@@ -346,6 +409,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     }
                 }
             }
+            CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),
         }
     }
 
@@ -354,11 +418,14 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CPlace<'tcx> {
-        let base = self.expect_addr();
         let layout = self.layout();
+        if layout.is_unsized() {
+            unimpl!("unsized place_field");
+        }
 
+        let base = self.expect_addr();
         let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
-        CPlace::Addr(field_ptr, field_layout)
+        CPlace::Addr(field_ptr, None, field_layout)
     }
 
     pub fn place_index(
@@ -366,26 +433,93 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
-        let addr = self.expect_addr();
-        let layout = self.layout();
-        match layout.ty.sty {
-            ty::Array(elem_ty, _) => {
-                let elem_layout = fx.layout_of(elem_ty);
-                let offset = fx
-                    .bcx
-                    .ins()
-                    .imul_imm(index, elem_layout.size.bytes() as i64);
-                CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
+        let (elem_layout, addr) = match self.layout().ty.sty {
+            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.expect_addr()),
+            ty::Slice(elem_ty) => (
+                fx.layout_of(elem_ty),
+                match self {
+                    CPlace::Addr(addr, _, _) => addr,
+                    CPlace::Var(_, _) => bug!("Expected CPlace::Addr found CPlace::Var"),
+                },
+            ),
+            _ => bug!("place_index({:?})", self.layout().ty),
+        };
+
+        let offset = fx
+            .bcx
+            .ins()
+            .imul_imm(index, elem_layout.size.bytes() as i64);
+
+        CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
+    }
+
+    pub fn place_deref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CPlace<'tcx> {
+        let inner_layout = fx.layout_of(ptr_referee(self.layout().ty));
+        if !inner_layout.is_unsized() {
+            CPlace::Addr(self.to_cvalue(fx).load_value(fx), None, inner_layout)
+        } else {
+            match self.layout().abi {
+                Abi::ScalarPair(ref a, ref b) => {
+                    let addr = self.expect_addr();
+                    let ptr =
+                        fx.bcx
+                            .ins()
+                            .load(scalar_to_cton_type(fx.tcx, a), MemFlags::new(), addr, 0);
+                    let extra = fx.bcx.ins().load(
+                        scalar_to_cton_type(fx.tcx, b),
+                        MemFlags::new(),
+                        addr,
+                        a.value.size(fx.tcx).bytes() as u32 as i32,
+                    );
+                    println!(
+                        "unsized deref: ptr: {:?} extra: {:?} self: {:?}",
+                        ptr, extra, self
+                    );
+                    CPlace::Addr(ptr, Some(extra), inner_layout)
+                }
+                _ => bug!(
+                    "Fat ptr doesn't have abi ScalarPair, but it has {:?}",
+                    self.layout().abi
+                ),
             }
-            ty::Slice(_elem_ty) => unimplemented!("place_index(TySlice)"),
-            _ => bug!("place_index({:?})", layout.ty),
+        }
+    }
+
+    pub fn write_place_ref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+        if !self.layout().is_unsized() {
+            let ptr = CValue::ByVal(self.expect_addr(), dest.layout());
+            dest.write_cvalue(fx, ptr);
+        } else {
+            match self {
+                CPlace::Var(_, _) => bug!("expected CPlace::Addr found CPlace::Var"),
+                CPlace::Addr(value, extra, _) => match dest.layout().abi {
+                    Abi::ScalarPair(ref a, _) => {
+                        fx.bcx
+                            .ins()
+                            .store(MemFlags::new(), value, dest.expect_addr(), 0);
+                        fx.bcx.ins().store(
+                            MemFlags::new(),
+                            extra.expect("unsized type without metadata"),
+                            dest.expect_addr(),
+                            a.value.size(fx.tcx).bytes() as u32 as i32,
+                        );
+                    }
+                    _ => bug!(
+                        "Non ScalarPair abi {:?} in write_place_ref dest",
+                        dest.layout().abi
+                    ),
+                },
+            }
         }
     }
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
         match self {
             CPlace::Var(var, _) => CPlace::Var(var, layout),
-            CPlace::Addr(addr, _) => CPlace::Addr(addr, layout),
+            CPlace::Addr(addr, extra, _) => {
+                assert!(!layout.is_unsized());
+                CPlace::Addr(addr, extra, layout)
+            }
         }
     }
 
