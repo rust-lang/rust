@@ -423,11 +423,27 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             }
                         ) = &self.mir.basic_blocks()[location.block].terminator {
                             if self.tcx.parent(id) == self.tcx.lang_items().index_trait() {
+
+                                let mut found = false;
+                                self.tcx.for_each_relevant_impl(
+                                    self.tcx.lang_items().index_mut_trait().unwrap(),
+                                    substs.type_at(0),
+                                    |_relevant_impl| {
+                                        found = true;
+                                    }
+                                );
+
+                                let extra = if found {
+                                    String::from("")
+                                } else {
+                                    format!(", but it is not implemented for `{}`",
+                                            substs.type_at(0))
+                                };
+
                                 err.help(
                                     &format!(
-                                        "trait `IndexMut` is required to modify indexed content, \
-                                         but it is not implemented for `{}`",
-                                         substs.type_at(0),
+                                        "trait `IndexMut` is required to modify indexed content{}",
+                                         extra,
                                     ),
                                 );
                             }
