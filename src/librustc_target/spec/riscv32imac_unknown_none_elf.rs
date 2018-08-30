@@ -30,7 +30,7 @@ pub fn target() -> TargetResult {
             cpu: "generic-rv32".to_string(),
             max_atomic_width: Some(32),
             atomic_cas: false, // incomplete +a extension
-            features: "+m,+a".to_string(), // disable +c extension
+            features: "+m,+a,+c".to_string(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: "static".to_string(),
