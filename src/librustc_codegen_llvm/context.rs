@@ -39,6 +39,7 @@ use std::cell::{Cell, RefCell};
 use std::iter;
 use std::str;
 use std::sync::Arc;
+use std::hash::Hash;
 use syntax::symbol::LocalInternedString;
 use abi::Abi;
 
@@ -103,7 +104,7 @@ pub struct CodegenCx<'a, 'tcx: 'a, V> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-impl<'a, 'tcx> DepGraphSafe for CodegenCx<'a, 'tcx, &'a Value> {
+impl<'a, 'tcx, Value> DepGraphSafe for CodegenCx<'a, 'tcx, Value> {
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
@@ -217,11 +218,11 @@ pub unsafe fn create_module(
     llmod
 }
 
-impl<'a, 'tcx> CodegenCx<'a, 'tcx, &'a Value> {
+impl<'a, 'tcx, Value : Eq+Hash> CodegenCx<'a, 'tcx, Value> {
     crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  codegen_unit: Arc<CodegenUnit<'tcx>>,
                  llvm_module: &'a ::ModuleLlvm)
-                 -> CodegenCx<'a, 'tcx, &'a Value> {
+                 -> CodegenCx<'a, 'tcx, Value> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
