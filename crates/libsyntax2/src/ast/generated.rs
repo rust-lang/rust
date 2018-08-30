@@ -593,16 +593,13 @@ impl<'a> AstNode<'a> for ForExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::LoopBodyOwner<'a> for ForExpr<'a> {}
 impl<'a> ForExpr<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
 
     pub fn iterable(self) -> Option<Expr<'a>> {
-        super::child_opt(self)
-    }
-
-    pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
 }
@@ -845,11 +842,8 @@ impl<'a> AstNode<'a> for LoopExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LoopExpr<'a> {
-    pub fn body(self) -> Option<Block<'a>> {
-        super::child_opt(self)
-    }
-}
+impl<'a> ast::LoopBodyOwner<'a> for LoopExpr<'a> {}
+impl<'a> LoopExpr<'a> {}
 
 // MatchArm
 #[derive(Debug, Clone, Copy)]
@@ -2106,12 +2100,9 @@ impl<'a> AstNode<'a> for WhileExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::LoopBodyOwner<'a> for WhileExpr<'a> {}
 impl<'a> WhileExpr<'a> {
     pub fn condition(self) -> Option<Condition<'a>> {
-        super::child_opt(self)
-    }
-
-    pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
 }

@@ -20,6 +20,12 @@ pub trait NameOwner<'a>: AstNode<'a> {
     }
 }
 
+pub trait LoopBodyOwner<'a>: AstNode<'a> {
+    fn loop_body(self) -> Option<Block<'a>> {
+        child_opt(self)
+    }
+}
+
 pub trait TypeParamsOwner<'a>: AstNode<'a> {
     fn type_param_list(self) -> Option<TypeParamList<'a>> {
         child_opt(self)

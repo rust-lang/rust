@@ -5,7 +5,7 @@ use std::{
 
 use libsyntax2::{
     SyntaxNodeRef, SyntaxNode, SmolStr, AstNode,
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, LoopBodyOwner},
     algo::{ancestors, generate, walk::preorder}
 };
 
@@ -144,7 +144,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
             let cond_scope = e.condition().and_then(|cond| {
                 compute_cond_scopes(cond, scopes, scope)
             });
-            if let Some(block) = e.body() {
+            if let Some(block) = e.loop_body() {
                 compute_block_scopes(block, scopes, cond_scope.unwrap_or(scope));
             }
         },
@@ -162,7 +162,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 scope = scopes.new_scope(scope);
                 scopes.add_bindings(scope, pat);
             }
-            if let Some(block) = e.body() {
+            if let Some(block) = e.loop_body() {
                 compute_block_scopes(block, scopes, scope);
             }
         },
@@ -181,7 +181,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
         }
         ast::Expr::LoopExpr(e) => {
-            if let Some(block) = e.body() {
+            if let Some(block) = e.loop_body() {
                 compute_block_scopes(block, scopes, scope);
             }
         }

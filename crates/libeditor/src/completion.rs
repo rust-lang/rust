@@ -1,9 +1,11 @@
 use libsyntax2::{
-    File, TextUnit, AstNode,
-    ast::self,
+    File, TextUnit, AstNode, SyntaxKind::*,
+    ast::{self, LoopBodyOwner},
     algo::{
         ancestors,
+        visit::{visitor, Visitor},
     },
+    text_utils::is_subrange,
 };
 
 use {
@@ -30,11 +32,9 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
 
     let mut res = Vec::new();
     if let Some(fn_def) = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next() {
-        complete_keywords(&file, Some(fn_def), name_ref, &mut res);
+        complete_expr_keywords(&file, fn_def, name_ref, &mut res);
         let scopes = FnScopes::new(fn_def);
         complete_fn(name_ref, &scopes, &mut res);
-    } else {
-        complete_keywords(&file, None, name_ref, &mut res);
     }
     if let Some(root) = ancestors(name_ref.syntax()).filter_map(ast::Root::cast).next() {
         let scope = ModuleScope::new(root);
@@ -58,7 +58,7 @@ fn is_single_segment(name_ref: ast::NameRef) -> bool {
     }
 }
 
-fn complete_keywords(file: &File, fn_def: Option<ast::FnDef>, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
+fn complete_expr_keywords(file: &File, fn_def: ast::FnDef, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
     acc.push(keyword("if", "if $0 { }"));
     acc.push(keyword("match", "match $0 { }"));
     acc.push(keyword("while", "while $0 { }"));
@@ -72,22 +72,42 @@ fn complete_keywords(file: &File, fn_def: Option<ast::FnDef>, name_ref: ast::Nam
             }
         }
     }
-
-    if let Some(fn_def) = fn_def {
-        acc.extend(complete_return(fn_def, name_ref));
+    if is_in_loop_body(name_ref) {
+        acc.push(keyword("continue", "continue"));
+        acc.push(keyword("break", "break"));
     }
+    acc.extend(complete_return(fn_def, name_ref));
+}
+
+fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
+    for node in ancestors(name_ref.syntax()) {
+        if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
+            break;
+        }
+        let loop_body = visitor()
+            .visit::<ast::ForExpr, _>(LoopBodyOwner::loop_body)
+            .visit::<ast::WhileExpr, _>(LoopBodyOwner::loop_body)
+            .visit::<ast::LoopExpr, _>(LoopBodyOwner::loop_body)
+            .accept(node);
+        if let Some(Some(body)) = loop_body {
+            if is_subrange(body.syntax().range(), name_ref.syntax().range()) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<CompletionItem> {
-    let is_last_in_block = ancestors(name_ref.syntax()).filter_map(ast::Expr::cast)
-        .next()
-        .and_then(|it| it.syntax().parent())
-        .and_then(ast::Block::cast)
-        .is_some();
+    // let is_last_in_block = ancestors(name_ref.syntax()).filter_map(ast::Expr::cast)
+    //     .next()
+    //     .and_then(|it| it.syntax().parent())
+    //     .and_then(ast::Block::cast)
+    //     .is_some();
 
-    if is_last_in_block {
-        return None;
-    }
+    // if is_last_in_block {
+    //     return None;
+    // }
 
     let is_stmt = match ancestors(name_ref.syntax()).filter_map(ast::ExprStmt::cast).next() {
         None => false,
@@ -220,7 +240,8 @@ mod tests {
             ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
                    CompletionItem { name: "match", snippet: Some("match $0 { }") },
                    CompletionItem { name: "while", snippet: Some("while $0 { }") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") }]"#);
+                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "return", snippet: Some("return") }]"#);
     }
 
     #[test]
@@ -236,7 +257,8 @@ mod tests {
                    CompletionItem { name: "while", snippet: Some("while $0 { }") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "else", snippet: Some("else {$0}") },
-                   CompletionItem { name: "else if", snippet: Some("else if $0 { }") }]"#);
+                   CompletionItem { name: "else if", snippet: Some("else if $0 { }") },
+                   CompletionItem { name: "return", snippet: Some("return") }]"#);
     }
 
     #[test]
@@ -275,6 +297,21 @@ mod tests {
                    CompletionItem { name: "match", snippet: Some("match $0 { }") },
                    CompletionItem { name: "while", snippet: Some("while $0 { }") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "return", snippet: Some("return $0") }]"#);
+    }
+
+    #[test]
+    fn test_continue_break_completion() {
+        check_snippet_completion(r"
+            fn quux() -> i32 {
+                loop { <|> }
+            }
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
+                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
+                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
+                   CompletionItem { name: "continue", snippet: Some("continue") },
+                   CompletionItem { name: "break", snippet: Some("break") },
                    CompletionItem { name: "return", snippet: Some("return $0") }]"#);
     }
 }

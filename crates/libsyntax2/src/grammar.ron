@@ -354,19 +354,19 @@ Grammar(
             options: [ ["condition", "Condition"] ]
         ),
         "LoopExpr": (
-            options: [ ["body", "Block"] ]
+            traits: ["LoopBodyOwner"],
         ),
         "ForExpr": (
+            traits: ["LoopBodyOwner"],
             options: [
                 ["pat", "Pat"],
                 ["iterable", "Expr"],
-                ["body", "Block"] ,
             ]
         ),
         "WhileExpr": (
+            traits: ["LoopBodyOwner"],
             options: [
                 ["condition", "Condition"],
-                ["body", "Block"],
             ]
         ),
         "ContinueExpr": (),
