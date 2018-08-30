@@ -1663,7 +1663,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_arm(&mut self, arm: &'l ast::Arm) {
         self.process_var_decl_multi(&arm.pats);
-        walk_list!(self, visit_expr, &arm.guard);
+        match arm.guard {
+            Some(ast::Guard::If(ref expr)) => self.visit_expr(expr),
+            _ => {}
+        }
         self.visit_expr(&arm.body);
     }
 

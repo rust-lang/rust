@@ -792,7 +792,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         }
 
         if let Some(ref guard) = arm.guard {
-            self.consume_expr(&guard);
+            match guard {
+                hir::Guard::If(ref e) => self.consume_expr(e),
+            }
         }
 
         self.consume_expr(&arm.body);

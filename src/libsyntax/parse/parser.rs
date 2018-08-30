@@ -12,7 +12,7 @@ use rustc_target::spec::abi::{self, Abi};
 use ast::{AngleBracketedArgs, ParenthesisedArgs, AttrStyle, BareFnTy};
 use ast::{GenericBound, TraitBoundModifier};
 use ast::Unsafety;
-use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
+use ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy, Movability};
 use ast::{Constness, Crate};
@@ -3509,7 +3509,7 @@ impl<'a> Parser<'a> {
         self.eat(&token::BinOp(token::Or));
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
-            Some(self.parse_expr()?)
+            Some(Guard::If(self.parse_expr()?))
         } else {
             None
         };

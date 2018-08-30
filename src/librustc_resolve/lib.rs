@@ -2691,7 +2691,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         // This has to happen *after* we determine which pat_idents are variants
         self.check_consistent_bindings(&arm.pats);
 
-        walk_list!(self, visit_expr, &arm.guard);
+        match arm.guard {
+            Some(ast::Guard::If(ref expr)) => self.visit_expr(expr),
+            _ => {}
+        }
         self.visit_expr(&arm.body);
 
         self.ribs[ValueNS].pop();

@@ -1951,10 +1951,14 @@ impl<'a> State<'a> {
             self.print_pat(&p)?;
         }
         self.s.space()?;
-        if let Some(ref e) = arm.guard {
-            self.word_space("if")?;
-            self.print_expr(&e)?;
-            self.s.space()?;
+        if let Some(ref g) = arm.guard {
+            match g {
+                hir::Guard::If(e) => {
+                    self.word_space("if")?;
+                    self.print_expr(&e)?;
+                    self.s.space()?;
+                }
+            }
         }
         self.word_space("=>")?;
 

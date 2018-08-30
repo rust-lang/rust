@@ -208,7 +208,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     }
                     (pattern, &**pat)
                 }).collect(),
-                arm.guard.as_ref().map(|e| &**e)
+                arm.guard.as_ref().map(|g| match g {
+                    hir::Guard::If(ref e) => &**e,
+                })
             )).collect();
 
             // Bail out early if inlining failed.
@@ -575,12 +577,19 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 /// assign.
 ///
 /// FIXME: this should be done by borrowck.
-fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
+fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Guard) {
     let mut checker = MutationChecker {
         cx,
     };
-    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables, None)
-        .walk_expr(guard);
+    match guard {
+        hir::Guard::If(expr) =>
+            ExprUseVisitor::new(&mut checker,
+                                cx.tcx,
+                                cx.param_env,
+                                cx.region_scope_tree,
+                                cx.tables,
+                                None).walk_expr(expr),
+    };
 }
 
 struct MutationChecker<'a, 'tcx: 'a> {
