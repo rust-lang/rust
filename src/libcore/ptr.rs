@@ -157,8 +157,7 @@ pub use intrinsics::write_bytes;
 ///
 /// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
 ///     let mut copy: T = mem::uninitialized();
-///     let copy = &mut copy as *mut T;
-///     ptr::copy(to_drop, copy, 1);
+///     ptr::copy(to_drop, &mut copy, 1);
 ///     drop(copy);
 /// }
 ///
