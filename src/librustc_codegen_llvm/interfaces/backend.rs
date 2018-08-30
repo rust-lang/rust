@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt::Debug;
+
 pub trait Backend {
-    type Value;
+    type Value : Debug + PartialEq;
     type BasicBlock;
     type Type;
     type Context;

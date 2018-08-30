@@ -615,7 +615,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
                 // *always* point to a metadata value of the integer 1.
                 //
                 // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-                let one = CodegenCx::c_i32(self.cx, 1);
+                let one = self.cx.c_i32(1);
                 let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
                 llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
             }
@@ -864,7 +864,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         unsafe {
             let elt_ty = self.cx.val_ty(elt);
             let undef = llvm::LLVMGetUndef(type_::Type::vector(elt_ty, num_elts as u64));
-            let vec = self.insert_element(undef, elt, CodegenCx::c_i32(self.cx, 0));
+            let vec = self.insert_element(undef, elt, self.cx.c_i32(0));
             let vec_i32_ty = type_::Type::vector(type_::Type::i32(self.cx), num_elts as u64);
             self.shuffle_vector(vec, undef, self.cx.c_null(vec_i32_ty))
         }
@@ -1261,7 +1261,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
         let ptr = self.pointercast(ptr, type_::Type::i8p(self.cx));
-        self.call(lifetime_intrinsic, &[CodegenCx::c_u64(self.cx, size), ptr], None);
+        self.call(lifetime_intrinsic, &[self.cx.c_u64(size), ptr], None);
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],

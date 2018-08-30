@@ -420,7 +420,7 @@ fn create_funclets(
                 // it's null. The 64 here is actually a bitfield which
                 // represents that this is a catch-all block.
                 let null = bx.cx().c_null(Type::i8p(bx.cx()));
-                let sixty_four = CodegenCx::c_i32(bx.cx(), 64);
+                let sixty_four = bx.cx().c_i32(64);
                 cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);
             }

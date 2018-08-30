@@ -47,9 +47,10 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
     fn const_get_elt(&self, v: Self::Value, idx: u64) -> Self::Value;
     fn const_get_real(&self, v: Self::Value) -> Option<(f64, bool)>;
     fn const_to_uint(&self, v: Self::Value) -> u64;
+    fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
+
     fn is_const_integral(&self, v: Self::Value) -> bool;
     fn is_const_real(&self, v: Self::Value) -> bool;
-    fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 }
 
 pub trait CommonWriteMethods : Backend {

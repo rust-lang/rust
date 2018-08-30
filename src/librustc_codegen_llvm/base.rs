@@ -158,14 +158,14 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     }
 }
 
-pub fn compare_simd_types(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    lhs: &'ll Value,
-    rhs: &'ll Value,
+pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Builder,
+    lhs: Builder::Value,
+    rhs: Builder::Value,
     t: Ty<'tcx>,
-    ret_ty: &'ll Type,
+    ret_ty: Builder::Type,
     op: hir::BinOpKind
-) -> &'ll Value {
+) -> Builder::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -199,7 +199,7 @@ pub fn unsized_info(
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            CodegenCx::c_usize(cx, len.unwrap_usize(cx.tcx))
+            cx.c_usize(len.unwrap_usize(cx.tcx))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -445,8 +445,8 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     let src_ptr = bx.pointercast(src, Type::i8p(cx));
     let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
     let size = bx.intcast(n_bytes, cx.isize_ty, false);
-    let align = CodegenCx::c_i32(cx, align.abi() as i32);
-    let volatile = CodegenCx::c_bool(cx, flags.contains(MemFlags::VOLATILE));
+    let align = cx.c_i32(align.abi() as i32);
+    let volatile = cx.c_bool(flags.contains(MemFlags::VOLATILE));
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
@@ -463,7 +463,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
         return;
     }
 
-    call_memcpy(bx, dst, src, CodegenCx::c_usize(bx.cx(), size), align, flags);
+    call_memcpy(bx, dst, src, bx.cx().c_usize(size), align, flags);
 }
 
 pub fn call_memset(
@@ -477,7 +477,7 @@ pub fn call_memset(
     let ptr_width = &bx.cx().sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx().get_intrinsic(&intrinsic_key);
-    let volatile = CodegenCx::c_bool(bx.cx(), volatile);
+    let volatile = bx.cx().c_bool(volatile);
     bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 

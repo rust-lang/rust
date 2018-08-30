@@ -242,7 +242,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 base::call_memcpy(bx,
                                   bx.pointercast(dst.llval, Type::i8p(cx)),
                                   bx.pointercast(llscratch, Type::i8p(cx)),
-                                  CodegenCx::c_usize(cx, self.layout.size.bytes()),
+                                  cx.c_usize(self.layout.size.bytes()),
                                   self.layout.align.min(scratch_align),
                                   MemFlags::empty());
 
