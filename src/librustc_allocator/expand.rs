@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use rustc::middle::allocator::AllocatorKind;
-use rustc_data_structures::small_vec::OneVector;
 use rustc_errors;
+use smallvec::SmallVec;
 use syntax::{
     ast::{
         self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
@@ -65,7 +65,7 @@ struct ExpandAllocatorDirectives<'a> {
 }
 
 impl<'a> Folder for ExpandAllocatorDirectives<'a> {
-    fn fold_item(&mut self, item: P<Item>) -> OneVector<P<Item>> {
+    fn fold_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
         debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
@@ -152,11 +152,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
 
         // Return the item and new submodule
-        let mut ret = OneVector::with_capacity(2);
-        ret.push(item);
-        ret.push(module);
-
-        return ret;
+        smallvec![item, module]
     }
 
     // If we enter a submodule, take note.

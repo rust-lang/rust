@@ -33,15 +33,14 @@ use ext::hygiene::{self, Mark, SyntaxContext};
 use fold::Folder;
 use feature_gate::Features;
 use util::move_map::MoveMap;
-use fold;
+use fold::{self, ExpectOne};
 use parse::{token, ParseSess};
 use print::pprust;
 use ast::{self, Ident};
 use ptr::P;
-use OneVector;
+use smallvec::SmallVec;
 use symbol::{self, Symbol, keywords};
 use ThinVec;
-use rustc_data_structures::small_vec::ExpectOne;
 
 struct Test {
     span: Span,
@@ -113,7 +112,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         folded
     }
 
-    fn fold_item(&mut self, i: P<ast::Item>) -> OneVector<P<ast::Item>> {
+    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let ident = i.ident;
         if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
@@ -171,7 +170,7 @@ struct EntryPointCleaner {
 }
 
 impl fold::Folder for EntryPointCleaner {
-    fn fold_item(&mut self, i: P<ast::Item>) -> OneVector<P<ast::Item>> {
+    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
         let folded = fold::noop_fold_item(i, self).expect_one("noop did something");
         self.depth -= 1;

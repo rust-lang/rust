@@ -50,7 +50,6 @@ extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
 extern crate serialize;
-#[cfg_attr(test, macro_use)]
 extern crate smallvec;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
@@ -72,7 +71,6 @@ pub mod owning_ref;
 pub mod ptr_key;
 pub mod sip128;
 pub mod small_c_str;
-pub mod small_vec;
 pub mod snapshot_map;
 pub use ena::snapshot_vec;
 pub mod sorted_map;

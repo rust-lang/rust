@@ -2177,6 +2177,7 @@ dependencies = [
  "rustc_typeck 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
+ "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",

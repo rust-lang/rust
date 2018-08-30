@@ -92,7 +92,7 @@ use parse::{Directory, ParseSess};
 use parse::parser::{Parser, PathStyle};
 use parse::token::{self, DocComment, Nonterminal, Token};
 use print::pprust;
-use OneVector;
+use smallvec::SmallVec;
 use symbol::keywords;
 use tokenstream::{DelimSpan, TokenStream};
 
@@ -440,10 +440,10 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop<'a>(
     sess: &ParseSess,
-    cur_items: &mut OneVector<MatcherPosHandle<'a>>,
+    cur_items: &mut SmallVec<[MatcherPosHandle<'a>; 1]>,
     next_items: &mut Vec<MatcherPosHandle<'a>>,
-    eof_items: &mut OneVector<MatcherPosHandle<'a>>,
-    bb_items: &mut OneVector<MatcherPosHandle<'a>>,
+    eof_items: &mut SmallVec<[MatcherPosHandle<'a>; 1]>,
+    bb_items: &mut SmallVec<[MatcherPosHandle<'a>; 1]>,
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
@@ -649,10 +649,10 @@ pub fn parse(
 
     loop {
         // Matcher positions black-box parsed by parser.rs (`parser`)
-        let mut bb_items = OneVector::new();
+        let mut bb_items = SmallVec::new();
 
         // Matcher positions that would be valid if the macro invocation was over now
-        let mut eof_items = OneVector::new();
+        let mut eof_items = SmallVec::new();
         assert!(next_items.is_empty());
 
         // Process `cur_items` until either we have finished the input or we need to get some
