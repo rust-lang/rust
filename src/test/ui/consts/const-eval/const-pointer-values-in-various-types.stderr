@@ -1,0 +1,233 @@
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:24:5
+   |
+LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }.u };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type usize
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:27:5
+   |
+LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |
+   = note: #[deny(const_err)] on by default
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:30:5
+   |
+LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |                                             |
+   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:33:5
+   |
+LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |                                             |
+   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:36:5
+   |
+LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uint_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type u64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:39:5
+   |
+LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:42:5
+   |
+LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:45:5
+   |
+LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                                             |
+   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:48:5
+   |
+LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                                             |
+   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:51:5
+   |
+LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type i64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:54:5
+   |
+LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:57:5
+   |
+LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------^^^
+   |                                             |
+   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:60:5
+   |
+LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type f64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:63:5
+   |
+LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------------^^^
+   |                                               |
+   |                                               a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:66:5
+   |
+LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------------^^^
+   |                                               |
+   |                                               a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:69:5
+   |
+LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |                                       |
+   |                                       a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:72:5
+   |
+LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |                                         |
+   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:75:5
+   |
+LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |                                         |
+   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:78:5
+   |
+LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type u64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:81:5
+   |
+LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:84:5
+   |
+LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------^^^
+   |                                       |
+   |                                       a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:87:5
+   |
+LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |                                         |
+   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:90:5
+   |
+LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |                                         |
+   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:93:5
+   |
+LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type i64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:96:5
+   |
+LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:99:5
+   |
+LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                                         |
+   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/const-pointer-values-in-various-types.rs:102:5
+   |
+LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected the type f64
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:105:5
+   |
+LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+
+error: this constant cannot be used
+  --> $DIR/const-pointer-values-in-various-types.rs:108:5
+   |
+LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |                                           |
+   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+
+error: aborting due to 29 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
