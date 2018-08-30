@@ -539,7 +539,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             }
 
             "_tlv_atexit" => {
-                return err!(Unimplemented("Thread-local store is not fully supported on macOS".to_owned()));
+                // FIXME: Register the dtor
             },
 
             // Determining stack base address

@@ -161,8 +161,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let leaks = ecx.memory().leak_report();
             // Disable the leak test on some platforms where we likely do not
             // correctly implement TLS destructors.
-            let target_os = &ecx.tcx.tcx.sess.target.target.target_os;
-            if target_os.to_lowercase() != "windows" && leaks != 0 {
+            let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
+            let ignore_leaks = target_os == "windows" || target_os == "macos";
+            if !ignore_leaks && leaks != 0 {
                 tcx.sess.err("the evaluated program leaked memory");
             }
         }
