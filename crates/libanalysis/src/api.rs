@@ -109,19 +109,3 @@ impl Analysis {
         self.imp.diagnostics(file_id)
     }
 }
-
-impl SourceChange {
-    pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit {
-            file_id,
-            edits: edit.edit.into_atoms(),
-        };
-        SourceChange {
-            label: label.to_string(),
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: edit.cursor_position
-                .map(|offset| Position { offset, file_id })
-        }
-    }
-}

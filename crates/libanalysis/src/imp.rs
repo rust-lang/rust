@@ -16,10 +16,10 @@ use libsyntax2::{
 };
 use rayon::prelude::*;
 use once_cell::sync::OnceCell;
-use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset};
+use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
 
 use {
-    FileId, FileResolver, Query, Diagnostic, SourceChange, FileSystemEdit,
+    FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     module_map::Problem,
     symbol_index::FileSymbols,
     module_map::ModuleMap,
@@ -287,5 +287,21 @@ impl FileData {
         let syntax = self.syntax_transient();
         self.symbols
             .get_or_init(|| FileSymbols::new(&syntax))
+    }
+}
+
+impl SourceChange {
+    pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
+        let file_edit = SourceFileEdit {
+            file_id,
+            edits: edit.edit.into_atoms(),
+        };
+        SourceChange {
+            label: label.to_string(),
+            source_file_edits: vec![file_edit],
+            file_system_edits: vec![],
+            cursor_position: edit.cursor_position
+                .map(|offset| Position { offset, file_id })
+        }
     }
 }
