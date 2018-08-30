@@ -96,11 +96,11 @@ use OneVector;
 use symbol::keywords;
 use tokenstream::TokenStream;
 
+use rustc_data_structures::fx::FxHashMap;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
 
@@ -263,7 +263,7 @@ pub enum ParseResult<T> {
 
 /// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
-pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
+pub type NamedParseResult = ParseResult<FxHashMap<Ident, Rc<NamedMatch>>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
 pub fn count_names(ms: &[TokenTree]) -> usize {
@@ -351,7 +351,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
         res: &mut I,
-        ret_val: &mut HashMap<Ident, Rc<NamedMatch>>,
+        ret_val: &mut FxHashMap<Ident, Rc<NamedMatch>>,
     ) -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => for next_m in &seq.tts {
@@ -382,7 +382,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         Ok(())
     }
 
-    let mut ret_val = HashMap::new();
+    let mut ret_val = FxHashMap::default();
     for m in ms {
         match n_rec(sess, m, res.by_ref(), &mut ret_val) {
             Ok(_) => {}

@@ -718,7 +718,7 @@ macro_rules! define_queries_inner {
             }
         }
 
-        #[allow(bad_style)]
+        #[allow(nonstandard_style)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
@@ -775,7 +775,7 @@ macro_rules! define_queries_inner {
         pub mod queries {
             use std::marker::PhantomData;
 
-            $(#[allow(bad_style)]
+            $(#[allow(nonstandard_style)]
             pub struct $name<$tcx> {
                 data: PhantomData<&$tcx ()>
             })*

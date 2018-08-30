@@ -239,7 +239,7 @@ mod imp {
 }
 
 #[cfg(windows)]
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 mod imp {
     use std::io;
     use std::mem;

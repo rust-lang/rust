@@ -1184,7 +1184,7 @@ fn get_concurrency() -> usize {
     };
 
     #[cfg(windows)]
-    #[allow(bad_style)]
+    #[allow(nonstandard_style)]
     fn num_cpus() -> usize {
         #[repr(C)]
         struct SYSTEM_INFO {

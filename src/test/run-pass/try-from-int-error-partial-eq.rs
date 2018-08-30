@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,14 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-trait Foo<'a> {}
-impl<'a, T> Foo<'a> for T {}
 
-fn baz<'a, 'b, T>(x: &mut Vec<&'a T>, y: &T)
-    where i32: Foo<'a>,
-          u32: Foo<'b>
-{
-    x.push(y); //~ ERROR explicit lifetime required
-}
+#![feature(try_from)]
+#![allow(unused_must_use)]
+
+use std::convert::TryFrom;
+use std::num::TryFromIntError;
+
 fn main() {
+    let x: u32 = 125;
+    let y: Result<u8, TryFromIntError> = u8::try_from(x);
+    y == Ok(125);
 }

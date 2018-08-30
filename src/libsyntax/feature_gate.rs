@@ -645,7 +645,7 @@ declare_features! (
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
     // Allows use of the :vis macro fragment specifier
-    (accepted, macro_vis_matcher, "1.29.0", Some(41022), None),
+    (accepted, macro_vis_matcher, "1.30.0", Some(41022), None),
     // Allows importing and reexporting macros with `use`,
     // enables macro modularization in general.
     (accepted, use_extern_macros, "1.30.0", Some(35896), None),

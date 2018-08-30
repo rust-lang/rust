@@ -22,7 +22,7 @@
 use std::any::Any;
 
 #[cfg(windows)]
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;

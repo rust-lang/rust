@@ -50,6 +50,7 @@ use hir::GenericArg;
 use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
 use middle::cstore::CrateStore;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::small_vec::OneVector;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -57,7 +58,7 @@ use session::Session;
 use util::common::FN_OUTPUT_NAME;
 use util::nodemap::{DefIdMap, NodeMap};
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::iter;
 use std::mem;
@@ -1342,7 +1343,7 @@ impl<'a> LoweringContext<'a> {
             exist_ty_id: NodeId,
             collect_elided_lifetimes: bool,
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
-            already_defined_lifetimes: HashSet<hir::LifetimeName>,
+            already_defined_lifetimes: FxHashSet<hir::LifetimeName>,
             output_lifetimes: Vec<hir::GenericArg>,
             output_lifetime_params: Vec<hir::GenericParam>,
         }
@@ -1476,7 +1477,7 @@ impl<'a> LoweringContext<'a> {
             exist_ty_id,
             collect_elided_lifetimes: true,
             currently_bound_lifetimes: Vec::new(),
-            already_defined_lifetimes: HashSet::new(),
+            already_defined_lifetimes: FxHashSet::default(),
             output_lifetimes: Vec::new(),
             output_lifetime_params: Vec::new(),
         };

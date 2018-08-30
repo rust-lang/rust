@@ -10,7 +10,7 @@
 
 //! C definitions used by libnative that don't belong in liblibc
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
