@@ -1,7 +1,7 @@
-use relative_path::RelativePathBuf;
+use relative_path::{RelativePath, RelativePathBuf};
 use libsyntax2::{File, TextRange, TextUnit, AtomEdit};
 use libeditor;
-use {imp::AnalysisImpl, FileId, Query};
+use {imp::{AnalysisImpl, AnalysisHostImpl}, Query};
 
 pub use libeditor::{
     LocalEdit, StructureNode, LineIndex, FileSymbol,
@@ -107,5 +107,36 @@ impl Analysis {
     }
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         self.imp.diagnostics(file_id)
+    }
+}
+
+pub trait FileResolver: Send + Sync + 'static {
+    fn file_stem(&self, id: FileId) -> String;
+    fn resolve(&self, id: FileId, path: &RelativePath) -> Option<FileId>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FileId(pub u32);
+
+#[derive(Debug)]
+pub struct AnalysisHost {
+    pub(crate) imp: AnalysisHostImpl
+}
+
+impl AnalysisHost {
+    pub fn new() -> AnalysisHost {
+        AnalysisHost { imp: AnalysisHostImpl::new() }
+    }
+
+    pub fn analysis(&self, file_resolver: impl FileResolver) -> Analysis {
+        Analysis { imp: self.imp.analysis(file_resolver) }
+    }
+
+    pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
+        self.change_files(::std::iter::once((file_id, text)));
+    }
+
+    pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
+        self.imp.change_files(changes)
     }
 }

@@ -22,9 +22,65 @@ use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     module_map::Problem,
     symbol_index::FileSymbols,
-    module_map::ModuleMap,
+    module_map::{ModuleMap, ChangeKind},
 };
 
+#[derive(Debug)]
+pub(crate) struct AnalysisHostImpl {
+    data: Arc<WorldData>
+}
+
+impl AnalysisHostImpl {
+    pub fn new() -> AnalysisHostImpl {
+        AnalysisHostImpl {
+            data: Arc::new(WorldData::default()),
+        }
+    }
+
+    pub fn analysis(
+        &self,
+        file_resolver: impl FileResolver,
+    ) -> AnalysisImpl {
+        AnalysisImpl {
+            needs_reindex: AtomicBool::new(false),
+            file_resolver: Arc::new(file_resolver),
+            data: self.data.clone()
+        }
+    }
+
+    pub fn change_files(&mut self, changes: impl Iterator<Item=(FileId, Option<String>)>) {
+        let data = self.data_mut();
+        for (file_id, text) in changes {
+            let change_kind = if data.file_map.remove(&file_id).is_some() {
+                if text.is_some() {
+                    ChangeKind::Update
+                } else {
+                    ChangeKind::Delete
+                }
+            } else {
+                ChangeKind::Insert
+            };
+            data.module_map.update_file(file_id, change_kind);
+            data.file_map.remove(&file_id);
+            if let Some(text) = text {
+                let file_data = FileData::new(text);
+                data.file_map.insert(file_id, Arc::new(file_data));
+            } else {
+                data.file_map.remove(&file_id);
+            }
+        }
+    }
+
+    fn data_mut(&mut self) -> &mut WorldData {
+        if Arc::get_mut(&mut self.data).is_none() {
+            self.data = Arc::new(WorldData {
+                file_map: self.data.file_map.clone(),
+                module_map: self.data.module_map.clone(),
+            });
+        }
+        Arc::get_mut(&mut self.data).unwrap()
+    }
+}
 
 pub(crate) struct AnalysisImpl {
     pub(crate) needs_reindex: AtomicBool,

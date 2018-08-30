@@ -395,7 +395,7 @@ async function applySourceChange(change: SourceChange) {
         let uri = client.protocol2CodeConverter.asUri(toReveal.textDocument.uri)
         let position = client.protocol2CodeConverter.asPosition(toReveal.position)
         let editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.uri != uri) return
+        if (!editor || editor.document.uri.toString() != uri.toString()) return
         if (!editor.selection.isEmpty) return
         editor!.selection = new vscode.Selection(position, position)
     }

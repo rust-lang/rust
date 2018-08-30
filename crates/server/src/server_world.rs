@@ -5,7 +5,7 @@ use std::{
 };
 
 use languageserver_types::Url;
-use libanalysis::{FileId, WorldState, Analysis};
+use libanalysis::{FileId, AnalysisHost, Analysis};
 
 use {
     Result,
@@ -15,7 +15,7 @@ use {
 
 #[derive(Debug)]
 pub struct ServerWorldState {
-    pub analysis: WorldState,
+    pub analysis_host: AnalysisHost,
     pub path_map: PathMap,
     pub mem_map: HashMap<FileId, Option<String>>,
 }
@@ -29,7 +29,7 @@ pub struct ServerWorld {
 impl ServerWorldState {
     pub fn new() -> ServerWorldState {
         ServerWorldState {
-            analysis: WorldState::new(),
+            analysis_host: AnalysisHost::new(),
             path_map: PathMap::new(),
             mem_map: HashMap::new(),
         }
@@ -58,20 +58,20 @@ impl ServerWorldState {
                 }
             });
 
-        self.analysis.change_files(changes);
+        self.analysis_host.change_files(changes);
     }
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) {
         let file_id = self.path_map.get_or_insert(path);
         self.mem_map.insert(file_id, None);
-        self.analysis.change_file(file_id, Some(text));
+        self.analysis_host.change_file(file_id, Some(text));
     }
 
     pub fn change_mem_file(&mut self, path: &Path, text: String) -> Result<()> {
         let file_id = self.path_map.get_id(path).ok_or_else(|| {
             format_err!("change to unknown file: {}", path.display())
         })?;
-        self.analysis.change_file(file_id, Some(text));
+        self.analysis_host.change_file(file_id, Some(text));
         Ok(())
     }
 
@@ -85,13 +85,13 @@ impl ServerWorldState {
         };
         // Do this via file watcher ideally.
         let text = fs::read_to_string(path).ok();
-        self.analysis.change_file(file_id, text);
+        self.analysis_host.change_file(file_id, text);
         Ok(())
     }
 
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
-            analysis: self.analysis.analysis(self.path_map.clone()),
+            analysis: self.analysis_host.analysis(self.path_map.clone()),
             path_map: self.path_map.clone()
         }
     }
