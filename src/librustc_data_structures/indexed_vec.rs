@@ -98,7 +98,7 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         $v struct $type {
-            private: u32
+            private: ::std::num::NonZeroU32
         }
 
         impl $type {
@@ -124,7 +124,7 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                $type { private: value }
+                $type { private: ::std::num::NonZeroU32::new_unchecked(value + 1) }
             }
 
             /// Extract value of this index as an integer.
@@ -135,13 +135,13 @@ macro_rules! newtype_index {
 
             /// Extract value of this index as a usize.
             #[inline]
-            $v const fn as_u32(self) -> u32 {
-                self.private
+            $v fn as_u32(self) -> u32 {
+                self.private.get() - 1
             }
 
             /// Extract value of this index as a u32.
             #[inline]
-            $v const fn as_usize(self) -> usize {
+            $v fn as_usize(self) -> usize {
                 self.as_u32() as usize
             }
         }

@@ -1273,7 +1273,7 @@ impl DebruijnIndex {
     ///
     /// you would need to shift the index for `'a` into 1 new binder.
     #[must_use]
-    pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
+    pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         unsafe {
             DebruijnIndex::from_u32_unchecked(self.as_u32() + amount)
         }
@@ -1288,7 +1288,7 @@ impl DebruijnIndex {
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
     #[must_use]
-    pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
+    pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
         unsafe {
             DebruijnIndex::from_u32_unchecked(self.as_u32() - amount)
         }
