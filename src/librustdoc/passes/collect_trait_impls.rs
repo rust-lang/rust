@@ -12,14 +12,20 @@ use clean::*;
 
 use super::Pass;
 use core::DocContext;
+use fold::DocFolder;
 
 pub const COLLECT_TRAIT_IMPLS: Pass =
     Pass::early("collect-trait-impls", collect_trait_impls,
                 "retrieves trait impls for items in the crate");
 
-pub fn collect_trait_impls(mut krate: Crate, cx: &DocContext) -> Crate {
+pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
+    let mut synth = SyntheticImplCollector::new(cx);
+    let mut krate = synth.fold_crate(krate);
+
     if let Some(ref mut it) = krate.module {
         if let ModuleItem(Module { ref mut items, .. }) = it.inner {
+            items.extend(synth.impls);
+
             for &cnum in cx.tcx.crates().iter() {
                 for &did in cx.tcx.all_trait_implementations(cnum).iter() {
                     inline::build_impl(cx, did, items);
@@ -89,4 +95,36 @@ pub fn collect_trait_impls(mut krate: Crate, cx: &DocContext) -> Crate {
     }
 
     krate
+}
+
+struct SyntheticImplCollector<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
+    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+    impls: Vec<Item>,
+}
+
+impl<'a, 'tcx, 'rcx, 'cstore> SyntheticImplCollector<'a, 'tcx, 'rcx, 'cstore> {
+    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
+        SyntheticImplCollector {
+            cx,
+            impls: Vec::new(),
+        }
+    }
+}
+
+impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx, 'cstore> {
+    fn fold_item(&mut self, i: Item) -> Option<Item> {
+        if i.is_struct() || i.is_enum() || i.is_union() {
+            if let (Some(node_id), Some(name)) =
+                (self.cx.tcx.hir.as_local_node_id(i.def_id), i.name.clone())
+            {
+                self.impls.extend(get_auto_traits_with_node_id(self.cx, node_id, name.clone()));
+                self.impls.extend(get_blanket_impls_with_node_id(self.cx, node_id, name));
+            } else {
+                self.impls.extend(get_auto_traits_with_def_id(self.cx, i.def_id));
+                self.impls.extend(get_blanket_impls_with_def_id(self.cx, i.def_id));
+            }
+        }
+
+        self.fold_item_recur(i)
+    }
 }
