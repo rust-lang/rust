@@ -1117,10 +1117,10 @@ extern "rust-intrinsic" {
     ///
     /// * `dst` must be properly aligned.
     ///
-    /// Additionally, the caller must ensure that writing `count *
+    /// Additionally, the caller should ensure that writing `count *
     /// size_of::<T>()` bytes to the given region of memory results in a valid
-    /// value of `T`. Creating an invalid value of `T` can result in undefined
-    /// behavior.
+    /// value of `T`. Using a region of memory typed as a `T` that contains an
+    /// invalid value of `T` is undefined behavior.
     ///
     /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
     /// `0`, the pointer must be non-NULL and properly aligned.

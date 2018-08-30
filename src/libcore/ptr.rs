@@ -106,7 +106,9 @@ pub use intrinsics::write_bytes;
 ///
 /// * `to_drop` must be [valid] for reads.
 ///
-/// * `to_drop` must be properly aligned.
+/// * `to_drop` must be properly aligned.  See the example below for how to drop
+///   an unaligned pointer.
+
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
@@ -137,6 +139,7 @@ pub use intrinsics::write_bytes;
 ///     // Without a call `drop_in_place`, the last item would never be dropped,
 ///     // and the memory it manages would be leaked.
 ///     ptr::drop_in_place(&mut v[1]);
+///     // Shorten `v` to prevent the last item from being dropped.
 ///     v.set_len(1);
 /// }
 ///
@@ -144,6 +147,31 @@ pub use intrinsics::write_bytes;
 ///
 /// // Ensure that the last item was dropped.
 /// assert!(weak.upgrade().is_none());
+/// ```
+///
+/// Drops a potentially unaligned value by copying it to aligned memory first:
+/// ```
+/// use std::ptr;
+/// use std::mem;
+///
+/// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
+///     let mut copy: T = mem::uninitialized();
+///     let copy = &mut copy as *mut T;
+///     ptr::copy(to_drop, copy, 1);
+///     ptr::drop_in_place(copy);
+/// }
+///
+/// #[repr(packed, C)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: Vec<i32>,
+/// }
+///
+/// let mut p = Packed { _padding: 0, unaligned: vec![42] };
+/// unsafe {
+///     drop_after_copy(&mut p.unaligned as *mut _);
+///     mem::forget(p);
+/// }
 /// ```
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
@@ -601,7 +629,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// dropping the old value.
 ///
 /// `write` does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
+/// allocations or resources, so care should be taken not to overwrite an object
 /// that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
@@ -676,7 +704,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Unlike [`write`], the pointer may be unaligned.
 ///
 /// `write_unaligned` does not drop the contents of `dst`. This is safe, but it
-/// could leak allocations or resources, so care must be taken not to overwrite
+/// could leak allocations or resources, so care should be taken not to overwrite
 /// an object that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
@@ -820,7 +848,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// [`read_volatile`].
 ///
 /// `write_volatile` does not drop the contents of `dst`. This is safe, but it
-/// could leak allocations or resources, so care must be taken not to overwrite
+/// could leak allocations or resources, so care should be taken not to overwrite
 /// an object that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
