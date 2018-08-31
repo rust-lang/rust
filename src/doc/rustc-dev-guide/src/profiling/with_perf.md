@@ -4,7 +4,8 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 
 ## Initial steps
 
-- Get a clean checkout of rust-lang/master, or whatever it is you want to profile.
+- Get a clean checkout of rust-lang/master, or whatever it is you want
+  to profile.
 - Set the following settings in your `config.toml`:
   - `debuginfo-lines = true`
   - `use-jemalloc = false` — lets you do memory use profiling with valgrind 
@@ -248,7 +249,8 @@ Tree
 What happens with `--tree-callees` is that
 
 - we find each sample matching the regular expression
-- we look at the code that is occurs *after* the regex match and try to build up a call tree
+- we look at the code that is occurs *after* the regex match and try
+  to build up a call tree
 
 The `--tree-min-percent 3` option says "only show me things that take
 more than 3% of the time. Without this, the tree often gets really
