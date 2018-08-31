@@ -288,9 +288,9 @@ impl Chain {
                 return;
             }
             // HACK: Treat `?`s as separators.
-            let trimmed_snippet = post_comment_snippet.trim_matches('?');
-            let comment_end = get_comment_end(trimmed_snippet, "?", "", false);
-            let maybe_post_comment = extract_post_comment(trimmed_snippet, comment_end, "?")
+            let trimmed_snippet = trim_tries(post_comment_snippet);
+            let comment_end = get_comment_end(&trimmed_snippet, "?", "", false);
+            let maybe_post_comment = extract_post_comment(&trimmed_snippet, comment_end, "?")
                 .and_then(|comment| {
                     if comment.is_empty() {
                         None
