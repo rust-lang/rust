@@ -121,6 +121,8 @@ pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub ident: Ident,
 
+    pub id: NodeId,
+
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`.
     /// `None` means that no parameter list is supplied (`Path`),
@@ -132,10 +134,14 @@ pub struct PathSegment {
 
 impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
-        PathSegment { ident, args: None }
+        PathSegment { ident, id: DUMMY_NODE_ID, args: None }
     }
     pub fn crate_root(span: Span) -> Self {
-        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
+        PathSegment {
+            ident: Ident::new(keywords::CrateRoot.name(), span),
+            id: CRATE_NODE_ID,
+            args: None,
+        }
     }
 }
 

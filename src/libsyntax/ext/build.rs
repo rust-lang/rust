@@ -329,7 +329,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        segments.push(ast::PathSegment { ident: last_ident.with_span_pos(span), args });
+        segments.push(ast::PathSegment {
+            ident: last_ident.with_span_pos(span),
+            id: ast::DUMMY_NODE_ID,
+            args,
+        });
         let mut path = ast::Path { span, segments };
         if global {
             if let Some(seg) = path.make_root() {
@@ -366,7 +370,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        path.segments.push(ast::PathSegment { ident, args });
+        path.segments.push(ast::PathSegment { ident, id: ast::DUMMY_NODE_ID, args });
 
         (ast::QSelf {
             ty: self_type,
