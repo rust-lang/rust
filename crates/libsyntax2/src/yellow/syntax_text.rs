@@ -61,6 +61,18 @@ impl<'a> SyntaxText<'a> {
             });
         SyntaxText { node: self.node, range }
     }
+    pub fn char_at(&self, offset: TextUnit) -> Option<char> {
+        let mut start: TextUnit = 0.into();
+        for chunk in self.chunks() {
+            let end = start + TextUnit::of_str(chunk);
+            if start <= offset && offset < end {
+                let off: usize = u32::from(offset - start) as usize;
+                return Some(chunk[off..].chars().next().unwrap());
+            }
+            start = end;
+        }
+        None
+    }
 }
 
 impl<'a> fmt::Debug for SyntaxText<'a> {

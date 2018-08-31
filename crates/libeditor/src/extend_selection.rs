@@ -1,5 +1,5 @@
 use libsyntax2::{
-    File, TextRange, SyntaxNodeRef,
+    File, TextRange, SyntaxNodeRef, TextUnit,
     SyntaxKind::*,
     algo::{find_leaf_at_offset, find_covering_node, ancestors, Direction, siblings},
 };
@@ -18,11 +18,22 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         }
         let ws = leaves.next()?;
         let ws_text = ws.leaf_text().unwrap();
-        let range = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
-        let ws_suffix = &ws_text.as_str()[range];
+        let suffix = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
+        let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
+        let ws_suffix = &ws_text.as_str()[suffix];
+        let ws_prefix = &ws_text.as_str()[prefix];
         if ws_text.contains("\n") && !ws_suffix.contains("\n") {
             if let Some(node) = ws.next_sibling() {
-                return Some(node.range());
+                let start = match ws_prefix.rfind('\n') {
+                    Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),
+                    None => node.range().start()
+                };
+                let end = if root.text().char_at(node.range().end()) == Some('\n') {
+                    node.range().end() + TextUnit::of_char('\n')
+                } else {
+                    node.range().end()
+                };
+                return Some(TextRange::from_to(start, end));
             }
         }
         return Some(ws.range());
@@ -99,7 +110,7 @@ impl S {
 
     }
 }"#,
-            &["fn foo() {\n\n    }"]
+            &["    fn foo() {\n\n    }\n"]
         );
     }
 

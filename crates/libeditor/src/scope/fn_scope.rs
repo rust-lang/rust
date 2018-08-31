@@ -140,17 +140,22 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 compute_block_scopes(block, scopes, scope);
             }
         },
+        ast::Expr::BlockExpr(e) => {
+            if let Some(block) = e.block() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        }
+        ast::Expr::LoopExpr(e) => {
+            if let Some(block) = e.loop_body() {
+                compute_block_scopes(block, scopes, scope);
+            }
+        }
         ast::Expr::WhileExpr(e) => {
             let cond_scope = e.condition().and_then(|cond| {
                 compute_cond_scopes(cond, scopes, scope)
             });
             if let Some(block) = e.loop_body() {
                 compute_block_scopes(block, scopes, cond_scope.unwrap_or(scope));
-            }
-        },
-        ast::Expr::BlockExpr(e) => {
-            if let Some(block) = e.block() {
-                compute_block_scopes(block, scopes, scope);
             }
         }
         ast::Expr::ForExpr(e) => {
@@ -165,7 +170,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
             if let Some(block) = e.loop_body() {
                 compute_block_scopes(block, scopes, scope);
             }
-        },
+        }
         ast::Expr::LambdaExpr(e) => {
             let mut scope = scopes.new_scope(scope);
             scopes.add_params_bindings(scope, e.param_list());
@@ -180,11 +185,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 .chain(e.expr())
                 .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
         }
-        ast::Expr::LoopExpr(e) => {
-            if let Some(block) = e.loop_body() {
-                compute_block_scopes(block, scopes, scope);
-            }
-        }
+
         _ => {
             expr.syntax().children()
                 .filter_map(ast::Expr::cast)
@@ -273,4 +274,18 @@ mod tests {
             &["x"],
         );
     }
+
+    // #[test]
+    // fn test_match() {
+    //     do_check(r"
+    //         fn quux() {
+    //             match () {
+    //                 Some(x) => {
+    //                     <|>
+    //                 }
+    //             };
+    //         }",
+    //         &["x"],
+    //     );
+    // }
 }
