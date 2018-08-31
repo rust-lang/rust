@@ -255,9 +255,9 @@ for mir::StatementKind<'gcx> {
                 op.hash_stable(hcx, hasher);
                 places.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::UserAssertTy(ref c_ty, ref local) => {
+            mir::StatementKind::AscribeUserType(ref place, ref c_ty) => {
+                place.hash_stable(hcx, hasher);
                 c_ty.hash_stable(hcx, hasher);
-                local.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {

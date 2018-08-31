@@ -159,7 +159,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             EndRegion(..) => {}
-            UserAssertTy(..) => {}
+            AscribeUserType(..) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.

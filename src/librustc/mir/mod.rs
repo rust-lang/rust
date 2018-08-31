@@ -1636,22 +1636,14 @@ pub enum StatementKind<'tcx> {
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
 
-    /// Encodes a user's type assertion. These need to be preserved intact so that NLL can respect
-    /// them. For example:
+    /// Encodes a user's type ascription. These need to be preserved
+    /// intact so that NLL can respect them. For example:
     ///
-    ///     let (a, b): (T, U) = y;
+    ///     let a: T = y;
     ///
-    /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
-    /// is the right thing.
-    ///
-    /// `CanonicalTy` is used to capture "inference variables" from the user's types. For example:
-    ///
-    ///     let x: Vec<_> = ...;
-    ///     let y: &u32 = ...;
-    ///
-    /// would result in `Vec<?0>` and `&'?0 u32` respectively (where `?0` is a canonicalized
-    /// variable).
-    UserAssertTy(CanonicalTy<'tcx>, Local),
+    /// Here we would insert a `AscribeUserType` that ensures that the
+    /// type `Y` of `y` is a subtype of `T` (`Y <: T`).
+    AscribeUserType(Place<'tcx>, CanonicalTy<'tcx>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1728,8 +1720,8 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref outputs,
                 ref inputs,
             } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
-            UserAssertTy(ref c_ty, ref local) => {
-                write!(fmt, "UserAssertTy({:?}, {:?})", c_ty, local)
+            AscribeUserType(ref place, ref c_ty) => {
+                write!(fmt, "AscribeUserType({:?}, {:?})", place, c_ty)
             }
             Nop => write!(fmt, "nop"),
         }
@@ -2652,7 +2644,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Validate)(a, b),
         (StatementKind::EndRegion)(a),
-        (StatementKind::UserAssertTy)(a, b),
+        (StatementKind::AscribeUserType)(a, b),
         (StatementKind::Nop),
     }
 }

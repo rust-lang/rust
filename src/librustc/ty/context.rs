@@ -356,8 +356,8 @@ pub struct TypeckTables<'tcx> {
     /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
     field_indices: ItemLocalMap<usize>,
 
-    /// Stores the canonicalized types provided by the user. See also `UserAssertTy` statement in
-    /// MIR.
+    /// Stores the canonicalized types provided by the user. See also
+    /// `AscribeUserType` statement in MIR.
     user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
 
     /// Stores the types for various nodes in the AST.  Note that this table

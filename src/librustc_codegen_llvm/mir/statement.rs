@@ -92,7 +92,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             mir::StatementKind::ReadForMatch(_) |
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
-            mir::StatementKind::UserAssertTy(..) |
+            mir::StatementKind::AscribeUserType(..) |
             mir::StatementKind::Nop => bx,
         }
     }

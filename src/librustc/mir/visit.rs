@@ -144,11 +144,11 @@ macro_rules! make_mir_visitor {
                 self.super_operand(operand, location);
             }
 
-            fn visit_user_assert_ty(&mut self,
-                                    c_ty: & $($mutability)* CanonicalTy<'tcx>,
-                                    local: & $($mutability)* Local,
-                                    location: Location) {
-                self.super_user_assert_ty(c_ty, local, location);
+            fn visit_ascribe_user_ty(&mut self,
+                                     place: & $($mutability)* Place<'tcx>,
+                                     c_ty: & $($mutability)* CanonicalTy<'tcx>,
+                                     location: Location) {
+                self.super_ascribe_user_ty(place, c_ty, location);
             }
 
             fn visit_place(&mut self,
@@ -386,9 +386,11 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(input, location);
                         }
                     }
-                    StatementKind::UserAssertTy(ref $($mutability)* c_ty,
-                                                ref $($mutability)* local) => {
-                        self.visit_user_assert_ty(c_ty, local, location);
+                    StatementKind::AscribeUserType(
+                        ref $($mutability)* place,
+                        ref $($mutability)* c_ty,
+                    ) => {
+                        self.visit_ascribe_user_ty(place, c_ty, location);
                     }
                     StatementKind::Nop => {}
                 }
@@ -629,12 +631,12 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_user_assert_ty(&mut self,
-                                    c_ty: & $($mutability)* CanonicalTy<'tcx>,
-                                    local: & $($mutability)* Local,
-                                    location: Location) {
+            fn super_ascribe_user_ty(&mut self,
+                                     place: & $($mutability)* Place<'tcx>,
+                                     c_ty: & $($mutability)* CanonicalTy<'tcx>,
+                                     location: Location) {
+                self.visit_place(place, PlaceContext::Validate, location);
                 self.visit_canonical_ty(c_ty);
-                self.visit_local(local, PlaceContext::Validate, location);
             }
 
             fn super_place(&mut self,

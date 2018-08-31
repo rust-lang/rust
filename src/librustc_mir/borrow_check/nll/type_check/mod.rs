@@ -248,7 +248,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         if let Some(user_ty) = constant.user_ty {
             if let Err(terr) =
                 self.cx
-                    .eq_canonical_type_and_type(user_ty, constant.ty, location.boring())
+                    .eq_user_type_and_type(user_ty, constant.ty, location.boring())
             {
                 span_mirbug!(
                     self,
@@ -850,13 +850,28 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn eq_canonical_type_and_type(
+    fn sub_type_and_user_type(
+        &mut self,
+        a: Ty<'tcx>,
+        b: CanonicalTy<'tcx>,
+        locations: Locations,
+    ) -> Fallible<()> {
+        relate_tys::sub_type_and_user_type(
+            self.infcx,
+            a,
+            b,
+            locations,
+            self.borrowck_context.as_mut().map(|x| &mut **x),
+        )
+    }
+
+    fn eq_user_type_and_type(
         &mut self,
         a: CanonicalTy<'tcx>,
         b: Ty<'tcx>,
         locations: Locations,
     ) -> Fallible<()> {
-        relate_tys::eq_canonical_type_and_type(
+        relate_tys::eq_user_type_and_type(
             self.infcx,
             a,
             b,
@@ -905,7 +920,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(user_ty) = self.rvalue_user_ty(rv) {
-                    if let Err(terr) = self.eq_canonical_type_and_type(
+                    if let Err(terr) = self.eq_user_type_and_type(
                         user_ty,
                         rv_ty,
                         location.boring(),
@@ -955,15 +970,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::UserAssertTy(c_ty, local) => {
-                let local_ty = mir.local_decls()[local].ty;
-                if let Err(terr) = self.eq_canonical_type_and_type(c_ty, local_ty, Locations::All) {
+            StatementKind::AscribeUserType(ref place, c_ty) => {
+                let place_ty = place.ty(mir, tcx).to_ty(tcx);
+                if let Err(terr) = self.sub_type_and_user_type(place_ty, c_ty, Locations::All) {
                     span_mirbug!(
                         self,
                         stmt,
-                        "bad type assert ({:?} = {:?}): {:?}",
+                        "bad type assert ({:?} <: {:?}): {:?}",
+                        place_ty,
                         c_ty,
-                        local_ty,
                         terr
                     );
                 }

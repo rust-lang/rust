@@ -144,10 +144,10 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
             // EndRegion matters to older NLL/MIR AST borrowck, not to alias NLL
             StatementKind::EndRegion(..) |
             StatementKind::Nop |
-            StatementKind::UserAssertTy(..) |
+            StatementKind::AscribeUserType(..) |
             StatementKind::Validate(..) |
             StatementKind::StorageLive(..) => {
-                // `Nop`, `UserAssertTy`, `Validate`, and `StorageLive` are irrelevant
+                // `Nop`, `AscribeUserType`, `Validate`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
             StatementKind::StorageDead(local) => {

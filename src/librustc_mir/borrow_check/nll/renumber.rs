@@ -10,7 +10,7 @@
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
+use rustc::mir::{BasicBlock, Location, Mir, Place, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -112,8 +112,12 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_closure_substs: substs={:?}", substs);
     }
 
-    fn visit_user_assert_ty(&mut self, _c_ty: &mut CanonicalTy<'tcx>, _local: &mut Local,
-                            _location: Location) {
+    fn visit_ascribe_user_ty(
+        &mut self,
+        _place: &mut Place<'tcx>,
+        _c_ty: &mut CanonicalTy<'tcx>,
+        _location: Location,
+    ) {
         // User-assert-ty statements represent types that the user added explicitly.
         // We don't want to erase the regions from these types: rather, we want to
         // add them as constraints at type-check time.

@@ -22,6 +22,7 @@ use rustc::ty::{self, CanonicalTy, CanonicalVar, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 
+/// Adds sufficient constraints to ensure that `a <: b`.
 pub(super) fn sub_types<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: Ty<'tcx>,
@@ -40,6 +41,7 @@ pub(super) fn sub_types<'tcx>(
     Ok(())
 }
 
+/// Adds sufficient constraints to ensure that `a == b`.
 pub(super) fn eq_types<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: Ty<'tcx>,
@@ -58,7 +60,43 @@ pub(super) fn eq_types<'tcx>(
     Ok(())
 }
 
-pub(super) fn eq_canonical_type_and_type<'tcx>(
+/// Adds sufficient constraints to ensure that `a <: b`, where `b` is
+/// a user-given type (which means it may have canonical variables
+/// encoding things like `_`).
+pub(super) fn sub_type_and_user_type<'tcx>(
+    infcx: &InferCtxt<'_, '_, 'tcx>,
+    a: Ty<'tcx>,
+    b: CanonicalTy<'tcx>,
+    locations: Locations,
+    borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
+) -> Fallible<()> {
+    debug!(
+        "sub_type_and_user_type(a={:?}, b={:?}, locations={:?})",
+        a, b, locations
+    );
+    let Canonical {
+        variables: b_variables,
+        value: b_value,
+    } = b;
+
+    // (*) The `TypeRelating` code assumes that the "canonical variables"
+    // appear in the "a" side, so start with `Contravariant` ambient
+    // variance to get the right relationship.
+
+    TypeRelating::new(
+        infcx,
+        ty::Variance::Contravariant, // (*)
+        locations,
+        borrowck_context,
+        b_variables,
+    ).relate(&b_value, &a)?;
+    Ok(())
+}
+
+/// Adds sufficient constraints to ensure that `a <: b`, where `b` is
+/// a user-given type (which means it may have canonical variables
+/// encoding things like `_`).
+pub(super) fn eq_user_type_and_type<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: CanonicalTy<'tcx>,
     b: Ty<'tcx>,
@@ -66,16 +104,21 @@ pub(super) fn eq_canonical_type_and_type<'tcx>(
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<()> {
     debug!(
-        "eq_canonical_type_and_type(a={:?}, b={:?}, locations={:?})",
+        "eq_user_type_and_type(a={:?}, b={:?}, locations={:?})",
         a, b, locations
     );
     let Canonical {
         variables: a_variables,
         value: a_value,
     } = a;
+
+    // (*) The `TypeRelating` code assumes that the "canonical variables"
+    // appear in the "a" side, so start with `Contravariant` ambient
+    // variance to get the right relationship.
+
     TypeRelating::new(
         infcx,
-        ty::Variance::Invariant,
+        ty::Variance::Invariant, // (*)
         locations,
         borrowck_context,
         a_variables,
