@@ -298,6 +298,8 @@ where
     <I as Iterator>::Item: Deref,
     <I::Item as Deref>::Target: Rewrite + Spanned + 'a,
 {
+    debug!("format_function_type {:#?}", shape);
+
     // Code for handling variadics is somewhat duplicated for items, but they
     // are different enough to need some serious refactoring to share code.
     enum ArgumentKind<T>
@@ -706,6 +708,8 @@ fn rewrite_bare_fn(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
+    debug!("rewrite_bare_fn {:#?}", shape);
+
     let mut result = String::with_capacity(128);
 
     if let Some(ref lifetime_str) = rewrite_lifetime_param(context, shape, &bare_fn.generic_params)
