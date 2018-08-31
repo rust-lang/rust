@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // edition:2015
-// compile-pass
 
 // Enabling `ireffutable_let_patterns` isn't necessary for what this tests, but it makes coming up
 // with examples easier.
@@ -20,22 +19,22 @@ fn main() {
     use std::ops::Range;
 
     if let Range { start: _, end: _ } = true..true && false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `&&`
 
     if let Range { start: _, end: _ } = true..true || false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `||`
 
     while let Range { start: _, end: _ } = true..true && false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `&&`
 
     while let Range { start: _, end: _ } = true..true || false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `||`
 
     if let true = false && false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `&&`
 
     while let true = (1 == 2) && false { }
-    //~^ WARN error in 2018
+    //~^ ERROR ambigious use of `&&`
 
     // The following cases are not an error as parenthesis are used to
     // clarify intent:

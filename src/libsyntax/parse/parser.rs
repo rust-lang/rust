@@ -3327,8 +3327,6 @@ impl<'a> Parser<'a> {
         let pats = self.parse_pats()?;
         self.expect(&token::Eq)?;
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        self.while_if_let_ambiguity(&expr);
-
         let thn = self.parse_block()?;
         let (hi, els) = if self.eat_keyword(keywords::Else) {
             let expr = self.parse_else_expr()?;
@@ -3337,56 +3335,6 @@ impl<'a> Parser<'a> {
             (thn.span, None)
         };
         Ok(self.mk_expr(lo.to(hi), ExprKind::IfLet(pats, expr, thn, els), attrs))
-    }
-
-    /// With eRFC 2497, we need to check whether an expression is ambigious and warn or error
-    /// depending on the edition, this function handles that.
-    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
-        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
-            let message = format!("ambigious use of `{}`", op_kind.to_string());
-            let mut err = if self.span.edition() >= Edition::Edition2018 {
-                self.diagnostic().struct_span_err(span, &message)
-            } else {
-                self.diagnostic().struct_span_warn(span, &message)
-            };
-
-            let note = if self.span.edition() >= Edition::Edition2018 {
-                "This will be a error until the `let_chains` feature is stabilized."
-            } else {
-                "This will be a error in Rust 2018 until the `let_chains` feature is stabilized."
-            };
-            err.note(note);
-
-            if let Ok(snippet) = self.sess.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span, "consider adding parenthesis", format!("({})", snippet),
-                );
-            }
-
-            err.emit();
-        }
-    }
-
-    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambigious. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambigious) if it is determined
-    /// that the current expression parsed is ambigious and will break in future.
-    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
-        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
-        match &expr.node {
-            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
-                Some((expr.span, op.node))
-            },
-            ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambigious = lhs.as_ref()
-                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambigious = rhs.as_ref()
-                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
-
-                lhs_ambigious.or(rhs_ambigious)
-            }
-            _ => None,
-        }
     }
 
     // `move |args| expr`
@@ -3489,7 +3437,6 @@ impl<'a> Parser<'a> {
         let pats = self.parse_pats()?;
         self.expect(&token::Eq)?;
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        self.while_if_let_ambiguity(&expr);
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
