@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 mod A {
     pub mod B {
         use super::*;

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_shorthand_field_patterns)]
+
 use std::mem;
 
 struct S {

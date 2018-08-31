@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 const JSVAL_TAG_CLEAR: u32 = 0xFFFFFF80;
 const JSVAL_TYPE_INT32: u8 = 0x01;
 const JSVAL_TYPE_UNDEFINED: u8 = 0x02;

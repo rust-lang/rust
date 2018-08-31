@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 #[derive(Debug)]
 enum a_tag {
     a_tag_var(u64)

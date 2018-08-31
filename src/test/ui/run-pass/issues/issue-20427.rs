@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+
 // aux-build:i8.rs
 // ignore-pretty issue #37201
 

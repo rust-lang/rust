@@ -10,6 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
+#![allow(non_shorthand_field_patterns)]
 
 #![feature(box_syntax)]
 

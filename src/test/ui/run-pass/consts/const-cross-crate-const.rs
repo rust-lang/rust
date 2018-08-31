@@ -10,7 +10,7 @@
 
 // run-pass
 // aux-build:cci_const.rs
-
+#![allow(non_upper_case_globals)]
 
 extern crate cci_const;
 static foo: &'static str = cci_const::foopy;

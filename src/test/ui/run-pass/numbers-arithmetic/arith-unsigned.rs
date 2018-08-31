@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_comparisons)]
 
 // Unsigned integer operations
 pub fn main() {

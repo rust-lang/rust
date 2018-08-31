@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 fn foo() -> isize {
     return 0xca7f000d;

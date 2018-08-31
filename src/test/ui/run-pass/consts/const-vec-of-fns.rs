@@ -10,6 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
+#![allow(non_upper_case_globals)]
 
 /*!
  * Try to double-check that static fns have the right size (with or

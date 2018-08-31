@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![allow(dead_assignment)]
-
 pub fn main() {
     let x : &[isize] = &[1,2,3,4,5];
     let mut z : &[isize] = &[1,2,3,4,5];

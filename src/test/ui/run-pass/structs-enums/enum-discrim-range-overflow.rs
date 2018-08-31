@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
+
 // pretty-expanded FIXME #23616
 
 pub enum E64 {

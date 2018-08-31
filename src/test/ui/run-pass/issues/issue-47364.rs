@@ -10,6 +10,7 @@
 
 // run-pass
 // compile-flags: -C codegen-units=8 -O
+#![allow(non_snake_case)]
 
 fn main() {
     nom_sql::selection(b"x ");

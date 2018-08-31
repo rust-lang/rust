@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
 #![feature(associated_consts)]
 
 impl A for i32 {

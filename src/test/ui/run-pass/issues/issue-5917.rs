@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 struct T (&'static [isize]);
 static t : T = T (&[5, 4, 3]);

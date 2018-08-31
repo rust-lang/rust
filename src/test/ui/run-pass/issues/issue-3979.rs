@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
 
 trait Positioned {
   fn SetX(&mut self, _: isize);

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // Tests parallel codegen - this can fail if the symbol for the anonymous
 // closure in `sum` pollutes the second codegen unit from the first.
 

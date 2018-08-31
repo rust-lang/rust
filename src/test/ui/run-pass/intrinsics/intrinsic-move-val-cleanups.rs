@@ -10,6 +10,7 @@
 
 // run-pass
 // ignore-emscripten no threads support
+#![allow(stable_features)]
 
 // This test is checking that the move_val_init intrinsic is
 // respecting cleanups for both of its argument expressions.

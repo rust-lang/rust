@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![allow(unnecessary_allocation)]
-
 fn f1(ref_string: &str) -> String {
     match ref_string {
         "a" => "found a".to_string(),

@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+#![allow(type_alias_bounds)]
+
 // As dst-tuple.rs, but the unsized field is the only field in the tuple.
 
 

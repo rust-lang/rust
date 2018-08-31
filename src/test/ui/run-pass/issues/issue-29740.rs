@@ -11,6 +11,7 @@
 // run-pass
 // Regression test for #29740. Inefficient MIR matching algorithms
 // generated way too much code for this sort of case, leading to OOM.
+#![allow(non_snake_case)]
 
 pub mod KeyboardEventConstants {
     pub const DOM_KEY_LOCATION_STANDARD: u32 = 0;

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 trait methods {
     fn to_bytes(&self) -> Vec<u8> ;
 }

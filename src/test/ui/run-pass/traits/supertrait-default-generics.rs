@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // There is some other borrowck bug, so we make the stuff not mut.
 
 

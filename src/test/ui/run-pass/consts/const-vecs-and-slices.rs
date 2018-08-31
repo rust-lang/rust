@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 static x : [isize; 4] = [1,2,3,4];
 static y : &'static [isize] = &[1,2,3,4];
 static z : &'static [isize; 4] = &[1,2,3,4];

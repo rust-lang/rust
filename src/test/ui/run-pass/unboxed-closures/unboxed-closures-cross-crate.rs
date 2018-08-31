@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // Test that unboxed closures work with cross-crate inlining
 // Acts as a regression test for #16790, #18378 and #18543
 

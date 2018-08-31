@@ -10,6 +10,7 @@
 
 // run-pass
 
+#![allow(non_camel_case_types)]
 
 trait sum {
     fn sum_(self) -> isize;

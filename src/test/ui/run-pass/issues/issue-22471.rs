@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(type_alias_bounds)]
+
 type Foo<T> where T: Copy = Box<T>;
 
 fn main(){}

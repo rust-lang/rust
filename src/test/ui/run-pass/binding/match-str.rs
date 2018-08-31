@@ -10,6 +10,7 @@
 
 // run-pass
 // Issue #53
+#![allow(non_camel_case_types)]
 
 
 pub fn main() {

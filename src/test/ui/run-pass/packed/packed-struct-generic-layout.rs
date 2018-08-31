@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
+
 
 use std::mem;
 

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(improper_ctypes)]
+
 // MSVC doesn't support 128 bit integers, and other Windows
 // C compilers have very inconsistent views on how the ABI
 // should look like.

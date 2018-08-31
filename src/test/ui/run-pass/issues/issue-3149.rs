@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
 // pretty-expanded FIXME #23616
 
 fn Matrix4<T>(m11: T, m12: T, m13: T, m14: T,

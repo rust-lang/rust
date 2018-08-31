@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 // Tests the range assertion wraparound case when reading discriminants.
 
 #[repr(u8)]

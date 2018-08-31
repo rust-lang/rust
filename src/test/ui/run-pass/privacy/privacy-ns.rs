@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 
 // Check we do the correct privacy checks when we import a name and there is an
 // item with that name in both the value and type namespaces.

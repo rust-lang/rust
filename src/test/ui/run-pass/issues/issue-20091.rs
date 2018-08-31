@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 

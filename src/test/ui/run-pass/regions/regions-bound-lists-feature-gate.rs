@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 #![feature(issue_5723_bootstrap)]
 
 trait Foo {

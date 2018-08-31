@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 // pretty-expanded FIXME #23616
 // ignore-emscripten no threads
 

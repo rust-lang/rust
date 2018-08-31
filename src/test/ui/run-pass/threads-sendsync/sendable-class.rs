@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // Test that a class with only sendable fields can be sent
 
 // pretty-expanded FIXME #23616

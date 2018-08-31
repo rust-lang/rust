@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 
 enum pattern { tabby, tortoiseshell, calico }
 enum breed { beagle, rottweiler, pug }

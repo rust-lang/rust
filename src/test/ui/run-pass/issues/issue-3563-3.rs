@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,
 // non-copyable struct, unit testing.  To run execute: rustc --test shapes.rs &&
 // ./shapes

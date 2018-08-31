@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 fn main() {
     const iter: i32 = 0;
 

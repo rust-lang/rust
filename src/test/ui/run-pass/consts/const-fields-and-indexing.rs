@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 const x : [isize; 4] = [1,2,3,4];
 static p : isize = x[2];
 const y : &'static [isize] = &[1,2,3,4];

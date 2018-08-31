@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
+
 // ignore-android since the dynamic linker sets a SIGPIPE handler (to do
 // a crash report) so inheritance is moot on the entire platform
 

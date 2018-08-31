@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
+
 // Check that item-less traits do not cause dropck to inject extra
 // region constraints.
 

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unconditional_recursion)]
+
 // pretty-expanded FIXME #23616
 
 trait Foo {

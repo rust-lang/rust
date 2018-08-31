@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // aux-build:trait_default_method_xc_aux.rs
 
 

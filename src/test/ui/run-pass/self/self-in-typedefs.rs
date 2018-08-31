@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unions_with_drop_fields)]
+
 #![feature(self_in_typedefs)]
 #![feature(untagged_unions)]
 

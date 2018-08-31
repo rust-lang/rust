@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // Test parsing binary operators after macro invocations.
 
 // pretty-expanded FIXME #23616

@@ -10,6 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
+#![allow(non_upper_case_globals)]
 
 const s: isize = 1;
 const e: isize = 42;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(non_camel_case_types)]
 
 type compare<T> = extern "Rust" fn(T, T) -> bool;
 

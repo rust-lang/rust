@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
+
 #![feature(box_syntax)]
 
 static tau: f64 = 2.0*3.14159265358979323;

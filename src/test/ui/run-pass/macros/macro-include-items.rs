@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // ignore-pretty issue #37195
 
 fn bar() {}

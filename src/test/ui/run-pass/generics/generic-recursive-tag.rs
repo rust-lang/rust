@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
 #![feature(box_syntax)]
 
 enum list<T> { cons(Box<T>, Box<list<T>>), nil, }

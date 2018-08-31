@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 #![allow(dead_code)]
 
 // very simple test for a 'static static with default lifetime

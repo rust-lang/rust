@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 // ignore-pretty issue #37201
 
 // This test is ensuring that parameters are indeed dropped after

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with codegen ignoring binders.
 

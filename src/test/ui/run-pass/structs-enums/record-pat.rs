@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+#![allow(non_shorthand_field_patterns)]
 
 enum t1 { a(isize), b(usize), }
 struct T2 {x: t1, y: isize}

@@ -10,6 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
+#![allow(deprecated)]
 
 use std::hash::{Hash, SipHasher};
 

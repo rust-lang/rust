@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // Tests that type assignability is used to search for instances when
 // making method calls, but only if there aren't any matches without
 // it.

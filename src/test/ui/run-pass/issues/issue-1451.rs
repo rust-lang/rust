@@ -10,7 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
-
+#![allow(non_snake_case)]
 #![allow(unused_variables)]
 
 struct T { f: extern "Rust" fn() }

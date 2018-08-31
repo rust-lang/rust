@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // pp-exact - Make sure we print all the attributes
 // pretty-expanded FIXME #23616
 

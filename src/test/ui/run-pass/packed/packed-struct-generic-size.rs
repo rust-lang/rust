@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+#![allow(unused_comparisons)]
+
 #![feature(repr_packed)]
 
 use std::mem;

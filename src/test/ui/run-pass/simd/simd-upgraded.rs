@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+#![allow(non_camel_case_types)]
+
 // Test that removed LLVM SIMD intrinsics continue
 // to work via the "AutoUpgrade" mechanism.
 

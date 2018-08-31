@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // pp-exact - Make sure we actually print the attributes
 #![feature(custom_attribute)]
 

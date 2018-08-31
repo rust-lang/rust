@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 #![feature(cfg_target_feature)]
 
 #[cfg(any(not(target_arch = "x86"), target_feature = "sse2"))]

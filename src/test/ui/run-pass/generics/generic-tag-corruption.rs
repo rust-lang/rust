@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(non_camel_case_types)]
 
 
 // This used to cause memory corruption in stage 0.

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
+
 // ignore-emscripten i128 doesn't work
 
 // compile-flags: -Z borrowck=compare

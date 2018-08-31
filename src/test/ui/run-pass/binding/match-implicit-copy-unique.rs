@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_shorthand_field_patterns)]
 #![feature(box_syntax)]
 
 struct Pair { a: Box<isize>, b: Box<isize> }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
 // ignore-emscripten no threads support
 
 use std::sync::mpsc::{TryRecvError, channel};

@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+#![allow(overflowing_literals)]
+
 // Testing shifts for various combinations of integers
 // Issue #1570
 

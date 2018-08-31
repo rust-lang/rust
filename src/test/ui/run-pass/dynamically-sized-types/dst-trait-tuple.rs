@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(type_alias_bounds)]
 
 #![allow(unused_features)]
 #![feature(box_syntax)]

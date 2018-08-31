@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 static mut drop_count: usize = 0;
 
 struct Foo {

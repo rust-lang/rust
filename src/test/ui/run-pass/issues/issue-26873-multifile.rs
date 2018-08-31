@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // ignore-pretty issue #37195
 
 mod issue_26873_multifile;

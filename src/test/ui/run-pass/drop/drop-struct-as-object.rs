@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 

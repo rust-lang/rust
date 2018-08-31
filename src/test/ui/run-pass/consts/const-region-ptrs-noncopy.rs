@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 type Big = [u64; 8];
 struct Pair<'a> { a: isize, b: &'a Big }

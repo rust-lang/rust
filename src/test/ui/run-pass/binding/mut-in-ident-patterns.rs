@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+#![allow(non_shorthand_field_patterns)]
 
 trait Foo {
     fn foo(&self, mut x: isize) -> isize {

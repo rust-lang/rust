@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 // just to make sure that `return` is only returning from the closure,
 // not the surrounding function.
 

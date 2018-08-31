@@ -10,8 +10,7 @@
 
 // run-pass
 // pretty-expanded FIXME #23616
-
-#![allow(dead_assignment)]
+#![allow(non_camel_case_types)]
 #![allow(unused_variables)]
 
 enum thing { a, b, c, }

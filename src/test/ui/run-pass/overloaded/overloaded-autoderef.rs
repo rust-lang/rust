@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 #![feature(box_syntax, core)]
 
 use std::cell::RefCell;

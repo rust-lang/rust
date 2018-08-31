@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // ignore-emscripten
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]

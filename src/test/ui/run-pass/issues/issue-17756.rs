@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 const count : usize = 2 as usize;
 fn main() {
     let larger : [usize; count*2];

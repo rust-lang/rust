@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 pub fn main() {
     #[derive(Copy, Clone)]
     enum x { foo }

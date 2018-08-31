@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
+
 // Test that we pick which version of `foo` to run based on the
 // type that is (ultimately) inferred for `x`.
 

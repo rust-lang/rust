@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
+
 struct Pair<'a> { a: isize, b: &'a isize }
 
 const x: &'static isize = &10;

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_camel_case_types)]
 
 enum blah { a(isize, isize, usize), b(isize, isize), c, }
 

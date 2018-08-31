@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // Test overloaded indexing combined with autoderef.
 
 #![feature(box_syntax, core)]

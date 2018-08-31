@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // ignore-emscripten FIXME(#45351)
 
 #![feature(repr_simd, platform_intrinsics)]

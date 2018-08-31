@@ -10,6 +10,8 @@
 
 // run-pass
 
+#![allow(non_camel_case_types)]
+
 use std::cell::Cell;
 
 // Make sure that destructors get run on slice literals

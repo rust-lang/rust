@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(improper_ctypes)]
+
 // ignore-wasm32-bare no libc to test ffi with
 
 #[derive(Copy, Clone)]

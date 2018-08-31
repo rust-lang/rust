@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_shorthand_field_patterns)]
 
 enum Foo {
     Bar {

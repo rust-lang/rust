@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 #![allow(unreachable_code)]
 
 macro_rules! x {

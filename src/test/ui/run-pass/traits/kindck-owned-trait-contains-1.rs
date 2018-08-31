@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+
 #![feature(box_syntax)]
 
 trait repeat<A> { fn get(&self) -> A; }

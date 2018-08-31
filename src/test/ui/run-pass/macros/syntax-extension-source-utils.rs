@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // ignore-pretty issue #37195
 
 pub mod m1 {

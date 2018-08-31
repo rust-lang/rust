@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // aux-build:issue-14421.rs
 
 // pretty-expanded FIXME #23616

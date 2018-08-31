@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
+
 // pretty-expanded FIXME #23616
 
 struct CMap<'a> {

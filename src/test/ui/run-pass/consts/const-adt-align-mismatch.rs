@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
+
 use std::mem;
 
 #[derive(PartialEq, Debug)]

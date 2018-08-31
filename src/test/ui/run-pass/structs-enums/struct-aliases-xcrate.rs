@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_shorthand_field_patterns)]
+
 // aux-build:xcrate_struct_aliases.rs
 
 extern crate xcrate_struct_aliases;
