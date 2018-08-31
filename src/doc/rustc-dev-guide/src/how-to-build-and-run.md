@@ -179,10 +179,10 @@ compiler.
 when doing simple refactorings, is to run `./x.py check`
 continuously. Here you are just checking that the compiler can
 **build**, but often that is all you need (e.g., when renaming a
-method). You can then run `./x.py build` when you acqtually need to
+method). You can then run `./x.py build` when you actually need to
 run tests.
 
-In fact, it is eomtimes useful to put off tests even when you are not
+In fact, it is sometimes useful to put off tests even when you are not
 100% sure the code will work. You can then keep building up
 refactoring commits and only run the tests at some later time. You can
 then use `git bisect` to track down **precisely** which commit caused
