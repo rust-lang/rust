@@ -961,6 +961,7 @@ impl<'a, 'b, 'cl> BuildReducedGraphVisitor<'a, 'b, 'cl> {
         let invocation = self.resolver.invocations[&mark];
         invocation.module.set(self.resolver.current_module);
         invocation.parent_legacy_scope.set(self.current_legacy_scope);
+        invocation.output_legacy_scope.set(self.current_legacy_scope);
         invocation
     }
 }
@@ -990,7 +991,7 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
                 return
             }
             ItemKind::Mac(..) => {
-                self.current_legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
+                self.current_legacy_scope = LegacyScope::Invocation(self.visit_invoc(item.id));
                 return
             }
             ItemKind::Mod(..) => self.resolver.contains_macro_use(&item.attrs),
@@ -1009,7 +1010,7 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
 
     fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
-            self.current_legacy_scope = LegacyScope::Expansion(self.visit_invoc(stmt.id));
+            self.current_legacy_scope = LegacyScope::Invocation(self.visit_invoc(stmt.id));
         } else {
             visit::walk_stmt(self, stmt);
         }
