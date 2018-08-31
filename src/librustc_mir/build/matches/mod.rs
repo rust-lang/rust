@@ -19,7 +19,7 @@ use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::scope::{CachedBlock, DropKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitArray;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, CanonicalTy, Ty};
 use rustc::mir::*;
 use rustc::hir;
 use hair::*;
@@ -168,6 +168,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_place.clone(), pattern)],
                         bindings: vec![],
+                        ascriptions: vec![],
                         guard,
                         arm_index,
                         pat_index,
@@ -253,6 +254,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span: irrefutable_pat.span,
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
+            ascriptions: vec![],
             guard: None,
 
             // since we don't call `match_candidates`, next fields is unused
@@ -398,6 +400,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
             }
+            PatternKind::AscribeUserType { ref subpattern, .. } |
             PatternKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, f);
             }
@@ -429,6 +432,9 @@ pub struct Candidate<'pat, 'tcx:'pat> {
     // ...these bindings established...
     bindings: Vec<Binding<'tcx>>,
 
+    // ...these types asserted...
+    ascriptions: Vec<Ascription<'tcx>>,
+
     // ...and the guard must be evaluated...
     guard: Option<Guard<'tcx>>,
 
@@ -452,6 +458,16 @@ struct Binding<'tcx> {
     var_ty: Ty<'tcx>,
     mutability: Mutability,
     binding_mode: BindingMode<'tcx>,
+}
+
+/// Indicates that the type of `source` must be a subtype of the
+/// user-given type `user_ty`; this is basically a no-op but can
+/// influence region inference.
+#[derive(Clone, Debug)]
+struct Ascription<'tcx> {
+    span: Span,
+    source: Place<'tcx>,
+    user_ty: CanonicalTy<'tcx>,
 }
 
 #[derive(Clone, Debug)]

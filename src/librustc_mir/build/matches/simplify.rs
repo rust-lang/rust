@@ -23,7 +23,7 @@
 //! testing a value against a constant.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
-use build::matches::{Binding, MatchPair, Candidate};
+use build::matches::{Ascription, Binding, MatchPair, Candidate};
 use hair::*;
 use rustc::mir::*;
 
@@ -63,6 +63,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                  candidate: &mut Candidate<'pat, 'tcx>)
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
         match *match_pair.pattern.kind {
+            PatternKind::AscribeUserType { ref subpattern, user_ty } => {
+                candidate.ascriptions.push(Ascription {
+                    span: match_pair.pattern.span,
+                    user_ty,
+                    source: match_pair.place.clone(),
+                });
+
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+
+                Ok(())
+            }
+
             PatternKind::Wild => {
                 // nothing left to do
                 Ok(())

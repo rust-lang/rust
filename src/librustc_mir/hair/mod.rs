@@ -94,6 +94,8 @@ pub enum StmtKind<'tcx> {
         init_scope: region::Scope,
 
         /// `let <PAT> = ...`
+        ///
+        /// if a type is included, it is added as an ascription pattern
         pattern: Pattern<'tcx>,
 
         /// let pat: ty = <INIT> ...

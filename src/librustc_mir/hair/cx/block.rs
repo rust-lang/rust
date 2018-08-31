@@ -76,14 +76,26 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             first_statement_index: region::FirstStatementIndex::new(index),
                         });
 
-                        let ty = local.ty.clone().map(|ty| ty.hir_id);
-                        let pattern = cx.pattern_from_hir(&local.pat);
+                        let mut pattern = cx.pattern_from_hir(&local.pat);
+
+                        if let Some(ty) = &local.ty {
+                            if let Some(user_ty) = cx.tables.user_provided_tys().get(ty.hir_id) {
+                                pattern = Pattern {
+                                    ty: pattern.ty,
+                                    span: pattern.span,
+                                    kind: Box::new(PatternKind::AscribeUserType {
+                                        user_ty: *user_ty,
+                                        subpattern: pattern
+                                    })
+                                };
+                            }
+                        }
+
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_scope,
                                 init_scope: region::Scope::Node(hir_id.local_id),
                                 pattern,
-                                ty,
                                 initializer: local.init.to_ref(),
                                 lint_level: cx.lint_level_of(local.id),
                             },
