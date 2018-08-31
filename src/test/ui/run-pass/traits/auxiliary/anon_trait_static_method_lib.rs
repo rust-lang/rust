@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
+pub struct Foo {
+    pub x: isize
+}
 
-// pretty-expanded FIXME #23616
-
-use std::sync::atomic::*;
-
-trait SendSync: Send + Sync {}
-
-impl SendSync for AtomicBool {}
-impl SendSync for AtomicIsize {}
-impl SendSync for AtomicUsize {}
-impl<T> SendSync for AtomicPtr<T> {}
-
-fn main() {}
+impl Foo {
+    pub fn new() -> Foo {
+        Foo { x: 3 }
+    }
+}
