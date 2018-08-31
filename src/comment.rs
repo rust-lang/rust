@@ -891,7 +891,10 @@ where
                 char_kind = FullCodeCharKind::InString;
                 match chr {
                     '"' => {
-                        if is_raw_string_suffix(&mut self.base, sharps) {
+                        if sharps == 0 {
+                            char_kind = FullCodeCharKind::Normal;
+                            CharClassesStatus::Normal
+                        } else if is_raw_string_suffix(&mut self.base, sharps) {
                             CharClassesStatus::RawStringSuffix(sharps)
                         } else {
                             CharClassesStatus::LitRawString(sharps)
@@ -944,13 +947,9 @@ where
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
             CharClassesStatus::Normal => match chr {
                 'r' => match self.base.peek().map(|c| c.get_char()) {
-                    Some('#') => {
+                    Some('#') | Some('"') => {
                         char_kind = FullCodeCharKind::InString;
                         CharClassesStatus::RawStringPrefix(0)
-                    }
-                    Some('"') => {
-                        char_kind = FullCodeCharKind::InString;
-                        CharClassesStatus::LitString
                     }
                     _ => CharClassesStatus::Normal,
                 },

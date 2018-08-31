@@ -290,3 +290,12 @@ macro_rules! template {
 "##, $name)
     }
 }
+
+macro_rules! template {
+    () => {
+        format_args!(r"
+//
+
+")
+    }
+}

@@ -347,3 +347,14 @@ macro_rules! template {
         )
     };
 }
+
+macro_rules! template {
+    () => {
+        format_args!(
+            r"
+//
+
+"
+        )
+    };
+}
