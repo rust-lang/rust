@@ -1753,7 +1753,7 @@ where
         Separator::Comma,
         nested_shape.width,
     );
-    let fmt = ListFormatting::new(shape, context.config)
+    let fmt = ListFormatting::new(nested_shape, context.config)
         .tactic(tactic)
         .ends_with_newline(false);
     let list_str = write_list(&item_vec, &fmt)?;
