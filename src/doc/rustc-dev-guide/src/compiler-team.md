@@ -51,7 +51,10 @@ well as doing reviews and other work.
 
 If you are interested in becoming a compiler team member, the first
 thing to do is to start fixing some bugs, or get involved in a working
-group.
+group. One good way to find bugs is to look for
+[open issues tagged with E-easy](https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy)
+or
+[E-mentor](https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-mentor).
 
 ### r+ rights
 
