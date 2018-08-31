@@ -136,7 +136,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
-             \"filtered_out\": \"{}\" }}",
+             \"filtered_out\": {} }}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,
