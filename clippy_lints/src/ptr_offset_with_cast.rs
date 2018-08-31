@@ -1,4 +1,4 @@
-use rustc::{declare_lint, hir, lint, lint_array};
+use rustc::{declare_tool_lint, hir, lint, lint_array};
 use crate::utils;
 use std::fmt;
 
