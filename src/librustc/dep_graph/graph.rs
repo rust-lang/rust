@@ -883,7 +883,6 @@ pub enum WorkProductFileKind {
     Object,
     Bytecode,
     BytecodeCompressed,
-    PreThinLtoBytecode,
 }
 
 pub(super) struct CurrentDepGraph {

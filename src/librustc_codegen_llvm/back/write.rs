@@ -28,7 +28,7 @@ use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use llvm_util;
-use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, ModuleLlvm,
+use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, // ModuleLlvm,
      CachedModuleCodegen};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -228,8 +228,8 @@ pub struct ModuleConfig {
     pgo_use: String,
 
     // Flags indicating which outputs to produce.
+    pub emit_pre_thin_lto_bc: bool,
     emit_no_opt_bc: bool,
-    emit_pre_thin_lto_bc: bool,
     emit_bc: bool,
     emit_bc_compressed: bool,
     emit_lto_bc: bool,
@@ -625,20 +625,13 @@ unsafe fn optimize(cgcx: &CodegenContext,
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
-
-        if config.emit_pre_thin_lto_bc {
-            let out = cgcx.output_filenames.temp_path_ext(PRE_THIN_LTO_BC_EXT,
-                                                          module_name);
-            let out = path2cstr(&out);
-            llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
-        }
     }
     Ok(())
 }
 
 fn generate_lto_work(cgcx: &CodegenContext,
                      modules: Vec<ModuleCodegen>,
-                     import_only_modules: Vec<(SerializedModule, CString)>)
+                     import_only_modules: Vec<(SerializedModule, WorkProduct)>)
     -> Vec<(WorkItem, u64)>
 {
     let mut timeline = cgcx.time_graph.as_ref().map(|tg| {
@@ -646,13 +639,22 @@ fn generate_lto_work(cgcx: &CodegenContext,
                  CODEGEN_WORK_PACKAGE_KIND,
                  "generate lto")
     }).unwrap_or(Timeline::noop());
-    let lto_modules = lto::run(cgcx, modules, import_only_modules, &mut timeline)
+    let (lto_modules, copy_jobs) = lto::run(cgcx, modules, import_only_modules, &mut timeline)
         .unwrap_or_else(|e| e.raise());
 
-    lto_modules.into_iter().map(|module| {
+    let lto_modules = lto_modules.into_iter().map(|module| {
         let cost = module.cost();
         (WorkItem::LTO(module), cost)
-    }).collect()
+    });
+
+    let copy_jobs = copy_jobs.into_iter().map(|wp| {
+        (WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
+            name: wp.cgu_name.clone(),
+            source: wp,
+        }), 0)
+    });
+
+    lto_modules.chain(copy_jobs).collect()
 }
 
 unsafe fn codegen(cgcx: &CodegenContext,
@@ -1083,7 +1085,6 @@ pub fn start_async_codegen(tcx: TyCtxt,
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
-    output_filenames: &OutputFilenames,
 ) -> FxHashMap<WorkProductId, WorkProduct> {
     let mut work_products = FxHashMap::default();
 
@@ -1102,13 +1103,6 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         }
         if let Some(ref path) = module.bytecode_compressed {
             files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
-        }
-
-        let pre_thin_lto_bytecode_path =
-            output_filenames.temp_path_ext(PRE_THIN_LTO_BC_EXT, Some(&module.name));
-
-        if pre_thin_lto_bytecode_path.exists() {
-            files.push((WorkProductFileKind::PreThinLtoBytecode, pre_thin_lto_bytecode_path));
         }
 
         if let Some((id, product)) =
@@ -1285,9 +1279,6 @@ enum WorkItem {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Load the pre-LTO version of a module from the incremental cache, so it
-    /// can be run through LTO again.
-    LoadPreLtoModule(CachedModuleCodegen),
     /// Perform (Thin)LTO on the given module.
     LTO(lto::LtoModuleCodegen),
 }
@@ -1297,7 +1288,6 @@ impl WorkItem {
         match *self {
             WorkItem::Optimize(ref m) => m.kind,
             WorkItem::CopyPostLtoArtifacts(_) |
-            WorkItem::LoadPreLtoModule(_) |
             WorkItem::LTO(_) => ModuleKind::Regular,
         }
     }
@@ -1305,7 +1295,6 @@ impl WorkItem {
     fn name(&self) -> String {
         match *self {
             WorkItem::Optimize(ref m) => format!("optimize: {}", m.name),
-            WorkItem::LoadPreLtoModule(ref m) => format!("load pre-lto module: {}", m.name),
             WorkItem::CopyPostLtoArtifacts(ref m) => format!("copy post LTO artifacts: {}", m.name),
             WorkItem::LTO(ref m) => format!("lto: {}", m.name()),
         }
@@ -1325,9 +1314,6 @@ fn execute_work_item(cgcx: &CodegenContext,
     match work_item {
         work_item @ WorkItem::Optimize(_) => {
             execute_optimize_work_item(cgcx, work_item, timeline)
-        }
-        work_item @ WorkItem::LoadPreLtoModule(_) => {
-            execute_load_pre_lto_mod_work_item(cgcx, work_item, timeline)
         }
         work_item @ WorkItem::CopyPostLtoArtifacts(_) => {
             execute_copy_from_cache_work_item(cgcx, work_item, timeline)
@@ -1454,9 +1440,6 @@ fn execute_copy_from_cache_work_item(cgcx: &CodegenContext,
                 bytecode_compressed = Some(path.clone());
                 path
             }
-            WorkProductFileKind::PreThinLtoBytecode => {
-                continue;
-            }
         };
         let source_file = in_incr_comp_dir(&incr_comp_session_dir,
                                            &saved_file);
@@ -1509,69 +1492,6 @@ fn execute_lto_work_item(cgcx: &CodegenContext,
     }
 }
 
-fn execute_load_pre_lto_mod_work_item(cgcx: &CodegenContext,
-                                      work_item: WorkItem,
-                                      _: &mut Timeline)
-    -> Result<WorkItemResult, FatalError>
-{
-    let module = if let WorkItem::LoadPreLtoModule(module) = work_item {
-        module
-    } else {
-        bug!("execute_load_pre_lto_mod_work_item() called with wrong WorkItem kind.")
-    };
-
-    let work_product = module.source.clone();
-    let incr_comp_session_dir = cgcx.incr_comp_session_dir
-                                    .as_ref()
-                                    .unwrap();
-
-    let filename = pre_lto_bitcode_filename(&work_product);
-    let bc_path = in_incr_comp_dir(&incr_comp_session_dir, &filename);
-
-    let file = fs::File::open(&bc_path).unwrap_or_else(|e| {
-        panic!("failed to open bitcode file `{}`: {}",
-                           bc_path.display(),
-                           e);
-    });
-
-    let module_llvm = unsafe {
-        let data = ::memmap::Mmap::map(&file).unwrap_or_else(|e| {
-            panic!("failed to create mmap for bitcode file `{}`: {}",
-                               bc_path.display(),
-                               e);
-        });
-
-        let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-        let mod_name_c = SmallCStr::new(&module.name);
-        let llmod_raw = match llvm::LLVMRustParseBitcodeForThinLTO(
-            llcx,
-            data.as_ptr(),
-            data.len(),
-            mod_name_c.as_ptr(),
-        ) {
-            Some(m) => m as *const _,
-            None => {
-                panic!("failed to parse bitcode for thin LTO module `{}`",
-                        module.name);
-            }
-        };
-
-        let tm = (cgcx.tm_factory)().unwrap();
-
-        ModuleLlvm {
-            llmod_raw,
-            llcx,
-            tm,
-        }
-    };
-
-    Ok(WorkItemResult::NeedsLTO(ModuleCodegen {
-        name: module.name.to_string(),
-        module_llvm,
-        kind: ModuleKind::Regular,
-    }))
-}
-
 enum Message {
     Token(io::Result<Acquired>),
     NeedsLTO {
@@ -1588,7 +1508,7 @@ enum Message {
     },
     AddImportOnlyModule {
         module_data: SerializedModule,
-        module_name: CString,
+        work_product: WorkProduct,
     },
     CodegenComplete,
     CodegenItem,
@@ -1893,6 +1813,7 @@ fn start_executing_work(tcx: TyCtxt,
               work_items.len() > 0 ||
               running > 0 ||
               needs_lto.len() > 0 ||
+              lto_import_only_modules.len() > 0 ||
               main_thread_worker_state != MainThreadWorkerState::Idle {
 
             // While there are still CGUs to be codegened, the coordinator has
@@ -1932,7 +1853,7 @@ fn start_executing_work(tcx: TyCtxt,
                    running == 0 &&
                    main_thread_worker_state == MainThreadWorkerState::Idle {
                     assert!(!started_lto);
-                    assert!(needs_lto.len() > 0);
+                    assert!(needs_lto.len() + lto_import_only_modules.len() > 0);
                     started_lto = true;
                     let modules = mem::replace(&mut needs_lto, Vec::new());
                     let import_only_modules =
@@ -2104,10 +2025,13 @@ fn start_executing_work(tcx: TyCtxt,
                     free_worker_ids.push(worker_id);
                     needs_lto.push(result);
                 }
-                Message::AddImportOnlyModule { module_data, module_name } => {
+                Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
                     assert!(!codegen_done);
-                    lto_import_only_modules.push((module_data, module_name));
+                    assert_eq!(main_thread_worker_state,
+                               MainThreadWorkerState::Codegenning);
+                    lto_import_only_modules.push((module_data, work_product));
+                    main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread failure");
@@ -2483,8 +2407,7 @@ impl OngoingCodegen {
 
         let work_products =
             copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess,
-                                                             &compiled_modules,
-                                                             &self.output_filenames);
+                                                             &compiled_modules);
         produce_final_output_artifacts(sess,
                                        &compiled_modules,
                                        &self.output_filenames);
@@ -2565,19 +2488,7 @@ pub(crate) fn submit_post_lto_module_to_llvm(tcx: TyCtxt,
 
 pub(crate) fn submit_pre_lto_module_to_llvm(tcx: TyCtxt,
                                             module: CachedModuleCodegen) {
-    let llvm_work_item = WorkItem::LoadPreLtoModule(module);
-
-    drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone {
-        llvm_work_item,
-        // We don't know the size of the module, but just loading will have smaller
-        // cost than optimizing.
-        cost: 10,
-    })));
-}
-
-pub(crate) fn submit_import_only_module_to_llvm(tcx: TyCtxt,
-                                                module: CachedModuleCodegen) {
-    let filename = pre_lto_bitcode_filename(&module.source);
+    let filename = pre_lto_bitcode_filename(&module.name);
     let bc_path = in_incr_comp_dir_sess(tcx.sess, &filename);
     let file = fs::File::open(&bc_path).unwrap_or_else(|e| {
         panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e)
@@ -2592,21 +2503,12 @@ pub(crate) fn submit_import_only_module_to_llvm(tcx: TyCtxt,
     // Schedule the module to be loaded
     drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::AddImportOnlyModule {
         module_data: SerializedModule::FromUncompressedFile(mmap, file),
-        module_name: CString::new(module.name.clone()).unwrap(),
+        work_product: module.source,
     })));
-
-    // Note: We also schedule for the cached files to be copied to the output
-    // directory
-    submit_post_lto_module_to_llvm(tcx, module);
 }
 
-fn pre_lto_bitcode_filename(wp: &WorkProduct) -> String {
-    wp.saved_files
-      .iter()
-      .find(|&&(kind, _)| kind == WorkProductFileKind::PreThinLtoBytecode)
-      .map(|&(_, ref filename)| filename.clone())
-      .unwrap_or_else(|| panic!("Couldn't find pre-thin-lto bytecode for `{}`",
-                                wp.cgu_name))
+pub(super) fn pre_lto_bitcode_filename(module_name: &str) -> String {
+    format!("{}.{}", module_name, PRE_THIN_LTO_BC_EXT)
 }
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
