@@ -219,26 +219,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         end_block.unit()
     }
 
-    pub fn user_assert_ty(&mut self, block: BasicBlock, hir_id: hir::HirId,
-                          var: NodeId, span: Span) {
-        if self.hir.tcx().sess.opts.debugging_opts.disable_nll_user_type_assert { return; }
-
-        let local_id = self.var_local_id(var, OutsideGuard);
-        let source_info = self.source_info(span);
-
-        debug!("user_assert_ty: local_id={:?}", hir_id.local_id);
-        if let Some(c_ty) = self.hir.tables.user_provided_tys().get(hir_id) {
-            debug!("user_assert_ty: c_ty={:?}", c_ty);
-            self.cfg.push(block, Statement {
-                source_info,
-                kind: StatementKind::UserAssertTy(*c_ty, local_id),
-            });
-        }
-    }
-
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             ty: Option<hir::HirId>,
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
@@ -249,11 +231,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                    subpattern: None, .. } => {
                 let place = self.storage_live_binding(block, var, irrefutable_pat.span,
                                                       OutsideGuard);
-
-                if let Some(ty) = ty {
-                    self.user_assert_ty(block, ty, var, irrefutable_pat.span);
-                }
-
                 unpack!(block = self.into(&place, block, initializer));
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()

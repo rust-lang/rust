@@ -93,11 +93,8 @@ pub enum StmtKind<'tcx> {
         /// lifetime of temporaries
         init_scope: region::Scope,
 
-        /// let <PAT>: ty = ...
+        /// `let <PAT> = ...`
         pattern: Pattern<'tcx>,
-
-        /// let pat: <TY> = init ...
-        ty: Option<hir::HirId>,
 
         /// let pat: ty = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,
