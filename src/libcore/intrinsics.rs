@@ -1146,7 +1146,7 @@ extern "rust-intrinsic" {
     /// Creating an invalid value:
     ///
     /// ```
-    /// use std::{mem, ptr};
+    /// use std::ptr;
     ///
     /// let mut v = Box::new(0i32);
     ///
@@ -1162,8 +1162,10 @@ extern "rust-intrinsic" {
     /// // Even leaking `v` "uses" it, and henc eis undefined behavior.
     /// // mem::forget(v); // ERROR
     ///
-    /// // Let us instead put in a valid value
-    /// ptr::write(&mut v, Box::new(42i32);
+    /// unsafe {
+    ///     // Let us instead put in a valid value
+    ///     ptr::write(&mut v, Box::new(42i32));
+    /// }
     ///
     /// // Now the box is fine
     /// assert_eq!(*v, 42);
