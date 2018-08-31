@@ -515,6 +515,7 @@ define_dep_nodes!( <'tcx>
     [] ItemVarianceConstraints(DefId),
     [] ItemVariances(DefId),
     [] IsConstFn(DefId),
+    [] IsPromotableConstFn(DefId),
     [] IsForeignItem(DefId),
     [] TypeParamPredicates { item_id: DefId, param_id: DefId },
     [] SizedConstraint(DefId),

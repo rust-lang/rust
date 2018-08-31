@@ -413,4 +413,5 @@ register_diagnostics! {
     E0694, // an unknown tool name found in scoped attributes
     E0703, // invalid ABI
     E0704, // incorrect visibility restriction
+    E0713, // rustc_promotable without stability attribute
 }

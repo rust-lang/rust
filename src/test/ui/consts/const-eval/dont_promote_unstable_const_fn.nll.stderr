@@ -32,7 +32,7 @@ error[E0716]: temporary value dropped while borrowed
    |
 LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
-LL |     //~^ does not live long enough
+LL |     //~^ ERROR does not live long enough
 LL | }
    | - temporary value is freed at the end of this statement
    |

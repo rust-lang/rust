@@ -112,6 +112,8 @@ pub struct Stability {
     /// `Some` contains the feature gate required to be able to use the function
     /// as const fn
     pub const_stability: Option<Symbol>,
+    /// whether the function has a `#[rustc_promotable]` attribute
+    pub promotable: bool,
 }
 
 /// The available stability levels.
@@ -176,6 +178,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
     let mut stab: Option<Stability> = None;
     let mut rustc_depr: Option<RustcDeprecation> = None;
     let mut rustc_const_unstable: Option<Symbol> = None;
+    let mut promotable = false;
 
     'outer: for attr in attrs_iter {
         if ![
@@ -183,6 +186,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             "rustc_const_unstable",
             "unstable",
             "stable",
+            "rustc_promotable",
         ].iter().any(|&s| attr.path == s) {
             continue // not a stability level
         }
@@ -190,8 +194,12 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         mark_used(attr);
 
         let meta = attr.meta();
+
+        if attr.path == "rustc_promotable" {
+            promotable = true;
+        }
         // attributes with data
-        if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
+        else if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
@@ -329,6 +337,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 feature,
                                 rustc_depr: None,
                                 const_stability: None,
+                                promotable: false,
                             })
                         }
                         (None, _, _) => {
@@ -378,6 +387,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 feature,
                                 rustc_depr: None,
                                 const_stability: None,
+                                promotable: false,
                             })
                         }
                         (None, _) => {
@@ -416,6 +426,17 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         } else {
             span_err!(diagnostic, item_sp, E0630,
                       "rustc_const_unstable attribute must be paired with \
+                       either stable or unstable attribute");
+        }
+    }
+
+    // Merge the const-unstable info into the stability info
+    if promotable {
+        if let Some(ref mut stab) = stab {
+            stab.promotable = true;
+        } else {
+            span_err!(diagnostic, item_sp, E0713,
+                      "rustc_promotable attribute must be paired with \
                        either stable or unstable attribute");
         }
     }
