@@ -1,4 +1,4 @@
-// rustfmt-edition: Edition2018
+// rustfmt-edition: 2018
 
 fn main() {
     let async_closure = async {

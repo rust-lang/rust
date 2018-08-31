@@ -2176,8 +2176,8 @@ ignore = [
 
 Specifies which edition is used by the parser.
 
-- **Default value**: `Edition2015`
-- **Possible values**: `Edition2015`, `Edition2018`
+- **Default value**: `2015`
+- **Possible values**: `2015`, `2018`
 - **Stable**: No
 
 ### Example
@@ -2185,7 +2185,7 @@ Specifies which edition is used by the parser.
 If you want to format code that requires edition 2018, add the following to your config file:
 
 ```toml
-edition = "Edition2018"
+edition = "2018"
 ```
 
 ## `emit_mode`

@@ -1,4 +1,4 @@
-// rustfmt-edition: Edition2018
+// rustfmt-edition: 2018
 #![feature(rust_2018_preview, uniform_paths)]
 use ::log::{error, info, log};
 use futures::prelude::*;
