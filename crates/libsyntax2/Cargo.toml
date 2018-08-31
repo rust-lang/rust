@@ -10,7 +10,7 @@ text_unit = "0.1.4"
 itertools = "0.7.8"
 drop_bomb = "0.1.4"
 parking_lot = "0.6.0"
-smol_str = "0.1.0"
+smol_str = "0.1.4"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

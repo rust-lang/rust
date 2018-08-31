@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use libsyntax2::{
     File, TextUnit, AstNode, SyntaxKind::*,
     ast::{self, LoopBodyOwner},
@@ -44,7 +46,7 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
                     name: entry.name().to_string(),
                     snippet: None,
                 })
-        )
+        );
     }
     Some(res)
 }
@@ -130,14 +132,16 @@ fn keyword(kw: &str, snip: &str) -> CompletionItem {
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
+    let mut shadowed = HashSet::new();
     acc.extend(
         scopes.scope_chain(name_ref.syntax())
             .flat_map(|scope| scopes.entries(scope).iter())
+            .filter(|entry| shadowed.insert(entry.name()))
             .map(|entry| CompletionItem {
                 name: entry.name().to_string(),
                 snippet: None,
             })
-    )
+    );
 }
 
 #[cfg(test)]
@@ -229,6 +233,20 @@ mod tests {
             fn x() -> <|>
         ", r#"[CompletionItem { name: "Foo", snippet: None },
                CompletionItem { name: "x", snippet: None }]"#)
+    }
+
+    #[test]
+    fn test_complete_shadowing() {
+        check_scope_completion(r"
+            fn foo() -> {
+                let bar = 92;
+                {
+                    let bar = 62;
+                    <|>
+                }
+            }
+        ", r#"[CompletionItem { name: "bar", snippet: None },
+               CompletionItem { name: "foo", snippet: None }]"#)
     }
 
     #[test]
