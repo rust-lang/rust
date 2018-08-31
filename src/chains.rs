@@ -68,7 +68,7 @@
 use comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
 use config::IndentStyle;
 use expr::rewrite_call;
-use lists::{extract_post_comment, extract_pre_comment, get_comment_end};
+use lists::extract_pre_comment;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -273,6 +273,20 @@ impl Chain {
             s.chars().all(|c| c == '?')
         }
 
+        fn is_post_comment(s: &str) -> bool {
+            let comment_start_index = s.chars().position(|c| c == '/');
+            if comment_start_index.is_none() {
+                return false;
+            }
+
+            let newline_index = s.chars().position(|c| c == '\n');
+            if newline_index.is_none() {
+                return true;
+            }
+
+            comment_start_index.unwrap() < newline_index.unwrap()
+        }
+
         fn handle_post_comment(
             post_comment_span: Span,
             post_comment_snippet: &str,
@@ -287,25 +301,14 @@ impl Chain {
                 // No post comment.
                 return;
             }
-            // HACK: Treat `?`s as separators.
             let trimmed_snippet = trim_tries(post_comment_snippet);
-            let comment_end = get_comment_end(&trimmed_snippet, "?", "", false);
-            let maybe_post_comment = extract_post_comment(&trimmed_snippet, comment_end, "?")
-                .and_then(|comment| {
-                    if comment.is_empty() {
-                        None
-                    } else {
-                        Some((comment, comment_end))
-                    }
-                });
-
-            if let Some((post_comment, comment_end)) = maybe_post_comment {
+            if is_post_comment(&trimmed_snippet) {
                 children.push(ChainItem::comment(
                     post_comment_span,
-                    post_comment,
+                    trimmed_snippet.trim().to_owned(),
                     CommentPosition::Back,
                 ));
-                *prev_span_end = *prev_span_end + BytePos(comment_end as u32);
+                *prev_span_end = post_comment_span.hi();
             }
         }
 
