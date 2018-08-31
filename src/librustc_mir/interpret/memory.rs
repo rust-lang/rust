@@ -22,7 +22,7 @@ use std::ptr;
 
 use rustc::ty::{self, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, ScalarMaybeUndef, GlobalId,
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, ScalarMaybeUndef, GlobalId,
                             EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
                             truncate};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
@@ -340,9 +340,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // no need to report anything, the const_eval call takes care of that for statics
             assert!(tcx.is_static(def_id).is_some());
             EvalErrorKind::ReferencedConstant(err).into()
-        }).map(|val| {
-            // FIXME We got our static (will be a ByRef), now we make a *copy*?!?
-            tcx.const_to_allocation(val)
+        }).map(|const_val| {
+            if let ConstValue::ByRef(_, allocation, _) = const_val.val {
+                allocation
+            } else {
+                panic!("Trying to get allocation info from non-byref const value")
+            }
         })
     }
 
