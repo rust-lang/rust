@@ -14,6 +14,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
+use rustc_errors::Applicability;
 use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
@@ -2267,6 +2268,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     }
 }
 
+const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
+
 fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) {
     if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
         if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node {
@@ -2281,38 +2284,41 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                         match_type(cx, ty, &paths::BTREEMAP) ||
                         match_type(cx, ty, &paths::HASHMAP) {
                         if method.ident.name == "len" {
-                            span_lint_and_sugg(
-                                cx,
-                                NEEDLESS_COLLECT,
-                                shorten_needless_collect_span(expr),
-                                "you are collecting an iterator to check its length",
-                                "consider replacing with",
-                                ".count()".to_string(),
-                            );
+                            let span = shorten_needless_collect_span(expr);
+                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                                db.span_suggestion_with_applicability(
+                                    span,
+                                    "replace with",
+                                    ".count()".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            });
                         }
                         if method.ident.name == "is_empty" {
-                            span_lint_and_sugg(
-                                cx,
-                                NEEDLESS_COLLECT,
-                                shorten_needless_collect_span(expr),
-                                "you are collecting an iterator to check if it is empty",
-                                "consider replacing with",
-                                ".next().is_none()".to_string(),
-                            );
+                            let span = shorten_needless_collect_span(expr);
+                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                                db.span_suggestion_with_applicability(
+                                    span,
+                                    "replace with",
+                                    ".next().is_none()".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            });
                         }
                         if method.ident.name == "contains" {
                             let contains_arg = snippet(cx, args[1].span, "??");
-                            span_lint_and_sugg(
-                                cx,
-                                NEEDLESS_COLLECT,
-                                shorten_needless_collect_span(expr),
-                                "you are collecting an iterator to check if contains an element",
-                                "consider replacing with",
-                                format!(
-                                    ".any(|&x| x == {})",
-                                    if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
-                                ),
-                            );
+                            let span = shorten_needless_collect_span(expr);
+                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                                db.span_suggestion_with_applicability(
+                                    span,
+                                    "replace with",
+                                    format!(
+                                        ".any(|&x| x == {})",
+                                        if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
+                                    ),
+                                    Applicability::MachineApplicable,
+                                );
+                            });
                         }
                     }
                 }
