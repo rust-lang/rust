@@ -827,7 +827,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Closure(_) |
             HirDef::PrimTy(..) |
             HirDef::SelfTy(..) |
             HirDef::Label(..) |

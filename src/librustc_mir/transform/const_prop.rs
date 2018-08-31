@@ -44,19 +44,24 @@ impl MirPass for ConstProp {
         if source.promoted.is_some() {
             return;
         }
-        match tcx.describe_def(source.def_id) {
-            // Only run const prop on functions, methods, closures and associated constants
-            | Some(Def::Fn(_))
-            | Some(Def::Method(_))
-            | Some(Def::AssociatedConst(_))
-            | Some(Def::Closure(_))
-            => {}
+
+        use rustc::hir::map::blocks::FnLikeNode;
+        let node_id = tcx.hir.as_local_node_id(source.def_id)
+                             .expect("Non-local call to local provider is_const_fn");
+
+        let is_fn_like = FnLikeNode::from_node(tcx.hir.get(node_id)).is_some();
+        let is_assoc_const = match tcx.describe_def(source.def_id) {
+            Some(Def::AssociatedConst(_)) => true,
+            _ => false,
+        };
+
+        // Only run const prop on functions, methods, closures and associated constants
+        if !is_fn_like && !is_assoc_const  {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            def => {
-                trace!("ConstProp skipped for {:?} ({:?})", source.def_id, def);
-                return
-            },
+            trace!("ConstProp skipped for {:?}", source.def_id);
+            return
         }
+
         trace!("ConstProp starting for {:?}", source.def_id);
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold

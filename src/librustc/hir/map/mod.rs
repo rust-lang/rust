@@ -340,14 +340,9 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id(variant.node.data.id());
                 Some(Def::Variant(def_id))
             }
-            Node::Expr(expr) => {
-                match expr.node {
-                    ExprKind::Closure(_, _, body_id, _, _) => Some(Def::Closure(body_id)),
-                    _ => None,
-                }
-            }
             Node::Field(_) |
             Node::AnonConst(_) |
+            Node::Expr(_) |
             Node::Stmt(_) |
             Node::Ty(_) |
             Node::TraitRef(_) |
