@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
 
 pub fn main() {
     let x = [1, 2, 3];
