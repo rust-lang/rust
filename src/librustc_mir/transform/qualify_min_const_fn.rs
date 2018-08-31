@@ -5,17 +5,7 @@ use rustc::ty::{self, Predicate, TyCtxt};
 use std::borrow::Cow;
 use syntax_pos::Span;
 
-mod helper {
-    pub struct IsMinConstFn(());
-    /// This should only ever be used *once* and then passed around as a token.
-    pub fn ensure_that_you_really_intended_to_create_an_instance_of_this() -> IsMinConstFn {
-        IsMinConstFn(())
-    }
-}
-
-use self::helper::*;
-
-type McfResult = Result<IsMinConstFn, (Span, Cow<'static, str>)>;
+type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
 pub fn is_min_const_fn(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -74,8 +64,6 @@ pub fn is_min_const_fn(
         }
     }
 
-    let mut token = ensure_that_you_really_intended_to_create_an_instance_of_this();
-
     for local in mir.vars_iter() {
         return Err((
             mir.local_decls[local].source_info.span,
@@ -83,30 +71,28 @@ pub fn is_min_const_fn(
         ));
     }
     for local in &mir.local_decls {
-        token = check_ty(tcx, local.ty, local.source_info.span, token)?;
+        check_ty(tcx, local.ty, local.source_info.span)?;
     }
     // impl trait is gone in MIR, so check the return type manually
-    token = check_ty(
+    check_ty(
         tcx,
         tcx.fn_sig(def_id).output().skip_binder(),
         mir.local_decls.iter().next().unwrap().source_info.span,
-        token,
     )?;
 
     for bb in mir.basic_blocks() {
-        token = check_terminator(tcx, mir, bb.terminator(), token)?;
+        check_terminator(tcx, mir, bb.terminator())?;
         for stmt in &bb.statements {
-            token = check_statement(tcx, mir, stmt, token)?;
+            check_statement(tcx, mir, stmt)?;
         }
     }
-    Ok(token)
+    Ok(())
 }
 
 fn check_ty(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: ty::Ty<'tcx>,
     span: Span,
-    token: IsMinConstFn,
 ) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
@@ -146,7 +132,7 @@ fn check_ty(
             _ => {}
         }
     }
-    Ok(token)
+    Ok(())
 }
 
 fn check_rvalue(
@@ -154,14 +140,13 @@ fn check_rvalue(
     mir: &'a Mir<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
-    token: IsMinConstFn,
 ) -> McfResult {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            check_operand(tcx, mir, operand, span, token)
+            check_operand(tcx, mir, operand, span)
         }
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
-            check_place(tcx, mir, place, span, token, PlaceMode::Read)
+            check_place(tcx, mir, place, span, PlaceMode::Read)
         }
         Rvalue::Cast(_, operand, cast_ty) => {
             use rustc::ty::cast::CastTy;
@@ -175,16 +160,16 @@ fn check_rvalue(
                 (CastTy::RPtr(_), CastTy::Float) => bug!(),
                 (CastTy::RPtr(_), CastTy::Int(_)) => bug!(),
                 (CastTy::Ptr(_), CastTy::RPtr(_)) => bug!(),
-                _ => check_operand(tcx, mir, operand, span, token),
+                _ => check_operand(tcx, mir, operand, span),
             }
         }
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-            let token = check_operand(tcx, mir, lhs, span, token)?;
-            let token = check_operand(tcx, mir, rhs, span, token)?;
+            check_operand(tcx, mir, lhs, span)?;
+            check_operand(tcx, mir, rhs, span)?;
             let ty = lhs.ty(mir, tcx);
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
-                Ok(token)
+                Ok(())
             } else {
                 Err((
                     span,
@@ -193,11 +178,11 @@ fn check_rvalue(
             }
         }
         // checked by regular const fn checks
-        Rvalue::NullaryOp(..) => Ok(token),
+        Rvalue::NullaryOp(..) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(mir, tcx);
             if ty.is_integral() || ty.is_bool() {
-                check_operand(tcx, mir, operand, span, token)
+                check_operand(tcx, mir, operand, span)
             } else {
                 Err((
                     span,
@@ -206,11 +191,10 @@ fn check_rvalue(
             }
         }
         Rvalue::Aggregate(_, operands) => {
-            let mut token = token;
             for operand in operands {
-                token = check_operand(tcx, mir, operand, span, token)?;
+                check_operand(tcx, mir, operand, span)?;
             }
-            Ok(token)
+            Ok(())
         }
     }
 }
@@ -224,19 +208,18 @@ fn check_statement(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     statement: &Statement<'tcx>,
-    token: IsMinConstFn,
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(place, rval) => {
-            let token = check_place(tcx, mir, place, span, token, PlaceMode::Assign)?;
-            check_rvalue(tcx, mir, rval, span, token)
+            check_place(tcx, mir, place, span, PlaceMode::Assign)?;
+            check_rvalue(tcx, mir, rval, span)
         }
 
         StatementKind::ReadForMatch(_) => Err((span, "match in const fn is unstable".into())),
 
         // just an assignment
-        StatementKind::SetDiscriminant { .. } => Ok(token),
+        StatementKind::SetDiscriminant { .. } => Ok(()),
 
         | StatementKind::InlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))
@@ -248,7 +231,7 @@ fn check_statement(
         | StatementKind::Validate(..)
         | StatementKind::EndRegion(_)
         | StatementKind::UserAssertTy(..)
-        | StatementKind::Nop => Ok(token),
+        | StatementKind::Nop => Ok(()),
     }
 }
 
@@ -257,13 +240,12 @@ fn check_operand(
     mir: &'a Mir<'tcx>,
     operand: &Operand<'tcx>,
     span: Span,
-    token: IsMinConstFn,
 ) -> McfResult {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            check_place(tcx, mir, place, span, token, PlaceMode::Read)
+            check_place(tcx, mir, place, span, PlaceMode::Read)
         }
-        Operand::Constant(_) => Ok(token),
+        Operand::Constant(_) => Ok(()),
     }
 }
 
@@ -272,26 +254,25 @@ fn check_place(
     mir: &'a Mir<'tcx>,
     place: &Place<'tcx>,
     span: Span,
-    token: IsMinConstFn,
     mode: PlaceMode,
 ) -> McfResult {
     match place {
         Place::Local(l) => match mode {
             PlaceMode::Assign => match mir.local_kind(*l) {
-                LocalKind::Temp | LocalKind::ReturnPointer => Ok(token),
+                LocalKind::Temp | LocalKind::ReturnPointer => Ok(()),
                 LocalKind::Arg | LocalKind::Var => {
                     Err((span, "assignments in const fn are unstable".into()))
                 }
             },
-            PlaceMode::Read => Ok(token),
+            PlaceMode::Read => Ok(()),
         },
         // promoteds are always fine, they are essentially constants
-        Place::Promoted(_) => Ok(token),
+        Place::Promoted(_) => Ok(()),
         Place::Static(_) => Err((span, "cannot access `static` items in const fn".into())),
         Place::Projection(proj) => {
             match proj.elem {
                 | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
-                    check_place(tcx, mir, &proj.base, span, token, mode)
+                    check_place(tcx, mir, &proj.base, span, mode)
                 }
                 // slice patterns are unstable
                 | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
@@ -309,20 +290,19 @@ fn check_terminator(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     terminator: &Terminator<'tcx>,
-    token: IsMinConstFn,
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
-        | TerminatorKind::Resume => Ok(token),
+        | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => {
-            check_place(tcx, mir, location, span, token, PlaceMode::Read)
+            check_place(tcx, mir, location, span, PlaceMode::Read)
         }
         TerminatorKind::DropAndReplace { location, value, .. } => {
-            let token = check_place(tcx, mir, location, span, token, PlaceMode::Read)?;
-            check_operand(tcx, mir, value, span, token)
+            check_place(tcx, mir, location, span, PlaceMode::Read)?;
+            check_operand(tcx, mir, value, span)
         },
         TerminatorKind::SwitchInt { .. } => Err((
             span,
@@ -344,12 +324,12 @@ fn check_terminator(
             let fn_ty = func.ty(mir, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.sty {
                 if tcx.is_min_const_fn(def_id) {
-                    let mut token = check_operand(tcx, mir, func, span, token)?;
+                    check_operand(tcx, mir, func, span)?;
 
                     for arg in args {
-                        token = check_operand(tcx, mir, arg, span, token)?;
+                        check_operand(tcx, mir, arg, span)?;
                     }
-                    Ok(token)
+                    Ok(())
                 } else {
                     Err((
                         span,
@@ -367,7 +347,7 @@ fn check_terminator(
             msg: _,
             target: _,
             cleanup: _,
-        } => check_operand(tcx, mir, cond, span, token),
+        } => check_operand(tcx, mir, cond, span),
 
         | TerminatorKind::FalseEdges { .. } | TerminatorKind::FalseUnwind { .. } => span_bug!(
             terminator.source_info.span,
