@@ -270,7 +270,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'
 }
 
 impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
+{
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout

@@ -14,7 +14,7 @@
 
 use rustc::mir;
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
 use super::{EvalContext, Machine};
 
@@ -269,12 +269,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(&self)?;
-                let size = self.memory.pointer_size().bytes() as u8;
+                let size = self.pointer_size();
                 self.write_scalar(
-                    Scalar::Bits {
-                        bits: len as u128,
-                        size,
-                    },
+                    Scalar::from_uint(len, size),
                     dest,
                 )?;
             }
@@ -294,12 +291,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
-                let size = self.memory.pointer_size().bytes() as u8;
+                let size = self.pointer_size();
                 self.write_scalar(
-                    Scalar::Bits {
-                        bits: layout.size.bytes() as u128,
-                        size,
-                    },
+                    Scalar::from_uint(layout.size.bytes(), size),
                     dest,
                 )?;
             }
@@ -313,11 +307,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Discriminant(ref place) => {
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
-                let size = dest.layout.size.bytes() as u8;
-                self.write_scalar(Scalar::Bits {
-                    bits: discr_val,
-                    size,
-                }, dest)?;
+                let size = dest.layout.size;
+                self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
             }
         }
 

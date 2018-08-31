@@ -41,7 +41,7 @@ fn numeric_intrinsic<'tcx>(
         "bswap" => (bits << extra).swap_bytes(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
-    Ok(Scalar::Bits { bits: bits_out, size: size.bytes() as u8 })
+    Ok(Scalar::from_uint(bits_out, size))
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -59,30 +59,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.layout_of(elem_ty)?.align.abi();
-                let align_val = Scalar::Bits {
-                    bits: elem_align as u128,
-                    size: dest.layout.size.bytes() as u8,
-                };
+                let align_val = Scalar::from_uint(elem_align, dest.layout.size);
                 self.write_scalar(align_val, dest)?;
             }
 
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = self.layout_of(ty)?.size.bytes() as u128;
-                let size_val = Scalar::Bits {
-                    bits: size,
-                    size: dest.layout.size.bytes() as u8,
-                };
+                let size_val = Scalar::from_uint(size, dest.layout.size);
                 self.write_scalar(size_val, dest)?;
             }
 
             "type_id" => {
                 let ty = substs.type_at(0);
                 let type_id = self.tcx.type_id_hash(ty) as u128;
-                let id_val = Scalar::Bits {
-                    bits: type_id,
-                    size: dest.layout.size.bytes() as u8,
-                };
+                let id_val = Scalar::from_uint(type_id, dest.layout.size);
                 self.write_scalar(id_val, dest)?;
             }
             "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {

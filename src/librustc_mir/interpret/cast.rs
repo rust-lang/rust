@@ -14,8 +14,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
-    Scalar, EvalResult, Pointer, PointerArithmetic, EvalErrorKind,
-    truncate, sign_extend
+    Scalar, EvalResult, Pointer, PointerArithmetic, EvalErrorKind, truncate
 };
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
@@ -49,13 +48,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Misc => {
                 let src = self.read_value(src)?;
                 if self.type_is_fat_ptr(src_layout.ty) {
-                    match (src.value, self.type_is_fat_ptr(dest.layout.ty)) {
+                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Value::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Value::ScalarPair(..), true) => {
                             // No change to value
-                            self.write_value(src.value, dest)?;
+                            self.write_value(*src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Value::ScalarPair(data, _), false) => {
@@ -70,10 +69,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
                                 return self.write_scalar(
-                                    Scalar::Bits {
-                                        bits: discr_val,
-                                        size: dst_layout.size.bytes() as u8,
-                                    },
+                                    Scalar::from_uint(discr_val, dst_layout.size),
                                     dest);
                             }
                         }
@@ -198,41 +194,39 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest_layout.ty.sty {
             Int(_) | Uint(_) => {
                 let v = self.truncate(v, dest_layout);
-                Ok(Scalar::Bits {
-                    bits: v,
-                    size: dest_layout.size.bytes() as u8,
-                })
+                Ok(Scalar::from_uint(v, dest_layout.size))
             }
 
-            Float(FloatTy::F32) if signed => Ok(Scalar::Bits {
-                bits: Single::from_i128(v as i128).value.to_bits(),
-                size: 4,
-            }),
-            Float(FloatTy::F64) if signed => Ok(Scalar::Bits {
-                bits: Double::from_i128(v as i128).value.to_bits(),
-                size: 8,
-            }),
-            Float(FloatTy::F32) => Ok(Scalar::Bits {
-                bits: Single::from_u128(v).value.to_bits(),
-                size: 4,
-            }),
-            Float(FloatTy::F64) => Ok(Scalar::Bits {
-                bits: Double::from_u128(v).value.to_bits(),
-                size: 8,
-            }),
+            Float(FloatTy::F32) if signed => Ok(Scalar::from_uint(
+                Single::from_i128(v as i128).value.to_bits(),
+                Size::from_bits(32)
+            )),
+            Float(FloatTy::F64) if signed => Ok(Scalar::from_uint(
+                Double::from_i128(v as i128).value.to_bits(),
+                Size::from_bits(64)
+            )),
+            Float(FloatTy::F32) => Ok(Scalar::from_uint(
+                Single::from_u128(v).value.to_bits(),
+                Size::from_bits(32)
+            )),
+            Float(FloatTy::F64) => Ok(Scalar::from_uint(
+                Double::from_u128(v).value.to_bits(),
+                Size::from_bits(64)
+            )),
 
             Char => {
-                assert_eq!(v as u8 as u128, v);
-                Ok(Scalar::Bits { bits: v, size: 4 })
+                // `u8` to `char` cast
+                debug_assert_eq!(v as u8 as u128, v);
+                Ok(Scalar::from_uint(v, Size::from_bytes(4)))
             },
 
             // No alignment check needed for raw pointers.
             // But we have to truncate to target ptr size.
             RawPtr(_) => {
-                Ok(Scalar::Bits {
-                    bits: self.memory.truncate_to_ptr(v).0 as u128,
-                    size: self.memory.pointer_size().bytes() as u8,
-                })
+                Ok(Scalar::from_uint(
+                    self.truncate_to_ptr(v).0,
+                    self.pointer_size(),
+                ))
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
@@ -251,56 +245,40 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest_ty.sty {
             // float -> uint
             Uint(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or(self.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_u128(width).value,
                     FloatTy::F64 => Double::from_bits(bits).to_u128(width).value,
                 };
                 // This should already fit the bit width
-                Ok(Scalar::Bits {
-                    bits: v,
-                    size: (width / 8) as u8,
-                })
+                Ok(Scalar::from_uint(v, Size::from_bits(width as u64)))
             },
             // float -> int
             Int(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or(self.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_i128(width).value,
                     FloatTy::F64 => Double::from_bits(bits).to_i128(width).value,
                 };
-                // We got an i128, but we may need something smaller. We have to truncate ourselves.
-                let truncated = truncate(v as u128, Size::from_bits(width as u64));
-                assert_eq!(sign_extend(truncated, Size::from_bits(width as u64)) as i128, v,
-                    "truncating and extending changed the value?!?");
-                Ok(Scalar::Bits {
-                    bits: truncated,
-                    size: (width / 8) as u8,
-                })
+                Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
             },
             // f64 -> f32
             Float(FloatTy::F32) if fty == FloatTy::F64 => {
-                Ok(Scalar::Bits {
-                    bits: Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
-                    size: 4,
-                })
+                Ok(Scalar::from_uint(
+                    Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
+                    Size::from_bits(32),
+                ))
             },
             // f32 -> f64
             Float(FloatTy::F64) if fty == FloatTy::F32 => {
-                Ok(Scalar::Bits {
-                    bits: Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
-                    size: 8,
-                })
+                Ok(Scalar::from_uint(
+                    Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
+                    Size::from_bits(64),
+                ))
             },
             // identity cast
-            Float(FloatTy:: F64) => Ok(Scalar::Bits {
-                bits,
-                size: 8,
-            }),
-            Float(FloatTy:: F32) => Ok(Scalar::Bits {
-                bits,
-                size: 4,
-            }),
+            Float(FloatTy:: F64) => Ok(Scalar::from_uint(bits, Size::from_bits(64))),
+            Float(FloatTy:: F32) => Ok(Scalar::from_uint(bits, Size::from_bits(32))),
             _ => err!(Unimplemented(format!("float to {:?} cast", dest_ty))),
         }
     }

@@ -10,15 +10,14 @@
 
 use std::borrow::Cow;
 
-use rustc::mir;
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::{mir, ty};
+use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, Place, PlaceTy, ValTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, Place, PlaceTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -59,14 +58,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    // Compare using binary_op
-                    let const_int = Scalar::Bits {
-                        bits: const_int,
-                        size: discr.layout.size.bytes() as u8
-                    };
+                    // Compare using binary_op, to also support pointer values
+                    let const_int = Scalar::from_uint(const_int, discr.layout.size);
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
-                        discr,
-                        ValTy { value: Value::Scalar(const_int.into()), layout: discr.layout }
+                        discr.to_scalar()?, discr.layout,
+                        const_int, discr.layout,
                     )?;
                     if res.to_bool()? {
                         target_block = targets[index];
@@ -89,37 +85,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func, None)?;
-                let (fn_def, sig) = match func.layout.ty.sty {
+                let (fn_def, abi) = match func.layout.ty.sty {
                     ty::FnPtr(sig) => {
+                        let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
-                        let instance_ty = instance.ty(*self.tcx);
-                        match instance_ty.sty {
-                            ty::FnDef(..) => {
-                                let sig = self.tcx.normalize_erasing_late_bound_regions(
-                                    self.param_env,
-                                    &sig,
-                                );
-                                let real_sig = instance_ty.fn_sig(*self.tcx);
-                                let real_sig = self.tcx.normalize_erasing_late_bound_regions(
-                                    self.param_env,
-                                    &real_sig,
-                                );
-                                if !self.check_sig_compat(sig, real_sig)? {
-                                    return err!(FunctionPointerTyMismatch(real_sig, sig));
-                                }
-                                (instance, sig)
-                            }
-                            _ => bug!("unexpected fn ptr to ty: {:?}", instance_ty),
-                        }
+                        (instance, caller_abi)
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
-                        let sig = self.tcx.normalize_erasing_late_bound_regions(
-                            self.param_env,
-                            &sig,
-                        );
-                        (self.resolve(def_id, substs)?, sig)
+                        (self.resolve(def_id, substs)?, sig.abi())
                     },
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.layout.ty);
@@ -129,11 +104,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let args = self.eval_operands(args)?;
                 self.eval_fn_call(
                     fn_def,
+                    terminator.source_info.span,
+                    abi,
                     &args[..],
                     dest,
                     ret,
-                    terminator.source_info.span,
-                    Some(sig),
                 )?;
             }
 
@@ -168,6 +143,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 if expected == cond_val {
                     self.goto_block(Some(target))?;
                 } else {
+                    // Compute error message
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
@@ -190,11 +166,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
             }
 
-            Yield { .. } => unimplemented!("{:#?}", terminator.kind),
-            GeneratorDrop => unimplemented!(),
-            DropAndReplace { .. } => unimplemented!(),
-            Resume => unimplemented!(),
-            Abort => unimplemented!(),
+            Yield { .. } |
+            GeneratorDrop |
+            DropAndReplace { .. } |
+            Resume |
+            Abort => unimplemented!("{:#?}", terminator.kind),
             FalseEdges { .. } => bug!("should have been eliminated by\
                                       `simplify_branches` mir pass"),
             FalseUnwind { .. } => bug!("should have been eliminated by\
@@ -205,91 +181,67 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Decides whether it is okay to call the method with signature `real_sig`
-    /// using signature `sig`.
-    /// FIXME: This should take into account the platform-dependent ABI description.
-    fn check_sig_compat(
+    fn check_argument_compat(
+        caller: TyLayout<'tcx>,
+        callee: TyLayout<'tcx>,
+    ) -> bool {
+        if caller.ty == callee.ty {
+            // No question
+            return true;
+        }
+        // Compare layout
+        match (&caller.abi, &callee.abi) {
+            (layout::Abi::Scalar(ref caller), layout::Abi::Scalar(ref callee)) =>
+                // Different valid ranges are okay (once we enforce validity,
+                // that will take care to make it UB to leave the range, just
+                // like for transmute).
+                caller.value == callee.value,
+            // Be conservative
+            _ => false
+        }
+    }
+
+    /// Pass a single argument, checking the types for compatibility.
+    fn pass_argument(
         &mut self,
-        sig: ty::FnSig<'tcx>,
-        real_sig: ty::FnSig<'tcx>,
-    ) -> EvalResult<'tcx, bool> {
-        fn check_ty_compat<'tcx>(ty: Ty<'tcx>, real_ty: Ty<'tcx>) -> bool {
-            if ty == real_ty {
-                return true;
-            } // This is actually a fast pointer comparison
-            return match (&ty.sty, &real_ty.sty) {
-                // Permit changing the pointer type of raw pointers and references as well as
-                // mutability of raw pointers.
-                // FIXME: Should not be allowed when fat pointers are involved.
-                (&ty::RawPtr(_), &ty::RawPtr(_)) => true,
-                (&ty::Ref(_, _, _), &ty::Ref(_, _, _)) => {
-                    ty.is_mutable_pointer() == real_ty.is_mutable_pointer()
-                }
-                // rule out everything else
-                _ => false,
-            };
+        skip_zst: bool,
+        caller_arg: &mut impl Iterator<Item=OpTy<'tcx>>,
+        callee_arg: PlaceTy<'tcx>,
+    ) -> EvalResult<'tcx> {
+        if skip_zst && callee_arg.layout.is_zst() {
+            // Nothing to do.
+            trace!("Skipping callee ZST");
+            return Ok(());
         }
-
-        if sig.abi == real_sig.abi && sig.variadic == real_sig.variadic &&
-            sig.inputs_and_output.len() == real_sig.inputs_and_output.len() &&
-            sig.inputs_and_output
-                .iter()
-                .zip(real_sig.inputs_and_output)
-                .all(|(ty, real_ty)| check_ty_compat(ty, real_ty))
-        {
-            // Definitely good.
-            return Ok(true);
+        let caller_arg = caller_arg.next()
+            .ok_or_else(|| EvalErrorKind::FunctionArgCountMismatch)?;
+        if skip_zst {
+            debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
-
-        if sig.variadic || real_sig.variadic {
-            // We're not touching this
-            return Ok(false);
+        // Now, check
+        if !Self::check_argument_compat(caller_arg.layout, callee_arg.layout) {
+            return err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
         }
-
-        // We need to allow what comes up when a non-capturing closure is cast to a fn().
-        match (sig.abi, real_sig.abi) {
-            (Abi::Rust, Abi::RustCall) // check the ABIs.  This makes the test here non-symmetric.
-                if check_ty_compat(sig.output(), real_sig.output())
-                    && real_sig.inputs_and_output.len() == 3 => {
-                // First argument of real_sig must be a ZST
-                let fst_ty = real_sig.inputs_and_output[0];
-                if self.layout_of(fst_ty)?.is_zst() {
-                    // Second argument must be a tuple matching the argument list of sig
-                    let snd_ty = real_sig.inputs_and_output[1];
-                    match snd_ty.sty {
-                        ty::Tuple(tys) if sig.inputs().len() == tys.len() =>
-                            if sig.inputs()
-                                .iter()
-                                .zip(tys)
-                                .all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
-                                return Ok(true)
-                            },
-                        _ => {}
-                    }
-                }
-            }
-            _ => {}
-        };
-
-        // Nope, this doesn't work.
-        return Ok(false);
+        self.copy_op(caller_arg, callee_arg)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
-    /// `sig` is optional in case of FnPtr/FnDef -- but mandatory for closures!
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
+        span: Span,
+        caller_abi: Abi,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
-        span: Span,
-        sig: Option<ty::FnSig<'tcx>>,
     ) -> EvalResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
+                if caller_abi != Abi::RustIntrinsic {
+                    return err!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
+                }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g. for transmute returning `!`)
                 let dest = match dest {
@@ -308,6 +260,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
+                // ABI check
+                {
+                    let callee_abi = {
+                        let instance_ty = instance.ty(*self.tcx);
+                        match instance_ty.sty {
+                            ty::FnDef(..) =>
+                                instance_ty.fn_sig(*self.tcx).abi(),
+                            ty::Closure(..) => Abi::RustCall,
+                            ty::Generator(..) => Abi::Rust,
+                            _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                        }
+                    };
+                    // Rust and RustCall are compatible
+                    let normalize_abi = |abi| if abi == Abi::RustCall { Abi::Rust } else { abi };
+                    if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
+                        return err!(FunctionAbiMismatch(caller_abi, callee_abi));
+                    }
+                }
+
+                // We need MIR for this fn
                 let mir = match M::find_fn(self, instance, args, dest, ret)? {
                     Some(mir) => mir,
                     None => return Ok(()),
@@ -325,93 +297,95 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     StackPopCleanup::Goto(ret),
                 )?;
 
-                // If we didn't get a signture, ask `fn_sig`
-                let sig = sig.unwrap_or_else(|| {
-                    let fn_sig = instance.ty(*self.tcx).fn_sig(*self.tcx);
-                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig)
-                });
-                assert_eq!(sig.inputs().len(), args.len());
-                // We can't test the types, as it is fine if the types are ABI-compatible but
-                // not equal.
-
-                // Figure out how to pass which arguments.
-                // FIXME: Somehow this is horribly full of special cases here, and codegen has
-                // none of that.  What is going on?
-                trace!(
-                    "ABI: {:?}, args: {:#?}",
-                    sig.abi,
-                    args.iter()
-                        .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
-                        .collect::<Vec<_>>()
-                );
-                trace!(
-                    "spread_arg: {:?}, locals: {:#?}",
-                    mir.spread_arg,
-                    mir.args_iter()
-                        .map(|local|
-                            (local, self.layout_of_local(self.cur_frame(), local).unwrap().ty)
-                        )
-                        .collect::<Vec<_>>()
-                );
-
-                // We have two iterators: Where the arguments come from,
-                // and where they go to.
-
-                // For where they come from: If the ABI is RustCall, we untuple the
-                // last incoming argument.  These do not have the same type,
-                // so to keep the code paths uniform we accept an allocation
-                // (for RustCall ABI only).
-                let args_effective : Cow<[OpTy<'tcx>]> =
-                    if sig.abi == Abi::RustCall && !args.is_empty() {
-                        // Untuple
-                        let (&untuple_arg, args) = args.split_last().unwrap();
-                        trace!("eval_fn_call: Will pass last argument by untupling");
-                        Cow::from(args.iter().map(|&a| Ok(a))
-                            .chain((0..untuple_arg.layout.fields.count()).into_iter()
-                                .map(|i| self.operand_field(untuple_arg, i as u64))
+                // We want to pop this frame again in case there was an error, to put
+                // the blame in the right location.  Until the 2018 edition is used in
+                // the compiler, we have to do this with an immediately invoked function.
+                let res = (||{
+                    trace!(
+                        "caller ABI: {:?}, args: {:#?}",
+                        caller_abi,
+                        args.iter()
+                            .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
+                            .collect::<Vec<_>>()
+                    );
+                    trace!(
+                        "spread_arg: {:?}, locals: {:#?}",
+                        mir.spread_arg,
+                        mir.args_iter()
+                            .map(|local|
+                                (local, self.layout_of_local(self.cur_frame(), local).unwrap().ty)
                             )
-                            .collect::<EvalResult<Vec<OpTy<'tcx>>>>()?)
-                    } else {
-                        // Plain arg passing
-                        Cow::from(args)
+                            .collect::<Vec<_>>()
+                    );
+
+                    // Figure out how to pass which arguments.
+                    // We have two iterators: Where the arguments come from,
+                    // and where they go to.
+                    let skip_zst = match caller_abi {
+                        Abi::Rust | Abi::RustCall => true,
+                        _ => false
                     };
 
-                // Now we have to spread them out across the callee's locals,
-                // taking into account the `spread_arg`.
-                let mut args_iter = args_effective.iter();
-                let mut local_iter = mir.args_iter();
-                // HACK: ClosureOnceShim calls something that expects a ZST as
-                // first argument, but the callers do not actually pass that ZST.
-                // Codegen doesn't care because ZST arguments do not even exist there.
-                match instance.def {
-                    ty::InstanceDef::ClosureOnceShim { .. } if sig.abi == Abi::Rust => {
-                        let local = local_iter.next().unwrap();
+                    // For where they come from: If the ABI is RustCall, we untuple the
+                    // last incoming argument.  These two iterators do not have the same type,
+                    // so to keep the code paths uniform we accept an allocation
+                    // (for RustCall ABI only).
+                    let caller_args : Cow<[OpTy<'tcx>]> =
+                        if caller_abi == Abi::RustCall && !args.is_empty() {
+                            // Untuple
+                            let (&untuple_arg, args) = args.split_last().unwrap();
+                            trace!("eval_fn_call: Will pass last argument by untupling");
+                            Cow::from(args.iter().map(|&a| Ok(a))
+                                .chain((0..untuple_arg.layout.fields.count()).into_iter()
+                                    .map(|i| self.operand_field(untuple_arg, i as u64))
+                                )
+                                .collect::<EvalResult<Vec<OpTy<'tcx>>>>()?)
+                        } else {
+                            // Plain arg passing
+                            Cow::from(args)
+                        };
+                    // Skip ZSTs
+                    let mut caller_iter = caller_args.iter()
+                        .filter(|op| !skip_zst || !op.layout.is_zst())
+                        .map(|op| *op);
+
+                    // Now we have to spread them out across the callee's locals,
+                    // taking into account the `spread_arg`.  If we could write
+                    // this is a single iterator (that handles `spread_arg`), then
+                    // `pass_argument` would be the loop body. It takes care to
+                    // not advance `caller_iter` for ZSTs.
+                    let mut locals_iter = mir.args_iter();
+                    while let Some(local) = locals_iter.next() {
                         let dest = self.eval_place(&mir::Place::Local(local))?;
-                        assert!(dest.layout.is_zst());
-                    }
-                    _ => {}
-                }
-                // Now back to norml argument passing.
-                while let Some(local) = local_iter.next() {
-                    let dest = self.eval_place(&mir::Place::Local(local))?;
-                    if Some(local) == mir.spread_arg {
-                        // Must be a tuple
-                        for i in 0..dest.layout.fields.count() {
-                            let dest = self.place_field(dest, i as u64)?;
-                            self.copy_op(*args_iter.next().unwrap(), dest)?;
+                        if Some(local) == mir.spread_arg {
+                            // Must be a tuple
+                            for i in 0..dest.layout.fields.count() {
+                                let dest = self.place_field(dest, i as u64)?;
+                                self.pass_argument(skip_zst, &mut caller_iter, dest)?;
+                            }
+                        } else {
+                            // Normal argument
+                            self.pass_argument(skip_zst, &mut caller_iter, dest)?;
                         }
-                    } else {
-                        // Normal argument
-                        self.copy_op(*args_iter.next().unwrap(), dest)?;
                     }
+                    // Now we should have no more caller args
+                    if caller_iter.next().is_some() {
+                        trace!("Caller has too many args over");
+                        return err!(FunctionArgCountMismatch);
+                    }
+                    Ok(())
+                })();
+                match res {
+                    Err(err) => {
+                        self.stack.pop();
+                        Err(err)
+                    }
+                    Ok(v) => Ok(v)
                 }
-                // Now we should be done
-                assert!(args_iter.next().is_none());
-                Ok(())
             }
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
                 let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let vtable = ptr.vtable()?;
@@ -431,7 +405,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 args[0].op = Operand::Immediate(Value::Scalar(ptr.ptr.into())); // strip vtable
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(instance, &args, dest, ret, span, sig)
+                self.eval_fn_call(instance, span, caller_abi, &args, dest, ret)
             }
         }
     }
@@ -467,11 +441,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         self.eval_fn_call(
             instance,
+            span,
+            Abi::Rust,
             &[arg],
             Some(dest),
             Some(target),
-            span,
-            None,
         )
     }
 }

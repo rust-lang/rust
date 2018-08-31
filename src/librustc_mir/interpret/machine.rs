@@ -69,20 +69,18 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         def_id: DefId,
     ) -> EvalResult<'tcx, &'tcx Allocation>;
 
-    /// Called for all binary operations except on float types.
-    ///
-    /// Returns `None` if the operation should be handled by the integer
-    /// op code in order to share more code between machines
+    /// Called for all binary operations on integer(-like) types when one operand is a pointer
+    /// value, and for the `Offset` operation that is inherently about pointers.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn try_ptr_op<'a>(
+    fn ptr_op<'a>(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
         left_layout: TyLayout<'tcx>,
         right: Scalar,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
+    ) -> EvalResult<'tcx, (Scalar, bool)>;
 
     /// Heap allocations via the `box` keyword
     ///

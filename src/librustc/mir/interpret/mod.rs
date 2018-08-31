@@ -85,9 +85,14 @@ pub struct GlobalId<'tcx> {
 pub trait PointerArithmetic: layout::HasDataLayout {
     // These are not supposed to be overridden.
 
+    #[inline(always)]
+    fn pointer_size(self) -> Size {
+        self.data_layout().pointer_size
+    }
+
     //// Trunace the given value to the pointer size; also return whether there was an overflow
     fn truncate_to_ptr(self, val: u128) -> (u64, bool) {
-        let max_ptr_plus_1 = 1u128 << self.data_layout().pointer_size.bits();
+        let max_ptr_plus_1 = 1u128 << self.pointer_size().bits();
         ((val % max_ptr_plus_1) as u64, val >= max_ptr_plus_1)
     }
 
@@ -491,7 +496,9 @@ pub struct Allocation {
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
     /// Maps from byte addresses to allocations.
-    /// Only the first byte of a pointer is inserted into the map.
+    /// Only the first byte of a pointer is inserted into the map; i.e.,
+    /// every entry in this map applies to `pointer_size` consecutive bytes starting
+    /// at the given offset.
     pub relocations: Relocations,
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,

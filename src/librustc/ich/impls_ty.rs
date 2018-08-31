@@ -512,6 +512,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
         mem::discriminant(&self).hash_stable(hcx, hasher);
 
         match *self {
+            FunctionArgCountMismatch |
             DanglingPointerDeref |
             DoubleFree |
             InvalidMemoryAccess |
@@ -558,7 +559,11 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             },
             ReferencedConstant(ref err) => err.hash_stable(hcx, hasher),
             MachineError(ref err) => err.hash_stable(hcx, hasher),
-            FunctionPointerTyMismatch(a, b) => {
+            FunctionAbiMismatch(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
+            FunctionArgMismatch(a, b) => {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher)
             },
