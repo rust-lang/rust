@@ -15,13 +15,12 @@ use borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::{Canonical, CanonicalVarInfos};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::traits::query::Fallible;
-use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, CanonicalTy, CanonicalVar, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
-use std::mem;
 
 pub(super) fn sub_types<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -262,76 +261,52 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
     /// When we encounter a canonical variable `var` in the output,
     /// equate it with `kind`. If the variable has been previously
     /// equated, then equate it again.
-    fn equate_var(
+    fn relate_var(
         &mut self,
-        universal_regions: &UniversalRegions<'tcx>,
         var: CanonicalVar,
         b_kind: Kind<'tcx>,
     ) -> RelateResult<'tcx, Kind<'tcx>> {
         debug!("equate_var(var={:?}, b_kind={:?})", var, b_kind);
 
-        // We only encounter canonical variables when equating.
-        assert_eq!(self.ambient_variance, ty::Variance::Invariant);
+        let generalized_kind = match self.canonical_var_values[var] {
+            Some(v) => v,
+            None => {
+                let generalized_kind = self.generalize_value(b_kind);
+                self.canonical_var_values[var] = Some(generalized_kind);
+                generalized_kind
+            }
+        };
 
-        // The canonical variable already had a value. Equate that
-        // value with `b`.
-        if let Some(a_kind) = self.canonical_var_values[var] {
-            debug!("equate_var: a_kind={:?}", a_kind);
+        // The generalized values we extract from `canonical_var_values` have
+        // been fully instantiated and hence the set of scopes we have
+        // doesn't matter -- just to be sure, put an empty vector
+        // in there.
+        let old_a_scopes = ::std::mem::replace(&mut self.a_scopes, vec![]);
 
-            // The values we extract from `canonical_var_values` have
-            // been "instantiated" and hence the set of scopes we have
-            // doesn't matter -- just to be sure, put an empty vector
-            // in there.
-            let old_a_scopes = mem::replace(&mut self.a_scopes, vec![]);
-            let result = self.relate(&a_kind, &b_kind);
-            self.a_scopes = old_a_scopes;
+        // Relate the generalized kind to the original one.
+        let result = self.relate(&generalized_kind, &b_kind);
 
-            debug!("equate_var: complete, result = {:?}", result);
-            return result;
-        }
+        // Restore the old scopes now.
+        self.a_scopes = old_a_scopes;
 
-        // Not yet. Capture the value from the RHS and carry on.
-        let closed_kind =
-            self.instantiate_traversed_binders(universal_regions, &self.b_scopes, b_kind);
-        self.canonical_var_values[var] = Some(closed_kind);
-        debug!(
-            "equate_var: capturing value {:?}",
-            self.canonical_var_values[var]
-        );
-
-        // FIXME -- technically, we should add some sort of
-        // assertion that this value can be named in the universe
-        // of the canonical variable. But in practice these
-        // canonical variables only arise presently in cases where
-        // they are in the root universe and the main typeck has
-        // ensured there are no universe errors. So we just kind
-        // of over look this right now.
-        Ok(b_kind)
+        debug!("equate_var: complete, result = {:?}", result);
+        return result;
     }
 
-    /// As we traverse types and pass through binders, we push the
-    /// values for each of the regions bound by those binders onto
-    /// `scopes`. This function goes through `kind` and replaces any
-    /// references into those scopes with the corresponding free
-    /// region. Thus the resulting value should have no escaping
-    /// references to bound things and can be transported into other
-    /// scopes.
-    fn instantiate_traversed_binders(
+    fn generalize_value(
         &self,
-        universal_regions: &UniversalRegions<'tcx>,
-        scopes: &[BoundRegionScope],
         kind: Kind<'tcx>,
     ) -> Kind<'tcx> {
-        let k = kind.fold_with(&mut BoundReplacer {
+        TypeGeneralizer {
             type_rel: self,
             first_free_index: ty::INNERMOST,
-            universal_regions,
-            scopes: scopes,
-        });
+            ambient_variance: self.ambient_variance,
 
-        assert!(!k.has_escaping_regions());
-
-        k
+            // These always correspond to an `_` or `'_` written by
+            // user, and those are always in the root universe.
+            universe: ty::UniverseIndex::ROOT,
+        }.relate(&kind, &kind)
+            .unwrap()
     }
 }
 
@@ -382,21 +357,8 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         // Watch out for the case that we are matching a `?T` against the
         // right-hand side.
         if let ty::Infer(ty::CanonicalTy(var)) = a.sty {
-            if let Some(&mut BorrowCheckContext {
-                universal_regions, ..
-            }) = self.borrowck_context
-            {
-                self.equate_var(universal_regions, var, b.into())?;
-                Ok(a)
-            } else {
-                // if NLL is not enabled just ignore these variables
-                // for now; in that case we're just doing a "sanity
-                // check" anyway, and this only affects user-given
-                // annotations like `let x: Vec<_> = ...` -- and then
-                // only if the user uses type aliases to make a type
-                // variable repeat more than once.
-                Ok(a)
-            }
+            self.relate_var(var, b.into())?;
+            Ok(a)
         } else {
             debug!(
                 "tys(a={:?}, b={:?}, variance={:?})",
@@ -417,7 +379,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         }) = self.borrowck_context
         {
             if let ty::ReCanonical(var) = a {
-                self.equate_var(universal_regions, *var, b.into())?;
+                self.relate_var(*var, b.into())?;
                 return Ok(a);
             }
 
@@ -589,48 +551,142 @@ impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
     }
 }
 
-/// When we encounter a binder like `for<..> fn(..)`, we actually have
-/// to walk the `fn` value to find all the values bound by the `for`
-/// (these are not explicitly present in the ty representation right
-/// now). This visitor handles that: it descends the type, tracking
-/// binder depth, and finds late-bound regions targeting the
-/// `for<..`>.  For each of those, it creates an entry in
-/// `bound_region_scope`.
-struct BoundReplacer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
+/// The "type generalize" is used when handling inference variables.
+///
+/// The basic strategy for handling a constraint like `?A <: B` is to
+/// apply a "generalization strategy" to the type `B` -- this replaces
+/// all the lifetimes in the type `B` with fresh inference
+/// variables. (You can read more about the strategy in this [blog
+/// post].)
+///
+/// As an example, if we had `?A <: &'x u32`, we would generalize `&'x
+/// u32` to `&'0 u32` where `'0` is a fresh variable. This becomes the
+/// value of `A`. Finally, we relate `&'0 u32 <: &'x u32`, which
+/// establishes `'0: 'x` as a constraint.
+///
+/// As a side-effect of this generalization procedure, we also replace
+/// all the bound regions that we have traversed with concrete values,
+/// so that the resulting generalized type is independent from the
+/// scopes.
+///
+/// [blog post]: http://smallcultfollowing.com/babysteps/blog/2014/07/09/an-experimental-new-type-inference-scheme-for-rust/
+struct TypeGeneralizer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
     type_rel: &'me TypeRelating<'me, 'bccx, 'gcx, 'tcx>,
+
+    /// After we generalize this type, we are going to relative it to
+    /// some other type. What will be the variance at this point?
+    ambient_variance: ty::Variance,
+
     first_free_index: ty::DebruijnIndex,
-    universal_regions: &'me UniversalRegions<'tcx>,
-    scopes: &'me [BoundRegionScope],
+
+    universe: ty::UniverseIndex,
 }
 
-impl TypeFolder<'gcx, 'tcx> for BoundReplacer<'me, 'bccx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
-        self.type_rel.tcx()
+impl TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'bbcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+        self.type_rel.infcx.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
-        self.first_free_index.shift_in(1);
-        let result = t.super_fold_with(self);
-        self.first_free_index.shift_out(1);
-        result
+    fn tag(&self) -> &'static str {
+        "nll::generalizer"
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let tcx = self.tcx();
+    fn a_is_expected(&self) -> bool {
+        true
+    }
 
-        if let ty::ReLateBound(debruijn, _) = r {
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        a: &T,
+        b: &T,
+    ) -> RelateResult<'tcx, T> {
+        debug!(
+            "TypeGeneralizer::relate_with_variance(variance={:?}, a={:?}, b={:?})",
+            variance, a, b
+        );
+
+        let old_ambient_variance = self.ambient_variance;
+        self.ambient_variance = self.ambient_variance.xform(variance);
+
+        debug!(
+            "TypeGeneralizer::relate_with_variance: ambient_variance = {:?}",
+            self.ambient_variance
+        );
+
+        let r = self.relate(a, b)?;
+
+        self.ambient_variance = old_ambient_variance;
+
+        debug!("TypeGeneralizer::relate_with_variance: r={:?}", r);
+
+        Ok(r)
+    }
+
+    fn tys(&mut self, a: Ty<'tcx>, _: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("TypeGeneralizer::tys(a={:?})", a,);
+
+        match a.sty {
+            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
+                bug!(
+                    "unexpected inference variable encountered in NLL generalization: {:?}",
+                    a
+                );
+            }
+
+            _ => relate::super_relate_tys(self, a, a),
+        }
+    }
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        _: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("TypeGeneralizer::regions(a={:?})", a,);
+
+        if let ty::ReLateBound(debruijn, _) = a {
             if *debruijn < self.first_free_index {
-                return r;
+                return Ok(a);
             }
         }
 
-        let region_vid = self.type_rel.replace_bound_region(
-            self.universal_regions,
-            r,
-            self.first_free_index,
-            self.scopes,
-        );
+        // For now, we just always create a fresh region variable to
+        // replace all the regions in the source type. In the main
+        // type checker, we special case the case where the ambient
+        // variance is `Invariant` and try to avoid creating a fresh
+        // region variable, but since this comes up so much less in
+        // NLL (only when users use `_` etc) it is much less
+        // important.
+        //
+        // As an aside, since these new variables are created in
+        // `self.universe` universe, this also serves to enforce the
+        // universe scoping rules.
+        //
+        // FIXME -- if the ambient variance is bivariant, though, we
+        // may however need to check well-formedness or risk a problem
+        // like #41677 again.
 
-        tcx.mk_region(ty::ReVar(region_vid))
+        let replacement_region_vid = self.type_rel
+            .infcx
+            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential, self.universe);
+
+        Ok(replacement_region_vid)
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: &ty::Binder<T>,
+        _: &ty::Binder<T>,
+    ) -> RelateResult<'tcx, ty::Binder<T>>
+    where
+        T: Relate<'tcx>,
+    {
+        debug!("TypeGeneralizer::binders(a={:?})", a,);
+
+        self.first_free_index.shift_in(1);
+        let result = self.relate(a.skip_binder(), a.skip_binder())?;
+        self.first_free_index.shift_out(1);
+        Ok(ty::Binder::bind(result))
     }
 }
