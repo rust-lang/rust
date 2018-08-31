@@ -361,6 +361,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
 
     let before = ::std::time::Instant::now();
+    println!("[codegen mono items] start");
 
     for mono_item in mono_items {
         let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
@@ -383,7 +384,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     ccx.finalize(tcx, module);
 
     let after = ::std::time::Instant::now();
-    println!("time: {:?}", after - before);
+    println!("[codegen mono items] end time: {:?}", after - before);
 }
 
 fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

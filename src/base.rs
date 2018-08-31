@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
-struct PrintOnPanic(String);
-impl Drop for PrintOnPanic {
+struct PrintOnPanic<F: Fn() -> String>(F);
+impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     fn drop(&mut self) {
         if ::std::thread::panicking() {
-            println!("{}", self.0);
+            println!("{}", (self.0)());
         }
     }
 }
@@ -18,25 +18,26 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 ) {
     match mono_item {
         MonoItem::Fn(inst) => {
-            let _print_guard = PrintOnPanic(format!("{:?}", inst));
-            let mir = match inst.def {
-                InstanceDef::Item(_) | InstanceDef::DropGlue(_, _) | InstanceDef::Virtual(_, _) => {
-                    let mut mir = ::std::io::Cursor::new(Vec::new());
-                    ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
-                        .unwrap();
-                    mir.into_inner()
+            let _inst_guard = PrintOnPanic(|| format!("{:?}", inst));
+            let _mir_guard = PrintOnPanic(|| {
+                match inst.def {
+                    InstanceDef::Item(_)
+                    | InstanceDef::DropGlue(_, _)
+                    | InstanceDef::Virtual(_, _) => {
+                        let mut mir = ::std::io::Cursor::new(Vec::new());
+                        ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
+                            .unwrap();
+                        String::from_utf8(mir.into_inner()).unwrap()
+                    }
+                    InstanceDef::FnPtrShim(_, _)
+                    | InstanceDef::ClosureOnceShim { .. }
+                    | InstanceDef::CloneShim(_, _) => {
+                        // FIXME fix write_mir_pretty for these instances
+                        format!("{:#?}", tcx.instance_mir(inst.def))
+                    }
+                    InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
                 }
-                InstanceDef::FnPtrShim(_, _)
-                | InstanceDef::ClosureOnceShim { .. }
-                | InstanceDef::CloneShim(_, _) => {
-                    // FIXME fix write_mir_pretty for these instances
-                    format!("{:#?}", tcx.instance_mir(inst.def)).into_bytes()
-                }
-                InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
-            };
-            let mir_file_name =
-                "target/out/mir/".to_string() + &format!("{:?}", inst.def_id()).replace('/', "@");
-            ::std::fs::write(mir_file_name, mir).unwrap();
+            });
 
             trans_fn(tcx, module, ccx, caches, inst);
         }
@@ -103,12 +104,16 @@ fn trans_fn<'a, 'tcx: 'a>(
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
 
-    // Step 7. Print function to terminal for debugging
+    // Step 7. Write function to file for debugging
     let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
+
     let mut cton = String::new();
-    ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None).unwrap();
-    let clif_file_name = "target/out/clif/".to_string() + &tcx.symbol_name(instance).as_str();
-    ::std::fs::write(clif_file_name, cton.as_bytes()).unwrap();
+    if cfg!(debug_assertions) {
+        ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
+            .unwrap();
+        let clif_file_name = "target/out/clif/".to_string() + &tcx.symbol_name(instance).as_str();
+        ::std::fs::write(clif_file_name, cton.as_bytes()).unwrap();
+    }
 
     // Step 8. Verify function
     verify_func(tcx, writer, &func);
@@ -247,7 +252,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
     cur_ebb: Ebb,
     stmt: &Statement<'tcx>,
 ) {
-    let _print_guard = PrintOnPanic(format!("stmt {:?}", stmt));
+    let _print_guard = PrintOnPanic(|| format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
     fx.add_comment(inst, format!("{:?}", stmt));

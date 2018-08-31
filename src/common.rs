@@ -246,7 +246,6 @@ impl<'tcx> CValue<'tcx> {
                         dest.layout().ty
                     ),
                 };
-                println!("ty {:?}", self.layout().ty);
                 dest.write_cvalue(fx, CValue::ByValPair(ptr, extra, dest.layout()));
             }
             ty => unimpl!("unsize of non ptr {:?}", ty),
@@ -470,10 +469,6 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                         MemFlags::new(),
                         addr,
                         a.value.size(fx.tcx).bytes() as u32 as i32,
-                    );
-                    println!(
-                        "unsized deref: ptr: {:?} extra: {:?} self: {:?}",
-                        ptr, extra, self
                     );
                     CPlace::Addr(ptr, Some(extra), inner_layout)
                 }

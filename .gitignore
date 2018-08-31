@@ -2,3 +2,5 @@
 **/*.rs.bk
 *.rlib
 *.o
+perf.data
+perf.data.old
