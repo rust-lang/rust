@@ -2134,10 +2134,10 @@ impl<'a> Parser<'a> {
                 ParenthesisedArgs { inputs, output, span }.into()
             };
 
-            PathSegment { ident, args }
+            PathSegment { ident, args, id: ast::DUMMY_NODE_ID }
         } else {
             // Generic arguments are not found.
-            PathSegment::from_ident(ident)
+            PathSegment::from_ident(ident,)
         })
     }
 
