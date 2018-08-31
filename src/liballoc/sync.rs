@@ -27,7 +27,7 @@ use core::mem::{self, align_of_val, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
-use core::marker::{Unsize, PhantomData};
+use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
@@ -1942,3 +1942,6 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
         &**self
     }
 }
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Unpin for Arc<T> { }
