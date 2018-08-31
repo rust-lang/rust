@@ -1,4 +1,4 @@
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{fmt, hash, ops::Deref, sync::Arc};
 
 /// A `SmolStr` is a string type that has the following properties
 ///
@@ -91,6 +91,12 @@ impl<'a> PartialEq<&'a String> for SmolStr {
 impl<'a> PartialEq<SmolStr> for &'a String {
     fn eq(&self, other: &SmolStr) -> bool {
         *self == other
+    }
+}
+
+impl hash::Hash for SmolStr {
+    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
+        self.as_str().hash(hasher)
     }
 }
 
