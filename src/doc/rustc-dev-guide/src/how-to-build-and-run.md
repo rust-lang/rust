@@ -166,11 +166,12 @@ LLVM version: 4.0
 There are two workflows that are useful for faster builders of the
 compiler.
 
-**Check, check, and check again.** The first workflow, which is useful when doing
-simple refactorings, is to run `./x.py check` continuously. Here you
-are just checking that the compiler can **build**, but often that is
-all you need (e.g., when renaming a method). You can then run `./x.py build`
-when you acqtually need to run tests.
+**Check, check, and check again.** The first workflow, which is useful
+when doing simple refactorings, is to run `./x.py check`
+continuously. Here you are just checking that the compiler can
+**build**, but often that is all you need (e.g., when renaming a
+method). You can then run `./x.py build` when you acqtually need to
+run tests.
 
 In fact, it is eomtimes useful to put off tests even when you are not
 100% sure the code will work. You can then keep building up
@@ -192,7 +193,8 @@ don't work (but that is easily detected and fixed).
 The sequence of commands you want is as follows:
 
 - Initial build: `./x.py build -i --stage 1 src/libstd`
-  - As [documented above](#command), this will build a functional stage1 compiler
+  - As [documented above](#command), this will build a functional
+    stage1 compiler
 - Subsequent builds: `./x.py build -i --stage 1 src/libstd --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
   
