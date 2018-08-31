@@ -17,27 +17,27 @@ pub type sa_family_t = u16;
 pub const AF_INET: sa_family_t = 2;
 pub const AF_INET6: sa_family_t = 23;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Ord)]
 #[repr(C)]
 pub struct in_addr {
     pub s_addr: in_addr_t,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Ord)]
 #[repr(align(4))]
 #[repr(C)]
 pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Ord)]
 #[repr(C)]
 pub struct sockaddr {
     pub sa_family: sa_family_t,
     pub sa_data: [u8; 14],
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Ord)]
 #[repr(C)]
 pub struct sockaddr_in {
     pub sin_family: sa_family_t,
@@ -46,7 +46,7 @@ pub struct sockaddr_in {
     pub sin_zero: [u8; 8],
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, Ord)]
 #[repr(C)]
 pub struct sockaddr_in6 {
     pub sin6_family: sa_family_t,
