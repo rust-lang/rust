@@ -5,7 +5,7 @@ use std::{
     },
     fmt,
     time::Instant,
-    collections::HashMap,
+    collections::{HashMap, HashSet, VecDeque},
     panic,
 };
 
@@ -23,7 +23,7 @@ use {
     module_map::Problem,
     symbol_index::FileSymbols,
     module_map::{ModuleMap, ChangeKind},
-    JobToken,
+    JobToken, CrateGraph, CrateId,
 };
 
 #[derive(Debug)]
@@ -37,7 +37,6 @@ impl AnalysisHostImpl {
             data: Arc::new(WorldData::default()),
         }
     }
-
     pub fn analysis(
         &self,
         file_resolver: Arc<dyn FileResolver>,
@@ -48,7 +47,6 @@ impl AnalysisHostImpl {
             data: self.data.clone(),
         }
     }
-
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
         for (file_id, text) in changes {
@@ -71,7 +69,15 @@ impl AnalysisHostImpl {
             }
         }
     }
-
+    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
+        let mut visited = HashSet::new();
+        for &file_id in graph.crate_roots.values() {
+            if !visited.insert(file_id) {
+                panic!("duplicate crate root: {:?}", file_id);
+            }
+        }
+        self.data_mut().crate_graph = graph;
+    }
     fn data_mut(&mut self) -> &mut WorldData {
         Arc::make_mut(&mut self.data)
     }
@@ -143,6 +149,33 @@ impl AnalysisImpl {
                 (id, sym)
             })
             .collect()
+    }
+
+    pub fn crate_root(&self, id: FileId) -> Vec<CrateId> {
+        let module_map = &self.data.module_map;
+        let crate_graph = &self.data.crate_graph;
+        let mut res = Vec::new();
+        let mut work = VecDeque::new();
+        work.push_back(id);
+        let mut visited = HashSet::new();
+        while let Some(id) = work.pop_front() {
+            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(id) {
+                res.push(crate_id);
+                continue;
+            }
+            let mid = module_map.file2module(id);
+            let parents = module_map
+                .parent_module_ids(
+                    mid,
+                    &*self.file_resolver,
+                    &|file_id| self.file_syntax(file_id),
+                )
+                .into_iter()
+                .map(|id| module_map.module2file(id))
+                .filter(|&id| visited.insert(id));
+            work.extend(parents);
+        }
+        res
     }
 
     pub fn approximately_resolve_symbol(
@@ -295,6 +328,7 @@ impl AnalysisImpl {
 
 #[derive(Clone, Default, Debug)]
 struct WorldData {
+    crate_graph: CrateGraph,
     file_map: HashMap<FileId, Arc<FileData>>,
     module_map: ModuleMap,
 }
@@ -354,5 +388,14 @@ impl SourceChange {
             cursor_position: edit.cursor_position
                 .map(|offset| Position { offset, file_id })
         }
+    }
+}
+
+impl CrateGraph {
+    fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
+        let (&crate_id, _) = self.crate_roots
+            .iter()
+            .find(|(_crate_id, &root_id)| root_id == file_id)?;
+        Some(crate_id)
     }
 }

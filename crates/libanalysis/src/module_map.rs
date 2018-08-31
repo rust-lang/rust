@@ -91,16 +91,38 @@ impl ModuleMap {
         file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) -> Vec<(ModuleId, SmolStr, SyntaxNode)> {
-        let links = self.links(file_resolver, syntax_provider);
-        let res = links
+        let mut res = Vec::new();
+        self.for_each_parent_link(m, file_resolver, syntax_provider, |link| {
+            res.push(
+                (link.owner, link.name().clone(), link.syntax.clone())
+            )
+        });
+        res
+    }
+
+    pub fn parent_module_ids(
+        &self,
+        m: ModuleId,
+        file_resolver: &FileResolver,
+        syntax_provider: &SyntaxProvider,
+    ) -> Vec<ModuleId> {
+        let mut res = Vec::new();
+        self.for_each_parent_link(m, file_resolver, syntax_provider, |link| res.push(link.owner));
+        res
+    }
+
+    fn for_each_parent_link(
+        &self,
+        m: ModuleId,
+        file_resolver: &FileResolver,
+        syntax_provider: &SyntaxProvider,
+        f: impl FnMut(&Link)
+    ) {
+        self.links(file_resolver, syntax_provider)
             .links
             .iter()
             .filter(move |link| link.points_to.iter().any(|&it| it == m))
-            .map(|link| {
-                (link.owner, link.name().clone(), link.syntax.clone())
-            })
-            .collect();
-        res
+            .for_each(f)
     }
 
     pub fn problems(

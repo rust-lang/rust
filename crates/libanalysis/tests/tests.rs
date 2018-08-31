@@ -2,10 +2,13 @@ extern crate libanalysis;
 extern crate relative_path;
 extern crate test_utils;
 
-use std::path::{Path};
+use std::{
+    collections::HashMap,
+    path::{Path},
+};
 
 use relative_path::RelativePath;
-use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle};
+use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
 use test_utils::assert_eq_dbg;
 
 struct FileMap(&'static [(u32, &'static str)]);
@@ -110,5 +113,36 @@ fn test_resolve_parent_module() {
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
         &symbols,
+    );
+}
+
+#[test]
+fn test_resolve_crate_root() {
+    let mut world = AnalysisHost::new();
+    world.change_file(FileId(1), Some("mod foo;".to_string()));
+    world.change_file(FileId(2), Some("".to_string()));
+
+    let snap = world.analysis(FileMap(&[
+        (1, "/lib.rs"),
+        (2, "/foo.rs"),
+    ]));
+    assert!(snap.crate_root(FileId(2)).is_empty());
+
+    let crate_graph = CrateGraph {
+        crate_roots: {
+            let mut m = HashMap::new();
+            m.insert(CrateId(1), FileId(1));
+            m
+        },
+    };
+    world.set_crate_graph(crate_graph);
+
+    let snap = world.analysis(FileMap(&[
+        (1, "/lib.rs"),
+        (2, "/foo.rs"),
+    ]));
+    assert_eq!(
+        snap.crate_root(FileId(2)),
+        vec![CrateId(1)],
     );
 }

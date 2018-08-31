@@ -15,7 +15,10 @@ mod module_map;
 mod imp;
 mod job;
 
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    collections::HashMap,
+};
 
 use relative_path::{RelativePath, RelativePathBuf};
 use libsyntax2::{File, TextRange, TextUnit, AtomEdit};
@@ -29,6 +32,14 @@ pub use job::{JobToken, JobHandle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CrateId(pub u32);
+
+#[derive(Debug, Clone, Default)]
+pub struct CrateGraph {
+    pub crate_roots: HashMap<CrateId, FileId>,
+}
 
 pub trait FileResolver: Send + Sync + 'static {
     fn file_stem(&self, id: FileId) -> String;
@@ -52,6 +63,9 @@ impl AnalysisHost {
     }
     pub fn change_files(&mut self, mut changes: impl Iterator<Item=(FileId, Option<String>)>) {
         self.imp.change_files(&mut changes)
+    }
+    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
+        self.imp.set_crate_graph(graph)
     }
 }
 
@@ -167,6 +181,9 @@ impl Analysis {
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)
+    }
+    pub fn crate_root(&self, file_id: FileId) -> Vec<CrateId> {
+        self.imp.crate_root(file_id)
     }
     pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
         let file = self.file_syntax(file_id);
