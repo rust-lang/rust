@@ -7,7 +7,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 - Get a clean checkout of rust-lang/master, or whatever it is you want to profile.
 - Set the following settings in your `config.toml`:
   - `debuginfo-lines = true`
-  - `use-jemalloc = false` -- lets you do memory use profiling with valgrind 
+  - `use-jemalloc = false` — lets you do memory use profiling with valgrind 
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
 - Make a rustup toolchain (let's call it `rust-prof`) pointing to that result
@@ -117,7 +117,7 @@ the `cargo rustc` command, like so:
 
 ```bash
 touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Zborrowck=mir
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib — -Zborrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus
@@ -178,7 +178,7 @@ samples where `do_mir_borrowck` was on the stack: in this case, 29%.
   currently executes `perf script` (perhaps there is a better
   way...). I've sometimes found that `perf script` outputs C++ mangled
   names. This is annoying. You can tell by running `perf script |
-  head` yourself -- if you see names like `5rustc6middle` instead of
+  head` yourself — if you see names like `5rustc6middle` instead of
   `rustc::middle`, then you have the same problem. You can solve this
   by doing:
 
@@ -191,7 +191,7 @@ should mostly convert those names into a more friendly format. The
 `--from-stdin` flag to `perf focus` tells it to get its data from
 stdin, rather than executing `perf focus`. We should make this more
 convenient (at worst, maybe add a `c++filt` option to `perf focus`, or
-just always use it -- it's pretty harmless).
+just always use it — it's pretty harmless).
 
 ### Example: How much time does MIR borrowck spend solving traits?
 
@@ -209,7 +209,7 @@ Percentage : 0%
 Here we used the `..` operator to ask "how often do we have
 `do_mir_borrowck` on the stack and then, later, some fn whose name
 begins with `rusc::traits`?" (basically, code in that module). It
-turns out the answer is "almost never" -- only 12 samples fit that
+turns out the answer is "almost never" — only 12 samples fit that
 description (if you ever see *no* samples, that often indicates your
 query is messed up).
 
@@ -264,7 +264,7 @@ function and not some callee of that function** (self). Usually
 ### Relative percentages 
 
 By default, all in perf-focus are relative to the **total program
-execution**. This is useful to help you keep perspective -- often as
+execution**. This is useful to help you keep perspective — often as
 we drill down to find hot spots, we can lose sight of the fact that,
 in terms of overall program execution, this "hot spot" is actually not
 important. It also ensures that percentages between different queries
@@ -273,7 +273,8 @@ are easily compared against one another.
 That said, sometimes it's useful to get relative percentages, so `perf
 focus` offers a `--relative` option. In this case, the percentages are
 listed only for samples that match (vs all samples). So for example we
-could get our percentages relative to the borrowck itself like so:
+could get our percentages relative to the borrowck itself
+like so:
 
 ```bash
 > perf focus '{do_mir_borrowck}' --tree-callees --relative --tree-max-depth 1 --tree-min-percent 5
@@ -290,7 +291,7 @@ Tree
 : | rustc_mir::dataflow::do_dataflow (8% total, 1% self) [...]
 ```
 
-Here you see that `compute_regions` came up as "47% total" -- that
+Here you see that `compute_regions` came up as "47% total" — that
 means that 47% of `do_mir_borrowck` is spent in that function. Before,
-we saw 20% -- that's because `do_mir_borrowck` itself is only 43% of
+we saw 20% — that's because `do_mir_borrowck` itself is only 43% of
 the total time (and `.47 * .43 = .20`).
