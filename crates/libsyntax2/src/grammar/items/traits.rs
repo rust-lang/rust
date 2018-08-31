@@ -5,7 +5,7 @@ use super::*;
 pub(super) fn trait_def(p: &mut Parser) {
     assert!(p.at(TRAIT_KW));
     p.bump();
-    name(p);
+    name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     if p.at(COLON) {
         type_params::bounds(p);

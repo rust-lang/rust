@@ -1,0 +1,20 @@
+ROOT@[0; 16)
+  FN_DEF@[0; 2)
+    FN_KW@[0; 2)
+    err: `expected a name`
+    err: `expected function arguments`
+    err: `expected a block`
+  WHITESPACE@[2; 4)
+  FN_DEF@[4; 15)
+    FN_KW@[4; 6)
+    WHITESPACE@[6; 7)
+    NAME@[7; 10)
+      IDENT@[7; 10) "foo"
+    PARAM_LIST@[10; 12)
+      L_PAREN@[10; 11)
+      R_PAREN@[11; 12)
+    WHITESPACE@[12; 13)
+    BLOCK@[13; 15)
+      L_CURLY@[13; 14)
+      R_CURLY@[14; 15)
+  WHITESPACE@[15; 16)

@@ -4,7 +4,7 @@ pub(super) fn struct_def(p: &mut Parser) {
     assert!(p.at(STRUCT_KW));
     p.bump();
 
-    name(p);
+    name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     match p.current() {
         WHERE_KW => {
@@ -41,7 +41,7 @@ pub(super) fn struct_def(p: &mut Parser) {
 pub(super) fn enum_def(p: &mut Parser) {
     assert!(p.at(ENUM_KW));
     p.bump();
-    name(p);
+    name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     type_params::opt_where_clause(p);
     if p.at(L_CURLY) {

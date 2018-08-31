@@ -129,14 +129,18 @@ fn opt_fn_ret_type(p: &mut Parser) -> bool {
     }
 }
 
-fn name(p: &mut Parser) {
+fn name_r(p: &mut Parser, recovery: TokenSet) {
     if p.at(IDENT) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME);
     } else {
-        p.err_and_bump("expected a name");
+        p.err_recover("expected a name", recovery);
     }
+}
+
+fn name(p: &mut Parser) {
+    name_r(p, TokenSet::EMPTY)
 }
 
 fn name_ref(p: &mut Parser) {

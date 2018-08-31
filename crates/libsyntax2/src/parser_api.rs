@@ -12,7 +12,7 @@ fn mask(kind: SyntaxKind) -> u128 {
 }
 
 impl TokenSet {
-    const EMPTY: TokenSet = TokenSet(0);
+    pub const EMPTY: TokenSet = TokenSet(0);
 
     pub fn contains(&self, kind: SyntaxKind) -> bool {
         self.0 & mask(kind) != 0
@@ -145,10 +145,10 @@ impl<'t> Parser<'t> {
     }
 
     /// Create an error node and consume the next token.
-    pub(crate) fn err_recover(&mut self, message: &str, recovery_set: TokenSet) {
+    pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
         if self.at(SyntaxKind::L_CURLY)
             || self.at(SyntaxKind::R_CURLY)
-            || recovery_set.contains(self.current()) {
+            || recovery.contains(self.current()) {
             self.error(message);
         } else {
             let m = self.start();
