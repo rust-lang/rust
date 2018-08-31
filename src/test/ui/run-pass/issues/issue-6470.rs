@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(improper_ctypes)]
+
 // pretty-expanded FIXME #23616
 #![allow(non_snake_case)]
 
