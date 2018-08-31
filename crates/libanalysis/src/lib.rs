@@ -159,11 +159,11 @@ impl Analysis {
         let file = self.file_syntax(file_id);
         libeditor::file_structure(&file)
     }
-    pub fn symbol_search(&self, query: Query) -> Vec<(FileId, FileSymbol)> {
-        self.imp.world_symbols(query)
+    pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+        self.imp.world_symbols(query, token)
     }
-    pub fn approximately_resolve_symbol(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, FileSymbol)> {
-        self.imp.approximately_resolve_symbol(file_id, offset)
+    pub fn approximately_resolve_symbol(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+        self.imp.approximately_resolve_symbol(file_id, offset, token)
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)

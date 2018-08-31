@@ -7,7 +7,7 @@ use languageserver_types::{
     CompletionItem, InsertTextFormat, CompletionItemKind,
 };
 use serde_json::to_value;
-use libanalysis::{Query, FileId, RunnableKind};
+use libanalysis::{Query, FileId, RunnableKind, JobToken};
 use libsyntax2::{
     text_utils::contains_offset_nonstrict,
 };
@@ -21,6 +21,7 @@ use ::{
 pub fn handle_syntax_tree(
     world: ServerWorld,
     params: req::SyntaxTreeParams,
+    _token: JobToken,
 ) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
     let res = world.analysis().syntax_tree(id);
@@ -30,6 +31,7 @@ pub fn handle_syntax_tree(
 pub fn handle_extend_selection(
     world: ServerWorld,
     params: req::ExtendSelectionParams,
+    _token: JobToken,
 ) -> Result<req::ExtendSelectionResult> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_syntax(file_id);
@@ -45,6 +47,7 @@ pub fn handle_extend_selection(
 pub fn handle_find_matching_brace(
     world: ServerWorld,
     params: req::FindMatchingBraceParams,
+    _token: JobToken,
 ) -> Result<Vec<Position>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_syntax(file_id);
@@ -63,6 +66,7 @@ pub fn handle_find_matching_brace(
 pub fn handle_join_lines(
     world: ServerWorld,
     params: req::JoinLinesParams,
+    _token: JobToken,
 ) -> Result<req::SourceChange> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -74,6 +78,7 @@ pub fn handle_join_lines(
 pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
+    _token: JobToken,
 ) -> Result<Option<Vec<TextEdit>>> {
     if params.ch != "=" {
         return Ok(None);
@@ -93,6 +98,7 @@ pub fn handle_on_type_formatting(
 pub fn handle_document_symbol(
     world: ServerWorld,
     params: req::DocumentSymbolParams,
+    _token: JobToken,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -131,6 +137,7 @@ pub fn handle_document_symbol(
 pub fn handle_workspace_symbol(
     world: ServerWorld,
     params: req::WorkspaceSymbolParams,
+    token: JobToken,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let all_symbols = params.query.contains("#");
     let query = {
@@ -144,18 +151,18 @@ pub fn handle_workspace_symbol(
         q.limit(128);
         q
     };
-    let mut res = exec_query(&world, query)?;
+    let mut res = exec_query(&world, query, &token)?;
     if res.is_empty() && !all_symbols {
         let mut query = Query::new(params.query);
         query.limit(128);
-        res = exec_query(&world, query)?;
+        res = exec_query(&world, query, &token)?;
     }
 
     return Ok(Some(res));
 
-    fn exec_query(world: &ServerWorld, query: Query) -> Result<Vec<SymbolInformation>> {
+    fn exec_query(world: &ServerWorld, query: Query, token: &JobToken) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
-        for (file_id, symbol) in world.analysis().symbol_search(query) {
+        for (file_id, symbol) in world.analysis().symbol_search(query, token) {
             let line_index = world.analysis().file_line_index(file_id);
             let info = SymbolInformation {
                 name: symbol.name.to_string(),
@@ -175,12 +182,13 @@ pub fn handle_workspace_symbol(
 pub fn handle_goto_definition(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
+    token: JobToken,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
     let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(file_id, offset) {
+    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(file_id, offset, &token) {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(
             file_id, symbol.node_range,
@@ -194,6 +202,7 @@ pub fn handle_goto_definition(
 pub fn handle_parent_module(
     world: ServerWorld,
     params: TextDocumentIdentifier,
+    _token: JobToken,
 ) -> Result<Vec<Location>> {
     let file_id = params.try_conv_with(&world)?;
     let mut res = Vec::new();
@@ -211,6 +220,7 @@ pub fn handle_parent_module(
 pub fn handle_runnables(
     world: ServerWorld,
     params: req::RunnablesParams,
+    _token: JobToken,
 ) -> Result<Vec<req::Runnable>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -260,6 +270,7 @@ pub fn handle_runnables(
 pub fn handle_decorations(
     world: ServerWorld,
     params: TextDocumentIdentifier,
+    _token: JobToken,
 ) -> Result<Vec<Decoration>> {
     let file_id = params.try_conv_with(&world)?;
     Ok(highlight(&world, file_id))
@@ -268,6 +279,7 @@ pub fn handle_decorations(
 pub fn handle_completion(
     world: ServerWorld,
     params: req::CompletionParams,
+    _token: JobToken,
 ) -> Result<Option<req::CompletionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -297,6 +309,7 @@ pub fn handle_completion(
 pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,
+    _token: JobToken,
 ) -> Result<Option<Vec<Command>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);

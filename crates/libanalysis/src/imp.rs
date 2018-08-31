@@ -23,6 +23,7 @@ use {
     module_map::Problem,
     symbol_index::FileSymbols,
     module_map::{ModuleMap, ChangeKind},
+    JobToken,
 };
 
 #[derive(Debug)]
@@ -111,9 +112,10 @@ impl AnalysisImpl {
             .clone()
     }
 
-    pub fn world_symbols(&self, mut query: Query) -> Vec<(FileId, FileSymbol)> {
+    pub fn world_symbols(&self, mut query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.reindex();
         self.data.file_map.iter()
+            .take_while(move |_| !token.is_canceled())
             .flat_map(move |(id, data)| {
                 let symbols = data.symbols();
                 query.process(symbols).into_iter().map(move |s| (*id, s))
@@ -147,11 +149,12 @@ impl AnalysisImpl {
         &self,
         id: FileId,
         offset: TextUnit,
+        token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
         let file = self.file_syntax(id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
-            return self.index_resolve(name_ref);
+            return self.index_resolve(name_ref, token);
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -245,12 +248,12 @@ impl AnalysisImpl {
             .collect()
     }
 
-    fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {
+    fn index_resolve(&self, name_ref: ast::NameRef, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        self.world_symbols(query)
+        self.world_symbols(query, token)
     }
 
     fn resolve_module(&self, id: FileId, module: ast::Module) -> Vec<FileId> {

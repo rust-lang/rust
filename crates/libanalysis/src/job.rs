@@ -18,8 +18,8 @@ impl JobHandle {
         let handle = JobHandle { job_alive: receiver_alive, _job_canceled: sender_canceled };
         (handle, token)
     }
-    pub fn is_alive(&self) -> bool {
-        !is_closed(&self.job_alive)
+    pub fn has_completed(&self) -> bool {
+        is_closed(&self.job_alive)
     }
     pub fn cancel(self) {
     }

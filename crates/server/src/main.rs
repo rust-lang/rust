@@ -84,14 +84,13 @@ fn initialize(io: &mut Io) -> Result<()> {
             bail!("expected initialize request, got {:?}", res),
 
         RawMsg::Request(req) => {
-            let mut req = Some(req);
-            dispatch::handle_request::<req::Initialize, _>(&mut req, |_params, resp| {
+            let req = dispatch::handle_request::<req::Initialize, _>(req, |_params, resp| {
                 let res = req::InitializeResult { capabilities: caps::server_capabilities() };
                 let resp = resp.into_response(Ok(res))?;
                 io.send(RawMsg::Response(resp));
                 Ok(())
             })?;
-            if let Some(req) = req {
+            if let Err(req) = req {
                 bail!("expected initialize request, got {:?}", req)
             }
             match io.recv()? {

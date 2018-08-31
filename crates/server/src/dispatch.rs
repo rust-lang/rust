@@ -58,20 +58,18 @@ fn parse_request_as<R: ClientRequest>(raw: RawRequest)
     Ok(Ok((params, responder)))
 }
 
-pub fn handle_request<R, F>(req: &mut Option<RawRequest>, f: F) -> Result<()>
+pub fn handle_request<R, F>(req: RawRequest, f: F) -> Result<::std::result::Result<u64, RawRequest>>
     where
         R: ClientRequest,
         F: FnOnce(R::Params, Responder<R>) -> Result<()>
 {
-    match req.take() {
-        None => Ok(()),
-        Some(r) => match parse_request_as::<R>(r)? {
-            Ok((params, responder)) => f(params, responder),
-            Err(r) => {
-                *req = Some(r);
-                Ok(())
-            }
-        }
+    let id = req.id;
+    match parse_request_as::<R>(req)? {
+        Ok((params, responder)) => {
+            let () = f(params, responder)?;
+            Ok(Ok(id))
+        },
+        Err(r) => Ok(Err(r)),
     }
 }
 

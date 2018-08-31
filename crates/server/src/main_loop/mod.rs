@@ -2,12 +2,13 @@ mod handlers;
 mod subscriptions;
 
 use std::{
-    collections::{HashSet},
+    collections::{HashMap},
 };
 
 use threadpool::ThreadPool;
 use crossbeam_channel::{Sender, Receiver};
-use libanalysis::FileId;
+use languageserver_types::{NumberOrString};
+use libanalysis::{FileId, JobHandle, JobToken};
 
 use {
     req, dispatch,
@@ -28,7 +29,7 @@ pub(super) fn main_loop(
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
 
-    let mut pending_requests: HashSet<u64> = HashSet::new();
+    let mut pending_requests: HashMap<u64, JobHandle> = HashMap::new();
     let mut fs_events_receiver = Some(&fs_events_receiver);
     let mut subs = Subscriptions::new();
     loop {
@@ -61,8 +62,12 @@ pub(super) fn main_loop(
             }
             Event::Task(task) => {
                 match task {
-                    Task::Respond(response) =>
-                        io.send(RawMsg::Response(response)),
+                    Task::Respond(response) => {
+                        if let Some(handle) = pending_requests.remove(&response.id) {
+                            assert!(handle.has_completed());
+                        }
+                        io.send(RawMsg::Response(response))
+                    }
                     Task::Notify(n) =>
                         io.send(RawMsg::Notification(n)),
                     Task::Die(error) =>
@@ -78,18 +83,16 @@ pub(super) fn main_loop(
             Event::Msg(msg) => {
                 match msg {
                     RawMsg::Request(req) => {
-                        if !on_request(io, &mut state, pool, &task_sender, req)? {
+                        if !on_request(io, &mut state, &mut pending_requests, pool, &task_sender, req)? {
                             return Ok(());
                         }
                     }
                     RawMsg::Notification(not) => {
-                        on_notification(io, &mut state, &mut subs, not)?;
+                        on_notification(io, &mut state, &mut pending_requests, &mut subs, not)?;
                         state_changed = true;
                     }
                     RawMsg::Response(resp) => {
-                        if !pending_requests.remove(&resp.id) {
-                            error!("unexpected response: {:?}", resp)
-                        }
+                        error!("unexpected response: {:?}", resp)
                     }
                 }
             }
@@ -109,15 +112,17 @@ pub(super) fn main_loop(
 fn on_request(
     io: &mut Io,
     world: &mut ServerWorldState,
+    pending_requests: &mut HashMap<u64, JobHandle>,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     req: RawRequest,
 ) -> Result<bool> {
     let mut pool_dispatcher = PoolDispatcher {
         req: Some(req),
+        res: None,
         pool, world, sender
     };
-    pool_dispatcher
+    let req = pool_dispatcher
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
         .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
@@ -130,23 +135,30 @@ fn on_request(
         .on::<req::Runnables>(handlers::handle_runnables)?
         .on::<req::DecorationsRequest>(handlers::handle_decorations)?
         .on::<req::Completion>(handlers::handle_completion)?
-        .on::<req::CodeActionRequest>(handlers::handle_code_action)?;
-
-    let mut req = pool_dispatcher.req;
-    let mut shutdown = false;
-    dispatch::handle_request::<req::Shutdown, _>(&mut req, |(), resp| {
-        let resp = resp.into_response(Ok(()))?;
-        io.send(RawMsg::Response(resp));
-        shutdown = true;
-        Ok(())
-    })?;
-    if shutdown {
-        info!("lifecycle: initiating shutdown");
-        return Ok(false);
-    }
-    if let Some(req) = req {
-        error!("unknown method: {:?}", req);
-        io.send(RawMsg::Response(dispatch::unknown_method(req.id)?));
+        .on::<req::CodeActionRequest>(handlers::handle_code_action)?
+        .finish();
+    match req {
+        Ok((id, handle)) => {
+            let inserted = pending_requests.insert(id, handle).is_none();
+            assert!(inserted, "duplicate request: {}", id);
+        },
+        Err(req) => {
+            let req = dispatch::handle_request::<req::Shutdown, _>(req, |(), resp| {
+                let resp = resp.into_response(Ok(()))?;
+                io.send(RawMsg::Response(resp));
+                Ok(())
+            })?;
+            match req {
+                Ok(_id) => {
+                    info!("lifecycle: initiating shutdown");
+                    return Ok(false);
+                }
+                Err(req) => {
+                    error!("unknown method: {:?}", req);
+                    io.send(RawMsg::Response(dispatch::unknown_method(req.id)?));
+                }
+            }
+        }
     }
     Ok(true)
 }
@@ -154,10 +166,23 @@ fn on_request(
 fn on_notification(
     io: &mut Io,
     state: &mut ServerWorldState,
+    pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {
     let mut not = Some(not);
+    dispatch::handle_notification::<req::Cancel, _>(&mut not, |params| {
+        let id = match params.id {
+            NumberOrString::Number(id) => id,
+            NumberOrString::String(id) => {
+                panic!("string id's not supported: {:?}", id);
+            }
+        };
+        if let Some(handle) = pending_requests.remove(&id) {
+            handle.cancel();
+        }
+        Ok(())
+    })?;
     dispatch::handle_notification::<req::DidOpenTextDocument, _>(&mut not, |params| {
         let uri = params.text_document.uri;
         let path = uri.to_file_path()
@@ -196,21 +221,30 @@ fn on_notification(
 
 struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
+    res: Option<(u64, JobHandle)>,
     pool: &'a ThreadPool,
     world: &'a ServerWorldState,
     sender: &'a Sender<Task>,
 }
 
 impl<'a> PoolDispatcher<'a> {
-    fn on<'b, R: req::ClientRequest>(&'b mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&'b mut Self> {
+    fn on<'b, R: req::ClientRequest>(
+        &'b mut self,
+        f: fn(ServerWorld, R::Params, JobToken) -> Result<R::Result>
+    ) -> Result<&'b mut Self> {
+        let req = match self.req.take() {
+            None => return Ok(self),
+            Some(req) => req,
+        };
         let world = self.world;
         let sender = self.sender;
         let pool = self.pool;
-        dispatch::handle_request::<R, _>(&mut self.req, |params, resp| {
+        let (handle, token) = JobHandle::new();
+        let req = dispatch::handle_request::<R, _>(req, |params, resp| {
             let world = world.snapshot();
             let sender = sender.clone();
             pool.execute(move || {
-                let res = f(world, params);
+                let res = f(world, params, token);
                 let task = match resp.into_response(res) {
                     Ok(resp) => Task::Respond(resp),
                     Err(e) => Task::Die(e),
@@ -219,7 +253,19 @@ impl<'a> PoolDispatcher<'a> {
             });
             Ok(())
         })?;
+        match req {
+            Ok(id) => self.res = Some((id, handle)),
+            Err(req) => self.req = Some(req),
+        }
         Ok(self)
+    }
+
+    fn finish(&mut self) -> ::std::result::Result<(u64, JobHandle), RawRequest> {
+        match (self.res.take(), self.req.take()) {
+            (Some(res), None) => Ok(res),
+            (None, Some(req)) => Err(req),
+            _ => unreachable!(),
+        }
     }
 }
 
