@@ -46,6 +46,8 @@ impl PartialEq<SmolStr> for SmolStr {
     }
 }
 
+impl Eq for SmolStr {}
+
 impl PartialEq<str> for SmolStr {
     fn eq(&self, other: &str) -> bool {
         self.as_str() == other
