@@ -108,7 +108,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // The two syntaxes below are equivalent.
 /// let a = foo.clone();
 /// let b = Arc::clone(&foo);
-/// // a and b both point to the same memory location as foo
+/// // a, b, and foo are all Arcs that point to the same memory location
 /// ```
 ///
 /// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
