@@ -880,9 +880,16 @@ where
         layout: TyLayout<'tcx>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
-        let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
-        Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
+        if layout.is_unsized() {
+            assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
+            // allocate a fat pointer slot instead
+            let fat = self.tcx.mk_mut_ptr(layout.ty);
+            let fat = self.layout_of(fat)?;
+            self.allocate(fat, kind)
+        } else {
+            let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
+            Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
+        }
     }
 
     pub fn write_discriminant_index(
