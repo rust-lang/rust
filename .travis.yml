@@ -39,7 +39,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
         CI_JOB_NAME=dist-x86_64-apple-alt
       os: osx
-      osx_image: xcode9.3-moar
+      osx_image: xcode10
       if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
@@ -62,7 +62,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
         CI_JOB_NAME=x86_64-apple
       os: osx
-      osx_image: xcode9.3-moar
+      osx_image: xcode10
       if: branch = auto
 
     - env: >
@@ -76,8 +76,8 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
         CI_JOB_NAME=i686-apple
       os: osx
-      osx_image: xcode9.3-moar
-      if: branch = auto
+      osx_image: xcode9.4
+      if: branch = auto OR branch = xcode9.4
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -96,8 +96,8 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
         CI_JOB_NAME=dist-i686-apple
       os: osx
-      osx_image: xcode9.3-moar
-      if: branch = auto
+      osx_image: xcode9.4
+      if: branch = auto OR branch = xcode9.4
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -110,8 +110,8 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
         CI_JOB_NAME=dist-x86_64-apple
       os: osx
-      osx_image: xcode9.3-moar
-      if: branch = auto
+      osx_image: xcode10
+      if: branch = auto OR branch = xcode9.4
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
