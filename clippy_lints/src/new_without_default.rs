@@ -21,7 +21,7 @@ use crate::utils::sugg::DiagnosticBuilderExt;
 ///
 /// **Example:**
 ///
-/// ```rust,ignore
+/// ```rust
 /// struct Foo(Bar);
 ///
 /// impl Foo {
@@ -63,7 +63,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 ///
-/// ```rust,ignore
+/// ```rust
 /// struct Foo;
 ///
 /// impl Foo {
