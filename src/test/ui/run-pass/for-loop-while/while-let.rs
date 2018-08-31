@@ -36,9 +36,9 @@ pub fn main() {
 
     pq = make_pq();
     sum = 0;
-    'a: while let Some(x) = pq.pop() {
+    'a2: while let Some(x) = pq.pop() {
         if x == 3 {
-            continue 'a;
+            continue 'a2;
         }
         sum += x;
     }
