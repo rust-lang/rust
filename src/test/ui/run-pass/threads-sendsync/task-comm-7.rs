@@ -11,8 +11,6 @@
 // run-pass
 // ignore-emscripten no threads support
 
-#![allow(dead_assignment)]
-
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 

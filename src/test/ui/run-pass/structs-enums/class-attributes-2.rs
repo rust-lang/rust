@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![allow(unused_attribute)]
 #![feature(custom_attribute)]
 
 struct cat {

@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![deny(type_limits)]
-
 pub fn main() {
     let i: usize = 0;
     assert!(i <= 0xFFFF_FFFF);

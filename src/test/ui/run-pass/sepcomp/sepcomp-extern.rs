@@ -18,7 +18,6 @@
 extern crate sepcomp_extern_lib;
 
 extern {
-    #[allow(ctypes)]
     fn foo() -> usize;
 }
 

@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![allow(dead_assignment)]
-
 use std::sync::mpsc::channel;
 
 pub fn main() { test00(); }

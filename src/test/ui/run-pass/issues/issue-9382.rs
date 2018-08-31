@@ -11,7 +11,6 @@
 // except according to those terms.
 
 // run-pass
-#![allow(unnecessary_allocation)]
 #![feature(box_syntax)]
 
 // Tests for a previous bug that occurred due to an interaction

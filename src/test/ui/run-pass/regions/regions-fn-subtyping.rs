@@ -13,7 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(dead_assignment)]
 #![allow(unused_variables)]
 
 // Should pass region checking.

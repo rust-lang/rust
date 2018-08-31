@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![allow(type_limits)]
-
 // Unsigned integer operations
 pub fn main() {
     assert!((0u8 < 255u8));

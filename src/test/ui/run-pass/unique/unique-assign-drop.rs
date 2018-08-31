@@ -10,7 +10,6 @@
 
 // run-pass
 
-#![allow(dead_assignment)]
 #![feature(box_syntax)]
 
 pub fn main() {

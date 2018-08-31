@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![allow(dead_assignment)]
 #![allow(unused_variables)]
 
 pub fn main() {
