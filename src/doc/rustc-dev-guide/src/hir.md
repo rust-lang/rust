@@ -116,11 +116,12 @@ with an HIR node.
 [number of methods]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#methods
 
 For example, if you have a [`DefId`], and you would like to convert it
-to a [`NodeId`], you can use [`tcx.hir.as_local_node_id(def_id)`][as_local_node_id]. This
-returns an `Option<NodeId>` – this will be `None` if the def-id
-refers to something outside of the current crate (since then it has no
-HIR node), but otherwise returns `Some(n)` where `n` is the node-id of
-the definition.
+to a [`NodeId`], you can use
+[`tcx.hir.as_local_node_id(def_id)`][as_local_node_id]. This returns
+an `Option<NodeId>` – this will be `None` if the def-id refers to
+something outside of the current crate (since then it has no HIR
+node), but otherwise returns `Some(n)` where `n` is the node-id of the
+definition.
 
 [as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.as_local_node_id
 
