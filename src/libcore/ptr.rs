@@ -748,8 +748,8 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///     // Take a reference to a 32-bit integer which is not aligned.
 ///     let unaligned = &mut x.unaligned as *mut u32;
 ///
-///     // Dereferencing normally will emit an unaligned store instruction,
-///     // causing undefined behavior.
+///     // Dereferencing normally will emit an aligned store instruction,
+///     // causing undefined behavior because the pointer is not aligned.
 ///     // *unaligned = v; // ERROR
 ///
 ///     // Instead, use `write_unaligned` to write improperly aligned values.
