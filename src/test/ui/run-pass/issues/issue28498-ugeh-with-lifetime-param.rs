@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)] // FIXME: switch to `#[may_dangle]` below.
+
 // Demonstrate the use of the unguarded escape hatch with a lifetime param
 // to assert that destructor will not access any dead data.
 //

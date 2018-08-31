@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)] // FIXME: switch to `#[may_dangle]` below.
+
 // Example taken from RFC 1238 text
 
 // https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
