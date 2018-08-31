@@ -732,7 +732,11 @@ fn rewrite_bare_fn(
 
     result.push_str("fn");
 
-    let func_ty_shape = shape.offset_left(result.len())?;
+    let func_ty_shape = if context.use_block_indent() {
+        shape.offset_left(result.len())?
+    } else {
+        shape.visual_indent(result.len()).sub_width(result.len())?
+    };
 
     let rewrite = format_function_type(
         bare_fn.decl.inputs.iter(),
