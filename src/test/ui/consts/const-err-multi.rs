@@ -12,7 +12,6 @@
 
 pub const A: i8 = -std::i8::MIN;
 //~^ ERROR const_err
-//~| ERROR const_err
 pub const B: i8 = A;
 //~^ ERROR const_err
 pub const C: u8 = A as u8;

@@ -22,7 +22,6 @@ use std::{i8, i16, i32, i64, isize};
 use std::{u8, u16, u32, u64, usize};
 
 const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
-     //~^ const_err
     (
      i8::MIN * 2,
      );

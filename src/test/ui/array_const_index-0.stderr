@@ -8,20 +8,12 @@ LL | const B: i32 = (&A)[1];
    |
    = note: #[deny(const_err)] on by default
 
-error: any use of this value will cause an error
-  --> $DIR/array_const_index-0.rs:12:1
-   |
-LL | const B: i32 = (&A)[1];
-   | ^^^^^^^^^^^^^^^-------^
-   |                |
-   |                index out of bounds: the len is 0 but the index is 1
-
 error[E0080]: erroneous constant used
-  --> $DIR/array_const_index-0.rs:18:13
+  --> $DIR/array_const_index-0.rs:17:13
    |
 LL |     let _ = B; //~ ERROR erroneous constant used
    |             ^ referenced constant has errors
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

@@ -2,7 +2,6 @@ error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:24:1
    |
 LL | / const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
-LL | |      //~^ const_err
 LL | |     (
 LL | |      i8::MIN - 1,
    | |      ----------- attempt to subtract with overflow
@@ -16,7 +15,7 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:30:1
+  --> $DIR/const-eval-overflow2.rs:29:1
    |
 LL | / const VALS_I16: (i16,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -26,7 +25,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:35:1
+  --> $DIR/const-eval-overflow2.rs:34:1
    |
 LL | / const VALS_I32: (i32,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -36,7 +35,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:40:1
+  --> $DIR/const-eval-overflow2.rs:39:1
    |
 LL | / const VALS_I64: (i64,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -46,7 +45,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:45:1
+  --> $DIR/const-eval-overflow2.rs:44:1
    |
 LL | / const VALS_U8: (u8,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -56,7 +55,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:50:1
+  --> $DIR/const-eval-overflow2.rs:49:1
    |
 LL | / const VALS_U16: (u16,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u16::MIN - 1,
@@ -65,7 +64,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:54:1
+  --> $DIR/const-eval-overflow2.rs:53:1
    |
 LL | / const VALS_U32: (u32,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u32::MIN - 1,
@@ -74,7 +73,7 @@ LL | |      );
    | |_______^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:58:1
+  --> $DIR/const-eval-overflow2.rs:57:1
    |
 LL | / const VALS_U64: (u64,) = //~ ERROR any use of this value will cause an error
 LL | |     (
@@ -83,65 +82,54 @@ LL | |      u64::MIN - 1,
 LL | |      );
    | |_______^
 
-error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2.rs:24:1
-   |
-LL | / const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
-LL | |      //~^ const_err
-LL | |     (
-LL | |      i8::MIN - 1,
-   | |      ----------- attempt to subtract with overflow
-LL | |      );
-   | |_______^
-
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:64:5
+  --> $DIR/const-eval-overflow2.rs:63:5
    |
 LL |     foo(VALS_I8); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:65:5
+  --> $DIR/const-eval-overflow2.rs:64:5
    |
 LL |     foo(VALS_I16); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:66:5
+  --> $DIR/const-eval-overflow2.rs:65:5
    |
 LL |     foo(VALS_I32); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:67:5
+  --> $DIR/const-eval-overflow2.rs:66:5
    |
 LL |     foo(VALS_I64); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:69:5
+  --> $DIR/const-eval-overflow2.rs:68:5
    |
 LL |     foo(VALS_U8); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:70:5
+  --> $DIR/const-eval-overflow2.rs:69:5
    |
 LL |     foo(VALS_U16); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:71:5
+  --> $DIR/const-eval-overflow2.rs:70:5
    |
 LL |     foo(VALS_U32); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2.rs:72:5
+  --> $DIR/const-eval-overflow2.rs:71:5
    |
 LL |     foo(VALS_U64); //~ ERROR erroneous constant used
    |     ^^^^^^^^^^^^^ referenced constant has errors
 
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

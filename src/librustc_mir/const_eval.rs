@@ -23,6 +23,7 @@ use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
+use rustc::traits::Reveal;
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -576,6 +577,16 @@ pub fn const_eval_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    if key.param_env.reveal == Reveal::All {
+        let mut key = key.clone();
+        key.param_env.reveal = Reveal::UserFacing;
+        match tcx.const_eval(key) {
+            // try again with reveal all as requested
+            Err(ErrorHandled::TooGeneric) => {},
+            // dedupliate calls
+            other => return other,
+        }
+    }
     tcx.const_eval_raw(key).and_then(|val| {
         validate_const(tcx, val, key)
     })
@@ -585,6 +596,16 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    if key.param_env.reveal == Reveal::All {
+        let mut key = key.clone();
+        key.param_env.reveal = Reveal::UserFacing;
+        match tcx.const_eval_raw(key) {
+            // try again with reveal all as requested
+            Err(ErrorHandled::TooGeneric) => {},
+            // dedupliate calls
+            other => return other,
+        }
+    }
     trace!("const eval: {:?}", key);
     let cid = key.value;
     let def_id = cid.instance.def.def_id();

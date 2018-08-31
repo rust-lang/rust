@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR cycle detected when computing layout of
-
-
 #![feature(core_intrinsics)]
 
 use std::intrinsics;
 
 struct Foo {
     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
+    //~^ ERROR cycle detected when const-evaluating + checking
     x: usize,
 }
 

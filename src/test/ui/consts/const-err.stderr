@@ -12,16 +12,8 @@ note: lint level defined here
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-warning: any use of this value will cause an error
-  --> $DIR/const-err.rs:20:1
-   |
-LL | const FOO: u8 = [5u8][1];
-   | ^^^^^^^^^^^^^^^^--------^
-   |                 |
-   |                 index out of bounds: the len is 1 but the index is 1
-
 error[E0080]: erroneous constant used
-  --> $DIR/const-err.rs:25:15
+  --> $DIR/const-err.rs:24:15
    |
 LL |     black_box((FOO, FOO));
    |               ^^^^^^^^^^ referenced constant has errors
