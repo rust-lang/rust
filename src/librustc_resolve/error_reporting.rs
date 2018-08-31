@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {CrateLint, PathResult};
+use {CrateLint, PathResult, Segment};
 use macros::ParentScope;
 
-use syntax::ast::Ident;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
@@ -23,20 +22,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>,
+        mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Ident>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd)) if fst.name == keywords::CrateRoot.name() &&
-                                      !snd.is_path_segment_keyword() => {}
+            (Some(fst), Some(snd)) if fst.ident.name == keywords::CrateRoot.name() &&
+                                      !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018
-            (Some(fst), _) if self.session.rust_2018() && !fst.is_path_segment_keyword() => {
+            (Some(fst), _) if self.session.rust_2018() && !fst.ident.is_path_segment_keyword() => {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, keywords::Invalid.ident());
+                path.insert(0, Segment::from_ident(keywords::Invalid.ident()));
             }
             _ => return None,
         }
@@ -57,11 +56,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_self_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>,
+        mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Ident>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
-        path[0].name = keywords::SelfValue.name();
+        path[0].ident.name = keywords::SelfValue.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -81,11 +80,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_crate_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>,
+        mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Ident>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].name = keywords::Crate.name();
+        path[0].ident.name = keywords::Crate.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -112,11 +111,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_super_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>,
+        mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Ident>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].name = keywords::Super.name();
+        path[0].ident.name = keywords::Super.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -139,9 +138,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_external_crate_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>,
+        mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Ident>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         if !self.session.rust_2018() {
             return None;
         }
@@ -155,7 +154,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
-            path[0].name = name;
+            path[0].ident.name = name;
             let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);

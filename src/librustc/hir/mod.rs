@@ -347,6 +347,13 @@ impl fmt::Display for Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub ident: Ident,
+    // `id` and `def` are optional. We currently only use these in save-analysis,
+    // any path segments without these will not have save-analysis info and
+    // therefore will not have 'jump to def' in IDEs, but otherwise will not be
+    // affected. (In general, we don't bother to get the defs for synthesized
+    // segments, only for segments which have come from the AST).
+    pub id: Option<NodeId>,
+    pub def: Option<Def>,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -367,14 +374,24 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> PathSegment {
         PathSegment {
             ident,
+            id: None,
+            def: None,
             infer_types: true,
             args: None,
         }
     }
 
-    pub fn new(ident: Ident, args: GenericArgs, infer_types: bool) -> Self {
+    pub fn new(
+        ident: Ident,
+        id: Option<NodeId>,
+        def: Option<Def>,
+        args: GenericArgs,
+        infer_types: bool,
+    ) -> Self {
         PathSegment {
             ident,
+            id,
+            def,
             infer_types,
             args: if args.is_empty() {
                 None
@@ -2511,6 +2528,7 @@ pub enum Node<'hir> {
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr),
     Stmt(&'hir Stmt),
+    PathSegment(&'hir PathSegment),
     Ty(&'hir Ty),
     TraitRef(&'hir TraitRef),
     Binding(&'hir Pat),

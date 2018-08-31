@@ -22,7 +22,7 @@ fn main() {
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
-//     let _2: &'10_1rs i32;
+//     let _2: &'11_1rs i32;
 //     ...
 //     let _1: i32;
 //     ...
@@ -31,10 +31,10 @@ fn main() {
 //         _1 = const 3i32;
 //         FakeRead(ForLet, _1);
 //         StorageLive(_2);
-//         _2 = &'10_1rs _1;
+//         _2 = &'11_1rs _1;
 //         FakeRead(ForLet, _2);
 //         _0 = ();
-//         EndRegion('10_1rs);
+//         EndRegion('11_1rs);
 //         StorageDead(_2);
 //         StorageDead(_1);
 //         return;

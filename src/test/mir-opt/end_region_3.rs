@@ -28,9 +28,9 @@ fn main() {
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
-//     let _7: &'26_3rs bool;
+//     let _7: &'30_3rs bool;
 //     ...
-//     let _3: &'26_1rs bool;
+//     let _3: &'30_1rs bool;
 //     ...
 //     let mut _1: bool;
 //     ...
@@ -48,7 +48,7 @@ fn main() {
 //     bb2: {
 //         _1 = const true;
 //         StorageLive(_3);
-//         _3 = &'26_1rs _1;
+//         _3 = &'30_1rs _1;
 //         FakeRead(ForLet, _3);
 //         StorageLive(_5);
 //         _5 = _1;
@@ -60,7 +60,7 @@ fn main() {
 //     bb4: {
 //         _0 = ();
 //         StorageDead(_5);
-//         EndRegion('26_1rs);
+//         EndRegion('30_1rs);
 //         StorageDead(_3);
 //         StorageDead(_1);
 //         return;
@@ -69,12 +69,12 @@ fn main() {
 //         _4 = ();
 //         StorageDead(_5);
 //         StorageLive(_7);
-//         _7 = &'26_3rs _1;
+//         _7 = &'30_3rs _1;
 //         FakeRead(ForLet, _7);
 //         _2 = ();
-//         EndRegion('26_3rs);
+//         EndRegion('30_3rs);
 //         StorageDead(_7);
-//         EndRegion('26_1rs);
+//         EndRegion('30_1rs);
 //         StorageDead(_3);
 //         goto -> bb1;
 //     }
