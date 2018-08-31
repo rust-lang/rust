@@ -39,7 +39,7 @@ cargo +nightly fmt
 To format code that requires edition 2018, create a `rustfmt.toml` [configuration](#configuring-rustfmt) file containing:
 
 ```toml
-edition = "Edition2018"
+edition = "2018"
 ```
 
 ## Limitations
