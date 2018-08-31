@@ -145,7 +145,6 @@ extern "C" void LLVMRustArchiveIteratorFree(LLVMRustArchiveIteratorRef RAI) {
 
 extern "C" const char *
 LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
-#if LLVM_VERSION_GE(4, 0)
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
     // rustc_codegen_llvm currently doesn't use this error string, but it might be
@@ -154,11 +153,6 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;
   }
-#else
-  ErrorOr<StringRef> NameOrErr = Child->getName();
-  if (NameOrErr.getError())
-    return nullptr;
-#endif
   StringRef Name = NameOrErr.get();
   *Size = Name.size();
   return Name.data();
@@ -167,19 +161,11 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
 extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef Child,
                                                 size_t *Size) {
   StringRef Buf;
-#if LLVM_VERSION_GE(4, 0)
   Expected<StringRef> BufOrErr = Child->getBuffer();
   if (!BufOrErr) {
     LLVMRustSetLastError(toString(BufOrErr.takeError()).c_str());
     return nullptr;
   }
-#else
-  ErrorOr<StringRef> BufOrErr = Child->getBuffer();
-  if (BufOrErr.getError()) {
-    LLVMRustSetLastError(BufOrErr.getError().message().c_str());
-    return nullptr;
-  }
-#endif
   Buf = BufOrErr.get();
   *Size = Buf.size();
   return Buf.data();
@@ -218,9 +204,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
       }
-#if LLVM_VERSION_GE(5, 0)
       MOrErr->MemberName = sys::path::filename(MOrErr->MemberName);
-#endif
       Members.push_back(std::move(*MOrErr));
     } else {
       Expected<NewArchiveMember> MOrErr =

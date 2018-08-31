@@ -32,21 +32,12 @@
 #include "llvm/Target/TargetSubtargetInfo.h"
 #endif
 
-#if LLVM_VERSION_GE(4, 0)
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-#if LLVM_VERSION_LE(4, 0)
-#include "llvm/Object/ModuleSummaryIndexObjectFile.h"
-#endif
-#endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
-
-#if LLVM_VERSION_GE(4, 0)
-#define PGO_AVAILABLE
-#endif
 
 using namespace llvm;
 using namespace llvm::legacy;
@@ -121,12 +112,8 @@ bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   LLVMPassManagerBuilderRef PMBR,
   LLVMPassManagerRef PMR
 ) {
-#if LLVM_VERSION_GE(4, 0)
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
   return true;
-#else
-  return false;
-#endif
 }
 
 #ifdef LLVM_COMPONENT_X86
@@ -288,17 +275,12 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
     return Reloc::PIC_;
   case LLVMRustRelocMode::DynamicNoPic:
     return Reloc::DynamicNoPIC;
-#if LLVM_VERSION_GE(4, 0)
   case LLVMRustRelocMode::ROPI:
     return Reloc::ROPI;
   case LLVMRustRelocMode::RWPI:
     return Reloc::RWPI;
   case LLVMRustRelocMode::ROPIRWPI:
     return Reloc::ROPI_RWPI;
-#else
-  default:
-    break;
-#endif
   }
   report_fatal_error("Bad RelocModel.");
 }
@@ -446,11 +428,8 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
-#if LLVM_VERSION_GE(4, 0)
   unwrap(PMBR)->PrepareForThinLTO = PrepareForThinLTO;
-#endif
 
-#ifdef PGO_AVAILABLE
   if (PGOGenPath) {
     assert(!PGOUsePath);
     unwrap(PMBR)->EnablePGOInstrGen = true;
@@ -460,9 +439,6 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
     assert(!PGOGenPath);
     unwrap(PMBR)->PGOInstrUse = PGOUsePath;
   }
-#else
-  assert(!PGOGenPath && !PGOUsePath && "Should've caught earlier");
-#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
@@ -712,7 +688,6 @@ extern "C" void LLVMRustPrintPasses() {
   LLVMInitializePasses();
   struct MyListener : PassRegistrationListener {
     void passEnumerate(const PassInfo *Info) {
-#if LLVM_VERSION_GE(4, 0)
       StringRef PassArg = Info->getPassArgument();
       StringRef PassName = Info->getPassName();
       if (!PassArg.empty()) {
@@ -722,11 +697,6 @@ extern "C" void LLVMRustPrintPasses() {
         printf("%15.*s - %.*s\n", (int)PassArg.size(), PassArg.data(),
                (int)PassName.size(), PassName.data());
       }
-#else
-      if (Info->getPassArgument() && *Info->getPassArgument()) {
-        printf("%15s - %s\n", Info->getPassArgument(), Info->getPassName());
-      }
-#endif
     }
   } Listener;
 
@@ -736,11 +706,7 @@ extern "C" void LLVMRustPrintPasses() {
 
 extern "C" void LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMBR,
                                             bool AddLifetimes) {
-#if LLVM_VERSION_GE(4, 0)
   unwrap(PMBR)->Inliner = llvm::createAlwaysInlinerLegacyPass(AddLifetimes);
-#else
-  unwrap(PMBR)->Inliner = createAlwaysInlinerPass(AddLifetimes);
-#endif
 }
 
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
@@ -793,23 +759,13 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 
 extern "C" bool
 LLVMRustThinLTOAvailable() {
-#if LLVM_VERSION_GE(4, 0)
   return true;
-#else
-  return false;
-#endif
 }
 
 extern "C" bool
 LLVMRustPGOAvailable() {
-#ifdef PGO_AVAILABLE
   return true;
-#else
-  return false;
-#endif
 }
-
-#if LLVM_VERSION_GE(4, 0)
 
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
 // right now. This ThinLTO support is only enabled on "recent ish" versions of
@@ -916,21 +872,10 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
-#if LLVM_VERSION_GE(5, 0)
     if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index, i)) {
       LLVMRustSetLastError(toString(std::move(Err)).c_str());
       return nullptr;
     }
-#else
-    Expected<std::unique_ptr<object::ModuleSummaryIndexObjectFile>> ObjOrErr =
-      object::ModuleSummaryIndexObjectFile::create(mem_buffer);
-    if (!ObjOrErr) {
-      LLVMRustSetLastError(toString(ObjOrErr.takeError()).c_str());
-      return nullptr;
-    }
-    auto Index = (*ObjOrErr)->takeIndex();
-    Ret->Index.mergeFrom(std::move(Index), i);
-#endif
   }
 
   // Collect for each module the list of function it defines (GUID -> Summary)
@@ -947,7 +892,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // combined index
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
-#if LLVM_VERSION_GE(5, 0)
 #if LLVM_VERSION_GE(7, 0)
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
@@ -962,16 +906,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ImportLists,
     Ret->ExportLists
   );
-#else
-  auto DeadSymbols = computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
-  ComputeCrossModuleImport(
-    Ret->Index,
-    Ret->ModuleToDefinedGVSummaries,
-    Ret->ImportLists,
-    Ret->ExportLists,
-    &DeadSymbols
-  );
-#endif
 
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
@@ -981,13 +915,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-#if LLVM_VERSION_GE(5, 0)
     if (I.second.SummaryList.size() > 1)
       PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second.SummaryList);
-#else
-    if (I.second.size() > 1)
-      PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second);
-#endif
   }
   auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
     const auto &Prevailing = PrevailingCopy.find(GUID);
@@ -1009,19 +938,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-#if LLVM_VERSION_GE(5, 0)
     for (auto &GVS: List.second.SummaryList) {
-#else
-    for (auto &GVS: List.second) {
-#endif
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();
-#if LLVM_VERSION_GE(5, 0)
       if (GVS->flags().Live)
-#else
-      if (!DeadSymbols.count(GUID))
-#endif
         ExportedGUIDs.insert(GUID);
     }
   }
@@ -1250,89 +1171,3 @@ LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   MD->clearOperands();
   MD->addOperand(Unit);
 }
-
-#else
-
-struct LLVMRustThinLTOData {
-};
-
-struct LLVMRustThinLTOModule {
-};
-
-extern "C" LLVMRustThinLTOData*
-LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
-                          int num_modules,
-                          const char **preserved_symbols,
-                          int num_symbols) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" bool
-LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" bool
-LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" bool
-LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" bool
-LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" void
-LLVMRustFreeThinLTOData(LLVMRustThinLTOData *Data) {
-  report_fatal_error("ThinLTO not available");
-}
-
-struct LLVMRustThinLTOBuffer {
-};
-
-extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" void
-LLVMRustThinLTOBufferFree(LLVMRustThinLTOBuffer *Buffer) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" const void*
-LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" size_t
-LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" LLVMModuleRef
-LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
-                               const char *data,
-                               size_t len,
-                               const char *identifier) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" void
-LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
-                                DICompileUnit **A,
-                                DICompileUnit **B) {
-  report_fatal_error("ThinLTO not available");
-}
-
-extern "C" void
-LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod) {
-  report_fatal_error("ThinLTO not available");
-}
-
-#endif // LLVM_VERSION_GE(4, 0)
