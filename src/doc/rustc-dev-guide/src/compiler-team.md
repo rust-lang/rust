@@ -7,6 +7,16 @@ and implement new features. Members of the Rust compiler team are
 people who have made significant contributions to rustc and its
 design.
 
+## Discussion
+
+Currently the compiler team chats in a number of places. There is an
+ongoing [thread] on the internals board about trying to find a permanent
+home. In any case, you can find people in one of three places at the moment:
+
+- The `#rustc` channel on mozilla's IRC (`irc.mozilla.org`)
+- The `t-compiler` stream on [the Zulip instance](https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler)
+- The `compiler` channel on the [rust-lang discord](https://discord.gg/rust-lang)
+
 ## Rust compiler meeting
 
 The compiler team has a weekly meeting where we do triage and try to
