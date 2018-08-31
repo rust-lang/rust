@@ -93,3 +93,29 @@ impl Foo {
             .map(|(k, deps)| (k.clone(), deps.iter().cloned().filter(|d| dirties.contains(&d)).collect()))
     }
 }
+
+// #2907
+fn foo() {
+    let x = foo
+        .bar??  ? // comment
+        .baz;
+    let x = foo
+        .bar?  ??
+    // comment
+        .baz;
+    let x = foo
+        .bar? ? ? // comment
+    // comment
+        .baz;
+    let x = foo
+        .bar? ?? // comment
+    // comment
+        ? ??
+    // comment
+        ?  ??
+    // comment
+        ???  
+    // comment
+        ? ? ?
+        .baz;
+}

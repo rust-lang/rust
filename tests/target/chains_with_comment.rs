@@ -116,3 +116,25 @@ impl Foo {
             })
     }
 }
+
+// #2907
+fn foo() {
+    let x = foo
+        .bar??? // comment
+        .baz;
+    let x = foo
+        .bar???
+        // comment
+        .baz;
+    let x = foo
+        .bar??? // comment
+        // comment
+        .baz;
+    let x = foo
+        .bar??????????????? // comment
+        // comment
+        // comment
+        // comment
+        // comment
+        .baz;
+}
