@@ -24,9 +24,9 @@ pub mod m1 {
 macro_rules! indirect_line { () => ( line!() ) }
 
 pub fn main() {
-    assert_eq!(line!(), 24);
+    assert_eq!(line!(), 27);
     assert_eq!(column!(), 16);
-    assert_eq!(indirect_line!(), 26);
+    assert_eq!(indirect_line!(), 29);
     assert!((file!().ends_with("syntax-extension-source-utils.rs")));
     assert_eq!(stringify!((2*3) + 5).to_string(), "( 2 * 3 ) + 5".to_string());
     assert!(include!("syntax-extension-source-utils-files/includeme.\
@@ -43,5 +43,5 @@ pub fn main() {
     // The Windows tests are wrapped in an extra module for some reason
     assert!((m1::m2::where_am_i().ends_with("m1::m2")));
 
-    assert_eq!((43, "( 2 * 3 ) + 5"), (line!(), stringify!((2*3) + 5)));
+    assert_eq!((46, "( 2 * 3 ) + 5"), (line!(), stringify!((2*3) + 5)));
 }

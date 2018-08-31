@@ -32,9 +32,9 @@ fn main() {
         columnline!()
     } else { (0, 0) };
     let cl = columnline!();
-    assert_eq!(closure(), (9, 25));
-    assert_eq!(iflet, (9, 28));
-    assert_eq!(cl, (14, 30));
+    assert_eq!(closure(), (9, 29));
+    assert_eq!(iflet, (9, 32));
+    assert_eq!(cl, (14, 34));
     let indirect = indirectcolumnline!();
-    assert_eq!(indirect, (20, 34));
+    assert_eq!(indirect, (20, 38));
 }
