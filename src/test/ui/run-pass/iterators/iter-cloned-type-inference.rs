@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+
 // Test to see that the element type of .cloned() can be inferred
 // properly. Previously this would fail to deduce the type of `sum`.
 
