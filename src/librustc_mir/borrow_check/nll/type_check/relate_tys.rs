@@ -15,7 +15,7 @@ use borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::{Canonical, CanonicalVarInfos};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::traits::query::Fallible;
-use rustc::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, CanonicalTy, CanonicalVar, RegionVid, Ty, TyCtxt};
@@ -128,7 +128,7 @@ struct TypeRelating<'cx, 'bccx: 'cx, 'gcx: 'tcx, 'tcx: 'bccx> {
     /// how can we enforce that? I guess I could add some kind of
     /// "minimum universe constraint" that we can feed to the NLL checker.
     /// --> also, we know this doesn't happen
-    canonical_var_values: IndexVec<CanonicalVar, Option<ScopesAndKind<'tcx>>>,
+    canonical_var_values: IndexVec<CanonicalVar, Option<Kind<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -264,6 +264,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
     /// equated, then equate it again.
     fn equate_var(
         &mut self,
+        universal_regions: &UniversalRegions<'tcx>,
         var: CanonicalVar,
         b_kind: Kind<'tcx>,
     ) -> RelateResult<'tcx, Kind<'tcx>> {
@@ -274,21 +275,25 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
 
         // The canonical variable already had a value. Equate that
         // value with `b`.
-        let old_value = self.canonical_var_values[var].clone();
-        if let Some(ScopesAndKind { scopes, kind }) = old_value {
-            debug!("equate_var: installing kind={:?} scopes={:?}", kind, scopes);
-            let old_a_scopes = mem::replace(&mut self.a_scopes, scopes);
-            let result = self.relate(&kind, &b_kind);
+        if let Some(a_kind) = self.canonical_var_values[var] {
+            debug!("equate_var: a_kind={:?}", a_kind);
+
+            // The values we extract from `canonical_var_values` have
+            // been "instantiated" and hence the set of scopes we have
+            // doesn't matter -- just to be sure, put an empty vector
+            // in there.
+            let old_a_scopes = mem::replace(&mut self.a_scopes, vec![]);
+            let result = self.relate(&a_kind, &b_kind);
             self.a_scopes = old_a_scopes;
+
             debug!("equate_var: complete, result = {:?}", result);
             return result;
         }
 
         // Not yet. Capture the value from the RHS and carry on.
-        self.canonical_var_values[var] = Some(ScopesAndKind {
-            scopes: self.b_scopes.clone(),
-            kind: b_kind,
-        });
+        let closed_kind =
+            self.instantiate_traversed_binders(universal_regions, &self.b_scopes, b_kind);
+        self.canonical_var_values[var] = Some(closed_kind);
         debug!(
             "equate_var: capturing value {:?}",
             self.canonical_var_values[var]
@@ -302,6 +307,31 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         // ensured there are no universe errors. So we just kind
         // of over look this right now.
         Ok(b_kind)
+    }
+
+    /// As we traverse types and pass through binders, we push the
+    /// values for each of the regions bound by those binders onto
+    /// `scopes`. This function goes through `kind` and replaces any
+    /// references into those scopes with the corresponding free
+    /// region. Thus the resulting value should have no escaping
+    /// references to bound things and can be transported into other
+    /// scopes.
+    fn instantiate_traversed_binders(
+        &self,
+        universal_regions: &UniversalRegions<'tcx>,
+        scopes: &[BoundRegionScope],
+        kind: Kind<'tcx>,
+    ) -> Kind<'tcx> {
+        let k = kind.fold_with(&mut BoundReplacer {
+            type_rel: self,
+            first_free_index: ty::INNERMOST,
+            universal_regions,
+            scopes: scopes,
+        });
+
+        assert!(!k.has_escaping_regions());
+
+        k
     }
 }
 
@@ -352,8 +382,21 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         // Watch out for the case that we are matching a `?T` against the
         // right-hand side.
         if let ty::Infer(ty::CanonicalTy(var)) = a.sty {
-            self.equate_var(var, b.into())?;
-            Ok(a)
+            if let Some(&mut BorrowCheckContext {
+                universal_regions, ..
+            }) = self.borrowck_context
+            {
+                self.equate_var(universal_regions, var, b.into())?;
+                Ok(a)
+            } else {
+                // if NLL is not enabled just ignore these variables
+                // for now; in that case we're just doing a "sanity
+                // check" anyway, and this only affects user-given
+                // annotations like `let x: Vec<_> = ...` -- and then
+                // only if the user uses type aliases to make a type
+                // variable repeat more than once.
+                Ok(a)
+            }
         } else {
             debug!(
                 "tys(a={:?}, b={:?}, variance={:?})",
@@ -374,7 +417,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         }) = self.borrowck_context
         {
             if let ty::ReCanonical(var) = a {
-                self.equate_var(*var, b.into())?;
+                self.equate_var(universal_regions, *var, b.into())?;
                 return Ok(a);
             }
 
@@ -543,5 +586,51 @@ impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
         }
 
         false
+    }
+}
+
+/// When we encounter a binder like `for<..> fn(..)`, we actually have
+/// to walk the `fn` value to find all the values bound by the `for`
+/// (these are not explicitly present in the ty representation right
+/// now). This visitor handles that: it descends the type, tracking
+/// binder depth, and finds late-bound regions targeting the
+/// `for<..`>.  For each of those, it creates an entry in
+/// `bound_region_scope`.
+struct BoundReplacer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
+    type_rel: &'me TypeRelating<'me, 'bccx, 'gcx, 'tcx>,
+    first_free_index: ty::DebruijnIndex,
+    universal_regions: &'me UniversalRegions<'tcx>,
+    scopes: &'me [BoundRegionScope],
+}
+
+impl TypeFolder<'gcx, 'tcx> for BoundReplacer<'me, 'bccx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        self.type_rel.tcx()
+    }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+        self.first_free_index.shift_in(1);
+        let result = t.super_fold_with(self);
+        self.first_free_index.shift_out(1);
+        result
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let tcx = self.tcx();
+
+        if let ty::ReLateBound(debruijn, _) = r {
+            if *debruijn < self.first_free_index {
+                return r;
+            }
+        }
+
+        let region_vid = self.type_rel.replace_bound_region(
+            self.universal_regions,
+            r,
+            self.first_free_index,
+            self.scopes,
+        );
+
+        tcx.mk_region(ty::ReVar(region_vid))
     }
 }
