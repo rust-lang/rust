@@ -203,15 +203,15 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
     /// the region with; to do so, it indexes backwards into the list
     /// of ambient scopes `scopes`.
     fn lookup_bound_region(
-        &self,
         debruijn: ty::DebruijnIndex,
         br: &ty::BoundRegion,
+        first_free_index: ty::DebruijnIndex,
         scopes: &[BoundRegionScope],
     ) -> RegionVid {
         // The debruijn index is a "reverse index" into the
         // scopes listing. So when we have INNERMOST (0), we
         // want the *last* scope pushed, and so forth.
-        let debruijn_index = debruijn.index() - ty::INNERMOST.index();
+        let debruijn_index = debruijn.index() - first_free_index.index();
         let scope = &scopes[scopes.len() - debruijn_index - 1];
 
         // Find this bound region in that scope to map to a
@@ -226,10 +226,13 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         &self,
         universal_regions: &UniversalRegions<'tcx>,
         r: ty::Region<'tcx>,
+        first_free_index: ty::DebruijnIndex,
         scopes: &[BoundRegionScope],
     ) -> RegionVid {
         match r {
-            ty::ReLateBound(debruijn, br) => self.lookup_bound_region(*debruijn, br, scopes),
+            ty::ReLateBound(debruijn, br) => {
+                Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
+            }
 
             ty::ReVar(v) => *v,
 
@@ -380,8 +383,10 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
                 a, b, self.ambient_variance
             );
 
-            let v_a = self.replace_bound_region(universal_regions, a, &self.a_scopes);
-            let v_b = self.replace_bound_region(universal_regions, b, &self.b_scopes);
+            let v_a =
+                self.replace_bound_region(universal_regions, a, ty::INNERMOST, &self.a_scopes);
+            let v_b =
+                self.replace_bound_region(universal_regions, b, ty::INNERMOST, &self.b_scopes);
 
             debug!("regions: v_a = {:?}", v_a);
             debug!("regions: v_b = {:?}", v_b);
