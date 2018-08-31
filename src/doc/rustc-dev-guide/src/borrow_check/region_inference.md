@@ -1,11 +1,11 @@
-# MIR-based region checking (NLL)
+# Region inference (NLL)
 
 The MIR-based region checking code is located in
 [the `rustc_mir::borrow_check::nll` module][nll]. (NLL, of course,
 stands for "non-lexical lifetimes", a term that will hopefully be
 deprecated once they become the standard kind of lifetime.)
 
-[nll]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check/nll
+[nll]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/index.html
 
 The MIR-based region analysis consists of two major functions:
 

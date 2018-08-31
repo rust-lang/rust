@@ -14,7 +14,10 @@ enforcing a number of properties:
 At the time of this writing, the code is in a state of transition. The
 "main" borrow checker still works by processing [the HIR](hir.html),
 but that is being phased out in favor of the MIR-based borrow checker.
-Doing borrow checking on MIR has two key advantages:
+Accordingly, this documentation focuses on the new, MIR-based borrow
+checker.
+
+Doing borrow checking on MIR has several advantages:
 
 - The MIR is *far* less complex than the HIR; the radical desugaring
   helps prevent bugs in the borrow checker. (If you're curious, you
@@ -30,30 +33,31 @@ Doing borrow checking on MIR has two key advantages:
 
 The borrow checker source is found in
 [the `rustc_mir::borrow_check` module][b_c]. The main entry point is
-the `mir_borrowck` query. At the time of this writing, MIR borrowck can operate
-in several modes, but this text will describe only the mode when NLL is enabled
-(what you get with `#![feature(nll)]`).
+the [`mir_borrowck`] query.
 
-[b_c]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check
-
-The overall flow of the borrow checker is as follows:
+[b_c]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html
+[`mir_borrowck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/fn.mir_borrowck.html
 
 - We first create a **local copy** C of the MIR. In the coming steps,
   we will modify this copy in place to modify the types and things to
   include references to the new regions that we are computing.
-- We then invoke `nll::replace_regions_in_mir` to modify this copy C.
-  Among other things, this function will replace all of the regions in
+- We then invoke [`replace_regions_in_mir`] to modify this copy C.
+  Among other things, this function will replace all of the [regions](./appendix/glossary.html) in
   the MIR with fresh [inference variables](./appendix/glossary.html).
-  - (More details can be found in [the regionck section](./mir/regionck.html).)
-- Next, we perform a number of [dataflow
-  analyses](./appendix/background.html#dataflow)
-  that compute what data is moved and when. The results of these analyses
-  are needed to do both borrow checking and region inference.
-- Using the move data, we can then compute the values of all the regions in the
-  MIR.
-  - (More details can be found in [the NLL section](./mir/regionck.html).)
-- Finally, the borrow checker itself runs, taking as input (a) the
-  results of move analysis and (b) the regions computed by the region
-  checker. This allows us to figure out which loans are still in scope
-  at any particular point.
+- Next, we perform a number of
+  [dataflow analyses](./appendix/background.html#dataflow) that
+  compute what data is moved and when.
+- We then do a [second type check](borrow_check/type_check.html) across the MIR:
+  the purpose of this type check is to determine all of the constraints between
+  different regions.
+- Next, we do [region inference](borrow_check/region_inference.html), which computes
+  the values of each region -- basically, points in the control-flow graph.
+- At this point, we can compute the "borrows in scope" at each point.
+- Finally, we do a second walk over the MIR, looking at the actions it
+  does and reporting errors. For example, if we see a statement like
+  `*a + 1`, then we would check that the variable `a` is initialized
+  and that it is not mutably borrowed, as either of those would
+  require an error to be reported.
+  - Doing this check requires the results of all the previous analyses.
 
+[`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.replace_regions_in_mir.html
