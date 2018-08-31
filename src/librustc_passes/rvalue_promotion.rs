@@ -27,7 +27,6 @@
 use rustc::ty::cast::CastKind;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -38,7 +37,6 @@ use rustc::util::nodemap::{ItemLocalSet, NodeSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
 use self::Promotability::*;
 use std::ops::{BitAnd, BitOr};
@@ -159,41 +157,15 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    fn handle_const_fn_call(&mut self, def_id: DefId,
-                            ret_ty: Ty<'gcx>, span: Span) -> Promotability {
-        if let NotPromotable = self.type_promotability(ret_ty) {
-            return NotPromotable;
-        }
-
-        let node_check = if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
-            FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
-                fn_like.constness() == hir::Constness::Const
-            })
+    fn handle_const_fn_call(
+        &mut self,
+        def_id: DefId,
+    ) -> Promotability {
+        if self.tcx.is_promotable_const_fn(def_id) {
+            Promotable
         } else {
-            self.tcx.is_const_fn(def_id)
-        };
-
-        if !node_check {
-            return NotPromotable
-        }
-
-        if let Some(&attr::Stability {
-            const_stability: Some(ref feature_name),
-            .. }) = self.tcx.lookup_stability(def_id) {
-            let stable_check =
-                // feature-gate is enabled,
-                self.tcx.features()
-                    .declared_lib_features
-                    .iter()
-                    .any(|&(ref sym, _)| sym == feature_name) ||
-
-                    // this comes from a macro that has #[allow_internal_unstable]
-                    span.allows_unstable();
-            if !stable_check {
-                return NotPromotable
+            NotPromotable
             }
-        };
-        Promotable
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
@@ -446,14 +418,10 @@ fn check_expr_kind<'a, 'tcx>(
             let def_result = match def {
                 Def::StructCtor(_, CtorKind::Fn) |
                 Def::VariantCtor(_, CtorKind::Fn) => Promotable,
-                Def::Fn(did) => {
-                    v.handle_const_fn_call(did, node_ty, e.span)
-                }
+                Def::Fn(did) => v.handle_const_fn_call(did),
                 Def::Method(did) => {
                     match v.tcx.associated_item(did).container {
-                        ty::ImplContainer(_) => {
-                            v.handle_const_fn_call(did, node_ty, e.span)
-                        }
+                        ty::ImplContainer(_) => v.handle_const_fn_call(did),
                         ty::TraitContainer(_) => NotPromotable,
                     }
                 }
@@ -469,16 +437,13 @@ fn check_expr_kind<'a, 'tcx>(
             if let Some(def) = v.tables.type_dependent_defs().get(e.hir_id) {
                 let def_id = def.def_id();
                 match v.tcx.associated_item(def_id).container {
-                    ty::ImplContainer(_) => {
-                        method_call_result = method_call_result
-                            & v.handle_const_fn_call(def_id, node_ty, e.span);
-                    }
-                    ty::TraitContainer(_) => return NotPromotable,
-                };
+                    ty::ImplContainer(_) => method_call_result & v.handle_const_fn_call(def_id),
+                    ty::TraitContainer(_) => NotPromotable,
+                }
             } else {
                 v.tcx.sess.delay_span_bug(e.span, "no type-dependent def for method call");
+                NotPromotable
             }
-            method_call_result
         }
         hir::ExprKind::Struct(ref _qpath, ref hirvec, ref option_expr) => {
             let mut struct_result = Promotable;

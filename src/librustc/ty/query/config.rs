@@ -434,7 +434,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_object_safe<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::is_const_fn<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::is_const_fn_raw<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id))
     }

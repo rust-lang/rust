@@ -2865,6 +2865,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// `ptr` must be non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[cfg_attr(not(stage0), rustc_promotable)]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         NonNull { pointer: NonZero(ptr as _) }
     }

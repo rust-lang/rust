@@ -201,7 +201,6 @@ impl_stable_hash_for!(struct CompileTimeEvaluator {});
 #[derive(Clone, Debug)]
 enum ConstEvalError {
     NeedsRfc(String),
-    NotConst(String),
 }
 
 impl fmt::Display for ConstEvalError {
@@ -215,7 +214,6 @@ impl fmt::Display for ConstEvalError {
                     msg
                 )
             }
-            NotConst(ref msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -225,7 +223,6 @@ impl Error for ConstEvalError {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(_) => "this feature needs an rfc before being allowed inside constants",
-            NotConst(_) => "this feature is not compatible with constant evaluation",
         }
     }
 
@@ -255,9 +252,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 ecx.goto_block(ret)?; // fully evaluated and done
                 return Ok(None);
             }
-            return Err(
-                ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
-            );
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def) {

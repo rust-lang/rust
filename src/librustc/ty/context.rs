@@ -1099,37 +1099,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         local as usize == global as usize
     }
 
-    /// Returns true if this function must conform to `min_const_fn`
-    pub fn is_min_const_fn(self, def_id: DefId) -> bool {
-        if self.features().staged_api {
-            // some intrinsics are waved through if called inside the
-            // standard library. Users never need to call them directly
-            if let abi::Abi::RustIntrinsic = self.fn_sig(def_id).abi() {
-                assert!(!self.is_const_fn(def_id));
-                match &self.item_name(def_id).as_str()[..] {
-                    | "size_of"
-                    | "min_align_of"
-                    => return true,
-                    _ => {},
-                }
-            }
-            // in order for a libstd function to be considered min_const_fn
-            // it needs to be stable and have no `rustc_const_unstable` attribute
-            match self.lookup_stability(def_id) {
-                // stable functions with unstable const fn aren't `min_const_fn`
-                Some(&attr::Stability { const_stability: Some(_), .. }) => false,
-                // unstable functions don't need to conform
-                Some(&attr::Stability { ref level, .. }) if level.is_unstable() => false,
-                // everything else needs to conform, because it would be callable from
-                // other `min_const_fn` functions
-                _ => true,
-            }
-        } else {
-            // users enabling the `const_fn` can do what they want
-            !self.sess.features_untracked().const_fn
-        }
-    }
-
     /// Create a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid

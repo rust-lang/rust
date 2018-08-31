@@ -30,12 +30,33 @@ error[E0080]: could not evaluate constant expression
   --> $DIR/const-fn-error.rs:29:13
    |
 LL |     for i in 0..x {
-   |              ---- calling non-const fn `<I as std::iter::IntoIterator><std::ops::Range<usize>>::into_iter`
+   |              ---- inside call to `std::iter::range::<impl std::iter::Iterator for std::ops::Range<A>><usize>::next`
 ...
 LL |     let a : [i32; f(X)]; //~ ERROR E0080
    |             ^^^^^^----^
    |                   |
    |                   inside call to `f`
+   | 
+  ::: $SRC_DIR/libcore/ptr.rs:LL:COL
+   |
+LL |         let z = read(x);
+   |                 ------- inside call to `std::ptr::read::<usize>`
+...
+LL |     let mut tmp: T = mem::uninitialized();
+   |                      -------------------- inside call to `std::mem::uninitialized::<usize>`
+   | 
+  ::: $SRC_DIR/libcore/iter/range.rs:LL:COL
+   |
+LL |                 mem::swap(&mut n, &mut self.start);
+   |                 ---------------------------------- inside call to `std::mem::swap::<usize>`
+   | 
+  ::: $SRC_DIR/libcore/mem.rs:LL:COL
+   |
+LL |     intrinsics::uninit()
+   |     -------------------- "calling intrinsic `uninit`" needs an rfc before being allowed inside constants
+...
+LL |         ptr::swap_nonoverlapping_one(x, y);
+   |         ---------------------------------- inside call to `std::ptr::swap_nonoverlapping_one::<usize>`
 
 error: aborting due to 5 previous errors
 

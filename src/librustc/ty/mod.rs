@@ -94,6 +94,7 @@ pub mod binding;
 pub mod cast;
 #[macro_use]
 pub mod codec;
+mod constness;
 pub mod error;
 mod erase_regions;
 pub mod fast_reject;
@@ -3034,6 +3035,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     erase_regions::provide(providers);
     layout::provide(providers);
     util::provide(providers);
+    constness::provide(providers);
     *providers = ty::query::Providers {
         associated_item,
         associated_item_def_ids,
