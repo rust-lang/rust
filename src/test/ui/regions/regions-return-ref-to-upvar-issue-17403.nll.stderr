@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:17:24
-   |
-LL |         let mut f = || &mut x; //~ ERROR cannot infer
-   |                        ^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:17:24
    |

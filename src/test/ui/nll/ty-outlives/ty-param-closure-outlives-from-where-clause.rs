@@ -42,7 +42,6 @@ fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
         // function, there is no where clause *anywhere*, and hence we
         // get an error (but reported by the closure creator).
         require(&x, &y)
-        //~^ WARNING not reporting region error due to nll
     })
 }
 
@@ -76,7 +75,6 @@ where
         //~^ ERROR the parameter type `T` may not live long enough
         // See `correct_region`
         require(&x, &y)
-        //~^ WARNING not reporting region error due to nll
     })
 }
 

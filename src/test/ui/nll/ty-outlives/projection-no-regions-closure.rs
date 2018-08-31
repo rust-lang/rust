@@ -33,8 +33,7 @@ where
     T: Iterator,
 {
     with_signature(x, |mut y| Box::new(y.next()))
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+    //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 #[rustc_regions]
@@ -51,8 +50,7 @@ where
     T: 'b + Iterator,
 {
     with_signature(x, |mut y| Box::new(y.next()))
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+    //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 #[rustc_regions]

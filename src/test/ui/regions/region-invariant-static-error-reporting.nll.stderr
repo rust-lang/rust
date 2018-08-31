@@ -1,14 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/region-invariant-static-error-reporting.rs:24:15
-   |
-LL |       let bad = if x.is_some() {
-   |  _______________^
-LL | |         x.unwrap()
-LL | |     } else {
-LL | |         mk_static()
-LL | |     };
-   | |_____^
-
 error: borrowed data escapes outside of function
   --> $DIR/region-invariant-static-error-reporting.rs:25:9
    |

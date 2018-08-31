@@ -1,21 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-trait-bound-closure.rs:47:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-trait-bound-closure.rs:58:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-one-region-trait-bound-closure.rs:79:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
 note: External requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:29
    |
@@ -38,8 +20,8 @@ LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
-...  |
-LL | |     //~| ERROR
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | |     //~^ ERROR
 LL | | }
    | |_^
    |
@@ -60,7 +42,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:58:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:57:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,14 +58,14 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:53:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:52:1
    |
 LL | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR
+LL | |     //~^ ERROR
 LL | | }
    | |_^
    |
@@ -94,7 +76,7 @@ LL | | }
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-trait-bound-closure.rs:58:5
+  --> $DIR/projection-one-region-trait-bound-closure.rs:57:5
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                           --  -- lifetime `'b` defined here
@@ -105,7 +87,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:79:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:77:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,14 +103,14 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:64:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:62:1
    |
 LL | / fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR
+LL | |     //~^ ERROR
 LL | | }
    | |_^
    |
@@ -139,7 +121,7 @@ LL | | }
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-trait-bound-closure.rs:79:5
+  --> $DIR/projection-one-region-trait-bound-closure.rs:77:5
    |
 LL | fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                        --  -- lifetime `'b` defined here
@@ -150,7 +132,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:90:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:87:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -166,7 +148,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:85:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:82:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -184,7 +166,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:102:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:99:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,7 +181,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:94:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:91:1
    |
 LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
 LL | | where

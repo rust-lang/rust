@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-early-bound-error-method.rs:30:9
-   |
-LL |         g2.get()
-   |         ^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-early-bound-error-method.rs:30:9
    |

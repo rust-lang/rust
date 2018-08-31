@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-16683.rs:14:9
-   |
-LL |         self.a(); //~ ERROR cannot infer
-   |         ^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/issue-16683.rs:14:14
-   |
-LL |         self.a(); //~ ERROR cannot infer
-   |              ^
-
 error: borrowed data escapes outside of function
   --> $DIR/issue-16683.rs:14:9
    |

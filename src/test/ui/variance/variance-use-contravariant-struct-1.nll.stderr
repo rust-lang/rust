@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/variance-use-contravariant-struct-1.rs:22:5
-   |
-LL |     v //~ ERROR mismatched types
-   |     ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/variance-use-contravariant-struct-1.rs:22:5
    |

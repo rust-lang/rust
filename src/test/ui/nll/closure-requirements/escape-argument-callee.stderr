@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/escape-argument-callee.rs:36:50
-   |
-LL |         let mut closure = expect_sig(|p, y| *p = y);
-   |                                                  ^
-
 note: No external requirements
   --> $DIR/escape-argument-callee.rs:36:38
    |

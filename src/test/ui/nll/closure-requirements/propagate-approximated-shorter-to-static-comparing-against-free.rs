@@ -29,7 +29,6 @@ fn case1() {
     let a = 0;
     let cell = Cell::new(&a);
     foo(cell, |cell_a, cell_x| {
-        //~^ WARNING not reporting region error due to nll
         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
         //~^ ERROR
     })

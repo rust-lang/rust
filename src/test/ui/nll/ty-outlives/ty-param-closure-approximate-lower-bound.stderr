@@ -1,21 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:31
-   |
-LL |     twice(cell, value, |a, b| invoke(a, b));
-   |                               ^^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31
-   |
-LL |     twice(cell, value, |a, b| invoke(a, b));
-   |                               ^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31
-   |
-LL |     twice(cell, value, |a, b| invoke(a, b));
-   |                               ^^^^^^^^^^^^
-
 note: External requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:24
    |
@@ -36,9 +18,6 @@ note: No external requirements
 LL | / fn generic<T>(value: T) {
 LL | |     let cell = Cell::new(&());
 LL | |     twice(cell, value, |a, b| invoke(a, b));
-LL | |     //~^ WARNING not reporting region error
-LL | |     //
-LL | |     // This error from the old region solver looks bogus.
 LL | | }
    | |_^
    |
@@ -47,7 +26,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:39:24
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -61,13 +40,11 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:41:1
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:38:1
    |
 LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
 LL | |     twice(cell, value, |a, b| invoke(a, b));
-LL | |     //~^ WARNING not reporting region error
-LL | |     //~| WARNING not reporting region error
-LL | |     //~| ERROR the parameter type `T` may not live long enough
+LL | |     //~^ ERROR the parameter type `T` may not live long enough
 LL | | }
    | |_^
    |
@@ -76,7 +53,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:39:24
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^

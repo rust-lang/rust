@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-one-is-struct-4.rs:14:11
-   |
-LL |     y.b = x; //~ ERROR lifetime mismatch
-   |           ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/ex3-both-anon-regions-one-is-struct-4.rs:14:5
    |

@@ -1,27 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:18:42
-   |
-LL |     let x: Box<Foo + 'static> = Box::new(v);
-   |                                          ^
-
-warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:14
-   |
-LL |     Box::new(v)
-   |              ^
-
-warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:31:14
-   |
-LL |     Box::new(v)
-   |              ^
-
-warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-in-coercion.rs:36:14
-   |
-LL |     Box::new(v)
-   |              ^
-
 error[E0621]: explicit lifetime required in the type of `v`
   --> $DIR/region-object-lifetime-in-coercion.rs:18:33
    |

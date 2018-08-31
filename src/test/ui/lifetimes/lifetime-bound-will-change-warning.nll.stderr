@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/lifetime-bound-will-change-warning.rs:44:13
-   |
-LL |     ref_obj(x) //~ ERROR mismatched types
-   |             ^
-
-warning: not reporting region error due to nll
-  --> $DIR/lifetime-bound-will-change-warning.rs:49:18
-   |
-LL |     lib::ref_obj(x) //~ ERROR mismatched types
-   |                  ^
-
 error: borrowed data escapes outside of function
   --> $DIR/lifetime-bound-will-change-warning.rs:44:5
    |

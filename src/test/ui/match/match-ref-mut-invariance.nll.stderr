@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/match-ref-mut-invariance.rs:20:37
-   |
-LL |         match self.0 { ref mut x => x } //~ ERROR mismatched types
-   |                                     ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/match-ref-mut-invariance.rs:20:9
    |

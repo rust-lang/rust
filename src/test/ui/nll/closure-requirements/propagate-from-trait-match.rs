@@ -53,7 +53,6 @@ where
         // The latter does not hold.
 
         require(value);
-        //~^ WARNING not reporting region error due to nll
     });
 }
 

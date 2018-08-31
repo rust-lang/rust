@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-ret-borrowed.rs:23:14
-   |
-LL |     with(|o| o)
-   |              ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-ret-borrowed.rs:23:14
    |

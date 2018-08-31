@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/static-return-lifetime-infered.rs:17:16
-   |
-LL |         self.x.iter().map(|a| a.0)
-   |                ^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/static-return-lifetime-infered.rs:21:16
-   |
-LL |         self.x.iter().map(|a| a.0)
-   |                ^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:17:9
    |

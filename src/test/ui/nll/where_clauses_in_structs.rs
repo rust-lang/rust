@@ -22,7 +22,6 @@ struct Foo<'a: 'b, 'b> {
 fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
     Foo { x, y };
     //~^ ERROR unsatisfied lifetime constraints
-    //~| WARNING not reporting region error due to nll
 }
 
 fn main() {}

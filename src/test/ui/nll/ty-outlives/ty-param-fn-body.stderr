@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-fn-body.rs:29:5
-   |
-LL |     outlives(cell, t)
-   |     ^^^^^^^^
-
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn-body.rs:29:5
    |

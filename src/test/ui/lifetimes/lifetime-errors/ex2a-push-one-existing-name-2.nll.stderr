@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ex2a-push-one-existing-name-2.rs:16:12
-   |
-LL |     y.push(x); //~ ERROR explicit lifetime
-   |            ^
-
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex2a-push-one-existing-name-2.rs:16:5
    |

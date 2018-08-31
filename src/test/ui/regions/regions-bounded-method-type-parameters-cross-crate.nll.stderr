@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-bounded-method-type-parameters-cross-crate.rs:30:7
-   |
-LL |     a.bigger_region(b) //~ ERROR 30:7: 30:20: lifetime mismatch [E0623]
-   |       ^^^^^^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-bounded-method-type-parameters-cross-crate.rs:30:5
    |

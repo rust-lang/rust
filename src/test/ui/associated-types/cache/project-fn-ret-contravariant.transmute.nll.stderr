@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/project-fn-ret-contravariant.rs:48:8
-   |
-LL |    bar(foo, x) //[transmute]~ ERROR E0495
-   |        ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/project-fn-ret-contravariant.rs:48:4
    |

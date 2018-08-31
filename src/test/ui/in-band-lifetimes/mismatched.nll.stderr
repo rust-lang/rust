@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/mismatched.rs:14:42
-   |
-LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime required
-   |                                          ^
-
-warning: not reporting region error due to nll
-  --> $DIR/mismatched.rs:16:46
-   |
-LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
-   |                                              ^
-
 error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/mismatched.rs:14:42
    |

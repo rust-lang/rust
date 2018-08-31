@@ -36,7 +36,6 @@ fn main() {
     give_any(|y| x = Some(y));
     //[ast]~^ ERROR borrowed data cannot be stored outside of its closure
     //[migrate]~^^ ERROR borrowed data cannot be stored outside of its closure
-    //[nll]~^^^ WARN not reporting region error due to nll
-    //[nll]~| ERROR borrowed data escapes outside of closure
+    //[nll]~^^^ ERROR borrowed data escapes outside of closure
     //[nll]~| ERROR cannot assign to `x`, as it is not declared as mutable
 }

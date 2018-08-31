@@ -1,27 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-two-region-trait-bound-closure.rs:59:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-two-region-trait-bound-closure.rs:80:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/projection-two-region-trait-bound-closure.rs:108:39
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^
-
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
    |
@@ -45,8 +21,8 @@ LL | / fn no_relationships_late<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | | {
-...  |
-LL | |     //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | |     //~^ ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 LL | | }
    | |_^
    |
@@ -65,7 +41,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReFree(DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:18), 'a))`...
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:58:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,14 +58,14 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:54:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:53:1
    |
 LL | / fn no_relationships_early<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
+LL | |     //~^ ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
 LL | | }
    | |_^
    |
@@ -101,7 +77,7 @@ LL | | }
            ]
 
 error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:58:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +85,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:78:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -126,14 +102,14 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:63:1
    |
 LL | / fn projection_outlives<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
+LL | |     //~^ ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
 LL | | }
    | |_^
    |
@@ -145,7 +121,7 @@ LL | | }
            ]
 
 error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:78:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -153,7 +129,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:91:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:88:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,7 +146,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:86:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:83:1
    |
 LL | / fn elements_outlive1<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -189,7 +165,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:100:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:97:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +182,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:95:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:92:1
    |
 LL | / fn elements_outlive2<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -225,7 +201,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:108:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:105:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -240,14 +216,14 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:104:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:101:1
    |
 LL | / fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | | {
-...  |
-LL | |     //~| ERROR
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | |     //~^ ERROR
 LL | | }
    | |_^
    |
@@ -257,7 +233,7 @@ LL | | }
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-two-region-trait-bound-closure.rs:108:5
+  --> $DIR/projection-two-region-trait-bound-closure.rs:105:5
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                --  -- lifetime `'b` defined here
@@ -268,7 +244,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:119:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:115:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -284,7 +260,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#2r)>>::AssocType: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:114:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:110:1
    |
 LL | / fn two_regions_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -302,7 +278,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:131:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:127:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -317,7 +293,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-two-region-trait-bound-closure.rs:123:1
+  --> $DIR/projection-two-region-trait-bound-closure.rs:119:1
    |
 LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
 LL | | where

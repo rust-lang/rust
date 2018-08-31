@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/project-fn-ret-contravariant.rs:53:16
-   |
-LL |    let a = bar(foo, y);
-   |                ^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/project-fn-ret-contravariant.rs:54:16
-   |
-LL |    let b = bar(foo, x);
-   |                ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/project-fn-ret-contravariant.rs:53:12
    |

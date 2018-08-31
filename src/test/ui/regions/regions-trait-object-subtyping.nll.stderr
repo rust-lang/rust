@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-trait-object-subtyping.rs:25:5
-   |
-LL |     x //~ ERROR lifetime bound not satisfied
-   |     ^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-trait-object-subtyping.rs:32:5
-   |
-LL |     x //~ ERROR mismatched types
-   |     ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-trait-object-subtyping.rs:25:5
    |

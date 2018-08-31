@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:27
-   |
-LL |     with_signature(x, |y| y)
-   |                           ^
-
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5
-   |
-LL |     x
-   |     ^
-
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:23
    |
@@ -33,7 +21,7 @@ LL | | where
 LL | |     T: Debug,
 LL | | {
 ...  |
-LL | |     //~| ERROR the parameter type `T` may not live long enough
+LL | |     //~^ ERROR the parameter type `T` may not live long enough
 LL | | }
    | |_^
    |
@@ -51,7 +39,7 @@ LL |     with_signature(x, |y| y)
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:51:5
    |
 LL |     x
    |     ^

@@ -12,12 +12,6 @@ note: required by `assert_send`
 LL | fn assert_send<T:Send+'static>() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: not reporting region error due to nll
-  --> $DIR/kindck-send-object1.rs:24:5
-   |
-LL |     assert_send::<&'a (Dummy+Sync)>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
   --> $DIR/kindck-send-object1.rs:39:5
    |

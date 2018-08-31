@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-escape-unboxed-closure.rs:16:27
-   |
-LL |     with_int(&mut |y| x = Some(y));
-   |                           ^^^^^^^
-
 error: borrowed data escapes outside of closure
   --> $DIR/regions-escape-unboxed-closure.rs:16:23
    |

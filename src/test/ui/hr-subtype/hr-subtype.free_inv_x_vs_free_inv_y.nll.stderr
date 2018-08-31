@@ -1,23 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/hr-subtype.rs:43:26
-   |
-LL |               gimme::<$t2>(None::<$t1>);
-   |                            ^^^^^^^^^^^
-...
-LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
-LL | |                                     fn(Inv<'y>)) }
-   | |__________________________________________________- in this macro invocation
-
-warning: not reporting region error due to nll
-  --> $DIR/hr-subtype.rs:49:26
-   |
-LL |               gimme::<$t1>(None::<$t2>);
-   |                            ^^^^^^^^^^^
-...
-LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
-LL | |                                     fn(Inv<'y>)) }
-   | |__________________________________________________- in this macro invocation
-
 error: unsatisfied lifetime constraints
   --> $DIR/hr-subtype.rs:43:13
    |

@@ -40,12 +40,6 @@ LL |     let a: &Gettable<T> = &t;
    = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
    = note: required for the cast to the object type `dyn Gettable<T>`
 
-warning: not reporting region error due to nll
-  --> $DIR/kindck-impl-type-params.rs:42:13
-   |
-LL |     let a = &t as &Gettable<&'a isize>;
-   |             ^^
-
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:48:13
    |

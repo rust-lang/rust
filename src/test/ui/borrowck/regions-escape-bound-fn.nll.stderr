@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-escape-bound-fn.rs:18:22
-   |
-LL |     with_int(|y| x = Some(y));
-   |                      ^^^^^^^
-
 error: borrowed data escapes outside of closure
   --> $DIR/regions-escape-bound-fn.rs:18:18
    |

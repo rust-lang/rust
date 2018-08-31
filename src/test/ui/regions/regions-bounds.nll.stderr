@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-bounds.rs:19:12
-   |
-LL |     return e; //~ ERROR mismatched types
-   |            ^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-bounds.rs:23:12
-   |
-LL |     return e; //~ ERROR mismatched types
-   |            ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-bounds.rs:19:12
    |

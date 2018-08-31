@@ -17,8 +17,7 @@
 
 fn foo(x: &u32) -> &'static u32 {
     &*x
-        //~^ WARN not reporting region error due to nll
-        //~| ERROR explicit lifetime required in the type of `x`
+        //~^ ERROR explicit lifetime required in the type of `x`
 }
 
 fn main() { }

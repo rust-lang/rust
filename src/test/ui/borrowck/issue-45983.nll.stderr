@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-45983.rs:36:27
-   |
-LL |     give_any(|y| x = Some(y));
-   |                           ^
-
 error: borrowed data escapes outside of closure
   --> $DIR/issue-45983.rs:36:18
    |

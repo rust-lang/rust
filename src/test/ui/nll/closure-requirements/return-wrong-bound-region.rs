@@ -19,8 +19,7 @@
 #[rustc_regions]
 fn test() {
     expect_sig(|a, b| b); // ought to return `a`
-    //~^ WARN not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 fn expect_sig<F>(f: F) -> F

@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-over-type-parameter-multiple.rs:30:5
-   |
-LL |     box v as Box<SomeTrait+'a> //~ ERROR cannot infer an appropriate lifetime
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0309]: the parameter type `A` may not live long enough
   --> $DIR/regions-close-over-type-parameter-multiple.rs:30:5
    |

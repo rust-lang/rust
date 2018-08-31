@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-creating-enums3.rs:17:5
-   |
-LL |     ast::add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
-   |     ^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-creating-enums3.rs:17:5
    |

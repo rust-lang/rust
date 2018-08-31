@@ -32,17 +32,12 @@ where
 fn generic<T>(value: T) {
     let cell = Cell::new(&());
     twice(cell, value, |a, b| invoke(a, b));
-    //~^ WARNING not reporting region error
-    //
-    // This error from the old region solver looks bogus.
 }
 
 #[rustc_regions]
 fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
     twice(cell, value, |a, b| invoke(a, b));
-    //~^ WARNING not reporting region error
-    //~| WARNING not reporting region error
-    //~| ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
 }
 
 fn invoke<'a, 'x, T>(x: Option<Cell<&'x &'a ()>>, y: &T)

@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-addr-of-upvar-self.rs:20:41
-   |
-LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
-   |                                         ^^^^^^^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-addr-of-upvar-self.rs:20:41
    |

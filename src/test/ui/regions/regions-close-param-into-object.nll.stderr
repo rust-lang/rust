@@ -1,27 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-param-into-object.rs:16:5
-   |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
-   |     ^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-param-into-object.rs:22:5
-   |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
-   |     ^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-param-into-object.rs:28:5
-   |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
-   |     ^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-param-into-object.rs:34:5
-   |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
-   |     ^^^^^^^^^^^
-
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-param-into-object.rs:16:5
    |

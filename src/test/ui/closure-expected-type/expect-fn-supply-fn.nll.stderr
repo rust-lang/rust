@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/expect-fn-supply-fn.rs:24:52
-   |
-LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
-   |                                                    ^^^^^^^^^^^
-
 error[E0631]: type mismatch in closure arguments
   --> $DIR/expect-fn-supply-fn.rs:40:5
    |

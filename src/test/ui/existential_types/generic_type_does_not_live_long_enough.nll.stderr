@@ -7,12 +7,6 @@ LL |     let z: i32 = x; //~ ERROR mismatched types
    = note: expected type `i32`
               found type `WrongGeneric::<&{integer}>`
 
-warning: not reporting region error due to nll
-  --> $DIR/generic_type_does_not_live_long_enough.rs:19:1
-   |
-LL | existential type WrongGeneric<T>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0308`.

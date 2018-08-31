@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:21:5
-   |
-LL |     b_isize //~ ERROR mismatched types
-   |     ^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-infer-invariance-due-to-mutability-4.rs:21:5
    |

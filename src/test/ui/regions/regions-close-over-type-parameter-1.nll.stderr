@@ -1,27 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-over-type-parameter-1.rs:20:5
-   |
-LL |     box v as Box<SomeTrait+'static>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-over-type-parameter-1.rs:20:5
-   |
-LL |     box v as Box<SomeTrait+'static>
-   |     ^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-over-type-parameter-1.rs:30:5
-   |
-LL |     box v as Box<SomeTrait+'b>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-over-type-parameter-1.rs:30:5
-   |
-LL |     box v as Box<SomeTrait+'b>
-   |     ^^^^^
-
 error[E0310]: the parameter type `A` may not live long enough
   --> $DIR/regions-close-over-type-parameter-1.rs:20:5
    |
