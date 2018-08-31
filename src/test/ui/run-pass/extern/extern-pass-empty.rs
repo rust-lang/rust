@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(improper_ctypes)] // FIXME: this test is inherently not FFI-safe.
+
 // Test a foreign function that accepts empty struct.
 
 // pretty-expanded FIXME #23616
