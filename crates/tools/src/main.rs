@@ -10,7 +10,7 @@ extern crate commandspec;
 extern crate heck;
 
 use clap::{App, Arg, SubCommand};
-use heck::{CamelCase, ShoutySnakeCase};
+use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
 use std::{
     collections::HashMap,
     fs,
@@ -90,6 +90,9 @@ fn render_template(template: &str) -> Result<String> {
     tera.register_global_function("concat", Box::new(concat));
     tera.register_filter("camel", |arg, _| {
         Ok(arg.as_str().unwrap().to_camel_case().into())
+    });
+    tera.register_filter("snake", |arg, _| {
+        Ok(arg.as_str().unwrap().to_snake_case().into())
     });
     tera.register_filter("SCREAM", |arg, _| {
         Ok(arg.as_str().unwrap().to_shouty_snake_case().into())

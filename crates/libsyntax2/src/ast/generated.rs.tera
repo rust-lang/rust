@@ -65,8 +65,15 @@ impl<'a> {{ node }}<'a> {
 
 {%- if methods.options -%}
 {%- for m in methods.options -%}
+
+{%- if m is string -%}
+{%- set method_name = m | snake -%}
+{%- set ChildName = m %}
+{%- else -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
+{%- endif -%}
+
     pub fn {{ method_name }}(self) -> Option<{{ ChildName }}<'a>> {
         super::child_opt(self)
     }

@@ -78,8 +78,7 @@ impl<'a> AstNode<'a> for Attr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Attr<'a> {
-    pub fn value(self) -> Option<TokenTree<'a>> {
+impl<'a> Attr<'a> {pub fn value(self) -> Option<TokenTree<'a>> {
         super::child_opt(self)
     }
 }
@@ -141,8 +140,7 @@ impl<'a> Block<'a> {
     pub fn statements(self) -> impl Iterator<Item = Stmt<'a>> + 'a {
         super::children(self)
     }
-
-    pub fn expr(self) -> Option<Expr<'a>> {
+pub fn expr(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -163,8 +161,7 @@ impl<'a> AstNode<'a> for BlockExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> BlockExpr<'a> {
-    pub fn block(self) -> Option<Block<'a>> {
+impl<'a> BlockExpr<'a> {pub fn block(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
 }
@@ -203,12 +200,10 @@ impl<'a> AstNode<'a> for CallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> CallExpr<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl<'a> CallExpr<'a> {pub fn expr(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
-
-    pub fn arg_list(self) -> Option<ArgList<'a>> {
+pub fn arg_list(self) -> Option<ArgList<'a>> {
         super::child_opt(self)
     }
 }
@@ -247,12 +242,10 @@ impl<'a> AstNode<'a> for Condition<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Condition<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl<'a> Condition<'a> {pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
-
-    pub fn expr(self) -> Option<Expr<'a>> {
+pub fn expr(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -466,8 +459,7 @@ impl<'a> AstNode<'a> for ExprStmt<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> ExprStmt<'a> {
-    pub fn expr(self) -> Option<Expr<'a>> {
+impl<'a> ExprStmt<'a> {pub fn expr(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -545,16 +537,13 @@ impl<'a> AstNode<'a> for FnDef<'a> {
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
-impl<'a> FnDef<'a> {
-    pub fn param_list(self) -> Option<ParamList<'a>> {
+impl<'a> FnDef<'a> {pub fn param_list(self) -> Option<ParamList<'a>> {
         super::child_opt(self)
     }
-
-    pub fn body(self) -> Option<Block<'a>> {
+pub fn body(self) -> Option<Block<'a>> {
         super::child_opt(self)
     }
-
-    pub fn ret_type(self) -> Option<RetType<'a>> {
+pub fn ret_type(self) -> Option<RetType<'a>> {
         super::child_opt(self)
     }
 }
@@ -594,12 +583,10 @@ impl<'a> AstNode<'a> for ForExpr<'a> {
 }
 
 impl<'a> ast::LoopBodyOwner<'a> for ForExpr<'a> {}
-impl<'a> ForExpr<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl<'a> ForExpr<'a> {pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
-
-    pub fn iterable(self) -> Option<Expr<'a>> {
+pub fn iterable(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -638,8 +625,7 @@ impl<'a> AstNode<'a> for IfExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> IfExpr<'a> {
-    pub fn condition(self) -> Option<Condition<'a>> {
+impl<'a> IfExpr<'a> {pub fn condition(self) -> Option<Condition<'a>> {
         super::child_opt(self)
     }
 }
@@ -732,12 +718,10 @@ impl<'a> AstNode<'a> for LambdaExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LambdaExpr<'a> {
-    pub fn param_list(self) -> Option<ParamList<'a>> {
+impl<'a> LambdaExpr<'a> {pub fn param_list(self) -> Option<ParamList<'a>> {
         super::child_opt(self)
     }
-
-    pub fn body(self) -> Option<Expr<'a>> {
+pub fn body(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -758,12 +742,10 @@ impl<'a> AstNode<'a> for LetStmt<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LetStmt<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl<'a> LetStmt<'a> {pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
-
-    pub fn initializer(self) -> Option<Expr<'a>> {
+pub fn initializer(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
 }
@@ -802,8 +784,7 @@ impl<'a> AstNode<'a> for LifetimeParam<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> LifetimeParam<'a> {
-    pub fn lifetime(self) -> Option<Lifetime<'a>> {
+impl<'a> LifetimeParam<'a> {pub fn lifetime(self) -> Option<Lifetime<'a>> {
         super::child_opt(self)
     }
 }
@@ -1162,8 +1143,7 @@ impl<'a> AstNode<'a> for Param<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Param<'a> {
-    pub fn pat(self) -> Option<Pat<'a>> {
+impl<'a> Param<'a> {pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
 }
@@ -1291,8 +1271,7 @@ impl<'a> AstNode<'a> for Path<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> Path<'a> {
-    pub fn segment(self) -> Option<PathSegment<'a>> {
+impl<'a> Path<'a> {pub fn segment(self) -> Option<PathSegment<'a>> {
         super::child_opt(self)
     }
 }
@@ -1349,8 +1328,7 @@ impl<'a> AstNode<'a> for PathSegment<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> PathSegment<'a> {
-    pub fn name_ref(self) -> Option<NameRef<'a>> {
+impl<'a> PathSegment<'a> {pub fn name_ref(self) -> Option<NameRef<'a>> {
         super::child_opt(self)
     }
 }
@@ -2012,8 +1990,7 @@ impl<'a> AstNode<'a> for UseItem<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> UseItem<'a> {
-    pub fn use_tree(self) -> Option<UseTree<'a>> {
+impl<'a> UseItem<'a> {pub fn use_tree(self) -> Option<UseTree<'a>> {
         super::child_opt(self)
     }
 }
@@ -2034,12 +2011,10 @@ impl<'a> AstNode<'a> for UseTree<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> UseTree<'a> {
-    pub fn path(self) -> Option<Path<'a>> {
+impl<'a> UseTree<'a> {pub fn path(self) -> Option<Path<'a>> {
         super::child_opt(self)
     }
-
-    pub fn use_tree_list(self) -> Option<UseTreeList<'a>> {
+pub fn use_tree_list(self) -> Option<UseTreeList<'a>> {
         super::child_opt(self)
     }
 }
@@ -2101,8 +2076,7 @@ impl<'a> AstNode<'a> for WhileExpr<'a> {
 }
 
 impl<'a> ast::LoopBodyOwner<'a> for WhileExpr<'a> {}
-impl<'a> WhileExpr<'a> {
-    pub fn condition(self) -> Option<Condition<'a>> {
+impl<'a> WhileExpr<'a> {pub fn condition(self) -> Option<Condition<'a>> {
         super::child_opt(self)
     }
 }

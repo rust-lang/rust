@@ -250,11 +250,7 @@ Grammar(
                 "TypeParamsOwner",
                 "AttrsOwner",
             ],
-            options: [
-                ["param_list", "ParamList"],
-                ["body", "Block"],
-                ["ret_type", "RetType"]
-            ],
+            options: [ "ParamList", ["body", "Block"], "RetType" ],
         ),
         "RetType": (),
         "StructDef": (
@@ -346,12 +342,12 @@ Grammar(
         "PathExpr": (),
         "LambdaExpr": (
             options: [
-                ["param_list", "ParamList"],
+                "ParamList",
                 ["body", "Expr"],
             ]
         ),
         "IfExpr": (
-            options: [ ["condition", "Condition"] ]
+            options: [ "Condition" ]
         ),
         "LoopExpr": (
             traits: ["LoopBodyOwner"],
@@ -359,21 +355,19 @@ Grammar(
         "ForExpr": (
             traits: ["LoopBodyOwner"],
             options: [
-                ["pat", "Pat"],
+                "Pat",
                 ["iterable", "Expr"],
             ]
         ),
         "WhileExpr": (
             traits: ["LoopBodyOwner"],
-            options: [
-                ["condition", "Condition"],
-            ]
+            options: [ "Condition" ]
         ),
         "ContinueExpr": (),
         "BreakExpr": (),
         "Label": (),
         "BlockExpr": (
-            options: [ ["block", "Block"] ]
+            options: [ "Block" ]
         ),
         "ReturnExpr": (),
         "MatchExpr": (),
@@ -384,10 +378,7 @@ Grammar(
         "NamedFieldList": (),
         "NamedField": (),
         "CallExpr": (
-            options: [
-                [ "expr", "Expr" ],
-                [ "arg_list", "ArgList" ],
-            ]
+            options: [ "Expr", "ArgList" ]
         ),
         "IndexExpr": (),
         "MethodCallExpr": (),
@@ -474,7 +465,7 @@ Grammar(
             ]
         ),
         "TypeParam": ( traits: ["NameOwner"] ),
-        "LifetimeParam": ( options: [ ["lifetime", "Lifetime"] ] ),
+        "LifetimeParam": ( options: [ "Lifetime" ] ),
         "Lifetime": (),
         "WhereClause": (),
         "ExprStmt": (
@@ -485,16 +476,13 @@ Grammar(
             ["initializer", "Expr"],
         ]),
         "Condition": (
-            options: [
-                [ "pat", "Pat" ],
-                [ "expr", "Expr" ],
-            ]
+            options: [ "Pat", "Expr" ]
         ),
         "Stmt": (
             enum: ["ExprStmt", "LetStmt"],
         ),
         "Block": (
-            options: [["expr", "Expr"]],
+            options: [ "Expr" ],
             collections: [
                 ["statements", "Stmt"],
             ]
@@ -505,16 +493,13 @@ Grammar(
             ]
         ),
         "Param": (
-            options: [["pat", "Pat"]],
+            options: [ "Pat" ],
         ),
         "UseItem": (
-            options: [["use_tree", "UseTree"]]
+            options: [ "UseTree" ]
         ),
         "UseTree": (
-            options: [
-                ["path", "Path"],
-                ["use_tree_list", "UseTreeList"],
-            ]
+            options: [ "Path", "UseTreeList" ]
         ),
         "UseTreeList": (
             collections: [["use_trees", "UseTree"]]
@@ -531,9 +516,7 @@ Grammar(
             ]
         ),
         "PathSegment": (
-            options: [
-                ["name_ref", "NameRef"]
-            ]
+            options: [ "NameRef" ]
         ),
     },
 )
