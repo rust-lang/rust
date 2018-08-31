@@ -7,10 +7,13 @@ extern crate libeditor;
 extern crate fst;
 extern crate rayon;
 extern crate relative_path;
+#[macro_use]
+extern crate crossbeam_channel;
 
 mod symbol_index;
 mod module_map;
 mod imp;
+mod job;
 
 use std::sync::Arc;
 
@@ -22,6 +25,7 @@ pub use libeditor::{
     StructureNode, LineIndex, FileSymbol,
     Runnable, RunnableKind, HighlightedRange, CompletionItem,
 };
+pub use job::{JobToken, JobHandle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);

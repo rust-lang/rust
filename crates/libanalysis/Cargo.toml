@@ -6,6 +6,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 [dependencies]
 relative-path = "0.3.7"
 log = "0.4.2"
+crossbeam-channel = "0.2.4"
 parking_lot = "0.6.3"
 once_cell = "0.1.4"
 rayon = "1.0.2"
