@@ -313,43 +313,42 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let mut result = None;
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if place.has_no_projection() {
-            if let mir::PlaceBase::Local(index) = place.base {
-                match self.locals[index] {
-                    LocalRef::Operand(Some(o)) => {
-                        result = Some(o);
+        if let mir::PlaceBase::Local(index) = place.base {
+            match self.locals[index] {
+                LocalRef::Operand(Some(o)) => {
+                    result = Some(o);
+                }
+                LocalRef::Operand(None) => {
+                    bug!("use of {:?} before def", place);
+                }
+                LocalRef::Place(..) => {
+                    // use path below
+                }
+            };
+        }
+
+        // Moves out of scalar and scalar pair fields are trivial.
+        for e in place.elems.iter() {
+            if let Some(o) = result {
+                match e {
+                    mir::ProjectionElem::Field(ref f, _) => {
+                        result = Some(o.extract_field(bx, f.index()));
                     }
-                    LocalRef::Operand(None) => {
-                        bug!("use of {:?} before def", place);
+                    mir::ProjectionElem::Index(_) |
+                    mir::ProjectionElem::ConstantIndex { .. } => {
+                        // ZSTs don't require any actual memory access.
+                        // FIXME(eddyb) deduplicate this with the identical
+                        // checks in `codegen_consume` and `extract_field`.
+                        let elem = o.layout.field(bx.cx, 0);
+                        if elem.is_zst() {
+                            result = Some(OperandRef::new_zst(bx.cx, elem));
+                        }
                     }
-                    LocalRef::Place(..) => {
-                        // use path below
-                    }
+                    _ => {}
                 };
             }
-        } else {
-            // Moves out of scalar and scalar pair fields are trivial.
-            for e in place.elems.iter() {
-                if let Some(o) = result {
-                    match e {
-                        mir::ProjectionElem::Field(ref f, _) => {
-                            result = Some(o.extract_field(bx, f.index()));
-                        }
-                        mir::ProjectionElem::Index(_) |
-                        mir::ProjectionElem::ConstantIndex { .. } => {
-                            // ZSTs don't require any actual memory access.
-                            // FIXME(eddyb) deduplicate this with the identical
-                            // checks in `codegen_consume` and `extract_field`.
-                            let elem = o.layout.field(bx.cx, 0);
-                            if elem.is_zst() {
-                                result = Some(OperandRef::new_zst(bx.cx, elem));
-                            }
-                        }
-                        _ => {}
-                    };
-                }
-            }
         }
+
         result
     }
 

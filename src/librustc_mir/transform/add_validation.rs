@@ -36,50 +36,49 @@ fn place_context<'a, 'tcx, D>(
         | PlaceBase::Static(_) => (None, hir::MutImmutable),
     };
 
-    if !place.has_no_projection() {
-        let mut base_ty = place.base.ty(local_decls);
-        let mut base_context = place_context;
-        for elem in place.elems.iter() {
-            match elem {
-                ProjectionElem::Deref => {
-                    // A Deref projection may restrict the context, this depends on the type
-                    // being deref'd.
-                    place_context = match base_ty.sty {
-                        ty::TyRef(re, _, mutbl) => {
-                            let re = match re {
-                                &RegionKind::ReScope(ce) => Some(ce),
-                                &RegionKind::ReErased =>
-                                    bug!("AddValidation pass must be run before erasing lifetimes"),
-                                _ => None
-                            };
-                            (re, mutbl)
-                        }
-                        ty::TyRawPtr(_) =>
-                        // There is no guarantee behind even a mutable raw pointer,
-                        // no write locks are acquired there, so we also don't want to
-                        // release any.
-                            (None, hir::MutImmutable),
-                        ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
-                        _ => bug!("Deref on a non-pointer type {:?}", base_ty),
-                    };
-                    // "Intersect" this restriction with proj.base.
-                    if let (Some(_), hir::MutImmutable) = place_context {
-                        // This is already as restricted as it gets, no need to even recurse
-                    } else {
-                        let re = place_context.0.or(base_context.0);
-                        let mutbl = place_context.1.and(base_context.1);
-                        place_context = (re, mutbl);
+    let mut base_ty = place.base.ty(local_decls);
+    let mut base_context = place_context;
+    for elem in place.elems.iter() {
+        match elem {
+            ProjectionElem::Deref => {
+                // A Deref projection may restrict the context, this depends on the type
+                // being deref'd.
+                place_context = match base_ty.sty {
+                    ty::TyRef(re, _, mutbl) => {
+                        let re = match re {
+                            &RegionKind::ReScope(ce) => Some(ce),
+                            &RegionKind::ReErased =>
+                                bug!("AddValidation pass must be run before erasing lifetimes"),
+                            _ => None
+                        };
+                        (re, mutbl)
                     }
+                    ty::TyRawPtr(_) =>
+                    // There is no guarantee behind even a mutable raw pointer,
+                    // no write locks are acquired there, so we also don't want to
+                    // release any.
+                        (None, hir::MutImmutable),
+                    ty::TyAdt(adt, _) if adt.is_box() => (None, hir::MutMutable),
+                    _ => bug!("Deref on a non-pointer type {:?}", base_ty),
+                };
+                // "Intersect" this restriction with proj.base.
+                if let (Some(_), hir::MutImmutable) = place_context {
+                    // This is already as restricted as it gets, no need to even recurse
+                } else {
+                    let re = place_context.0.or(base_context.0);
+                    let mutbl = place_context.1.and(base_context.1);
+                    place_context = (re, mutbl);
+                }
 
-                },
-                _ => {},
-            }
-            base_ty = tcx::PlaceTy::from(base_ty)
-                        .projection_ty(tcx, elem)
-                        .to_ty(tcx);
-            base_context = place_context;
+            },
+            _ => {},
         }
+        base_ty = tcx::PlaceTy::from(base_ty)
+                    .projection_ty(tcx, elem)
+                    .to_ty(tcx);
+        base_context = place_context;
     }
+
     place_context
 }
 

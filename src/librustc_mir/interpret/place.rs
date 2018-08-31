@@ -105,14 +105,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let mut result = self.try_read_place_base(&place.base)?;
         let mut base_ty = place.base.ty(self.mir());
         let mut base_layout = self.layout_of(base_ty)?;
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                result = self.try_read_place_projection(result, elem, base_layout)?;
 
-                base_ty = PlaceTy::from(base_ty)
-                    .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
-                base_layout = self.layout_of(base_ty)?;
-            }
+        for elem in place.elems.iter() {
+            result = self.try_read_place_projection(result, elem, base_layout)?;
+
+            base_ty = PlaceTy::from(base_ty)
+                .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
+            base_layout = self.layout_of(base_ty)?;
         }
 
         Ok(result)
@@ -270,15 +269,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         };
 
-        if !mir_place.has_no_projection() {
-             let mut ty = mir_place.base.ty(self.mir());
-             for elem in mir_place.elems.iter() {
-                 ty = self.monomorphize(ty, self.substs());
-                 place = self.eval_place_projection(place, ty, elem)?;
-                 ty = PlaceTy::from(ty)
-                     .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
-             }
-        }
+         let mut ty = mir_place.base.ty(self.mir());
+         for elem in mir_place.elems.iter() {
+             ty = self.monomorphize(ty, self.substs());
+             place = self.eval_place_projection(place, ty, elem)?;
+             ty = PlaceTy::from(ty)
+                 .projection_ty(*self.tcx, elem).to_ty(*self.tcx);
+         }
 
         self.dump_local(place);
 

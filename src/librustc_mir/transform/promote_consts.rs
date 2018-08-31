@@ -305,19 +305,18 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(_, Rvalue::Ref(_, _, ref place)) => {
                             // Find the underlying local for this (necessarilly interior) borrow.
                             let mut place = place.clone();
-                            if !place.has_no_projection() {
-                                // for Place:
-                                //     Base.[a, b, Deref, c]
-                                //     ^^^^^^^^^^  ^^^^^  ^
-                                //     |-- new_place      |-- skip
-                                //
-                                for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                                    if elem == ProjectionElem::Deref {
-                                        place = place.elem_base(tcx, i);
-                                        break;
-                                    } else {
-                                        continue;
-                                    }
+
+                            // for Place:
+                            //     Base.[a, b, Deref, c]
+                            //     ^^^^^^^^^^  ^^^^^  ^
+                            //     |-- new_place      |-- skip
+                            //
+                            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                                if elem == ProjectionElem::Deref {
+                                    place = place.elem_base(tcx, i);
+                                    break;
+                                } else {
+                                    continue;
                                 }
                             }
 

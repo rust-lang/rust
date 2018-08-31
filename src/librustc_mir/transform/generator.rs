@@ -343,13 +343,12 @@ impl<'tcx> BorrowedLocals {
             PlaceBase::Local(l) => { self.0.add(&l); }
             _ => (),
         }
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                if let ProjectionElem::Deref = elem {
-                    ();
-                } else {
-                    continue;
-                }
+
+        for elem in place.elems.iter() {
+            if let ProjectionElem::Deref = elem {
+                ();
+            } else {
+                continue;
             }
         }
     }

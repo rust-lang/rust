@@ -105,14 +105,14 @@ impl<'b, 'c, 'tcx> BorrowedLocalsVisitor<'b, 'c> {
             PlaceBase::Local(local) => Some(local),
             PlaceBase::Promoted(_) | PlaceBase::Static(..) => None,
         };
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                match elem {
-                    ProjectionElem::Deref => local = None,
-                    _ => {},
-                }
+
+        for elem in place.elems.iter() {
+            match elem {
+                ProjectionElem::Deref => local = None,
+                _ => {},
             }
         }
+
         local
     }
 }

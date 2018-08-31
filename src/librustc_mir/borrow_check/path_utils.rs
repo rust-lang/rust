@@ -147,12 +147,11 @@ pub(super) fn borrow_of_local_data<'tcx>(
         PlaceBase::Local(..) => true,
     };
 
-    if !place.has_no_projection() {
-        for elem in place.elems.iter().cloned().rev() {
-            if elem == ProjectionElem::Deref {
-                borrow_of_data = false;
-            }
+    for elem in place.elems.iter().cloned().rev() {
+        if elem == ProjectionElem::Deref {
+            borrow_of_data = false;
         }
     }
+
     borrow_of_data
 }

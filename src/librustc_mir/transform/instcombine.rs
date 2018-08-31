@@ -93,18 +93,16 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if !place.has_no_projection() {
-                let mut base_ty = place.base.ty(self.mir);
-                for elem in place.elems.iter() {
-                    if let ProjectionElem::Deref = elem {
-                        if base_ty.is_region_ptr() {
-                            self.optimizations.and_stars.insert(location);
-                        }
+            let mut base_ty = place.base.ty(self.mir);
+            for elem in place.elems.iter() {
+                if let ProjectionElem::Deref = elem {
+                    if base_ty.is_region_ptr() {
+                        self.optimizations.and_stars.insert(location);
                     }
-                    base_ty = PlaceTy::from(base_ty)
-                                .projection_ty(self.tcx, elem)
-                                .to_ty(self.tcx);
                 }
+                base_ty = PlaceTy::from(base_ty)
+                            .projection_ty(self.tcx, elem)
+                            .to_ty(self.tcx);
             }
         }
 

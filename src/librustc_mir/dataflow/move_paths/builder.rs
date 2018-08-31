@@ -113,14 +113,12 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 return Err(MoveError::cannot_move_out_of(self.loc, Static)),
         };
 
-        if !place.has_no_projection() {
-            let mir = self.builder.mir;
-            let tcx = self.builder.tcx;
-            let mut result_ty = place.base.ty(mir);
-            for elem in place.elems.iter() {
-                result = self.move_path_for_projection(place, result, result_ty, elem)?;
-                result_ty = PlaceTy::from(result_ty).projection_ty(tcx, elem).to_ty(tcx);
-            }
+        let mir = self.builder.mir;
+        let tcx = self.builder.tcx;
+        let mut result_ty = place.base.ty(mir);
+        for elem in place.elems.iter() {
+            result = self.move_path_for_projection(place, result, result_ty, elem)?;
+            result_ty = PlaceTy::from(result_ty).projection_ty(tcx, elem).to_ty(tcx);
         }
 
         Ok(result)

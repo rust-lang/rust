@@ -1776,12 +1776,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place: &Place<'tcx>,
     ) -> Result<MovePathIndex, NoMovePathFound> {
         let mut prefix = place.clone();
-        if !prefix.has_no_projection() {
-            for (i, _) in prefix.elems.iter().cloned().enumerate().rev() {
-                prefix = place.elem_base(self.tcx, i);
-                if let Some(mpi) = self.move_path_for_place(&prefix) {
-                    return Ok(mpi);
-                }
+        for (i, _) in prefix.elems.iter().cloned().enumerate().rev() {
+            prefix = place.elem_base(self.tcx, i);
+            if let Some(mpi) = self.move_path_for_place(&prefix) {
+                return Ok(mpi);
             }
         }
         match place.base {
@@ -1809,58 +1807,56 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         debug!("check_if_assigned_path_is_moved place: {:?}", place);
-        if !place.has_no_projection() {
-            let tcx = self.tcx;
-            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                let base_place = place.elem_base(tcx, i);
-                match elem {
-                     ProjectionElem::Index(_/*operand*/) |
-                     ProjectionElem::ConstantIndex { .. } |
-                     // assigning to P[i] requires P to be valid.
-                     ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
-                     // assigning to (P->variant) is okay if assigning to `P` is okay
-                     //
-                     // FIXME: is this true even if P is a adt with a dtor?
-                     { }
+        let tcx = self.tcx;
+        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+            let base_place = place.elem_base(tcx, i);
+            match elem {
+                 ProjectionElem::Index(_/*operand*/) |
+                 ProjectionElem::ConstantIndex { .. } |
+                 // assigning to P[i] requires P to be valid.
+                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
+                 // assigning to (P->variant) is okay if assigning to `P` is okay
+                 //
+                 // FIXME: is this true even if P is a adt with a dtor?
+                 { }
 
-                     // assigning to (*P) requires P to be initialized
-                     ProjectionElem::Deref => {
-                         self.check_if_full_path_is_moved(
-                             context, InitializationRequiringAction::Use,
-                             (&base_place, span), flow_state);
-                         // (base initialized; no need to
-                         // recur further)
-                         break;
-                     }
+                 // assigning to (*P) requires P to be initialized
+                 ProjectionElem::Deref => {
+                     self.check_if_full_path_is_moved(
+                         context, InitializationRequiringAction::Use,
+                         (&base_place, span), flow_state);
+                     // (base initialized; no need to
+                     // recur further)
+                     break;
+                 }
 
-                     ProjectionElem::Subslice { .. } => {
-                         panic!("we don't allow assignments to subslices, context: {:?}",
-                                context);
-                     }
+                 ProjectionElem::Subslice { .. } => {
+                     panic!("we don't allow assignments to subslices, context: {:?}",
+                            context);
+                 }
 
-                     ProjectionElem::Field(..) => {
-                         // if type of `P` has a dtor, then
-                         // assigning to `P.f` requires `P` itself
-                         // be already initialized
-                         match base_place.ty(self.mir, tcx).to_ty(tcx).sty {
-                             ty::TyAdt(def, _) if def.has_dtor(tcx) => {
+                 ProjectionElem::Field(..) => {
+                     // if type of `P` has a dtor, then
+                     // assigning to `P.f` requires `P` itself
+                     // be already initialized
+                     match base_place.ty(self.mir, tcx).to_ty(tcx).sty {
+                         ty::TyAdt(def, _) if def.has_dtor(tcx) => {
 
-                                 // FIXME: analogous code in
-                                 // check_loans.rs first maps
-                                 // `base` to its base_path.
+                             // FIXME: analogous code in
+                             // check_loans.rs first maps
+                             // `base` to its base_path.
 
-                                 self.check_if_path_or_subpath_is_moved(
-                                     context, InitializationRequiringAction::Assignment,
-                                     (&base_place, span), flow_state);
+                             self.check_if_path_or_subpath_is_moved(
+                                 context, InitializationRequiringAction::Assignment,
+                                 (&base_place, span), flow_state);
 
-                                 // (base initialized; no need to
-                                 // recur further)
-                                 break;
-                             }
-                             _ => {}
+                             // (base initialized; no need to
+                             // recur further)
+                             break;
                          }
+                         _ => {}
                      }
-                }
+                 }
             }
         }
     }
@@ -2075,111 +2071,109 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             is_local_mutation_allowed
         );
 
-        if !place.has_no_projection() {
-            let mut base_ty = place.base.ty(self.mir);
-            for elem in place.elems.iter() {
-                result = match elem {
-                    // NOTE(review): deref is really special.
-                    //
-                    // All other projections are owned by their base path, so mutable if
-                    // base path is mutable
-                    ProjectionElem::Deref => {
-                        base_ty = PlaceTy::from(base_ty)
-                            .projection_ty(self.tcx, elem).to_ty(self.tcx);
-                         match base_ty.sty {
-                            ty::TyRef(_, _, mutbl) => {
-                                match mutbl {
-                                    // Shared borrowed data is never mutable
-                                    hir::MutImmutable => Err(place),
-                                    // Mutably borrowed data is mutable, but only if we have a
-                                    // unique path to the `&mut`
-                                    hir::MutMutable => {
-                                        is_local_mutation_allowed =
-                                            match place.is_upvar_field_projection(
-                                                self.mir,
-                                                &self.tcx
-                                            ) {
-                                            Some(field)
-                                                if {
-                                                    self.mir.upvar_decls[field.index()].by_ref
-                                                } =>
-                                            {
-                                                is_local_mutation_allowed
-                                            }
-                                            _ => LocalMutationIsAllowed::Yes,
-                                        };
-                                        continue
-                                    }
+        let mut base_ty = place.base.ty(self.mir);
+        for elem in place.elems.iter() {
+            result = match elem {
+                // NOTE(review): deref is really special.
+                //
+                // All other projections are owned by their base path, so mutable if
+                // base path is mutable
+                ProjectionElem::Deref => {
+                    base_ty = PlaceTy::from(base_ty)
+                        .projection_ty(self.tcx, elem).to_ty(self.tcx);
+                     match base_ty.sty {
+                        ty::TyRef(_, _, mutbl) => {
+                            match mutbl {
+                                // Shared borrowed data is never mutable
+                                hir::MutImmutable => Err(place),
+                                // Mutably borrowed data is mutable, but only if we have a
+                                // unique path to the `&mut`
+                                hir::MutMutable => {
+                                    is_local_mutation_allowed =
+                                        match place.is_upvar_field_projection(
+                                            self.mir,
+                                            &self.tcx
+                                        ) {
+                                        Some(field)
+                                            if {
+                                                self.mir.upvar_decls[field.index()].by_ref
+                                            } =>
+                                        {
+                                            is_local_mutation_allowed
+                                        }
+                                        _ => LocalMutationIsAllowed::Yes,
+                                    };
+                                    continue
                                 }
                             }
-                            ty::TyRawPtr(tnm) => {
-                                match tnm.mutbl {
-                                    // `*const` raw pointers are not mutable
-                                    hir::MutImmutable => return Err(place),
-                                    // `*mut` raw pointers are always mutable, regardless of
-                                    // context. The users have to check by themselves.
-                                    hir::MutMutable => {
-                                        return Ok(RootPlace {
-                                            place,
-                                            is_local_mutation_allowed,
-                                        });
-                                    }
-                                }
-                            }
-                            // `Box<T>` owns its content, so mutable if its location is mutable
-                            _ if base_ty.is_box() => { continue; }
-                            // Deref should only be for reference, pointers or boxes
-                            _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
-                    }
-                    ProjectionElem::Field(..)
-                    | ProjectionElem::Index(..)
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Downcast(..) => {
-                        let upvar_field_projection = place.is_upvar_field_projection(
-                            self.mir, &self.tcx);
-                        if let Some(field) = upvar_field_projection {
-                            let decl = &self.mir.upvar_decls[field.index()];
-                            debug!(
-                                "decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
-                                decl, is_local_mutation_allowed, place
-                            );
-                            match (decl.mutability, is_local_mutation_allowed) {
-                                (Mutability::Not, LocalMutationIsAllowed::No)
-                                | (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars) => {
-                                    Err(place)
-                                }
-                                (Mutability::Not, LocalMutationIsAllowed::Yes)
-                                | (Mutability::Mut, _) => {
-                                    // Subtle: this is an upvar reference, so it looks like
-                                    // `self.foo` -- we want to double check that the context
-                                    // `*self` is mutable (i.e., this is not a `Fn` closure).
-                                    // But if that check succeeds, we want to *blame* the mutability
-                                    // on `place` (that is, `self.foo`). This is used to propagate
-                                    // the info about whether mutability declarations are used
-                                    // outwards, so that we register the outer variable as mutable.
-                                    // Otherwise a test like this fails to
-                                    // record the `mut` as needed:
-                                    // ```
-                                    // fn foo<F: FnOnce()>(_f: F) { }
-                                    // fn main() {
-                                    //     let var = Vec::new();
-                                    //     foo(move || {
-                                    //         var.push(1);
-                                    //     });
-                                    // }
-                                    // ```
-                                    let _ = base_is_mutable(&place.base, is_local_mutation_allowed);
-                                    Ok(RootPlace {
+                        ty::TyRawPtr(tnm) => {
+                            match tnm.mutbl {
+                                // `*const` raw pointers are not mutable
+                                hir::MutImmutable => return Err(place),
+                                // `*mut` raw pointers are always mutable, regardless of
+                                // context. The users have to check by themselves.
+                                hir::MutMutable => {
+                                    return Ok(RootPlace {
                                         place,
                                         is_local_mutation_allowed,
-                                    })
+                                    });
                                 }
                             }
-                        } else {
-                            base_is_mutable(&place.base, is_local_mutation_allowed)
                         }
+                        // `Box<T>` owns its content, so mutable if its location is mutable
+                        _ if base_ty.is_box() => { continue; }
+                        // Deref should only be for reference, pointers or boxes
+                        _ => bug!("Deref of unexpected type: {:?}", base_ty),
+                    }
+                }
+                ProjectionElem::Field(..)
+                | ProjectionElem::Index(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Downcast(..) => {
+                    let upvar_field_projection = place.is_upvar_field_projection(
+                        self.mir, &self.tcx);
+                    if let Some(field) = upvar_field_projection {
+                        let decl = &self.mir.upvar_decls[field.index()];
+                        debug!(
+                            "decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
+                            decl, is_local_mutation_allowed, place
+                        );
+                        match (decl.mutability, is_local_mutation_allowed) {
+                            (Mutability::Not, LocalMutationIsAllowed::No)
+                            | (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars) => {
+                                Err(place)
+                            }
+                            (Mutability::Not, LocalMutationIsAllowed::Yes)
+                            | (Mutability::Mut, _) => {
+                                // Subtle: this is an upvar reference, so it looks like
+                                // `self.foo` -- we want to double check that the context
+                                // `*self` is mutable (i.e., this is not a `Fn` closure).
+                                // But if that check succeeds, we want to *blame* the mutability
+                                // on `place` (that is, `self.foo`). This is used to propagate
+                                // the info about whether mutability declarations are used
+                                // outwards, so that we register the outer variable as mutable.
+                                // Otherwise a test like this fails to
+                                // record the `mut` as needed:
+                                // ```
+                                // fn foo<F: FnOnce()>(_f: F) { }
+                                // fn main() {
+                                //     let var = Vec::new();
+                                //     foo(move || {
+                                //         var.push(1);
+                                //     });
+                                // }
+                                // ```
+                                let _ = base_is_mutable(&place.base, is_local_mutation_allowed);
+                                Ok(RootPlace {
+                                    place,
+                                    is_local_mutation_allowed,
+                                })
+                            }
+                        }
+                    } else {
+                        base_is_mutable(&place.base, is_local_mutation_allowed)
                     }
                 }
             }
@@ -2225,15 +2219,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut deepest = place.clone();
 
-        if !place.has_no_projection() {
-            for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                match elem {
-                    ProjectionElem::Deref
-                        if place.ty(self.mir, self.tcx).to_ty(self.tcx).is_box() => {
-                           deepest = place.elem_base(self.tcx, i);
-                    },
-                    _ => {},
-                }
+        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+            match elem {
+                ProjectionElem::Deref
+                    if place.ty(self.mir, self.tcx).to_ty(self.tcx).is_box() => {
+                       deepest = place.elem_base(self.tcx, i);
+                },
+                _ => {},
             }
         }
 

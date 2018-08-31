@@ -33,24 +33,23 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                 tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
             }
         };
-        if !self.has_no_projection() {
-            let mut base_ty = self.base.ty(mir);
-            for elem in self.elems.iter() {
-                is_unsafe_place = match elem {
-                    ProjectionElem::Field(..)
-                    | ProjectionElem::Downcast(..)
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Index(_) => continue,
-                    ProjectionElem::Deref => {
-                        match base_ty.sty {
-                            ty::TyRawPtr(..) => true,
-                            _ => continue,
-                        }
+
+        let mut base_ty = self.base.ty(mir);
+        for elem in self.elems.iter() {
+            is_unsafe_place = match elem {
+                ProjectionElem::Field(..)
+                | ProjectionElem::Downcast(..)
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Index(_) => continue,
+                ProjectionElem::Deref => {
+                    match base_ty.sty {
+                        ty::TyRawPtr(..) => true,
+                        _ => continue,
                     }
-                };
-                base_ty = PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
-            }
+                }
+            };
+            base_ty = PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
         }
 
         is_unsafe_place

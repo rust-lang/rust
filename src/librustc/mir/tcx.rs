@@ -136,10 +136,8 @@ impl<'tcx> Place<'tcx> {
         let mut place_ty = PlaceTy::from(self.base.ty(local_decls));
 
         // apply .projection_ty() to all elems but only returns the final one.
-        if !self.has_no_projection() {
-            for elem in self.elems.iter() {
-                place_ty = place_ty.projection_ty(tcx, elem);
-            }
+        for elem in self.elems.iter() {
+            place_ty = place_ty.projection_ty(tcx, elem);
         }
 
         place_ty

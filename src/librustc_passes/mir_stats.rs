@@ -208,15 +208,14 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             PlaceBase::Promoted(..) => "PlaceBase::Promoted",
         }, place);
 
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                self.visit_projection_elem(
-                    elem,
-                    context,
-                    location,
-                );
-            }
+        for elem in place.elems.iter() {
+            self.visit_projection_elem(
+                elem,
+                context,
+                location,
+            );
         }
+
         self.super_place(place, context, location);
     }
 

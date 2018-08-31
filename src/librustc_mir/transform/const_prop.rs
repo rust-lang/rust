@@ -305,19 +305,17 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             _ => None,
         };
 
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                if let ProjectionElem::Field(field, _) = elem {
-                    trace!("field projection on {:?}", place);
-                    let (base, layout, span) = result?;
-                    let valty = self.use_ecx(source_info, |this| {
-                        this.ecx.read_field(base, None, *field, layout)
-                    })?;
-                    result = Some((valty.0, valty.1, span))
-                } else {
-                    result = None;
-                    continue;
-                }
+        for elem in place.elems.iter() {
+            if let ProjectionElem::Field(field, _) = elem {
+                trace!("field projection on {:?}", place);
+                let (base, layout, span) = result?;
+                let valty = self.use_ecx(source_info, |this| {
+                    this.ecx.read_field(base, None, *field, layout)
+                })?;
+                result = Some((valty.0, valty.1, span))
+            } else {
+                result = None;
+                continue;
             }
         }
 

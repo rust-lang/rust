@@ -717,31 +717,30 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } else {
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
-                    // We can only promote interior borrows of promotable temps.
-                    let mut place = place.clone();
-                    if !place.has_no_projection() {
-                        for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                            match elem {
-                                ProjectionElem::Deref => break,
-                                _ => {
-                                    place = place.elem_base(self.tcx, i);
-                                    continue;
+
+                    if let PlaceBase::Local(local) = place.base {
+                        if self.mir.local_kind(local) == LocalKind::Temp {
+                            if let Some(qualif) = self.local_qualif[local] {
+                                // `forbidden_mut` is false, so we can safely ignore
+                                // `MUTABLE_INTERIOR` from the local's qualifications.
+                                // This allows borrowing fields which don't have
+                                // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                                // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                                if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
+                                    self.promotion_candidates.push(candidate);
                                 }
                             }
                         }
-                    } else {
-                        if let PlaceBase::Local(local) = place.base {
-                            if self.mir.local_kind(local) == LocalKind::Temp {
-                                if let Some(qualif) = self.local_qualif[local] {
-                                    // `forbidden_mut` is false, so we can safely ignore
-                                    // `MUTABLE_INTERIOR` from the local's qualifications.
-                                    // This allows borrowing fields which don't have
-                                    // `MUTABLE_INTERIOR`, from a type that does, e.g.:
-                                    // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                                    if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
-                                        self.promotion_candidates.push(candidate);
-                                    }
-                                }
+                    }
+
+                    // We can only promote interior borrows of promotable temps.
+                    let mut place = place.clone();
+                    for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
+                        match elem {
+                            ProjectionElem::Deref => break,
+                            _ => {
+                                place = place.elem_base(self.tcx, i);
+                                continue;
                             }
                         }
                     }

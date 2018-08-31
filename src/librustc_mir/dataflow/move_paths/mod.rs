@@ -255,18 +255,17 @@ impl<'tcx> MovePathLookup<'tcx> {
             PlaceBase::Promoted(_) |
             PlaceBase::Static(..) => LookupResult::Parent(None),
         };
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                result = match result {
-                    LookupResult::Exact(base_path) => {
-                        match self.projections.get(&(base_path, elem.lift())) {
-                            Some(subpath) => LookupResult::Exact(*subpath),
-                            None => LookupResult::Parent(Some(base_path)),
-                        }
+
+        for elem in place.elems.iter() {
+            result = match result {
+                LookupResult::Exact(base_path) => {
+                    match self.projections.get(&(base_path, elem.lift())) {
+                        Some(subpath) => LookupResult::Exact(*subpath),
+                        None => LookupResult::Parent(Some(base_path)),
                     }
-                    inexact => inexact,
-                };
-            }
+                }
+                inexact => inexact,
+            };
         }
 
         result

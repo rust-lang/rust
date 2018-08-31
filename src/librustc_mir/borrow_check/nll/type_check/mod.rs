@@ -406,25 +406,23 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
         };
 
-        if !place.has_no_projection() {
-            for elem in place.elems.iter(){
-                context = if context.is_mutating_use() {
-                    PlaceContext::Projection(Mutability::Mut)
-                } else {
-                    PlaceContext::Projection(Mutability::Not)
-                };
-                if let PlaceTy::Ty { ty } = place_ty {
-                    if ty.references_error() {
-                        assert!(self.errors_reported);
-                        place_ty = PlaceTy::Ty {
-                            ty: self.tcx().types.err,
-                        };
-                        break;
-                    }
+        for elem in place.elems.iter(){
+            context = if context.is_mutating_use() {
+                PlaceContext::Projection(Mutability::Mut)
+            } else {
+                PlaceContext::Projection(Mutability::Not)
+            };
+            if let PlaceTy::Ty { ty } = place_ty {
+                if ty.references_error() {
+                    assert!(self.errors_reported);
+                    place_ty = PlaceTy::Ty {
+                        ty: self.tcx().types.err,
+                    };
+                    break;
                 }
-                place_ty = self.sanitize_projection(place_ty, elem, place, location);
             }
-        };
+            place_ty = self.sanitize_projection(place_ty, elem, place, location);
+        }
 
         if let PlaceContext::Copy = context {
             let tcx = self.tcx();
@@ -1603,84 +1601,82 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             location, borrow_region, borrowed_place
         );
 
-        if borrowed_place.has_no_projection() {
-            let tcx = self.infcx.tcx;
-            let mut base_ty = borrowed_place.base.ty(self.mir);
-            for elem in borrowed_place.elems.iter() {
-                debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
-                match elem {
-                    ProjectionElem::Deref => {
+        let tcx = self.infcx.tcx;
+        let mut base_ty = borrowed_place.base.ty(self.mir);
+        for elem in borrowed_place.elems.iter() {
+            debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
+            match elem {
+                ProjectionElem::Deref => {
 
-                        debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
-                        match base_ty.sty {
-                            ty::TyRef(ref_region, _, mutbl) => {
-                                constraints.outlives_constraints.push(OutlivesConstraint {
-                                    sup: ref_region.to_region_vid(),
-                                    sub: borrow_region.to_region_vid(),
-                                    locations: location.boring(),
-                                });
+                    debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
+                    match base_ty.sty {
+                        ty::TyRef(ref_region, _, mutbl) => {
+                            constraints.outlives_constraints.push(OutlivesConstraint {
+                                sup: ref_region.to_region_vid(),
+                                sub: borrow_region.to_region_vid(),
+                                locations: location.boring(),
+                            });
 
-                                if let Some(all_facts) = all_facts {
-                                    all_facts.outlives.push((
-                                        ref_region.to_region_vid(),
-                                        borrow_region.to_region_vid(),
-                                        location_table.mid_index(location),
-                                    ));
+                            if let Some(all_facts) = all_facts {
+                                all_facts.outlives.push((
+                                    ref_region.to_region_vid(),
+                                    borrow_region.to_region_vid(),
+                                    location_table.mid_index(location),
+                                ));
+                            }
+
+                            match mutbl {
+                                hir::Mutability::MutImmutable => {
+                                    // Immutable reference. We don't need the base
+                                    // to be valid for the entire lifetime of
+                                    // the borrow.
+                                    break;
                                 }
+                                hir::Mutability::MutMutable => {
+                                    // Mutable reference. We *do* need the base
+                                    // to be valid, because after the base becomes
+                                    // invalid, someone else can use our mutable deref.
 
-                                match mutbl {
-                                    hir::Mutability::MutImmutable => {
-                                        // Immutable reference. We don't need the base
-                                        // to be valid for the entire lifetime of
-                                        // the borrow.
-                                        break;
-                                    }
-                                    hir::Mutability::MutMutable => {
-                                        // Mutable reference. We *do* need the base
-                                        // to be valid, because after the base becomes
-                                        // invalid, someone else can use our mutable deref.
-
-                                        // This is in order to make the following function
-                                        // illegal:
-                                        // ```
-                                        // fn unsafe_deref<'a, 'b>(x: &'a &'b mut T) -> &'b mut T {
-                                        //     &mut *x
-                                        // }
-                                        // ```
-                                        //
-                                        // As otherwise you could clone `&mut T` using the
-                                        // following function:
-                                        // ```
-                                        // fn bad(x: &mut T) -> (&mut T, &mut T) {
-                                        //     let my_clone = unsafe_deref(&'a x);
-                                        //     ENDREGION 'a;
-                                        //     (my_clone, x)
-                                        // }
-                                        // ```
-                                    }
+                                    // This is in order to make the following function
+                                    // illegal:
+                                    // ```
+                                    // fn unsafe_deref<'a, 'b>(x: &'a &'b mut T) -> &'b mut T {
+                                    //     &mut *x
+                                    // }
+                                    // ```
+                                    //
+                                    // As otherwise you could clone `&mut T` using the
+                                    // following function:
+                                    // ```
+                                    // fn bad(x: &mut T) -> (&mut T, &mut T) {
+                                    //     let my_clone = unsafe_deref(&'a x);
+                                    //     ENDREGION 'a;
+                                    //     (my_clone, x)
+                                    // }
+                                    // ```
                                 }
                             }
-                            ty::TyRawPtr(..) => {
-                                // deref of raw pointer, guaranteed to be valid
-                                break;
-                            }
-                            ty::TyAdt(def, _) if def.is_box() => {
-                                // deref of `Box`, need the base to be valid - propagate
-                            }
-                            _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
                         }
-                    }
-                    ProjectionElem::Field(..)
-                    | ProjectionElem::Downcast(..)
-                    | ProjectionElem::Index(..)
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. } => {
-                        // other field access
+                        ty::TyRawPtr(..) => {
+                            // deref of raw pointer, guaranteed to be valid
+                            break;
+                        }
+                        ty::TyAdt(def, _) if def.is_box() => {
+                            // deref of `Box`, need the base to be valid - propagate
+                        }
+                        _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
                     }
                 }
-                base_ty = PlaceTy::from(base_ty)
-                    .projection_ty(tcx, elem).to_ty(tcx);
+                ProjectionElem::Field(..)
+                | ProjectionElem::Downcast(..)
+                | ProjectionElem::Index(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. } => {
+                    // other field access
+                }
             }
+            base_ty = PlaceTy::from(base_ty)
+                .projection_ty(tcx, elem).to_ty(tcx);
         }
     }
 

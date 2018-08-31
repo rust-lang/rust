@@ -634,11 +634,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         self.append_place_base_to_string(&place.base, buf)?;
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                self.append_place_projection_to_string(place, elem, buf, including_downcast)?;
-            }
+
+        for elem in place.elems.iter() {
+            self.append_place_projection_to_string(
+                place,
+                elem,
+                buf,
+                including_downcast
+            )?;
         }
+
         Ok(())
     }
 
@@ -738,24 +743,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
              PlaceBase::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
              PlaceBase::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
         };
-        if !place.has_no_projection() {
-            for elem in place.elems.iter() {
-                let proj_str = match elem {
-                    ProjectionElem::Downcast(def, variant_index) => format!(
-                        "{}",
-                        def.variants[*variant_index].fields[field.index()].ident
-                    ).to_string(),
-                    ProjectionElem::Field(_, field_type) => {
-                        self.describe_field_from_ty(&field_type, field).to_string()
-                    }
-                    ProjectionElem::Index(..)
-                    | ProjectionElem::Deref
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. } => continue,
-                };
-                string.push_str(proj_str.as_str());
-            }
+
+        for elem in place.elems.iter() {
+            let proj_str = match elem {
+                ProjectionElem::Downcast(def, variant_index) => format!(
+                    "{}",
+                    def.variants[*variant_index].fields[field.index()].ident
+                ).to_string(),
+                ProjectionElem::Field(_, field_type) => {
+                    self.describe_field_from_ty(&field_type, field).to_string()
+                }
+                ProjectionElem::Index(..)
+                | ProjectionElem::Deref
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. } => continue,
+            };
+            string.push_str(proj_str.as_str());
         }
+
         string
     }
 

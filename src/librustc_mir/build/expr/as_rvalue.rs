@@ -443,43 +443,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         } else {
             bug!("Unexpected capture place");
         };
-        if !arg_place.has_no_projection() {
-            let mut proj_iter = arg_place.elems.iter().cloned().rev();
-            if let Some(projection) = proj_iter.next() {
-                match projection {
-                    ProjectionElem::Deref => {
-                        if let PlaceBase::Local(local) = arg_place.base {
-                            debug_assert!(
-                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
-                                = this.local_decls[local].is_user_variable {
-                                    true
-                                } else {
-                                    false
-                                },
-                                "Unexpected capture place",
-                            );
-                        }
 
-                        if let Some(ProjectionElem::Field(upvar_index, _)) = proj_iter.next() {
-                            // Not projected from the implicit `self` in a closure.
-                            debug_assert!(
-                                match arg_place.base {
-                                    PlaceBase::Local(local) => local == Local::new(1),
-                                    _ => false,
-                                },
-                                "Unexpected capture place"
-                            );
-                            // Not in a closure
-                            debug_assert!(
-                                this.upvar_decls.len() > upvar_index.index(),
-                                "Unexpected capture place"
-                            );
-                            mutability = this.upvar_decls[upvar_index.index()].mutability;
-                        } else {
-                            bug!("Unexpected capture place");
-                        }
-                    },
-                    ProjectionElem::Field(upvar_index, _) => {
+        let mut proj_iter = arg_place.elems.iter().cloned().rev();
+        if let Some(projection) = proj_iter.next() {
+            match projection {
+                ProjectionElem::Deref => {
+                    if let PlaceBase::Local(local) = arg_place.base {
+                        debug_assert!(
+                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
+                            = this.local_decls[local].is_user_variable {
+                                true
+                            } else {
+                                false
+                            },
+                            "Unexpected capture place",
+                        );
+                    }
+
+                    if let Some(ProjectionElem::Field(upvar_index, _)) = proj_iter.next() {
                         // Not projected from the implicit `self` in a closure.
                         debug_assert!(
                             match arg_place.base {
@@ -494,10 +475,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             "Unexpected capture place"
                         );
                         mutability = this.upvar_decls[upvar_index.index()].mutability;
-                    },
-                    _ => {
+                    } else {
                         bug!("Unexpected capture place");
                     }
+                },
+                ProjectionElem::Field(upvar_index, _) => {
+                    // Not projected from the implicit `self` in a closure.
+                    debug_assert!(
+                        match arg_place.base {
+                            PlaceBase::Local(local) => local == Local::new(1),
+                            _ => false,
+                        },
+                        "Unexpected capture place"
+                    );
+                    // Not in a closure
+                    debug_assert!(
+                        this.upvar_decls.len() > upvar_index.index(),
+                        "Unexpected capture place"
+                    );
+                    mutability = this.upvar_decls[upvar_index.index()].mutability;
+                },
+                _ => {
+                    bug!("Unexpected capture place");
                 }
             }
         }

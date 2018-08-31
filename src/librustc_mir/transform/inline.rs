@@ -425,16 +425,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     } else {
                         false
                     };
-                    if !place.has_no_projection() {
-                       for elem in place.elems.iter() {
-                           match elem {
-                               ProjectionElem::Deref
-                               | ProjectionElem::Index(_) => {
-                                   dest_needs_borrow = true;
-                               }
-                               _ => {},
-                           }
-                       }
+                    for elem in place.elems.iter() {
+                        match elem {
+                            ProjectionElem::Deref
+                            | ProjectionElem::Index(_) => {
+                                dest_needs_borrow = true;
+                            }
+                            _ => {},
+                        }
                     }
                     dest_needs_borrow
                 }
