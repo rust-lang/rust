@@ -9,20 +9,24 @@ design.
 
 ## Rust compiler meeting
 
-The compiler team has a weekly meeting where we do triage and try to generally
-stay on top of new bugs, regressions, and other things. This general plan for
-this meeting can be found in [the rust-compiler-meeting etherpad][etherpad]. It works
-roughly as follows:
+The compiler team has a weekly meeting where we do triage and try to
+generally stay on top of new bugs, regressions, and other things. This
+general plan for this meeting can be found in
+[the rust-compiler-meeting etherpad][etherpad]. It works roughly as
+follows:
 
-- **Review P-high bugs:** P-high bugs are those that are sufficiently important for us
-  to actively track progress. P-high bugs should ideally always have an assignee.
+- **Review P-high bugs:** P-high bugs are those that are sufficiently
+  important for us to actively track progress. P-high bugs should
+  ideally always have an assignee.
 - **Look over new regressions:** we then look for new cases where the
   compiler broke previously working code in the wild. Regressions are
   almost always marked as P-high; the major exception would be bug
   fixes (though even there we often
   [aim to give warnings first][procedure]).
-- **Check I-nominated issues:** These are issues where feedback from the team is desired.
-- **Check for beta nominations:** These are nominations of things to backport to beta.
+- **Check I-nominated issues:** These are issues where feedback from
+  the team is desired.
+- **Check for beta nominations:** These are nominations of things to
+  backport to beta.
 
 The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
@@ -61,14 +65,16 @@ merge a PR
 
 The guidelines for reviewers are as follows:
 
-- You are always welcome to review any PR, regardless of who it is assigned to.
-  However, do not r+ PRs unless:
+- You are always welcome to review any PR, regardless of who it is
+  assigned to.  However, do not r+ PRs unless:
   - You are confident in that part of the code.
   - You are confident that nobody else wants to review it first.
-    - For example, sometimes people will express a desire to review a PR before it lands,
-      perhaps because it touches a particularly sensitive part of the code.
-- Always be polite when reviewing: you are a representative of the Rust project,
-  so it is expected that you will go above and beyond when it comes to the [Code of Conduct].
+    - For example, sometimes people will express a desire to review a
+      PR before it lands, perhaps because it touches a particularly
+      sensitive part of the code.
+- Always be polite when reviewing: you are a representative of the
+  Rust project, so it is expected that you will go above and beyond
+  when it comes to the [Code of Conduct].
 
 [Code of Conduct]: https://www.rust-lang.org/en-US/conduct.html
 
