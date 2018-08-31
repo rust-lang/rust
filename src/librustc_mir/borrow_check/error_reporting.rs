@@ -15,6 +15,7 @@ use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
 use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
 use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::DiagnosticBuilder;
@@ -24,8 +25,9 @@ use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 
+use dataflow::drop_flag_effects;
+use dataflow::move_paths::indexes::MoveOutIndex;
 use dataflow::move_paths::MovePathIndex;
-use dataflow::{FlowAtLocation, MovingOutStatements};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
@@ -35,17 +37,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         desired_action: InitializationRequiringAction,
         (place, span): (&Place<'tcx>, Span),
         mpi: MovePathIndex,
-        curr_move_out: &FlowAtLocation<MovingOutStatements<'_, 'gcx, 'tcx>>,
     ) {
         let use_spans = self
             .move_spans(place, context.loc)
             .or_else(|| self.borrow_spans(span, context.loc));
         let span = use_spans.args_or_use();
 
-        let mois = self.move_data.path_map[mpi]
-            .iter()
-            .filter(|moi| curr_move_out.contains(moi))
-            .collect::<Vec<_>>();
+        let mois = self.get_moved_indexes(context, mpi);
+        debug!("report_use_of_moved_or_uninitialized: mois={:?}", mois);
 
         if mois.is_empty() {
             let root_place = self.prefixes(&place, PrefixSet::All).last().unwrap();
@@ -93,7 +92,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             let mut is_loop_move = false;
             for moi in &mois {
-                let move_out = self.move_data.moves[**moi];
+                let move_out = self.move_data.moves[*moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
 
                 let move_spans = self.move_spans(moved_place, move_out.source);
@@ -148,7 +147,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 };
 
                 if needs_note {
-                    let mpi = self.move_data.moves[*mois[0]].path;
+                    let mpi = self.move_data.moves[mois[0]].path;
                     let place = &self.move_data.move_paths[mpi].place;
 
                     if let Some(ty) = self.retrieve_type_for_place(place) {
@@ -348,10 +347,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if issued_spans == borrow_spans {
             borrow_spans.var_span_label(
                 &mut err,
-                format!(
-                    "borrows occur due to use of `{}` in closure",
-                    desc_place
-                ),
+                format!("borrows occur due to use of `{}` in closure", desc_place),
             );
         } else {
             let borrow_place = &issued_borrow.borrowed_place;
@@ -366,7 +362,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             borrow_spans.var_span_label(
                 &mut err,
-                format!("second borrow occurs due to use of `{}` in closure", desc_place),
+                format!(
+                    "second borrow occurs due to use of `{}` in closure",
+                    desc_place
+                ),
             );
         }
 
@@ -413,10 +412,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
             Some(_) if self.is_place_thread_local(root_place) => {
-                self.report_thread_local_value_does_not_live_long_enough(
-                    drop_span,
-                    borrow_span,
-                )
+                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
             }
             Some(name) => self.report_local_value_does_not_live_long_enough(
                 context,
@@ -462,7 +458,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let mut err = self.tcx.path_does_not_live_long_enough(
-            borrow_span, &format!("`{}`", name), Origin::Mir);
+            borrow_span,
+            &format!("`{}`", name),
+            Origin::Mir,
+        );
 
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(
@@ -486,11 +485,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             drop_span, borrow_span
         );
 
-        let mut err = self.tcx.thread_local_value_does_not_live_long_enough(
-            borrow_span, Origin::Mir);
+        let mut err = self
+            .tcx
+            .thread_local_value_does_not_live_long_enough(borrow_span, Origin::Mir);
 
-        err.span_label(borrow_span,
-                       "thread-local variables cannot be borrowed beyond the end of the function");
+        err.span_label(
+            borrow_span,
+            "thread-local variables cannot be borrowed beyond the end of the function",
+        );
         err.span_label(drop_span, "end of enclosing function is here");
         err
     }
@@ -519,6 +521,80 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
         err
+    }
+
+    fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveOutIndex> {
+        let mir = self.mir;
+
+        let mut stack = Vec::new();
+        stack.extend(mir.predecessor_locations(context.loc));
+
+        let mut visited = FxHashSet();
+        let mut result = vec![];
+
+        'dfs: while let Some(l) = stack.pop() {
+            debug!(
+                "report_use_of_moved_or_uninitialized: current_location={:?}",
+                l
+            );
+
+            if !visited.insert(l) {
+                continue;
+            }
+
+            // check for moves
+            let stmt_kind = mir[l.block]
+                .statements
+                .get(l.statement_index)
+                .map(|s| &s.kind);
+            if let Some(StatementKind::StorageDead(..)) = stmt_kind {
+                // this analysis only tries to find moves explicitly
+                // written by the user, so we ignore the move-outs
+                // created by `StorageDead` and at the beginning
+                // of a function.
+            } else {
+                for moi in &self.move_data.loc_map[l] {
+                    debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
+                    if self.move_data.moves[*moi].path == mpi {
+                        debug!("report_use_of_moved_or_uninitialized: found");
+                        result.push(*moi);
+
+                        // Strictly speaking, we could continue our DFS here. There may be
+                        // other moves that can reach the point of error. But it is kind of
+                        // confusing to highlight them.
+                        //
+                        // Example:
+                        //
+                        // ```
+                        // let a = vec![];
+                        // let b = a;
+                        // let c = a;
+                        // drop(a); // <-- current point of error
+                        // ```
+                        //
+                        // Because we stop the DFS here, we only highlight `let c = a`,
+                        // and not `let b = a`. We will of course also report an error at
+                        // `let c = a` which highlights `let b = a` as the move.
+                        continue 'dfs;
+                    }
+                }
+            }
+
+            // check for inits
+            let mut any_match = false;
+            drop_flag_effects::for_location_inits(self.tcx, self.mir, self.move_data, l, |m| {
+                if m == mpi {
+                    any_match = true;
+                }
+            });
+            if any_match {
+                continue 'dfs;
+            }
+
+            stack.extend(mir.predecessor_locations(l));
+        }
+
+        result
     }
 
     pub(super) fn report_illegal_mutation_of_borrowed(
@@ -890,8 +966,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let attrs = self.tcx.get_attrs(statik.def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
 
-            debug!("is_place_thread_local: attrs={:?} is_thread_local={:?}",
-                   attrs, is_thread_local);
+            debug!(
+                "is_place_thread_local: attrs={:?} is_thread_local={:?}",
+                attrs, is_thread_local
+            );
             is_thread_local
         } else {
             debug!("is_place_thread_local: no");
@@ -909,7 +987,7 @@ pub(super) enum UseSpans {
         // it's present.
         args_span: Span,
         // The span of the first use of the captured variable inside the closure.
-        var_span: Span
+        var_span: Span,
     },
     // This access has a single span associated to it: common case.
     OtherUse(Span),

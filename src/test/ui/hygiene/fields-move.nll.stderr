@@ -1,9 +1,6 @@
 error[E0382]: use of moved value: `foo.x`
   --> $DIR/fields-move.rs:28:9
    |
-LL |    $foo.x
-   |    ------ value moved here
-...
 LL |         $foo.x //~ ERROR use of moved value: `foo.x`
    |         ^^^^^^ value used here after move
 ...
@@ -28,14 +25,9 @@ LL |     assert_two_copies(copy_modern!(foo), foo.x); //~ ERROR use of moved val
 error[E0382]: use of moved value: `foo.x`
   --> $DIR/fields-move.rs:39:42
    |
-LL |    $foo.x
-   |    ------ value moved here
-...
 LL |         $foo.x //~ ERROR use of moved value: `foo.x`
    |         ------ value moved here
 ...
-LL |     assert_two_copies(copy_modern!(foo), foo.x); //~ ERROR use of moved value: `foo.x`
-   |                                          ----- value moved here
 LL |     assert_two_copies(copy_legacy!(foo), foo.x); //~ ERROR use of moved value: `foo.x`
    |                                          ^^^^^ value used here after move
    |
