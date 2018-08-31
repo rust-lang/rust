@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Clone)]
 pub struct Registry {
-    descriptions: HashMap<&'static str, &'static str>,
+    descriptions: FxHashMap<&'static str, &'static str>,
 }
 
 impl Registry {

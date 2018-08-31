@@ -1831,10 +1831,10 @@ mod tests {
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;
-    use std::collections::HashSet;
     use std::io;
     use std::path::PathBuf;
     use diagnostics::plugin::ErrorMap;
+    use rustc_data_structures::fx::FxHashSet;
     use rustc_data_structures::sync::Lock;
     use with_globals;
     fn mk_sess(cm: Lrc<SourceMap>) -> ParseSess {
@@ -1845,10 +1845,10 @@ mod tests {
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
-            config: CrateConfig::new(),
+            config: CrateConfig::default(),
             included_mod_stack: Lock::new(Vec::new()),
             code_map: cm,
-            missing_fragment_specifiers: Lock::new(HashSet::new()),
+            missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             non_modrs_mods: Lock::new(vec![]),

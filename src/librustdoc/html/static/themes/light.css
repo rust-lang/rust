@@ -401,3 +401,7 @@ kbd {
 .search-results td span.grey {
 	color: #999;
 }
+
+.impl-items code {
+	background-color: rgba(0, 0, 0, 0);
+}

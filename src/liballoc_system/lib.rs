@@ -220,7 +220,7 @@ mod platform {
 }
 
 #[cfg(windows)]
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 mod platform {
     use MIN_ALIGN;
     use System;

@@ -137,7 +137,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     //
     // Copied from std
     #[cfg(windows)]
-    #[allow(bad_style)]
+    #[allow(nonstandard_style)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         use std::ptr;
         use std::ffi::OsStr;
