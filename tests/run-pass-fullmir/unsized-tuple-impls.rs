@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-msvc
-
 #![feature(unsized_tuple_coercion)]
 use std::mem;
 

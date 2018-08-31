@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-msvc
+//ignore-windows: Uses POSIX APIs
 #![feature(libc)]
 
 extern crate libc;
