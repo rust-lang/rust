@@ -275,7 +275,7 @@ fn rewrite_match_arm(
 fn rewrite_match_pattern(
     context: &RewriteContext,
     pats: &[&ast::Pat],
-    guard: &Option<ptr::P<ast::Expr>>,
+    guard: &Option<ast::Guard>,
     shape: Shape,
 ) -> Option<String> {
     // Patterns
@@ -484,10 +484,18 @@ fn rewrite_match_body(
     }
 }
 
+impl Rewrite for ast::Guard {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        match self {
+            ast::Guard::If(ref expr) => expr.rewrite(context, shape),
+        }
+    }
+}
+
 // The `if ...` guard on a match arm.
 fn rewrite_guard(
     context: &RewriteContext,
-    guard: &Option<ptr::P<ast::Expr>>,
+    guard: &Option<ast::Guard>,
     shape: Shape,
     // The amount of space used up on this line for the pattern in
     // the arm (excludes offset).
