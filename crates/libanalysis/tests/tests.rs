@@ -5,7 +5,7 @@ extern crate test_utils;
 use std::path::{Path};
 
 use relative_path::RelativePath;
-use libanalysis::{AnalysisHost, FileId, FileResolver};
+use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle};
 use test_utils::assert_eq_dbg;
 
 struct FileMap(&'static [(u32, &'static str)]);
@@ -45,7 +45,8 @@ fn test_resolve_module() {
         (1, "/lib.rs"),
         (2, "/foo.rs"),
     ]));
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into());
+    let (_handle, token) = JobHandle::new();
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -55,7 +56,7 @@ fn test_resolve_module() {
         (1, "/lib.rs"),
         (2, "/foo/mod.rs")
     ]));
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into());
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
