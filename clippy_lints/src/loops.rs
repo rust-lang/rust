@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::source_map::Span;
+use syntax_pos::BytePos;
 use crate::utils::{sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
@@ -2269,63 +2270,62 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) {
     if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
         if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node {
-            if chain_method.ident.name == "collect" && match_trait_method(cx, &args[0], &paths::ITERATOR) {
-                if method.ident.name == "len" {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        expr.span,
-                        "you are collecting an iterator to check its length",
-                        "consider replacing with",
-                        generate_needless_collect_len_sugg(&args[0], cx),
-                    );
-                }
-                if method.ident.name == "is_empty" {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        expr.span,
-                        "you are collecting an iterator to check if it is empty",
-                        "consider replacing with",
-                        generate_needless_collect_is_empty_sugg(&args[0], cx),
-                    );
-                }
-                if method.ident.name == "contains" {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        expr.span,
-                        "you are collecting an iterator to check if contains an element",
-                        "consider replacing with",
-                        generate_needless_collect_contains_sugg(&args[0], &args[1], cx),
-                    );
+            if chain_method.ident.name == "collect" &&
+                match_trait_method(cx, &args[0], &paths::ITERATOR) &&
+                chain_method.args.is_some() {
+                let generic_args = chain_method.args.as_ref().unwrap();
+                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0) {
+                    let ty = cx.tables.node_id_to_type(ty.hir_id);
+                    if match_type(cx, ty, &paths::VEC) ||
+                        match_type(cx, ty, &paths::VEC_DEQUE) ||
+                        match_type(cx, ty, &paths::BTREEMAP) ||
+                        match_type(cx, ty, &paths::HASHMAP) {
+                        if method.ident.name == "len" {
+                            span_lint_and_sugg(
+                                cx,
+                                NEEDLESS_COLLECT,
+                                shorten_needless_collect_span(expr),
+                                "you are collecting an iterator to check its length",
+                                "consider replacing with",
+                                ".count()".to_string(),
+                            );
+                        }
+                        if method.ident.name == "is_empty" {
+                            span_lint_and_sugg(
+                                cx,
+                                NEEDLESS_COLLECT,
+                                shorten_needless_collect_span(expr),
+                                "you are collecting an iterator to check if it is empty",
+                                "consider replacing with",
+                                ".next().is_none()".to_string(),
+                            );
+                        }
+                        if method.ident.name == "contains" {
+                            let contains_arg = snippet(cx, args[1].span, "??");
+                            span_lint_and_sugg(
+                                cx,
+                                NEEDLESS_COLLECT,
+                                shorten_needless_collect_span(expr),
+                                "you are collecting an iterator to check if contains an element",
+                                "consider replacing with",
+                                format!(
+                                    ".any(|&x| x == {})",
+                                    if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
+                                ),
+                            );
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-fn generate_needless_collect_len_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
-    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
-        let iter = snippet(cx, args[0].span, "??");
-        return format!("{}.count()", iter);
+fn shorten_needless_collect_span(expr: &Expr) -> Span {
+    if let ExprKind::MethodCall(_, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(_, ref span, _) = args[0].node {
+            return expr.span.with_lo(span.lo() - BytePos(1));
+        }
     }
-    unreachable!();
-}
-
-fn generate_needless_collect_is_empty_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
-    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
-        let iter = snippet(cx, args[0].span, "??");
-        return format!("{}.any(|_| true)", iter);
-    }
-    unreachable!();
-}
-
-fn generate_needless_collect_contains_sugg<'a, 'tcx>(collect_expr: &'tcx Expr, contains_arg: &'tcx Expr, cx: &LateContext<'a, 'tcx>) -> String {
-    if let ExprKind::MethodCall(_, _, ref args) = collect_expr.node {
-        let iter = snippet(cx, args[0].span, "??");
-        let arg = snippet(cx, contains_arg.span, "??");
-        return format!("{}.any(|&x| x == {})", iter, if arg.starts_with('&') { &arg[1..] } else { &arg });
-    }
-    unreachable!();
+    unreachable!()
 }

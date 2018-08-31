@@ -1,22 +1,28 @@
 error: you are collecting an iterator to check its length
- --> $DIR/needless_collect.rs:5:15
+ --> $DIR/needless_collect.rs:7:28
   |
-5 |     let len = sample.iter().collect::<Vec<_>>().len();
-  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `sample.iter().count()`
+7 |     let len = sample.iter().collect::<Vec<_>>().len();
+  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `.count()`
   |
   = note: `-D needless-collect` implied by `-D warnings`
 
 error: you are collecting an iterator to check if it is empty
- --> $DIR/needless_collect.rs:6:8
+ --> $DIR/needless_collect.rs:8:21
   |
-6 |     if sample.iter().collect::<Vec<_>>().is_empty() {
-  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `sample.iter().any(|_| true)`
+8 |     if sample.iter().collect::<Vec<_>>().is_empty() {
+  |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `.next().is_none()`
 
 error: you are collecting an iterator to check if contains an element
- --> $DIR/needless_collect.rs:9:5
-  |
-9 |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `sample.iter().cloned().any(|&x| x == 1)`
+  --> $DIR/needless_collect.rs:11:27
+   |
+11 |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `.any(|&x| x == 1)`
 
-error: aborting due to 3 previous errors
+error: you are collecting an iterator to check its length
+  --> $DIR/needless_collect.rs:12:34
+   |
+12 |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing with: `.count()`
+
+error: aborting due to 4 previous errors
 

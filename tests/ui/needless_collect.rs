@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet, BTreeSet};
+
 #[warn(clippy, needless_collect)]
 #[allow(unused_variables, iter_cloned_collect)]
 fn main() {
@@ -7,4 +9,9 @@ fn main() {
         // Empty
     }
     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
+    sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
+    // Notice the `HashSet`--this should not be linted
+    sample.iter().collect::<HashSet<_>>().len();
+    // Neither should this
+    sample.iter().collect::<BTreeSet<_>>().len();
 }
