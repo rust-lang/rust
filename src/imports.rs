@@ -15,7 +15,7 @@ use syntax::ast::{self, UseTreeKind};
 use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
 
 use comment::combine_strs_with_missing_comments;
-use config::IndentStyle;
+use config::{Edition, IndentStyle};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -144,6 +144,7 @@ impl UseSegment {
     fn from_path_segment(
         context: &RewriteContext,
         path_seg: &ast::PathSegment,
+        modsep: bool,
     ) -> Option<UseSegment> {
         let name = rewrite_ident(context, path_seg.ident);
         if name.is_empty() || name == "{{root}}" {
@@ -152,7 +153,10 @@ impl UseSegment {
         Some(match name {
             "self" => UseSegment::Slf(None),
             "super" => UseSegment::Super(None),
-            _ => UseSegment::Ident((*name).to_owned(), None),
+            _ => {
+                let mod_sep = if modsep { "::" } else { "" };
+                UseSegment::Ident(format!("{}{}", mod_sep, name), None)
+            }
         })
     }
 }
@@ -313,8 +317,13 @@ impl UseTree {
             visibility,
             attrs,
         };
+
+        let leading_modsep = context.config.edition() == Edition::Edition2018
+            && a.prefix.to_string().len() > 2
+            && a.prefix.to_string().starts_with("::");
+
         for p in &a.prefix.segments {
-            if let Some(use_segment) = UseSegment::from_path_segment(context, p) {
+            if let Some(use_segment) = UseSegment::from_path_segment(context, p, leading_modsep) {
                 result.path.push(use_segment);
             }
         }

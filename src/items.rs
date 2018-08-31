@@ -2232,8 +2232,10 @@ fn rewrite_args(
 ) -> Option<String> {
     let mut arg_item_strs = args
         .iter()
-        .map(|arg| arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent)))
-        .collect::<Option<Vec<_>>>()?;
+        .map(|arg| {
+            arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
+                .unwrap_or_else(|| context.snippet(arg.span()).to_owned())
+        }).collect::<Vec<_>>();
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
