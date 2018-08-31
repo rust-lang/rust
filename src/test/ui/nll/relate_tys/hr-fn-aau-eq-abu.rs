@@ -16,9 +16,7 @@
 // another -- effectively, the single lifetime `'a` is just inferred
 // to be the intersection of the two distinct lifetimes.
 //
-// FIXME: However, we currently reject this example with an error,
-// because of how we handle binders and equality in `relate_tys`.
-//
+// compile-pass
 // compile-flags:-Zno-leak-check
 
 #![feature(nll)]
@@ -31,7 +29,6 @@ fn make_cell_aa() -> Cell<for<'a> fn(&'a u32, &'a u32)> {
 
 fn aa_eq_ab() {
     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
-    //~^ ERROR higher-ranked subtype error
     drop(a);
 }
 

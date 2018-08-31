@@ -458,18 +458,29 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
             self.b_scopes.push(b_scope);
             self.a_scopes.push(a_scope);
 
-            // FIXME -- to be fully correct, we would set the ambient
-            // variance to Covariant here. As is, we will sometimes
-            // propagate down an ambient variance of Equal -- this in
-            // turn causes us to report errors in some cases where
-            // types perhaps *ought* to be equal. See the
-            // `hr-fn-aau-eq-abu.rs` test for an example. Fixing this
-            // though is a bit nontrivial: in particular, it would
-            // require a more involved handling of canonical
-            // variables, since we would no longer be able to rely on
-            // having an `==` relationship for canonical variables.
+            // Reset the ambient variance to covariant. This is needed
+            // to correctly handle cases like
+            //
+            //     for<'a> fn(&'a u32, &'a u3) == for<'b, 'c> fn(&'b u32, &'c u32)
+            //
+            // Somewhat surprisingly, these two types are actually
+            // **equal**, even though the one on the right looks more
+            // polymorphic. The reason is due to subtyping. To see it,
+            // consider that each function can call the other:
+            //
+            // - The left function can call the right with `'b` and
+            //   `'c` both equal to `'a`
+            //
+            // - The right function can call the left with `'a` set to
+            //   `{P}`, where P is the point in the CFG where the call
+            //   itself occurs. Note that `'b` and `'c` must both
+            //   include P. At the point, the call works because of
+            //   subtyping (i.e., `&'b u32 <: &{P} u32`).
+            let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
             self.relate(a.skip_binder(), b.skip_binder())?;
+
+            self.ambient_variance = variance;
 
             self.b_scopes.pop().unwrap();
             self.a_scopes.pop().unwrap();
@@ -491,7 +502,13 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
             self.a_scopes.push(a_scope);
             self.b_scopes.push(b_scope);
 
+            // Reset ambient variance to contravariance. See the
+            // covariant case above for an explanation.
+            let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
+
             self.relate(a.skip_binder(), b.skip_binder())?;
+
+            self.ambient_variance = variance;
 
             self.b_scopes.pop().unwrap();
             self.a_scopes.pop().unwrap();
