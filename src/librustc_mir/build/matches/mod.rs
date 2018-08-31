@@ -329,6 +329,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
 
+        self.ascribe_types(block, &candidate.ascriptions);
+
         // now apply the bindings, which will also declare the variables
         self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
 
@@ -958,6 +960,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         debug_assert!(candidate.match_pairs.is_empty());
 
+        self.ascribe_types(block, &candidate.ascriptions);
+
         let arm_block = arm_blocks.blocks[candidate.arm_index];
         let candidate_source_info = self.source_info(candidate.span);
 
@@ -1166,6 +1170,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 TerminatorKind::Goto { target: arm_block },
             );
             None
+        }
+    }
+
+    /// Append `AscribeUserType` statements onto the end of `block`
+    /// for each ascription
+    fn ascribe_types<'pat>(
+        &mut self,
+        block: BasicBlock,
+        ascriptions: &[Ascription<'tcx>],
+    ) {
+        for ascription in ascriptions {
+            let source_info = self.source_info(ascription.span);
+            self.cfg.push(
+                block,
+                Statement {
+                    source_info,
+                    kind: StatementKind::AscribeUserType(
+                        ascription.source.clone(),
+                        ascription.user_ty,
+                    ),
+                },
+            );
         }
     }
 

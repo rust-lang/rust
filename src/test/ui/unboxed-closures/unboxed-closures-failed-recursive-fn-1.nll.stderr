@@ -38,9 +38,12 @@ LL |         let g = factorial.as_ref().unwrap();
    |                 ^^^^^^^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - `factorial` dropped here while still borrowed
+   | -
+   | |
+   | `factorial` dropped here while still borrowed
+   | borrow later used here, when `factorial` is dropped
    |
-   = note: borrowed value must be valid for the static lifetime...
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0506]: cannot assign to `factorial` because it is borrowed
   --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:42:5
@@ -52,9 +55,10 @@ LL |         let g = factorial.as_ref().unwrap();
    |                 --------- borrow occurs due to use in closure
 ...
 LL |     factorial = Some(Box::new(f));
-   |     ^^^^^^^^^ assignment to borrowed `factorial` occurs here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^^^^^^^^^
+   |     |
+   |     assignment to borrowed `factorial` occurs here
+   |     borrow later used here
 
 error: aborting due to 4 previous errors
 

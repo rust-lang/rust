@@ -23,5 +23,6 @@ fn make_it() -> for<'a> fn(&'a u32, &'a u32) -> &'a u32 {
 fn main() {
     let a: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
     //~^ ERROR higher-ranked subtype error
+    //~| ERROR higher-ranked subtype error
     drop(a);
 }

@@ -1,0 +1,33 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/patterns.rs:6:41
+   |
+LL |     let _: Vec<&'static String> = vec![&String::new()];
+   |                                         ^^^^^^^^^^^^^ - temporary value only lives until here
+   |                                         |
+   |                                         temporary value does not live long enough
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/patterns.rs:9:52
+   |
+LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
+   |                                                    ^^^^^^^^^^^^^      - temporary value only lives until here
+   |                                                    |
+   |                                                    temporary value does not live long enough
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/patterns.rs:12:53
+   |
+LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
+   |                                                     ^^^^^^^^^^^^^      - temporary value only lives until here
+   |                                                     |
+   |                                                     temporary value does not live long enough
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
