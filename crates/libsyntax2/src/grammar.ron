@@ -488,10 +488,12 @@ Grammar(
             ]
         ),
         "ParamList": (
+            options: [ "SelfParam" ],
             collections: [
                 ["params", "Param"]
             ]
         ),
+        "SelfParam": (),
         "Param": (
             options: [ "Pat" ],
         ),

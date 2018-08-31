@@ -13,6 +13,7 @@ type ScopeId = usize;
 
 #[derive(Debug)]
 pub struct FnScopes {
+    pub self_param: Option<SyntaxNode>,
     scopes: Vec<ScopeData>,
     scope_for: HashMap<SyntaxNode, ScopeId>,
 }
@@ -20,6 +21,9 @@ pub struct FnScopes {
 impl FnScopes {
     pub fn new(fn_def: ast::FnDef) -> FnScopes {
         let mut scopes = FnScopes {
+            self_param: fn_def.param_list()
+                .and_then(|it| it.self_param())
+                .map(|it| it.syntax().owned()),
             scopes: Vec::new(),
             scope_for: HashMap::new()
         };

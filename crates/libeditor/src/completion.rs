@@ -142,6 +142,12 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
                 snippet: None,
             })
     );
+    if scopes.self_param.is_some() {
+        acc.push(CompletionItem {
+            name: "self".to_string(),
+            snippet: None,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -247,6 +253,13 @@ mod tests {
             }
         ", r#"[CompletionItem { name: "bar", snippet: None },
                CompletionItem { name: "foo", snippet: None }]"#)
+    }
+
+    #[test]
+    fn test_complete_self() {
+        check_scope_completion(r"
+            impl S { fn foo(&self) { <|> } }
+        ", r#"[CompletionItem { name: "self", snippet: None }]"#)
     }
 
     #[test]

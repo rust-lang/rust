@@ -1168,6 +1168,9 @@ impl<'a> ParamList<'a> {
     pub fn params(self) -> impl Iterator<Item = Param<'a>> + 'a {
         super::children(self)
     }
+pub fn self_param(self) -> Option<SelfParam<'a>> {
+        super::child_opt(self)
+    }
 }
 
 // ParenExpr
@@ -1578,6 +1581,24 @@ impl<'a> Root<'a> {
         super::children(self)
     }
 }
+
+// SelfParam
+#[derive(Debug, Clone, Copy)]
+pub struct SelfParam<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for SelfParam<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            SELF_PARAM => Some(SelfParam { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> SelfParam<'a> {}
 
 // SlicePat
 #[derive(Debug, Clone, Copy)]
