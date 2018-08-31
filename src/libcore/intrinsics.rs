@@ -967,10 +967,11 @@ extern "rust-intrinsic" {
     ///
     /// For regions of memory which might overlap, use [`copy`] instead.
     ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`].
+    /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
+    /// with the argument order swapped.
     ///
     /// [`copy`]: ./fn.copy.html
-    /// [`memcpy`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memcpy
+    /// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
     ///
     /// # Safety
     ///
@@ -1020,14 +1021,14 @@ extern "rust-intrinsic" {
     ///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
     ///         let src_ptr = src.as_ptr();
     ///
+    ///         // Truncate `src` without dropping its contents. We do this first,
+    ///         // to avoid problems in case something further down panics.
+    ///         src.set_len(0);
+    ///
     ///         // The two regions cannot overlap becuase mutable references do
     ///         // not alias, and two different vectors cannot own the same
     ///         // memory.
     ///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
-    ///
-    ///         // Truncate `src` without dropping its contents. This cannot panic,
-    ///         // so double-drops cannot happen.
-    ///         src.set_len(0);
     ///
     ///         // Notify `dst` that it now holds the contents of `src`.
     ///         dst.set_len(dst_len + src_len);
@@ -1053,12 +1054,12 @@ extern "rust-intrinsic" {
     /// If the source and destination will *never* overlap,
     /// [`copy_nonoverlapping`] can be used instead.
     ///
-    /// `copy` is semantically equivalent to C's [`memmove`].  Copying takes place as
-    /// if the bytes were copied from `src` to a temporary array and then copied from
-    /// the array to `dst`-
+    /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
+    /// order swapped.  Copying takes place as if the bytes were copied from `src`
+    /// to a temporary array and then copied from the array to `dst`.
     ///
     /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
-    /// [`memmove`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memmove
+    /// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
     ///
     /// # Safety
     ///
@@ -1107,7 +1108,7 @@ extern "rust-intrinsic" {
     /// `write_bytes` is similar to C's [`memset`], but sets `count *
     /// size_of::<T>()` bytes to `val`.
     ///
-    /// [`memset`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memset
+    /// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
     ///
     /// # Safety
     ///
@@ -1158,8 +1159,14 @@ extern "rust-intrinsic" {
     /// // At this point, using or dropping `v` results in undefined behavior.
     /// // drop(v); // ERROR
     ///
-    /// // Leaking it does not invoke drop and is fine:
-    /// mem::forget(v)
+    /// // Even leaking `v` "uses" it, and henc eis undefined behavior.
+    /// // mem::forget(v); // ERROR
+    ///
+    /// // Let us instead put in a valid value
+    /// ptr::write(&mut v, Box::new(42i32);
+    ///
+    /// // Now the box is fine
+    /// assert_eq!(*v, 42);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
-
 //! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
@@ -42,8 +40,10 @@
 //!
 //! ## Alignment
 //!
-//! Valid pointers are not necessarily properly aligned. However, most functions
-//! require their arguments to be properly aligned, and will explicitly state
+//! Valid pointers as defined above are not necessarily properly aligned (where
+//! "proper" alignment is defind by the pointee type, i.e., `*const T` must be
+//! aligned to `mem::align_of::<T>()`). However, most functions require their
+//! arguments to be properly aligned, and will explicitly state
 //! this requirement in their documentation. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
 //!
@@ -136,11 +136,12 @@ pub use intrinsics::write_bytes;
 /// let mut v = vec![Rc::new(0), last];
 ///
 /// unsafe {
+///     // Shorten `v` to prevent the last item from being dropped.  We do that first,
+///     // to prevent issues if the `drop_in_place` below panics.
+///     v.set_len(1);
 ///     // Without a call `drop_in_place`, the last item would never be dropped,
 ///     // and the memory it manages would be leaked.
 ///     ptr::drop_in_place(&mut v[1]);
-///     // Shorten `v` to prevent the last item from being dropped.
-///     v.set_len(1);
 /// }
 ///
 /// assert_eq!(v, &[0.into()]);
@@ -745,7 +746,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// unsafe {
 ///     // Take a reference to a 32-bit integer which is not aligned.
-///     let unaligned = &mut x.unaligned;
+///     let unaligned = &mut x.unaligned as *mut u32;
 ///
 ///     // Dereferencing normally will emit an unaligned store instruction,
 ///     // causing undefined behavior.
