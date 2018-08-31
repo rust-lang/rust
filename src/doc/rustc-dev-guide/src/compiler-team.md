@@ -32,9 +32,9 @@ The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
 complicated).
 
-The meeting is held over a "chat medium" -- it used to be IRC, but we
+The meeting is held over a "chat medium" — it used to be IRC, but we
 are currently in the process of evaluating other alternatives. Check
-[the etherpad] to find the current home (and see
+the [etherpad] to find the current home (and see
 [this internals thread][thread] for some ongoing discussion).
 
 [etherpad]: https://public.etherpad-mozilla.org/p/rust-compiler-meeting
@@ -85,7 +85,7 @@ rotation. high-five is the bot that assigns incoming PRs to
 reviewers. If you are added, you will be randomly selected to review
 PRs. If you find you are assigned a PR that you don't feel comfortable
 reviewing, you can also leave a comment like `r? @so-and-so` to assign
-to someone else -- if you don't know who to request, just write `r?
+to someone else — if you don't know who to request, just write `r?
 @nikomatsakis for reassignment` and @nikomatsakis will pick someone
 for you.
 
@@ -96,11 +96,11 @@ review burden for all of us! However, if you don't have time to give
 people timely feedback on their PRs, it may be better that you don't
 get on the list.
 
-### Team membership
+### Full team membership
 
 Full team membership is typically extended once someone made many
 contributions to the Rust compiler over time, ideally (but not
 necessarily) to multiple areas. Sometimes this might be implementing a
-new feature, but it is also important -- perhaps more important! -- to
+new feature, but it is also important — perhaps more important! — to
 have time and willingness to help out with general upkeep such as
 bugfixes, tracking regressions, and other less glamorous work.
