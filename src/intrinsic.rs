@@ -443,14 +443,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.write_value(value, dest)?;
             }
 
-            "transmute" => {
-                // Go through an allocation, to make sure the completely different layouts
-                // do not pose a problem.  (When the user transmutes through a union,
-                // there will not be a layout mismatch.)
-                let dest = self.force_allocation(dest)?;
-                self.copy_op(args[0], dest.into())?;
-            }
-
             "unchecked_shl" => {
                 let bits = dest.layout.size.bytes() as u128 * 8;
                 let l = self.read_value(args[0])?;
