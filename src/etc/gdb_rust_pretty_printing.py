@@ -322,7 +322,8 @@ class RustStdBTreeSetPrinter(object):
     def children(self):
         (length, data_ptr) = \
             rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
-        maybe_uninit_keys = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        leaf_node = GdbValue(data_ptr.get_wrapped_value().dereference())
+        maybe_uninit_keys = leaf_node.get_child_at_index(3)
         manually_drop_keys = maybe_uninit_keys.get_child_at_index(1)
         keys = manually_drop_keys.get_child_at_index(0)
         gdb_ptr = keys.get_wrapped_value()
@@ -347,11 +348,12 @@ class RustStdBTreeMapPrinter(object):
     def children(self):
         (length, data_ptr) = \
             rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
-        maybe_uninit_keys = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(3)
+        leaf_node = GdbValue(data_ptr.get_wrapped_value().dereference())
+        maybe_uninit_keys = leaf_node.get_child_at_index(3)
         manually_drop_keys = maybe_uninit_keys.get_child_at_index(1)
         keys = manually_drop_keys.get_child_at_index(0)
         keys_ptr = keys.get_wrapped_value()
-        maybe_uninit_vals = GdbValue(data_ptr.get_wrapped_value().dereference()).get_child_at_index(4)
+        maybe_uninit_vals = leaf_node.get_child_at_index(4)
         manually_drop_vals = maybe_uninit_vals.get_child_at_index(1)
         vals = manually_drop_vals.get_child_at_index(0)
         vals_ptr = vals.get_wrapped_value()
