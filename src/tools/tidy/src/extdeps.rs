@@ -15,7 +15,7 @@ use std::io::Read;
 use std::path::Path;
 
 /// List of whitelisted sources for packages
-static WHITELISTED_SOURCES: &'static [&'static str] = &[
+const WHITELISTED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
 ];
 

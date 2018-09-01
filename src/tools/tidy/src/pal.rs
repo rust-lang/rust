@@ -50,7 +50,7 @@ use std::path::Path;
 use std::iter::Iterator;
 
 // Paths that may contain platform-specific code
-const EXCEPTION_PATHS: &'static [&'static str] = &[
+const EXCEPTION_PATHS: &[&str] = &[
     // std crates
     "src/liballoc_jemalloc",
     "src/liballoc_system",
