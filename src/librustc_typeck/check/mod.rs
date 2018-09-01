@@ -1378,7 +1378,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt, id: DefId, span: Span) {
         let alloc = if let ConstValue::ByRef(_, allocation, _) = static_.val {
             allocation
         } else {
-            panic!("Trying to get allocation info from non-byref const value")
+            panic!("Matching on non-ByRef static")
         };
         if alloc.relocations.len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \

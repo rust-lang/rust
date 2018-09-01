@@ -344,7 +344,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             if let ConstValue::ByRef(_, allocation, _) = const_val.val {
                 allocation
             } else {
-                panic!("Trying to get allocation info from non-byref const value")
+                panic!("Matching on non-ByRef static")
             }
         })
     }
