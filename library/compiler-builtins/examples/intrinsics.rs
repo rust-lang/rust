@@ -11,11 +11,11 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
 #![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
-extern crate panic_implementation;
+extern crate panic_handler;
 
 #[cfg(not(thumb))]
 #[link(name = "c")]

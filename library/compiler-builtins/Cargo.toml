@@ -10,7 +10,7 @@ test = false
 cc = { optional = true, version = "1.0" }
 
 [dev-dependencies]
-panic-implementation = { path = 'crates/panic-implementation' }
+panic-handler = { path = 'crates/panic-handler' }
 
 [features]
 default = ["compiler-builtins"]
