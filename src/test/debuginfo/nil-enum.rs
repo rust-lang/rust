@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// NOTE Instantiating an empty enum is UB. This test may break in the future.
+
 // LLDB can't handle zero-sized values
 // ignore-lldb
 
@@ -25,7 +27,10 @@
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
+#![feature(maybe_uninit)]
 #![omit_gdb_pretty_printer_section]
+
+use std::mem::MaybeUninit;
 
 enum ANilEnum {}
 enum AnotherNilEnum {}
@@ -35,8 +40,8 @@ enum AnotherNilEnum {}
 // The error from gdbr is expected since nil enums are not supposed to exist.
 fn main() {
     unsafe {
-        let first: ANilEnum = ::std::mem::zeroed();
-        let second: AnotherNilEnum = ::std::mem::zeroed();
+        let first: ANilEnum = MaybeUninit::uninitialized().into_inner();
+        let second: AnotherNilEnum = MaybeUninit::uninitialized().into_inner();
 
         zzz(); // #break
     }
