@@ -26,7 +26,7 @@ enum Task {
     Notify(RawNotification),
 }
 
-pub(super) fn main_loop(
+pub fn main_loop(
     root: PathBuf,
     msg_receriver: &mut Receiver<RawMessage>,
     msg_sender: &mut Sender<RawMessage>,

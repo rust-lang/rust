@@ -1,38 +1,14 @@
 #[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
-extern crate languageserver_types;
-extern crate drop_bomb;
-#[macro_use]
-extern crate crossbeam_channel;
-extern crate threadpool;
-#[macro_use]
 extern crate log;
-extern crate url_serde;
+#[macro_use]
+extern crate failure;
 extern crate flexi_logger;
-extern crate walkdir;
-extern crate libeditor;
-extern crate libanalysis;
-extern crate libsyntax2;
 extern crate gen_lsp_server;
-extern crate im;
-extern crate relative_path;
-
-mod caps;
-mod req;
-mod conv;
-mod main_loop;
-mod vfs;
-mod path_map;
-mod server_world;
+extern crate m;
 
 use flexi_logger::{Logger, Duplicate};
 use gen_lsp_server::{run_server, stdio_transport};
-
-pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
+use m::Result;
 
 fn main() -> Result<()> {
     Logger::with_env_or_str("m=error")
@@ -57,8 +33,8 @@ fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
     let root = ::std::env::current_dir()?;
     run_server(
-        caps::server_capabilities(),
-        |r, s| main_loop::main_loop(root, r, s),
+        m::server_capabilities(),
+        |r, s| m::main_loop(root, r, s),
         receiver,
         sender,
     )?;
@@ -67,3 +43,4 @@ fn main_inner() -> Result<()> {
     info!("... IO is down");
     Ok(())
 }
+
