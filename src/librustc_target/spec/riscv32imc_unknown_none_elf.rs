@@ -27,9 +27,10 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
-            max_atomic_width: Some(32),
-            atomic_cas: false, // incomplete +a extension
-            features: "+m,+a,+c".to_string(),
+            // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86005
+            max_atomic_width: None, //Some(32),
+            atomic_cas: false,
+            features: "+m,+c".to_string(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: "static".to_string(),

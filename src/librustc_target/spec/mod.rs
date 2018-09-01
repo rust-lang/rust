@@ -74,6 +74,7 @@ mod thumb_base;
 mod l4re_base;
 mod fuchsia_base;
 mod redox_base;
+mod riscv_base;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
          RustcEncodable, RustcDecodable)]
@@ -406,6 +407,7 @@ supported_targets! {
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
 
+    ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
