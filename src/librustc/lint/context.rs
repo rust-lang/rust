@@ -319,7 +319,15 @@ impl LintStore {
             CheckLintNameResult::NoLint => {
                 Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
             }
-            CheckLintNameResult::Tool(_) => unreachable!(),
+            CheckLintNameResult::Tool(result) => match result {
+                Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
+                    "lint name `{}` is deprcated \
+                     and does not have an effect anymore. \
+                     Use: {}",
+                    lint_name, new_name
+                ))),
+                _ => None,
+            },
         };
 
         if let Some(mut db) = db {
