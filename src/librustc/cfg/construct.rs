@@ -488,8 +488,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // expression to target
                     let guard_start = self.add_dummy_node(&[pat_exit]);
                     // Visit the guard expression
-                    let guard_exit = self.expr(&guard, guard_start);
-
+                    let guard_exit = match guard {
+                        hir::Guard::If(ref e) => self.expr(e, guard_start),
+                    };
                     // #47295: We used to have very special case code
                     // here for when a pair of arms are both formed
                     // solely from constants, and if so, not add these

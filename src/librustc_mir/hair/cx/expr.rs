@@ -837,7 +837,10 @@ impl ToBorrowKind for hir::Mutability {
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
         patterns: arm.pats.iter().map(|p| cx.pattern_from_hir(p)).collect(),
-        guard: arm.guard.to_ref(),
+        guard: match arm.guard {
+                Some(hir::Guard::If(ref e)) => Some(Guard::If(e.to_ref())),
+                _ => None,
+            },
         body: arm.body.to_ref(),
         // BUG: fix this
         lint_level: LintLevel::Inherited,

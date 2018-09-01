@@ -1030,7 +1030,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let body_succ =
                     self.propagate_through_expr(&arm.body, succ);
                 let guard_succ =
-                    self.propagate_through_opt_expr(arm.guard.as_ref().map(|e| &**e), body_succ);
+                    self.propagate_through_opt_expr(
+                        arm.guard.as_ref().map(|g|
+                            match g {
+                                hir::Guard::If(e) => &**e,
+                            }),
+                        body_succ);
                 // only consider the first pattern; any later patterns must have
                 // the same bindings, and we also consider the first pattern to be
                 // the "authoritative" set of ids

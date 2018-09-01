@@ -118,6 +118,10 @@ pub trait Folder : Sized {
         noop_fold_arm(a, self)
     }
 
+    fn fold_guard(&mut self, g: Guard) -> Guard {
+        noop_fold_guard(g, self)
+    }
+
     fn fold_pat(&mut self, p: P<Pat>) -> P<Pat> {
         noop_fold_pat(p, self)
     }
@@ -354,8 +358,14 @@ pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm,
     Arm {
         attrs: fold_attrs(attrs, fld),
         pats: pats.move_map(|x| fld.fold_pat(x)),
-        guard: guard.map(|x| fld.fold_expr(x)),
+        guard: guard.map(|x| fld.fold_guard(x)),
         body: fld.fold_expr(body),
+    }
+}
+
+pub fn noop_fold_guard<T: Folder>(g: Guard, fld: &mut T) -> Guard {
+    match g {
+        Guard::If(e) => Guard::If(fld.fold_expr(e)),
     }
 }
 
