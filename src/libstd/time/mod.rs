@@ -27,9 +27,12 @@ use fmt;
 use ops::{Add, Sub, AddAssign, SubAssign};
 use sys::time;
 use sys_common::FromInner;
+use self::iso_8601::TmUtc;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
+
+mod iso_8601;
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
@@ -357,6 +360,44 @@ impl SystemTime {
     pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {
         SystemTime::now().duration_since(*self)
     }
+
+    // Convert `SystemTime` to UTC date and time
+    fn to_tm_utc(&self) -> TmUtc {
+        match self.duration_since(SystemTime::UNIX_EPOCH) {
+            Ok(add) => TmUtc::from_epoch_add(add),
+            Err(sub) => TmUtc::from_epoch_sub(sub.duration()),
+        }
+    }
+
+    /// Display using ISO-8601 format
+    /// `YYYY-MM-DD'T'hh:mm:ss.sssssssss'Z'`.
+    ///
+    /// Time is always printed in UTC time zone, and with nanoseconds by
+    /// default. Precision specifies which number of sub-second digits
+    /// is displayed.
+    ///
+    /// Note this is just a default printing implementation, not a
+    /// full calendar library. For obtaining components like year or
+    /// month, printing in a different format or in different time zone,
+    /// external crates can be used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(system_time_display_iso_8601)]
+    /// use std::time::SystemTime;
+    ///
+    /// assert_eq!("1970-01-01T00:00:00.000000000Z",
+    ///     format!("{}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+    /// assert_eq!("1970-01-01T00:00:00.000Z",
+    ///     format!("{:.3}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+    /// assert_eq!("1970-01-01T00:00:00Z",
+    ///     format!("{:.0}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+    /// ```
+    #[unstable(feature = "system_time_display_iso_8601", issue = "53891")]
+    pub fn display_iso_8601(&self) -> SystemTimeDisplayIso8601 {
+        SystemTimeDisplayIso8601(*self)
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -395,6 +436,49 @@ impl SubAssign<Duration> for SystemTime {
 impl fmt::Debug for SystemTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+/// Helper struct for printing system time with [`format!`] and `{}`
+/// using ISO-8601 format.
+///
+/// This `struct` implements the [`Display`] trait. It is created by
+/// the [`display_iso_8601`][`SystemTime::display_iso_8601`] method of
+/// [`SystemTime`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(system_time_display_iso_8601)]
+/// use std::time::SystemTime;
+///
+/// assert_eq!("1970-01-01T00:00:00.000000000Z",
+///     format!("{}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+/// assert_eq!("1970-01-01T00:00:00.000Z",
+///     format!("{:.3}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+/// assert_eq!("1970-01-01T00:00:00Z",
+///     format!("{:.0}", SystemTime::UNIX_EPOCH.display_iso_8601()));
+/// ```
+///
+/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`format!`]: ../../std/macro.format.html
+/// [`SystemTime`]: struct.SystemTime.html
+/// [`SystemTime::display_iso_8601`]: struct.SystemTime.html#method.display_iso_8601
+#[unstable(feature = "system_time_display_iso_8601", issue = "53891")]
+pub struct SystemTimeDisplayIso8601(SystemTime);
+
+#[unstable(feature = "system_time_display_iso_8601", issue = "53891")]
+impl fmt::Display for SystemTimeDisplayIso8601 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tm_utc = self.0.to_tm_utc();
+        tm_utc.fmt_iso_8601(f)
+    }
+}
+
+#[unstable(feature = "system_time_display_iso_8601", issue = "53891")]
+impl fmt::Debug for SystemTimeDisplayIso8601 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
     }
 }
 
@@ -589,5 +673,20 @@ mod tests {
         // Should give us ~70 years to fix this!
         let hundred_twenty_years = thirty_years * 4;
         assert!(a < hundred_twenty_years);
+    }
+
+    #[test]
+    fn system_time_display() {
+        // Just test flags here.
+        // Proper time conversion tests are next to `TmUtc` implementation.
+        let t = (SystemTime::UNIX_EPOCH + Duration::from_nanos(2_345_678_901))
+            .display_iso_8601();
+        assert_eq!("1970-01-01T00:00:02.345678901Z", format!("{}", t));
+        assert_eq!("1970-01-01T00:00:02.34567890100Z", format!("{:.11}", t));
+        assert_eq!("1970-01-01T00:00:02.345678901Z", format!("{:.9}", t));
+        assert_eq!("1970-01-01T00:00:02.345678Z", format!("{:.6}", t));
+        assert_eq!("1970-01-01T00:00:02.345Z", format!("{:.3}", t));
+        assert_eq!("1970-01-01T00:00:02.3Z", format!("{:.1}", t));
+        assert_eq!("1970-01-01T00:00:02Z", format!("{:.0}", t));
     }
 }
