@@ -147,7 +147,7 @@
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use {hint, mem, ops::{self, Deref}};
-use pin::PinMut;
+use pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -270,12 +270,24 @@ impl<T> Option<T> {
         }
     }
 
-    /// Converts from `Option<T>` to `Option<PinMut<'_, T>>`
+
+    /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
     #[inline]
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn as_pin_mut<'a>(self: PinMut<'a, Self>) -> Option<PinMut<'a, T>> {
+    pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
         unsafe {
-            PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
+            let option: Option<&'a T> = Pin::get(self).as_ref();
+            option.map(|x| Pin::new_unchecked(x))
+        }
+    }
+
+    /// Converts from `Pin<&mut Option<T>>` to `Option<Pin<&mut T>>`
+    #[inline]
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
+        unsafe {
+            let option: Option<&'a mut T> = Pin::get_mut_unchecked(self).as_mut();
+            option.map(|x| Pin::new_unchecked(x))
         }
     }
 

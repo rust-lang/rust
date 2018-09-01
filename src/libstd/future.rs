@@ -12,7 +12,7 @@
 
 use core::cell::Cell;
 use core::marker::Unpin;
-use core::pin::PinMut;
+use core::pin::Pin;
 use core::option::Option;
 use core::ptr::NonNull;
 use core::task::{self, Poll};
@@ -42,8 +42,8 @@ impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 #[unstable(feature = "gen_future", issue = "50547")]
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
     type Output = T::Return;
-    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        set_task_cx(cx, || match unsafe { PinMut::get_mut_unchecked(self).0.resume() } {
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        set_task_cx(cx, || match unsafe { Pin::get_mut_unchecked(self).0.resume() } {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         })
@@ -108,9 +108,9 @@ where
 
 #[unstable(feature = "gen_future", issue = "50547")]
 /// Polls a future in the current thread-local task context.
-pub fn poll_in_task_cx<F>(f: PinMut<F>) -> Poll<F::Output>
+pub fn poll_in_task_cx<F>(f: Pin<&mut F>) -> Poll<F::Output>
 where
     F: Future
 {
-    get_task_cx(|cx| f.poll(cx))
+    get_task_cx(|cx| F::poll(f, cx))
 }

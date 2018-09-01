@@ -12,8 +12,9 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use pin::PinMut;
 use marker::Unpin;
+use ops;
+use pin::Pin;
 use task::{self, Poll};
 
 /// A future represents an asychronous computation.
@@ -92,21 +93,25 @@ pub trait Future {
     /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
     /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
     /// [`cx.waker()`]: ../task/struct.Context.html#method.waker
-    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output>;
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output>;
 }
 
 impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
     type Output = F::Output;
 
-    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        F::poll(PinMut::new(&mut **self), cx)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut **self), cx)
     }
 }
 
-impl<'a, F: ?Sized + Future> Future for PinMut<'a, F> {
+impl<P, F> Future for Pin<P> where
+    P: ops::DerefMut<Target = F> + Unpin,
+    F: Future + ?Sized,
+{
     type Output = F::Output;
 
-    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        F::poll((*self).reborrow(), cx)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        let pin: Pin<&mut F> = Pin::as_mut(&mut *self);
+        F::poll(pin, cx)
     }
 }
