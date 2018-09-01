@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         region: Region<'tcx>,
         br: &ty::BoundRegion,
     ) -> Option<(&hir::Ty, &hir::FnDecl)> {
-        if let Some(anon_reg) = self.is_suitable_region(region) {
+        if let Some(anon_reg) = self.tcx.is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let fndecl = match self.tcx.hir.get(node_id) {

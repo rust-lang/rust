@@ -17,7 +17,7 @@ use session::Session;
 use session::config::{BorrowckMode, OutputFilenames};
 use session::config::CrateType;
 use middle;
-use hir::{TraitCandidate, HirId, ItemLocalId};
+use hir::{TraitCandidate, HirId, ItemLocalId, Node};
 use hir::def::{Def, Export};
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as hir_map;
@@ -870,6 +870,18 @@ impl<'tcx> CommonTypes<'tcx> {
     }
 }
 
+// This struct contains information regarding the `ReFree(FreeRegion)` corresponding to a lifetime
+// conflict.
+#[derive(Debug)]
+pub struct FreeRegionInfo {
+    // def id corresponding to FreeRegion
+    pub def_id: DefId,
+    // the bound region corresponding to FreeRegion
+    pub boundregion: ty::BoundRegion,
+    // checks if bound region is in Impl Item
+    pub is_impl_item: bool,
+}
+
 /// The central data structure of the compiler. It stores references
 /// to the various **arenas** and also houses the results of the
 /// various **compiler queries** that have been performed. See the
@@ -1544,6 +1556,71 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 CrateType::Dylib      => true,
             }
         })
+    }
+
+    // This method returns the DefId and the BoundRegion corresponding to the given region.
+    pub fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
+        let (suitable_region_binding_scope, bound_region) = match *region {
+            ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
+            ty::ReEarlyBound(ref ebr) => (
+                self.parent_def_id(ebr.def_id).unwrap(),
+                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+            ),
+            _ => return None, // not a free region
+        };
+
+        let node_id = self.hir
+            .as_local_node_id(suitable_region_binding_scope)
+            .unwrap();
+        let is_impl_item = match self.hir.find(node_id) {
+            Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
+            Some(Node::ImplItem(..)) => {
+                self.is_bound_region_in_impl_item(suitable_region_binding_scope)
+            }
+            _ => return None,
+        };
+
+        return Some(FreeRegionInfo {
+            def_id: suitable_region_binding_scope,
+            boundregion: bound_region,
+            is_impl_item: is_impl_item,
+        });
+    }
+
+    pub fn is_return_type_impl_trait(
+        &self,
+        scope_def_id: DefId,
+    ) -> bool {
+        let ret_ty = self.type_of(scope_def_id);
+        match ret_ty.sty {
+            ty::FnDef(_, _) => {
+                let sig = ret_ty.fn_sig(*self);
+                let output = self.erase_late_bound_regions(&sig.output());
+                return output.is_impl_trait();
+            }
+            _ => {}
+        }
+        false
+    }
+
+    // Here we check if the bound region is in Impl Item.
+    pub fn is_bound_region_in_impl_item(
+        &self,
+        suitable_region_binding_scope: DefId,
+    ) -> bool {
+        let container_id = self.associated_item(suitable_region_binding_scope)
+            .container
+            .id();
+        if self.impl_trait_ref(container_id).is_some() {
+            // For now, we do not try to target impls of traits. This is
+            // because this message is going to suggest that the user
+            // change the fn signature, but they may not be free to do so,
+            // since the signature must match the trait.
+            //
+            // FIXME(#42706) -- in some cases, we could do better here.
+            return true;
+        }
+        false
     }
 }
 
