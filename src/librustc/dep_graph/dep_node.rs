@@ -75,7 +75,7 @@ use traits::query::{
     CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
 use ty::{TyCtxt, FnSig, Instance, InstanceDef,
-         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty, self};
+         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
@@ -632,7 +632,6 @@ define_dep_nodes!( <'tcx>
     // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
-    [anon] ConstToAllocation { val: &'tcx ty::Const<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),

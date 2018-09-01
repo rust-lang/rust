@@ -1062,7 +1062,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
-        DepKind::ConstToAllocation |
         DepKind::NormalizeProjectionTy |
         DepKind::NormalizeTyAfterErasingRegions |
         DepKind::ImpliedOutlivesBounds |
