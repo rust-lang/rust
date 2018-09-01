@@ -123,25 +123,45 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = if !is_cfg(attr) {
+            if !is_cfg(attr) {
                 return true;
-            } else if let Some(mis) = attr.meta_item_list() {
-                mis
-            } else {
-                return true;
+            }
+
+            let error = |span, msg, suggestion: &str| {
+                let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
+                if !suggestion.is_empty() {
+                    err.span_suggestion(span, "expected syntax is", suggestion.into());
+                }
+                err.emit();
+                true
             };
 
-            if mis.len() != 1 {
-                self.sess.span_diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
-                return true;
+            let meta_item = if let Some(meta_item) = attr.meta() {
+                meta_item
+            } else {
+                // Not a well-formed meta-item. Why? We don't know.
+                return error(attr.span, "`cfg` is not a well-formed meta-item",
+                                        "#[cfg(/* predicate */)]");
+            };
+            let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
+                nested_meta_items
+            } else {
+                return error(meta_item.span, "`cfg` is not followed by parentheses",
+                                             "cfg(/* predicate */)");
+            };
+
+            if nested_meta_items.is_empty() {
+                return error(meta_item.span, "`cfg` predicate is not specified", "");
+            } else if nested_meta_items.len() > 1 {
+                return error(nested_meta_items.last().unwrap().span,
+                             "multiple `cfg` predicates are specified", "");
             }
 
-            if !mis[0].is_meta_item() {
-                self.sess.span_diagnostic.span_err(mis[0].span, "unexpected literal");
-                return true;
+            match nested_meta_items[0].meta_item() {
+                Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
+                None => error(nested_meta_items[0].span,
+                              "`cfg` predicate key cannot be a literal", ""),
             }
-
-            attr::cfg_matches(mis[0].meta_item().unwrap(), self.sess, self.features)
         })
     }
 
