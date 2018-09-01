@@ -924,8 +924,8 @@ where
             ls.register_late_pass(Some(sess), true, pass);
         }
 
-        for (name, to) in lint_groups {
-            ls.register_group(Some(sess), true, name, to);
+        for (name, (to, deprecated_name)) in lint_groups {
+            ls.register_group(Some(sess), true, name, deprecated_name, to);
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
