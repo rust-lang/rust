@@ -1832,4 +1832,4 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<T: ?Sized> Unpin for Box<T> { }
+impl<T: ?Sized> Unpin for Rc<T> { }
