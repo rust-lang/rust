@@ -102,7 +102,7 @@ fn verify_config_test_names() {
 // `print_diff` selects the approach not used.
 fn write_message(msg: &str) {
     let mut writer = OutputWriter::new(Color::Auto);
-    writer.writeln(&format!("{}", msg), None);
+    writer.writeln(msg, None);
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
@@ -949,7 +949,7 @@ fn rustfmt() -> PathBuf {
         me.is_file() || me.with_extension("exe").is_file(),
         "no rustfmt bin, try running `cargo build` before testing"
     );
-    return me;
+    me
 }
 
 #[test]

@@ -315,7 +315,7 @@ impl<'a> FmtVisitor<'a> {
                     self.push_str("\n");
                     status.last_wspace = None;
                 } else {
-                    self.push_str(&snippet[status.line_start..i + 1]);
+                    self.push_str(&snippet[status.line_start..=i]);
                 }
 
                 status.cur_line += 1;

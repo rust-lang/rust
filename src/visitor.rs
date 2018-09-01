@@ -621,24 +621,25 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
-                        &attr.span,
+                        attr.span,
                         &self.source_map,
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
-            } else if attr.path.segments[0].ident.to_string() == "rustfmt"
-                && (attr.path.segments.len() == 1
-                    || attr.path.segments[1].ident.to_string() != "skip")
-            {
-                let file_name = self.source_map.span_to_filename(attr.span).into();
-                self.report.append(
-                    file_name,
-                    vec![FormattingError::from_span(
-                        &attr.span,
-                        &self.source_map,
-                        ErrorKind::BadAttr,
-                    )],
-                );
+            } else if attr.path.segments[0].ident.to_string() == "rustfmt" {
+                if attr.path.segments.len() == 1
+                    || attr.path.segments[1].ident.to_string() != "skip"
+                {
+                    let file_name = self.source_map.span_to_filename(attr.span).into();
+                    self.report.append(
+                        file_name,
+                        vec![FormattingError::from_span(
+                            attr.span,
+                            &self.source_map,
+                            ErrorKind::BadAttr,
+                        )],
+                    );
+                }
             }
         }
         if contains_skip(attrs) {

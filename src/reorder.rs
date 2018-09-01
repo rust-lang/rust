@@ -193,12 +193,12 @@ impl ReorderableItemKind {
         }
     }
 
-    fn is_same_item_kind(&self, item: &ast::Item) -> bool {
-        ReorderableItemKind::from(item) == *self
+    fn is_same_item_kind(self, item: &ast::Item) -> bool {
+        ReorderableItemKind::from(item) == self
     }
 
-    fn is_reorderable(&self, config: &Config) -> bool {
-        match *self {
+    fn is_reorderable(self, config: &Config) -> bool {
+        match self {
             ReorderableItemKind::ExternCrate => config.reorder_imports(),
             ReorderableItemKind::Mod => config.reorder_modules(),
             ReorderableItemKind::Use => config.reorder_imports(),
@@ -206,8 +206,8 @@ impl ReorderableItemKind {
         }
     }
 
-    fn in_group(&self) -> bool {
-        match *self {
+    fn in_group(self) -> bool {
+        match self {
             ReorderableItemKind::ExternCrate
             | ReorderableItemKind::Mod
             | ReorderableItemKind::Use => true,

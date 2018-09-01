@@ -475,7 +475,7 @@ where
                     formatted_comment = rewrite_post_comment(&mut item_max_width)?;
                     comment_alignment = post_comment_alignment(item_max_width, inner_item.len());
                 }
-                for _ in 0..(comment_alignment + 1) {
+                for _ in 0..=comment_alignment {
                     result.push(' ');
                 }
                 // An additional space for the missing trailing separator.

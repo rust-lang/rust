@@ -179,7 +179,7 @@ pub fn merge_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
 fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
     for tree in trees.iter_mut() {
         if tree.share_prefix(&use_tree) {
-            tree.merge(use_tree);
+            tree.merge(&use_tree);
             return;
         }
     }
@@ -536,7 +536,7 @@ impl UseTree {
         }
     }
 
-    fn merge(&mut self, other: UseTree) {
+    fn merge(&mut self, other: &UseTree) {
         let mut new_path = vec![];
         for (a, b) in self
             .path

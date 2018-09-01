@@ -48,7 +48,7 @@ fn is_derive(attr: &ast::Attribute) -> bool {
 }
 
 /// Returns the arguments of `#[derive(...)]`.
-fn get_derive_spans<'a>(attr: &ast::Attribute) -> Option<Vec<Span>> {
+fn get_derive_spans(attr: &ast::Attribute) -> Option<Vec<Span>> {
     attr.meta_item_list().map(|meta_item_list| {
         meta_item_list
             .iter()

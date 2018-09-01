@@ -126,7 +126,7 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     } else {
         ("", fields.len() - 1)
     };
-    let init = &fields[0..group_index + 1];
+    let init = &fields[0..=group_index];
     let rest = &fields[group_index + 1..];
     let init_last_pos = if rest.is_empty() {
         span.hi()

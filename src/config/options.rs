@@ -264,7 +264,7 @@ configuration_option_enum! { Color:
 
 impl Color {
     /// Whether we should use a coloured terminal.
-    pub fn use_colored_tty(&self) -> bool {
+    pub fn use_colored_tty(self) -> bool {
         match self {
             Color::Always => true,
             Color::Never => false,
@@ -417,7 +417,7 @@ configuration_option_enum!{ Edition:
 }
 
 impl Edition {
-    pub(crate) fn to_libsyntax_pos_edition(&self) -> syntax_pos::edition::Edition {
+    pub(crate) fn to_libsyntax_pos_edition(self) -> syntax_pos::edition::Edition {
         match self {
             Edition::Edition2015 => syntax_pos::edition::Edition::Edition2015,
             Edition::Edition2018 => syntax_pos::edition::Edition::Edition2018,

@@ -100,7 +100,7 @@ pub fn format_expr(
                 )
             })
         }
-        ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
+        ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref path, ref fields, ref base) => rewrite_struct_lit(
             context,
             path,
@@ -1519,7 +1519,7 @@ fn rewrite_index(
     }
 }
 
-fn struct_lit_can_be_aligned(fields: &[ast::Field], base: &Option<&ast::Expr>) -> bool {
+fn struct_lit_can_be_aligned(fields: &[ast::Field], base: Option<&ast::Expr>) -> bool {
     if base.is_some() {
         return false;
     }
@@ -1555,7 +1555,7 @@ fn rewrite_struct_lit<'a>(
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
     let body_lo = context.snippet_provider.span_after(span, "{");
-    let fields_str = if struct_lit_can_be_aligned(fields, &base)
+    let fields_str = if struct_lit_can_be_aligned(fields, base)
         && context.config.struct_field_align_threshold() > 0
     {
         rewrite_with_alignment(
@@ -1676,7 +1676,7 @@ pub fn rewrite_field(
     };
     let name = context.snippet(field.ident.span);
     if field.is_shorthand {
-        Some(attrs_str + &name)
+        Some(attrs_str + name)
     } else {
         let mut separator = String::from(struct_lit_field_separator(context.config));
         for _ in 0..prefix_max_width.saturating_sub(name.len()) {
@@ -1688,7 +1688,7 @@ pub fn rewrite_field(
 
         match expr {
             Some(ref e) if e.as_str() == name && context.config.use_field_init_shorthand() => {
-                Some(attrs_str + &name)
+                Some(attrs_str + name)
             }
             Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
@@ -1827,12 +1827,12 @@ pub fn rewrite_unary_suffix<R: Rewrite>(
 
 fn rewrite_unary_op(
     context: &RewriteContext,
-    op: &ast::UnOp,
+    op: ast::UnOp,
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
-    let operator_str = match *op {
+    let operator_str = match op {
         ast::UnOp::Deref => "*",
         ast::UnOp::Not => "!",
         ast::UnOp::Neg => "-",
