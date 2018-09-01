@@ -75,7 +75,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
         location: Location
     ) {
         if let Rvalue::Use(Operand::Move(src_place)) = rvalue {
-            if let (base_place, Some(projection)) = src_place.final_projection(self.tcx) {
+            if let (base_place, Some(projection)) = src_place.split_projection(self.tcx) {
                 if let ProjectionElem::ConstantIndex {
                     offset: _,
                     min_length: _,

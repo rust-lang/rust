@@ -41,7 +41,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let reason;
         let access_place_desc = self.describe_place(access_place);
 
-        if let (base_place, Some(projection)) = the_place_err.final_projection(self.tcx) {
+        if let (base_place, Some(projection)) = the_place_err.split_projection(self.tcx) {
             match projection {
                 ProjectionElem::Deref => {
                     if base_place.base == PlaceBase::Local(Local::new(1))
@@ -188,7 +188,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        if let (base_place, Some(projection)) = the_place_err.final_projection(self.tcx) {
+        if let (base_place, Some(projection)) = the_place_err.split_projection(self.tcx) {
             match projection {
                 ProjectionElem::Deref => {
                     if let PlaceBase::Local(local) = base_place.base {
@@ -360,7 +360,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
     // Does this place refer to what the user sees as an upvar
     fn is_upvar(&self, place: &Place<'tcx>) -> bool {
-        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
+        if let (base_place, Some(projection)) = place.split_projection(self.tcx) {
             match projection {
                 ProjectionElem::Field(_, _) => {
                     let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
@@ -370,7 +370,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     if let (
                         ref base_place,
                         Some(ProjectionElem::Field(upvar_index, _)),
-                    ) = base_place.final_projection(self.tcx) {
+                    ) = base_place.split_projection(self.tcx) {
                         let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                         is_closure_or_generator(base_ty)
                             && self.mir.upvar_decls[upvar_index.index()].by_ref

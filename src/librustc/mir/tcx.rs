@@ -185,7 +185,7 @@ impl<'tcx> Place<'tcx> {
     //     Base.[]
     //     ^^^^ ^^-- no projection(empty)
     //     |-- base_place
-    pub fn final_projection<'cx, 'gcx>(
+    pub fn split_projection<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     ) -> (Place<'tcx>, Option<&'tcx PlaceElem<'tcx>>) {
@@ -216,7 +216,7 @@ impl<'tcx> Place<'tcx> {
     //     Base.[] => Base.[]
     //          ^^-- no projection
     pub fn projection_base<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Place<'tcx> {
-        match self.final_projection(tcx) {
+        match self.split_projection(tcx) {
             (place, Some(_)) => place,
             (_, None) => self.clone(),
         }

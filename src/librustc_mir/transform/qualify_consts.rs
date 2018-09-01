@@ -464,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         context: PlaceContext<'tcx>,
         location: Location,
     ) {
-        if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
+        if let (base_place, Some(projection)) = place.split_projection(self.tcx) {
             self.nest(|this| {
                 this.super_place(place, context, location);
                 match projection {
@@ -610,7 +610,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         // Recurse through operands and places.
         if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             let mut is_reborrow = false;
-            if let (base_place, Some(projection)) = place.final_projection(self.tcx) {
+            if let (base_place, Some(projection)) = place.split_projection(self.tcx) {
                 if let ProjectionElem::Deref = projection {
                     let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::TyRef(..) = base_ty.sty {

@@ -297,7 +297,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // Ok to suggest a borrow, since the target can't be moved from
                 // anyway.
                 if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                    if let (base_place, Some(proj)) = move_from.final_projection(self.tcx) {
+                    if let (base_place, Some(proj)) = move_from.split_projection(self.tcx) {
                         if self.suitable_to_remove_deref(&base_place, proj, &snippet) {
                             err.span_suggestion(
                                 span,
