@@ -1,4 +1,3 @@
-//ignore-msvc
 use std::collections::{self, HashMap};
 use std::hash::BuildHasherDefault;
 

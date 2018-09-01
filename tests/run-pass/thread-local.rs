@@ -1,4 +1,4 @@
-//ignore-windows
+//ignore-windows: Uses POSIX APIs
 
 #![feature(libc)]
 extern crate libc;

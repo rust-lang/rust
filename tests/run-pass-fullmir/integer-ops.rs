@@ -11,7 +11,6 @@
 // FIXME: remove -Zmir-opt-level once https://github.com/rust-lang/rust/issues/43359 is fixed
 // compile-flags: -Zmir-opt-level=0
 
-//ignore-msvc
 use std::i32;
 
 pub fn main() {
@@ -168,7 +167,7 @@ pub fn main() {
 
     assert_eq!(0x10i32.overflowing_shr(4), (0x1, false));
     assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
-    
+
     assert_eq!(10i8.overflowing_abs(), (10,false));
     assert_eq!((-10i8).overflowing_abs(), (10,false));
     assert_eq!((-128i8).overflowing_abs(), (-128,true));
