@@ -133,7 +133,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
                  name);
     }
 
-    if gate_untested.len() > 0 {
+    if !gate_untested.is_empty() {
         tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 

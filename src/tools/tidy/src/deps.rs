@@ -239,7 +239,7 @@ pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
         unapproved.append(&mut bad);
     }
 
-    if unapproved.len() > 0 {
+    if !unapproved.is_empty() {
         println!("Dependencies not on the whitelist:");
         for dep in unapproved {
             println!("* {}", dep.id_str());
