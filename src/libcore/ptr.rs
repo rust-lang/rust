@@ -40,7 +40,7 @@
 //!
 //! ## Alignment
 //!
-//! Valid pointers as defined above are not necessarily properly aligned (where
+//! Valid raw pointers as defined above are not necessarily properly aligned (where
 //! "proper" alignment is defind by the pointee type, i.e., `*const T` must be
 //! aligned to `mem::align_of::<T>()`). However, most functions require their
 //! arguments to be properly aligned, and will explicitly state
