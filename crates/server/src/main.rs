@@ -55,7 +55,13 @@ fn main() -> Result<()> {
 
 fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
-    run_server(caps::server_capabilities(), main_loop::main_loop, receiver, sender)?;
+    let root = ::std::env::current_dir()?;
+    run_server(
+        caps::server_capabilities(),
+        |r, s| main_loop::main_loop(root, r, s),
+        receiver,
+        sender,
+    )?;
     info!("shutting down IO...");
     threads.join()?;
     info!("... IO is down");

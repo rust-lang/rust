@@ -2,6 +2,7 @@ mod handlers;
 mod subscriptions;
 
 use std::{
+    path::PathBuf,
     collections::{HashMap},
 };
 
@@ -26,14 +27,13 @@ enum Task {
 }
 
 pub(super) fn main_loop(
-    receriver: &mut Receiver<RawMessage>,
-    sender: &mut Sender<RawMessage>,
+    root: PathBuf,
+    msg_receriver: &mut Receiver<RawMessage>,
+    msg_sender: &mut Sender<RawMessage>,
 ) -> Result<()> {
     let pool = ThreadPool::new(4);
     let (task_sender, task_receiver) = bounded::<Task>(16);
-    let (fs_events_receiver, watcher) = vfs::watch(vec![
-        ::std::env::current_dir()?,
-    ]);
+    let (fs_events_receiver, watcher) = vfs::watch(vec![root]);
 
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
@@ -42,8 +42,8 @@ pub(super) fn main_loop(
     let mut subs = Subscriptions::new();
     main_loop_inner(
         &pool,
-        receriver,
-        sender,
+        msg_receriver,
+        msg_sender,
         task_receiver.clone(),
         task_sender,
         fs_events_receiver,
@@ -53,7 +53,7 @@ pub(super) fn main_loop(
     )?;
 
     info!("waiting for background jobs to finish...");
-    task_receiver.for_each(drop);
+    task_receiver.for_each(|task| on_task(task, msg_sender, &mut pending_requests));
     pool.join();
     info!("...background jobs have finished");
 
@@ -95,22 +95,8 @@ fn main_loop_inner(
         };
         let mut state_changed = false;
         match event {
-            Event::FsWatcherDead => {
-                fs_receiver = None;
-            }
-            Event::Task(task) => {
-                match task {
-                    Task::Respond(response) => {
-                        if let Some(handle) = pending_requests.remove(&response.id) {
-                            assert!(handle.has_completed());
-                        }
-                        msg_sender.send(RawMessage::Response(response))
-                    }
-                    Task::Notify(n) =>
-                        msg_sender.send(RawMessage::Notification(n)),
-                }
-                continue;
-            }
+            Event::FsWatcherDead => fs_receiver = None,
+            Event::Task(task) => on_task(task, msg_sender, pending_requests),
             Event::Fs(events) => {
                 trace!("fs change, {} events", events.len());
                 state.apply_fs_changes(events);
@@ -155,6 +141,23 @@ fn main_loop_inner(
                 subs.subscriptions(),
             )
         }
+    }
+}
+
+fn on_task(
+    task: Task,
+    msg_sender: &mut Sender<RawMessage>,
+    pending_requests: &mut HashMap<u64, JobHandle>,
+) {
+    match task {
+        Task::Respond(response) => {
+            if let Some(handle) = pending_requests.remove(&response.id) {
+                assert!(handle.has_completed());
+            }
+            msg_sender.send(RawMessage::Response(response))
+        }
+        Task::Notify(n) =>
+            msg_sender.send(RawMessage::Notification(n)),
     }
 }
 
@@ -280,15 +283,12 @@ impl<'a> PoolDispatcher<'a> {
             None => return Ok(self),
             Some(req) => req,
         };
-        let world = self.world;
-        let sender = self.sender;
-        let pool = self.pool;
         match req.cast::<R>() {
             Ok((id, params)) => {
                 let (handle, token) = JobHandle::new();
-                let world = world.snapshot();
-                let sender = sender.clone();
-                pool.execute(move || {
+                let world = self.world.snapshot();
+                let sender = self.sender.clone();
+                self.pool.execute(move || {
                     let resp = match f(world, params, token) {
                         Ok(resp) => RawResponse::ok(id, resp),
                         Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string()),

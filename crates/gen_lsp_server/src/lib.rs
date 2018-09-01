@@ -25,11 +25,9 @@ pub use {
     stdio::{stdio_transport, Threads},
 };
 
-pub type LspServer = fn(&mut Receiver<RawMessage>, &mut Sender<RawMessage>) -> Result<()>;
-
 pub fn run_server(
     caps: ServerCapabilities,
-    server: LspServer,
+    server: impl FnOnce(&mut Receiver<RawMessage>, &mut Sender<RawMessage>) -> Result<()>,
     mut receiver: Receiver<RawMessage>,
     mut sender: Sender<RawMessage>,
 ) -> Result<()> {

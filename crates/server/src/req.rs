@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-
-use serde::{ser::Serialize, de::DeserializeOwned};
 use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
 
@@ -17,24 +15,6 @@ pub use languageserver_types::{
     DocumentOnTypeFormattingParams,
     TextDocumentEdit,
 };
-
-
-pub trait ClientRequest: 'static {
-    type Params: DeserializeOwned + Send + 'static;
-    type Result: Serialize + Send + 'static;
-    const METHOD: &'static str;
-}
-
-impl<T> ClientRequest for T
-    where T: Request + 'static,
-          T::Params: DeserializeOwned + Send + 'static,
-          T::Result: Serialize + Send + 'static,
-{
-    type Params = <T as Request>::Params;
-    type Result = <T as Request>::Result;
-    const METHOD: &'static str = <T as Request>::METHOD;
-}
-
 
 pub enum SyntaxTree {}
 
