@@ -42,6 +42,7 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         let scope = ModuleScope::new(root);
         res.extend(
             scope.entries().iter()
+                .filter(|entry| entry.syntax() != name_ref.syntax())
                 .map(|entry| CompletionItem {
                     name: entry.name().to_string(),
                     snippet: None,
@@ -230,6 +231,13 @@ mod tests {
             ", r#"[CompletionItem { name: "Foo", snippet: None },
                    CompletionItem { name: "Baz", snippet: None },
                    CompletionItem { name: "quux", snippet: None }]"#);
+    }
+
+    #[test]
+    fn test_completion_mod_scope_no_self_use() {
+        check_scope_completion(r"
+            use foo<|>;
+            ", r#"[]"#);
     }
 
     #[test]

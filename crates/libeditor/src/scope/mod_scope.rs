@@ -1,5 +1,5 @@
 use libsyntax2::{
-    AstNode, SyntaxNode, SmolStr, ast
+    AstNode, SyntaxNode, SyntaxNodeRef, SmolStr, ast
 };
 
 pub struct ModuleScope {
@@ -66,6 +66,9 @@ impl Entry {
                 ast::NameRef::cast(self.node.borrowed()).unwrap()
                     .text(),
         }
+    }
+    pub fn syntax(&self) -> SyntaxNodeRef {
+        self.node.borrowed()
     }
 }
 
