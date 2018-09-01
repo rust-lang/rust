@@ -622,6 +622,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src: OpTy<'tcx>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
+        assert!(!src.layout.is_unsized() && !dest.layout.is_unsized(),
+            "Cannot copy unsized data");
         assert_eq!(src.layout.size, dest.layout.size,
             "Size mismatch when copying!\nsrc: {:#?}\ndest: {:#?}", src, dest);
 
