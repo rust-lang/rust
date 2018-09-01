@@ -29,8 +29,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     t!(t!(File::open(path)).read_to_string(&mut cargo_lock));
 
     // process each line
-    let mut lines = cargo_lock.lines();
-    while let Some(line) = lines.next() {
+    for line in cargo_lock.lines() {
 
         // consider only source entries
         if ! line.starts_with("source = ") {
