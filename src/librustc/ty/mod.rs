@@ -1691,12 +1691,17 @@ bitflags! {
         const IS_FUNDAMENTAL      = 1 << 2;
         const IS_UNION            = 1 << 3;
         const IS_BOX              = 1 << 4;
-        /// Indicates whether this abstract data type will be expanded on in future (new
-        /// fields/variants) and as such, whether downstream crates must match exhaustively on the
-        /// fields/variants of this data type.
-        ///
-        /// See RFC 2008 (<https://github.com/rust-lang/rfcs/pull/2008>).
-        const IS_NON_EXHAUSTIVE   = 1 << 5;
+        /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
+        /// (i.e., this flag is never set unless this ADT is an enum).
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE   = 1 << 5;
+    }
+}
+
+bitflags! {
+    pub struct VariantFlags: u32 {
+        const NO_VARIANT_FLAGS        = 0;
+        /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
+        const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
     }
 }
 
@@ -1709,7 +1714,55 @@ pub struct VariantDef {
     pub discr: VariantDiscr,
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
+    flags: VariantFlags,
 }
+
+impl<'a, 'gcx, 'tcx> VariantDef {
+    /// Create a new `VariantDef`.
+    ///
+    /// - `did` is the DefId used for the variant - for tuple-structs, it is the constructor DefId,
+    /// and for everything else, it is the variant DefId.
+    /// - `attribute_def_id` is the DefId that has the variant's attributes.
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+               did: DefId,
+               name: Name,
+               discr: VariantDiscr,
+               fields: Vec<FieldDef>,
+               adt_kind: AdtKind,
+               ctor_kind: CtorKind)
+               -> Self
+    {
+        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, name, discr, fields,
+               adt_kind, ctor_kind);
+        let mut flags = VariantFlags::NO_VARIANT_FLAGS;
+        if adt_kind == AdtKind::Struct && tcx.has_attr(did, "non_exhaustive") {
+            debug!("found non-exhaustive field list for {:?}", did);
+            flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+        }
+        VariantDef {
+            did,
+            name,
+            discr,
+            fields,
+            ctor_kind,
+            flags
+        }
+    }
+
+    #[inline]
+    pub fn is_field_list_non_exhaustive(&self) -> bool {
+        self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+}
+
+impl_stable_hash_for!(struct VariantDef {
+    did,
+    name,
+    discr,
+    fields,
+    ctor_kind,
+    flags
+});
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum VariantDiscr {
@@ -1849,7 +1902,7 @@ impl_stable_hash_for!(struct ReprFlags {
 
 
 /// Represents the repr options provided by the user,
-#[derive(Copy, Clone, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
     pub align: u32,
@@ -1938,6 +1991,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
            kind: AdtKind,
            variants: Vec<VariantDef>,
            repr: ReprOptions) -> Self {
+        debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
         if attr::contains_name(&attrs, "fundamental") {
@@ -1949,8 +2003,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
-        if tcx.has_attr(did, "non_exhaustive") {
-            flags = flags | AdtFlags::IS_NON_EXHAUSTIVE;
+        if kind == AdtKind::Enum && tcx.has_attr(did, "non_exhaustive") {
+            debug!("found non-exhaustive variant list for {:?}", did);
+            flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
@@ -1981,28 +2036,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    fn is_non_exhaustive(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
-    }
-
-    #[inline]
-    pub fn is_enum_non_exhaustive(&self) -> bool {
-        match self.adt_kind() {
-            AdtKind::Enum => self.is_non_exhaustive(),
-            AdtKind::Struct | AdtKind::Union => {
-                bug!("is_non_exhaustive_enum called on non-enum `{:?}`", self);
-            }
-        }
-    }
-
-    #[inline]
-    pub fn is_univariant_non_exhaustive(&self) -> bool {
-        match self.adt_kind() {
-            AdtKind::Struct | AdtKind::Union => self.is_non_exhaustive(),
-            AdtKind::Enum => {
-                bug!("is_non_exhaustive_enum called on non-enum `{:?}`", self);
-            }
-        }
+    pub fn is_variant_list_non_exhaustive(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.
@@ -2014,19 +2049,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Union
         } else {
             AdtKind::Struct
-        }
-    }
-
-    /// Return whether `variant` is non-exhaustive as a *struct* (i.e., whether
-    /// it can have additional fields).
-    pub fn is_variant_non_exhaustive(&self, _variant: &ty::VariantDef) -> bool {
-        match self.adt_kind() {
-            // A struct is non-exhaustive if it has a `#[non_exhaustive]` attribute.
-            AdtKind::Struct => self.is_non_exhaustive(),
-            // At this moment, all enum variants are exhaustive.
-            AdtKind::Enum => false,
-            // All unions are "exhaustive", as far as that makes sense.
-            AdtKind::Union => false,
         }
     }
 

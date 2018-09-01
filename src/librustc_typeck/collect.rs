@@ -548,12 +548,13 @@ fn convert_enum_variant_types<'a, 'tcx>(
     }
 }
 
-fn convert_struct_variant<'a, 'tcx>(
+fn convert_variant<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     did: DefId,
     name: ast::Name,
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
+    adt_kind: ty::AdtKind
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = FxHashMap();
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
@@ -584,13 +585,13 @@ fn convert_struct_variant<'a, 'tcx>(
             }
         })
         .collect();
-    ty::VariantDef {
+    ty::VariantDef::new(tcx,
         did,
         name,
         discr,
         fields,
-        ctor_kind: CtorKind::from_hir(def),
-    }
+        adt_kind,
+        CtorKind::from_hir(def))
 }
 
 fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
@@ -621,7 +622,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         };
                         distance_from_explicit += 1;
 
-                        convert_struct_variant(tcx, did, v.node.name, discr, &v.node.data)
+                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum)
                     })
                     .collect(),
             )
@@ -635,23 +636,25 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
             };
             (
                 AdtKind::Struct,
-                vec![convert_struct_variant(
+                vec![convert_variant(
                     tcx,
                     ctor_id.unwrap_or(def_id),
                     item.name,
                     ty::VariantDiscr::Relative(0),
                     def,
+                    AdtKind::Struct
                 )],
             )
         }
         ItemKind::Union(ref def, _) => (
             AdtKind::Union,
-            vec![convert_struct_variant(
+            vec![convert_variant(
                 tcx,
                 def_id,
                 item.name,
                 ty::VariantDiscr::Relative(0),
                 def,
+                AdtKind::Union
             )],
         ),
         _ => bug!(),

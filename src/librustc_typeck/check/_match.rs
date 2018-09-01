@@ -948,7 +948,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
 
         // Require `..` if struct has non_exhaustive attribute.
-        if adt.is_variant_non_exhaustive(variant) && !adt.did.is_local() && !etc {
+        if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
             span_err!(tcx.sess, span, E0638,
                       "`..` required with {} marked as non-exhaustive",
                       kind_name);
