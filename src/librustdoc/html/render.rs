@@ -2956,12 +2956,16 @@ fn item_trait(
                 </h2>
             ")?;
 
+            let mut foreign_cache = FxHashSet();
             for implementor in foreign {
-                let assoc_link = AssocItemLink::GotoSource(
-                    implementor.impl_item.def_id, &implementor.inner_impl().provided_trait_methods
-                );
-                render_impl(w, cx, &implementor, assoc_link,
-                            RenderMode::Normal, implementor.impl_item.stable_since(), false)?;
+                if foreign_cache.insert(implementor.inner_impl().to_string()) {
+                    let assoc_link = AssocItemLink::GotoSource(
+                        implementor.impl_item.def_id,
+                        &implementor.inner_impl().provided_trait_methods
+                    );
+                    render_impl(w, cx, &implementor, assoc_link,
+                                RenderMode::Normal, implementor.impl_item.stable_since(), false)?;
+                }
             }
         }
 
