@@ -120,6 +120,16 @@ impl RawResponse {
 }
 
 impl RawNotification {
+    pub fn new<N>(params: N::Params) -> RawNotification
+    where
+        N: Notification,
+        N::Params: Serialize,
+    {
+        RawNotification {
+            method: N::METHOD.to_string(),
+            params: to_value(&params).unwrap(),
+        }
+    }
     pub fn cast<N>(self) -> ::std::result::Result<N::Params, RawNotification>
     where
         N: Notification,

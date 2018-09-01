@@ -23,3 +23,4 @@ text_unit = { version = "0.1.2", features = ["serde"] }
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
 libanalysis = { path = "../libanalysis" }
+gen_lsp_server = { path = "../gen_lsp_server" }

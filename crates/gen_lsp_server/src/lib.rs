@@ -21,7 +21,7 @@ use languageserver_types::{
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 pub use {
-    msg::{RawMessage, RawRequest, RawResponse, RawResponseError, RawNotification},
+    msg::{RawMessage, RawRequest, RawResponse, RawResponseError, RawNotification, ErrorCode},
     stdio::{stdio_transport, Threads},
 };
 

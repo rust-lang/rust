@@ -17,26 +17,20 @@ extern crate walkdir;
 extern crate libeditor;
 extern crate libanalysis;
 extern crate libsyntax2;
+extern crate gen_lsp_server;
 extern crate im;
 extern crate relative_path;
 
-mod io;
 mod caps;
 mod req;
-mod dispatch;
 mod conv;
 mod main_loop;
 mod vfs;
 mod path_map;
 mod server_world;
 
-use threadpool::ThreadPool;
-use crossbeam_channel::bounded;
 use flexi_logger::{Logger, Duplicate};
-
-use ::{
-    io::{Io, RawMsg, RawResponse, RawNotification},
-};
+use gen_lsp_server::{run_server, stdio_transport};
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
@@ -60,96 +54,10 @@ fn main() -> Result<()> {
 }
 
 fn main_inner() -> Result<()> {
-    let mut io = Io::from_stdio();
-    let res = initialize(&mut io);
+    let (receiver, sender, threads) = stdio_transport();
+    run_server(caps::server_capabilities(), main_loop::main_loop, receiver, sender)?;
     info!("shutting down IO...");
-    let io_res = io.stop();
+    threads.join()?;
     info!("... IO is down");
-    match (res, io_res) {
-        (Ok(()), Ok(())) => Ok(()),
-        (res, Ok(())) => res,
-        (Ok(()), io_res) => io_res,
-        (res, Err(io_err)) => {
-            error!("shutdown error: {:?}", io_err);
-            res
-        }
-    }
-}
-
-fn initialize(io: &mut Io) -> Result<()> {
-    match io.recv()? {
-        RawMsg::Notification(n) =>
-            bail!("expected initialize request, got {:?}", n),
-        RawMsg::Response(res) =>
-            bail!("expected initialize request, got {:?}", res),
-
-        RawMsg::Request(req) => {
-            let req = dispatch::handle_request::<req::Initialize, _>(req, |_params, resp| {
-                let res = req::InitializeResult { capabilities: caps::server_capabilities() };
-                let resp = resp.into_response(Ok(res))?;
-                io.send(RawMsg::Response(resp));
-                Ok(())
-            })?;
-            if let Err(req) = req {
-                bail!("expected initialize request, got {:?}", req)
-            }
-            match io.recv()? {
-                RawMsg::Notification(n) => {
-                    if n.method != "initialized" {
-                        bail!("expected initialized notification");
-                    }
-                }
-                _ => bail!("expected initialized notification"),
-            }
-        }
-    }
-    initialized(io)
-}
-
-enum Task {
-    Respond(RawResponse),
-    Notify(RawNotification),
-    Die(::failure::Error),
-}
-
-fn initialized(io: &mut Io) -> Result<()> {
-    {
-        let mut pool = ThreadPool::new(4);
-        let (task_sender, task_receiver) = bounded::<Task>(16);
-        let (fs_events_receiver, watcher) = vfs::watch(vec![
-            ::std::env::current_dir()?,
-        ]);
-        info!("lifecycle: handshake finished, server ready to serve requests");
-        let res = main_loop::main_loop(
-            io,
-            &mut pool,
-            task_sender,
-            task_receiver.clone(),
-            fs_events_receiver,
-        );
-
-        info!("waiting for background jobs to finish...");
-        task_receiver.for_each(drop);
-        pool.join();
-        info!("...background jobs have finished");
-
-        info!("waiting for file watcher to finish...");
-        watcher.stop()?;
-        info!("...file watcher has finished");
-
-        res
-    }?;
-
-    match io.recv()? {
-        RawMsg::Notification(n) => {
-            if n.method == "exit" {
-                info!("lifecycle: shutdown complete");
-                return Ok(());
-            }
-            bail!("unexpected notification during shutdown: {:?}", n)
-        }
-        m => {
-            bail!("unexpected message during shutdown: {:?}", m)
-        }
-    }
+    Ok(())
 }
