@@ -1,6 +1,6 @@
 use rustc::{ty, mir};
 
-use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Scalar, ScalarExt, Memory, Evaluator,
+use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Scalar, Memory, Evaluator,
             Place, StackPopCleanup, EvalContext};
 
 pub trait MemoryExt<'tcx> {
@@ -22,11 +22,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.data.next_thread_local;
         self.data.next_thread_local += 1;
-        let ptr_size = self.pointer_size();
         self.data.thread_local.insert(
             new_key,
             TlsEntry {
-                data: Scalar::null(ptr_size).into(),
+                data: Scalar::ptr_null(*self.tcx).into(),
                 dtor,
             },
         );
@@ -89,7 +88,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
         use std::collections::Bound::*;
 
-        let ptr_size = self.pointer_size();
         let thread_local = &mut self.data.thread_local;
         let start = match key {
             Some(key) => Excluded(key),
@@ -101,7 +99,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             if !data.is_null() {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
-                    *data = Scalar::null(ptr_size);
+                    *data = Scalar::ptr_null(*self.tcx);
                     return ret;
                 }
             }

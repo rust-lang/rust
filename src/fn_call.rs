@@ -305,7 +305,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 };
 
                 self.write_scalar(
-                    Scalar::from_i32(result),
+                    Scalar::from_int(result, Size::from_bits(32)),
                     dest,
                 )?;
             }
@@ -346,7 +346,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                     let name = self.memory.read_c_str(name_ptr)?;
                     match self.machine.env_vars.get(name) {
                         Some(&var) => Scalar::Ptr(var),
-                        None => Scalar::null(self.memory.pointer_size()),
+                        None => Scalar::ptr_null(*self.tcx),
                     }
                 };
                 self.write_scalar(result, dest)?;
@@ -446,7 +446,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
 
             // Some things needed for sys::thread initialization to go through
             "signal" | "sigaction" | "sigaltstack" => {
-                self.write_scalar(Scalar::null(dest.layout.size), dest)?;
+                self.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
             }
 
             "sysconf" => {
@@ -729,6 +729,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
     }
 
     fn write_null(&mut self, dest: PlaceTy<'tcx>) -> EvalResult<'tcx> {
-        self.write_scalar(Scalar::null(dest.layout.size), dest)
+        self.write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 }
