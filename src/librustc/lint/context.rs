@@ -321,7 +321,7 @@ impl LintStore {
             }
             CheckLintNameResult::Tool(result) => match result {
                 Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
-                    "lint name `{}` is deprcated \
+                    "lint name `{}` is deprecated \
                      and does not have an effect anymore. \
                      Use: {}",
                     lint_name, new_name
