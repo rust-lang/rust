@@ -14,7 +14,7 @@ use std::mem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::ich::{StableHashingContext, StableHashingContextProvider};
+use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -22,7 +22,6 @@ use rustc::ty::layout::{
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc::mir::interpret::{
@@ -39,7 +38,7 @@ use super::{
     Memory, Machine
 };
 
-use super::snapshot::EvalSnapshot;
+use super::snapshot::InfiniteLoopDetector;
 
 pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -188,72 +187,6 @@ impl_stable_hash_for!(enum self::LocalValue {
     Dead,
     Live(x),
 });
-
-pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    /// The set of all `EvalSnapshot` *hashes* observed by this detector.
-    ///
-    /// When a collision occurs in this table, we store the full snapshot in
-    /// `snapshots`.
-    hashes: FxHashSet<u64>,
-
-    /// The set of all `EvalSnapshot`s observed by this detector.
-    ///
-    /// An `EvalSnapshot` will only be fully cloned once it has caused a
-    /// collision in `hashes`. As a result, the detector must observe at least
-    /// *two* full cycles of an infinite loop before it triggers.
-    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
-}
-
-impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn default() -> Self {
-        InfiniteLoopDetector {
-            hashes: FxHashSet::default(),
-            snapshots: FxHashSet::default(),
-        }
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    /// Returns `true` if the loop detector has not yet observed a snapshot.
-    pub fn is_empty(&self) -> bool {
-        self.hashes.is_empty()
-    }
-
-    pub fn observe_and_analyze(
-        &mut self,
-        tcx: &TyCtxt<'b, 'tcx, 'tcx>,
-        machine: &M,
-        memory: &Memory<'a, 'mir, 'tcx, M>,
-        stack: &[Frame<'mir, 'tcx>],
-    ) -> EvalResult<'tcx, ()> {
-
-        let mut hcx = tcx.get_stable_hashing_context();
-        let mut hasher = StableHasher::<u64>::new();
-        (machine, stack).hash_stable(&mut hcx, &mut hasher);
-        let hash = hasher.finish();
-
-        if self.hashes.insert(hash) {
-            // No collision
-            return Ok(())
-        }
-
-        info!("snapshotting the state of the interpreter");
-
-        if self.snapshots.insert(EvalSnapshot::new(machine, memory, stack)) {
-            // Spurious collision or first cycle
-            return Ok(())
-        }
-
-        // Second cycle
-        Err(EvalErrorKind::InfiniteLoop.into())
-    }
-}
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]

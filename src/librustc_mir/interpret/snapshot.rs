@@ -3,11 +3,14 @@ use std::hash::{Hash, Hasher};
 use rustc::ich::{StableHashingContext, StableHashingContextProvider};
 use rustc::mir;
 use rustc::mir::interpret::{
-    AllocId, Pointer, Scalar, ScalarMaybeUndef, Relocations, Allocation, UndefMask
+    AllocId, Pointer, Scalar, ScalarMaybeUndef,
+    Relocations, Allocation, UndefMask,
+    EvalResult, EvalErrorKind,
 };
 
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::Align;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use syntax::ast::Mutability;
@@ -15,6 +18,72 @@ use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
 use super::{Frame, Memory, Machine, Operand, MemPlace, Place, Value};
+
+pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+    /// The set of all `EvalSnapshot` *hashes* observed by this detector.
+    ///
+    /// When a collision occurs in this table, we store the full snapshot in
+    /// `snapshots`.
+    hashes: FxHashSet<u64>,
+
+    /// The set of all `EvalSnapshot`s observed by this detector.
+    ///
+    /// An `EvalSnapshot` will only be fully cloned once it has caused a
+    /// collision in `hashes`. As a result, the detector must observe at least
+    /// *two* full cycles of an infinite loop before it triggers.
+    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
+}
+
+impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn default() -> Self {
+        InfiniteLoopDetector {
+            hashes: FxHashSet::default(),
+            snapshots: FxHashSet::default(),
+        }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    /// Returns `true` if the loop detector has not yet observed a snapshot.
+    pub fn is_empty(&self) -> bool {
+        self.hashes.is_empty()
+    }
+
+    pub fn observe_and_analyze(
+        &mut self,
+        tcx: &TyCtxt<'b, 'tcx, 'tcx>,
+        machine: &M,
+        memory: &Memory<'a, 'mir, 'tcx, M>,
+        stack: &[Frame<'mir, 'tcx>],
+    ) -> EvalResult<'tcx, ()> {
+
+        let mut hcx = tcx.get_stable_hashing_context();
+        let mut hasher = StableHasher::<u64>::new();
+        (machine, stack).hash_stable(&mut hcx, &mut hasher);
+        let hash = hasher.finish();
+
+        if self.hashes.insert(hash) {
+            // No collision
+            return Ok(())
+        }
+
+        info!("snapshotting the state of the interpreter");
+
+        if self.snapshots.insert(EvalSnapshot::new(machine, memory, stack)) {
+            // Spurious collision or first cycle
+            return Ok(())
+        }
+
+        // Second cycle
+        Err(EvalErrorKind::InfiniteLoop.into())
+    }
+}
 
 trait SnapshotContext<'a> {
     fn resolve(&'a self, id: &AllocId) -> Option<&'a Allocation>;
@@ -269,7 +338,7 @@ impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
 }
 
 /// The virtual machine state during const-evaluation at a given point in time.
-pub struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     machine: M,
     memory: Memory<'a, 'mir, 'tcx, M>,
     stack: Vec<Frame<'mir, 'tcx>>,
@@ -278,7 +347,7 @@ pub struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
-    pub fn new(
+    fn new(
         machine: &M,
         memory: &Memory<'a, 'mir, 'tcx, M>,
         stack: &[Frame<'mir, 'tcx>]) -> Self {
