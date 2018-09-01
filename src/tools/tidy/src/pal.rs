@@ -88,10 +88,10 @@ const EXCEPTION_PATHS: &[&str] = &[
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let ref mut contents = String::new();
+    let mut contents = String::new();
     // Sanity check that the complex parsing here works
-    let ref mut saw_target_arch = false;
-    let ref mut saw_cfg_bang = false;
+    let mut saw_target_arch = false;
+    let mut saw_cfg_bang = false;
     super::walk(path, &mut super::filter_dirs, &mut |file| {
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") { return }
@@ -99,11 +99,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         let is_exception_path = EXCEPTION_PATHS.iter().any(|s| filestr.contains(&**s));
         if is_exception_path { return }
 
-        check_cfgs(contents, &file, bad, saw_target_arch, saw_cfg_bang);
+        check_cfgs(&mut contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
     });
 
-    assert!(*saw_target_arch);
-    assert!(*saw_cfg_bang);
+    assert!(saw_target_arch);
+    assert!(saw_cfg_bang);
 }
 
 fn check_cfgs(contents: &mut String, file: &Path,
