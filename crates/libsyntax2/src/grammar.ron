@@ -332,7 +332,7 @@ Grammar(
             ],
         ),
         "ModuleItem": (
-            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "ImplItem",
+            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeDef", "ImplItem",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
         ),
 

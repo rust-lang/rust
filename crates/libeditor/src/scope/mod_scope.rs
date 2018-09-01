@@ -26,6 +26,7 @@ impl ModuleScope {
                 ast::ModuleItem::ConstDef(item) => Entry::new(item),
                 ast::ModuleItem::StaticDef(item) => Entry::new(item),
                 ast::ModuleItem::TraitDef(item) => Entry::new(item),
+                ast::ModuleItem::TypeDef(item) => Entry::new(item),
                 ast::ModuleItem::Module(item) => Entry::new(item),
                 ast::ModuleItem::UseItem(item) => {
                     if let Some(tree) = item.use_tree() {
@@ -104,6 +105,7 @@ mod tests {
                 y::z,
                 t,
             };
-        ", &["Foo", "Bar", "baz", "quux", "z", "t"])
+            type T = ();
+        ", &["Foo", "Bar", "baz", "quux", "z", "t", "T"])
     }
 }
