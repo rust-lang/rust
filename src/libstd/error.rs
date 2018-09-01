@@ -138,7 +138,72 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn cause(&self) -> Option<&dyn Error> { None }
+    #[rustc_deprecated(since = "1.33.0", reason = "replaced by Error::source, which can support \
+                                                   downcasting")]
+    fn cause(&self) -> Option<&dyn Error> {
+        self.source()
+    }
+
+    /// The lower-level source of this error, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperError {
+    ///     side: SuperErrorSideKick,
+    /// }
+    ///
+    /// impl fmt::Display for SuperError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperError is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperError {
+    ///     fn description(&self) -> &str {
+    ///         "I'm the superhero of errors"
+    ///     }
+    ///
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    ///         Some(&self.side)
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperErrorSideKick;
+    ///
+    /// impl fmt::Display for SuperErrorSideKick {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperErrorSideKick is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperErrorSideKick {
+    ///     fn description(&self) -> &str {
+    ///         "I'm SuperError side kick"
+    ///     }
+    /// }
+    ///
+    /// fn get_super_error() -> Result<(), SuperError> {
+    ///     Err(SuperError { side: SuperErrorSideKick })
+    /// }
+    ///
+    /// fn main() {
+    ///     match get_super_error() {
+    ///         Err(e) => {
+    ///             println!("Error: {}", e.description());
+    ///             println!("Caused by: {}", e.source().unwrap());
+    ///         }
+    ///         _ => println!("No error"),
+    ///     }
+    /// }
+    /// ```
+    #[stable(feature = "error_source", since = "1.30.0")]
+    fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
     /// Get the `TypeId` of `self`
     #[doc(hidden)]
