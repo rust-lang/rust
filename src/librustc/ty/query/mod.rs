@@ -30,7 +30,7 @@ use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use mir::interpret::ConstEvalResult;
 use mir::mono::{CodegenUnit, Stats};
 use mir;
-use mir::interpret::{GlobalId, Allocation};
+use mir::interpret::GlobalId;
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
@@ -286,11 +286,6 @@ define_queries! { <'tcx>
         /// other items (such as enum variant explicit discriminants).
         [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx>,
-
-        /// Converts a constant value to a constant allocation
-        [] fn const_to_allocation: const_to_allocation(
-            &'tcx ty::Const<'tcx>
-        ) -> &'tcx Allocation,
     },
 
     TypeChecking {
@@ -704,12 +699,6 @@ fn codegen_fn_attrs<'tcx>(id: DefId) -> DepConstructor<'tcx> {
 
 fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::EraseRegionsTy { ty }
-}
-
-fn const_to_allocation<'tcx>(
-    val: &'tcx ty::Const<'tcx>,
-) -> DepConstructor<'tcx> {
-    DepConstructor::ConstToAllocation { val }
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

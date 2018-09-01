@@ -1,7 +1,3 @@
-error[E0601]: `main` function not found in crate `repr_transparent_other_items`
-   |
-   = note: consider adding a `main` function to `$DIR/repr-transparent-other-items.rs`
-
 error[E0517]: attribute should be applied to struct
   --> $DIR/repr-transparent-other-items.rs:13:8
    |
@@ -67,7 +63,7 @@ LL | #[repr(transparent)] //~ ERROR unsupported representation for zero-variant 
 LL | enum Void {}         //~| ERROR should be applied to struct
    | ------------ zero-variant enum
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
-Some errors occurred: E0084, E0517, E0601.
+Some errors occurred: E0084, E0517.
 For more information about an error, try `rustc --explain E0084`.

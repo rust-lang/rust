@@ -541,7 +541,7 @@ macro_rules! unimplemented {
 /// into libsyntax itself.
 ///
 /// For more information, see documentation for `std`'s macros.
-#[cfg(dox)]
+#[cfg(rustdoc)]
 mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.

@@ -94,7 +94,7 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
-use rustc::mir::interpret::{GlobalId};
+use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::ty::subst::{CanonicalSubsts, UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
@@ -1375,7 +1375,11 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt, id: DefId, span: Span) {
     };
     let param_env = ty::ParamEnv::reveal_all();
     if let Ok(static_) = tcx.const_eval(param_env.and(cid)) {
-        let alloc = tcx.const_to_allocation(static_);
+        let alloc = if let ConstValue::ByRef(_, allocation, _) = static_.val {
+            allocation
+        } else {
+            bug!("Matching on non-ByRef static")
+        };
         if alloc.relocations.len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \
                        simple list of bytes on the wasm target with no \

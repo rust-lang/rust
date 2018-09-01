@@ -405,7 +405,8 @@ before the PR is merged.
 [breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
 
 Rust's build system builds a number of tools that make use of the
-internals of the compiler. This includes clippy,
+internals of the compiler. This includes 
+[Clippy](https://github.com/rust-lang-nursery/rust-clippy),
 [RLS](https://github.com/rust-lang-nursery/rls) and
 [rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
