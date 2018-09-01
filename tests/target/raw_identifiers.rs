@@ -11,6 +11,8 @@ fn main() {
     r#foo::r#bar();
 
     let r#local = r#Struct { r#field: () };
+    r#local.r#field = 1;
+    r#foo.r#barr();
     let r#async = r#foo(r#local);
     r#macro!();
 
