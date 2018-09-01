@@ -4,7 +4,7 @@ error: you are deriving `Hash` but have implemented `PartialEq` explicitly
 17 | #[derive(Hash)]
    |          ^^^^
    |
-   = note: #[deny(derive_hash_xor_eq)] on by default
+   = note: #[deny(clippy::derive_hash_xor_eq)] on by default
 note: `PartialEq` implemented here
   --> $DIR/derive.rs:20:1
    |
@@ -49,7 +49,7 @@ error: you are implementing `Clone` explicitly on a `Copy` type
 43 | | }
    | |_^
    |
-   = note: `-D expl-impl-clone-on-copy` implied by `-D warnings`
+   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 note: consider deriving `Clone` or removing `Copy`
   --> $DIR/derive.rs:41:1
    |

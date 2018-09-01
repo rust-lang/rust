@@ -1,4 +1,6 @@
-#![deny(if_same_then_else)]
+#![feature(tool_lints)]
+
+#![deny(clippy::if_same_then_else)]
 
 fn main() {}
 

@@ -1,91 +1,91 @@
 error: consider implementing `TryFrom` instead
- --> $DIR/fallible_impl_from.rs:5:1
-  |
-5 | / impl From<String> for Foo {
-6 | |     fn from(s: String) -> Self {
-7 | |         Foo(s.parse().unwrap())
-8 | |     }
-9 | | }
-  | |_^
-  |
+  --> $DIR/fallible_impl_from.rs:7:1
+   |
+7  | / impl From<String> for Foo {
+8  | |     fn from(s: String) -> Self {
+9  | |         Foo(s.parse().unwrap())
+10 | |     }
+11 | | }
+   | |_^
+   |
 note: lint level defined here
- --> $DIR/fallible_impl_from.rs:1:9
-  |
-1 | #![deny(fallible_impl_from)]
-  |         ^^^^^^^^^^^^^^^^^^
-  = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
+  --> $DIR/fallible_impl_from.rs:3:9
+   |
+3  | #![deny(clippy::fallible_impl_from)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
 note: potential failure(s)
- --> $DIR/fallible_impl_from.rs:7:13
-  |
-7 |         Foo(s.parse().unwrap())
-  |             ^^^^^^^^^^^^^^^^^^
+  --> $DIR/fallible_impl_from.rs:9:13
+   |
+9  |         Foo(s.parse().unwrap())
+   |             ^^^^^^^^^^^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:28:1
+  --> $DIR/fallible_impl_from.rs:30:1
    |
-28 | / impl From<usize> for Invalid {
-29 | |     fn from(i: usize) -> Invalid {
-30 | |         if i != 42 {
-31 | |             panic!();
+30 | / impl From<usize> for Invalid {
+31 | |     fn from(i: usize) -> Invalid {
+32 | |         if i != 42 {
+33 | |             panic!();
 ...  |
-34 | |     }
-35 | | }
+36 | |     }
+37 | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:31:13
+  --> $DIR/fallible_impl_from.rs:33:13
    |
-31 |             panic!();
+33 |             panic!();
    |             ^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:37:1
+  --> $DIR/fallible_impl_from.rs:39:1
    |
-37 | / impl From<Option<String>> for Invalid {
-38 | |     fn from(s: Option<String>) -> Invalid {
-39 | |         let s = s.unwrap();
-40 | |         if !s.is_empty() {
+39 | / impl From<Option<String>> for Invalid {
+40 | |     fn from(s: Option<String>) -> Invalid {
+41 | |         let s = s.unwrap();
+42 | |         if !s.is_empty() {
 ...  |
-46 | |     }
-47 | | }
+48 | |     }
+49 | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:39:17
+  --> $DIR/fallible_impl_from.rs:41:17
    |
-39 |         let s = s.unwrap();
+41 |         let s = s.unwrap();
    |                 ^^^^^^^^^^
-40 |         if !s.is_empty() {
-41 |             panic!(42);
+42 |         if !s.is_empty() {
+43 |             panic!(42);
    |             ^^^^^^^^^^^
-42 |         } else if s.parse::<u32>().unwrap() != 42 {
+44 |         } else if s.parse::<u32>().unwrap() != 42 {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
-43 |             panic!("{:?}", s);
+45 |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:55:1
+  --> $DIR/fallible_impl_from.rs:57:1
    |
-55 | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
-56 | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
-57 | |         if s.parse::<u32>().ok().unwrap() != 42 {
-58 | |             panic!("{:?}", s);
+57 | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
+58 | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
+59 | |         if s.parse::<u32>().ok().unwrap() != 42 {
+60 | |             panic!("{:?}", s);
 ...  |
-61 | |     }
-62 | | }
+63 | |     }
+64 | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:57:12
+  --> $DIR/fallible_impl_from.rs:59:12
    |
-57 |         if s.parse::<u32>().ok().unwrap() != 42 {
+59 |         if s.parse::<u32>().ok().unwrap() != 42 {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-58 |             panic!("{:?}", s);
+60 |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

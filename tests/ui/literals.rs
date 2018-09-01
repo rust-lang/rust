@@ -1,6 +1,8 @@
-#![warn(mixed_case_hex_literals)]
-#![warn(unseparated_literal_suffix)]
-#![warn(zero_prefixed_literal)]
+#![feature(tool_lints)]
+
+#![warn(clippy::mixed_case_hex_literals)]
+#![warn(clippy::unseparated_literal_suffix)]
+#![warn(clippy::zero_prefixed_literal)]
 #![allow(dead_code)]
 
 fn main() {

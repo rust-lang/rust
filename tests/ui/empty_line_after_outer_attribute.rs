@@ -1,5 +1,5 @@
-
-#![warn(empty_line_after_outer_attr)]
+#![feature(tool_lints)]
+#![warn(clippy::empty_line_after_outer_attr)]
 
 // This should produce a warning
 #[crate_type = "lib"]

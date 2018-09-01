@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(eval_order_dependence)]
-#[allow(unused_assignments, unused_variables, many_single_char_names, no_effect, dead_code, blacklisted_name)]
+#[warn(clippy::eval_order_dependence)]
+#[allow(unused_assignments, unused_variables, clippy::many_single_char_names, clippy::no_effect, dead_code, clippy::blacklisted_name)]
 fn main() {
     let mut x = 0;
     let a = { x = 1; 1 } + x;

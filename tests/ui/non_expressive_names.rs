@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(clippy,similar_names)]
-#![allow(unused, println_empty_string)]
+#![warn(clippy::all,clippy::similar_names)]
+#![allow(unused, clippy::println_empty_string)]
 
 
 struct Foo {

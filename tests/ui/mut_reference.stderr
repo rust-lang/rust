@@ -4,7 +4,7 @@ error: The function/method `takes_an_immutable_reference` doesn't need a mutable
 22 |     takes_an_immutable_reference(&mut 42);
    |                                  ^^^^^^^
    |
-   = note: `-D unnecessary-mut-passed` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
 
 error: The function/method `as_ptr` doesn't need a mutable reference
   --> $DIR/mut_reference.rs:24:12

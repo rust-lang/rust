@@ -4,7 +4,7 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
 10 |     x >= y + 1;
    |     ^^^^^^^^^^
    |
-   = note: `-D int-plus-one` implied by `-D warnings`
+   = note: `-D clippy::int-plus-one` implied by `-D warnings`
 help: change `>= y + 1` to `> y` as shown
    |
 10 |     x > y;

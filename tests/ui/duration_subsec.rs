@@ -1,4 +1,6 @@
-#![warn(duration_subsec)]
+#![feature(tool_lints)]
+
+#![warn(clippy::duration_subsec)]
 
 use std::time::Duration;
 

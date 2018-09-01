@@ -1,4 +1,6 @@
-#![allow(trivially_copy_pass_by_ref)]
+#![feature(tool_lints)]
+
+#![allow(clippy::trivially_copy_pass_by_ref)]
 
 
 fn fn_val(i: i32) -> i32 { unimplemented!() }
@@ -7,7 +9,7 @@ fn fn_mutref(i: &mut i32) { unimplemented!() }
 fn fooi() -> i32 { unimplemented!() }
 fn foob() -> bool { unimplemented!() }
 
-#[allow(many_single_char_names)]
+#[allow(clippy::many_single_char_names)]
 fn immutable_condition() {
     // Should warn when all vars mentioned are immutable
     let y = 0;

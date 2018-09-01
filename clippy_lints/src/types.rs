@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::layout::LayoutOf;
@@ -1525,7 +1525,7 @@ enum FullInt {
 }
 
 impl FullInt {
-    #[allow(cast_sign_loss)]
+    #[allow(clippy::cast_sign_loss)]
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
@@ -1744,7 +1744,7 @@ impl LintPass for ImplicitHasher {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
-    #[allow(cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         use syntax_pos::BytePos;
 

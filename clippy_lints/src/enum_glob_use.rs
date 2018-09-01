@@ -3,7 +3,7 @@
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::NodeId;
 use syntax::source_map::Span;
 use crate::utils::span_lint;

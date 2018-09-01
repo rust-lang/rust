@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(neg_multiply)]
-#![allow(no_effect, unnecessary_operation)]
+#![warn(clippy::neg_multiply)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 use std::ops::Mul;
 

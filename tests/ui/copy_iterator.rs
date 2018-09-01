@@ -1,4 +1,6 @@
-#![warn(copy_iterator)]
+#![feature(tool_lints)]
+
+#![warn(clippy::copy_iterator)]
 
 #[derive(Copy, Clone)]
 struct Countdown(u8);

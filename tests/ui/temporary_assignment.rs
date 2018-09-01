@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(temporary_assignment)]
+#![warn(clippy::temporary_assignment)]
 
 use std::ops::{Deref, DerefMut};
 

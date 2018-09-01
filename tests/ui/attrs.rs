@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(inline_always, deprecated_semver)]
+#![warn(clippy::inline_always, clippy::deprecated_semver)]
 
 #[inline(always)]
 fn test_attr_lint() {

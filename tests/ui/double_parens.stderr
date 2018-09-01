@@ -4,7 +4,7 @@ error: Consider removing unnecessary double parentheses
 16 |     ((0))
    |     ^^^^^
    |
-   = note: `-D double-parens` implied by `-D warnings`
+   = note: `-D clippy::double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
   --> $DIR/double_parens.rs:20:14

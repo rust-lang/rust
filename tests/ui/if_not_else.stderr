@@ -8,7 +8,7 @@ error: Unnecessary boolean `not` operation
 13 | |     }
    | |_____^
    |
-   = note: `-D if-not-else` implied by `-D warnings`
+   = note: `-D clippy::if-not-else` implied by `-D warnings`
    = help: remove the `!` and swap the blocks of the if/else
 
 error: Unnecessary `!=` operation

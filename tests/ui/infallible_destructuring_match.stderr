@@ -1,27 +1,27 @@
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:16:5
+  --> $DIR/infallible_destructuring_match.rs:18:5
    |
-16 | /     let data = match wrapper {
-17 | |         SingleVariantEnum::Variant(i) => i,
-18 | |     };
+18 | /     let data = match wrapper {
+19 | |         SingleVariantEnum::Variant(i) => i,
+20 | |     };
    | |______^ help: try this: `let SingleVariantEnum::Variant(data) = wrapper;`
    |
-   = note: `-D infallible-destructuring-match` implied by `-D warnings`
+   = note: `-D clippy::infallible-destructuring-match` implied by `-D warnings`
 
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:37:5
+  --> $DIR/infallible_destructuring_match.rs:39:5
    |
-37 | /     let data = match wrapper {
-38 | |         TupleStruct(i) => i,
-39 | |     };
+39 | /     let data = match wrapper {
+40 | |         TupleStruct(i) => i,
+41 | |     };
    | |______^ help: try this: `let TupleStruct(data) = wrapper;`
 
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:58:5
+  --> $DIR/infallible_destructuring_match.rs:60:5
    |
-58 | /     let data = match wrapper {
-59 | |         Ok(i) => i,
-60 | |     };
+60 | /     let data = match wrapper {
+61 | |         Ok(i) => i,
+62 | |     };
    | |______^ help: try this: `let Ok(data) = wrapper;`
 
 error: aborting due to 3 previous errors

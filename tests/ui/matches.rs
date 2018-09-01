@@ -1,10 +1,10 @@
-
+#![feature(tool_lints)]
 #![feature(exclusive_range_pattern)]
 
 
-#![warn(clippy)]
-#![allow(unused, if_let_redundant_pattern_matching)]
-#![warn(single_match_else, match_same_arms)]
+#![warn(clippy::all)]
+#![allow(unused, clippy::if_let_redundant_pattern_matching)]
+#![warn(clippy::single_match_else, clippy::match_same_arms)]
 
 enum ExprNode {
     ExprAddrOf,

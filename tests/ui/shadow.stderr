@@ -4,7 +4,7 @@ error: `x` is shadowed by itself in `&mut x`
 13 |     let x = &mut x;
    |     ^^^^^^^^^^^^^^^
    |
-   = note: `-D shadow-same` implied by `-D warnings`
+   = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
   --> $DIR/shadow.rs:12:13
    |
@@ -41,7 +41,7 @@ error: `x` is shadowed by `{ *x + 1 }` which reuses the original value
 16 |     let x = { *x + 1 };
    |         ^
    |
-   = note: `-D shadow-reuse` implied by `-D warnings`
+   = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 note: initialization happens here
   --> $DIR/shadow.rs:16:13
    |
@@ -110,7 +110,7 @@ error: `x` is shadowed by `y`
 21 |     let x = y;
    |         ^
    |
-   = note: `-D shadow-unrelated` implied by `-D warnings`
+   = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: initialization happens here
   --> $DIR/shadow.rs:21:13
    |

@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(absurd_extreme_comparisons)]
-#![allow(unused, eq_op, no_effect, unnecessary_operation, needless_pass_by_value)]
+#![warn(clippy::absurd_extreme_comparisons)]
+#![allow(unused, clippy::eq_op, clippy::no_effect, clippy::unnecessary_operation, clippy::needless_pass_by_value)]
 
 fn main() {
     const Z: u32 = 0;
@@ -27,7 +27,7 @@ fn main() {
     b >= true;
     false > b;
     u > 0; // ok
-    // this is handled by unit_cmp
+    // this is handled by clippy::unit_cmp
     () < {};
 }
 

@@ -1,5 +1,4 @@
-#![allow(cast_possible_truncation)]
-#![allow(float_cmp)]
+#![allow(clippy::float_cmp)]
 
 use rustc::lint::LateContext;
 use rustc::{span_bug, bug};

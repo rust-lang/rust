@@ -1,4 +1,4 @@
-
+#![feature(tool_lints)]
 
 
 fn get_number() -> usize {
@@ -9,9 +9,9 @@ fn get_reference(n : &usize) -> &usize {
     n
 }
 
-#[allow(many_single_char_names, double_parens)]
+#[allow(clippy::many_single_char_names, clippy::double_parens)]
 #[allow(unused_variables)]
-#[warn(deref_addrof)]
+#[warn(clippy::deref_addrof)]
 fn main() {
     let a = 10;
     let aref = &a;
@@ -38,7 +38,7 @@ fn main() {
     let b = **&aref;
 
     //This produces a suggestion of 'let b = *&a;' which
-    //will trigger the 'deref_addrof' lint again
+    //will trigger the 'clippy::deref_addrof' lint again
     let b = **&&a;
 
     {
@@ -48,7 +48,7 @@ fn main() {
 
     {
         //This produces a suggestion of 'let y = *&mut x' which
-        //will trigger the 'deref_addrof' lint again
+        //will trigger the 'clippy::deref_addrof' lint again
         let mut x = 10;
         let y = **&mut &mut x;
     }

@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(if_let_some_result)]
+#![warn(clippy::if_let_some_result)]
 
 fn str_to_int(x: &str) -> i32 {
     if let Some(y) = x.parse().ok() {

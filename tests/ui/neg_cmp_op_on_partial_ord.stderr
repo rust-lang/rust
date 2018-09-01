@@ -1,27 +1,27 @@
 error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
-  --> $DIR/neg_cmp_op_on_partial_ord.rs:17:21
+  --> $DIR/neg_cmp_op_on_partial_ord.rs:19:21
    |
-17 |     let _not_less = !(a_value < another_value);
+19 |     let _not_less = !(a_value < another_value);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D neg-cmp-op-on-partial-ord` implied by `-D warnings`
+   = note: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
 
 error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
-  --> $DIR/neg_cmp_op_on_partial_ord.rs:20:30
+  --> $DIR/neg_cmp_op_on_partial_ord.rs:22:30
    |
-20 |     let _not_less_or_equal = !(a_value <= another_value);
+22 |     let _not_less_or_equal = !(a_value <= another_value);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
-  --> $DIR/neg_cmp_op_on_partial_ord.rs:23:24
+  --> $DIR/neg_cmp_op_on_partial_ord.rs:25:24
    |
-23 |     let _not_greater = !(a_value > another_value);
+25 |     let _not_greater = !(a_value > another_value);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
-  --> $DIR/neg_cmp_op_on_partial_ord.rs:26:33
+  --> $DIR/neg_cmp_op_on_partial_ord.rs:28:33
    |
-26 |     let _not_greater_or_equal = !(a_value >= another_value);
+28 |     let _not_greater_or_equal = !(a_value >= another_value);
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(stutter)]
+#![warn(clippy::stutter)]
 #![allow(dead_code)]
 
 mod foo {

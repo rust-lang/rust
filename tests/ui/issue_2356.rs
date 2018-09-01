@@ -1,4 +1,6 @@
-#![deny(while_let_on_iterator)]
+#![feature(tool_lints)]
+
+#![deny(clippy::while_let_on_iterator)]
 
 use std::iter::Iterator;
 

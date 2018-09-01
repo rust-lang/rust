@@ -1,183 +1,183 @@
 error: you should put `DOC_MARKDOWN` between ticks in the documentation
- --> $DIR/doc.rs:1:29
+ --> $DIR/doc.rs:3:29
   |
-1 | //! This file tests for the DOC_MARKDOWN lint
+3 | //! This file tests for the DOC_MARKDOWN lint
   |                             ^^^^^^^^^^^^
   |
-  = note: `-D doc-markdown` implied by `-D warnings`
+  = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
 error: you should put `foo_bar` between ticks in the documentation
- --> $DIR/doc.rs:8:9
-  |
-8 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-  |         ^^^^^^^
+  --> $DIR/doc.rs:10:9
+   |
+10 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+   |         ^^^^^^^
 
 error: you should put `foo::bar` between ticks in the documentation
- --> $DIR/doc.rs:8:51
-  |
-8 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-  |                                                   ^^^^^^^^
+  --> $DIR/doc.rs:10:51
+   |
+10 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+   |                                                   ^^^^^^^^
 
 error: you should put `Foo::some_fun` between ticks in the documentation
- --> $DIR/doc.rs:9:84
-  |
-9 | /// Markdown is _weird_. I mean _really weird_.  This /_ is ok. So is `_`. But not Foo::some_fun
-  |                                                                                    ^^^^^^^^^^^^^
+  --> $DIR/doc.rs:11:84
+   |
+11 | /// Markdown is _weird_. I mean _really weird_.  This /_ is ok. So is `_`. But not Foo::some_fun
+   |                                                                                    ^^^^^^^^^^^^^
 
 error: you should put `a::global:path` between ticks in the documentation
-  --> $DIR/doc.rs:11:15
+  --> $DIR/doc.rs:13:15
    |
-11 | /// Here be ::a::global:path.
+13 | /// Here be ::a::global:path.
    |               ^^^^^^^^^^^^^^
 
 error: you should put `NotInCodeBlock` between ticks in the documentation
-  --> $DIR/doc.rs:12:22
+  --> $DIR/doc.rs:14:22
    |
-12 | /// That's not code ~NotInCodeBlock~.
+14 | /// That's not code ~NotInCodeBlock~.
    |                      ^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:13:5
+  --> $DIR/doc.rs:15:5
    |
-13 | /// be_sure_we_got_to_the_end_of_it
+15 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:27:5
+  --> $DIR/doc.rs:29:5
    |
-27 | /// be_sure_we_got_to_the_end_of_it
+29 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:34:5
+  --> $DIR/doc.rs:36:5
    |
-34 | /// be_sure_we_got_to_the_end_of_it
+36 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:48:5
+  --> $DIR/doc.rs:50:5
    |
-48 | /// be_sure_we_got_to_the_end_of_it
+50 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `link_with_underscores` between ticks in the documentation
-  --> $DIR/doc.rs:52:22
+  --> $DIR/doc.rs:54:22
    |
-52 | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+54 | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
    |                      ^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `inline_link2` between ticks in the documentation
-  --> $DIR/doc.rs:55:21
+  --> $DIR/doc.rs:57:21
    |
-55 | /// It can also be [inline_link2].
+57 | /// It can also be [inline_link2].
    |                     ^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:65:5
+  --> $DIR/doc.rs:67:5
    |
-65 | /// be_sure_we_got_to_the_end_of_it
+67 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:73:8
+  --> $DIR/doc.rs:75:8
    |
-73 | /// ## CamelCaseThing
+75 | /// ## CamelCaseThing
    |        ^^^^^^^^^^^^^^
 
 error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:76:7
+  --> $DIR/doc.rs:78:7
    |
-76 | /// # CamelCaseThing
+78 | /// # CamelCaseThing
    |       ^^^^^^^^^^^^^^
 
 error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:78:22
+  --> $DIR/doc.rs:80:22
    |
-78 | /// Not a title #897 CamelCaseThing
+80 | /// Not a title #897 CamelCaseThing
    |                      ^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:79:5
+  --> $DIR/doc.rs:81:5
    |
-79 | /// be_sure_we_got_to_the_end_of_it
+81 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:86:5
+  --> $DIR/doc.rs:88:5
    |
-86 | /// be_sure_we_got_to_the_end_of_it
+88 | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:99:5
-   |
-99 | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put `FooBar` between ticks in the documentation
-   --> $DIR/doc.rs:110:42
+   --> $DIR/doc.rs:101:5
     |
-110 | /** E.g. serialization of an empty list: FooBar
-    |                                          ^^^^^^
-
-error: you should put `BarQuz` between ticks in the documentation
-   --> $DIR/doc.rs:115:5
-    |
-115 | And BarQuz too.
-    |     ^^^^^^
-
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-   --> $DIR/doc.rs:116:1
-    |
-116 | be_sure_we_got_to_the_end_of_it
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put `FooBar` between ticks in the documentation
-   --> $DIR/doc.rs:121:42
-    |
-121 | /** E.g. serialization of an empty list: FooBar
-    |                                          ^^^^^^
-
-error: you should put `BarQuz` between ticks in the documentation
-   --> $DIR/doc.rs:126:5
-    |
-126 | And BarQuz too.
-    |     ^^^^^^
-
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-   --> $DIR/doc.rs:127:1
-    |
-127 | be_sure_we_got_to_the_end_of_it
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-   --> $DIR/doc.rs:138:5
-    |
-138 | /// be_sure_we_got_to_the_end_of_it
+101 | /// be_sure_we_got_to_the_end_of_it
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-   --> $DIR/doc.rs:165:13
+error: you should put `FooBar` between ticks in the documentation
+   --> $DIR/doc.rs:112:42
     |
-165 | /// Not ok: http://www.unicode.org
-    |             ^^^^^^^^^^^^^^^^^^^^^^
+112 | /** E.g. serialization of an empty list: FooBar
+    |                                          ^^^^^^
 
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-   --> $DIR/doc.rs:166:13
+error: you should put `BarQuz` between ticks in the documentation
+   --> $DIR/doc.rs:117:5
     |
-166 | /// Not ok: https://www.unicode.org
-    |             ^^^^^^^^^^^^^^^^^^^^^^^
+117 | And BarQuz too.
+    |     ^^^^^^
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> $DIR/doc.rs:118:1
+    |
+118 | be_sure_we_got_to_the_end_of_it
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put `FooBar` between ticks in the documentation
+   --> $DIR/doc.rs:123:42
+    |
+123 | /** E.g. serialization of an empty list: FooBar
+    |                                          ^^^^^^
+
+error: you should put `BarQuz` between ticks in the documentation
+   --> $DIR/doc.rs:128:5
+    |
+128 | And BarQuz too.
+    |     ^^^^^^
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> $DIR/doc.rs:129:1
+    |
+129 | be_sure_we_got_to_the_end_of_it
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> $DIR/doc.rs:140:5
+    |
+140 | /// be_sure_we_got_to_the_end_of_it
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put bare URLs between `<`/`>` or make a proper Markdown link
    --> $DIR/doc.rs:167:13
     |
-167 | /// Not ok: http://www.unicode.org/
+167 | /// Not ok: http://www.unicode.org
     |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put bare URLs between `<`/`>` or make a proper Markdown link
    --> $DIR/doc.rs:168:13
     |
-168 | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
+168 | /// Not ok: https://www.unicode.org
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:169:13
+    |
+169 | /// Not ok: http://www.unicode.org/
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:170:13
+    |
+170 | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 30 previous errors

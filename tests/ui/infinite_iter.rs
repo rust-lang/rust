@@ -1,11 +1,11 @@
-
+#![feature(tool_lints)]
 
 use std::iter::repeat;
-#[allow(trivially_copy_pass_by_ref)]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn square_is_lower_64(x: &u32) -> bool { x * x < 64 }
 
-#[allow(maybe_infinite_iter)]
-#[deny(infinite_iter)]
+#[allow(clippy::maybe_infinite_iter)]
+#[deny(clippy::infinite_iter)]
 fn infinite_iters() {
     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
     (0..8_u32).take_while(square_is_lower_64).cycle().count(); // infinite iter
@@ -19,7 +19,7 @@ fn infinite_iters() {
     (0..).next(); // iterator is not exhausted
 }
 
-#[deny(maybe_infinite_iter)]
+#[deny(clippy::maybe_infinite_iter)]
 fn potential_infinite_iters() {
     (0..).zip((0..).take_while(square_is_lower_64)).count(); // maybe infinite iter
     repeat(42).take_while(|x| *x == 42).chain(0..42).max(); // maybe infinite iter

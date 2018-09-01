@@ -4,7 +4,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 8 |     x == std::f32::NAN;
   |     ^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D cmp-nan` implied by `-D warnings`
+  = note: `-D clippy::cmp-nan` implied by `-D warnings`
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
  --> $DIR/cmp_nan.rs:9:5

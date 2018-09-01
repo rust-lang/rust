@@ -4,7 +4,7 @@ error: this lifetime isn't used in the function definition
 16 | fn unused_lt<'a>(x: u8) {
    |              ^^
    |
-   = note: `-D extra-unused-lifetimes` implied by `-D warnings`
+   = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
 
 error: this lifetime isn't used in the function definition
   --> $DIR/unused_lt.rs:20:25

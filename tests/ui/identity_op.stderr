@@ -4,7 +4,7 @@ error: the operation is ineffective. Consider reducing it to `x`
 13 |     x + 0;
    |     ^^^^^
    |
-   = note: `-D identity-op` implied by `-D warnings`
+   = note: `-D clippy::identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:14:5

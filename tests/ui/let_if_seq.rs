@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(unused_variables, unused_assignments, similar_names, blacklisted_name)]
-#![warn(useless_let_if_seq)]
+#![allow(unused_variables, unused_assignments, clippy::similar_names, clippy::blacklisted_name)]
+#![warn(clippy::useless_let_if_seq)]
 
 fn f() -> bool { true }
 fn g(x: i32) -> i32 { x + 1 }

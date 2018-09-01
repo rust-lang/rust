@@ -1,6 +1,8 @@
+#![feature(tool_lints)]
+
 #![feature(integer_atomics)]
-#![allow(blacklisted_name)]
-#![deny(replace_consts)]
+#![allow(clippy::blacklisted_name)]
+#![deny(clippy::replace_consts)]
 
 use std::sync::atomic::*;
 use std::sync::{ONCE_INIT, Once};

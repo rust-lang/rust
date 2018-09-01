@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(unused_variables, blacklisted_name)]
+#![allow(unused_variables, clippy::blacklisted_name)]
 
 use std::collections::HashSet;
 

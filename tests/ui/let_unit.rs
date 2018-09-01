@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(let_unit_value)]
+#![warn(clippy::let_unit_value)]
 #![allow(unused_variables)]
 
 macro_rules! let_and_return {

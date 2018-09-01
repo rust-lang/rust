@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+
 /* This file incorporates work covered by the following copyright and
  * permission notice:
  *   Copyright 2013 The Rust Project Developers. See the COPYRIGHT
@@ -10,7 +12,7 @@
  *   option. This file may not be copied, modified, or distributed
  *   except according to those terms.
  */
-#![warn(missing_inline_in_public_items)]
+#![warn(clippy::missing_inline_in_public_items)]
 #![crate_type = "dylib"]
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
@@ -32,7 +34,7 @@ pub fn pub_foo() {} // missing #[inline]
 #[inline] pub fn pub_foo_inline() {} // ok
 #[inline(always)] pub fn pub_foo_inline_always() {} // ok
 
-#[allow(missing_inline_in_public_items)]
+#[allow(clippy::missing_inline_in_public_items)]
 pub fn pub_foo_no_inline() {}
 
 trait Bar {

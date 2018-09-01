@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use crate::utils::{in_macro, implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for equal operands to comparison, logical and
@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => (cx.tcx.lang_items().ord_trait(), true),
             };
             if let Some(trait_id) = trait_id {
-                #[allow(match_same_arms)]
+                #[allow(clippy::match_same_arms)]
                 match (&left.node, &right.node) {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},

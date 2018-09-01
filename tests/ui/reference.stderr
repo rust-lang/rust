@@ -4,7 +4,7 @@ error: immediately dereferencing a reference
 19 |     let b = *&a;
    |             ^^^ help: try this: `a`
    |
-   = note: `-D deref-addrof` implied by `-D warnings`
+   = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
   --> $DIR/reference.rs:21:13

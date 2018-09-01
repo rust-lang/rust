@@ -4,7 +4,7 @@ error: assignment to temporary
 29 |     Struct { field: 0 }.field = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D temporary-assignment` implied by `-D warnings`
+   = note: `-D clippy::temporary-assignment` implied by `-D warnings`
 
 error: assignment to temporary
   --> $DIR/temporary_assignment.rs:30:5

@@ -1,8 +1,8 @@
-
+#![feature(tool_lints)]
 
 
 #[allow(unused_variables)]
-#[warn(zero_divided_by_zero)]
+#[warn(clippy::zero_divided_by_zero)]
 fn main() {
     let nan = 0.0 / 0.0;
     let f64_nan = 0.0 / 0.0f64;

@@ -1,4 +1,6 @@
-#![warn(len_without_is_empty, len_zero)]
+#![feature(tool_lints)]
+
+#![warn(clippy::len_without_is_empty, clippy::len_zero)]
 #![allow(dead_code, unused)]
 
 pub struct PubOne;
@@ -19,7 +21,7 @@ impl PubOne {
 // Identical to PubOne, but with an allow attribute on the impl complaining len
 pub struct PubAllowed;
 
-#[allow(len_without_is_empty)]
+#[allow(clippy::len_without_is_empty)]
 impl PubAllowed {
     pub fn len(self: &Self) -> isize {
         1

@@ -2,7 +2,7 @@ use matches::matches;
 use rustc::hir::intravisit;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
 use rustc::hir::def::Def;
 use std::collections::HashSet;

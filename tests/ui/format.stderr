@@ -4,7 +4,7 @@ error: useless use of `format!`
 12 |     format!("foo");
    |     ^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
    |
-   = note: `-D useless-format` implied by `-D warnings`
+   = note: `-D clippy::useless-format` implied by `-D warnings`
 
 error: useless use of `format!`
   --> $DIR/format.rs:14:5

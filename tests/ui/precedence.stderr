@@ -4,7 +4,7 @@ error: operator precedence can trip the unwary
 18 |     1 << 2 + 3;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
    |
-   = note: `-D precedence` implied by `-D warnings`
+   = note: `-D clippy::precedence` implied by `-D warnings`
 
 error: operator precedence can trip the unwary
   --> $DIR/precedence.rs:19:5

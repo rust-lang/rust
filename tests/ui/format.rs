@@ -1,6 +1,6 @@
-
-#![allow(print_literal)]
-#![warn(useless_format)]
+#![feature(tool_lints)]
+#![allow(clippy::print_literal)]
+#![warn(clippy::useless_format)]
 
 struct Foo(pub String);
 

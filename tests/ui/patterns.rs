@@ -1,7 +1,7 @@
-
+#![feature(tool_lints)]
 
 #![allow(unused)]
-#![warn(clippy)]
+#![warn(clippy::all)]
 
 fn main() {
     let v = Some(true);

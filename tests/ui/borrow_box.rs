@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![deny(borrowed_box)]
-#![allow(blacklisted_name)]
+#![deny(clippy::borrowed_box)]
+#![allow(clippy::blacklisted_name)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(modulo_one)]
-#![allow(no_effect, unnecessary_operation)]
+#![warn(clippy::modulo_one)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 fn main() {
     10 % 1;

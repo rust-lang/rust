@@ -5,9 +5,10 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(range_contains)]
-#![allow(unknown_lints, shadow_reuse, missing_docs_in_private_items)]
+#![allow(unknown_lints, clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![feature(macro_at_most_once_rep)]
+#![feature(tool_lints)]
 #![warn(rust_2018_idioms)]
 
 use toml;
@@ -17,34 +18,34 @@ use rustc;
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, correctness, $description:tt } => {
-        declare_lint! { pub $name, Deny, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Deny, $description, report_in_external_macro: true }
     };
     { pub $name:tt, complexity, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, perf, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, pedantic, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, restriction, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, cargo, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, nursery, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal_warn, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
+        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
     };
 }
 
@@ -411,7 +412,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
 
-    reg.register_lint_group("clippy_restriction", vec![
+    reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
@@ -434,7 +435,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         write::USE_DEBUG,
     ]);
 
-    reg.register_lint_group("clippy_pedantic", vec![
+    reg.register_lint_group("clippy::pedantic", Some("clippy_pedantic"), vec![
         attrs::INLINE_ALWAYS,
         copies::MATCH_SAME_ARMS,
         copy_iterator::COPY_ITERATOR,
@@ -472,13 +473,13 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         use_self::USE_SELF,
     ]);
 
-    reg.register_lint_group("clippy_internal", vec![
+    reg.register_lint_group("clippy::internal", Some("clippy_internal"), vec![
         utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         utils::internal_lints::LINT_WITHOUT_LINT_PASS,
         utils::internal_lints::DEFAULT_HASH_TYPES,
     ]);
 
-    reg.register_lint_group("clippy", vec![
+    reg.register_lint_group("clippy::all", Some("clippy"), vec![
         approx_const::APPROX_CONSTANT,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
@@ -693,7 +694,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
-    reg.register_lint_group("clippy_style", vec![
+    reg.register_lint_group("clippy::style", Some("clippy_style"), vec![
         assign_ops::ASSIGN_OP_PATTERN,
         bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
@@ -777,7 +778,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         write::WRITELN_EMPTY_STRING,
     ]);
 
-    reg.register_lint_group("clippy_complexity", vec![
+    reg.register_lint_group("clippy::complexity", Some("clippy_complexity"), vec![
         assign_ops::MISREFACTORED_ASSIGN_OP,
         booleans::NONMINIMAL_BOOL,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
@@ -845,7 +846,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
-    reg.register_lint_group("clippy_correctness", vec![
+    reg.register_lint_group("clippy::correctness", Some("clippy_correctness"), vec![
         approx_const::APPROX_CONSTANT,
         attrs::DEPRECATED_SEMVER,
         attrs::USELESS_ATTRIBUTE,
@@ -899,7 +900,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         unused_io_amount::UNUSED_IO_AMOUNT,
     ]);
 
-    reg.register_lint_group("clippy_perf", vec![
+    reg.register_lint_group("clippy::perf", Some("clippy_perf"), vec![
         bytecount::NAIVE_BYTECOUNT,
         entry::MAP_ENTRY,
         escape::BOXED_LOCAL,
@@ -917,11 +918,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         vec::USELESS_VEC,
     ]);
 
-    reg.register_lint_group("clippy_cargo", vec![
+    reg.register_lint_group("clippy::cargo", Some("clippy_cargo"), vec![
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
     ]);
 
-    reg.register_lint_group("clippy_nursery", vec![
+    reg.register_lint_group("clippy::nursery", Some("clippy_nursery"), vec![
         attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
@@ -933,7 +934,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
 // only exists to let the dogfood integration test works.
 // Don't run clippy as an executable directly
-#[allow(dead_code, print_stdout)]
+#[allow(dead_code, clippy::print_stdout)]
 fn main() {
     panic!("Please use the cargo-clippy executable");
 }

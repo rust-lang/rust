@@ -1,13 +1,14 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![allow(unknown_lints, missing_docs_in_private_items)]
+#![feature(tool_lints)]
+#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 
 use rustc_driver::{self, driver::CompileController, Compilation};
 use rustc_plugin;
 use std::process::{exit, Command};
 
-#[allow(print_stdout)]
+#[allow(clippy::print_stdout)]
 fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }
@@ -118,8 +119,8 @@ pub fn main() {
                     ls.register_late_pass(Some(sess), true, pass);
                 }
 
-                for (name, to) in lint_groups {
-                    ls.register_group(Some(sess), true, name, to);
+                for (name, (to, deprecated_name)) in lint_groups {
+                    ls.register_group(Some(sess), true, name, deprecated_name, to);
                 }
                 clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
 

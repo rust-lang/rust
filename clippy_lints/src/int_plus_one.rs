@@ -1,7 +1,7 @@
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::*;
 
 use crate::utils::{snippet_opt, span_lint_and_then};
@@ -53,7 +53,7 @@ enum Side {
 }
 
 impl IntPlusOne {
-    #[allow(cast_sign_loss)]
+    #[allow(clippy::cast_sign_loss)]
     fn check_lit(&self, lit: &Lit, target_value: i128) -> bool {
         if let LitKind::Int(value, ..) = lit.node {
             return value == (target_value as u128);

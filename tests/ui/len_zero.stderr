@@ -1,139 +1,139 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:6:1
+  --> $DIR/len_zero.rs:8:1
    |
-6  | / impl PubOne {
-7  | |     pub fn len(self: &Self) -> isize {
-8  | |         1
-9  | |     }
-10 | | }
+8  | / impl PubOne {
+9  | |     pub fn len(self: &Self) -> isize {
+10 | |         1
+11 | |     }
+12 | | }
    | |_^
    |
-   = note: `-D len-without-is-empty` implied by `-D warnings`
+   = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_zero.rs:55:1
+  --> $DIR/len_zero.rs:57:1
    |
-55 | / pub trait PubTraitsToo {
-56 | |     fn len(self: &Self) -> isize;
-57 | | }
+57 | / pub trait PubTraitsToo {
+58 | |     fn len(self: &Self) -> isize;
+59 | | }
    | |_^
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> $DIR/len_zero.rs:89:1
+  --> $DIR/len_zero.rs:91:1
    |
-89 | / impl HasIsEmpty {
-90 | |     pub fn len(self: &Self) -> isize {
-91 | |         1
-92 | |     }
+91 | / impl HasIsEmpty {
+92 | |     pub fn len(self: &Self) -> isize {
+93 | |         1
+94 | |     }
 ...  |
-96 | |     }
-97 | | }
+98 | |     }
+99 | | }
    | |_^
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-   --> $DIR/len_zero.rs:118:1
+   --> $DIR/len_zero.rs:120:1
     |
-118 | / impl HasWrongIsEmpty {
-119 | |     pub fn len(self: &Self) -> isize {
-120 | |         1
-121 | |     }
+120 | / impl HasWrongIsEmpty {
+121 | |     pub fn len(self: &Self) -> isize {
+122 | |         1
+123 | |     }
 ...   |
-125 | |     }
-126 | | }
+127 | |     }
+128 | | }
     | |_^
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:139:8
+   --> $DIR/len_zero.rs:141:8
     |
-139 |     if x.len() == 0 {
+141 |     if x.len() == 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `x.is_empty()`
     |
-    = note: `-D len-zero` implied by `-D warnings`
+    = note: `-D clippy::len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:143:8
+   --> $DIR/len_zero.rs:145:8
     |
-143 |     if "".len() == 0 {}
+145 |     if "".len() == 0 {}
     |        ^^^^^^^^^^^^^ help: using `is_empty` is more concise: `"".is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:158:8
+   --> $DIR/len_zero.rs:160:8
     |
-158 |     if has_is_empty.len() == 0 {
+160 |     if has_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:161:8
+   --> $DIR/len_zero.rs:163:8
     |
-161 |     if has_is_empty.len() != 0 {
+163 |     if has_is_empty.len() != 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:164:8
+   --> $DIR/len_zero.rs:166:8
     |
-164 |     if has_is_empty.len() > 0 {
+166 |     if has_is_empty.len() > 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-   --> $DIR/len_zero.rs:167:8
+   --> $DIR/len_zero.rs:169:8
     |
-167 |     if has_is_empty.len() < 1 {
+169 |     if has_is_empty.len() < 1 {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
 
 error: length comparison to one
-   --> $DIR/len_zero.rs:170:8
+   --> $DIR/len_zero.rs:172:8
     |
-170 |     if has_is_empty.len() >= 1 {
+172 |     if has_is_empty.len() >= 1 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:181:8
+   --> $DIR/len_zero.rs:183:8
     |
-181 |     if 0 == has_is_empty.len() {
+183 |     if 0 == has_is_empty.len() {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:184:8
+   --> $DIR/len_zero.rs:186:8
     |
-184 |     if 0 != has_is_empty.len() {
+186 |     if 0 != has_is_empty.len() {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:187:8
+   --> $DIR/len_zero.rs:189:8
     |
-187 |     if 0 < has_is_empty.len() {
+189 |     if 0 < has_is_empty.len() {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-   --> $DIR/len_zero.rs:190:8
+   --> $DIR/len_zero.rs:192:8
     |
-190 |     if 1 <= has_is_empty.len() {
+192 |     if 1 <= has_is_empty.len() {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-   --> $DIR/len_zero.rs:193:8
+   --> $DIR/len_zero.rs:195:8
     |
-193 |     if 1 > has_is_empty.len() {
+195 |     if 1 > has_is_empty.len() {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:207:8
+   --> $DIR/len_zero.rs:209:8
     |
-207 |     if with_is_empty.len() == 0 {
+209 |     if with_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `with_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:220:8
+   --> $DIR/len_zero.rs:222:8
     |
-220 |     if b.len() != 0 {}
+222 |     if b.len() != 0 {}
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`
 
 error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
-   --> $DIR/len_zero.rs:226:1
+   --> $DIR/len_zero.rs:228:1
     |
-226 | / pub trait DependsOnFoo: Foo {
-227 | |     fn len(&mut self) -> usize;
-228 | | }
+228 | / pub trait DependsOnFoo: Foo {
+229 | |     fn len(&mut self) -> usize;
+230 | | }
     | |_^
 
 error: aborting due to 19 previous errors

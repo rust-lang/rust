@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+
 pub fn dec_read_dec(i: &mut i32) -> i32 {
     *i -= 1;
     let ret = *i;
@@ -5,7 +7,7 @@ pub fn dec_read_dec(i: &mut i32) -> i32 {
     ret
 }
 
-#[allow(trivially_copy_pass_by_ref)]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn minus_1(i: &i32) -> i32 {
     dec_read_dec(&mut i.clone())
 }

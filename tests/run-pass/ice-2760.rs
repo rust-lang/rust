@@ -1,4 +1,7 @@
-#![allow(unused_variables, blacklisted_name, needless_pass_by_value, dead_code)]
+#![feature(tool_lints)]
+
+#![allow(unused_variables, clippy::blacklisted_name,
+         clippy::needless_pass_by_value, dead_code)]
 
 // This should not compile-fail with:
 //

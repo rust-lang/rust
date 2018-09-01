@@ -4,7 +4,7 @@ error: float has excessive precision
 15 |     const BAD32_1: f32 = 0.123_456_789_f32;
    |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79`
    |
-   = note: `-D excessive-precision` implied by `-D warnings`
+   = note: `-D clippy::excessive-precision` implied by `-D warnings`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:16:26

@@ -1,11 +1,13 @@
+#![feature(tool_lints)]
+
 #![feature(box_syntax)]
 
 
-#![warn(no_effect, unnecessary_operation)]
+#![warn(clippy::no_effect, clippy::unnecessary_operation)]
 #![allow(dead_code)]
 #![allow(path_statements)]
-#![allow(deref_addrof)]
-#![allow(redundant_field_names)]
+#![allow(clippy::deref_addrof)]
+#![allow(clippy::redundant_field_names)]
 #![feature(untagged_unions)]
 
 struct Unit;

@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(approx_constant)]
-#[allow(unused, shadow_unrelated, similar_names, unreadable_literal)]
+#[warn(clippy::approx_constant)]
+#[allow(unused, clippy::shadow_unrelated, clippy::similar_names, clippy::unreadable_literal)]
 fn main() {
     let my_e = 2.7182;
     let almost_e = 2.718;

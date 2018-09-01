@@ -4,7 +4,7 @@ error: generally you want to avoid `&mut &mut _` if possible
 10 | fn fun(x : &mut &mut u32) -> bool {
    |            ^^^^^^^^^^^^^
    |
-   = note: `-D mut-mut` implied by `-D warnings`
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:24:17

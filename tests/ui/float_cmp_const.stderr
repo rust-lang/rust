@@ -4,7 +4,7 @@ error: strict comparison of f32 or f64 constant
 17 |     1f32 == ONE;
    |     ^^^^^^^^^^^ help: consider comparing them within some error: `(1f32 - ONE).abs() < error`
    |
-   = note: `-D float-cmp-const` implied by `-D warnings`
+   = note: `-D clippy::float-cmp-const` implied by `-D warnings`
 note: std::f32::EPSILON and std::f64::EPSILON are available.
   --> $DIR/float_cmp_const.rs:17:5
    |

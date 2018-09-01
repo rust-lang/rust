@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![allow(print_literal, write_literal)]
-#![warn(print_stdout, use_debug)]
+#![allow(clippy::print_literal, clippy::write_literal)]
+#![warn(clippy::print_stdout, clippy::use_debug)]
 
 use std::fmt::{Debug, Display, Formatter, Result};
 

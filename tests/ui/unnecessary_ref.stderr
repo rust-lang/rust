@@ -1,14 +1,14 @@
 error: Creating a reference that is immediately dereferenced.
-  --> $DIR/unnecessary_ref.rs:11:17
+  --> $DIR/unnecessary_ref.rs:13:17
    |
-11 |     let inner = (&outer).inner;
+13 |     let inner = (&outer).inner;
    |                 ^^^^^^^^ help: try this: `outer.inner`
    |
 note: lint level defined here
-  --> $DIR/unnecessary_ref.rs:8:8
+  --> $DIR/unnecessary_ref.rs:10:8
    |
-8  | #[deny(ref_in_deref)]
-   |        ^^^^^^^^^^^^
+10 | #[deny(clippy::ref_in_deref)]
+   |        ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
