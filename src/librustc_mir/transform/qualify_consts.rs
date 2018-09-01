@@ -826,11 +826,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             | "min_align_of"
                             | "type_id"
                             | "bswap"
+                            | "bitreverse"
                             | "ctpop"
                             | "cttz"
                             | "cttz_nonzero"
                             | "ctlz"
-                            | "ctlz_nonzero" => is_const_fn = Some(def_id),
+                            | "ctlz_nonzero"
+                            | "overflowing_add"
+                            | "overflowing_sub"
+                            | "overflowing_mul"
+                            | "unchecked_shl"
+                            | "unchecked_shr"
+                            | "add_with_overflow"
+                            | "sub_with_overflow"
+                            | "mul_with_overflow" => is_const_fn = Some(def_id),
                             "transmute" => {
                                 if self.mode != Mode::Fn {
                                     is_const_fn = Some(def_id);

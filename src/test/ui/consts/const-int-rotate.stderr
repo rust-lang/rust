@@ -1,0 +1,24 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/const-int-rotate.rs:12:28
+   |
+LL |     let x: &'static i32 = &(5_i32.rotate_left(3)); //~ ERROR does not live long enough
+   |                            ^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL |     let y: &'static i32 = &(5_i32.rotate_right(3)); //~ ERROR does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/const-int-rotate.rs:13:28
+   |
+LL |     let y: &'static i32 = &(5_i32.rotate_right(3)); //~ ERROR does not live long enough
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
