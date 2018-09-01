@@ -38,7 +38,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         // extract source value
-        let parts: Vec<&str> = line.splitn(2, "=").collect();
+        let parts: Vec<&str> = line.splitn(2, '=').collect();
         let source = parts[1].trim();
 
         // ensure source is whitelisted
