@@ -61,6 +61,7 @@ mod imp {
                     continue;
                 } else if err == libc::ENOSYS {
                     GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
+                    return false;
                 } else if err == libc::EAGAIN {
                     return false;
                 } else {
