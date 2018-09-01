@@ -55,3 +55,5 @@ mod items {
 
     fn item() {}
 }
+
+fn main() {}

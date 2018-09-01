@@ -19,3 +19,5 @@ mod b {
 
     fn main() { let y = x; }
 }
+
+fn main() {}

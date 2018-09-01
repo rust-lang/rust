@@ -23,3 +23,5 @@ mod bar {
     }
     fn f() { ::foo::m!(); }
 }
+
+fn main() {}
