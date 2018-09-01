@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 const fn foo() -> *const i8 {
     b"foo" as *const _ as *const i8

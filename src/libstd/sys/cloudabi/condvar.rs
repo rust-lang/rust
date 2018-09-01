@@ -28,11 +28,13 @@ pub struct Condvar {
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
+const NEW: Condvar = Condvar {
+    condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)),
+};
+
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar {
-            condvar: UnsafeCell::new(AtomicU32::new(abi::CONDVAR_HAS_NO_WAITERS.0)),
-        }
+        NEW
     }
 
     pub unsafe fn init(&mut self) {}

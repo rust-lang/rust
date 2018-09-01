@@ -28,6 +28,7 @@ use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
+    min_const_fn: bool,
     source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
@@ -38,12 +39,16 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
-    fn new(mir: &'a Mir<'tcx>,
-           source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
-           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           param_env: ty::ParamEnv<'tcx>) -> Self {
+    fn new(
+        min_const_fn: bool,
+        mir: &'a Mir<'tcx>,
+        source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Self {
         Self {
             mir,
+            min_const_fn,
             source_scope_local_data,
             violations: vec![],
             source_info: SourceInfo {
@@ -269,6 +274,15 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
+        if self.min_const_fn {
+            for violation in violations {
+                let mut violation = violation.clone();
+                violation.kind = UnsafetyViolationKind::MinConstFn;
+                if !self.violations.contains(&violation) {
+                    self.violations.push(violation)
+                }
+            }
+        }
         let within_unsafe = match self.source_scope_local_data[self.source_info.scope].safety {
             Safety::Safe => {
                 for violation in violations {
@@ -276,7 +290,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                         self.violations.push(violation.clone())
                     }
                 }
-
                 false
             }
             Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
@@ -369,6 +382,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
     let param_env = tcx.param_env(def_id);
     let mut checker = UnsafetyChecker::new(
+        tcx.is_const_fn(def_id) && tcx.is_min_const_fn(def_id),
         mir, source_scope_local_data, tcx, param_env);
     checker.visit_mir(mir);
 
@@ -474,6 +488,15 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
                     "{} is unsafe and requires unsafe function or block", description)
+                    .span_label(source_info.span, &description.as_str()[..])
+                    .note(&details.as_str()[..])
+                    .emit();
+            }
+            UnsafetyViolationKind::MinConstFn => {
+                tcx.sess.struct_span_err(
+                    source_info.span,
+                    &format!("{} is unsafe and unsafe operations \
+                            are not allowed in const fn", description))
                     .span_label(source_info.span, &description.as_str()[..])
                     .note(&details.as_str()[..])
                     .emit();

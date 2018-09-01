@@ -2430,6 +2430,8 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
+    /// unsafety is not allowed at all in min const fn
+    MinConstFn,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
 }

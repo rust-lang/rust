@@ -26,12 +26,15 @@ use rustc::hir;
 
 use std::iter;
 
-fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   it: &hir::ForeignItem,
-                                   n_tps: usize,
-                                   abi: Abi,
-                                   inputs: Vec<Ty<'tcx>>,
-                                   output: Ty<'tcx>) {
+fn equate_intrinsic_type<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    it: &hir::ForeignItem,
+    n_tps: usize,
+    abi: Abi,
+    safety: hir::Unsafety,
+    inputs: Vec<Ty<'tcx>>,
+    output: Ty<'tcx>,
+) {
     let def_id = tcx.hir.local_def_id(it.id);
 
     match it.node {
@@ -65,7 +68,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         inputs.into_iter(),
         output,
         false,
-        hir::Unsafety::Unsafe,
+        safety,
         abi
     )));
     let cause = ObligationCause::new(it.span, it.id, ObligationCauseCode::IntrinsicType);
@@ -78,7 +81,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
     let name = it.name.as_str();
-    let (n_tps, inputs, output) = if name.starts_with("atomic_") {
+    let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
@@ -109,10 +112,14 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return;
             }
         };
-        (n_tps, inputs, output)
+        (n_tps, inputs, output, hir::Unsafety::Unsafe)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), tcx.types.never)
+        (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
+        let unsafety = match &name[..] {
+            "size_of" | "min_align_of" => hir::Unsafety::Normal,
+            _ => hir::Unsafety::Unsafe,
+        };
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_nil()),
             "size_of" |
@@ -327,9 +334,9 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return;
             }
         };
-        (n_tps, inputs, output)
+        (n_tps, inputs, output, unsafety)
     };
-    equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, inputs, output)
+    equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, unsafety, inputs, output)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -439,7 +446,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic,
+    equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic, hir::Unsafety::Unsafe,
                           inputs, output)
 }
 

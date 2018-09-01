@@ -10,7 +10,7 @@
 
 // https://github.com/rust-lang/rust/issues/48279
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 #[derive(PartialEq, Eq)]
 pub struct NonZeroU32 {

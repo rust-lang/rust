@@ -65,6 +65,7 @@ for mir::UnsafetyViolationKind {
 
         match *self {
             mir::UnsafetyViolationKind::General => {}
+            mir::UnsafetyViolationKind::MinConstFn => {}
             mir::UnsafetyViolationKind::ExternStatic(lint_node_id) |
             mir::UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
                 lint_node_id.hash_stable(hcx, hasher);

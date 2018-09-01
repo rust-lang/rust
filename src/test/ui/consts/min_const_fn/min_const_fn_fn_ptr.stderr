@@ -1,0 +1,14 @@
+error: function pointers in const fn are unstable
+  --> $DIR/min_const_fn_fn_ptr.rs:23:5
+   |
+LL |     x.0.field;
+   |     ^^^^^^^^^
+
+error: function pointers in const fn are unstable
+  --> $DIR/min_const_fn_fn_ptr.rs:26:59
+   |
+LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasPtr { field }) }
+   |                                                           ^^^^^
+
+error: aborting due to 2 previous errors
+

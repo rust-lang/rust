@@ -10,7 +10,7 @@
 
 //~^^^^^^^^^^ ERROR cycle detected when computing layout of
 
-#![feature(const_fn)]
+
 #![feature(core_intrinsics)]
 
 use std::intrinsics;

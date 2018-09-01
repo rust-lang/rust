@@ -18,7 +18,6 @@ use hair::*;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
@@ -67,10 +66,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
             hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
-            hir::BodyOwnerKind::Fn => {
-                let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(src_id));
-                fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
-            }
+            hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
         let attrs = tcx.hir.attrs(src_id);
@@ -83,7 +79,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Respect -C overflow-checks.
         check_overflow |= tcx.sess.overflow_checks();
 
-        // Constants and const fn's always need overflow checks.
+        // Constants always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
         let lint_level = lint_level_for_hir_id(tcx, src_id);

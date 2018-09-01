@@ -130,7 +130,7 @@ impl_stable_hash_for!(struct ::syntax::attr::Stability {
     level,
     feature,
     rustc_depr,
-    rustc_const_unstable
+    const_stability
 });
 
 impl<'a> HashStable<StableHashingContext<'a>>
@@ -161,7 +161,6 @@ for ::syntax::attr::StabilityLevel {
 }
 
 impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason });
-impl_stable_hash_for!(struct ::syntax::attr::RustcConstUnstable { feature });
 
 
 impl_stable_hash_for!(enum ::syntax::attr::IntType {

@@ -40,6 +40,16 @@ use symbol::{keywords, Symbol};
 use std::{env, path};
 
 macro_rules! set {
+    // The const_fn feature also enables the min_const_fn feature, because `min_const_fn` allows
+    // the declaration `const fn`, but the `const_fn` feature gate enables things inside those
+    // functions that we do not want to expose to the user for now.
+    (const_fn) => {{
+        fn f(features: &mut Features, _: Span) {
+            features.const_fn = true;
+            features.min_const_fn = true;
+        }
+        f as fn(&mut Features, Span)
+    }};
     ($field: ident) => {{
         fn f(features: &mut Features, _: Span) {
             features.$field = true;
@@ -206,25 +216,28 @@ declare_features! (
     // #23121. Array patterns have some hazards yet.
     (active, slice_patterns, "1.0.0", Some(23121), None),
 
-    // Allows the definition of `const fn` functions.
+    // Allows the definition of `const fn` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(24111), None),
+
+    // Allows the definition of `const fn` functions.
+    (active, min_const_fn, "1.30.0", Some(53555), None),
 
     // Allows let bindings and destructuring in `const fn` functions and constants.
     (active, const_let, "1.22.1", Some(48821), None),
 
-    // Allows accessing fields of unions inside const fn
+    // Allows accessing fields of unions inside const fn.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 
-    // Allows casting raw pointers to `usize` during const eval
+    // Allows casting raw pointers to `usize` during const eval.
     (active, const_raw_ptr_to_usize_cast, "1.27.0", Some(51910), None),
 
-    // Allows dereferencing raw pointers during const eval
+    // Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
-    // Allows reinterpretation of the bits of a value of one type as another type during const eval
+    // Allows reinterpretation of the bits of a value of one type as another type during const eval.
     (active, const_transmute, "1.29.0", Some(53605), None),
 
-    // Allows comparing raw pointers during const eval
+    // Allows comparing raw pointers during const eval.
     (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
 
     // Allows panicking during const eval (produces compile-time errors)
@@ -1786,7 +1799,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
                 if header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, const_fn, span, "const fn is unstable");
+                    gate_feature_post!(&self, min_const_fn, span, "const fn is unstable");
                 }
                 // stability of const fn methods are covered in
                 // visit_trait_item and visit_impl_item below; this is
@@ -1844,7 +1857,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ii.node {
             ast::ImplItemKind::Method(ref sig, _) => {
                 if sig.header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
+                    gate_feature_post!(&self, min_const_fn, ii.span, "const fn is unstable");
                 }
             }
             ast::ImplItemKind::Existential(..) => {

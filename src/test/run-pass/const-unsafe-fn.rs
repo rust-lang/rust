@@ -10,7 +10,7 @@
 
 // A quick test of 'unsafe const fn' functionality
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 const unsafe fn dummy(v: u32) -> u32 {
     !v

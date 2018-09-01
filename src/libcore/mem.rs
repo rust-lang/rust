@@ -285,6 +285,15 @@ pub fn forget<T>(t: T) {
 /// [alignment]: ./fn.align_of.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn size_of<T>() -> usize {
+    intrinsics::size_of::<T>()
+}
+
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+/// Ceci n'est pas la documentation
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -334,6 +343,16 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
+#[cfg(not(stage0))]
+pub fn min_align_of<T>() -> usize {
+    intrinsics::min_align_of::<T>()
+}
+
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
+#[cfg(stage0)]
+/// Ceci n'est pas la documentation
 pub fn min_align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -376,6 +395,15 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn align_of<T>() -> usize {
+    intrinsics::min_align_of::<T>()
+}
+
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+/// Ceci n'est pas la documentation
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }

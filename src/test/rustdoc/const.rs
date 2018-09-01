@@ -10,7 +10,7 @@
 
 #![crate_type="lib"]
 
-#![feature(const_fn)]
+#![feature(min_const_fn)]
 
 pub struct Foo;
 
