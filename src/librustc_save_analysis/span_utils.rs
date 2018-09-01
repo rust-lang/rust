@@ -154,8 +154,7 @@ impl<'a> SpanUtils<'a> {
                 let loc = self.sess.source_map().lookup_char_pos(span.lo());
                 span_bug!(
                     span,
-                    "Mis-counted brackets when breaking path? Parsing '{}' \
-                     in {}, line {}",
+                    "Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
                     self.snippet(span),
                     loc.file.name,
                     loc.line

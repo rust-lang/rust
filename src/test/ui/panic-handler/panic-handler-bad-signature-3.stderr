@@ -1,10 +1,8 @@
 error: function should have one argument
   --> $DIR/panic-handler-bad-signature-3.rs:20:1
    |
-LL | / fn panic() -> ! { //~ ERROR function should have one argument
-LL | |     loop {}
-LL | | }
-   | |_^
+LL | fn panic() -> ! { //~ ERROR function should have one argument
+   | ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
